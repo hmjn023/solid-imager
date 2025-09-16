@@ -1,0 +1,12 @@
+services:
+  db:
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: hmjn
+      POSTGRES_PASSWORD: popopo
+      POSTGRES_DB: solid-imager
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432

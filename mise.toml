@@ -1,0 +1,2 @@
+[tasks.attach_db]
+run="psql -h localhost -U hmjn solid-imager"

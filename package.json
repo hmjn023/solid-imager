@@ -1,0 +1,40 @@
+{
+  "name": "example-with-tailwindcss",
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "lint": "biome lint ./src",
+    "format": "biome format --write ./src",
+    "check": "biome check --apply ./src"
+  },
+  "dependencies": {
+    "@solidjs/router": "^0.15.0",
+    "@solidjs/start": "^1.1.0",
+    "@tanstack/solid-db": "^0.1.18",
+    "@tanstack/solid-query": "^5.89.0",
+    "chokidar": "^4.0.3",
+    "drizzle-orm": "^0.44.5",
+    "pg": "^8.16.3",
+    "sharp": "^0.34.3",
+    "solid-js": "^1.9.5",
+    "vinxi": "^0.5.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.2.4",
+    "@tailwindcss/vite": "^4.0.7",
+    "@types/node": "^24.5.0",
+    "@types/pg": "^8.15.5",
+    "dotenv": "^17.2.2",
+    "drizzle-kit": "^0.31.4",
+    "tailwindcss": "^4.0.7"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
