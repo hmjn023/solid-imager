@@ -114,7 +114,7 @@ export const tags = pgTable(
 	},
 	(table) => {
 		return {
-			name_unique: unique("name_unique").on(table.name),
+			name_unique: unique("tags_name_unique").on(table.name),
 			nameIndex: index("idx_tags_name").on(table.name),
 		};
 	},
@@ -220,7 +220,7 @@ export const categories = pgTable(
 	},
 	(table) => {
 		return {
-			name_unique: unique("name_unique").on(table.name),
+			name_unique: unique("categories_name_unique").on(table.name),
 		};
 	},
 );
@@ -248,7 +248,7 @@ export const ips = pgTable(
 	},
 	(table) => {
 		return {
-			name_unique: unique("name_unique").on(table.name),
+			name_unique: unique("ips_name_unique").on(table.name),
 		};
 	},
 );
