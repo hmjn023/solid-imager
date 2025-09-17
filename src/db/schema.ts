@@ -1,4 +1,5 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	bigint,
 	boolean,
@@ -15,7 +16,6 @@ import {
 	unique,
 	uuid,
 } from "drizzle-orm/pg-core";
-import { relations, sql } from "drizzle-orm";
 
 // Enums
 export const mediaSourceTypeEnum = pgEnum("media_source_type", [
@@ -161,9 +161,7 @@ export const mediaDetails = pgTable(
 		return {
 			ratingIndex: index("idx_media_details_rating").on(table.rating),
 			favoriteIndex: index("idx_media_details_favorite").on(table.favorite),
-			viewCountIndex: index("idx_media_details_view_count").on(
-				table.viewCount,
-			),
+			viewCountIndex: index("idx_media_details_view_count").on(table.viewCount),
 		};
 	},
 );
@@ -214,7 +212,7 @@ export const categories = pgTable(
 		/** UIで表示する際の色 */
 		color: text("color").default("#808080"),
 		/** 親カテゴリID */
-		parentId: integer("parent_id").references((): any => categories.id),
+		parentId: integer("parent_id").references(() => categories.id),
 		/** 作成日時 */
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
@@ -418,7 +416,9 @@ export const similarMedia = pgTable(
 export const collections = pgTable("collections", {
 	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
 	/** どのユーザーのコレクションか (ユーザー管理を導入する場合) */
-	userId: uuid("user_id"),
+	userId: uuid("user_id")
+		.notNull()
+		.references(() => users.id, { onDelete: "cascade" }),
 	/** コレクション名 */
 	name: text("name").notNull(),
 	/** コレクションの説明 */
@@ -451,92 +451,174 @@ export const collectionMedia = pgTable(
 );
 
 // Relations
+
+/** ユーザー */
+export const users = pgTable(
+	"users",
+	{
+		/** ユーザーID */
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		/** ユーザー名 */
+		name: text("name").notNull(),
+		/** メールアドレス */
+		email: text("email").notNull(),
+		/** パスワード */
+		password: text("password").notNull(),
+		/** 作成日時 */
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		/** 更新日時 */
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => {
+		return {
+			email_unique: unique("users_email_unique").on(table.email),
+		};
+	},
+);
+/** メディアソースとメディアのリレーション */
 export const mediaSourcesRelations = relations(mediaSources, ({ many }) => ({
+	/** メディアソースに属するメディア */
 	media: many(media),
 }));
 
+/** メディアと他のテーブルのリレーション */
 export const mediaRelations = relations(media, ({ one, many }) => ({
+	/** メディアが属するメディアソース */
+
 	source: one(mediaSources, {
 		fields: [media.sourceId],
 		references: [mediaSources.id],
 	}),
+	/** メディアに付けられたタグ */
+
 	tags: many(mediaTags),
+	/** メディアの詳細情報 */
+
 	details: one(mediaDetails, {
 		fields: [media.id],
 		references: [mediaDetails.mediaId],
 	}),
+	/** メディアの生成情報 */
+
 	generationInfo: one(mediaGenerationInfo, {
 		fields: [media.id],
 		references: [mediaGenerationInfo.mediaId],
 	}),
+	/** メディアの組織情報 */
+
 	organization: one(mediaOrganization, {
 		fields: [media.id],
 		references: [mediaOrganization.mediaId],
 	}),
+	/** メディアの技術情報 */
+
 	technicalInfo: one(mediaTechnicalInfo, {
 		fields: [media.id],
 		references: [mediaTechnicalInfo.mediaId],
 	}),
+	/** メディアの同期情報 */
+
 	sync: one(mediaSync, {
 		fields: [media.id],
 		references: [mediaSync.mediaId],
 	}),
+	/** メディアの閲覧履歴 */
+
 	viewHistory: many(viewHistory),
+	/** 類似メディア (media1) */
+
 	similarMedia1: many(similarMedia, { relationName: "media1" }),
+	/** 類似メディア (media2) */
+
 	similarMedia2: many(similarMedia, { relationName: "media2" }),
+	/** メディアが属するコレクション */
+
 	collectionMedia: many(collectionMedia),
+	/** メディアに含まれるキャラクター */
+
 	characters: many(mediaCharacters),
 }));
 
+/** タグとメディアのリレーション */
 export const tagsRelations = relations(tags, ({ many }) => ({
+	/** タグが付与されたメディア */
 	media: many(mediaTags),
 }));
 
+/** メディアとタグの中間テーブルのリレーション */
 export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
+	/** 中間テーブルが参照するメディア */
+
 	media: one(media, {
 		fields: [mediaTags.mediaId],
 		references: [media.id],
 	}),
+	/** 中間テーブルが参照するタグ */
+
 	tag: one(tags, {
 		fields: [mediaTags.tagId],
 		references: [tags.id],
 	}),
 }));
 
+/** カテゴリの親子関係とメディアとのリレーション */
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
+	/** 親カテゴリ */
+
 	parent: one(categories, {
 		fields: [categories.parentId],
 		references: [categories.id],
 		relationName: "parent_category",
 	}),
+	/** 子カテゴリ */
+
 	children: many(categories, { relationName: "parent_category" }),
+	/** カテゴリに属するメディア */
+
 	media: many(mediaOrganization),
 }));
 
+/** プロジェクトとメディアのリレーション */
 export const projectsRelations = relations(projects, ({ many }) => ({
+	/** プロジェクトに属するメディア */
 	media: many(mediaOrganization),
 }));
 
+/** IPとメディア、キャラクターのリレーション */
 export const ipsRelations = relations(ips, ({ many }) => ({
+	/** IPに属するメディア */
+
 	media: many(mediaOrganization),
+	/** IPに属するキャラクター */
+
 	characters: many(characters),
 }));
 
+/** キャラクターとIP、メディアのリレーション */
 export const charactersRelations = relations(characters, ({ one, many }) => ({
+	/** キャラクターが属するIP */
+
 	ip: one(ips, {
 		fields: [characters.ipId],
 		references: [ips.id],
 	}),
+	/** キャラクターが含まれるメディア */
+
 	media: many(mediaCharacters),
 }));
 
+/** メディアとキャラクターの中間テーブルのリレーション */
 export const mediaCharactersRelations = relations(
 	mediaCharacters,
 	({ one }) => ({
+		/** 中間テーブルが参照するメディア */
+
 		media: one(media, {
 			fields: [mediaCharacters.mediaId],
 			references: [media.id],
 		}),
+		/** 中間テーブルが参照するキャラクター */
+
 		character: one(characters, {
 			fields: [mediaCharacters.characterId],
 			references: [characters.id],
@@ -544,21 +626,30 @@ export const mediaCharactersRelations = relations(
 	}),
 );
 
+/** メディアの組織情報と各テーブルのリレーション */
 export const mediaOrganizationRelations = relations(
 	mediaOrganization,
 	({ one }) => ({
+		/** 組織情報が参照するメディア */
+
 		media: one(media, {
 			fields: [mediaOrganization.mediaId],
 			references: [media.id],
 		}),
+		/** 組織情報が参照するカテゴリ */
+
 		category: one(categories, {
 			fields: [mediaOrganization.categoryId],
 			references: [categories.id],
 		}),
+		/** 組織情報が参照するプロジェクト */
+
 		project: one(projects, {
 			fields: [mediaOrganization.projectId],
 			references: [projects.id],
 		}),
+		/** 組織情報が参照するIP */
+
 		ip: one(ips, {
 			fields: [mediaOrganization.ipId],
 			references: [ips.id],
@@ -566,19 +657,26 @@ export const mediaOrganizationRelations = relations(
 	}),
 );
 
+/** 閲覧履歴とメディアのリレーション */
 export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
+	/** 閲覧履歴が参照するメディア */
 	media: one(media, {
 		fields: [viewHistory.mediaId],
 		references: [media.id],
 	}),
 }));
 
+/** 類似メディアのリレーション */
 export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
+	/** 類似メディア1 */
+
 	media1: one(media, {
 		fields: [similarMedia.media1Id],
 		references: [media.id],
 		relationName: "media1",
 	}),
+	/** 類似メディア2 */
+
 	media2: one(media, {
 		fields: [similarMedia.media2Id],
 		references: [media.id],
@@ -586,23 +684,39 @@ export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
 	}),
 }));
 
-export const collectionsRelations = relations(collections, ({ many }) => ({
+export const collectionsRelations = relations(collections, ({ one, many }) => ({
 	media: many(collectionMedia),
+	/** どのユーザーのコレクションか */
+	user: one(users, {
+		fields: [collections.userId],
+		references: [users.id],
+	}),
 }));
 
+/** コレクションとメディアの中間テーブルのリレーション */
 export const collectionMediaRelations = relations(
 	collectionMedia,
 	({ one }) => ({
+		/** 中間テーブルが参照するコレクション */
+
 		collection: one(collections, {
 			fields: [collectionMedia.collectionId],
 			references: [collections.id],
 		}),
+		/** 中間テーブルが参照するメディア */
+
 		media: one(media, {
 			fields: [collectionMedia.mediaId],
 			references: [media.id],
 		}),
 	}),
 );
+
+/** ユーザーとコレクションのリレーション */
+export const usersRelations = relations(users, ({ many }) => ({
+	/** ユーザーが持つコレクション */
+	collections: many(collections),
+}));
 
 // Types
 export type MediaSource = InferSelectModel<typeof mediaSources>;
@@ -621,7 +735,9 @@ export type MediaDetails = InferSelectModel<typeof mediaDetails>;
 export type NewMediaDetails = InferInsertModel<typeof mediaDetails>;
 
 export type MediaGenerationInfo = InferSelectModel<typeof mediaGenerationInfo>;
-export type NewMediaGenerationInfo = InferInsertModel<typeof mediaGenerationInfo>;
+export type NewMediaGenerationInfo = InferInsertModel<
+	typeof mediaGenerationInfo
+>;
 
 export type Category = InferSelectModel<typeof categories>;
 export type NewCategory = InferInsertModel<typeof categories>;
@@ -658,3 +774,6 @@ export type NewCollection = InferInsertModel<typeof collections>;
 
 export type CollectionMedia = InferSelectModel<typeof collectionMedia>;
 export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
+
+export type User = InferSelectModel<typeof users>;
+export type NewUser = InferInsertModel<typeof users>;
