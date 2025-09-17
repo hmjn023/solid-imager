@@ -413,6 +413,30 @@ export const similarMedia = pgTable(
 	},
 );
 
+/** ユーザー */
+export const users = pgTable(
+	"users",
+	{
+		/** ユーザーID */
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		/** ユーザー名 */
+		name: text("name").notNull(),
+		/** メールアドレス */
+		email: text("email").notNull(),
+		/** パスワード */
+		password: text("password").notNull(),
+		/** 作成日時 */
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		/** 更新日時 */
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => {
+		return {
+			email_unique: unique("users_email_unique").on(table.email),
+		};
+	},
+);
+
 export const collections = pgTable("collections", {
 	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
 	/** どのユーザーのコレクションか (ユーザー管理を導入する場合) */
@@ -451,30 +475,6 @@ export const collectionMedia = pgTable(
 );
 
 // Relations
-
-/** ユーザー */
-export const users = pgTable(
-	"users",
-	{
-		/** ユーザーID */
-		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-		/** ユーザー名 */
-		name: text("name").notNull(),
-		/** メールアドレス */
-		email: text("email").notNull(),
-		/** パスワード */
-		password: text("password").notNull(),
-		/** 作成日時 */
-		createdAt: timestamp("created_at").notNull().defaultNow(),
-		/** 更新日時 */
-		updatedAt: timestamp("updated_at").notNull().defaultNow(),
-	},
-	(table) => {
-		return {
-			email_unique: unique("users_email_unique").on(table.email),
-		};
-	},
-);
 /** メディアソースとメディアのリレーション */
 export const mediaSourcesRelations = relations(mediaSources, ({ many }) => ({
 	/** メディアソースに属するメディア */

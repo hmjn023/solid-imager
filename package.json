@@ -11,7 +11,8 @@
     "db:studio": "drizzle-kit studio",
     "lint": "biome lint ./src",
     "format": "biome format --write ./src",
-    "check": "biome check --apply ./src"
+    "check": "biome check --fix ./src",
+    "unsafe-fix": "biome check --fix --unsafe ./src"
   },
   "dependencies": {
     "@solidjs/router": "^0.15.0",
@@ -19,10 +20,14 @@
     "@tanstack/solid-db": "^0.1.18",
     "@tanstack/solid-query": "^5.89.0",
     "chokidar": "^4.0.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.5",
     "pg": "^8.16.3",
     "sharp": "^0.34.3",
     "solid-js": "^1.9.5",
+    "tailwind-merge": "^3.3.1",
+    "tailwindcss-animate": "^1.0.7",
     "vinxi": "^0.5.7"
   },
   "devDependencies": {
