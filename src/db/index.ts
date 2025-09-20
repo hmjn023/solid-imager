@@ -1,3 +1,5 @@
+"use server";
+
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
@@ -30,7 +32,7 @@ if (!dbDatabase) {
 	throw new Error("DB_DATABASE is not defined in environment variables.");
 }
 
-const pool = new Pool({
+export const pool = new Pool({
 	host: dbHost,
 	port: parseInt(dbPort, 10),
 	user: dbUser,
@@ -42,6 +44,10 @@ export const db = drizzle(pool, { schema });
 
 export const selectMediaSources = () => {
 	return db.select().from(mediaSources);
+};
+
+export const selectMediaSourceById = (mediaSourceId: string) => {
+	return db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId));
 };
 
 export const insertMediaSource = (mediaSource: NewMediaSource) => {

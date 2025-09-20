@@ -12,3 +12,9 @@ export type mediaSourceInfo = {
 	type: mediaSourceTypeEnum;
 	connectionInfo: connectionInfo;
 };
+
+export type AppConfig = Record<string, unknown>;
+
+export type MediaUpdateData = Record<string, unknown>;
+
+export type MediaSearchParams = Record<string, string | number | boolean>;

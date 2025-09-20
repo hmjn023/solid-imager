@@ -8,3 +8,4 @@ if (app) {
 } else {
 	console.error("Element with id 'app' not found.");
 }
+

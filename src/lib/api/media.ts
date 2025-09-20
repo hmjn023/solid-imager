@@ -1,3 +1,4 @@
+import type { MediaSearchParams, MediaUpdateData } from "~/lib/types";
 import type { UUID } from "~/lib/utils";
 
 export async function getMediaDetails(sourceId: UUID, mediaId: UUID) {
@@ -13,7 +14,11 @@ export async function getMediaDetails(sourceId: UUID, mediaId: UUID) {
 	};
 }
 
-export async function updateMedia(sourceId: UUID, mediaId: UUID, data: any) {
+export async function updateMedia(
+	sourceId: UUID,
+	mediaId: UUID,
+	data: MediaUpdateData,
+) {
 	console.log("Placeholder: updateMedia called", { sourceId, mediaId, data });
 	return { success: true, updatedFields: Object.keys(data) };
 }
@@ -37,7 +42,7 @@ export async function uploadMedia(
 	sourceId: UUID,
 	mediaId: UUID,
 	path: string,
-	file: any,
+	file: File,
 ) {
 	console.log("Placeholder: uploadMedia called", {
 		sourceId,
@@ -48,7 +53,10 @@ export async function uploadMedia(
 	return { success: true, filePath: path };
 }
 
-export async function searchMedia(sourceId: UUID, queryParams: any) {
+export async function searchMedia(
+	sourceId: UUID,
+	queryParams: MediaSearchParams,
+) {
 	console.log("Placeholder: searchMedia called", { sourceId, queryParams });
 	return { media: [], total: 0, page: 1, limit: 10 };
 }
@@ -56,7 +64,7 @@ export async function searchMedia(sourceId: UUID, queryParams: any) {
 export async function searchMediaInDirectory(
 	sourceId: UUID,
 	directories: string,
-	queryParams: any,
+	queryParams: MediaSearchParams,
 ) {
 	console.log("Placeholder: searchMediaInDirectory called", {
 		sourceId,

@@ -1,9 +1,11 @@
+import type { AppConfig } from "~/lib/types";
+
 export async function getConfig() {
 	console.log("Placeholder: getConfig called");
 	return {};
 }
 
-export async function updateConfig(config: any) {
+export async function updateConfig(config: AppConfig) {
 	console.log("Placeholder: updateConfig called", { config });
 	return { success: true, config };
 }

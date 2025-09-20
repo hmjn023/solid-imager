@@ -1,4 +1,3 @@
-import type { APIEvent } from "@solidjs/start/server";
 import { getConfig, resetConfig, updateConfig } from "~/lib/api/config";
 
 export async function GET() {
@@ -22,7 +21,7 @@ export async function PUT({ request }: APIEvent) {
  *
  * @returns リセットされた設定
  */
-export async function POST({ request }: APIEvent) {
+export async function POST() {
 	const result = await resetConfig();
 	return result;
 }

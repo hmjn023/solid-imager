@@ -11,7 +11,7 @@ import type { UUID } from "~/lib/utils";
  * @param param0 {sourceId: UUID}
  * @returns 生成開始結果
  */
-export async function POST({ params, request }: APIEvent) {
+export async function POST({ params }: APIEvent) {
 	const sourceId = params.sourceId as UUID;
 	const result = await startThumbnailGeneration(sourceId);
 	return result;

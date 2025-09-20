@@ -1,6 +1,7 @@
 import {
 	deleteMediaSource as dbDeleteMediaSource,
 	insertMediaSource as dbInsertMediaSource,
+	selectMediaSourceById as dbSelectMediaSourceById,
 	selectMediaSources as dbSelectMediaSources,
 	updateMediaSource as dbUpdateMediaSource,
 } from "~/db/index";
@@ -9,6 +10,10 @@ import type { UUID } from "~/lib/utils";
 
 export async function getMediaSources() {
 	return dbSelectMediaSources();
+}
+
+export async function getMediaSourceById(sourceId: UUID) {
+	return dbSelectMediaSourceById(sourceId);
 }
 
 export async function createMediaSource(mediaSource: NewMediaSource) {
