@@ -7,7 +7,13 @@
 		}
 	},
 	"files": {
-		"includes": ["src/**", "!node_modules/", "!dist/", "!drizzle/"],
+		"includes": [
+			"src/**",
+			"!node_modules/",
+			"!dist/",
+			"!drizzle/",
+			"!src/app.css"
+		],
 		"experimentalScannerIgnores": ["db-data"]
 	}
 }
