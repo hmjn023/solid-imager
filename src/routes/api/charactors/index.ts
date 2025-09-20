@@ -1,6 +1,23 @@
-export function GET() {
-  return {
-    endpoint: "/api/charactors",
-    params: {}
-  };
+import type { APIEvent } from "@solidjs/start/server";
+import { createCharacter, getCharacters } from "~/lib/api/characters";
+
+/**
+ *
+ * @returns すべてのキャラクター
+ */
+
+export async function GET() {
+	const characters = await getCharacters();
+	return characters;
+}
+
+/**
+ * キャラクターを作成します。
+ *
+ * @returns 作成されたキャラクター
+ */
+export async function POST({ request }: APIEvent) {
+	const { name, ipId, description } = await request.json();
+	const newCharacter = await createCharacter(name, ipId, description);
+	return newCharacter;
 }

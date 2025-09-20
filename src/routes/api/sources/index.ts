@@ -1,5 +1,23 @@
+import type { APIEvent } from "@solidjs/start/server";
+import { createMediaSource, getMediaSources } from "~/lib/api/sources";
+
+/**
+ *
+ * @returns すべてのメディアソース
+ */
+
 export async function GET() {
-	return {
-        endpoint: "/api/sources"
-    };
+	const sources = await getMediaSources();
+	return sources;
+}
+
+/**
+ * メディアソースを作成します。
+ *
+ * @returns 作成されたメディアソース
+ */
+export async function POST({ request }: APIEvent) {
+	const { name, type, connectionInfo } = await request.json();
+	const newSource = await createMediaSource(name, type, connectionInfo);
+	return newSource;
 }

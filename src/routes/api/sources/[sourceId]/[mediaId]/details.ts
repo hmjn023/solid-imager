@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { getMediaTags } from "~/lib/api/media";
+import { getMediaDetails } from "~/lib/api/media";
 import type { UUID } from "~/lib/utils";
 
 // Schema for path parameters
@@ -12,7 +12,7 @@ const MediaParamsSchema = z.object({
 /**
  *
  * @param param0 {sourceId: UUID, mediaId: UUID}
- * @returns メディアのタグ
+ * @returns 特定のメディアのタグ、メタデータ、カテゴリ、IP、キャラクターなどの情報
  */
 export async function GET({ params }: APIEvent) {
 	const parsedParams = MediaParamsSchema.safeParse(params);
@@ -24,6 +24,6 @@ export async function GET({ params }: APIEvent) {
 	}
 	const { sourceId, mediaId } = parsedParams.data;
 
-	const tags = await getMediaTags(sourceId as UUID, mediaId as UUID);
-	return tags;
+	const details = await getMediaDetails(sourceId as UUID, mediaId as UUID);
+	return details;
 }
