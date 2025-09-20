@@ -1,29 +1,26 @@
-import { insertMediaSource } from "~/db/index";
-import type { mediaSourceInfo } from "~/lib/types";
+import {
+	deleteMediaSource as dbDeleteMediaSource,
+	insertMediaSource as dbInsertMediaSource,
+	selectMediaSources as dbSelectMediaSources,
+	updateMediaSource as dbUpdateMediaSource,
+} from "~/db/index";
+import type { MediaSource, NewMediaSource } from "~/db/schema"; // Import Drizzle types
 import type { UUID } from "~/lib/utils";
 
 export async function getMediaSources() {
-	console.log("Placeholder: getMediaSources called");
-	return [];
+	return dbSelectMediaSources();
 }
 
-export async function createMediaSource(mediaSource: mediaSourceInfo) {
-	return insertMediaSource(mediaSource);
+export async function createMediaSource(mediaSource: NewMediaSource) {
+	return dbInsertMediaSource(mediaSource);
 }
 
-export async function getMediaSourceById(sourceId: UUID) {
-	console.log("Placeholder: getMediaSourceById called", { sourceId });
-	return { id: sourceId, name: `Source ${sourceId}`, type: "local" };
-}
-
-export async function updateMediaSource(sourceId: UUID, data: any) {
-	console.log("Placeholder: updateMediaSource called", { sourceId, data });
-	return { id: sourceId, name: data.name || `Source ${sourceId}` };
+export async function updateMediaSource(sourceId: UUID, data: MediaSource) {
+	return dbUpdateMediaSource(sourceId, data);
 }
 
 export async function deleteMediaSource(sourceId: UUID) {
-	console.log("Placeholder: deleteMediaSource called", { sourceId });
-	return { success: true };
+	return dbDeleteMediaSource(sourceId);
 }
 
 export async function testMediaSourceConnection(sourceId: UUID) {
