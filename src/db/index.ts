@@ -1,6 +1,9 @@
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import type { MediaSource, NewMediaSource } from "~/db/schema";
 import * as schema from "~/db/schema";
+import { mediaSources } from "~/db/schema";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
@@ -35,4 +38,30 @@ const pool = new Pool({
 	database: dbDatabase,
 });
 
-const _db = drizzle(pool, { schema });
+export const db = drizzle(pool, { schema });
+
+export const selectMediaSources = () => {
+	return db.select().from(mediaSources);
+};
+
+export const insertMediaSource = (mediaSource: NewMediaSource) => {
+	return db.insert(mediaSources).values(mediaSource).returning();
+};
+
+export const updateMediaSource = (
+	mediaSourceId: string,
+	mediaSource: MediaSource,
+) => {
+	return db
+		.update(mediaSources)
+		.set(mediaSource)
+		.where(eq(mediaSources.id, mediaSourceId))
+		.returning();
+};
+
+export const deleteMediaSource = (mediaSourceId: string) => {
+	return db
+		.delete(mediaSources)
+		.where(eq(mediaSources.id, mediaSourceId))
+		.returning();
+};
