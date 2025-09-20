@@ -1,3 +1,5 @@
+import { insertMediaSource } from "~/db/index";
+import type { mediaSourceInfo } from "~/lib/types";
 import type { UUID } from "~/lib/utils";
 
 export async function getMediaSources() {
@@ -5,17 +7,8 @@ export async function getMediaSources() {
 	return [];
 }
 
-export async function createMediaSource(
-	name: string,
-	type: string,
-	connectionInfo: any,
-) {
-	console.log("Placeholder: createMediaSource called", {
-		name,
-		type,
-		connectionInfo,
-	});
-	return { id: "some-uuid", name, type, connectionInfo };
+export async function createMediaSource(mediaSource: mediaSourceInfo) {
+	return insertMediaSource(mediaSource);
 }
 
 export async function getMediaSourceById(sourceId: UUID) {
