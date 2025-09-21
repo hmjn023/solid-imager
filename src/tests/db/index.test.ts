@@ -1,7 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { db, pool } from "~/db";
 import {
-	deleteMediaSource,
 	insertMediaSource,
 	selectMediaSourceById,
 	selectMediaSources,

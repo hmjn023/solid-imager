@@ -1,8 +1,14 @@
+import { getMediaSourceById } from "~/db";
+import { getDriver } from "~/lib/drivers/factory";
 import type { UUID } from "~/lib/utils";
 
-export async function getDirectoryListing(sourceId: UUID, path?: string) {
-	console.log("Placeholder: getDirectoryListing called", { sourceId, path });
-	return { directories: [], media: [] };
+export async function getDirectoryListing(sourceId: UUID, path = "") {
+	const source = await getMediaSourceById(sourceId);
+	if (!source) {
+		throw new Error("指定されたメディアソースが見つかりません");
+	}
+	const driver = getDriver(source);
+	return driver.list(path);
 }
 
 export async function createDirectory(
@@ -10,8 +16,14 @@ export async function createDirectory(
 	path: string,
 	name: string,
 ) {
-	console.log("Placeholder: createDirectory called", { sourceId, path, name });
-	return { success: true, fullPath: `${path}/${name}` };
+	const source = await getMediaSourceById(sourceId);
+	if (!source) {
+		throw new Error("指定されたメディアソースが見つかりません");
+	}
+	const driver = getDriver(source);
+	const fullPath = `${path}/${name}`;
+	await driver.createDirectory(fullPath);
+	return { success: true, fullPath };
 }
 
 export async function renameDirectory(
@@ -19,15 +31,21 @@ export async function renameDirectory(
 	oldPath: string,
 	newPath: string,
 ) {
-	console.log("Placeholder: renameDirectory called", {
-		sourceId,
-		oldPath,
-		newPath,
-	});
+	const source = await getMediaSourceById(sourceId);
+	if (!source) {
+		throw new Error("指定されたメディアソースが見つかりません");
+	}
+	const driver = getDriver(source);
+	await driver.rename(oldPath, newPath);
 	return { success: true, oldPath, newPath };
 }
 
 export async function deleteDirectory(sourceId: UUID, path: string) {
-	console.log("Placeholder: deleteDirectory called", { sourceId, path });
+	const source = await getMediaSourceById(sourceId);
+	if (!source) {
+		throw new Error("指定されたメディアソースが見つかりません");
+	}
+	const driver = getDriver(source);
+	await driver.delete(path);
 	return { success: true, path };
 }
