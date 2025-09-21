@@ -47,7 +47,10 @@ export const selectMediaSources = () => {
 };
 
 export const selectMediaSourceById = (mediaSourceId: string) => {
-	return db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId));
+	return db
+		.select()
+		.from(mediaSources)
+		.where(eq(mediaSources.id, mediaSourceId));
 };
 
 export const insertMediaSource = (mediaSource: NewMediaSource) => {
