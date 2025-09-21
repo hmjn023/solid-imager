@@ -1,2 +1,5 @@
 [tasks.attach_db]
-run="psql -h localhost -U hmjn solid-imager"
+run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
+
+[env]
+_.file = '.env'
