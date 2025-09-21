@@ -925,6 +925,8 @@ Integration with ComfyUI and other services.
 
 All future content appended to this `GEMINI.md` file should be in English.
 
+All responses and confirmations to the user should be in Japanese.
+
 ## Documentation for Reproduction
 
 Update `require.md` with implementation details as they are completed, ensuring that the software can be fully reproduced by referencing only that markdown file. This includes all necessary steps, configurations, and code snippets.
