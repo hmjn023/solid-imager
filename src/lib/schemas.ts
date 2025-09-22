@@ -41,3 +41,11 @@ export const s3ConnectionSchema = z.object({
 	secretAccessKey: z.string().min(1, "シークレットアクセスキーは必須です"),
 	prefix: z.string().optional(),
 });
+
+export const mediaSourceSchema = z.object({
+	name: z.string().min(1, "名前は必須です"),
+	description: z.string().optional(),
+	type: z.enum(["local", "sftp", "s3"]),
+	// TODO: Make this dynamic based on the type
+	connectionInfo: localConnectionSchema,
+});

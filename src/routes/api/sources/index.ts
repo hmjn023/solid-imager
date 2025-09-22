@@ -17,7 +17,12 @@ export async function GET() {
  * @returns 作成されたメディアソース
  */
 export async function POST({ request }: APIEvent) {
-	const { name, type, connectionInfo } = await request.json();
-	const newSource = await createMediaSource(name, type, connectionInfo);
+	const { name, description, type, connectionInfo } = await request.json();
+	const newSource = await createMediaSource({
+		name,
+		description,
+		type,
+		connectionInfo,
+	});
 	return newSource;
 }

@@ -1,17 +1,17 @@
-import { Button } from "~/components/ui/button";
+import type { MediaSource } from "../db/schema";
+import { Button } from "./ui/button";
 import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "~/components/ui/card";
-import type { mediaSourceInfo } from "~/lib/types";
+} from "./ui/card";
 
 interface SourceCardProps {
-	mediaSource: mediaSourceInfo;
-	onEdit: (source: mediaSourceInfo) => void;
-	onDelete: (sourceName: string) => void;
+	mediaSource: MediaSource;
+	onEdit: (source: MediaSource) => void;
+	onDelete: (source: MediaSource) => void;
 }
 
 export default function SourceCard(props: SourceCardProps) {
@@ -23,7 +23,15 @@ export default function SourceCard(props: SourceCardProps) {
 			<CardContent>
 				<CardDescription>{props.mediaSource.description}</CardDescription>
 				<p>Type: {props.mediaSource.type}</p>
-				<p>Path: {props.mediaSource.connectionInfo.path}</p>
+				{/* HACK: connectionInfo is not guaranteed to be an object with path */}
+				<p>
+					Path:{" "}
+					{typeof props.mediaSource.connectionInfo === "object" &&
+					props.mediaSource.connectionInfo !== null &&
+					"path" in props.mediaSource.connectionInfo
+						? String(props.mediaSource.connectionInfo.path)
+						: "N/A"}
+				</p>
 			</CardContent>
 			<div class="absolute top-4 right-4 flex gap-2">
 				<Button
@@ -36,7 +44,7 @@ export default function SourceCard(props: SourceCardProps) {
 				<Button
 					variant="destructive"
 					size="sm"
-					onClick={() => props.onDelete(props.mediaSource.name)}
+					onClick={() => props.onDelete(props.mediaSource)}
 				>
 					Delete
 				</Button>

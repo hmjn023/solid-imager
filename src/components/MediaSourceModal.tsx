@@ -4,8 +4,8 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "~/components/ui/dialog";
-import type { mediaSourceInfo } from "~/lib/types";
+} from "./ui/dialog";
+import type { mediaSourceInfo } from "../lib/types";
 import MediaSourceForm from "./MediaSourceForm";
 
 interface MediaSourceModalProps {
