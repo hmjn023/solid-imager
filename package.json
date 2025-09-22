@@ -16,6 +16,7 @@
     "unsafe-fix": "biome check --fix --unsafe ./src"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.645.0",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
     "@tanstack/solid-db": "^0.1.18",
@@ -26,6 +27,7 @@
     "drizzle-orm": "^0.44.5",
     "pg": "^8.16.3",
     "sharp": "^0.34.3",
+    "ssh2-sftp-client": "^10.0.3",
     "solid-js": "^1.9.5",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
@@ -38,6 +40,7 @@
     "@tailwindcss/vite": "^4.0.7",
     "@types/node": "^24.5.0",
     "@types/pg": "^8.15.5",
+    "@types/ssh2-sftp-client": "^9.0.3",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.2",
     "drizzle-kit": "^0.31.4",
