@@ -218,23 +218,11 @@ export default function Sources() {
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <For each={displaySources()}>
           {(source) => (
-            <div class="relative">
-              <SourceCard mediaSource={source} />
-              <div class="absolute top-2 right-2 flex gap-1 z-10">
-                <button
-                  class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
-                  onClick={() => handleEditSource(source)}
-                >
-                  Edit
-                </button>
-                <button
-                  class="rounded bg-red-500 px-2 py-1 text-xs text-white shadow hover:bg-red-600"
-                  onClick={() => handleDeleteSource(source)}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            <SourceCard 
+              mediaSource={source} 
+              onEdit={handleEditSource}
+              onDelete={handleDeleteSource}
+            />
           )}
         </For>
       </div>

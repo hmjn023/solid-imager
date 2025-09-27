@@ -10,6 +10,8 @@ import {
 
 type SourceCardProps = {
   mediaSource: MediaSourceInfo;
+  onEdit?: (source: MediaSourceInfo) => void;
+  onDelete?: (source: MediaSourceInfo) => void;
 };
 
 export default function SourceCard(props: SourceCardProps) {
@@ -31,24 +33,27 @@ export default function SourceCard(props: SourceCardProps) {
             : "N/A"}
         </p>
       </CardContent>
-      {/* Buttons are now handled externally 
-      <div class="absolute top-4 right-4 flex gap-2">
-        <Button
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          Edit
-        </Button>
-        <Button
-          size="sm"
-          type="button"
-          variant="destructive"
-        >
-          Delete
-        </Button>
+      {/* Edit and Delete buttons */}
+      <div class="absolute top-2 right-2 flex gap-1 z-10">
+        {props.onEdit && (
+          <button
+            class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+            onClick={() => props.onEdit?.(props.mediaSource)}
+            type="button"
+          >
+            Edit
+          </button>
+        )}
+        {props.onDelete && (
+          <button
+            class="rounded bg-red-500 px-2 py-1 text-xs text-white shadow hover:bg-red-600"
+            onClick={() => props.onDelete?.(props.mediaSource)}
+            type="button"
+          >
+            Delete
+          </button>
+        )}
       </div>
-      */}
     </Card>
   );
 }
