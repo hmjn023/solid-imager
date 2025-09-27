@@ -1,4 +1,4 @@
-import { createSignal, For } from "solid-js";
+import { createSignal, createResource, For } from "solid-js";
 import { Portal } from "solid-js/web";
 import SourceCard from "~/components/source-card";
 
@@ -7,9 +7,17 @@ export default function Sources() {
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
   
-  // Real data from API - temporarily disabled for testing
-  // const [mediaSources] = createResource(getMediaSources);
-  const mediaSources = { loading: false, error: null };
+  // Fetch function for createResource
+  const fetchSources = async () => {
+    const response = await fetch('http://localhost:3000/api/sources');
+    if (!response.ok) {
+      throw new Error('Failed to fetch sources');
+    }
+    return response.json();
+  };
+
+  // Real data from API using createResource + fetch
+  const [mediaSources] = createResource(fetchSources);
   
   // Fallback to mock data if API fails or returns empty
   const mockSources = [
@@ -29,8 +37,14 @@ export default function Sources() {
     }
   ];
   
-  // Use mock data since API is disabled
-  const displaySources = () => mockSources;
+  // Use real data if available, otherwise use mock data
+  const displaySources = () => {
+    const realData = mediaSources();
+    if (realData && realData.length > 0) {
+      return realData;
+    }
+    return mockSources;
+  };
 
   const handleAddSource = () => {
     setShowAddModal(true);
