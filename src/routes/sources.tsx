@@ -1,11 +1,15 @@
 import { createSignal, createResource, For } from "solid-js";
 import { Portal } from "solid-js/web";
 import SourceCard from "~/components/source-card";
+import type { MediaSourceTypeEnum } from "~/lib/types";
 
 export default function Sources() {
   const [showAddModal, setShowAddModal] = createSignal(false);
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
+  const [formDescription, setFormDescription] = createSignal("");
+  const [formType, setFormType] = createSignal<MediaSourceTypeEnum>("local");
+  const [isSubmitting, setIsSubmitting] = createSignal(false);
   
   // Fetch function for createResource
   const fetchSources = async () => {
@@ -16,8 +20,23 @@ export default function Sources() {
     return response.json();
   };
 
+  // Create new source function
+  const createSource = async (sourceData) => {
+    const response = await fetch('http://localhost:3000/api/sources', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sourceData),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create source');
+    }
+    return response.json();
+  };
+
   // Real data from API using createResource + fetch
-  const [mediaSources] = createResource(fetchSources);
+  const [mediaSources, { refetch }] = createResource(fetchSources);
   
   // Fallback to mock data if API fails or returns empty
   const mockSources = [
@@ -47,7 +66,47 @@ export default function Sources() {
   };
 
   const handleAddSource = () => {
+    // Reset form
+    setFormName("");
+    setFormPath("");
+    setFormDescription("");
+    setFormType("local");
     setShowAddModal(true);
+  };
+
+  const handleFormSubmit = async () => {
+    if (!formName().trim() || !formPath().trim()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const sourceData = {
+        name: formName(),
+        description: formDescription() || null,
+        type: formType(),
+        connectionInfo: { path: formPath() }
+      };
+
+      await createSource(sourceData);
+      
+      // Reset form and close modal
+      setFormName("");
+      setFormPath("");
+      setFormDescription("");
+      setFormType("local");
+      setShowAddModal(false);
+      
+      // Refresh the source list
+      await refetch();
+      
+      console.log("Source created successfully!");
+    } catch (error) {
+      console.error("Failed to create source:", error);
+      alert("Failed to create source: " + error.message);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -113,6 +172,28 @@ export default function Sources() {
                   />
                 </div>
                 <div>
+                  <label class="mb-1 block font-medium text-sm">Description</label>
+                  <input
+                    class="w-full rounded-md border border-gray-300 px-3 py-2"
+                    onInput={(e) => setFormDescription(e.currentTarget.value)}
+                    placeholder="Enter description (optional)"
+                    type="text"
+                    value={formDescription()}
+                  />
+                </div>
+                <div>
+                  <label class="mb-1 block font-medium text-sm">Type</label>
+                  <select
+                    class="w-full rounded-md border border-gray-300 px-3 py-2"
+                    onChange={(e) => setFormType(e.currentTarget.value as MediaSourceTypeEnum)}
+                    value={formType()}
+                  >
+                    <option value="local">Local</option>
+                    <option value="sftp">SFTP</option>
+                    <option value="s3">S3</option>
+                  </select>
+                </div>
+                <div>
                   <label class="mb-1 block font-medium text-sm">Path</label>
                   <input
                     class="w-full rounded-md border border-gray-300 px-3 py-2"
@@ -126,14 +207,10 @@ export default function Sources() {
               <div class="flex gap-2">
                 <button
                   class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
-                  disabled={!(formName().trim() && formPath().trim())}
-                  onClick={() => {
-                    setFormName("");
-                    setFormPath("");
-                    setShowAddModal(false);
-                  }}
+                  disabled={!(formName().trim() && formPath().trim()) || isSubmitting()}
+                  onClick={handleFormSubmit}
                 >
-                  Save
+                  {isSubmitting() ? "Creating..." : "Create"}
                 </button>
                 <button
                   class="rounded bg-gray-500 px-4 py-2 text-white"
