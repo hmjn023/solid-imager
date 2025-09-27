@@ -1,68 +1,18 @@
-import { createSignal, createResource, For } from "solid-js";
+import { createResource, createSignal, For } from "solid-js";
 import SourceCard from "~/components/source-card";
-import SourceFormModal from "~/components/source-form-modal";
 import SourceDeleteModal from "~/components/source-delete-modal";
-import type { MediaSourceTypeEnum } from "~/lib/types";
+import SourceFormModal from "~/components/source-form-modal";
+import { sourcesApi } from "~/services/sources";
 
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
   const [editingSource, setEditingSource] = createSignal(null);
   const [deletingSource, setDeletingSource] = createSignal(null);
-  
-  // Fetch function for createResource
-  const fetchSources = async () => {
-    const response = await fetch('http://localhost:3000/api/sources');
-    if (!response.ok) {
-      throw new Error('Failed to fetch sources');
-    }
-    return response.json();
-  };
-
-  // Create new source function
-  const createSource = async (sourceData) => {
-    const response = await fetch('http://localhost:3000/api/sources', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sourceData),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to create source');
-    }
-    return response.json();
-  };
-
-  // Update source function
-  const updateSource = async (sourceId, sourceData) => {
-    const response = await fetch(`http://localhost:3000/api/sources/${sourceId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(sourceData),
-    });
-    if (!response.ok) {
-      throw new Error('Failed to update source');
-    }
-    return response.json();
-  };
-
-  // Delete source function
-  const deleteSource = async (sourceId) => {
-    const response = await fetch(`http://localhost:3000/api/sources/${sourceId}`, {
-      method: 'DELETE',
-    });
-    if (!response.ok) {
-      throw new Error('Failed to delete source');
-    }
-    return response.json();
-  };
 
   // Real data from API using createResource + fetch
-  const [mediaSources, { refetch }] = createResource(fetchSources);
-  
+  const [mediaSources, { refetch }] = createResource(sourcesApi.fetchSources);
+
   // Fallback to mock data if API fails or returns empty
   const mockSources = [
     {
@@ -70,17 +20,17 @@ export default function Sources() {
       name: "Local Images",
       description: "My local image collection",
       type: "local",
-      connectionInfo: { path: "/home/user/images" }
+      connectionInfo: { path: "/home/user/images" },
     },
     {
-      id: "2", 
+      id: "2",
       name: "Remote Server",
       description: "Images on remote server",
       type: "sftp",
-      connectionInfo: { path: "/var/www/images" }
-    }
+      connectionInfo: { path: "/var/www/images" },
+    },
   ];
-  
+
   // Use real data if available, otherwise use mock data
   const displaySources = () => {
     const realData = mediaSources();
@@ -103,9 +53,9 @@ export default function Sources() {
   const handleFormSubmit = async (sourceData) => {
     const editing = editingSource();
     if (editing) {
-      await updateSource(editing.id, sourceData);
+      await sourcesApi.updateSource(editing.id, sourceData);
     } else {
-      await createSource(sourceData);
+      await sourcesApi.createSource(sourceData);
     }
     await refetch();
     setShowFormModal(false);
@@ -117,7 +67,7 @@ export default function Sources() {
   };
 
   const handleDeleteConfirm = async (sourceId) => {
-    await deleteSource(sourceId);
+    await sourcesApi.deleteSource(sourceId);
     await refetch();
     setShowDeleteModal(false);
     setDeletingSource(null);
@@ -136,48 +86,48 @@ export default function Sources() {
         </button>
       </div>
 
-
-
       {/* Sources Grid */}
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <For each={displaySources()}>
           {(source) => (
-            <SourceCard 
-              mediaSource={source} 
-              onEdit={handleEditSource}
+            <SourceCard
+              mediaSource={source}
               onDelete={handleDeleteSource}
+              onEdit={handleEditSource}
             />
           )}
         </For>
       </div>
-      
+
       {/* Loading State */}
       {mediaSources.loading && (
         <div class="mt-8 text-center">
           <p class="text-muted-foreground">Loading sources...</p>
         </div>
       )}
-      
+
       {/* Error State */}
       {mediaSources.error && (
         <div class="mt-8 text-center">
-          <p class="text-red-500">Error loading sources: {mediaSources.error.message}</p>
-          <p class="text-sm text-gray-500">Showing mock data instead.</p>
+          <p class="text-red-500">
+            Error loading sources: {mediaSources.error.message}
+          </p>
+          <p class="text-gray-500 text-sm">Showing mock data instead.</p>
         </div>
       )}
 
       <SourceFormModal
-        isOpen={showFormModal()}
         editingSource={editingSource()}
+        isOpen={showFormModal()}
         onClose={() => setShowFormModal(false)}
         onSubmit={handleFormSubmit}
       />
 
       <SourceDeleteModal
         isOpen={showDeleteModal()}
-        sourceToDelete={deletingSource()}
         onClose={() => setShowDeleteModal(false)}
         onConfirm={handleDeleteConfirm}
+        sourceToDelete={deletingSource()}
       />
     </div>
   );

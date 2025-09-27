@@ -14,15 +14,16 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
 
   const handleConfirm = async () => {
     const source = props.sourceToDelete;
-    if (!source) return;
+    if (!source) {
+      return;
+    }
 
     setIsDeleting(true);
     try {
       await props.onConfirm(source.id);
       props.onClose();
     } catch (error) {
-      console.error("Failed to delete source:", error);
-      alert("Failed to delete source: " + (error as Error).message);
+      alert(`Failed to delete source: ${(error as Error).message}`);
     } finally {
       setIsDeleting(false);
     }
@@ -40,8 +41,9 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
           <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
             <h2 class="mb-4 font-bold text-xl">Delete Media Source</h2>
             <p class="mb-4">
-              Are you sure you want to delete "{props.sourceToDelete.name}"? 
-              This action cannot be undone and will remove all associated media files from the database.
+              Are you sure you want to delete "{props.sourceToDelete.name}"?
+              This action cannot be undone and will remove all associated media
+              files from the database.
             </p>
             <div class="flex gap-2">
               <button

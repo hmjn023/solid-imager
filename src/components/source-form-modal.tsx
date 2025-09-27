@@ -1,4 +1,4 @@
-import { createSignal, createEffect } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { MediaSourceInfo, MediaSourceTypeEnum } from "~/lib/types";
 
@@ -30,8 +30,8 @@ export default function SourceFormModal(props: SourceFormModalProps) {
       setFormType(editing.type);
       setFormPath(
         typeof editing.connectionInfo === "object" &&
-        editing.connectionInfo !== null &&
-        "path" in editing.connectionInfo
+          editing.connectionInfo !== null &&
+          "path" in editing.connectionInfo
           ? String(editing.connectionInfo.path)
           : ""
       );
@@ -52,7 +52,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
   });
 
   const handleSubmit = async () => {
-    if (!formName().trim() || !formPath().trim()) {
+    if (!(formName().trim() && formPath().trim())) {
       return;
     }
 
@@ -62,14 +62,13 @@ export default function SourceFormModal(props: SourceFormModalProps) {
         name: formName(),
         description: formDescription() || null,
         type: formType(),
-        connectionInfo: { path: formPath() }
+        connectionInfo: { path: formPath() },
       };
 
       await props.onSubmit(sourceData);
       props.onClose();
     } catch (error) {
-      console.error("Failed to submit source:", error);
-      alert("Failed to submit source: " + (error as Error).message);
+      alert(`Failed to submit source: ${(error as Error).message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -100,7 +99,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 />
               </div>
               <div>
-                <label class="mb-1 block font-medium text-sm">Description</label>
+                <label class="mb-1 block font-medium text-sm">
+                  Description
+                </label>
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
                   onInput={(e) => setFormDescription(e.currentTarget.value)}
@@ -113,7 +114,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 <label class="mb-1 block font-medium text-sm">Type</label>
                 <select
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
-                  onChange={(e) => setFormType(e.currentTarget.value as MediaSourceTypeEnum)}
+                  onChange={(e) =>
+                    setFormType(e.currentTarget.value as MediaSourceTypeEnum)
+                  }
                   value={formType()}
                 >
                   <option value="local">Local</option>
@@ -135,11 +138,17 @@ export default function SourceFormModal(props: SourceFormModalProps) {
             <div class="flex gap-2">
               <button
                 class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
-                disabled={!(formName().trim() && formPath().trim()) || isSubmitting()}
+                disabled={
+                  !(formName().trim() && formPath().trim()) || isSubmitting()
+                }
                 onClick={handleSubmit}
                 type="button"
               >
-                {isSubmitting() ? "Saving..." : props.editingSource ? "Update" : "Create"}
+                {isSubmitting()
+                  ? "Saving..."
+                  : props.editingSource
+                    ? "Update"
+                    : "Create"}
               </button>
               <button
                 class="rounded bg-gray-500 px-4 py-2 text-white"

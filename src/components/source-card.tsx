@@ -1,5 +1,3 @@
-import type { MediaSourceInfo } from "~/lib/types";
-import { Button } from "./ui/button";
 import {
   Card,
   CardContent,
@@ -7,6 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import type { MediaSourceInfo } from "~/lib/types";
 
 type SourceCardProps = {
   mediaSource: MediaSourceInfo;
@@ -34,7 +33,7 @@ export default function SourceCard(props: SourceCardProps) {
         </p>
       </CardContent>
       {/* Edit and Delete buttons */}
-      <div class="absolute top-2 right-2 flex gap-1 z-10">
+      <div class="absolute top-2 right-2 z-10 flex gap-1">
         {props.onEdit && (
           <button
             class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
@@ -46,7 +45,7 @@ export default function SourceCard(props: SourceCardProps) {
         )}
         {props.onDelete && (
           <button
-            class="rounded bg-red-500 px-2 py-1 text-xs text-white shadow hover:bg-red-600"
+            class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
             onClick={() => props.onDelete?.(props.mediaSource)}
             type="button"
           >
