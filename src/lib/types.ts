@@ -7,6 +7,7 @@ export type LocalConnectionInfo = {
 };
 
 export type MediaSourceInfo = {
+  id?: string;
   name: string;
   description: string | null;
   type: MediaSourceTypeEnum;

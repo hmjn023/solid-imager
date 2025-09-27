@@ -20,7 +20,7 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
 
     setIsDeleting(true);
     try {
-      await props.onConfirm(source.id);
+      await props.onConfirm(source.id as string);
       props.onClose();
     } catch (_error) {
       // Error handling - could show toast notification in production
