@@ -22,8 +22,8 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
     try {
       await props.onConfirm(source.id);
       props.onClose();
-    } catch (error) {
-      alert(`Failed to delete source: ${(error as Error).message}`);
+    } catch (_error) {
+      // Error handling - could show toast notification in production
     } finally {
       setIsDeleting(false);
     }

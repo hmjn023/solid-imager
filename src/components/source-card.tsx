@@ -15,9 +15,9 @@ type SourceCardProps = {
 
 export default function SourceCard(props: SourceCardProps) {
   return (
-    <Card class="relative">
+    <Card class="relative" data-testid="source-card">
       <CardHeader>
-        <CardTitle>{props.mediaSource.name}</CardTitle>
+        <CardTitle data-testid="source-name">{props.mediaSource.name}</CardTitle>
       </CardHeader>
       <CardContent>
         <CardDescription>{props.mediaSource.description}</CardDescription>
@@ -39,6 +39,7 @@ export default function SourceCard(props: SourceCardProps) {
             class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
             onClick={() => props.onEdit?.(props.mediaSource)}
             type="button"
+            data-testid="edit-source-btn"
           >
             Edit
           </button>
@@ -48,6 +49,7 @@ export default function SourceCard(props: SourceCardProps) {
             class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
             onClick={() => props.onDelete?.(props.mediaSource)}
             type="button"
+            data-testid="delete-source-btn"
           >
             Delete
           </button>

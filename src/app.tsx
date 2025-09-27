@@ -6,11 +6,17 @@ import { Suspense } from "solid-js";
 import Nav from "./components/nav";
 import "./app.css";
 
+const SECONDS_PER_MINUTE = 60;
+const MS_PER_SECOND = 1000;
+const MINUTES_TO_MS = SECONDS_PER_MINUTE * MS_PER_SECOND;
+const FIVE_MINUTES = 5;
+const FIVE_MINUTES_IN_MS = FIVE_MINUTES * MINUTES_TO_MS;
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: FIVE_MINUTES_IN_MS,
       refetchOnWindowFocus: false,
     },
   },

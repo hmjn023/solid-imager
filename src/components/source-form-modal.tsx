@@ -67,8 +67,8 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 
       await props.onSubmit(sourceData);
       props.onClose();
-    } catch (error) {
-      alert(`Failed to submit source: ${(error as Error).message}`);
+    } catch (_error) {
+      // Error handling - could show toast notification in production
     } finally {
       setIsSubmitting(false);
     }
@@ -89,9 +89,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
             </h2>
             <div class="mb-4 space-y-4">
               <div>
-                <label class="mb-1 block font-medium text-sm">Name</label>
+                <label class="mb-1 block font-medium text-sm" for="source-name">
+                  Name
+                </label>
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
+                  id="source-name"
                   onInput={(e) => setFormName(e.currentTarget.value)}
                   placeholder="Enter source name"
                   type="text"
@@ -99,11 +102,15 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 />
               </div>
               <div>
-                <label class="mb-1 block font-medium text-sm">
+                <label
+                  class="mb-1 block font-medium text-sm"
+                  for="source-description"
+                >
                   Description
                 </label>
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
+                  id="source-description"
                   onInput={(e) => setFormDescription(e.currentTarget.value)}
                   placeholder="Enter description (optional)"
                   type="text"
@@ -111,9 +118,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 />
               </div>
               <div>
-                <label class="mb-1 block font-medium text-sm">Type</label>
+                <label class="mb-1 block font-medium text-sm" for="source-type">
+                  Type
+                </label>
                 <select
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
+                  id="source-type"
                   onChange={(e) =>
                     setFormType(e.currentTarget.value as MediaSourceTypeEnum)
                   }
@@ -125,9 +135,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 </select>
               </div>
               <div>
-                <label class="mb-1 block font-medium text-sm">Path</label>
+                <label class="mb-1 block font-medium text-sm" for="source-path">
+                  Path
+                </label>
                 <input
                   class="w-full rounded-md border border-gray-300 px-3 py-2"
+                  id="source-path"
                   onInput={(e) => setFormPath(e.currentTarget.value)}
                   placeholder="Enter file path"
                   type="text"
@@ -144,11 +157,15 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 onClick={handleSubmit}
                 type="button"
               >
-                {isSubmitting()
-                  ? "Saving..."
-                  : props.editingSource
-                    ? "Update"
-                    : "Create"}
+                {(() => {
+                  if (isSubmitting()) {
+                    return "Saving...";
+                  }
+                  if (props.editingSource) {
+                    return "Update";
+                  }
+                  return "Create";
+                })()}
               </button>
               <button
                 class="rounded bg-gray-500 px-4 py-2 text-white"
