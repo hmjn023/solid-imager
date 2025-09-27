@@ -5,8 +5,6 @@ import {
   sftpConnectionSchema,
 } from "~/lib/schemas";
 import { LocalDriver } from "./local";
-import { S3Driver } from "./s3";
-import { SftpDriver } from "./sftp";
 import type { MediaSourceDriver } from "./types";
 
 /**
@@ -20,14 +18,6 @@ export function getDriver(source: MediaSource): MediaSourceDriver {
     case "local": {
       const connectionInfo = localConnectionSchema.parse(source.connectionInfo);
       return new LocalDriver(connectionInfo);
-    }
-    case "sftp": {
-      const connectionInfo = sftpConnectionSchema.parse(source.connectionInfo);
-      return new SftpDriver(connectionInfo);
-    }
-    case "s3": {
-      const connectionInfo = s3ConnectionSchema.parse(source.connectionInfo);
-      return new S3Driver(connectionInfo);
     }
     default:
       // `source.type` is `never` here, ensuring all cases are handled.

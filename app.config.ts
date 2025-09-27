@@ -6,6 +6,7 @@ export default defineConfig({
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm"],
+      external: ["ssh2"],
     },
     optimizeDeps: {
       exclude: ["ssh2", "cpu-features", "pg"],
