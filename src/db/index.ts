@@ -1,9 +1,9 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import type { MediaSource, NewMediaSource } from "~/db/schema";
+import type { Media, MediaSource, NewMedia, NewMediaSource } from "~/db/schema";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
@@ -44,13 +44,13 @@ import {
   collectionMedia,
   collections,
   ips,
-  media,
   mediaCharacters,
   mediaDetails,
   mediaGenerationInfo,
   mediaOrganization,
   mediaSources,
   mediaSync,
+  medias,
   mediaTags,
   mediaTechnicalInfo,
   projects,
@@ -63,7 +63,7 @@ import {
 export const db = drizzle(pool, {
   schema: {
     mediaSources,
-    media,
+    medias,
     tags,
     mediaTags,
     mediaDetails,
@@ -104,3 +104,41 @@ export const updateMediaSource = (
 
 export const deleteMediaSource = (mediaSourceId: string) =>
   db.delete(mediaSources).where(eq(mediaSources.id, mediaSourceId)).returning();
+
+export const selectMediasByMediaSourceId = (mediaSourceId: string) =>
+  db.select().from(medias).where(eq(medias.sourceId, mediaSourceId));
+
+export const selectMediaById = (mediaId: string) =>
+  db.select().from(medias).where(eq(medias.id, mediaId));
+
+export const selectMediaBySourceIdAndFilePath = (
+  sourceId: string,
+  filePath: string
+) =>
+  db
+    .select()
+    .from(medias)
+    .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
+
+export const insertMedia = (media: NewMedia) =>
+  db.insert(medias).values(media).returning();
+
+export const updateMedia = (mediaId: string, media: Media) =>
+  db.update(medias).set(media).where(eq(medias.id, mediaId)).returning();
+
+export const deleteMedia = (mediaId: string) =>
+  db.delete(medias).where(eq(medias.id, mediaId));
+
+export const selectMediaBySourceIdAndDirectoryPath = (
+  sourceId: string,
+  directoryPath: string
+) =>
+  db
+    .select()
+    .from(medias)
+    .where(
+      and(
+        eq(medias.sourceId, sourceId),
+        like(medias.filePath, `${directoryPath}%`)
+      )
+    );
