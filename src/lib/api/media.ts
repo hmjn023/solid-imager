@@ -1,5 +1,9 @@
 import type { MediaSearchParams, MediaUpdateData } from "~/lib/types";
 
+export function getAllMedia(sourceId:string){
+  return 1;
+}
+
 export function getMediaDetails(sourceId: string, mediaId: string) {
   return {
     sourceId,

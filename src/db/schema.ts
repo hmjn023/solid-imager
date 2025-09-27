@@ -53,7 +53,7 @@ export const mediaSources = pgTable("media_sources", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const media = pgTable(
+export const medias = pgTable(
   "media",
   {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -123,7 +123,7 @@ export const mediaTags = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .notNull()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** タグID */
     tagId: integer("tag_id")
       .notNull()
@@ -140,7 +140,7 @@ export const mediaDetails = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .primaryKey()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** 評価 (0-5) */
     rating: integer("rating").default(0),
     /** お気に入り */
@@ -165,7 +165,7 @@ export const mediaGenerationInfo = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .primaryKey()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** prompt, workflowなどのメタデータ */
     metadata: jsonb("metadata"),
     /** AIによって生成されたかどうか */
@@ -262,7 +262,7 @@ export const mediaCharacters = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .notNull()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** キャラクターID */
     characterId: integer("character_id")
       .notNull()
@@ -279,7 +279,7 @@ export const mediaOrganization = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .primaryKey()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** カテゴリID */
     categoryId: integer("category_id").references(() => categories.id),
     /** プロジェクトID */
@@ -307,7 +307,7 @@ export const mediaTechnicalInfo = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .primaryKey()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** カラープロファイル */
     colorProfile: text("color_profile").default(""),
     /** EXIFデータ */
@@ -338,7 +338,7 @@ export const mediaSync = pgTable("media_sync", {
   /** メディアID */
   mediaId: uuid("media_id")
     .primaryKey()
-    .references(() => media.id, { onDelete: "cascade" }),
+    .references(() => medias.id, { onDelete: "cascade" }),
   /** 同期ステータス */
   syncStatus: mediaSyncStatusEnum("sync_status").default("synced"),
   /** バックアップURL */
@@ -350,7 +350,7 @@ export const viewHistory = pgTable("view_history", {
   /** メディアID */
   mediaId: uuid("media_id")
     .notNull()
-    .references(() => media.id, { onDelete: "cascade" }),
+    .references(() => medias.id, { onDelete: "cascade" }),
   /** 閲覧日時 */
   viewedAt: timestamp("viewed_at").defaultNow(),
   /** IPアドレス */
@@ -366,11 +366,11 @@ export const similarMedia = pgTable(
     /** メディア1のID */
     media1Id: uuid("media1_id")
       .notNull()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** メディア2のID */
     media2Id: uuid("media2_id")
       .notNull()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** 類似度スコア */
     similarityScore: real("similarity_score").default(0),
     /** 類似度計算アルゴリズム */
@@ -436,7 +436,7 @@ export const collectionMedia = pgTable(
     /** メディアID */
     mediaId: uuid("media_id")
       .notNull()
-      .references(() => media.id, { onDelete: "cascade" }),
+      .references(() => medias.id, { onDelete: "cascade" }),
     /** コレクション内での表示順序 */
     displayOrder: integer("display_order"),
   },
@@ -449,15 +449,15 @@ export const collectionMedia = pgTable(
 /** メディアソースとメディアのリレーション */
 export const mediaSourcesRelations = relations(mediaSources, ({ many }) => ({
   /** メディアソースに属するメディア */
-  media: many(media),
+  media: many(medias),
 }));
 
 /** メディアと他のテーブルのリレーション */
-export const mediaRelations = relations(media, ({ one, many }) => ({
+export const mediaRelations = relations(medias, ({ one, many }) => ({
   /** メディアが属するメディアソース */
 
   source: one(mediaSources, {
-    fields: [media.sourceId],
+    fields: [medias.sourceId],
     references: [mediaSources.id],
   }),
   /** メディアに付けられたタグ */
@@ -466,31 +466,31 @@ export const mediaRelations = relations(media, ({ one, many }) => ({
   /** メディアの詳細情報 */
 
   details: one(mediaDetails, {
-    fields: [media.id],
+    fields: [medias.id],
     references: [mediaDetails.mediaId],
   }),
   /** メディアの生成情報 */
 
   generationInfo: one(mediaGenerationInfo, {
-    fields: [media.id],
+    fields: [medias.id],
     references: [mediaGenerationInfo.mediaId],
   }),
   /** メディアの組織情報 */
 
   organization: one(mediaOrganization, {
-    fields: [media.id],
+    fields: [medias.id],
     references: [mediaOrganization.mediaId],
   }),
   /** メディアの技術情報 */
 
   technicalInfo: one(mediaTechnicalInfo, {
-    fields: [media.id],
+    fields: [medias.id],
     references: [mediaTechnicalInfo.mediaId],
   }),
   /** メディアの同期情報 */
 
   sync: one(mediaSync, {
-    fields: [media.id],
+    fields: [medias.id],
     references: [mediaSync.mediaId],
   }),
   /** メディアの閲覧履歴 */
@@ -520,9 +520,9 @@ export const tagsRelations = relations(tags, ({ many }) => ({
 export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
   /** 中間テーブルが参照するメディア */
 
-  media: one(media, {
+  media: one(medias, {
     fields: [mediaTags.mediaId],
-    references: [media.id],
+    references: [medias.id],
   }),
   /** 中間テーブルが参照するタグ */
 
@@ -584,9 +584,9 @@ export const mediaCharactersRelations = relations(
   ({ one }) => ({
     /** 中間テーブルが参照するメディア */
 
-    media: one(media, {
+    media: one(medias, {
       fields: [mediaCharacters.mediaId],
-      references: [media.id],
+      references: [medias.id],
     }),
     /** 中間テーブルが参照するキャラクター */
 
@@ -603,9 +603,9 @@ export const mediaOrganizationRelations = relations(
   ({ one }) => ({
     /** 組織情報が参照するメディア */
 
-    media: one(media, {
+    media: one(medias, {
       fields: [mediaOrganization.mediaId],
-      references: [media.id],
+      references: [medias.id],
     }),
     /** 組織情報が参照するカテゴリ */
 
@@ -631,9 +631,9 @@ export const mediaOrganizationRelations = relations(
 /** 閲覧履歴とメディアのリレーション */
 export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
   /** 閲覧履歴が参照するメディア */
-  media: one(media, {
+  media: one(medias, {
     fields: [viewHistory.mediaId],
-    references: [media.id],
+    references: [medias.id],
   }),
 }));
 
@@ -641,16 +641,16 @@ export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
 export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
   /** 類似メディア1 */
 
-  media1: one(media, {
+  media1: one(medias, {
     fields: [similarMedia.media1Id],
-    references: [media.id],
+    references: [medias.id],
     relationName: "media1",
   }),
   /** 類似メディア2 */
 
-  media2: one(media, {
+  media2: one(medias, {
     fields: [similarMedia.media2Id],
-    references: [media.id],
+    references: [medias.id],
     relationName: "media2",
   }),
 }));
@@ -676,9 +676,9 @@ export const collectionMediaRelations = relations(
     }),
     /** 中間テーブルが参照するメディア */
 
-    media: one(media, {
+    media: one(medias, {
       fields: [collectionMedia.mediaId],
-      references: [media.id],
+      references: [medias.id],
     }),
   })
 );
@@ -693,8 +693,8 @@ export const usersRelations = relations(users, ({ many }) => ({
 export type MediaSource = InferSelectModel<typeof mediaSources>;
 export type NewMediaSource = InferInsertModel<typeof mediaSources>;
 
-export type Media = InferSelectModel<typeof media>;
-export type NewMedia = InferInsertModel<typeof media>;
+export type Media = InferSelectModel<typeof medias>;
+export type NewMedia = InferInsertModel<typeof medias>;
 
 export type Tag = InferSelectModel<typeof tags>;
 export type NewTag = InferInsertModel<typeof tags>;
