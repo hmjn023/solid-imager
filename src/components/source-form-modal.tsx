@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal, createEffect } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { MediaSourceInfo, MediaSourceTypeEnum } from "~/lib/types";
 
@@ -45,11 +45,11 @@ export default function SourceFormModal(props: SourceFormModalProps) {
   };
 
   // Initialize form when modal opens or editing source changes
-  (() => {
+  createEffect(() => {
     if (props.isOpen) {
       initializeForm();
     }
-  })();
+  });
 
   const handleSubmit = async () => {
     if (!formName().trim() || !formPath().trim()) {
