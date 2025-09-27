@@ -7,8 +7,8 @@ import { createIp, getIps } from "~/lib/api/ips";
  */
 
 export async function GET() {
-	const ips = await getIps();
-	return ips;
+  const ips = await getIps();
+  return ips;
 }
 
 /**
@@ -17,7 +17,7 @@ export async function GET() {
  * @returns 作成されたIP
  */
 export async function POST({ request }: APIEvent) {
-	const { name, description } = await request.json();
-	const newIp = await createIp(name, description);
-	return newIp;
+  const { name, description } = await request.json();
+  const newIp = await createIp(name, description);
+  return newIp;
 }

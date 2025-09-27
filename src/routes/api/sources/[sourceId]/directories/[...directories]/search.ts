@@ -10,14 +10,14 @@ import type { UUID } from "~/lib/utils";
  * @returns 検索条件に一致するメディアのリストとページネーション情報
  */
 export async function GET({ params, request }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const directoriesPath = params.directories.join("/"); // Reconstruct path
-	const url = new URL(request.url);
-	const queryParams = Object.fromEntries(url.searchParams.entries());
-	const result = await searchMediaInDirectory(
-		sourceId,
-		directoriesPath,
-		queryParams,
-	);
-	return result;
+  const sourceId = params.sourceId as UUID;
+  const directoriesPath = params.directories.join("/"); // Reconstruct path
+  const url = new URL(request.url);
+  const queryParams = Object.fromEntries(url.searchParams.entries());
+  const result = await searchMediaInDirectory(
+    sourceId,
+    directoriesPath,
+    queryParams
+  );
+  return result;
 }

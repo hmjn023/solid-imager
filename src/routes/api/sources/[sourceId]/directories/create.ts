@@ -9,8 +9,8 @@ import type { UUID } from "~/lib/utils";
  * @returns ディレクトリ作成結果
  */
 export async function POST({ params, request }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const { path, name } = await request.json(); // Assuming path and name are in body
-	const result = await createDirectory(sourceId, path, name);
-	return result;
+  const sourceId = params.sourceId as UUID;
+  const { path, name } = await request.json(); // Assuming path and name are in body
+  const result = await createDirectory(sourceId, path, name);
+  return result;
 }

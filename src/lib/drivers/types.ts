@@ -1,8 +1,8 @@
 import type { z } from "zod";
 import type {
-	localConnectionSchema,
-	s3ConnectionSchema,
-	sftpConnectionSchema,
+  localConnectionSchema,
+  s3ConnectionSchema,
+  sftpConnectionSchema,
 } from "~/lib/schemas";
 
 // Zodスキーマから型を推論
@@ -14,37 +14,37 @@ export type LocalConnection = z.infer<typeof localConnectionSchema>;
 export type ConnectionInfo = LocalConnection | SftpConnection | S3Connection;
 
 // ファイルやディレクトリの基本的な情報
-export interface MediaSourceEntry {
-	// フルパス
-	path: string;
-	// ディレクトリかどうか
-	isDirectory: boolean;
-	// ファイルサイズ
-	size: number;
-	// 更新日時
-	lastModified: Date;
-}
+export type MediaSourceEntry = {
+  // フルパス
+  path: string;
+  // ディレクトリかどうか
+  isDirectory: boolean;
+  // ファイルサイズ
+  size: number;
+  // 更新日時
+  lastModified: Date;
+};
 
 // ドライバのインターフェース定義
-export interface MediaSourceDriver {
-	// 接続テスト
-	testConnection(): Promise<{ success: boolean; message?: string }>;
+export type MediaSourceDriver = {
+  // 接続テスト
+  testConnection(): Promise<{ success: boolean; message?: string }>;
 
-	// 指定されたパスのディレクトリ・ファイル一覧を取得
-	list(path: string): Promise<MediaSourceEntry[]>;
+  // 指定されたパスのディレクトリ・ファイル一覧を取得
+  list(path: string): Promise<MediaSourceEntry[]>;
 
-	// ファイルの読み込み
-	get(path: string): Promise<Buffer>;
+  // ファイルの読み込み
+  get(path: string): Promise<Buffer>;
 
-	// ファイルのアップロード
-	put(path: string, content: Buffer): Promise<void>;
+  // ファイルのアップロード
+  put(path: string, content: Buffer): Promise<void>;
 
-	// ディレクトリの作成
-	createDirectory(path: string): Promise<void>;
+  // ディレクトリの作成
+  createDirectory(path: string): Promise<void>;
 
-	// ファイル・ディレクトリの削除
-	delete(path: string): Promise<void>;
+  // ファイル・ディレクトリの削除
+  delete(path: string): Promise<void>;
 
-	// ファイル・ディレクトリのリネーム
-	rename(oldPath: string, newPath: string): Promise<void>;
-}
+  // ファイル・ディレクトリのリネーム
+  rename(oldPath: string, newPath: string): Promise<void>;
+};

@@ -3,6 +3,12 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   vite: {
-    plugins: [tailwindcss()]
-  }
+    plugins: [tailwindcss()],
+    ssr: {
+      noExternal: ["drizzle-orm"],
+    },
+    optimizeDeps: {
+      exclude: ["ssh2", "cpu-features", "pg"],
+    },
+  },
 });

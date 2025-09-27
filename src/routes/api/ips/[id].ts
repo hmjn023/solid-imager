@@ -4,13 +4,13 @@ import { deleteIp, getIpById, updateIp } from "~/lib/api/ips";
 
 // Schema for path parameter 'id'
 const IdParamSchema = z.object({
-	id: z.string().transform(Number), // Transform string ID from URL to number
+  id: z.string().transform(Number), // Transform string ID from URL to number
 });
 
 // Schema for PUT request body
 const UpdateIpBodySchema = z.object({
-	name: z.string().optional(),
-	description: z.string().optional(),
+  name: z.string().optional(),
+  description: z.string().optional(),
 });
 
 /**
@@ -20,16 +20,16 @@ const UpdateIpBodySchema = z.object({
  * @returns IP詳細
  */
 export async function GET({ params }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
-	const ip = await getIpById(id);
-	return ip;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
+  const ip = await getIpById(id);
+  return ip;
 }
 
 /**
@@ -39,27 +39,27 @@ export async function GET({ params }: APIEvent) {
  * @returns 更新されたIP
  */
 export async function PUT({ params, request }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
 
-	const body = await request.json();
-	const parsedBody = UpdateIpBodySchema.safeParse(body);
-	if (!parsedBody.success) {
-		return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { name, description } = parsedBody.data;
+  const body = await request.json();
+  const parsedBody = UpdateIpBodySchema.safeParse(body);
+  if (!parsedBody.success) {
+    return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { name, description } = parsedBody.data;
 
-	const updatedIp = await updateIp(id, name, description);
-	return updatedIp;
+  const updatedIp = await updateIp(id, name, description);
+  return updatedIp;
 }
 
 /**
@@ -69,14 +69,14 @@ export async function PUT({ params, request }: APIEvent) {
  * @returns 削除結果
  */
 export async function DELETE({ params }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
-	const result = await deleteIp(id);
-	return result;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
+  const result = await deleteIp(id);
+  return result;
 }

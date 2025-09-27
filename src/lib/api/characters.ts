@@ -1,50 +1,40 @@
-export async function getCharacters() {
-	console.log("Placeholder: getCharacters called");
-	return [];
+export function getCharacters() {
+  return [];
 }
 
-export async function createCharacter(
-	name: string,
-	ipId?: number,
-	description?: string,
+export function createCharacter(data: {
+  name: string;
+  ipId?: number;
+  description?: string;
+}) {
+  const { name, ipId, description } = data;
+  return { id: 1, name, ipId, description };
+}
+
+export function getCharacterById(id: number) {
+  return {
+    id,
+    name: `Character ${id}`,
+    description: `Description for character ${id}`,
+  };
+}
+
+export function updateCharacter(
+  id: number,
+  data: {
+    name?: string;
+    ipId?: number;
+    description?: string;
+  }
 ) {
-	console.log("Placeholder: createCharacter called", {
-		name,
-		ipId,
-		description,
-	});
-	return { id: 1, name, ipId, description };
+  const { name, description } = data;
+  return {
+    id,
+    name: name || `Character ${id}`,
+    description: description || `Description for character ${id}`,
+  };
 }
 
-export async function getCharacterById(id: number) {
-	console.log("Placeholder: getCharacterById called", { id });
-	return {
-		id,
-		name: `Character ${id}`,
-		description: `Description for character ${id}`,
-	};
-}
-
-export async function updateCharacter(
-	id: number,
-	name?: string,
-	ipId?: number,
-	description?: string,
-) {
-	console.log("Placeholder: updateCharacter called", {
-		id,
-		name,
-		ipId,
-		description,
-	});
-	return {
-		id,
-		name: name || `Character ${id}`,
-		description: description || `Description for character ${id}`,
-	};
-}
-
-export async function deleteCharacter(id: number) {
-	console.log("Placeholder: deleteCharacter called", { id });
-	return { success: true };
+export function deleteCharacter(_id: number) {
+  return { success: true };
 }

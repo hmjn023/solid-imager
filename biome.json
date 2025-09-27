@@ -1,19 +1,32 @@
 {
-	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-	"linter": {
-		"enabled": true,
-		"rules": {
-			"recommended": true
-		}
-	},
-	"files": {
-		"includes": [
-			"src/**",
-			"!node_modules/",
-			"!dist/",
-			"!drizzle/",
-			"!src/app.css"
-		],
-		"experimentalScannerIgnores": ["db-data"]
-	}
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "files": {
+    "includes": [
+      "src/**",
+      "!node_modules/",
+      "!dist/",
+      "!drizzle/",
+      "!src/app.css"
+    ],
+    "experimentalScannerIgnores": ["db-data"]
+  },
+  "extends": ["ultracite"],
+  "overrides": [
+    {
+      "includes": ["src/db/schema.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": "off"
+          }
+        }
+      }
+    }
+  ]
 }

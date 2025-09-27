@@ -9,8 +9,8 @@ import type { UUID } from "~/lib/utils";
  * @returns ディレクトリ名変更結果
  */
 export async function PUT({ params, request }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const { oldPath, newPath } = await request.json(); // Assuming oldPath and newPath are in body
-	const result = await renameDirectory(sourceId, oldPath, newPath);
-	return result;
+  const sourceId = params.sourceId as UUID;
+  const { oldPath, newPath } = await request.json(); // Assuming oldPath and newPath are in body
+  const result = await renameDirectory(sourceId, oldPath, newPath);
+  return result;
 }

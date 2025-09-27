@@ -6,8 +6,8 @@ import { createTag, getTags } from "~/lib/api/tags";
  * @returns すべてのタグ
  */
 export async function GET() {
-	const tags = await getTags();
-	return tags;
+  const tags = await getTags();
+  return tags;
 }
 
 /**
@@ -16,7 +16,7 @@ export async function GET() {
  * @returns 作成されたタグ
  */
 export async function POST({ request }: APIEvent) {
-	const { name, description, attribute, color } = await request.json();
-	const newTag = await createTag(name, description, attribute, color);
-	return newTag;
+  const { name, description, attribute, color } = await request.json();
+  const newTag = await createTag(name, description, attribute, color);
+  return newTag;
 }

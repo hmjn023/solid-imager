@@ -7,8 +7,8 @@ import { createCharacter, getCharacters } from "~/lib/api/characters";
  */
 
 export async function GET() {
-	const characters = await getCharacters();
-	return characters;
+  const characters = await getCharacters();
+  return characters;
 }
 
 /**
@@ -17,7 +17,7 @@ export async function GET() {
  * @returns 作成されたキャラクター
  */
 export async function POST({ request }: APIEvent) {
-	const { name, ipId, description } = await request.json();
-	const newCharacter = await createCharacter(name, ipId, description);
-	return newCharacter;
+  const { name, ipId, description } = await request.json();
+  const newCharacter = await createCharacter(name, ipId, description);
+  return newCharacter;
 }

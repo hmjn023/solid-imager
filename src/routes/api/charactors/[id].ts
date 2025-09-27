@@ -1,21 +1,21 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import {
-	deleteCharacter,
-	getCharacterById,
-	updateCharacter,
+  deleteCharacter,
+  getCharacterById,
+  updateCharacter,
 } from "~/lib/api/characters";
 
 // Schema for path parameter 'id'
 const IdParamSchema = z.object({
-	id: z.string().transform(Number), // Transform string ID from URL to number
+  id: z.string().transform(Number), // Transform string ID from URL to number
 });
 
 // Schema for PUT request body
 const UpdateCharacterBodySchema = z.object({
-	name: z.string().optional(),
-	ipId: z.number().optional(),
-	description: z.string().optional(),
+  name: z.string().optional(),
+  ipId: z.number().optional(),
+  description: z.string().optional(),
 });
 
 /**
@@ -25,16 +25,16 @@ const UpdateCharacterBodySchema = z.object({
  * @returns キャラクター詳細
  */
 export async function GET({ params }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
-	const character = await getCharacterById(id);
-	return character;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
+  const character = await getCharacterById(id);
+  return character;
 }
 
 /**
@@ -44,27 +44,27 @@ export async function GET({ params }: APIEvent) {
  * @returns 更新されたキャラクター
  */
 export async function PUT({ params, request }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
 
-	const body = await request.json();
-	const parsedBody = UpdateCharacterBodySchema.safeParse(body);
-	if (!parsedBody.success) {
-		return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { name, ipId, description } = parsedBody.data;
+  const body = await request.json();
+  const parsedBody = UpdateCharacterBodySchema.safeParse(body);
+  if (!parsedBody.success) {
+    return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { name, ipId, description } = parsedBody.data;
 
-	const updatedCharacter = await updateCharacter(id, name, ipId, description);
-	return updatedCharacter;
+  const updatedCharacter = await updateCharacter(id, name, ipId, description);
+  return updatedCharacter;
 }
 
 /**
@@ -74,14 +74,14 @@ export async function PUT({ params, request }: APIEvent) {
  * @returns 削除結果
  */
 export async function DELETE({ params }: APIEvent) {
-	const parsedParams = IdParamSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { id } = parsedParams.data;
-	const result = await deleteCharacter(id);
-	return result;
+  const parsedParams = IdParamSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { id } = parsedParams.data;
+  const result = await deleteCharacter(id);
+  return result;
 }
