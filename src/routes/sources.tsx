@@ -5,11 +5,14 @@ import type { MediaSourceTypeEnum } from "~/lib/types";
 
 export default function Sources() {
   const [showAddModal, setShowAddModal] = createSignal(false);
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [deletingSource, setDeletingSource] = createSignal(null);
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
   const [formDescription, setFormDescription] = createSignal("");
   const [formType, setFormType] = createSignal<MediaSourceTypeEnum>("local");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [isDeleting, setIsDeleting] = createSignal(false);
   
   // Fetch function for createResource
   const fetchSources = async () => {
@@ -31,6 +34,17 @@ export default function Sources() {
     });
     if (!response.ok) {
       throw new Error('Failed to create source');
+    }
+    return response.json();
+  };
+
+  // Delete source function
+  const deleteSource = async (sourceId) => {
+    const response = await fetch(`http://localhost:3000/api/sources/${sourceId}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      throw new Error('Failed to delete source');
     }
     return response.json();
   };
@@ -109,6 +123,34 @@ export default function Sources() {
     }
   };
 
+  const handleDeleteSource = (source) => {
+    setDeletingSource(source);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    const source = deletingSource();
+    if (!source) return;
+
+    setIsDeleting(true);
+    try {
+      await deleteSource(source.id);
+      
+      setShowDeleteModal(false);
+      setDeletingSource(null);
+      
+      // Refresh the source list
+      await refetch();
+      
+      console.log("Source deleted successfully!");
+    } catch (error) {
+      console.error("Failed to delete source:", error);
+      alert("Failed to delete source: " + error.message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <div class="container mx-auto p-6">
       <div class="mb-6 flex items-center justify-between">
@@ -135,7 +177,23 @@ export default function Sources() {
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <For each={displaySources()}>
           {(source) => (
-            <SourceCard mediaSource={source} />
+            <div class="relative">
+              <SourceCard mediaSource={source} />
+              <div class="absolute top-2 right-2 flex gap-1 z-10">
+                <button
+                  class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+                  onClick={() => console.log("Edit clicked", source)}
+                >
+                  Edit
+                </button>
+                <button
+                  class="rounded bg-red-500 px-2 py-1 text-xs text-white shadow hover:bg-red-600"
+                  onClick={() => handleDeleteSource(source)}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
           )}
         </For>
       </div>
@@ -215,6 +273,34 @@ export default function Sources() {
                 <button
                   class="rounded bg-gray-500 px-4 py-2 text-white"
                   onClick={() => setShowAddModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteModal() && (
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+              <h2 class="mb-4 font-bold text-xl">Delete Media Source</h2>
+              <p class="mb-4">
+                Are you sure you want to delete "{deletingSource()?.name}"? 
+                This action cannot be undone and will remove all associated media files from the database.
+              </p>
+              <div class="flex gap-2">
+                <button
+                  class="rounded bg-red-500 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={isDeleting()}
+                  onClick={handleDeleteConfirm}
+                >
+                  {isDeleting() ? "Deleting..." : "Delete"}
+                </button>
+                <button
+                  class="rounded bg-gray-500 px-4 py-2 text-white"
+                  onClick={() => setShowDeleteModal(false)}
                 >
                   Cancel
                 </button>
