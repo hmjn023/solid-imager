@@ -153,12 +153,23 @@ export async function deleteMedia(
     throw new Error("Media not found or failed to delete");
   }
 
+  // Also delete the thumbnail asynchronously.
+  deleteThumbnail(validatedMediaId).catch((err) => {
+    console.error(
+      `Failed to delete thumbnail in background for ${validatedMediaId}:`,
+      err,
+    );
+  });
+
   // TODO: 実際のファイルシステム操作（例: ファイルの削除）を実装する
   // ファイルシステム操作が権限の問題で失敗した場合、ここでエラーをスローする
   // 例: try { await fs.unlink(result[0].filePath); } catch (fsError) { throw new Error('ファイルシステムアクセスが拒否されました'); }
 
   return { success: true };
 }
+
+import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
+import { deleteThumbnail, generateThumbnail } from "~/lib/thumbnails";
 
 const SUPPORTED_MEDIA_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
 
@@ -191,7 +202,7 @@ export async function registerExistingMedia(
     return SUPPORTED_MEDIA_TYPES.includes(ext);
   });
 
-  let added = 0;
+  const addedMedia: Media[] = [];
   let skipped = 0;
   let failed = 0;
 
@@ -201,7 +212,7 @@ export async function registerExistingMedia(
 
       const existingMedia = await selectMediaBySourceIdAndFilePath(
         validatedSourceId,
-        relativePath
+        relativePath,
       );
 
       if (existingMedia.length > 0) {
@@ -212,8 +223,9 @@ export async function registerExistingMedia(
       const stats = await fs.stat(fullPath);
       const metadata = await sharp(fullPath).metadata();
 
-      if (!(metadata.width && metadata.height)) {
+      if (!metadata.width || !metadata.height) {
         failed++;
+        console.error(`Could not get dimensions for ${fullPath}`);
         continue;
       }
 
@@ -229,14 +241,27 @@ export async function registerExistingMedia(
         modifiedAt: stats.mtime,
       };
 
-      await insertMedia(newMedia);
-      added++;
-    } catch (_error) {
+      const [inserted] = await insertMedia(newMedia);
+      addedMedia.push(inserted);
+    } catch (error) {
       failed++;
+      console.error(`Failed to process file ${fullPath}:`, error);
     }
   }
 
-  return { added, skipped, failed };
+  // Queue thumbnail generation for all newly added media.
+  if (addedMedia.length > 0) {
+    const jobs = addedMedia.map((media) => ({ mediaId: media.id, sourcePath: basePath }));
+    addJobsToQueue(jobs);
+    startJobQueue(async (job) => {
+      const media = addedMedia.find(m => m.id === job.mediaId);
+      if (media) {
+        await generateThumbnail(media, job.sourcePath);
+      }
+    });
+  }
+
+  return { added: addedMedia.length, skipped, failed };
 }
 
 /**
