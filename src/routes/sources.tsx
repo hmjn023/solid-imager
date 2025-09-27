@@ -5,7 +5,9 @@ import type { MediaSourceTypeEnum } from "~/lib/types";
 
 export default function Sources() {
   const [showAddModal, setShowAddModal] = createSignal(false);
+  const [showEditModal, setShowEditModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [editingSource, setEditingSource] = createSignal(null);
   const [deletingSource, setDeletingSource] = createSignal(null);
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
@@ -34,6 +36,21 @@ export default function Sources() {
     });
     if (!response.ok) {
       throw new Error('Failed to create source');
+    }
+    return response.json();
+  };
+
+  // Update source function
+  const updateSource = async (sourceId, sourceData) => {
+    const response = await fetch(`http://localhost:3000/api/sources/${sourceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(sourceData),
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update source');
     }
     return response.json();
   };
@@ -85,7 +102,24 @@ export default function Sources() {
     setFormPath("");
     setFormDescription("");
     setFormType("local");
+    setEditingSource(null);
     setShowAddModal(true);
+  };
+
+  const handleEditSource = (source) => {
+    // Pre-fill form with existing data
+    setFormName(source.name);
+    setFormDescription(source.description || "");
+    setFormType(source.type);
+    setFormPath(
+      typeof source.connectionInfo === "object" &&
+      source.connectionInfo !== null &&
+      "path" in source.connectionInfo
+        ? String(source.connectionInfo.path)
+        : ""
+    );
+    setEditingSource(source);
+    setShowEditModal(true);
   };
 
   const handleFormSubmit = async () => {
@@ -102,19 +136,26 @@ export default function Sources() {
         connectionInfo: { path: formPath() }
       };
 
-      await createSource(sourceData);
+      const editing = editingSource();
+      if (editing) {
+        await updateSource(editing.id, sourceData);
+        console.log("Source updated successfully!");
+      } else {
+        await createSource(sourceData);
+        console.log("Source created successfully!");
+      }
       
       // Reset form and close modal
       setFormName("");
       setFormPath("");
       setFormDescription("");
       setFormType("local");
+      setEditingSource(null);
       setShowAddModal(false);
+      setShowEditModal(false);
       
       // Refresh the source list
       await refetch();
-      
-      console.log("Source created successfully!");
     } catch (error) {
       console.error("Failed to create source:", error);
       alert("Failed to create source: " + error.message);
@@ -182,7 +223,7 @@ export default function Sources() {
               <div class="absolute top-2 right-2 flex gap-1 z-10">
                 <button
                   class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
-                  onClick={() => console.log("Edit clicked", source)}
+                  onClick={() => handleEditSource(source)}
                 >
                   Edit
                 </button>
@@ -214,10 +255,12 @@ export default function Sources() {
       )}
 
       <Portal>
-        {showAddModal() && (
+        {(showAddModal() || showEditModal()) && (
           <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
             <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-              <h2 class="mb-4 font-bold text-xl">Add Media Source</h2>
+              <h2 class="mb-4 font-bold text-xl">
+                {editingSource() ? "Edit Media Source" : "Add Media Source"}
+              </h2>
               <div class="mb-4 space-y-4">
                 <div>
                   <label class="mb-1 block font-medium text-sm">Name</label>
@@ -268,11 +311,14 @@ export default function Sources() {
                   disabled={!(formName().trim() && formPath().trim()) || isSubmitting()}
                   onClick={handleFormSubmit}
                 >
-                  {isSubmitting() ? "Creating..." : "Create"}
+                  {isSubmitting() ? "Saving..." : editingSource() ? "Update" : "Create"}
                 </button>
                 <button
                   class="rounded bg-gray-500 px-4 py-2 text-white"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={() => {
+                    setShowAddModal(false);
+                    setShowEditModal(false);
+                  }}
                 >
                   Cancel
                 </button>
