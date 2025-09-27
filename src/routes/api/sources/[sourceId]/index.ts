@@ -23,13 +23,8 @@ export async function GET({ params }: APIEvent) {
         },
       });
     }
-    return new Response(JSON.stringify(source), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching source:", error);
+    return Response.json(source);
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to fetch source" }), {
       status: 500,
       headers: {
@@ -50,13 +45,8 @@ export async function PUT({ params, request }: APIEvent) {
     const sourceId = params.sourceId as UUID;
     const data = await request.json();
     const updatedSource = await updateMediaSource(sourceId, data);
-    return new Response(JSON.stringify(updatedSource), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error updating source:", error);
+    return Response.json(updatedSource);
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to update source" }), {
       status: 500,
       headers: {
@@ -76,13 +66,8 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const sourceId = params.sourceId as UUID;
     const result = await deleteMediaSource(sourceId);
-    return new Response(JSON.stringify({ success: true, result }), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error deleting source:", error);
+    return Response.json({ success: true, result });
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to delete source" }), {
       status: 500,
       headers: {

@@ -1,4 +1,4 @@
-import type { MediaSource } from "../db/schema";
+import type { MediaSourceInfo } from "~/lib/types";
 import { Button } from "./ui/button";
 import {
   Card,
@@ -6,12 +6,10 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from "./ui/card";
+} from "~/components/ui/card";
 
 type SourceCardProps = {
-  mediaSource: MediaSource;
-  onEdit: (source: MediaSource) => void;
-  onDelete: (source: MediaSource) => void;
+  mediaSource: MediaSourceInfo;
 };
 
 export default function SourceCard(props: SourceCardProps) {
@@ -35,7 +33,6 @@ export default function SourceCard(props: SourceCardProps) {
       </CardContent>
       <div class="absolute top-4 right-4 flex gap-2">
         <Button
-          onClick={() => props.onEdit(props.mediaSource)}
           size="sm"
           type="button"
           variant="outline"
@@ -43,7 +40,6 @@ export default function SourceCard(props: SourceCardProps) {
           Edit
         </Button>
         <Button
-          onClick={() => props.onDelete(props.mediaSource)}
           size="sm"
           type="button"
           variant="destructive"

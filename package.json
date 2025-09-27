@@ -17,6 +17,7 @@
     "unsafe-fix": "biome check --fix --unsafe ./src"
   },
   "dependencies": {
+    "@kobalte/core": "^0.13.11",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
     "@solidjs/start": "^1.2.0",
@@ -25,6 +26,7 @@
     "@tanstack/solid-query": "^5.90.3",
     "@tanstack/zod-form-adapter": "^0.42.1",
     "chokidar": "^4.0.3",
+    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.5",
     "pg": "^8.16.3",

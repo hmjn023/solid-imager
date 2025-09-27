@@ -9,13 +9,8 @@ import { createMediaSource, getMediaSources } from "~/lib/api/sources";
 export async function GET() {
   try {
     const sources = await getMediaSources();
-    return new Response(JSON.stringify(sources), {
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  } catch (error) {
-    console.error("Error fetching sources:", error);
+    return Response.json(sources);
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to fetch sources" }), {
       status: 500,
       headers: {
@@ -45,8 +40,7 @@ export async function POST({ request }: APIEvent) {
         "Content-Type": "application/json",
       },
     });
-  } catch (error) {
-    console.error("Error creating source:", error);
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to create source" }), {
       status: 500,
       headers: {

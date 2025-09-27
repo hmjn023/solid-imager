@@ -5,7 +5,6 @@ export default function SimpleModal() {
   const [isOpen, setIsOpen] = createSignal(false);
 
   const handleClick = () => {
-    console.log("Simple modal button clicked!");
     alert("Button clicked!"); // ブラウザアラートでテスト
     setIsOpen(true);
   };

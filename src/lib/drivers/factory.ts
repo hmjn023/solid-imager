@@ -1,9 +1,5 @@
 import type { MediaSource } from "~/db/schema";
-import {
-  localConnectionSchema,
-  s3ConnectionSchema,
-  sftpConnectionSchema,
-} from "~/lib/schemas";
+import { localConnectionSchema } from "~/lib/schemas";
 import { LocalDriver } from "./local";
 import type { MediaSourceDriver } from "./types";
 

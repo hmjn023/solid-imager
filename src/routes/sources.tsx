@@ -1,87 +1,129 @@
-import { createSignal } from "solid-js";
+import { createSignal, For } from "solid-js";
 import { Portal } from "solid-js/web";
+import SourceCard from "~/components/source-card";
 
 export default function Sources() {
-  console.log("Sources component rendered");
-  
   const [showAddModal, setShowAddModal] = createSignal(false);
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
   
-  const handleAddSource = () => {
-    console.log("Add source button clicked");
-    setShowAddModal(true);
-    console.log("showAddModal set to:", showAddModal());
-  };
+  // Real data from API - temporarily disabled for testing
+  // const [mediaSources] = createResource(getMediaSources);
+  const mediaSources = { loading: false, error: null };
   
+  // Fallback to mock data if API fails or returns empty
+  const mockSources = [
+    {
+      id: "1",
+      name: "Local Images",
+      description: "My local image collection",
+      type: "local",
+      connectionInfo: { path: "/home/user/images" }
+    },
+    {
+      id: "2", 
+      name: "Remote Server",
+      description: "Images on remote server",
+      type: "sftp",
+      connectionInfo: { path: "/var/www/images" }
+    }
+  ];
+  
+  // Use mock data since API is disabled
+  const displaySources = () => mockSources;
+
+  const handleAddSource = () => {
+    setShowAddModal(true);
+  };
+
   return (
     <div class="container mx-auto p-6">
       <div class="mb-6 flex items-center justify-between">
-        <h1 class="text-3xl font-bold">Media Sources</h1>
-        <button 
-          onClick={handleAddSource}
-          type="button" 
-          class="px-4 py-2 bg-blue-500 text-white rounded"
+        <h1 class="font-bold text-3xl">Media Sources</h1>
+        <button
+          class="rounded bg-blue-500 px-4 py-2 text-white"
+          onClick={() => {
+            console.log("Add Source button clicked");
+            handleAddSource();
+            console.log("Modal state:", showAddModal());
+          }}
+          type="button"
         >
           Add Source
         </button>
       </div>
-      
-      <div class="mt-8 text-center">
-        <p class="text-muted-foreground">
-          Modal state: {showAddModal().toString()}
-        </p>
 
+      {/* Debug info */}
+      <div class="mb-4 bg-gray-100 p-2 text-xs">
+        Debug: AddModal={showAddModal().toString()}
+      </div>
+
+      {/* Sources Grid */}
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <For each={displaySources()}>
+          {(source) => (
+            <SourceCard mediaSource={source} />
+          )}
+        </For>
       </div>
       
+      {/* Loading State */}
+      {mediaSources.loading && (
+        <div class="mt-8 text-center">
+          <p class="text-muted-foreground">Loading sources...</p>
+        </div>
+      )}
+      
+      {/* Error State */}
+      {mediaSources.error && (
+        <div class="mt-8 text-center">
+          <p class="text-red-500">Error loading sources: {mediaSources.error.message}</p>
+          <p class="text-sm text-gray-500">Showing mock data instead.</p>
+        </div>
+      )}
+
       <Portal>
         {showAddModal() && (
-          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div class="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
-              <h2 class="text-xl font-bold mb-4">Add Media Source</h2>
-              <div class="space-y-4 mb-4">
+          <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
+              <h2 class="mb-4 font-bold text-xl">Add Media Source</h2>
+              <div class="mb-4 space-y-4">
                 <div>
-                  <label class="block text-sm font-medium mb-1">Name</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter source name"
-                    value={formName()}
+                  <label class="mb-1 block font-medium text-sm">Name</label>
+                  <input
+                    class="w-full rounded-md border border-gray-300 px-3 py-2"
                     onInput={(e) => setFormName(e.currentTarget.value)}
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter source name"
+                    type="text"
+                    value={formName()}
                   />
                 </div>
                 <div>
-                  <label class="block text-sm font-medium mb-1">Path</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter file path"
-                    value={formPath()}
+                  <label class="mb-1 block font-medium text-sm">Path</label>
+                  <input
+                    class="w-full rounded-md border border-gray-300 px-3 py-2"
                     onInput={(e) => setFormPath(e.currentTarget.value)}
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    placeholder="Enter file path"
+                    type="text"
+                    value={formPath()}
                   />
                 </div>
               </div>
               <div class="flex gap-2">
-                <button 
+                <button
+                  class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
+                  disabled={!(formName().trim() && formPath().trim())}
                   onClick={() => {
-                    console.log("Save clicked with data:", {
-                      name: formName(),
-                      path: formPath(),
-                      type: "local",
-                      connectionInfo: { path: formPath() }
-                    });
-                    // Reset form
                     setFormName("");
                     setFormPath("");
                     setShowAddModal(false);
                   }}
-                  class="px-4 py-2 bg-blue-500 text-white rounded"
                 >
                   Save
                 </button>
-                <button 
+                <button
+                  class="rounded bg-gray-500 px-4 py-2 text-white"
                   onClick={() => setShowAddModal(false)}
-                  class="px-4 py-2 bg-gray-500 text-white rounded"
                 >
                   Cancel
                 </button>

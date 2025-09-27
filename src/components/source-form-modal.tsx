@@ -1,5 +1,5 @@
-import { createSignal, type JSX } from "solid-js";
 import { clientOnly } from "@solidjs/start";
+import { createSignal, type JSX } from "solid-js";
 import type { MediaSource, NewMediaSource } from "~/db/schema";
 import type { MediaSourceTypeEnum } from "~/lib/types";
 import { Button } from "./ui/button";
@@ -166,6 +166,8 @@ function SourceFormModalInner(props: SourceFormModalProps) {
   );
 }
 
-const SourceFormModal = clientOnly(() => Promise.resolve({ default: SourceFormModalInner }));
+const SourceFormModal = clientOnly(() =>
+  Promise.resolve({ default: SourceFormModalInner })
+);
 
 export default SourceFormModal;
