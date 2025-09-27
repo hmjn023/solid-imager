@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import type { Media, MediaSource, NewMedia, NewMediaSource } from "~/db/schema";
@@ -111,6 +111,15 @@ export const selectMediasByMediaSourceId = (mediaSourceId: string) =>
 export const selectMediaById = (mediaId: string) =>
   db.select().from(medias).where(eq(medias.id, mediaId));
 
+export const selectMediaBySourceIdAndFilePath = (
+  sourceId: string,
+  filePath: string
+) =>
+  db
+    .select()
+    .from(medias)
+    .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
+
 export const insertMedia = (media: NewMedia) =>
   db.insert(medias).values(media).returning();
 
@@ -119,3 +128,17 @@ export const updateMedia = (mediaId: string, media: Media) =>
 
 export const deleteMedia = (mediaId: string) =>
   db.delete(medias).where(eq(medias.id, mediaId));
+
+export const selectMediaBySourceIdAndDirectoryPath = (
+  sourceId: string,
+  directoryPath: string
+) =>
+  db
+    .select()
+    .from(medias)
+    .where(
+      and(
+        eq(medias.sourceId, sourceId),
+        like(medias.filePath, `${directoryPath}%`)
+      )
+    );

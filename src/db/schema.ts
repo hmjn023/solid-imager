@@ -78,9 +78,9 @@ export const medias = pgTable(
     /** 取得元リンク(ユーザー入力) */
     sourceUrl: text("source_url"),
     /** ファイル作成日時 */
-    createdAt: timestamp("created_at").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
     /** ファイル更新日時 */
-    modifiedAt: timestamp("modified_at").notNull(),
+    modifiedAt: timestamp("modified_at").notNull().defaultNow(),
     /** DB登録日時 */
     indexedAt: timestamp("indexed_at").notNull().defaultNow(),
   },
