@@ -3,3 +3,7 @@ run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
 
 [env]
 _.file = '.env'
+
+[tools]
+"npm:chrome-devtools-mcp" = "latest"
+"npm:ultracite" = "latest"

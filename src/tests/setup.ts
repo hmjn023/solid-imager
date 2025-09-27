@@ -1,5 +1,5 @@
-import { config } from 'dotenv';
-import path from 'path';
+import path from "node:path";
+import { config } from "dotenv";
 
 // .envファイルのパスを指定して読み込む
-config({ path: path.resolve(process.cwd(), '.env') });
+config({ path: path.resolve(process.cwd(), ".env") });

@@ -8,9 +8,9 @@ import type { UUID } from "~/lib/utils";
  * @returns メディアソース下のディレクトリツリー(?、まだ考えきれてない)
  */
 export async function GET({ params, request }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const url = new URL(request.url);
-	const path = url.searchParams.get("path") || undefined; // Handle ?path=parent
-	const listing = await getDirectoryListing(sourceId, path);
-	return listing;
+  const sourceId = params.sourceId as UUID;
+  const url = new URL(request.url);
+  const path = url.searchParams.get("path") || undefined; // Handle ?path=parent
+  const listing = await getDirectoryListing(sourceId, path);
+  return listing;
 }

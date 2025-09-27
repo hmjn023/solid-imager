@@ -8,7 +8,7 @@ import type { UUID } from "~/lib/utils";
  * @returns メディアソースの状態
  */
 export async function GET({ params }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const status = await getMediaSourceStatus(sourceId);
-	return status;
+  const sourceId = params.sourceId as UUID;
+  const status = await getMediaSourceStatus(sourceId);
+  return status;
 }

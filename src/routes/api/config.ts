@@ -1,8 +1,8 @@
 import { getConfig, resetConfig, updateConfig } from "~/lib/api/config";
 
 export async function GET() {
-	const config = await getConfig();
-	return config;
+  const config = await getConfig();
+  return config;
 }
 
 /**
@@ -11,9 +11,9 @@ export async function GET() {
  * @returns 更新された設定
  */
 export async function PUT({ request }: APIEvent) {
-	const newConfig = await request.json();
-	const updatedConfig = await updateConfig(newConfig);
-	return updatedConfig;
+  const newConfig = await request.json();
+  const updatedConfig = await updateConfig(newConfig);
+  return updatedConfig;
 }
 
 /**
@@ -22,6 +22,6 @@ export async function PUT({ request }: APIEvent) {
  * @returns リセットされた設定
  */
 export async function POST() {
-	const result = await resetConfig();
-	return result;
+  const result = await resetConfig();
+  return result;
 }

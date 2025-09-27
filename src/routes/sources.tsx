@@ -1,47 +1,134 @@
-import { useQuery } from "@tanstack/solid-query";
-import { For, Match, Switch } from "solid-js";
-import SourceCard from "~/components/sourceCard";
-import type { mediaSourceInfo } from "~/lib/types";
+import { createResource, createSignal, For } from "solid-js";
+import SourceCard from "~/components/source-card";
+import SourceDeleteModal from "~/components/source-delete-modal";
+import SourceFormModal from "~/components/source-form-modal";
+import { sourcesApi } from "~/services/sources";
 
 export default function Sources() {
-	const mediaSources = useQuery(() => ({
-		queryKey: ["mediaSources"],
-		queryFn: async () => {
-			const response = await fetch("http://localhost:3000/api/sources/");
-			return (await response.json()) as mediaSourceInfo[];
-		},
-	}));
+  const [showFormModal, setShowFormModal] = createSignal(false);
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+  const [editingSource, setEditingSource] = createSignal(null);
+  const [deletingSource, setDeletingSource] = createSignal(null);
 
-	const handleEdit = (source: mediaSourceInfo) => {
-		console.log("Editing:", source);
-	};
+  // Real data from API using createResource + fetch
+  const [mediaSources, { refetch }] = createResource(sourcesApi.fetchSources);
 
-	const handleDelete = (sourceName: string) => {
-		console.log("Deleting:", sourceName);
-	};
+  // Fallback to mock data if API fails or returns empty
+  const mockSources = [
+    {
+      id: "1",
+      name: "Local Images",
+      description: "My local image collection",
+      type: "local",
+      connectionInfo: { path: "/home/user/images" },
+    },
+    {
+      id: "2",
+      name: "Remote Server",
+      description: "Images on remote server",
+      type: "sftp",
+      connectionInfo: { path: "/var/www/images" },
+    },
+  ];
 
-	return (
-		<main class="text-center mx-auto text-gray-700 p-4">
-			<h1 class="mb-4 text-3xl font-bold">Media Sources</h1>
-			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-				<Switch>
-					<Match when={mediaSources.isPending}>Loading...</Match>
-					<Match when={mediaSources.isError}>
-						Error: {mediaSources.error?.message}
-					</Match>
-					<Match when={mediaSources.isSuccess}>
-						<For each={mediaSources.data}>
-							{(source) => (
-								<SourceCard
-									mediaSource={source}
-									onEdit={handleEdit}
-									onDelete={handleDelete}
-								/>
-							)}
-						</For>
-					</Match>
-				</Switch>
-			</div>
-		</main>
-	);
+  // Use real data if available, otherwise use mock data
+  const displaySources = () => {
+    const realData = mediaSources();
+    if (realData && realData.length > 0) {
+      return realData;
+    }
+    return mockSources;
+  };
+
+  const handleAddSource = () => {
+    setEditingSource(null);
+    setShowFormModal(true);
+  };
+
+  const handleEditSource = (source) => {
+    setEditingSource(source);
+    setShowFormModal(true);
+  };
+
+  const handleFormSubmit = async (sourceData) => {
+    const editing = editingSource();
+    if (editing) {
+      await sourcesApi.updateSource(editing.id, sourceData);
+    } else {
+      await sourcesApi.createSource(sourceData);
+    }
+    await refetch();
+    setShowFormModal(false);
+  };
+
+  const handleDeleteSource = (source) => {
+    setDeletingSource(source);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async (sourceId) => {
+    await sourcesApi.deleteSource(sourceId);
+    await refetch();
+    setShowDeleteModal(false);
+    setDeletingSource(null);
+  };
+
+  return (
+    <div class="container mx-auto p-6">
+      <div class="mb-6 flex items-center justify-between">
+        <h1 class="font-bold text-3xl">Media Sources</h1>
+        <button
+          class="rounded bg-blue-500 px-4 py-2 text-white"
+          onClick={handleAddSource}
+          type="button"
+        >
+          Add Source
+        </button>
+      </div>
+
+      {/* Sources Grid */}
+      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <For each={displaySources()}>
+          {(source) => (
+            <SourceCard
+              mediaSource={source}
+              onDelete={handleDeleteSource}
+              onEdit={handleEditSource}
+            />
+          )}
+        </For>
+      </div>
+
+      {/* Loading State */}
+      {mediaSources.loading && (
+        <div class="mt-8 text-center">
+          <p class="text-muted-foreground">Loading sources...</p>
+        </div>
+      )}
+
+      {/* Error State */}
+      {mediaSources.error && (
+        <div class="mt-8 text-center">
+          <p class="text-red-500">
+            Error loading sources: {mediaSources.error.message}
+          </p>
+          <p class="text-gray-500 text-sm">Showing mock data instead.</p>
+        </div>
+      )}
+
+      <SourceFormModal
+        editingSource={editingSource()}
+        isOpen={showFormModal()}
+        onClose={() => setShowFormModal(false)}
+        onSubmit={handleFormSubmit}
+      />
+
+      <SourceDeleteModal
+        isOpen={showDeleteModal()}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+        sourceToDelete={deletingSource()}
+      />
+    </div>
+  );
 }

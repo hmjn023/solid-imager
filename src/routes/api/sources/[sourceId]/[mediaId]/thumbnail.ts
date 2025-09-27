@@ -8,8 +8,8 @@ import type { UUID } from "~/lib/utils";
  * @returns メディアとのサムネイル
  */
 export async function GET({ params }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const mediaId = params.mediaId as UUID;
-	const thumbnail = await getMediaThumbnail(sourceId, mediaId);
-	return thumbnail;
+  const sourceId = params.sourceId as UUID;
+  const mediaId = params.mediaId as UUID;
+  const thumbnail = await getMediaThumbnail(sourceId, mediaId);
+  return thumbnail;
 }

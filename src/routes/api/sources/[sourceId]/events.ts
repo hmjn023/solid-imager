@@ -9,7 +9,7 @@ import type { UUID } from "~/lib/utils";
  * @returns SSEストリーム
  */
 export async function GET({ params }: APIEvent) {
-	const sourceId = params.sourceId as UUID;
-	const result = await startSseMonitoring(sourceId);
-	return result;
+  const sourceId = params.sourceId as UUID;
+  const result = await startSseMonitoring(sourceId);
+  return result;
 }
