@@ -9,12 +9,12 @@ describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
 
   beforeEach(async () => {
-    // Clean up any previous test data if necessary
+    // 必要に応じて、以前のテストデータをクリーンアップします。
     await db.delete(medias);
   });
 
   afterEach(async () => {
-    // Clean up the added media after each test
+    // 各テスト後に、追加されたメディアをクリーンアップします。
     if (addedMediaId) {
       await db.delete(medias).where(eq(medias.id, addedMediaId));
       addedMediaId = undefined;
@@ -39,7 +39,7 @@ describe("addMedia Integration", () => {
     expect(result.id).toBeTypeOf("string");
     expect(result.filePath).toBe(newMediaData.filePath);
 
-    // Verify that the media is in the database
+    // メディアがデータベースに存在することを確認します。
     const mediaInDb = await db
       .select()
       .from(medias)
@@ -51,7 +51,7 @@ describe("addMedia Integration", () => {
   it("should throw a ZodError if required fields are missing or invalid", async () => {
     const invalidMediaData = {
       filePath: "/test/path/image.png",
-      // Missing fileName, size, etc.
+      // fileName、sizeなどが不足しています。
     };
 
     await expect(addMedia(invalidMediaData as any)).rejects.toThrow(ZodError);
@@ -68,9 +68,9 @@ describe("addMedia Integration", () => {
       height: 600,
     };
 
-    await addMedia(newMediaData); // Add the first media
+    await addMedia(newMediaData); // 最初のメディアを追加します。
 
-    // Attempt to add again with the same sourceId and filePath
+    // 同じsourceIdとfilePathで再度追加を試みます。
     await expect(addMedia(newMediaData)).rejects.toThrow(
       "Media with this filePath already exists for the given sourceId"
     );

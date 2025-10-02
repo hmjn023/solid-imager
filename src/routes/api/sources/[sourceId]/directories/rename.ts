@@ -10,7 +10,7 @@ import type { UUID } from "~/lib/utils";
  */
 export async function PUT({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const { oldPath, newPath } = await request.json(); // Assuming oldPath and newPath are in body
+  const { oldPath, newPath } = await request.json(); // oldPathとnewPathがボディに含まれていると仮定します。
   const result = await renameDirectory(sourceId, oldPath, newPath);
   return result;
 }

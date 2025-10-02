@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getMediaMetadata } from "~/lib/api/media";
 import type { UUID } from "~/lib/utils";
 
-// Schema for path parameters
+// パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
   sourceId: z.string().uuid(),
   mediaId: z.string().uuid(),

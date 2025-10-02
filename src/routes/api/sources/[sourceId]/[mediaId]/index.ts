@@ -3,17 +3,17 @@ import { z } from "zod";
 import { getMediaDetails, updateMedia } from "~/lib/api/media";
 import type { UUID } from "~/lib/utils";
 
-// Schema for path parameters
+// パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
   sourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 
-// Schema for PUT request body (example, adjust as needed)
+// PUTリクエストボディのスキーマ（例、必要に応じて調整）
 const UpdateMediaBodySchema = z.object({
   description: z.string().optional(),
   sourceUrl: z.string().url().optional(),
-  // Add other fields that can be updated
+  // 更新可能な他のフィールドを追加
 });
 
 /**
@@ -31,7 +31,7 @@ export async function GET({ params }: APIEvent) {
   }
   const { sourceId, mediaId } = parsedParams.data;
 
-  const media = await getMediaDetails(sourceId as UUID, mediaId as UUID); // Reusing getMediaDetails for now
+  const media = await getMediaDetails(sourceId as UUID, mediaId as UUID); // 現時点ではgetMediaDetailsを再利用しています。
   return media;
 }
 

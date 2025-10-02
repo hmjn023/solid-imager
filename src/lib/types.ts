@@ -1,3 +1,5 @@
+export type UUID = string;
+
 export type MediaSourceTypeEnum = "local" | "sftp" | "s3";
 
 export type ConnectionInfo = LocalConnectionInfo;

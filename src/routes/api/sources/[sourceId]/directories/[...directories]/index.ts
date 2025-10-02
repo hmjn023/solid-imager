@@ -9,7 +9,7 @@ import type { UUID } from "~/lib/utils";
  */
 export async function GET({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const directoriesPath = params.directories.join("/"); // Reconstruct path
+  const directoriesPath = params.directories.join("/"); // パスを再構築します。
   const listing = await getDirectoryListing(sourceId, directoriesPath);
   return listing;
 }

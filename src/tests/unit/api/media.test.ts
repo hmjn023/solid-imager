@@ -12,7 +12,7 @@ import {
   updateMedia,
 } from "~/lib/api/media";
 
-// Mock the database interactions
+// データベースの操作をモックします。
 vi.mock("~/db", () => ({
   db: {
     insert: vi.fn(() => ({

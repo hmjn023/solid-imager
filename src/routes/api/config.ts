@@ -1,27 +1,35 @@
-import { getConfig, resetConfig, updateConfig } from "~/lib/api/config";
+import { type APIEvent, json } from "solid-start/api";
+import {
+  getConfig,
+  resetConfig,
+  updateConfig,
+} from "~/lib/api/config";
+import type { AppConfig } from "~/lib/types";
 
 export async function GET() {
-  const config = await getConfig();
-  return config;
+  try {
+    const config = getConfig();
+    return json(config);
+  } catch (error: any) {
+    return json({ error: error.message }, { status: 500 });
+  }
 }
 
-/**
- * 設定を更新します。
- *
- * @returns 更新された設定
- */
 export async function PUT({ request }: APIEvent) {
-  const newConfig = await request.json();
-  const updatedConfig = await updateConfig(newConfig);
-  return updatedConfig;
+  try {
+    const newConfig = (await request.json()) as AppConfig;
+    const result = updateConfig(newConfig);
+    return json(result);
+  } catch (error: any) {
+    return json({ error: error.message }, { status: 400 });
+  }
 }
 
-/**
- * 設定をデフォルトにリセットします。
- *
- * @returns リセットされた設定
- */
 export async function POST() {
-  const result = await resetConfig();
-  return result;
+  try {
+    const result = resetConfig();
+    return json(result);
+  } catch (error: any) {
+    return json({ error: error.message }, { status: 500 });
+  }
 }

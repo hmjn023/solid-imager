@@ -21,7 +21,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
   const [formType, setFormType] = createSignal<MediaSourceTypeEnum>("local");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-  // Pre-fill form when editing
+  // 編集時にフォームを事前入力します。
   const initializeForm = () => {
     const editing = props.editingSource;
     if (editing) {
@@ -36,7 +36,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
           : ""
       );
     } else {
-      // Reset form for new source
+      // 新しいソースのためにフォームをリセットします。
       setFormName("");
       setFormPath("");
       setFormDescription("");
@@ -44,7 +44,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
     }
   };
 
-  // Initialize form when modal opens or editing source changes
+  // モーダルが開くか、編集中のソースが変更されたときにフォームを初期化します。
   createEffect(() => {
     if (props.isOpen) {
       initializeForm();
@@ -68,7 +68,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
       await props.onSubmit(sourceData);
       props.onClose();
     } catch (_error) {
-      // Error handling - could show toast notification in production
+      // エラー処理 - 本番環境ではトースト通知を表示できます。
     } finally {
       setIsSubmitting(false);
     }

@@ -153,7 +153,7 @@ export async function deleteMedia(
     throw new Error("Media not found or failed to delete");
   }
 
-  // Also delete the thumbnail asynchronously.
+  // サムネイルも非同期で削除します。
   deleteThumbnail(validatedMediaId).catch((err) => {
     console.error(
       `Failed to delete thumbnail in background for ${validatedMediaId}:`,
@@ -233,7 +233,7 @@ export async function registerExistingMedia(
         sourceId: validatedSourceId,
         filePath: relativePath,
         fileName: path.basename(fullPath),
-        mediaType: "image", // For now, only images are supported
+        mediaType: "image", // 現時点では画像のみがサポートされています
         width: metadata.width,
         height: metadata.height,
         fileSize: stats.size,
@@ -249,11 +249,11 @@ export async function registerExistingMedia(
     }
   }
 
-  // Queue thumbnail generation for all newly added media.
+  // 新しく追加されたすべてのメディアのサムネイル生成をキューに入れます。
   if (addedMedia.length > 0) {
     const jobs = addedMedia.map((media) => ({ mediaId: media.id, sourcePath: basePath }));
-    addJobsToQueue(jobs);
-    startJobQueue(async (job) => {
+    addJobsToQueue(validatedSourceId, jobs);
+    startJobQueue(validatedSourceId, async (job) => {
       const media = addedMedia.find(m => m.id === job.mediaId);
       if (media) {
         await generateThumbnail(media, job.sourcePath);

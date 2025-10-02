@@ -28,3 +28,13 @@ db-data/
 .DS_Store
 Thumbs.db
 .cache/
+
+
+.claude/
+.gemini/
+.serena/
+.specify/
+CALUDE.md
+GEMINI.md
+playwright-report/
+test-results/

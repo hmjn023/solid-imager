@@ -4,7 +4,7 @@ import {
   getMediaSourceById,
   updateMediaSource,
 } from "~/lib/api/sources";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  *

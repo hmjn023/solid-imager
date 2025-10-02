@@ -19,13 +19,13 @@ describe("getMedia Integration", () => {
   };
 
   beforeEach(async () => {
-    // Add a media entry to the database for testing getMedia
+    // getMediaをテストするために、データベースにメディアエントリを追加します。
     const addedMedia = await addMedia(newMediaData);
     testMediaId = addedMedia.id;
   });
 
   afterEach(async () => {
-    // Clean up the added media after each test
+    // 各テスト後に、追加されたメディアをクリーンアップします。
     if (testMediaId) {
       await db.delete(medias).where(eq(medias.id, testMediaId));
     }
@@ -42,7 +42,7 @@ describe("getMedia Integration", () => {
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000"; // A valid but non-existent UUID
+    const nonExistentId = "a0000000-0000-0000-0000-000000000000"; // 有効だが存在しないUUID
     await expect(getMedia(testSourceId, nonExistentId)).rejects.toThrow(
       "Media not found"
     );

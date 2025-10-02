@@ -9,18 +9,18 @@ test.describe("Media Sources - Basic Functionality", () => {
   test("should display the sources page with header and add button", async ({
     page,
   }) => {
-    // Check page title
+    // ページタイトルを確認します。
     await expect(page.locator('h1:has-text("Media Sources")')).toBeVisible();
 
-    // Check Add Source button exists
+    // ソース追加ボタンの存在を確認します。
     await expect(page.locator('button:has-text("Add Source")')).toBeVisible();
 
-    // Check if sources grid exists
+    // ソースグリッドの存在を確認します。
     await expect(page.locator(".grid")).toBeVisible();
   });
 
   test("should open and close add modal", async ({ page }) => {
-    // Open modal
+    // モーダルを開きます。
     await page.click('button:has-text("Add Source")');
     await expect(
       page.locator(
@@ -28,7 +28,7 @@ test.describe("Media Sources - Basic Functionality", () => {
       )
     ).toBeVisible();
 
-    // Close modal
+    // モーダルを閉じます。
     await page.click('button:has-text("Cancel")');
     await expect(
       page.locator(
@@ -42,7 +42,7 @@ test.describe("Media Sources - Basic Functionality", () => {
   }) => {
     await page.click('button:has-text("Add Source")');
 
-    // Create button should be disabled initially
+    // 作成ボタンは初期状態で無効であるべきです。
     await expect(page.locator('button:has-text("Create")')).toBeDisabled();
   });
 
@@ -51,11 +51,11 @@ test.describe("Media Sources - Basic Functionality", () => {
   }) => {
     await page.click('button:has-text("Add Source")');
 
-    // Fill required fields
+    // 必須フィールドを入力します。
     await page.fill("#source-name", "Test Source");
     await page.fill("#source-path", "/test/path");
 
-    // Create button should be enabled
+    // 作成ボタンは有効であるべきです。
     await expect(page.locator('button:has-text("Create")')).toBeEnabled();
   });
 });

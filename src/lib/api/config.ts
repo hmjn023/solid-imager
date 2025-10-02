@@ -1,6 +1,6 @@
 import type { AppConfig } from "~/lib/types";
 
-// TODO: Implement loading from and saving to a config file (e.g., config.json)
+// TODO: 設定ファイル（例: config.json）からの読み込みと保存を実装する
 
 const defaultConfig: AppConfig = {
   media: {
@@ -14,7 +14,7 @@ const defaultConfig: AppConfig = {
 };
 
 export function getConfig(): AppConfig {
-  // For now, return the default config.
+  // 現時点では、デフォルト設定を返します。
   return defaultConfig;
 }
 

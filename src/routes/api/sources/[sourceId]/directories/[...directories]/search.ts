@@ -11,7 +11,7 @@ import type { UUID } from "~/lib/utils";
  */
 export async function GET({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const directoriesPath = params.directories.join("/"); // Reconstruct path
+  const directoriesPath = params.directories.join("/"); // パスを再構築します。
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
   const result = await searchMediaInDirectory(

@@ -1,0 +1,25 @@
+Client
+clientOnly
+Wrapping components in clientOnly will cause them render only in the client. This can useful for components that interact directly with the DOM, such as jQuery, since they can not render on the server. It works similar to lazy but will only render after hydration and will never load on the server.
+
+To use clientOnly, isolate the desired component with DOM interactions in a file:
+
+const location = window.document.location;
+
+export default function ClientOnlyComponent() {
+  return <div>{location.href}</div>;
+}
+Once isolated, it can then be imported dynamically using clientOnly:
+
+import { clientOnly } from "@solidjs/start";
+
+const ClientOnlyComp = clientOnly(() => import("../ClientOnlyComp"));
+
+function IsomorphicComp() {
+  return <ClientOnlyComp />;
+}
+Note: The <ClientOnlyComp /> can take a fallback prop for when it is loading.
+
+Parameters
+Argument	Type	Description
+fn	() => Promise	Function to be run client-side only.

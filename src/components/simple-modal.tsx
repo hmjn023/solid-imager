@@ -5,7 +5,7 @@ export default function SimpleModal() {
   const [isOpen, setIsOpen] = createSignal(false);
 
   const handleClick = () => {
-    // Button clicked - could add analytics here
+    // ボタンがクリックされました - ここにアナリティクスを追加できます。
     setIsOpen(true);
   };
 

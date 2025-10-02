@@ -1,4 +1,4 @@
-// @biome-ignore lint/style/useNamingConvention: Drizzle ORM uses snake_case for table and column names.
+// @biome-ignore lint/style/useNamingConvention: Drizzle ORMはテーブル名とカラム名にsnake_caseを使用します。
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -18,7 +18,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Enums
+// 列挙型
 export const mediaSourceTypeEnum = pgEnum("media_source_type", [
   "local",
   "sftp",
@@ -36,7 +36,7 @@ export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
 ]);
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
 
-// Tables
+// テーブル
 export const mediaSources = pgTable("media_sources", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   /** 表示されるメディアソースの名前 */
@@ -317,7 +317,7 @@ export const mediaTechnicalInfo = pgTable(
     /** 知覚ハッシュ */
     hashPerceptual: text("hash_perceptual").default(""),
 
-    // Video specific
+    // 動画固有
     /** 再生時間 (秒) */
     durationSeconds: real("duration_seconds"),
     /** フレームレート (fps) */
@@ -445,7 +445,7 @@ export const collectionMedia = pgTable(
   })
 );
 
-// Relations
+// リレーション
 /** メディアソースとメディアのリレーション */
 export const mediaSourcesRelations = relations(mediaSources, ({ many }) => ({
   /** メディアソースに属するメディア */
@@ -689,7 +689,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   collections: many(collections),
 }));
 
-// Types
+// 型
 export type MediaSource = InferSelectModel<typeof mediaSources>;
 export type NewMediaSource = InferInsertModel<typeof mediaSources>;
 

@@ -1,8 +1,8 @@
 import { createSignal } from "solid-js";
 
-// A very simple in-memory job queue and state manager for thumbnail generation.
-// A more robust solution (e.g., using a proper job queue library like BullMQ)
-// would be needed for a production system.
+// サムネイル生成のための非常にシンプルなインメモリジョブキューおよび状態マネージャー。
+// より堅牢なソリューション（例: BullMQのような適切なジョブキューライブラリの使用）
+// は、本番システムには必要となるでしょう。
 
 export type ThumbnailJob = {
   mediaId: string;
@@ -16,56 +16,68 @@ export type JobStats = {
   status: "idle" | "processing" | "completed";
 };
 
-const [stats, setStats] = createSignal<JobStats>({
-  total: 0,
-  processed: 0,
-  errors: [],
-  status: "idle",
-});
+// sourceIdごとのジョブ統計を保存するためにMapを使用します。
+const jobStatsMap = new Map<string, JobStats>();
+const jobQueueMap = new Map<string, ThumbnailJob[]>();
 
-let jobQueue: ThumbnailJob[] = [];
-
-export const thumbnailJobStats = stats;
-
-export function addJobsToQueue(jobs: ThumbnailJob[]) {
-  jobQueue.push(...jobs);
-  setStats((prev) => ({ ...prev, total: prev.total + jobs.length }));
+function initializeJobStats(sourceId: string): JobStats {
+  const newStats = {
+    total: 0,
+    processed: 0,
+    errors: [],
+    status: "idle" as "idle" | "processing" | "completed",
+  };
+  jobStatsMap.set(sourceId, newStats);
+  return newStats;
 }
 
-export function startJobQueue(processor: (job: ThumbnailJob) => Promise<void>) {
-  if (stats().status === "processing") {
-    console.warn("Job queue is already running.");
+export function getThumbnailJobStats(sourceId: string): JobStats {
+  return jobStatsMap.get(sourceId) || initializeJobStats(sourceId);
+}
+
+export function addJobsToQueue(sourceId: string, jobs: ThumbnailJob[]) {
+  const currentQueue = jobQueueMap.get(sourceId) || [];
+  jobQueueMap.set(sourceId, [...currentQueue, ...jobs]);
+
+  const currentStats = getThumbnailJobStats(sourceId);
+  jobStatsMap.set(sourceId, { ...currentStats, total: currentStats.total + jobs.length });
+}
+
+export function startJobQueue(sourceId: string, processor: (job: ThumbnailJob) => Promise<void>) {
+  const currentStats = getThumbnailJobStats(sourceId);
+  if (currentStats.status === "processing") {
+    console.warn(`Job queue for source ${sourceId} is already running.`);
     return;
   }
 
-  setStats((prev) => ({ ...prev, status: "processing" }));
+  jobStatsMap.set(sourceId, { ...currentStats, status: "processing" });
 
   const run = async () => {
-    while (jobQueue.length > 0) {
-      const job = jobQueue.shift()!;
+    let queue = jobQueueMap.get(sourceId) || [];
+    while (queue.length > 0) {
+      const job = queue.shift()!;
       try {
         await processor(job);
       } catch (e: any) {
-        setStats((prev) => ({
-          ...prev,
-          errors: [...prev.errors, { file: job.mediaId, reason: e.message }],
-        }));
+        const stats = getThumbnailJobStats(sourceId);
+        jobStatsMap.set(sourceId, {
+          ...stats,
+          errors: [...stats.errors, { file: job.mediaId, reason: e.message }],
+        });
       }
-      setStats((prev) => ({ ...prev, processed: prev.processed + 1 }));
+      const stats = getThumbnailJobStats(sourceId);
+      jobStatsMap.set(sourceId, { ...stats, processed: stats.processed + 1 });
+      queue = jobQueueMap.get(sourceId) || []; // キューが変更された場合に備えて、キューを再フェッチします。
     }
 
-    setStats((prev) => ({ ...prev, status: "completed" }));
+    const stats = getThumbnailJobStats(sourceId);
+    jobStatsMap.set(sourceId, { ...stats, status: "completed" });
   };
 
   run();
 }
 
-export function resetJobQueue() {
-  jobQueue = [];
-  setStats({
-    total: 0,
-    processed: 0,
-    errors: [],
-    status: "idle",
-  });
+export function resetJobQueue(sourceId: string) {
+  jobQueueMap.delete(sourceId);
+  jobStatsMap.delete(sourceId);
 }

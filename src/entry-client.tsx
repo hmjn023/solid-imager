@@ -6,5 +6,5 @@ const app = document.getElementById("app");
 if (app) {
   mount(() => <StartClient />, app);
 } else {
-  // No-op: Element with id 'app' not found, nothing to mount.
+  // 何もしません: 'app' IDを持つ要素が見つからないため、マウントするものはありません。
 }

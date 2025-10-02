@@ -28,7 +28,7 @@ describe("listMedia Integration", () => {
       height: 200,
     },
     {
-      sourceId: "c0000000-0000-0000-0000-000000000000", // Different sourceId
+      sourceId: "c0000000-0000-0000-0000-000000000000", // 異なるsourceId
       filePath: "/another/path/image3.png",
       fileName: "image3.png",
       size: 300,
@@ -40,13 +40,13 @@ describe("listMedia Integration", () => {
   let addedMediaIds: string[] = [];
 
   beforeEach(async () => {
-    // Clean up any previous test data
+    // 以前のテストデータをクリーンアップします。
     await db.delete(medias).where(like(medias.filePath, `${testDirectory}%`));
     await db
       .delete(medias)
       .where(eq(medias.filePath, "/another/path/image3.png"));
 
-    // Add test media entries
+    // テストメディアエントリを追加します。
     for (const data of mediaEntries) {
       const added = await addMedia(data);
       addedMediaIds.push(added.id);
@@ -54,7 +54,7 @@ describe("listMedia Integration", () => {
   });
 
   afterEach(async () => {
-    // Clean up all added media after each test
+    // 各テスト後に、追加されたすべてのメディアをクリーンアップします。
     for (const id of addedMediaIds) {
       await db.delete(medias).where(eq(medias.id, id));
     }
@@ -66,7 +66,7 @@ describe("listMedia Integration", () => {
 
     expect(result).toBeDefined();
     expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBe(2); // Only two media entries are in testDirectory for testSourceId
+    expect(result.length).toBe(2); // testSourceIdのtestDirectoryには2つのメディアエントリのみが存在します。
 
     const fileNames = result.map((m) => m.fileName).sort();
     expect(fileNames).toEqual(["image1.png", "image2.png"]);

@@ -19,17 +19,17 @@ describe("deleteMedia Integration", () => {
   };
 
   beforeEach(async () => {
-    // Add an initial media entry to the database
+    // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
   afterEach(async () => {
-    // Ensure media is deleted after each test, even if test fails
+    // テストが失敗した場合でも、各テスト後にメディアが削除されることを保証します。
     try {
       await db.delete(medias).where(eq(medias.id, testMediaId));
     } catch (_error) {
-      // Ignore if already deleted by the test
+      // テストによって既に削除されている場合は無視します。
     }
   });
 
@@ -39,7 +39,7 @@ describe("deleteMedia Integration", () => {
     expect(result).toBeDefined();
     expect(result.success).toBe(true);
 
-    // Verify that the media is no longer in the database
+    // メディアがデータベースに存在しないことを確認します。
     await expect(getMedia(testSourceId, testMediaId)).rejects.toThrow(
       "Media not found"
     );

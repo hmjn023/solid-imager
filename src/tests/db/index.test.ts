@@ -65,7 +65,7 @@ describe("Media Source Database Operations", () => {
     expect(selected.name).toBe(updatedData.name);
   });
 
-  // it("should delete a media source", async () => {
+  // it("メディアソースを削除するべき", async () => {
   // 	const newMediaSource: NewMediaSource = {
   // 		name: "Test Source for Deletion",
   // 		description: "A test media source to be deleted",

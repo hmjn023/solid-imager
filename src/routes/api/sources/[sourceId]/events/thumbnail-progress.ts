@@ -1,8 +1,10 @@
 import { type APIEvent } from "solid-start/api";
 import { createEffect } from "solid-js";
-import { thumbnailJobStats } from "~/services/thumbnail-jobs";
+import { getThumbnailJobStats } from "~/services/thumbnail-jobs";
 
-export function GET({ request }: APIEvent) {
+export function GET({ params, request }: APIEvent) {
+  const sourceId = params.sourceId;
+
   const stream = new ReadableStream({
     start(controller) {
       const sendEvent = (event: string, data: any) => {
@@ -10,7 +12,7 @@ export function GET({ request }: APIEvent) {
       };
 
       createEffect(() => {
-        const stats = thumbnailJobStats();
+        const stats = getThumbnailJobStats(sourceId);
 
         if (stats.status === "idle") return;
 
@@ -27,8 +29,8 @@ export function GET({ request }: APIEvent) {
               failures: stats.errors,
             },
           });
-          // We can close the stream after completion, or keep it open for future jobs.
-          // For now, let's keep it open.
+          // 完了後にストリームを閉じることも、将来のジョブのために開いたままにすることもできます。
+          // 現時点では、開いたままにしておきます。
           // controller.close();
         }
       });

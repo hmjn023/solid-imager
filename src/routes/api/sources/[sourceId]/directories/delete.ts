@@ -10,7 +10,7 @@ import type { UUID } from "~/lib/utils";
  */
 export async function DELETE({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const { path } = await request.json(); // Assuming path is in body
+  const { path } = await request.json(); // パスがボディに含まれていると仮定します。
   const result = await deleteDirectory(sourceId, path);
   return result;
 }

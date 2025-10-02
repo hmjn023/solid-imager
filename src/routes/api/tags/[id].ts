@@ -2,12 +2,12 @@ import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { deleteTag, getTagById, updateTag } from "~/lib/api/tags";
 
-// Schema for path parameter 'id'
+// パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // Transform string ID from URL to number
+  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
 
-// Schema for PUT request body
+// PUTリクエストボディのスキーマ
 const UpdateTagBodySchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),

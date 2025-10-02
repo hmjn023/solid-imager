@@ -4,6 +4,9 @@ import sharp from "sharp";
 import type { Media } from "~/db/schema";
 import { getConfig } from "~/lib/api/config";
 
+import { selectMediasByMediaSourceId, selectMediaSourceById } from "~/db";
+import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
+
 const CACHE_DIR = ".cache/thumbnails";
 
 async function ensureCacheDir() {
@@ -15,9 +18,9 @@ function getThumbnailPath(mediaId: string): string {
 }
 
 /**
- * Generates a thumbnail for the given media item.
- * @param media - The media object from the database.
- * @param sourcePath - The absolute path of the media source directory.
+ * 指定されたメディアアイテムのサムネイルを生成します。
+ * @param media - データベースからのメディアオブジェクト。
+ * @param sourcePath - メディアソースディレクトリの絶対パス。
  */
 export async function generateThumbnail(
   media: Media,
@@ -40,14 +43,14 @@ export async function generateThumbnail(
     console.log(`Generated thumbnail for ${media.fileName}`);
   } catch (error) {
     console.error(`Failed to generate thumbnail for ${inputPath}:`, error);
-    // We throw the error to allow the caller (e.g., on-demand generation) to handle it.
+    // 呼び出し元（例: オンデマンド生成）がエラーを処理できるように、エラーをスローします。
     throw error;
   }
 }
 
 /**
- * Deletes a thumbnail file from the cache.
- * @param mediaId - The ID of the media whose thumbnail should be deleted.
+ * キャッシュからサムネイルファイルを削除します。
+ * @param mediaId - サムネイルを削除するメディアのID。
  */
 export async function deleteThumbnail(mediaId: string): Promise<void> {
   const thumbnailPath = getThumbnailPath(mediaId);
@@ -55,7 +58,7 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
     await fs.unlink(thumbnailPath);
     console.log(`Deleted thumbnail for mediaId: ${mediaId}`);
   } catch (error: any) {
-    // If the file doesn't exist, it's not an error in this context.
+    // ファイルが存在しない場合、このコンテキストではエラーではありません。
     if (error.code !== "ENOENT") {
       console.error(
         `Failed to delete thumbnail at ${thumbnailPath}:`,
@@ -64,4 +67,36 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
       throw error;
     }
   }
+}
+
+/**
+ * 指定されたソースのすべてのメディアをサムネイル生成のためにキューに入れます。
+ * @param sourceId - メディアソースのID。
+ */
+export async function generateThumbnailsForSource(sourceId: string): Promise<number> {
+  const sources = await selectMediaSourceById(sourceId);
+  if (sources.length === 0 || sources[0].type !== "local") {
+    throw new Error("Source not found or not a local source");
+  }
+  const source = sources[0];
+
+  const mediaItems = await selectMediasByMediaSourceId(sourceId);
+  if (mediaItems.length === 0) {
+    return 0;
+  }
+
+  const jobs = mediaItems.map((media) => ({
+    mediaId: media.id,
+    sourcePath: source.connectionInfo.path,
+  }));
+
+  addJobsToQueue(sourceId, jobs);
+  startJobQueue(sourceId, async (job) => {
+    const media = mediaItems.find((m) => m.id === job.mediaId);
+    if (media) {
+      await generateThumbnail(media, job.sourcePath);
+    }
+  });
+
+  return jobs.length;
 }

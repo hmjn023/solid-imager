@@ -23,7 +23,7 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
       await props.onConfirm(source.id as string);
       props.onClose();
     } catch (_error) {
-      // Error handling - could show toast notification in production
+      // エラー処理 - 本番環境ではトースト通知を表示できます。
     } finally {
       setIsDeleting(false);
     }

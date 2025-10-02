@@ -19,13 +19,13 @@ describe("updateMedia Integration", () => {
   };
 
   beforeEach(async () => {
-    // Add an initial media entry to the database
+    // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
   afterEach(async () => {
-    // Clean up the added media after each test
+    // 各テスト後に、追加されたメディアをクリーンアップします。
     if (testMediaId) {
       await db.delete(medias).where(eq(medias.id, testMediaId));
     }
@@ -47,7 +47,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia.width).toBe(updates.width);
     expect(updatedMedia.updatedAt).toBeInstanceOf(Date);
 
-    // Verify that the changes are persisted in the database
+    // 変更がデータベースに永続化されていることを確認します。
     const mediaInDb = await getMedia(testSourceId, testMediaId);
     expect(mediaInDb.fileName).toBe(updates.fileName);
     expect(mediaInDb.description).toBe(updates.description);
@@ -79,7 +79,7 @@ describe("updateMedia Integration", () => {
   });
 
   it("should throw a ZodError for invalid update data", async () => {
-    const invalidUpdates = { width: -100 }; // Invalid field
+    const invalidUpdates = { width: -100 }; // 無効なフィールド
     await expect(
       updateMedia(testSourceId, testMediaId, invalidUpdates as any)
     ).rejects.toThrow(ZodError);

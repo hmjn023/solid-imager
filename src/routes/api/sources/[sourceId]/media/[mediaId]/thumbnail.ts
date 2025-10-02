@@ -15,10 +15,10 @@ export async function GET({ params }: APIEvent) {
     const thumbnailPath = getThumbnailPath(media.id);
 
     try {
-      // Check if thumbnail exists
+      // サムネイルが存在するか確認します。
       await fs.stat(thumbnailPath);
     } catch (error) {
-      // If it doesn't exist, generate it on-demand
+      // 存在しない場合、オンデマンドで生成します。
       const sources = await selectMediaSourceById(media.sourceId);
       if (sources.length === 0 || sources[0].type !== "local") {
         return json({ error: "Source not found or not a local source" }, { status: 400 });
@@ -27,7 +27,7 @@ export async function GET({ params }: APIEvent) {
       await generateThumbnail(media, sourcePath);
     }
 
-    // Stream the file
+    // ファイルをストリームします。
     const fileStream = await fs.readFile(thumbnailPath);
     return new Response(fileStream, {
       status: 200,

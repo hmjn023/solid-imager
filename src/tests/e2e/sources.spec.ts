@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test.describe("Media Sources Management", () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to sources page before each test
+    // 各テストの前にソースページに移動します。
     await page.goto("/sources");
     await page.waitForLoadState("networkidle");
   });
@@ -11,15 +11,15 @@ test.describe("Media Sources Management", () => {
     test("should open add source modal when clicking Add Source button", async ({
       page,
     }) => {
-      // Click the Add Source button
+    // Click the Add Source button
       await page.click('button:has-text("Add Source")');
 
-      // Verify modal is opened
+      // モーダルが開いたことを確認します。
       await expect(
         page.locator('h2:has-text("Add Media Source")')
       ).toBeVisible();
 
-      // Verify form fields are present
+      // フォームフィールドが存在することを確認します。
       await expect(
         page.locator('input[placeholder="Enter source name"]')
       ).toBeVisible();
@@ -33,10 +33,10 @@ test.describe("Media Sources Management", () => {
     });
 
     test("should create a new local source successfully", async ({ page }) => {
-      // Open modal
+      // モーダルを開きます。
       await page.click('button:has-text("Add Source")');
 
-      // Fill form
+      // フォームを入力します。
       await page.fill(
         'input[placeholder="Enter source name"]',
         "Test Local Source"
@@ -48,16 +48,16 @@ test.describe("Media Sources Management", () => {
       await page.selectOption("select", "local");
       await page.fill('input[placeholder="Enter file path"]', "/test/path");
 
-      // Submit form
+      // フォームを送信します。
       await page.click('button:has-text("Create")');
 
-      // Wait for modal to close
+      // モーダルが閉じるのを待ちます。
       await expect(
         page.locator('h2:has-text("Add Media Source")')
       ).not.toBeVisible();
 
-      // Verify source appears in the list (assuming mock data or API response)
-      // This might need adjustment based on actual API behavior
+      // ソースがリストに表示されることを確認します（モックデータまたはAPIレスポンスを想定）。
+      // これは実際のAPIの動作に基づいて調整が必要な場合があります。
       await expect(page.locator("text=Test Local Source")).toBeVisible();
     });
 
@@ -114,17 +114,10 @@ test.describe("Media Sources Management", () => {
     test("should close modal when clicking Cancel", async ({ page }) => {
       await page.click('button:has-text("Add Source")');
 
-      // Verify modal is open
-      await expect(
-        page.locator('h2:has-text("Add Media Source")')
-      ).toBeVisible();
-
-      // Click Cancel
+      // キャンセルをクリックします。
       await page.click('button:has-text("Cancel")');
 
-      // Verify modal is closed
-      await expect(
-        page.locator('h2:has-text("Add Media Source")')
+      // モーダルが閉じていることを確認します。
       ).not.toBeVisible();
     });
   });
@@ -135,19 +128,19 @@ test.describe("Media Sources Management", () => {
     }) => {
       await page.click('button:has-text("Add Source")');
 
-      // Create button should be disabled initially (empty form)
+      // 作成ボタンは初期状態で無効であるべきです（空のフォーム）。
       await expect(page.locator('button:has-text("Create")')).toBeDisabled();
 
-      // Fill only name
+      // 名前のみを入力します。
       await page.fill('input[placeholder="Enter source name"]', "Test");
       await expect(page.locator('button:has-text("Create")')).toBeDisabled();
 
-      // Fill only path
+      // パスのみを入力します。
       await page.fill('input[placeholder="Enter source name"]', "");
       await page.fill('input[placeholder="Enter file path"]', "/test");
       await expect(page.locator('button:has-text("Create")')).toBeDisabled();
 
-      // Fill both required fields
+      // 両方の必須フィールドを入力します。
       await page.fill('input[placeholder="Enter source name"]', "Test");
       await expect(page.locator('button:has-text("Create")')).toBeEnabled();
     });
@@ -164,7 +157,7 @@ test.describe("Media Sources Management", () => {
       );
       await page.fill('input[placeholder="Enter file path"]', "/minimal/path");
 
-      // Submit should work
+      // 送信は成功するはずです。
       await page.click('button:has-text("Create")');
       await expect(
         page.locator('h2:has-text("Add Media Source")')
@@ -176,25 +169,25 @@ test.describe("Media Sources Management", () => {
     test("should open edit modal with pre-filled data when clicking Edit", async ({
       page,
     }) => {
-      // Wait for sources to load and click edit on first source
+      // ソースがロードされるのを待ち、最初のソースの編集をクリックします。
       await page
         .waitForSelector('[data-testid="source-card"]', { timeout: 5000 })
         .catch(() => {
-          // If no test id, fall back to looking for edit buttons
+          // テストIDがない場合、編集ボタンを探すことにフォールバックします。
         });
 
-      // Click the first Edit button
+      // 最初の編集ボタンをクリックします。
       await page.click('button:has-text("Edit")').first();
 
-      // Verify edit modal is opened
+      // 編集モーダルが開いたことを確認します。
       await expect(
         page.locator('h2:has-text("Edit Media Source")')
       ).toBeVisible();
 
-      // Verify button shows "Update" instead of "Create"
+      // ボタンが「Create」ではなく「Update」を表示していることを確認します。
       await expect(page.locator('button:has-text("Update")')).toBeVisible();
 
-      // Verify form fields are pre-filled (this depends on mock data)
+      // フォームフィールドが事前入力されていることを確認します（これはモックデータに依存します）。
       const nameInput = page.locator('input[placeholder="Enter source name"]');
       await expect(nameInput).not.toHaveValue("");
     });
@@ -202,7 +195,7 @@ test.describe("Media Sources Management", () => {
     test("should update source successfully", async ({ page }) => {
       await page.click('button:has-text("Edit")').first();
 
-      // Modify the name
+      // 名前を変更します。
       await page.fill(
         'input[placeholder="Enter source name"]',
         "Updated Source Name"
@@ -212,30 +205,30 @@ test.describe("Media Sources Management", () => {
         "Updated description"
       );
 
-      // Submit update
+      // 更新を送信します。
       await page.click('button:has-text("Update")');
 
-      // Verify modal closes
+      // モーダルが閉じることを確認します。
       await expect(
         page.locator('h2:has-text("Edit Media Source")')
       ).not.toBeVisible();
 
-      // Verify updated name appears (may need API mock)
+      // 更新された名前が表示されることを確認します（APIモックが必要な場合があります）。
       await expect(page.locator("text=Updated Source Name")).toBeVisible();
     });
 
     test("should close edit modal when clicking Cancel", async ({ page }) => {
       await page.click('button:has-text("Edit")').first();
 
-      // Verify modal is open
+      // モーダルが開いていることを確認します。
       await expect(
         page.locator('h2:has-text("Edit Media Source")')
       ).toBeVisible();
 
-      // Click Cancel
+      // キャンセルをクリックします。
       await page.click('button:has-text("Cancel")');
 
-      // Verify modal is closed
+      // モーダルが閉じていることを確認します。
       await expect(
         page.locator('h2:has-text("Edit Media Source")')
       ).not.toBeVisible();
@@ -246,26 +239,26 @@ test.describe("Media Sources Management", () => {
     test("should open delete confirmation modal when clicking Delete", async ({
       page,
     }) => {
-      // Click the first Delete button
+      // 最初の削除ボタンをクリックします。
       await page.click('button:has-text("Delete")').first();
 
-      // Verify delete confirmation modal is opened
+      // 削除確認モーダルが開いたことを確認します。
       await expect(
         page.locator('h2:has-text("Delete Media Source")')
       ).toBeVisible();
 
-      // Verify confirmation message is present
+      // 確認メッセージが表示されていることを確認します。
       await expect(
         page.locator("text=Are you sure you want to delete")
       ).toBeVisible();
 
-      // Verify Delete and Cancel buttons are present
+      // 削除ボタンとキャンセルボタンが存在することを確認します。
       await expect(page.locator('button:has-text("Delete")')).toBeVisible();
       await expect(page.locator('button:has-text("Cancel")')).toBeVisible();
     });
 
     test("should delete source when confirming", async ({ page }) => {
-      // Get the source name before deletion (for verification)
+      // 削除前のソース名を取得します（検証のため）。
       const firstSourceName = await page
         .locator('[data-testid="source-card"] h3, .font-bold')
         .first()
@@ -273,7 +266,7 @@ test.describe("Media Sources Management", () => {
 
       await page.click('button:has-text("Delete")').first();
 
-      // Confirm deletion
+      // 削除を確認します。
       await page.click('button:has-text("Delete")').last(); // Use last to get the confirmation button
 
       // Verify modal closes

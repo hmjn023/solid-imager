@@ -10,7 +10,7 @@ import type { UUID } from "~/lib/utils";
 export async function GET({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
   const url = new URL(request.url);
-  const path = url.searchParams.get("path") || undefined; // Handle ?path=parent
+  const path = url.searchParams.get("path") || undefined; // ?path=parent を処理します。
   const listing = await getDirectoryListing(sourceId, path);
   return listing;
 }

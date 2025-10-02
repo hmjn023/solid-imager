@@ -10,7 +10,7 @@ import type { UUID } from "~/lib/utils";
  */
 export async function POST({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const { path, name } = await request.json(); // Assuming path and name are in body
+  const { path, name } = await request.json(); // パスと名前がボディに含まれていると仮定します。
   const result = await createDirectory(sourceId, path, name);
   return result;
 }

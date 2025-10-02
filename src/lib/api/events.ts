@@ -1,4 +1,4 @@
 export function startSseMonitoring(_sourceId: string) {
-  // In a real implementation, this would return an SSE stream
+  // 実際の実装では、これはSSEストリームを返します。
   return { success: true, message: "SSE monitoring started" };
 }

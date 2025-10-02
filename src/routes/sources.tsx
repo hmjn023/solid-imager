@@ -10,10 +10,10 @@ export default function Sources() {
   const [editingSource, setEditingSource] = createSignal(null);
   const [deletingSource, setDeletingSource] = createSignal(null);
 
-  // Real data from API using createResource + fetch
+  // createResource + fetch を使用したAPIからの実際のデータ
   const [mediaSources, { refetch }] = createResource(sourcesApi.fetchSources);
 
-  // Fallback to mock data if API fails or returns empty
+  // APIが失敗した場合、または空を返した場合のモックデータへのフォールバック
   const mockSources = [
     {
       id: "1",
@@ -31,7 +31,7 @@ export default function Sources() {
     },
   ];
 
-  // Use real data if available, otherwise use mock data
+  // 利用可能な場合は実際のデータを使用し、それ以外の場合はモックデータを使用します。
   const displaySources = () => {
     const realData = mediaSources();
     if (realData && realData.length > 0) {
@@ -86,7 +86,7 @@ export default function Sources() {
         </button>
       </div>
 
-      {/* Sources Grid */}
+      {/* ソースグリッド */}
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <For each={displaySources()}>
           {(source) => (
@@ -99,14 +99,14 @@ export default function Sources() {
         </For>
       </div>
 
-      {/* Loading State */}
+      {/* ローディング状態 */}
       {mediaSources.loading && (
         <div class="mt-8 text-center">
           <p class="text-muted-foreground">Loading sources...</p>
         </div>
       )}
 
-      {/* Error State */}
+      {/* エラー状態 */}
       {mediaSources.error && (
         <div class="mt-8 text-center">
           <p class="text-red-500">

@@ -12,7 +12,7 @@ export type CreateSourceData = {
 export type UpdateSourceData = CreateSourceData;
 
 export const sourcesApi = {
-  // Fetch all sources
+  // すべてのソースを取得します。
   async fetchSources(): Promise<MediaSourceInfo[]> {
     const response = await fetch(`${API_BASE_URL}/sources`);
     if (!response.ok) {
@@ -21,7 +21,7 @@ export const sourcesApi = {
     return response.json();
   },
 
-  // Create new source
+  // 新しいソースを作成します。
   async createSource(sourceData: CreateSourceData): Promise<MediaSourceInfo> {
     const response = await fetch(`${API_BASE_URL}/sources`, {
       method: "POST",
@@ -36,7 +36,7 @@ export const sourcesApi = {
     return response.json();
   },
 
-  // Update existing source
+  // 既存のソースを更新します。
   async updateSource(
     sourceId: string,
     sourceData: UpdateSourceData
@@ -54,7 +54,7 @@ export const sourcesApi = {
     return response.json();
   },
 
-  // Delete source
+  // ソースを削除します。
   async deleteSource(sourceId: string): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
       method: "DELETE",

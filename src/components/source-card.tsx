@@ -24,7 +24,7 @@ export default function SourceCard(props: SourceCardProps) {
       <CardContent>
         <CardDescription>{props.mediaSource.description}</CardDescription>
         <p>Type: {props.mediaSource.type}</p>
-        {/* HACK: connectionInfo is not guaranteed to be an object with path */}
+        {/* HACK: connectionInfoはパスを持つオブジェクトである保証はありません */}
         <p>
           Path:{" "}
           {typeof props.mediaSource.connectionInfo === "object" &&
@@ -34,7 +34,7 @@ export default function SourceCard(props: SourceCardProps) {
             : "N/A"}
         </p>
       </CardContent>
-      {/* Edit and Delete buttons */}
+      {/* 編集ボタンと削除ボタン */}
       <div class="absolute top-2 right-2 z-10 flex gap-1">
         {props.onEdit && (
           <button
