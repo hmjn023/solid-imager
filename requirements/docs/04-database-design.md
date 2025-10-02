@@ -49,6 +49,7 @@ CREATE TABLE tags (
   description TEXT,                   -- タグの詳細な説明
   attribute TEXT,                     -- タグの属性や分類 (例: "style", "clothing")
   color TEXT,                         -- UIで表示する際の色 (例: "#808080")
+  source TEXT NOT NULL DEFAULT 'manual', -- タグの起源 (manual, comfyui_workflow, tagger_program_Aなど)
   created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 ```
@@ -58,6 +59,7 @@ CREATE TABLE tags (
 CREATE TABLE media_tags (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,   -- タグID
+  confidence REAL DEFAULT NULL,       -- AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
   PRIMARY KEY (media_id, tag_id)
 );
 ```
@@ -94,7 +96,6 @@ CREATE TABLE media_organization (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   category_id INTEGER REFERENCES categories(id), -- カテゴリID
   project_id INTEGER REFERENCES projects(id),   -- プロジェクトID
-  ip_id INTEGER REFERENCES ips(id), -- IP(作品)ID
   status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')) -- 状態
 );
 ```
@@ -152,7 +153,8 @@ CREATE TABLE projects (
 CREATE TABLE ips (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,          -- IP(作品)名
-  description TEXT                    -- IP(作品)の説明
+  description TEXT,
+  source TEXT NOT NULL DEFAULT 'manual' -- IPの起源 (manual, ai_generatedなど)
 );
 ```
 
@@ -162,7 +164,8 @@ CREATE TABLE characters (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,                 -- キャラクター名
   ip_id INTEGER REFERENCES ips(id) ON DELETE SET NULL, -- どのIP(作品)に属しているか
-  description TEXT,                   -- キャラクターの説明
+  description TEXT,
+  source TEXT NOT NULL DEFAULT 'manual', -- キャラクターの起源 (manual, ai_generatedなど)
   UNIQUE(name, ip_id)
 );
 ```
@@ -172,7 +175,18 @@ CREATE TABLE characters (
 CREATE TABLE media_characters (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,       -- メディアID
   character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE, -- キャラクターID
+  confidence REAL DEFAULT NULL,       -- AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
   PRIMARY KEY (media_id, character_id)
+);
+```
+
+#### media_ips テーブル
+```sql
+CREATE TABLE media_ips (
+  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
+  ip_id INTEGER NOT NULL REFERENCES ips(id) ON DELETE CASCADE,   -- IP(作品)ID
+  confidence REAL DEFAULT NULL,       -- AIがIPを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
+  PRIMARY KEY (media_id, ip_id)
 );
 ```
 

@@ -1,4 +1,8 @@
 {
   "theme": "obsidian",
-  "accentColor": "#239a82"
+  "accentColor": "#239a82",
+  "cssTheme": "Ayu Mirage",
+  "textFontFamily": "Moralerspace Neon",
+  "monospaceFontFamily": "Moralerspace Neon",
+  "interfaceFontFamily": "Moralerspace Neon"
 }
