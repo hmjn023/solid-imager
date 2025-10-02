@@ -1,13 +1,14 @@
-Building your application
-Data loading
-Edit this page
+# Building your application
+
+## Data loading
+
 SolidStart aims to make it easy to load data from your data sources to keep your UI updated with your data. For most of your data requirements, routes will likely be used to decide what data to load. SolidStart includes nested routing to help structure your application's UI in a hierarchical way, so that you can share layouts.
 
-Data loading on the client
-Solid provides a way to load data from your data sources using the createResource primitive. It takes an async function and returns a signal from it. createResource integrates with Suspense and ErrorBoundary to help manage lifecycle and error states.
+### Data loading on the client
 
-TypeScript
-JavaScript
+Solid provides a way to load data from your data sources using the `createResource` primitive. It takes an async function and returns a signal from it. `createResource` integrates with `Suspense` and `ErrorBoundary` to help manage lifecycle and error states.
+
+```typescript
 // src/routes/users.tsx
 import { For, createResource } from "solid-js";
 
@@ -21,12 +22,13 @@ export default function Page() {
 
   return <For each={users()}>{(user) => <li>{user.name}</li>}</For>;
 }
+```
+
 When fetching inside components, you can encounter unnecessary waterfalls, especially when nested under lazy loaded sections. To solve this, it is recommended to hoist the data fetching to the top of the component tree or, when in SolidStart, use the server to fetch data in a non-blocking way. For the example below we will be using the data in APIs in solid-router
 
 Using some of the features of solid-router, we can create a cache for our data:
 
-TypeScript
-JavaScript
+```typescript
 // /routes/users.tsx
 import { For } from "solid-js";
 import { createAsync, query } from "@solidjs/router";
@@ -47,16 +49,19 @@ export default function Page() {
 
   return <For each={users()}>{(user) => <li>{user.name}</li>}</For>;
 }
+```
+
 With this method, however, there are some caveats to be aware of:
 
-The preload function is called once per route, which is the first time the user comes to that route. Following that, the fine-grained resources that remain alive synchronize with state/url changes to refetch data when needed. If the data needs a refresh, the refetch function returned in the createResource can be used.
-Before the route is rendered, the preload function is called. It does not share the same context as the route. The context tree that is exposed to the preload function is anything above the Page component.
-On both the server and the client, the preload function is called. The resources can avoid refetching if they serialized their data in the server render. The server-side render will only wait for the resources to fetch and serialize if the resource signals are accessed under a Suspense boundary.
-Data loading always on the server
-An advantage of being a full-stack JavaScript framework is that it is easy to write data loading code that can run both on the server and client. SolidStart offers a way to do that and more. Through the "use server" comment you can tell the bundler to create an RPC and not include the code in the clients bundle. This lets you write code that only runs on the server without needing to create an API route for it. For example, it could be database access or internal APIs, or when you sit within your function and need to use your server.
+*   The `preload` function is called once per route, which is the first time the user comes to that route. Following that, the fine-grained resources that remain alive synchronize with state/url changes to refetch data when needed. If the data needs a refresh, the `refetch` function returned in the `createResource` can be used.
+*   Before the route is rendered, the `preload` function is called. It does not share the same context as the route. The context tree that is exposed to the `preload` function is anything above the Page component.
+*   On both the server and the client, the `preload` function is called. The resources can avoid refetching if they serialized their data in the server render. The server-side render will only wait for the resources to fetch and serialize if the resource signals are accessed under a `Suspense` boundary.
 
-TypeScript
-JavaScript
+### Data loading always on the server
+
+An advantage of being a full-stack JavaScript framework is that it is easy to write data loading code that can run both on the server and client. SolidStart offers a way to do that and more. Through the `"use server"` comment you can tell the bundler to create an RPC and not include the code in the clients bundle. This lets you write code that only runs on the server without needing to create an API route for it. For example, it could be database access or internal APIs, or when you sit within your function and need to use your server.
+
+```typescript
 // /routes/users.tsx
 import { For } from "solid-js";
 import { createAsync, query } from "@solidjs/router";
@@ -77,5 +82,6 @@ export default function Page() {
 
   return <For each={users()}>{(user) => <li>{user.name}</li>}</For>;
 }
-Report an issue with this page
+```
 
+Report an issue with this page
