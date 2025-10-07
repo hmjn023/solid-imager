@@ -15,19 +15,16 @@
 - 手動トリガー: 再生成API提供
 
 #### 進捗通知（SSE）
-```typescript
-interface ThumbnailProgress {
-  type: 'thumbnail_progress';
-  sourceId: string;
-  status: 'started' | 'processing' | 'completed' | 'error';
-  progress: {
-    current: number;    // 処理済みメディア数
-    total: number;      // 総メディア数
-    currentFile?: string;
-  };
-  error?: string;
-}
-```
+
+#### API関数
+- `ThumbnailService.getAllThumbnailLinks(sourceId: UUID)`
+- `ThumbnailService.getMediaThumbnail(sourceId: UUID, mediaId: UUID)`
+- `ThumbnailService.startThumbnailGeneration(sourceId: UUID)`
+- `ThumbnailService.clearThumbnailCache(sourceId: UUID)`
+
+#### DB関数
+- `db.selectMediaBySourceId(sourceId)`
+- `db.selectMediaById(mediaId)`
 
 ### 3. メディアメタデータ抽出機能
 
@@ -51,6 +48,14 @@ interface MediaMetadata {
 4. その他キーはテキストのまま
 5. メタデータが存在しない場合は空オブジェクト返却
 
+#### API関数
+- `MediaService.getMediaMetadata(sourceId: UUID, mediaId: UUID)`
+- `MediaService.updateMediaMetadata(sourceId: UUID, mediaId: UUID, metadata: any)`
+
+#### DB関数
+- `db.selectMediaGenerationInfoById(mediaId)`
+- `db.updateMediaGenerationInfo(mediaId, ...)`
+
 ### 4. SSE機能
 
 #### 対象範囲
@@ -58,14 +63,6 @@ interface MediaMetadata {
 - SFTP/S3は非対応
 
 #### データ構造
-```typescript
-interface FileSystemEvent {
-  type: 'added' | 'deleted' | 'modified';
-  sourceId: string;
-  filePath: string;    // 相対パス
-  timestamp: Date;
-}
-```
 
 #### 監視仕様
 - ライブラリ: chokidar でファイルシステム監視
@@ -73,31 +70,14 @@ interface FileSystemEvent {
 - 範囲: サブディレクトリも再帰的に監視
 - エラー: 非localソースは "ローカルファイルソースのみ対応" エラー
 
+#### API関数
+- `EventService.startSseMonitoring(sourceId: UUID)`
+- `EventService.getThumbnailProgressEvents(sourceId: UUID)`
+
+#### DB関数
+- `db.selectThumbnailJobStatus(sourceId)` (if such a table exists)
+
 ### 5. メディアアップロード機能
-
-#### リクエスト形式（multipart/form-data）
-```typescript
-interface UploadRequest {
-  file: File;                    // アップロードファイル
-  filename?: string;             // カスタムファイル名
-  autoIncrement?: boolean;       // 自動インクリメント有効化
-  description?: string;          // メディア説明
-  sourceUrl?: string;            // 取得元リンク
-  overwrite?: boolean;           // 上書き許可
-}
-```
-
-#### レスポンス形式
-```typescript
-interface UploadResponse {
-  success: boolean;
-  filePath: string;              // 保存されたパス
-  conflict?: {                   // 重複時
-    existingFile: string;
-    suggestedName: string;
-  }
-}
-```
 
 #### 対応状況
 - **Phase 1**: `type: 'local'` のみ対応
@@ -108,64 +88,34 @@ interface UploadResponse {
 - `autoIncrement: true` 時は `media_001.png`, `media_002.png` 形式
 - 重複時は `conflict` 情報を返してユーザー確認要求
 
+#### API関数
+- `MediaService.uploadNewMedia(sourceId: UUID, uploadData: { file: File, filename?: string, autoIncrement?: boolean, description?: string, sourceUrl?: string, overwrite?: boolean })`
+
+#### DB関数
+- `db.insertMedia(...)`
+
 ### 6. 設定管理機能
 
 #### 設定構造
-```typescript
-interface AppConfig {
-  // サーバー設定
-  server?: {
-    port?: number;
-    host?: string;
-  };
-  
-  // メディア処理設定
-  media?: {
-    supportedFormats?: string[];     // ['png', 'jpg', 'jpeg', 'webp'] (将来: 動画・音声も)
-    thumbnailSizes?: number[];       // [200, 400, 800]
-    cacheDirectory?: string;
-    autoGenerate?: boolean;          // ソース追加時の自動生成
-    maxConcurrentJobs?: number;      // 同時生成数制限
-    // 将来拡張: videoThumbnailTime?, audioWaveform? 等
-  };
-  
-  // アップロード設定
-  upload?: {
-    maxFileSize?: number;           // バイト数
-    allowOverwrite?: boolean;
-  };
-  
-  // 拡張用
-  [key: string]: any;
-}
-```
 
 #### ファイル保存
 - 保存場所: プロジェクトルート `config.json`
 - フォーマット: JSON形式
 - 自動バックアップ: 更新時に `config.json.backup` 作成
 
+#### API関数
+- `ConfigService.getAppConfig()`
+- `ConfigService.updateAppConfig(configData: AppConfig)`
+- `ConfigService.resetAppConfig()`
+
+#### DB関数
+- *直接的なDB操作なし（ファイルI/O）*
+
 ### 7. メディアソート・検索機能
 
 #### ソート条件
-```typescript
-interface SortOptions {
-  field: 'name' | 'createdAt' | 'modifiedAt' | 'fileSize';
-  order: 'asc' | 'desc';
-}
-```
 
 #### 検索条件
-```typescript
-interface SearchOptions {
-  tags?: string[];        // タグ検索（AND/OR）
-  filename?: string;      // ファイル名部分一致
-  dateRange?: {          // 日付範囲
-    from?: Date;
-    to?: Date;
-  };
-}
-```
 
 #### 実装方針
 - **Phase 1**: ファイルシステムベース（都度メタデータ読み取り）
@@ -173,28 +123,17 @@ interface SearchOptions {
 - ページネーション対応（デフォルト50件）
 - タグ検索は AND 条件で実装
 
+#### API関数
+- `MediaService.searchMedia(sourceId: UUID, searchOptions: SearchOptions)`
+- `MediaService.searchMediaInDirectory(sourceId: UUID, directoriesPath: string, searchOptions: SearchOptions)`
+- `SearchService.globalSearchMedia(searchOptions: SearchOptions)`
+
+#### DB関数
+- `db.searchMedia(sourceId, ...)`
+- `db.searchMediaInDirectory(sourceId, directoriesPath, ...)`
+- `db.globalSearchMedia(...)`
+
 ### 8. メディア情報編集機能
-
-#### リクエスト形式
-```typescript
-interface UpdateMediaRequest {
-  filename?: string;        // ファイル名変更（実ファイルもリネーム）
-  description?: string;     // メディア説明
-  sourceUrl?: string;       // 取得元リンク
-  tags?: string[];         // タグ配列（完全置換）
-}
-```
-
-#### レスポンス形式
-```typescript
-interface UpdateMediaResponse {
-  success: boolean;
-  updatedFields: string[];  // 変更されたフィールド一覧
-  oldFilePath?: string;     // ファイル名変更時の旧パス
-  newFilePath?: string;     // ファイル名変更時の新パス
-  warnings?: string[];      // 重複等の注意事項
-}
-```
 
 #### ファイル名変更仕様
 - 実際のファイルシステムでもリネーム実行
@@ -206,41 +145,227 @@ interface UpdateMediaResponse {
 - 新しいタグは自動でtagsテーブルに作成
 - media_tagsテーブルは完全置換（既存削除→新規追加）
 
+#### API関数
+- `MediaService.updateMedia(sourceId: UUID, mediaId: UUID, mediaData: { filename?: string, description?: string, sourceUrl?: string, tags?: string[] })` (PUT用 - 完全更新)
+
+#### DB関数
+- `db.updateMedia(mediaId, ...)`
+
 ### 9. ディレクトリ管理機能
 
 #### 対応範囲
 - **Phase 1**: `type: 'local'` のみ対応
 - **Phase 2**: SFTP/S3 対応予定
 
-#### 作成機能
-```typescript
-interface CreateDirectoryRequest {
-  name: string;          // 作成するディレクトリ名
-  recursive?: boolean;   // 親ディレクトリも作成
-}
-
-interface CreateDirectoryResponse {
-  success: boolean;
-  fullPath: string;      // 作成されたフルパス
-  created: string[];     // 実際に作成されたディレクトリ一覧
-}
-```
-
-#### 削除機能
-```typescript
-interface DeleteDirectoryRequest {
-  force?: boolean;       // 空でなくても削除
-}
-
-interface DeleteDirectoryResponse {
-  success: boolean;
-  deletedFiles?: number; // 削除されたメディア数
-  warnings?: string[];   // 警告メッセージ
-}
-```
-
 #### 削除処理詳細
 1. 空でないディレクトリは `force: true` 必須
 2. 削除対象メディアをDBから検索・削除
 3. サムネイルキャッシュも連動クリーンアップ
 4. 実際のディレクトリ削除実行
+
+#### API関数
+- `DirectoryService.getDirectoryTree(sourceId: UUID)`
+- `DirectoryService.createDirectory(sourceId: UUID, directoryData: { path: string, name: string })`
+- `DirectoryService.deleteDirectory(sourceId: UUID, directoryPath: string)`
+- `DirectoryService.updateDirectory(sourceId: UUID, directoryData: { oldPath: string, newPath: string })`
+- `DirectoryService.listMediaInSubdirectory(sourceId: UUID, directoriesPath: string)`
+
+#### DB関数
+- `db.selectMediaSourceById(sourceId)`
+- `db.deleteMediaByPath(sourceId, directoryPath)`
+
+### 10. カテゴリ管理機能
+
+#### 概要
+メディアを分類するためのカテゴリのCRUD操作を提供します。
+
+#### API関数
+- `CategoryService.getAllCategories()`
+- `CategoryService.createCategory(categoryData: { name: string, description?: string, color?: string, parentId?: number })`
+- `CategoryService.getCategoryDetails(categoryId: number)`
+- `CategoryService.updateCategory(categoryId: number, categoryData: { name?: string, description?: string, color?: string, parentId?: number })`
+- `CategoryService.deleteCategory(categoryId: number)`
+
+#### DB関数
+- `db.selectCategories()`
+- `db.insertCategory(...)`
+- `db.selectCategoryById(categoryId)`
+- `db.updateCategory(categoryId, ...)`
+- `db.deleteCategory(categoryId)`
+
+### 11. キャラクター管理機能
+
+#### 概要
+メディアに登場するキャラクターのCRUD操作を提供します。
+
+#### API関数
+- `CharacterService.getAllCharacters()`
+- `CharacterService.createCharacter(characterData: { name: string, ipId?: number, description?: string })`
+- `CharacterService.getCharacterDetails(characterId: number)`
+- `CharacterService.updateCharacter(characterId: number, characterData: { name?: string, ipId?: number, description?: string })`
+- `CharacterService.deleteCharacter(characterId: number)`
+
+#### DB関数
+- `db.selectCharacters()`
+- `db.insertCharacter(...)`
+- `db.selectCharacterById(characterId)`
+- `db.updateCharacter(characterId, ...)`
+- `db.deleteCharacter(characterId)`
+
+### 12. IP (知的財産) 管理機能
+
+#### 概要
+メディアが関連する作品やシリーズなどの知的財産（IP）のCRUD操作を提供します。
+
+#### API関数
+- `IpService.getAllIps()`
+- `IpService.createIp(ipData: { name: string, description?: string })`
+- `IpService.getIpDetails(ipId: number)`
+- `IpService.updateIp(ipId: number, ipData: { name?: string, description?: string })`
+- `IpService.deleteIp(ipId: number)`
+
+#### DB関数
+- `db.selectIps()`
+- `db.insertIp(...)`
+- `db.selectIpById(ipId)`
+- `db.updateIp(ipId, ...)`
+- `db.deleteIp(ipId)`
+
+### 13. ユーザー管理機能
+
+#### 概要
+システムを利用するユーザーのCRUD操作を提供します。
+
+#### API関数
+- `UserService.getAllUsers()`
+- `UserService.createUser(userData: { name: string, email: string, password?: string })`
+- `UserService.getUserDetails(userId: UUID)`
+- `UserService.updateUser(userId: UUID, userData: { name?: string, email?: string, password?: string })`
+- `UserService.deleteUser(userId: UUID)`
+
+#### DB関数
+- `db.selectUsers()`
+- `db.insertUser(...)`
+- `db.selectUserById(userId)`
+- `db.updateUser(userId, ...)`
+- `db.deleteUser(userId)`
+
+### 14. コレクション管理機能
+
+#### 概要
+ユーザーが作成するメディアのまとまり（コレクション）のCRUD操作と、コレクション内のメディア管理を提供します。
+
+#### API関数
+- `CollectionService.getAllCollections()`
+- `CollectionService.createCollection(collectionData: { userId: UUID, name: string, description?: string })`
+- `CollectionService.getCollectionDetails(collectionId: UUID)`
+- `CollectionService.updateCollection(collectionId: UUID, collectionData: { userId?: UUID, name?: string, description?: string })`
+- `CollectionService.deleteCollection(collectionId: UUID)`
+- `CollectionService.addMediaToCollection(collectionId: UUID, mediaId: UUID, displayOrder?: number)`
+- `CollectionService.removeMediaFromCollection(collectionId: UUID, mediaId: UUID)`
+
+#### DB関数
+- `db.selectCollections()`
+- `db.insertCollection(...)`
+- `db.selectCollectionById(collectionId)`
+- `db.updateCollection(collectionId, ...)`
+- `db.deleteCollection(collectionId)`
+- `db.insertCollectionMedia(collectionId, mediaId, ...)`
+- `db.deleteCollectionMedia(collectionId, mediaId)`
+
+### 15. バルク操作機能
+
+#### 概要
+複数メディアの一括編集、削除、移動、タグ付けなど、効率的なメディア管理操作を提供します。
+
+#### API関数
+- `BulkOperationService.bulkEditMedia(sourceId: UUID, mediaIds: UUID[], updates: any)`
+- `BulkOperationService.bulkDeleteMedia(sourceId: UUID, mediaIds: UUID[])`
+- `BulkOperationService.bulkMoveMedia(sourceId: UUID, mediaIds: UUID[], destinationPath: string)`
+- `BulkOperationService.bulkTagMedia(sourceId: UUID, mediaIds: UUID[], tagsToAdd: number[], tagsToRemove: number[])`
+
+#### DB関数
+- `db.bulkUpdateMedia(sourceId, mediaIds, ...)`
+- `db.bulkDeleteMedia(sourceId, mediaIds)`
+- `db.bulkUpdateMediaPaths(sourceId, mediaIds, ...)`
+- `db.bulkAddMediaTags(sourceId, mediaIds, tagsToAdd)`
+- `db.bulkRemoveMediaTags(sourceId, mediaIds, tagsToRemove)`
+
+### 16. データ移行・同期機能
+
+#### 概要
+メディアソースのエクスポート、インポート、スキャン、複製など、データ移行と同期に関する機能を提供します。
+
+#### API関数
+- `DataMigrationService.exportSource(sourceId: UUID, format: 'zip')`
+- `DataMigrationService.importDataIntoSource(sourceId: UUID, importData: any)`
+- `DataMigrationService.scanSource(sourceId: UUID)`
+- `DataMigrationService.cloneSource(sourceId: UUID, newName: string)`
+
+#### DB関数
+- `db.selectMediaSourceData(sourceId)`
+- `db.upsertMediaSourceData(sourceId, importData)`
+- `db.selectMediaSourceById(sourceId)`
+- `db.reconcileMediaSource(sourceId, fileSystemChanges)`
+- `db.insertMediaSource(...)`
+- `db.cloneMediaData(sourceId, newSourceId)`
+
+### 17. 内部ヘルパー関数 (Internal Helper Functions)
+
+API関数やDB関数をサポートする、より低レベルの内部関数群です。
+
+#### 17.1. ファイルシステム / ストレージドライバー
+異なるストレージタイプ（ローカル、SFTP、S3）との対話を抽象化します。
+
+- `LocalDriver.readFile(path: string)`
+- `LocalDriver.writeFile(path: string, content: Buffer)`
+- `LocalDriver.deleteFile(path: string)`
+- `LocalDriver.listDirectory(path: string)`
+- `LocalDriver.createDirectory(path: string)`
+- `LocalDriver.deleteDirectory(path: string)`
+- `LocalDriver.renamePath(oldPath: string, newPath: string)`
+- `SftpDriver.connect(connectionInfo: SftpConnection)`
+- `SftpDriver.readFile(connectionInfo: SftpConnection, remotePath: string)`
+- `SftpDriver.writeFile(connectionInfo: SftpConnection, remotePath: string, content: Buffer)`
+- `SftpDriver.deleteFile(connectionInfo: SftpConnection, remotePath: string)`
+- `SftpDriver.listDirectory(connectionInfo: SftpConnection, remotePath: string)`
+- `S3Driver.init(connectionInfo: S3Connection)`
+- `S3Driver.getObject(connectionInfo: S3Connection, key: string)`
+- `S3Driver.putObject(connectionInfo: S3Connection, key: string, content: Buffer)`
+- `S3Driver.deleteObject(connectionInfo: S3Connection, key: string)`
+- `S3Driver.listObjects(connectionInfo: S3Connection, prefix: string)`
+
+#### 17.2. メディア処理 / 情報抽出
+メディアファイル固有の処理（サムネイル生成、メタデータ抽出など）を行います。
+
+- `ImageProcessor.generateThumbnail(mediaPath: string, outputPath: string, size: number)`
+- `ImageProcessor.extractMetadata(mediaPath: string)`
+- `ImageProcessor.getDimensions(mediaPath: string)`
+- `VideoProcessor.generateThumbnail(videoPath: string, outputPath: string, time: string)`
+- `VideoProcessor.extractMetadata(videoPath: string)`
+- `AudioProcessor.generateWaveform(audioPath: string, outputPath: string)`
+- `AudioProcessor.extractMetadata(audioPath: string)`
+
+#### 17.3. データ変換 / 検証
+データの整合性を確保し、異なる層（DB、APIレスポンス）向けにデータを準備します。
+
+- `SchemaValidator.validate(schema: ZodSchema, data: any)`
+- `DataTransformer.toApiResponse(dbRecord: any)`
+- `DataTransformer.fromApiRequest(apiPayload: any)`
+
+#### 17.4. ジョブキュー / バックグラウンド処理
+サムネイル生成やSSE監視などの非同期タスクを管理します。
+
+- `JobQueue.addThumbnailJob(mediaId: UUID, sourceId: UUID)`
+- `JobQueue.processNextJob()`
+- `SseManager.sendEvent(sourceId: UUID, eventType: string, data: any)`
+- `SseManager.monitorFileSystem(sourceId: UUID, path: string)`
+
+#### 17.5. ユーティリティ関数
+一般的なヘルパー関数です。
+
+- `PathUtils.resolveRelativePath(basePath: string, relativePath: string)`
+- `PathUtils.getFileName(filePath: string)`
+- `PathUtils.getFileExtension(filePath: string)`
+- `HashUtils.generateMd5(filePath: string)`
+- `HashUtils.generatePerceptualHash(filePath: string)`
