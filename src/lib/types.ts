@@ -59,6 +59,14 @@ export type MediaUpdateData = {
   tags?: string[]; // Assuming tags are passed as string names for update
 };
 
+export type MediaMetadata = {
+  prompt?: object;
+  workflow?: object;
+  parameters?: string;
+  extractedTags?: string[]; // Add extracted tags
+  [key: string]: any;
+};
+
 export type MediaSearchParams = Record<string, string | number | boolean>;
 
 export type UploadRequest = {
