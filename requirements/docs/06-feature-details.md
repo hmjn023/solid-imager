@@ -26,6 +26,46 @@
 - `db.selectMediaBySourceId(sourceId)`
 - `db.selectMediaById(mediaId)`
 
+### 19. ワークフロー・自動化機能
+
+#### 概要
+バックグラウンドタスクやジョブの管理、AIによる自動タグ付けなどの自動化機能を提供します。
+
+#### API関数
+- `WorkflowService.getJobList()`
+- `WorkflowService.cancelJob(jobId: number)`
+- `WorkflowService.autoTagMedia(sourceId: UUID)`
+
+#### DB関数
+- `db.insertMediaTags(...)`
+
+### 20. フィルタ・プリセット機能
+
+#### 概要
+検索条件の保存と再利用、ランダムなメディアや最近のメディアの取得機能を提供します。
+
+#### API関数
+- `FilterPresetService.getPresets()`
+- `FilterPresetService.savePreset(presetData: { name: string, conditions: any })`
+- `MediaService.getRandomMedia(sourceId: UUID)`
+- `MediaService.getRecentMedia(sourceId: UUID)`
+
+#### DB関数
+- `db.selectRecentMedia(sourceId)`
+
+### 21. 外部連携機能
+
+#### 概要
+ComfyUIやDiscordなどの外部サービスとの連携機能を提供します。
+
+#### API関数
+- `IntegrationService.uploadToComfyUi(mediaId: UUID, comfyUiUrl: string)`
+- `IntegrationService.getComfyUiWorkflows()`
+- `IntegrationService.sendDiscordNotification(message: string, webhookUrl: string)`
+
+#### DB関数
+- `db.selectMediaById(mediaId)`
+
 ### 3. メディアメタデータ抽出機能
 
 #### データ構造
@@ -48,6 +88,9 @@ interface MediaMetadata {
 4. その他キーはテキストのまま
 5. メタデータが存在しない場合は空オブジェクト返却
 
+#### タグ抽出
+ワークフローデータ（特にComfyUIのワークフローJSON）から、特定のノードや設定に基づいてタグを自動的に抽出します。抽出されたタグは `MediaMetadata.extractedTags` に保存されます。
+
 #### API関数
 - `MediaService.getMediaMetadata(sourceId: UUID, mediaId: UUID)`
 - `MediaService.updateMediaMetadata(sourceId: UUID, mediaId: UUID, metadata: any)`
@@ -55,6 +98,10 @@ interface MediaMetadata {
 #### DB関数
 - `db.selectMediaGenerationInfoById(mediaId)`
 - `db.updateMediaGenerationInfo(mediaId, ...)`
+
+#### 内部ヘルパー関数
+- `ImageProcessor.extractMetadata(mediaPath: string)`
+- `WorkflowTagExtractor.extractTags(workflowJson: object)`
 
 ### 4. SSE機能
 
@@ -301,6 +348,7 @@ interface MediaMetadata {
 - `DataMigrationService.importDataIntoSource(sourceId: UUID, importData: any)`
 - `DataMigrationService.scanSource(sourceId: UUID)`
 - `DataMigrationService.cloneSource(sourceId: UUID, newName: string)`
+- `DataMigrationService.downloadMedia(sourceId: UUID, mediaId: UUID)`
 
 #### DB関数
 - `db.selectMediaSourceData(sourceId)`
@@ -309,6 +357,86 @@ interface MediaMetadata {
 - `db.reconcileMediaSource(sourceId, fileSystemChanges)`
 - `db.insertMediaSource(...)`
 - `db.cloneMediaData(sourceId, newSourceId)`
+- `db.selectMediaById(mediaId)`
+
+### 17. 内部ヘルパー関数 (Internal Helper Functions)
+
+API関数やDB関数をサポートする、より低レベルの内部関数群です。
+
+#### 17.1. ファイルシステム / ストレージドライバー
+異なるストレージタイプ（ローカル、SFTP、S3）との対話を抽象化します。
+
+- `LocalDriver.readFile(path: string)`
+- `LocalDriver.writeFile(path: string, content: Buffer)`
+- `LocalDriver.deleteFile(path: string)`
+- `LocalDriver.listDirectory(path: string)`
+- `LocalDriver.createDirectory(path: string)`
+- `LocalDriver.deleteDirectory(path: string)`
+- `LocalDriver.renamePath(oldPath: string, newPath: string)`
+- `SftpDriver.connect(connectionInfo: SftpConnection)`
+- `SftpDriver.readFile(connectionInfo: SftpConnection, remotePath: string)`
+- `SftpDriver.writeFile(connectionInfo: SftpConnection, remotePath: string, content: Buffer)`
+- `SftpDriver.deleteFile(connectionInfo: SftpConnection, remotePath: string)`
+- `SftpDriver.listDirectory(connectionInfo: SftpConnection, remotePath: string)`
+- `S3Driver.init(connectionInfo: S3Connection)`
+- `S3Driver.getObject(connectionInfo: S3Connection, key: string)`
+- `S3Driver.putObject(connectionInfo: S3Connection, key: string, content: Buffer)`
+- `S3Driver.deleteObject(connectionInfo: S3Connection, key: string)`
+- `S3Driver.listObjects(connectionInfo: S3Connection, prefix: string)`
+
+#### 17.2. メディア処理 / 情報抽出
+メディアファイル固有の処理（サムネイル生成、メタデータ抽出など）を行います。
+
+- `ImageProcessor.generateThumbnail(mediaPath: string, outputPath: string, size: number)`
+- `ImageProcessor.extractMetadata(mediaPath: string)`
+- `ImageProcessor.getDimensions(mediaPath: string)`
+- `VideoProcessor.generateThumbnail(videoPath: string, outputPath: string, time: string)`
+- `VideoProcessor.extractMetadata(videoPath: string)`
+- `AudioProcessor.generateWaveform(audioPath: string, outputPath: string)`
+- `AudioProcessor.extractMetadata(audioPath: string)`
+
+#### 17.3. データ変換 / 検証
+データの整合性を確保し、異なる層（DB、APIレスポンス）向けにデータを準備します。
+
+- `SchemaValidator.validate(schema: ZodSchema, data: any)`
+- `DataTransformer.toApiResponse(dbRecord: any)`
+- `DataTransformer.fromApiRequest(apiPayload: any)`
+
+#### 17.4. ジョブキュー / バックグラウンド処理
+サムネイル生成やSSE監視などの非同期タスクを管理します。
+
+- `JobQueue.addThumbnailJob(mediaId: UUID, sourceId: UUID)`
+- `JobQueue.processNextJob()`
+- `SseManager.sendEvent(sourceId: UUID, eventType: string, data: any)`
+- `SseManager.monitorFileSystem(sourceId: UUID, path: string)`
+
+#### 17.5. ユーティリティ関数
+一般的なヘルパー関数です。
+
+- `PathUtils.resolveRelativePath(basePath: string, relativePath: string)`
+- `PathUtils.getFileName(filePath: string)`
+- `PathUtils.getFileExtension(filePath: string)`
+- `HashUtils.generateMd5(filePath: string)`
+- `HashUtils.generatePerceptualHash(filePath: string)`
+
+### 18. 統計・分析機能
+
+#### 概要
+メディアの利用状況やシステム全体のパフォーマンスに関するデータ分析と監視機能を提供します。
+
+#### API関数
+- `AnalyticsService.getSourceStats(sourceId: UUID)`
+- `AnalyticsService.getGlobalStats()`
+- `AnalyticsService.getDuplicateMedia(sourceId: UUID)`
+- `AnalyticsService.getSimilarMedia(sourceId: UUID, mediaPath: string)`
+- `AnalyticsService.getPopularMedia()`
+
+#### DB関数
+- `db.selectSourceStats(sourceId)`
+- `db.selectGlobalStats()`
+- `db.findDuplicateMedia(sourceId)`
+- `db.findSimilarMedia(sourceId, mediaPath)`
+- `db.selectPopularMedia()`
 
 ### 17. 内部ヘルパー関数 (Internal Helper Functions)
 

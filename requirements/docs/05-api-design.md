@@ -155,9 +155,42 @@ POST   /api/sources/:sourceId/media/bulk-tag    # 複数メディアを一括タ
 #### データ移行・同期
 ```
 GET    /api/sources/:sourceId/export?format=zip # メディアソースをアーカイブとしてエクスポートします。(sourceId: UUID)
+POST   /api/sources/:sourceId/import            # 既存のメディアソースにデータをインポートします（新しいメディアの追加、既存メディアの更新、外部ソースからのデータマージなど）。(sourceId: UUID, body: { url?: string, file?: File })
 POST   /api/sources/:sourceId/sync              # 他の（クライアントの同じIDを持つ）ソースとの同期を想定し、概ね同じファイルを持つソースとの間でデータをマージまたは更新します。(sourceId: UUID, body: { data: any })
 POST   /api/sources/:sourceId/scan              # メディアソースの手動スキャンを実行します。(sourceId: UUID)
 POST   /api/sources/clone/:sourceId             # メディアソースを複製します。(sourceId: UUID, body: { newName: string })
+GET    /api/sources/:sourceId/media/:mediaId/download # 特定のメディアをダウンロードします。(sourceId: UUID, mediaId: UUID)
+```
+
+#### 統計・分析機能
+```
+GET    /api/sources/:sourceId/stats             # ソース統計（メディア数、サイズ等）を取得します。(sourceId: UUID)
+GET    /api/stats/global                        # 全体統計を取得します。
+GET    /api/sources/:sourceId/media/duplicates  # 重複メディアを検出します。(sourceId: UUID)
+GET    /api/sources/:sourceId/media/*/similar   # 類似メディアを検索します。(sourceId: UUID, mediaPath: path)
+GET    /api/analytics/popular                   # 人気メディアランキングを取得します。
+```
+
+#### ワークフロー・自動化機能
+```
+GET    /api/jobs                                # ジョブ一覧とステータスを取得します。
+POST   /api/jobs/:id/cancel                     # 特定のジョブをキャンセルします。(id: number)
+POST   /api/sources/:sourceId/auto-tag          # AIによる自動タグ付けを実行します。(sourceId: UUID)
+```
+
+#### フィルタ・プリセット機能
+```
+GET    /api/filters/presets                     # 保存済みフィルタの一覧を取得します。
+POST   /api/filters/presets                     # フィルタを保存します。(body: { name: string, conditions: any })
+GET    /api/sources/:sourceId/media/random      # ランダムなメディアを取得します。(sourceId: UUID)
+GET    /api/sources/:sourceId/media/recent      # 最近追加されたメディアを取得します。(sourceId: UUID)
+```
+
+#### 外部連携機能
+```
+POST   /api/integrations/comfyui/upload         # ComfyUIに直接メディアをアップロードします。(body: { mediaId: UUID, comfyUiUrl: string })
+GET    /api/integrations/comfyui/workflows      # ComfyUIのワークフロー一覧を取得します。
+POST   /api/integrations/discord/webhook        # Discordに通知を送信します。(body: { message: string, webhookUrl: string })
 ```
 
 #### データ構造
