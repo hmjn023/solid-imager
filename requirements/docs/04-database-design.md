@@ -3,7 +3,7 @@
 
 ### 基本テーブル構成
 
-#### media_sources テーブル
+#### media_sources テーブル -- メディアソース
 ```sql
 CREATE TABLE media_sources (
   id UUID PRIMARY KEY,
@@ -16,7 +16,7 @@ CREATE TABLE media_sources (
 );
 ```
 
-#### media テーブル
+#### media テーブル -- メディア
 ```sql
 CREATE TABLE media (
   id UUID PRIMARY KEY,
@@ -41,7 +41,7 @@ CREATE TABLE media (
 );
 ```
 
-#### tags テーブル
+#### tags テーブル -- タグ
 ```sql
 CREATE TABLE tags (
   id SERIAL PRIMARY KEY,
@@ -54,7 +54,7 @@ CREATE TABLE tags (
 );
 ```
 
-#### media_tags テーブル
+#### media_tags テーブル -- メディアとタグの中間テーブル
 ```sql
 CREATE TABLE media_tags (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -66,7 +66,7 @@ CREATE TABLE media_tags (
 
 ### 拡張テーブル
 
-#### media_details テーブル (評価・管理系)
+#### media_details テーブル (評価・管理系) -- メディアの詳細情報
 ```sql
 CREATE TABLE media_details (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -77,7 +77,7 @@ CREATE TABLE media_details (
 );
 ```
 
-#### media_generation_info テーブル (AI/機械学習系)
+#### media_generation_info テーブル (AI/機械学習系) -- メディアの生成情報
 ```sql
 CREATE TABLE media_generation_info (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -90,7 +90,7 @@ CREATE TABLE media_generation_info (
 );
 ```
 
-#### media_organization テーブル (分類・整理系)
+#### media_organization テーブル (分類・整理系) -- メディアの組織情報
 ```sql
 CREATE TABLE media_organization (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -100,7 +100,7 @@ CREATE TABLE media_organization (
 );
 ```
 
-#### media_technical_info テーブル (技術情報)
+#### media_technical_info テーブル (技術情報) -- メディアの技術情報
 ```sql
 CREATE TABLE media_technical_info (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -116,7 +116,7 @@ CREATE TABLE media_technical_info (
 );
 ```
 
-#### media_sync テーブル (バックアップ・同期用)
+#### media_sync テーブル (バックアップ・同期用) -- メディアの同期情報
 ```sql
 CREATE TABLE media_sync (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
@@ -125,7 +125,7 @@ CREATE TABLE media_sync (
 );
 ```
 
-#### categories テーブル
+#### categories テーブル -- カテゴリ
 ```sql
 CREATE TABLE categories (
   id SERIAL PRIMARY KEY,
@@ -137,7 +137,7 @@ CREATE TABLE categories (
 );
 ```
 
-#### projects テーブル
+#### projects テーブル -- プロジェクト
 ```sql
 CREATE TABLE projects (
   id SERIAL PRIMARY KEY,
@@ -148,7 +148,7 @@ CREATE TABLE projects (
 );
 ```
 
-#### ips テーブル
+#### ips テーブル -- IP（知的財産）
 ```sql
 CREATE TABLE ips (
   id SERIAL PRIMARY KEY,
@@ -158,7 +158,7 @@ CREATE TABLE ips (
 );
 ```
 
-#### characters テーブル
+#### characters テーブル -- キャラクター
 ```sql
 CREATE TABLE characters (
   id SERIAL PRIMARY KEY,
@@ -170,7 +170,7 @@ CREATE TABLE characters (
 );
 ```
 
-#### media_characters テーブル
+#### media_characters テーブル -- メディアとキャラクターの中間テーブル
 ```sql
 CREATE TABLE media_characters (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,       -- メディアID
@@ -180,17 +180,9 @@ CREATE TABLE media_characters (
 );
 ```
 
-#### media_ips テーブル
-```sql
-CREATE TABLE media_ips (
-  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
-  ip_id INTEGER NOT NULL REFERENCES ips(id) ON DELETE CASCADE,   -- IP(作品)ID
-  confidence REAL DEFAULT NULL,       -- AIがIPを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
-  PRIMARY KEY (media_id, ip_id)
-);
-```
 
-#### view_history テーブル
+
+#### view_history テーブル -- 閲覧履歴
 ```sql
 CREATE TABLE view_history (
   id SERIAL PRIMARY KEY,
@@ -201,7 +193,7 @@ CREATE TABLE view_history (
 );
 ```
 
-#### similar_media テーブル
+#### similar_media テーブル -- 類似メディア
 ```sql
 CREATE TABLE similar_media (
   id SERIAL PRIMARY KEY,
@@ -213,7 +205,7 @@ CREATE TABLE similar_media (
 );
 ```
 
-#### users テーブル
+#### users テーブル -- ユーザー
 ```sql
 CREATE TABLE users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -225,7 +217,7 @@ CREATE TABLE users (
 );
 ```
 
-#### collections テーブル
+#### collections テーブル -- コレクション
 ```sql
 CREATE TABLE collections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -237,7 +229,7 @@ CREATE TABLE collections (
 );
 ```
 
-#### collection_media テーブル
+#### collection_media テーブル -- コレクションとメディアの中間テーブル
 ```sql
 CREATE TABLE collection_media (
   collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE, -- コレクションID
