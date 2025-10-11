@@ -1,10 +1,9 @@
-import path from "node:path";
 import { promises as fs } from "node:fs";
+import path from "node:path";
 import sharp from "sharp";
+import { selectMediaSourceById, selectMediasByMediaSourceId } from "~/db";
 import type { Media } from "~/db/schema";
 import { getConfig } from "~/lib/api/config";
-
-import { selectMediasByMediaSourceId, selectMediaSourceById } from "~/db";
 import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
 
 const CACHE_DIR = ".cache/thumbnails";
@@ -24,7 +23,7 @@ function getThumbnailPath(mediaId: string): string {
  */
 export async function generateThumbnail(
   media: Media,
-  sourcePath: string,
+  sourcePath: string
 ): Promise<void> {
   await ensureCacheDir();
 
@@ -34,18 +33,10 @@ export async function generateThumbnail(
 
   const inputPath = path.join(sourcePath, media.filePath);
   const outputPath = getThumbnailPath(media.id);
-
-  try {
-    await sharp(inputPath)
-      .resize(size, size, { fit: "inside", withoutEnlargement: true })
-      .webp({ quality })
-      .toFile(outputPath);
-    console.log(`Generated thumbnail for ${media.fileName}`);
-  } catch (error) {
-    console.error(`Failed to generate thumbnail for ${inputPath}:`, error);
-    // 呼び出し元（例: オンデマンド生成）がエラーを処理できるように、エラーをスローします。
-    throw error;
-  }
+  await sharp(inputPath)
+    .resize(size, size, { fit: "inside", withoutEnlargement: true })
+    .webp({ quality })
+    .toFile(outputPath);
 }
 
 /**
@@ -56,14 +47,9 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
   const thumbnailPath = getThumbnailPath(mediaId);
   try {
     await fs.unlink(thumbnailPath);
-    console.log(`Deleted thumbnail for mediaId: ${mediaId}`);
   } catch (error: any) {
     // ファイルが存在しない場合、このコンテキストではエラーではありません。
     if (error.code !== "ENOENT") {
-      console.error(
-        `Failed to delete thumbnail at ${thumbnailPath}:`,
-        error,
-      );
       throw error;
     }
   }
@@ -73,7 +59,9 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
  * 指定されたソースのすべてのメディアをサムネイル生成のためにキューに入れます。
  * @param sourceId - メディアソースのID。
  */
-export async function generateThumbnailsForSource(sourceId: string): Promise<number> {
+export async function generateThumbnailsForSource(
+  sourceId: string
+): Promise<number> {
   const sources = await selectMediaSourceById(sourceId);
   if (sources.length === 0 || sources[0].type !== "local") {
     throw new Error("Source not found or not a local source");

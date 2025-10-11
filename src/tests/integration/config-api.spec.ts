@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 test.describe("/api/config", () => {
   test("GET should return the default configuration", async ({ request }) => {
@@ -9,7 +9,9 @@ test.describe("/api/config", () => {
   });
 
   test("PUT should be handled (mock update)", async ({ request }) => {
-    const newConfig = { media: { image: { thumbnail: { size: { width: 256, height: 256 } } } } };
+    const newConfig = {
+      media: { image: { thumbnail: { size: { width: 256, height: 256 } } } },
+    };
     const response = await request.put("/api/config", {
       data: newConfig,
     });

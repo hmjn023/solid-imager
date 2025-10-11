@@ -23,7 +23,7 @@ export async function GET({ params }: APIEvent) {
         },
       });
     }
-    return Response.json(source);
+    return source;
   } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to fetch source" }), {
       status: 500,
@@ -45,7 +45,7 @@ export async function PUT({ params, request }: APIEvent) {
     const sourceId = params.sourceId as UUID;
     const data = await request.json();
     const updatedSource = await updateMediaSource(sourceId, data);
-    return Response.json(updatedSource);
+    return updatedSource;
   } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to update source" }), {
       status: 500,
@@ -66,7 +66,7 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const sourceId = params.sourceId as UUID;
     const result = await deleteMediaSource(sourceId);
-    return Response.json({ success: true, result });
+    return { success: true, result };
   } catch (_error) {
     return new Response(JSON.stringify({ error: "Failed to delete source" }), {
       status: 500,

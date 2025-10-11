@@ -2,7 +2,7 @@ import { createResource, createSignal, For } from "solid-js";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
-import { sourcesApi } from "~/services/sources";
+import { MediaSourceService } from "~/services/media-source-service";
 
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
@@ -11,7 +11,9 @@ export default function Sources() {
   const [deletingSource, setDeletingSource] = createSignal(null);
 
   // createResource + fetch を使用したAPIからの実際のデータ
-  const [mediaSources, { refetch }] = createResource(sourcesApi.fetchSources);
+  const [mediaSources, { refetch }] = createResource(
+    MediaSourceService.fetchSources
+  );
 
   // APIが失敗した場合、または空を返した場合のモックデータへのフォールバック
   const mockSources = [
@@ -53,9 +55,9 @@ export default function Sources() {
   const handleFormSubmit = async (sourceData) => {
     const editing = editingSource();
     if (editing) {
-      await sourcesApi.updateSource(editing.id, sourceData);
+      await MediaSourceService.updateSource(editing.id, sourceData);
     } else {
-      await sourcesApi.createSource(sourceData);
+      await MediaSourceService.createSource(sourceData);
     }
     await refetch();
     setShowFormModal(false);
@@ -67,7 +69,7 @@ export default function Sources() {
   };
 
   const handleDeleteConfirm = async (sourceId) => {
-    await sourcesApi.deleteSource(sourceId);
+    await MediaSourceService.deleteSource(sourceId);
     await refetch();
     setShowDeleteModal(false);
     setDeletingSource(null);

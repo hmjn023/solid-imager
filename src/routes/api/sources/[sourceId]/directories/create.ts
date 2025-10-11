@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { createDirectory } from "~/lib/api/directories";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  * ディレクトリを作成します。

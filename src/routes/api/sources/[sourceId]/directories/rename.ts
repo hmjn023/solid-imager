@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { renameDirectory } from "~/lib/api/directories";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  * ディレクトリ名を変更します。

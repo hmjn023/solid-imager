@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getMediaSourceStatus } from "~/lib/api/sources";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  *

@@ -46,3 +46,7 @@ export const sourceIdSchema = z.string().uuid("Invalid source ID format");
 export const directoryPathSchema = z
   .string()
   .min(1, "Directory path is required");
+
+export const localConnectionSchema = z.object({
+  path: z.string().min(1, "Path is required"),
+});

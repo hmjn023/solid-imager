@@ -11,7 +11,7 @@ export type CreateSourceData = {
 
 export type UpdateSourceData = CreateSourceData;
 
-export const sourcesApi = {
+export const MediaSourceService = {
   // すべてのソースを取得します。
   async fetchSources(): Promise<MediaSourceInfo[]> {
     const response = await fetch(`${API_BASE_URL}/sources`);

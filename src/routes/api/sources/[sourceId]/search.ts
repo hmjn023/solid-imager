@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { searchMedia } from "~/lib/api/media";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  * 特定のメディアソース内で、タグ、メタデータ、カテゴリ、IP、キャラクターなどの情報に基づいてメディアを検索します。

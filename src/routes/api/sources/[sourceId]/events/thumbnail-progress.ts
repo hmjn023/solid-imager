@@ -1,5 +1,5 @@
-import { type APIEvent } from "solid-start/api";
 import { createEffect } from "solid-js";
+import type { APIEvent } from "solid-start/api";
 import { getThumbnailJobStats } from "~/services/thumbnail-jobs";
 
 export function GET({ params, request }: APIEvent) {
@@ -8,13 +8,17 @@ export function GET({ params, request }: APIEvent) {
   const stream = new ReadableStream({
     start(controller) {
       const sendEvent = (event: string, data: any) => {
-        controller.enqueue(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+        controller.enqueue(
+          `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+        );
       };
 
       createEffect(() => {
         const stats = getThumbnailJobStats(sourceId);
 
-        if (stats.status === "idle") return;
+        if (stats.status === "idle") {
+          return;
+        }
 
         if (stats.status === "processing") {
           sendEvent("progress", { ...stats });

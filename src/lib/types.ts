@@ -2,7 +2,10 @@ export type UUID = string;
 
 export type MediaSourceTypeEnum = "local" | "sftp" | "s3";
 
-export type ConnectionInfo = LocalConnectionInfo | SftpConnection | S3Connection;
+export type ConnectionInfo =
+  | LocalConnectionInfo
+  | SftpConnection
+  | S3Connection;
 
 export type LocalConnectionInfo = {
   path: string;
@@ -90,9 +93,9 @@ export type SearchOptions = {
 };
 
 export type ThumbnailProgress = {
-  type: 'thumbnail_progress';
+  type: "thumbnail_progress";
   sourceId: string;
-  status: 'started' | 'processing' | 'completed' | 'error';
+  status: "started" | "processing" | "completed" | "error";
   progress: {
     current: number;
     total: number;
@@ -102,7 +105,7 @@ export type ThumbnailProgress = {
 };
 
 export type FileSystemEvent = {
-  type: 'added' | 'deleted' | 'modified';
+  type: "added" | "deleted" | "modified";
   sourceId: string;
   filePath: string;
   timestamp: Date;

@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { getMediaThumbnail } from "~/lib/api/media";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  *

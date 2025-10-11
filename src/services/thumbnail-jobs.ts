@@ -1,5 +1,3 @@
-import { createSignal } from "solid-js";
-
 // サムネイル生成のための非常にシンプルなインメモリジョブキューおよび状態マネージャー。
 // より堅牢なソリューション（例: BullMQのような適切なジョブキューライブラリの使用）
 // は、本番システムには必要となるでしょう。
@@ -40,13 +38,18 @@ export function addJobsToQueue(sourceId: string, jobs: ThumbnailJob[]) {
   jobQueueMap.set(sourceId, [...currentQueue, ...jobs]);
 
   const currentStats = getThumbnailJobStats(sourceId);
-  jobStatsMap.set(sourceId, { ...currentStats, total: currentStats.total + jobs.length });
+  jobStatsMap.set(sourceId, {
+    ...currentStats,
+    total: currentStats.total + jobs.length,
+  });
 }
 
-export function startJobQueue(sourceId: string, processor: (job: ThumbnailJob) => Promise<void>) {
+export function startJobQueue(
+  sourceId: string,
+  processor: (job: ThumbnailJob) => Promise<void>
+) {
   const currentStats = getThumbnailJobStats(sourceId);
   if (currentStats.status === "processing") {
-    console.warn(`Job queue for source ${sourceId} is already running.`);
     return;
   }
 

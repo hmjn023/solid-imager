@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 
 // これらのテストには、実行中のサーバーと既存のデータが必要です。
 // テストデータベースの実際のIDに置き換えてください。
@@ -8,9 +8,7 @@ test.describe("Thumbnail API", () => {
   test("POST /api/sources/:sourceId/thumbnails should trigger bulk generation", async ({
     request,
   }) => {
-    const response = await request.post(
-      `/api/sources/${SOURCE_ID}/thumbnails`,
-    );
+    const response = await request.post(`/api/sources/${SOURCE_ID}/thumbnails`);
     expect(response.status()).toBe(202); // 202 Accepted
     const data = await response.json();
     expect(data.message).toContain("Thumbnail generation job started");
@@ -21,7 +19,7 @@ test.describe("Thumbnail API", () => {
   }) => {
     const fakeSourceId = "00000000-0000-0000-0000-000000000000";
     const response = await request.post(
-      `/api/sources/${fakeSourceId}/thumbnails`,
+      `/api/sources/${fakeSourceId}/thumbnails`
     );
     expect(response.status()).toBe(404);
     const data = await response.json();

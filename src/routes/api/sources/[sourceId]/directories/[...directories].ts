@@ -1,11 +1,14 @@
-import { type APIEvent, json } from "solid-start/api";
+import type { APIEvent } from "@solidjs/start/server";
 import { listMedia } from "~/lib/api/media";
 
 export async function GET({ params }: APIEvent) {
   try {
     const mediaList = await listMedia(params.sourceId, params.directories);
-    return json(mediaList);
+    return mediaList;
   } catch (error: any) {
-    return json({ error: error.message }, { status: 500 });
+    return {
+      error: error.message,
+      status: 500,
+    };
   }
 }

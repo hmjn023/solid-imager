@@ -29,6 +29,8 @@ db-data/
 Thumbs.db
 .cache/
 
+requirements/.obsidian/**
+
 
 .claude/
 .gemini/

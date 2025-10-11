@@ -3,7 +3,7 @@ import {
   clearThumbnailCache,
   startThumbnailGeneration,
 } from "~/lib/api/thumbnails";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  * 手動でサムネイル生成を開始します。

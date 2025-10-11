@@ -11,7 +11,7 @@ test.describe("Media Sources Management", () => {
     test("should open add source modal when clicking Add Source button", async ({
       page,
     }) => {
-    // Click the Add Source button
+      // Click the Add Source button
       await page.click('button:has-text("Add Source")');
 
       // モーダルが開いたことを確認します。
@@ -118,6 +118,8 @@ test.describe("Media Sources Management", () => {
       await page.click('button:has-text("Cancel")');
 
       // モーダルが閉じていることを確認します。
+      await expect(
+        page.locator('h2:has-text("Add Media Source")')
       ).not.toBeVisible();
     });
   });

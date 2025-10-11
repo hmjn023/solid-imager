@@ -154,12 +154,7 @@ export async function deleteMedia(
   }
 
   // サムネイルも非同期で削除します。
-  deleteThumbnail(validatedMediaId).catch((err) => {
-    console.error(
-      `Failed to delete thumbnail in background for ${validatedMediaId}:`,
-      err,
-    );
-  });
+  deleteThumbnail(validatedMediaId).catch((_err) => {});
 
   // TODO: 実際のファイルシステム操作（例: ファイルの削除）を実装する
   // ファイルシステム操作が権限の問題で失敗した場合、ここでエラーをスローする
@@ -168,8 +163,8 @@ export async function deleteMedia(
   return { success: true };
 }
 
-import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
 import { deleteThumbnail, generateThumbnail } from "~/lib/thumbnails";
+import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
 
 const SUPPORTED_MEDIA_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
 
@@ -212,7 +207,7 @@ export async function registerExistingMedia(
 
       const existingMedia = await selectMediaBySourceIdAndFilePath(
         validatedSourceId,
-        relativePath,
+        relativePath
       );
 
       if (existingMedia.length > 0) {
@@ -223,9 +218,8 @@ export async function registerExistingMedia(
       const stats = await fs.stat(fullPath);
       const metadata = await sharp(fullPath).metadata();
 
-      if (!metadata.width || !metadata.height) {
+      if (!(metadata.width && metadata.height)) {
         failed++;
-        console.error(`Could not get dimensions for ${fullPath}`);
         continue;
       }
 
@@ -243,18 +237,20 @@ export async function registerExistingMedia(
 
       const [inserted] = await insertMedia(newMedia);
       addedMedia.push(inserted);
-    } catch (error) {
+    } catch (_error) {
       failed++;
-      console.error(`Failed to process file ${fullPath}:`, error);
     }
   }
 
   // 新しく追加されたすべてのメディアのサムネイル生成をキューに入れます。
   if (addedMedia.length > 0) {
-    const jobs = addedMedia.map((media) => ({ mediaId: media.id, sourcePath: basePath }));
+    const jobs = addedMedia.map((media) => ({
+      mediaId: media.id,
+      sourcePath: basePath,
+    }));
     addJobsToQueue(validatedSourceId, jobs);
     startJobQueue(validatedSourceId, async (job) => {
-      const media = addedMedia.find(m => m.id === job.mediaId);
+      const media = addedMedia.find((m) => m.id === job.mediaId);
       if (media) {
         await generateThumbnail(media, job.sourcePath);
       }
@@ -283,4 +279,90 @@ export async function listMedia(
   );
 
   return result;
+}
+
+/**
+ * Get detailed information about a media including tags, metadata, etc.
+ * @param sourceId - The UUID of the media source.
+ * @param mediaId - The UUID of the media.
+ * @returns Media details object.
+ */
+export function getMediaDetails(
+  sourceId: string,
+  mediaId: string
+): Promise<Media> {
+  // TODO: Implement full details with tags, metadata, categories, etc.
+  return getMedia(sourceId, mediaId);
+}
+
+/**
+ * Get metadata for a media (PNG tEXt chunks, EXIF, etc.)
+ * @param sourceId - The UUID of the media source.
+ * @param mediaId - The UUID of the media.
+ * @returns Media metadata object.
+ */
+export async function getMediaMetadata(
+  sourceId: string,
+  mediaId: string
+): Promise<Record<string, unknown>> {
+  // TODO: Implement metadata extraction from PNG tEXt chunks
+  const media = await getMedia(sourceId, mediaId);
+  return { mediaId: media.id, metadata: {} };
+}
+
+/**
+ * Get tags for a media
+ */
+export async function getMediaTags(
+  sourceId: string,
+  mediaId: string
+): Promise<unknown[]> {
+  // TODO: Implement tag retrieval
+  const media = await getMedia(sourceId, mediaId);
+  return [];
+}
+
+/**
+ * Get thumbnail for a media
+ */
+export function getMediaThumbnail(
+  sourceId: string,
+  mediaId: string
+): Promise<Buffer> {
+  // TODO: Implement thumbnail retrieval
+  throw new Error("Not implemented");
+}
+
+/**
+ * Upload media file
+ */
+export function uploadMedia(
+  sourceId: string,
+  uploadData: unknown
+): Promise<Media> {
+  // TODO: Implement media upload
+  throw new Error("Not implemented");
+}
+
+/**
+ * Search media within a directory
+ */
+export function searchMediaInDirectory(
+  sourceId: string,
+  directoryPath: string,
+  searchOptions: unknown
+): Promise<Media[]> {
+  // TODO: Implement directory search
+  return listMedia(sourceId, directoryPath);
+}
+
+/**
+ * Search media within a source
+ */
+export function searchMedia(
+  sourceId: string,
+  searchOptions: unknown
+): Promise<Media[]> {
+  // TODO: Implement search functionality
+  return [];
 }

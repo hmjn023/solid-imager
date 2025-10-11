@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { startSseMonitoring } from "~/lib/api/events";
-import type { UUID } from "~/lib/utils";
+import type { UUID } from "~/lib/types";
 
 /**
  * リアルタイム更新のためのSSE監視を開始します。
