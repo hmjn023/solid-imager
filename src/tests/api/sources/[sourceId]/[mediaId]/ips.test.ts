@@ -68,7 +68,7 @@ describe("PUT /api/sources/:sourceId/:mediaId/ips", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const fakeIpId = 99999;
+    const fakeIpId = 99_999;
 
     // await expect(PUT(...)).rejects.toThrow('not found');
   });
@@ -93,7 +93,7 @@ describe("DELETE /api/sources/:sourceId/:mediaId/ips", () => {
 
   it("should throw error for non-existent assignment", () => {
     // TODO: Test not found scenario
-    const fakeIpId = 99999;
+    const fakeIpId = 99_999;
 
     // await expect(DELETE(...)).rejects.toThrow('not found');
   });

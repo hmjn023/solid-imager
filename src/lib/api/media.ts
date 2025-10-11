@@ -330,6 +330,8 @@ export function getMediaThumbnail(
   mediaId: string
 ): Promise<Buffer> {
   // TODO: Implement thumbnail retrieval
+  // NOTE: The actual implementation is in src/routes/api/sources/[sourceId]/media/[mediaId]/thumbnail.ts
+  // This stub is kept for API consistency but is not currently used by any routes
   throw new Error("Not implemented");
 }
 

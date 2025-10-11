@@ -134,6 +134,30 @@ Feature 17の内部ヘルパー関数を作成しました：
 - ✅ `src/services/sources.ts` → `src/services/media-source-service.ts` にリネーム
 - ✅ `sourcesApi` → `MediaSourceService` に命名変更
 
+### 5. ルート構造の整理 (Feature 004)
+
+**完了日**: 2025-10-11
+
+#### 削除されたファイル（重複ルート）
+- ❌ `src/routes/api/sources/[sourceId]/[mediaId]/thumbnail.ts` - スタブ実装（削除）
+- ❌ `src/routes/api/sources/[sourceId]/directories/[...directories].ts` - スタンドアロンファイル（削除）
+
+#### 保持されたルート（正規実装）
+- ✅ `src/routes/api/sources/[sourceId]/media/[mediaId]/thumbnail.ts` - 完全な実装（保持）
+  - オンデマンドサムネイル生成
+  - ファイルシステムキャッシング (`.cache/thumbnails/`)
+  - 適切なエラーハンドリング
+  - WebPストリーミング
+- ✅ `src/routes/api/sources/[sourceId]/directories/[...directories]/index.ts` - ネストされた構造（保持）
+- ✅ `src/routes/api/sources/[sourceId]/directories/[...directories]/search.ts` - 検索エンドポイント（保持）
+
+#### ルーティング規則
+- `/api/sources/:sourceId/media/:mediaId/thumbnail` → サムネイル取得
+- `/api/sources/:sourceId/directories/**/*` → ディレクトリリスト
+- `/api/sources/:sourceId/directories/**/search` → ディレクトリ内検索
+
+この変更により、SolidStartのファイルベースルーティング規則に準拠し、ルート定義の重複がなくなりました。
+
 ## 次のステップ
 
 すべての関数は現在プレースホルダーとして実装されています（`throw new Error("Not implemented")`）。

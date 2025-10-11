@@ -22,7 +22,7 @@ describe("GET /api/charactors/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const fakeId = 99999;
+    const fakeId = 99_999;
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
@@ -58,7 +58,7 @@ describe("PUT /api/charactors/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const fakeId = 99999;
+    const fakeId = 99_999;
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
@@ -82,7 +82,7 @@ describe("DELETE /api/charactors/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const fakeId = 99999;
+    const fakeId = 99_999;
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

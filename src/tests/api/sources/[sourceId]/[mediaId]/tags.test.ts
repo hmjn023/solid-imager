@@ -69,7 +69,7 @@ describe("DELETE /api/sources/:sourceId/:mediaId/tags", () => {
 
   it("should throw error for non-existent assignment", () => {
     // TODO: Test not found scenario
-    const fakeTagId = 99999;
+    const fakeTagId = 99_999;
 
     // await expect(DELETE(...)).rejects.toThrow('not found');
   });
