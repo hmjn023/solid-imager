@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Tag } from "~/db/schema";
+import type { Tag } from "~/infrastructure/db/schema";
 
 describe("GET /api/tags/:id", () => {
   it("should return tag by id", () => {

@@ -5,7 +5,7 @@ import {
   addJobsToQueue,
   startJobQueue,
 } from "~/application/services/thumbnail-jobs";
-import type { Media } from "~/db/schema";
+import type { Media } from "~/infrastructure/db/schema";
 import { getConfig } from "~/infrastructure/api-clients/config";
 import {
   selectMediaSourceById,

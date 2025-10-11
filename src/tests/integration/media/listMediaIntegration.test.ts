@@ -1,7 +1,7 @@
 import { eq, like } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { medias } from "~/db/schema";
+import { medias } from "~/infrastructure/db/schema";
 import { addMedia, listMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db";
 

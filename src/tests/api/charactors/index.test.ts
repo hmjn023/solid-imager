@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Character } from "~/db/schema";
+import type { Character } from "~/infrastructure/db/schema";
 
 describe("GET /api/charactors", () => {
   it("should return an array of characters", () => {

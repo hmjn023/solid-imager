@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Category } from "~/db/schema";
+import type { Category } from "~/infrastructure/db/schema";
 
 describe("GET /api/categories/:id", () => {
   it("should return category by id", () => {

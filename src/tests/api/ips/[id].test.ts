@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Ip } from "~/db/schema";
+import type { Ip } from "~/infrastructure/db/schema";
 
 describe("GET /api/ips/:id", () => {
   it("should return IP by id", () => {

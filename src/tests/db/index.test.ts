@@ -4,9 +4,9 @@ import {
   selectMediaSourceById,
   selectMediaSources,
   updateMediaSource,
-} from "~/db/index";
-import type { NewMediaSource } from "~/db/schema";
-import { mediaSources } from "~/db/schema";
+} from "~/infrastructure/db/index";
+import type { NewMediaSource } from "~/infrastructure/db/schema";
+import { mediaSources } from "~/infrastructure/db/schema";
 import { db, pool } from "~/infrastructure/db";
 
 describe("Media Source Database Operations", () => {

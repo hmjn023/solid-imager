@@ -3,7 +3,7 @@
 import { and, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import type { Media, MediaSource, NewMedia, NewMediaSource } from "~/db/schema";
+import type { Media, MediaSource, NewMedia, NewMediaSource } from "~/infrastructure/db/schema";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
@@ -58,7 +58,7 @@ import {
   tags,
   users,
   viewHistory,
-} from "~/db/schema";
+} from "~/infrastructure/db/schema";
 
 export const db = drizzle(pool, {
   schema: {
