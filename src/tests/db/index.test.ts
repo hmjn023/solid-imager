@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { db, pool } from "~/infrastructure/db";
 import {
   insertMediaSource,
   selectMediaSourceById,
@@ -7,7 +8,6 @@ import {
 } from "~/infrastructure/db/index";
 import type { NewMediaSource } from "~/infrastructure/db/schema";
 import { mediaSources } from "~/infrastructure/db/schema";
-import { db, pool } from "~/infrastructure/db";
 
 describe("Media Source Database Operations", () => {
   beforeAll(async () => {

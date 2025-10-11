@@ -1,9 +1,9 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { medias } from "~/infrastructure/db/schema";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db";
+import { medias } from "~/infrastructure/db/schema";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;

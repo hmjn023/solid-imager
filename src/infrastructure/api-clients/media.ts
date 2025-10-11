@@ -166,7 +166,7 @@ export async function deleteMedia(
 import {
   addJobsToQueue,
   startJobQueue,
-} from "~/application/services/thumbnail-jobs";
+} from "~/infrastructure/jobs/thumbnail-jobs";
 import {
   deleteThumbnail,
   generateThumbnail,

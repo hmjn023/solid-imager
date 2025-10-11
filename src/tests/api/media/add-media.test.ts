@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 import { addMediaRequestSchema } from "~/domain/media/schemas";
+import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("addMedia Contract", () => {
   it("should return a Media object on successful addition", () => {
