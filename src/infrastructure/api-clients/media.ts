@@ -2,7 +2,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import type { z } from "zod";
-import type { Media, NewMedia } from "~/db/schema";
 import {
   addMediaRequestSchema,
   directoryPathSchema,
@@ -18,6 +17,7 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db";
+import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
