@@ -63,7 +63,11 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const { name, ipId, description } = parsedBody.data;
 
-  const updatedCharacter = await updateCharacter(id, { name, ipId, description });
+  const updatedCharacter = await updateCharacter(id, {
+    name,
+    ipId,
+    description,
+  });
   return updatedCharacter;
 }
 
