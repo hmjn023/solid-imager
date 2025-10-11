@@ -1,4 +1,19 @@
-# SolidStart
+# solid-imager
+
+A media management application built with SolidStart, following Clean Architecture principles.
+
+## Architecture
+
+This project uses a layered architecture with clear separation of concerns:
+
+- **Domain Layer**: Business logic and domain models
+- **Application Layer**: Use case orchestration and services
+- **Infrastructure Layer**: External integrations and I/O operations
+- **Presentation Layer**: UI components and utilities
+
+📖 **[Read the Architecture Documentation](./docs/architecture/ARCHITECTURE.md)**
+
+## SolidStart
 
 Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
 
