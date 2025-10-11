@@ -1,0 +1,10 @@
+=== Baseline Metrics ===
+Date: 2025年 10月 11日 土曜日 22:30:19 JST
+
+Files in src/lib: 23
+Files in src/services: 20
+Total test files: 44
+Passing test files: 16
+Failing test files: 28
+Passing tests: 154
+Failing tests: 56
