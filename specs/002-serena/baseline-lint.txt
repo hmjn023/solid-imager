@@ -1,0 +1,57 @@
+$ biome check --fix ./src
+src/lib/helpers/image-processor.ts:8:3 lint/suspicious/useAwait ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This async function lacks an await expression.
+  
+     6 │ export const ImageProcessor = {
+     7 │   // Feature 17.2: Image processing functions
+   > 8 │   async generateThumbnail(
+       │   ^^^^^^^^^^^^^^^^^^^^^^^^
+   > 9 │     _mediaPath: string,
+        ...
+  > 14 │     throw new Error("Not implemented");
+  > 15 │   },
+       │   ^
+    16 │ 
+    17 │   async extractMetadata(_mediaPath: string) {
+  
+  i Remove this async modifier, or add an await expression in the function.
+  
+     6 │ export const ImageProcessor = {
+     7 │   // Feature 17.2: Image processing functions
+   > 8 │   async generateThumbnail(
+       │   ^^^^^^^^^^^^^^^^^^^^^^^^
+   > 9 │     _mediaPath: string,
+        ...
+  > 14 │     throw new Error("Not implemented");
+  > 15 │   },
+       │   ^
+    16 │ 
+    17 │   async extractMetadata(_mediaPath: string) {
+  
+  i Async functions without await expressions may not need to be declared async.
+  
+
+src/lib/helpers/image-processor.ts:17:3 lint/suspicious/useAwait ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This async function lacks an await expression.
+  
+    15 │   },
+    16 │ 
+  > 17 │   async extractMetadata(_mediaPath: string) {
+       │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 18 │     // TODO: Extract PNG tEXt chunks and other metadata
+  > 19 │     throw new Error("Not implemented");
+  > 20 │   },
+       │   ^
+    21 │ 
+    22 │   async getDimensions(_mediaPath: string) {
+  
+  i Remove this async modifier, or add an await expression in the function.
+  
+    15 │   },
+    16 │ 
+  > 17 │   async extractMetadata(_mediaPath: string) {
+       │   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  > 18 │     // TODO: Extract PNG tEXt chunks and other metadata
+  > 19 │     t

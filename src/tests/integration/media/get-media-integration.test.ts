@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { db } from "~/db/db";
+import { db } from "~/db/index";
 import { medias } from "~/db/schema";
 import { addMedia, getMedia } from "~/lib/api/media";
 
