@@ -1,6 +1,9 @@
 import { createEffect, createSignal } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { MediaSourceInfo, MediaSourceTypeEnum } from "~/lib/types";
+import type {
+  MediaSourceInfo,
+  MediaSourceTypeEnum,
+} from "~/domain/sources/types";
 
 type SourceFormModalProps = {
   isOpen: boolean;

@@ -1,5 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createCharacter, getCharacters } from "~/lib/api/characters";
+import {
+  createCharacter,
+  getCharacters,
+} from "~/infrastructure/api-clients/characters";
 
 /**
  *

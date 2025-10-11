@@ -1,4 +1,7 @@
-import type { MediaSourceInfo, MediaSourceTypeEnum } from "~/lib/types";
+import type {
+  MediaSourceInfo,
+  MediaSourceTypeEnum,
+} from "~/domain/sources/types";
 
 const API_BASE_URL = "http://localhost:3000/api";
 

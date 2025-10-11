@@ -50,7 +50,7 @@ describe("POST /api/tags", () => {
 
   it("should throw error for invalid data", () => {
     // TODO: Test validation
-    const invalidData = {
+    const _invalidData = {
       // Missing required fields
     };
 

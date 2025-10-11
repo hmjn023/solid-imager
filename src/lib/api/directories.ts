@@ -1,5 +1,5 @@
-import { getMediaSourceById } from "~/lib/api/sources";
-import { getDriver } from "~/lib/drivers/factory";
+import { getMediaSourceById } from "~/infrastructure/api-clients/sources";
+import { getDriver } from "~/infrastructure/storage/factory";
 
 export async function getDirectoryListing(sourceId: string, path = "") {
   const sources = await getMediaSourceById(sourceId);

@@ -1,10 +1,10 @@
 import type { APIEvent } from "@solidjs/start/server";
+import type { UUID } from "~/domain/shared/types";
 import {
   deleteMediaSource,
   getMediaSourceById,
   updateMediaSource,
-} from "~/lib/api/sources";
-import type { UUID } from "~/lib/types";
+} from "~/infrastructure/api-clients/sources";
 
 /**
  *

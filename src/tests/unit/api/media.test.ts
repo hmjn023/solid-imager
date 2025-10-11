@@ -2,7 +2,6 @@ import { eq, like } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
-import { db } from "~/db";
 import { medias } from "~/db/schema";
 import {
   addMedia,
@@ -10,7 +9,8 @@ import {
   getMedia,
   listMedia,
   updateMedia,
-} from "~/lib/api/media";
+} from "~/infrastructure/api-clients/media";
+import { db } from "~/infrastructure/db";
 
 // データベースの操作をモックします。
 vi.mock("~/db", () => ({

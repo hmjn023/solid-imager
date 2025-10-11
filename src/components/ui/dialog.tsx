@@ -12,7 +12,7 @@ import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js";
 import { splitProps } from "solid-js";
 
-import { cn } from "~/lib/utils";
+import { cn } from "~/presentation/utils/cn";
 
 const Dialog = DialogPrimitiveRoot;
 const DialogTrigger = DialogPrimitiveTrigger;

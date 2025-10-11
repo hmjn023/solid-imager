@@ -1,8 +1,8 @@
 import { createResource, createSignal, For } from "solid-js";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
-import { MediaSourceService } from "~/services/media-source-service";
 
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);

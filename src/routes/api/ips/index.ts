@@ -1,5 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createIp, getIps } from "~/lib/api/ips";
+import { createIp, getIps } from "~/infrastructure/api-clients/ips";
 
 /**
  *

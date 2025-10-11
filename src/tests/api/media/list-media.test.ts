@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import type { Media } from "~/db/schema"; // Assuming Media type will be exported from schema
-import { directoryPathSchema, sourceIdSchema } from "~/lib/schemas";
+import { directoryPathSchema, sourceIdSchema } from "~/domain/media/schemas";
 
 describe("listMedia Contract", () => {
   it("should return an array of Media objects for a valid directoryPath", () => {

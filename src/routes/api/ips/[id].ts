@@ -1,6 +1,10 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { deleteIp, getIpById, updateIp } from "~/lib/api/ips";
+import {
+  deleteIp,
+  getIpById,
+  updateIp,
+} from "~/infrastructure/api-clients/ips";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({

@@ -1,5 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createCategory, getCategories } from "~/lib/api/categories";
+import {
+  createCategory,
+  getCategories,
+} from "~/infrastructure/api-clients/categories";
 
 /**
  *

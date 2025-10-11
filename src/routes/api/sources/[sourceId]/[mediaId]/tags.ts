@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { getMediaTags } from "~/lib/api/media";
-import type { UUID } from "~/lib/types";
+import type { UUID } from "~/domain/shared/types";
+import { getMediaTags } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({

@@ -1,9 +1,9 @@
 import { eq, like } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { db } from "~/db";
 import { medias } from "~/db/schema";
-import { addMedia, listMedia } from "~/lib/api/media";
+import { addMedia, listMedia } from "~/infrastructure/api-clients/media";
+import { db } from "~/infrastructure/db";
 
 describe("listMedia Integration", () => {
   const testSourceId = "b0000000-0000-0000-0000-000000000000";

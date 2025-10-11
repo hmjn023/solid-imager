@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { uploadMedia } from "~/lib/api/media";
-import type { UUID } from "~/lib/types";
+import type { UUID } from "~/domain/shared/types";
+import { uploadMedia } from "~/infrastructure/api-clients/media";
 
 /**
  * メディアをアップロードします。

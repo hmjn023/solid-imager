@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type { MediaSourceInfo } from "~/lib/types";
+import type { MediaSourceInfo } from "~/domain/sources/types";
 
 type SourceCardProps = {
   mediaSource: MediaSourceInfo;

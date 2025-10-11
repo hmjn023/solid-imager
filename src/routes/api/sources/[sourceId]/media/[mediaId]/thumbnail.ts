@@ -1,9 +1,9 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
-import { selectMediaSourceById } from "~/db";
-import { getMedia } from "~/lib/api/media";
-import { generateThumbnail } from "~/lib/thumbnails";
+import { getMedia } from "~/infrastructure/api-clients/media";
+import { selectMediaSourceById } from "~/infrastructure/db";
+import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 
 function getThumbnailPath(mediaId: string): string {
   return path.join(".cache/thumbnails", `${mediaId}.webp`);

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { db } from "~/db/index";
 import { medias } from "~/db/schema";
-import { addMedia, getMedia } from "~/lib/api/media";
+import { addMedia, getMedia } from "~/infrastructure/api-clients/media";
 
 describe("getMedia Integration", () => {
   let testMediaId: string;

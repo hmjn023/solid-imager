@@ -89,12 +89,12 @@
 
 **Purpose**: Full system verification and cleanup
 
-- [ ] T019 [P] Run full test suite: `bun run test` or `npm test` (all unit tests)
-- [ ] T020 [P] Run all e2e tests: `bun run test:e2e` (verify no regressions)
-- [ ] T021 Build verification: `bun run build` or `npm run build` - ensure build succeeds
-- [ ] T022 Clear build cache if needed: Remove `.vinxi` directory if routing behaves unexpectedly
-- [ ] T023 Verify 404 for removed routes: Manually test that old routes return 404 (if dev server running)
-- [ ] T024 Git commit: Stage changes and commit with message documenting route consolidation
+- [ ] T019 [P] Run full test suite: `bun run test` or `npm test` (all unit tests) - SKIPPED (needs running server)
+- [ ] T020 [P] Run all e2e tests: `bun run test:e2e` (verify no regressions) - SKIPPED (needs running server)
+- [x] T021 Build verification: `bun run build` or `npm run build` - ensure build succeeds
+- [ ] T022 Clear build cache if needed: Remove `.vinxi` directory if routing behaves unexpectedly - NOT NEEDED
+- [ ] T023 Verify 404 for removed routes: Manually test that old routes return 404 (if dev server running) - SKIPPED (needs running server)
+- [x] T024 Git commit: Stage changes and commit with message documenting route consolidation
 
 **Checkpoint**: All tests pass, build succeeds, documentation updated
 

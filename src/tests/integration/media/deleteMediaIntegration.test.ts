@@ -1,9 +1,13 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { db } from "~/db";
 import { medias } from "~/db/schema";
-import { addMedia, deleteMedia, getMedia } from "~/lib/api/media";
+import {
+  addMedia,
+  deleteMedia,
+  getMedia,
+} from "~/infrastructure/api-clients/media";
+import { db } from "~/infrastructure/db";
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;

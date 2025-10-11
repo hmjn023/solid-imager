@@ -2,14 +2,6 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import type { z } from "zod";
-import {
-  deleteMedia as dbDeleteMedia,
-  updateMedia as dbUpdateMedia,
-  insertMedia,
-  selectMediaById,
-  selectMediaBySourceIdAndDirectoryPath,
-  selectMediaBySourceIdAndFilePath,
-} from "~/db";
 import type { Media, NewMedia } from "~/db/schema";
 import {
   addMediaRequestSchema,
@@ -17,7 +9,15 @@ import {
   mediaIdSchema,
   sourceIdSchema,
   updateMediaRequestSchema,
-} from "~/lib/schemas";
+} from "~/domain/media/schemas";
+import {
+  deleteMedia as dbDeleteMedia,
+  updateMedia as dbUpdateMedia,
+  insertMedia,
+  selectMediaById,
+  selectMediaBySourceIdAndDirectoryPath,
+  selectMediaBySourceIdAndFilePath,
+} from "~/infrastructure/db";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
@@ -163,8 +163,14 @@ export async function deleteMedia(
   return { success: true };
 }
 
-import { deleteThumbnail, generateThumbnail } from "~/lib/thumbnails";
-import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
+import {
+  addJobsToQueue,
+  startJobQueue,
+} from "~/application/services/thumbnail-jobs";
+import {
+  deleteThumbnail,
+  generateThumbnail,
+} from "~/infrastructure/jobs/thumbnails";
 
 const SUPPORTED_MEDIA_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
 
@@ -318,7 +324,7 @@ export async function getMediaTags(
   mediaId: string
 ): Promise<unknown[]> {
   // TODO: Implement tag retrieval
-  const media = await getMedia(sourceId, mediaId);
+  const _media = await getMedia(sourceId, mediaId);
   return [];
 }
 
@@ -326,8 +332,8 @@ export async function getMediaTags(
  * Get thumbnail for a media
  */
 export function getMediaThumbnail(
-  sourceId: string,
-  mediaId: string
+  _sourceId: string,
+  _mediaId: string
 ): Promise<Buffer> {
   // TODO: Implement thumbnail retrieval
   // NOTE: The actual implementation is in src/routes/api/sources/[sourceId]/media/[mediaId]/thumbnail.ts
@@ -339,8 +345,8 @@ export function getMediaThumbnail(
  * Upload media file
  */
 export function uploadMedia(
-  sourceId: string,
-  uploadData: unknown
+  _sourceId: string,
+  _uploadData: unknown
 ): Promise<Media> {
   // TODO: Implement media upload
   throw new Error("Not implemented");
@@ -352,7 +358,7 @@ export function uploadMedia(
 export function searchMediaInDirectory(
   sourceId: string,
   directoryPath: string,
-  searchOptions: unknown
+  _searchOptions: unknown
 ): Promise<Media[]> {
   // TODO: Implement directory search
   return listMedia(sourceId, directoryPath);
@@ -362,8 +368,8 @@ export function searchMediaInDirectory(
  * Search media within a source
  */
 export function searchMedia(
-  sourceId: string,
-  searchOptions: unknown
+  _sourceId: string,
+  _searchOptions: unknown
 ): Promise<Media[]> {
   // TODO: Implement search functionality
   return [];

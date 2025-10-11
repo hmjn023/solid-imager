@@ -1,4 +1,4 @@
-import type { AppConfig } from "~/lib/types";
+import type { AppConfig } from "~/domain/shared/types";
 
 // TODO: 設定ファイル（例: config.json）からの読み込みと保存を実装する
 

@@ -22,14 +22,14 @@ describe("GET /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const fakeId = 99_999;
+    const _fakeId = 99_999;
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
 
   it("should throw error for invalid id format", () => {
     // TODO: Test validation
-    const invalidId = "invalid";
+    const _invalidId = "invalid";
 
     // await expect(GET({ params: { id: invalidId } })).rejects.toThrow();
   });
@@ -58,14 +58,14 @@ describe("PUT /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const fakeId = 99_999;
+    const _fakeId = 99_999;
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
 
   it("should throw error for invalid update data", () => {
     // TODO: Test validation
-    const invalidData = { name: 123 }; // Wrong type
+    const _invalidData = { name: 123 }; // Wrong type
 
     // expect(() => validateUpdateData(invalidData)).toThrow();
   });
@@ -73,7 +73,7 @@ describe("PUT /api/ips/:id", () => {
 
 describe("DELETE /api/ips/:id", () => {
   it("should delete IP and return success", () => {
-    const id = 1;
+    const _id = 1;
 
     // TODO: Implement after DELETE function is available
     // const result = await DELETE({ params: { id: '1' } });
@@ -82,7 +82,7 @@ describe("DELETE /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const fakeId = 99_999;
+    const _fakeId = 99_999;
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

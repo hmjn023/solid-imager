@@ -1,5 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createTag, getTags } from "~/lib/api/tags";
+import { createTag, getTags } from "~/infrastructure/api-clients/tags";
 
 /**
  *

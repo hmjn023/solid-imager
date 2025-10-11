@@ -3,7 +3,7 @@ import type {
   localConnectionSchema,
   s3ConnectionSchema,
   sftpConnectionSchema,
-} from "~/lib/schemas";
+} from "~/domain/media/schemas";
 
 // Zodスキーマから型を推論
 export type S3Connection = z.infer<typeof s3ConnectionSchema>;

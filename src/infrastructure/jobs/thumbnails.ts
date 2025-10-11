@@ -1,10 +1,16 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { selectMediaSourceById, selectMediasByMediaSourceId } from "~/db";
+import {
+  addJobsToQueue,
+  startJobQueue,
+} from "~/application/services/thumbnail-jobs";
 import type { Media } from "~/db/schema";
-import { getConfig } from "~/lib/api/config";
-import { addJobsToQueue, startJobQueue } from "~/services/thumbnail-jobs";
+import { getConfig } from "~/infrastructure/api-clients/config";
+import {
+  selectMediaSourceById,
+  selectMediasByMediaSourceId,
+} from "~/infrastructure/db";
 
 const CACHE_DIR = ".cache/thumbnails";
 

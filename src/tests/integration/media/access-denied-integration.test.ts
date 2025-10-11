@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMedia, deleteMedia } from "~/lib/api/media";
+import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 
 describe("File System Access Denied Integration", () => {
   const testSourceId = "b0000000-0000-0000-0000-000000000000";

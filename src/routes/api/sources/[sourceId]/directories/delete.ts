@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { deleteDirectory } from "~/lib/api/directories";
-import type { UUID } from "~/lib/types";
+import type { UUID } from "~/domain/shared/types";
+import { deleteDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
  * ディレクトリを削除します。

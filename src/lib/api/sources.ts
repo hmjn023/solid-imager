@@ -6,7 +6,7 @@ import {
   selectMediaSourceById,
 } from "~/db/index";
 import type { MediaSource, NewMediaSource } from "~/db/schema";
-import { getDriver } from "~/lib/drivers/factory";
+import { getDriver } from "~/infrastructure/storage/factory";
 
 export function getMediaSources() {
   return dbSelectMediaSources();

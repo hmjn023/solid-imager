@@ -1,5 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createMediaSource, getMediaSources } from "~/lib/api/sources";
+import {
+  createMediaSource,
+  getMediaSources,
+} from "~/infrastructure/api-clients/sources";
 
 /**
  *

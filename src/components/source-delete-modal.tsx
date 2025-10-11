@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { MediaSourceInfo } from "~/lib/types";
+import type { MediaSourceInfo } from "~/domain/sources/types";
 
 type SourceDeleteModalProps = {
   isOpen: boolean;

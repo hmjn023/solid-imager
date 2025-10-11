@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { mediaIdSchema, sourceIdSchema } from "~/lib/schemas";
+import { mediaIdSchema, sourceIdSchema } from "~/domain/media/schemas";
 
 describe("deleteMedia Contract", () => {
   it("should return success: true on successful deletion", () => {

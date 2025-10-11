@@ -4,7 +4,7 @@ import {
   deleteCharacter,
   getCharacterById,
   updateCharacter,
-} from "~/lib/api/characters";
+} from "~/infrastructure/api-clients/characters";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({

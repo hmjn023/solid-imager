@@ -1,6 +1,6 @@
 import { createEffect } from "solid-js";
 import type { APIEvent } from "solid-start/api";
-import { getThumbnailJobStats } from "~/services/thumbnail-jobs";
+import { getThumbnailJobStats } from "~/application/services/thumbnail-jobs";
 
 export function GET({ params, request }: APIEvent) {
   const sourceId = params.sourceId;

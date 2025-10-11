@@ -1,9 +1,9 @@
 import type { APIEvent } from "@solidjs/start/server";
+import type { UUID } from "~/domain/shared/types";
 import {
   clearThumbnailCache,
   startThumbnailGeneration,
-} from "~/lib/api/thumbnails";
-import type { UUID } from "~/lib/types";
+} from "~/infrastructure/api-clients/thumbnails";
 
 /**
  * 手動でサムネイル生成を開始します。

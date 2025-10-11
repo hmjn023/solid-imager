@@ -19,7 +19,7 @@ import { cva } from "class-variance-authority";
 import type { JSX, ValidComponent } from "solid-js";
 import { splitProps } from "solid-js";
 
-import { cn } from "~/lib/utils";
+import { cn } from "~/presentation/utils/cn";
 
 const Select = SelectPrimitiveRoot;
 const SelectValue = SelectPrimitiveValue;

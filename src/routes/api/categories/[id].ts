@@ -4,7 +4,7 @@ import {
   deleteCategory,
   getCategoryById,
   updateCategory,
-} from "~/lib/api/categories";
+} from "~/infrastructure/api-clients/categories";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({

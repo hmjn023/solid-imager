@@ -1,6 +1,10 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { getConfig, resetConfig, updateConfig } from "~/lib/api/config";
-import type { AppConfig } from "~/lib/types";
+import type { AppConfig } from "~/domain/shared/types";
+import {
+  getConfig,
+  resetConfig,
+  updateConfig,
+} from "~/infrastructure/api-clients/config";
 
 export function GET() {
   try {

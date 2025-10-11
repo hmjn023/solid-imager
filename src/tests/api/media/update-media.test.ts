@@ -5,7 +5,7 @@ import {
   mediaIdSchema,
   sourceIdSchema,
   updateMediaRequestSchema,
-} from "~/lib/schemas";
+} from "~/domain/media/schemas";
 
 describe("updateMedia Contract", () => {
   it("should return an updated Media object on successful update", () => {
