@@ -4,7 +4,7 @@
  */
 
 export type CharacterData = {
-  name: string;
-  ipId?: number;
-  description?: string;
+	name: string;
+	ipId?: number;
+	description?: string;
 };

@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import {
-  createCharacter,
-  getCharacters,
+	createCharacter,
+	getCharacters,
 } from "~/infrastructure/api-clients/characters";
 
 /**
@@ -10,8 +10,8 @@ import {
  */
 
 export async function GET() {
-  const characters = await getCharacters();
-  return characters;
+	const characters = await getCharacters();
+	return characters;
 }
 
 /**
@@ -20,7 +20,7 @@ export async function GET() {
  * @returns 作成されたキャラクター
  */
 export async function POST({ request }: APIEvent) {
-  const data = await request.json();
-  const newCharacter = await createCharacter(data);
-  return newCharacter;
+	const data = await request.json();
+	const newCharacter = await createCharacter(data);
+	return newCharacter;
 }

@@ -9,8 +9,8 @@ import { deleteDirectory } from "~/infrastructure/api-clients/directories";
  * @returns ディレクトリ削除結果
  */
 export async function DELETE({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const { path } = await request.json(); // パスがボディに含まれていると仮定します。
-  const result = await deleteDirectory(sourceId, path);
-  return result;
+	const sourceId = params.sourceId as UUID;
+	const { path } = await request.json(); // パスがボディに含まれていると仮定します。
+	const result = await deleteDirectory(sourceId, path);
+	return result;
 }
