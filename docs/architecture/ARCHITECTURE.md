@@ -1,173 +1,173 @@
-# Architecture Documentation
+# アーキテクチャドキュメント
 
-**Project**: solid-imager  
-**Last Updated**: 2025-10-11  
-**Architecture Style**: Clean Architecture / Hexagonal Architecture
+**プロジェクト**: solid-imager  
+**最終更新日**: 2025-10-11  
+**アーキテクチャスタイル**: クリーンアーキテクチャ / ヘキサゴナルアーキテクチャ
 
-## Overview
+## 概要
 
-This project follows a layered architecture pattern inspired by Clean Architecture and Hexagonal Architecture principles. The codebase is organized into distinct layers with clear separation of concerns and well-defined dependency rules.
+このプロジェクトは、クリーンアーキテクチャとヘキサゴナルアーキテクチャの原則に触発されたレイヤードアーキテクチャパターンに従っています。コードベースは、明確な関心事の分離と明確に定義された依存関係ルールを持つ異なるレイヤーに編成されています。
 
-## Architecture Principles
+## アーキテクチャ原則
 
-1. **Dependency Direction**: Dependencies flow inward toward the domain layer
-   - Presentation → Application → Domain ← Infrastructure
-2. **Domain Independence**: The domain layer has no external dependencies
-3. **Testability**: Each layer can be tested independently
-4. **Maintainability**: Clear boundaries make code easier to understand and modify
-5. **Flexibility**: Infrastructure can be swapped without affecting business logic
+1.  **依存関係の方向**: 依存関係はドメインレイヤーに向かって内側に流れます
+    - プレゼンテーション → アプリケーション → ドメイン ← インフラストラクチャ
+2.  **ドメインの独立性**: ドメインレイヤーは外部依存関係を持ちません
+3.  **テスト容易性**: 各レイヤーは独立してテストできます
+4.  **保守性**: 明確な境界により、コードの理解と変更が容易になります
+5.  **柔軟性**: インフラストラクチャはビジネスロジックに影響を与えることなく交換できます
 
-## Directory Structure
+## ディレクトリ構造
 
 ```
 src/
-├── domain/              # Business logic, domain models, pure functions
-│   ├── media/           # Media domain (types, schemas, processing)
-│   ├── sources/         # Media sources domain
-│   ├── tags/            # Tags domain
-│   ├── categories/      # Categories domain
-│   ├── characters/      # Characters domain
-│   ├── ips/             # Intellectual properties domain
-│   └── shared/          # Cross-domain utilities
+├── domain/              # ビジネスロジック、ドメインモデル、純粋関数
+│   ├── media/           # メディアドメイン (型、スキーマ、処理)
+│   ├── sources/         # メディアソースドメイン
+│   ├── tags/            # タグドメイン
+│   ├── categories/      # カテゴリドメイン
+│   ├── characters/      # キャラクタードメイン
+│   ├── ips/             # 知的財産ドメイン
+│   └── shared/          # クロスドメインユーティリティ
 │
-├── application/         # Use case orchestration, service layer
-│   └── services/        # Application services
+├── application/         # ユースケースオーケストレーション、サービスレイヤー
+│   └── services/        # アプリケーションサービス
 │       ├── media-service.ts
 │       ├── media-source-service.ts
 │       ├── thumbnail-service.ts
-│       └── ... (19 services total)
+│       └── ... (合計19サービス)
 │
-├── infrastructure/      # External integrations, I/O operations
-│   ├── storage/         # Storage drivers (local, SFTP, S3)
-│   ├── api-clients/     # API client functions
-│   ├── jobs/            # Background job processing
-│   └── db/              # Database access layer
+├── infrastructure/      # 外部統合、I/O操作
+│   ├── storage/         # ストレージドライバー (ローカル、SFTP、S3)
+│   ├── api-clients/     # APIクライアント関数
+│   ├── jobs/            # バックグラウンドジョブ処理
+│   └── db/              # データベースアクセスレイヤー
 │
-├── presentation/        # UI layer, routes, components
-│   ├── routes/          # API routes and pages (external to layers)
-│   ├── components/      # UI components (external to layers)
-│   └── utils/           # Presentation utilities (cn.ts)
+├── presentation/        # UIレイヤー、ルート、コンポーネント
+│   ├── routes/          # APIルートとページ (レイヤーの外部)
+│   ├── components/      # UIコンポーネント (レイヤーの外部)
+│   └── utils/           # プレゼンテーションユーティリティ (cn.ts)
 │
-└── shared/              # Cross-cutting concerns (future use)
+└── shared/              # クロスカッティングの関心事 (将来の使用)
     ├── types/
     └── constants/
 ```
 
-## Layer Responsibilities
+## レイヤーの責任
 
-### 1. Domain Layer (`src/domain/`)
+### 1. ドメインレイヤー (`src/domain/`)
 
-**Purpose**: Contains business logic, domain models, and validation rules. Pure functions with no I/O.
+**目的**: ビジネスロジック、ドメインモデル、および検証ルールが含まれます。I/Oのない純粋な関数です。
 
-**Characteristics**:
-- No dependencies on other layers
-- Pure functions (deterministic, no side effects)
-- Business rules and validation
-- Domain-specific types and schemas
+**特徴**:
+- 他のレイヤーへの依存関係なし
+- 純粋関数 (決定論的、副作用なし)
+- ビジネスルールと検証
+- ドメイン固有の型とスキーマ
 
-**Files** (17 total):
-- `media/types.ts` - Media domain types (Media, MediaMetadata, etc.)
-- `media/schemas.ts` - Zod validation schemas for media
-- `media/processing/image-processor.ts` - Image processing logic
-- `media/utils/path-utils.ts` - Path manipulation utilities
-- `media/utils/hash-utils.ts` - Hashing utilities
-- `sources/types.ts` - Source types (MediaSourceInfo, ConnectionInfo)
-- `sources/schemas.ts` - Source validation schemas
-- `shared/types.ts` - Cross-domain types (UUID, AppConfig, etc.)
-- `shared/validation.ts` - Schema validation utilities
-- Domain-specific types and schemas for: tags, categories, characters, ips
+**ファイル** (合計17):
+- `media/types.ts` - メディアドメイン型 (Media, MediaMetadataなど)
+- `media/schemas.ts` - メディアのZod検証スキーマ
+- `media/processing/image-processor.ts` - 画像処理ロジック
+- `media/utils/path-utils.ts` - パス操作ユーティリティ
+- `media/utils/hash-utils.ts` - ハッシュユーティリティ
+- `sources/types.ts` - ソース型 (MediaSourceInfo, ConnectionInfo)
+- `sources/schemas.ts` - ソース検証スキーマ
+- `shared/types.ts` - クロスドメイン型 (UUID, AppConfigなど)
+- `shared/validation.ts` - スキーマ検証ユーティリティ
+- タグ、カテゴリ、キャラクター、IPのドメイン固有の型とスキーマ
 
-**Guidelines**:
-- ✅ DO: Write pure functions
-- ✅ DO: Define business rules and validation
-- ✅ DO: Create domain-specific types
-- ❌ DON'T: Import from infrastructure or application layers
-- ❌ DON'T: Perform I/O operations
-- ❌ DON'T: Access databases or external APIs
+**ガイドライン**:
+- ✅ DO: 純粋な関数を記述する
+- ✅ DO: ビジネスルールと検証を定義する
+- ✅ DO: ドメイン固有の型を作成する
+- ❌ DON'T: インフラストラクチャまたはアプリケーションレイヤーからインポートする
+- ❌ DON'T: I/O操作を実行する
+- ❌ DON'T: データベースまたは外部APIにアクセスする
 
-**Example**:
+**例**:
 ```typescript
-// ✅ Good: Pure domain logic
+// ✅ 良い例: 純粋なドメインロジック
 export const calculateAspectRatio = (width: number, height: number): number => {
   return width / height;
 };
 
-// ❌ Bad: I/O in domain layer
+// ❌ 悪い例: ドメインレイヤーでのI/O
 export const getMediaFromDatabase = async (id: string) => {
   return await db.select().from(media).where(eq(media.id, id));
 };
 ```
 
-### 2. Application Layer (`src/application/`)
+### 2. アプリケーションレイヤー (`src/application/`)
 
-**Purpose**: Orchestrates use cases, coordinates between domain and infrastructure.
+**目的**: ユースケースをオーケストレーションし、ドメインとインフラストラクチャの間を調整します。
 
-**Characteristics**:
-- Depends on domain layer
-- Uses infrastructure through dependency injection or imports
-- Coordinates complex workflows
-- Transaction boundaries
+**特徴**:
+- ドメインレイヤーに依存
+- 依存性注入またはインポートを介してインフラストラクチャを使用
+- 複雑なワークフローを調整
+- トランザクション境界
 
-**Files** (19 total):
-- Service files orchestrating business operations:
-  - `media-service.ts` - Media management operations
-  - `media-source-service.ts` - Source management
-  - `thumbnail-service.ts` - Thumbnail generation orchestration
-  - `analytics-service.ts`, `bulk-operation-service.ts`, etc.
+**ファイル** (合計19):
+- ビジネス操作をオーケストレーションするサービスファイル:
+  - `media-service.ts` - メディア管理操作
+  - `media-source-service.ts` - ソース管理
+  - `thumbnail-service.ts` - サムネイル生成オーケストレーション
+  - `analytics-service.ts`、`bulk-operation-service.ts`など
 
-**Guidelines**:
-- ✅ DO: Orchestrate domain logic with infrastructure
-- ✅ DO: Handle transaction boundaries
-- ✅ DO: Implement use cases
-- ✅ DO: Import from domain and infrastructure layers
-- ❌ DON'T: Contain business logic (delegate to domain)
-- ❌ DON'T: Directly access infrastructure details (use abstractions)
+**ガイドライン**:
+- ✅ DO: ドメインロジックをインフラストラクチャとオーケストレーションする
+- ✅ DO: トランザクション境界を処理する
+- ✅ DO: ユースケースを実装する
+- ✅ DO: ドメインおよびインフラストラクチャレイヤーからインポートする
+- ❌ DON'T: ビジネスロジックを含める (ドメインに委譲する)
+- ❌ DON'T: インフラストラクチャの詳細に直接アクセスする (抽象化を使用する)
 
-**Example**:
+**例**:
 ```typescript
-// ✅ Good: Service orchestrates domain + infrastructure
+// ✅ 良い例: サービスはドメイン + インフラストラクチャをオーケストレーションする
 export async function processMedia(sourceId: string, filePath: string) {
-  // Validate with domain schema
+  // ドメインスキーマで検証
   const validatedSourceId = sourceIdSchema.parse(sourceId);
   
-  // Use infrastructure to get file
+  // インフラストラクチャを使用してファイルを取得
   const file = await storageDriver.readFile(filePath);
   
-  // Use domain logic for processing
+  // 処理にドメインロジックを使用
   const metadata = await extractMetadata(file);
   
-  // Save to database via infrastructure
+  // インフラストラクチャを介してデータベースに保存
   return await db.insert(media).values({ sourceId, filePath, metadata });
 }
 ```
 
-### 3. Infrastructure Layer (`src/infrastructure/`)
+### 3. インフラストラクチャレイヤー (`src/infrastructure/`)
 
-**Purpose**: Implements external integrations, I/O operations, and technical capabilities.
+**目的**: 外部統合、I/O操作、および技術的機能を実装します。
 
-**Characteristics**:
-- Depends on domain layer (for types and interfaces)
-- Independent from application layer
-- Handles external systems (DB, filesystem, APIs)
-- Contains adapters and drivers
+**特徴**:
+- ドメインレイヤーに依存 (型とインターフェースの場合)
+- アプリケーションレイヤーから独立
+- 外部システム (DB、ファイルシステム、API) を処理
+- アダプターとドライバーを含む
 
-**Files** (21 total):
-- `storage/` - Storage drivers (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
-- `api-clients/` - API client functions (media.ts, sources.ts, categories.ts, etc.)
-- `jobs/` - Background job processing (job-queue.ts, thumbnail-jobs.ts, thumbnails.ts)
-- `db/` - Database access (index.ts, schema.ts)
+**ファイル** (合計21):
+- `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
+- `api-clients/` - APIクライアント関数 (media.ts, sources.ts, categories.tsなど)
+- `jobs/` - バックグラウンドジョブ処理 (job-queue.ts, thumbnail-jobs.ts, thumbnails.ts)
+- `db/` - データベースアクセス (index.ts, schema.ts)
 
-**Guidelines**:
-- ✅ DO: Implement technical capabilities
-- ✅ DO: Handle I/O operations
-- ✅ DO: Use domain types for data structures
-- ✅ DO: Throw domain-specific errors
-- ❌ DON'T: Import from application layer
-- ❌ DON'T: Contain business logic
+**ガイドライン**:
+- ✅ DO: 技術的機能を実装する
+- ✅ DO: I/O操作を処理する
+- ✅ DO: データ構造にドメイン型を使用する
+- ✅ DO: ドメイン固有のエラーをスローする
+- ❌ DON'T: アプリケーションレイヤーからインポートする
+- ❌ DON'T: ビジネスロジックを含める
 
-**Example**:
+**例**:
 ```typescript
-// ✅ Good: Infrastructure adapter
+// ✅ 良い例: インフラストラクチャアダプター
 export class LocalDriver implements MediaSourceDriver {
   async readFile(path: string): Promise<Buffer> {
     return await fs.readFile(this.getAbsolutePath(path));
@@ -184,119 +184,119 @@ export class LocalDriver implements MediaSourceDriver {
 }
 ```
 
-### 4. Presentation Layer (`src/presentation/`)
+### 4. プレゼンテーションレイヤー (`src/presentation/`)
 
-**Purpose**: User interface concerns, including utilities specific to UI rendering.
+**目的**: UIレンダリングに特化したユーティリティを含む、ユーザーインターフェースの関心事。
 
-**Characteristics**:
-- Depends on application and domain layers
-- Contains UI-specific logic
-- Handles user input/output
+**特徴**:
+- アプリケーションおよびドメインレイヤーに依存
+- UI固有のロジックを含む
+- ユーザー入力/出力を処理
 
-**Files** (1 total):
-- `utils/cn.ts` - Tailwind CSS class merging utility
+**ファイル** (合計1):
+- `utils/cn.ts` - Tailwind CSSクラスマージユーティリティ
 
-**Note**: Routes (`src/routes/`) and components (`src/components/`) are conceptually part of the presentation layer but remain at the project root due to framework conventions (SolidStart).
+**注**: ルート (`src/routes/`) とコンポーネント (`src/components/`) は概念的にはプレゼンテーションレイヤーの一部ですが、フレームワークの慣例 (SolidStart) によりプロジェクトルートに残ります。
 
-**Guidelines**:
-- ✅ DO: Handle UI rendering logic
-- ✅ DO: Format data for display
-- ✅ DO: Process user input
-- ✅ DO: Import from any layer as needed
-- ❌ DON'T: Contain business logic
+**ガイドライン**:
+- ✅ DO: UIレンダリングロジックを処理する
+- ✅ DO: 表示用にデータをフォーマットする
+- ✅ DO: ユーザー入力を処理する
+- ✅ DO: 必要に応じて任意のレイヤーからインポートする
+- ❌ DON'T: ビジネスロジックを含める
 
-### 5. Shared Layer (`src/shared/`)
+### 5. 共有レイヤー (`src/shared/`)
 
-**Purpose**: Cross-cutting concerns used by multiple layers.
+**目的**: 複数のレイヤーで使用されるクロスカッティングの関心事。
 
-**Status**: Directory structure created for future use. Currently empty.
+**ステータス**: 将来の使用のためにディレクトリ構造が作成されました。現在は空です。
 
-**Intended Use**:
-- Common types used across all layers
-- Application-wide constants
-- Shared utilities that don't belong to a specific domain
+**意図された使用**:
+- すべてのレイヤーで使用される共通の型
+- アプリケーション全体の定数
+- 特定のドメインに属さない共有ユーティリティ
 
-## Dependency Rules
+## 依存関係ルール
 
-### Allowed Dependencies
+### 許可された依存関係
 
 ```
-Presentation Layer
-    ↓ (can import from)
-Application Layer
-    ↓ (can import from)
-Domain Layer ← Infrastructure Layer
-    (can import from)
+プレゼンテーションレイヤー
+    ↓ (からインポート可能)
+アプリケーションレイヤー
+    ↓ (からインポート可能)
+ドメインレイヤー ← インフラストラクチャレイヤー
+    (からインポート可能)
 ```
 
-### Prohibited Dependencies
+### 禁止された依存関係
 
-- ❌ Domain → Infrastructure
-- ❌ Domain → Application
-- ❌ Domain → Presentation
-- ❌ Infrastructure → Application
-- ❌ Infrastructure → Presentation
+- ❌ ドメイン → インフラストラクチャ
+- ❌ ドメイン → アプリケーション
+- ❌ ドメイン → プレゼンテーション
+- ❌ インフラストラクチャ → アプリケーション
+- ❌ インフラストラクチャ → プレゼンテーション
 
-## Migration Summary
+## 移行の概要
 
-### Before (Old Structure)
+### 以前 (古い構造)
 
 ```
 src/
-├── lib/              # Mixed concerns
-│   ├── api/          # API clients + business logic
-│   ├── drivers/      # Storage drivers
-│   ├── helpers/      # Mixed utilities
-│   ├── types.ts      # All types in one file
-│   ├── schemas.ts    # All schemas in one file
-│   └── utils.ts      # Single utility
-├── services/         # Application services (well-organized)
-├── db/               # Database
-└── utils/            # Empty
+├── lib/              # 混在した関心事
+│   ├── api/          # APIクライアント + ビジネスロジック
+│   ├── drivers/      # ストレージドライバー
+│   ├── helpers/      # 混在したユーティリティ
+│   ├── types.ts      # すべての型が1つのファイルに
+│   ├── schemas.ts    # すべてのスキーマが1つのファイルに
+│   └── utils.ts      # 単一のユーティリティ
+├── services/         # アプリケーションサービス (適切に編成)
+├── db/               # データベース
+└── utils/            # 空
 ```
 
-**Problems**:
-- Business logic mixed with infrastructure (src/lib/api/media.ts)
-- Types and schemas not organized by domain
-- Helper functions scattered across multiple files
-- No clear separation between domain and infrastructure
+**問題点**:
+- ビジネスロジックとインフラストラクチャの混在 (src/lib/api/media.ts)
+- ドメインごとに整理されていない型とスキーマ
+- 複数のファイルに散らばったヘルパー関数
+- ドメインとインフラストラクチャの明確な分離がない
 
-### After (New Structure)
+### 以後 (新しい構造)
 
-**Improvements**:
-- ✅ Clear separation of concerns (4 distinct layers)
-- ✅ Domain logic isolated from I/O
-- ✅ Types and schemas organized by domain
-- ✅ Infrastructure adapters clearly separated
-- ✅ All architectural boundaries enforced
-- ✅ 58 files organized across 5 layers (down from 82, eliminated duplication)
+**改善点**:
+- ✅ 明確な関心事の分離 (4つの異なるレイヤー)
+- ✅ ドメインロジックがI/Oから分離
+- ✅ ドメインごとに整理された型とスキーマ
+- ✅ インフラストラクチャアダプターが明確に分離
+- ✅ すべてのアーキテクチャ境界が強制される
+- ✅ 58ファイルが5つのレイヤーに整理 (82から減少し、重複を排除)
 
-## Adding New Code
+## 新しいコードの追加
 
-### Adding a New Domain Concept
+### 新しいドメインコンセプトの追加
 
-1. Create directory in `src/domain/{concept}/`
-2. Add `types.ts` for domain types
-3. Add `schemas.ts` for validation schemas
-4. Add domain logic files as needed
+1.  `src/domain/{concept}/`にディレクトリを作成
+2.  ドメイン型用の`types.ts`を追加
+3.  検証スキーマ用の`schemas.ts`を追加
+4.  必要に応じてドメインロジックファイルを追加
 
-**Example**: Adding a "collections" domain
+**例**: 「コレクション」ドメインの追加
 ```
 src/domain/collections/
-├── types.ts           # Collection, CollectionItem types
-├── schemas.ts         # Collection validation schemas
+├── types.ts           # Collection, CollectionItem型
+├── schemas.ts         # Collection検証スキーマ
 └── utils/
-    └── collection-utils.ts  # Pure collection logic
+    └── collection-utils.ts  # 純粋なコレクションロジック
 ```
 
-### Adding a New Service
+### 新しいサービスの追加
 
-1. Create file in `src/application/services/`
-2. Import domain types and schemas
-3. Use infrastructure through imports
-4. Orchestrate business operations
+1.  `src/application/services/`にファイルを作成
+2.  ドメイン型とスキーマをインポート
+3.  インポートを介してインフラストラクチャを使用
+4.  ビジネス操作をオーケストレーション
 
-**Example**: Adding a collection service
+**例**: コレクションサービスの追加
 ```typescript
 // src/application/services/collection-service.ts
 import type { Collection } from "~/domain/collections/types";
@@ -309,55 +309,55 @@ export async function createCollection(data: unknown): Promise<Collection> {
 }
 ```
 
-### Adding Infrastructure Integration
+### インフラストラクチャ統合の追加
 
-1. Create adapter in `src/infrastructure/{type}/`
-2. Implement interfaces defined in domain
-3. Use domain types for data structures
+1.  `src/infrastructure/{type}/`にアダプターを作成
+2.  ドメインで定義されたインターフェースを実装
+3.  データ構造にドメイン型を使用
 
-**Example**: Adding a new storage driver
+**例**: 新しいストレージドライバーの追加
 ```typescript
 // src/infrastructure/storage/dropbox.ts
 import type { MediaSourceDriver } from "./types";
 
 export class DropboxDriver implements MediaSourceDriver {
   async readFile(path: string): Promise<Buffer> {
-    // Implementation using Dropbox SDK
+    // Dropbox SDKを使用した実装
   }
   
   async testConnection(): Promise<{ success: boolean }> {
-    // Test Dropbox connection
+    // Dropbox接続をテスト
   }
 }
 ```
 
-## Testing Strategy
+## テスト戦略
 
-### Domain Layer Tests
-- Focus on business logic correctness
-- Use pure input/output assertions
-- No mocking required (pure functions)
+### ドメインレイヤーテスト
+- ビジネスロジックの正確性に焦点を当てる
+- 純粋な入力/出力アサーションを使用
+- モックは不要 (純粋関数)
 
-### Application Layer Tests
-- Mock infrastructure dependencies
-- Test use case orchestration
-- Verify error handling
+### アプリケーションレイヤーテスト
+- インフラストラクチャの依存関係をモックする
+- ユースケースのオーケストレーションをテストする
+- エラー処理を検証する
 
-### Infrastructure Layer Tests
-- Integration tests with real external systems (use test databases)
-- Test adapter behavior
-- Verify error handling for I/O failures
+### インフラストラクチャレイヤーテスト
+- 実際の外部システムとの統合テスト (テストデータベースを使用)
+- アダプターの動作をテストする
+- I/O障害のエラー処理を検証する
 
-### Presentation Layer Tests
-- UI component tests
-- User interaction flows
-- Format/display logic
+### プレゼンテーションレイヤーテスト
+- UIコンポーネントテスト
+- ユーザーインタラクションフロー
+- フォーマット/表示ロジック
 
-## Common Patterns
+## 一般的なパターン
 
-### Dependency Injection
+### 依存性注入
 
-Services receive dependencies through constructor or function parameters:
+サービスはコンストラクタまたは関数パラメータを介して依存関係を受け取ります。
 
 ```typescript
 export async function processMediaWithStorage(
@@ -369,26 +369,26 @@ export async function processMediaWithStorage(
 }
 ```
 
-### Error Handling
+### エラー処理
 
-Throw domain-specific errors that can be caught at presentation layer:
+プレゼンテーションレイヤーでキャッチできるドメイン固有のエラーをスローします。
 
 ```typescript
-// Domain layer
+// ドメインレイヤー
 export class MediaNotFoundError extends Error {
   constructor(id: string) {
     super(`Media ${id} not found`);
   }
 }
 
-// Application layer
+// アプリケーションレイヤー
 export async function getMedia(id: string): Promise<Media> {
   const media = await db.select().from(media).where(eq(media.id, id));
   if (!media) throw new MediaNotFoundError(id);
   return media;
 }
 
-// Presentation layer (route)
+// プレゼンテーションレイヤー (ルート)
 try {
   return json(await getMedia(params.id));
 } catch (error) {
@@ -399,25 +399,25 @@ try {
 }
 ```
 
-### Validation Pattern
+### 検証パターン
 
-Use Zod schemas from domain layer at entry points:
+エントリポイントでドメインレイヤーのZodスキーマを使用します。
 
 ```typescript
-// Domain
+// ドメイン
 export const createMediaSchema = z.object({
   sourceId: z.string().uuid(),
   filePath: z.string().min(1),
   // ...
 });
 
-// Application service
+// アプリケーションサービス
 export async function createMedia(data: unknown) {
-  const validated = createMediaSchema.parse(data); // Throws ZodError if invalid
+  const validated = createMediaSchema.parse(data); // 無効な場合はZodErrorをスロー
   return await db.insert(media).values(validated);
 }
 
-// Route handler
+// ルートハンドラー
 export async function POST({ request }: APIEvent) {
   try {
     const body = await request.json();
@@ -431,13 +431,13 @@ export async function POST({ request }: APIEvent) {
 }
 ```
 
-## Architecture Decision Records
+## アーキテクチャ決定記録
 
-See [ADR-001: Adopt Clean Architecture](./ADR-001-clean-architecture.md) for rationale behind this architecture.
+このアーキテクチャの根拠については、[ADR-001: クリーンアーキテクチャの採用](./ADR-001-clean-architecture.md)を参照してください。
 
-## References
+## 参照
 
-- [Clean Architecture (Robert C. Martin)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-- [Hexagonal Architecture (Alistair Cockburn)](https://alistair.cockburn.us/hexagonal-architecture/)
-- [Feature Specification](../../specs/005-src-lib-utils/spec.md)
-- [Implementation Plan](../../specs/005-src-lib-utils/plan.md)
+- [クリーンアーキテクチャ (ロバート・C・マーチン)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+- [ヘキサゴナルアーキテクチャ (アリスター・コックバーン)](https://alistair.cockburn.us/hexagonal-architecture/)
+- [機能仕様](../../specs/005-src-lib-utils/spec.md)
+- [実装計画](../../specs/005-src-lib-utils/plan.md)
