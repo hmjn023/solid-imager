@@ -1,0 +1,1140 @@
+bun test v1.3.0 (b0a6feca)
+
+src/tests/e2e/example.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test() to be called here.
+Most common reasons include:
+- You are calling test() in a configuration file.
+- You are calling test() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _createTest (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:87:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/e2e/example.spec.ts:5:1
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/e2e/sources-basic.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/e2e/sources-basic.spec.ts:3:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/e2e/sources.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/e2e/sources.spec.ts:3:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/e2e/thumbnails.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/e2e/thumbnails.spec.ts:12:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/integration/config-api.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/integration/config-api.spec.ts:3:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/integration/media-api.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/integration/media-api.spec.ts:9:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/integration/thumbnails-api.spec.ts:
+
+# Unhandled error between tests
+-------------------------------
+69 |     this.test = test;
+70 |   }
+71 |   _currentSuite(location, title) {
+72 |     const suite = (0, import_globals.currentlyLoadingFileSuite)();
+73 |     if (!suite) {
+74 |       throw new Error([
+                     ^
+error: Playwright Test did not expect test.describe() to be called here.
+Most common reasons include:
+- You are calling test.describe() in a configuration file.
+- You are calling test.describe() in a file that is imported by the configuration file.
+- You have two different versions of @playwright/test. This usually happens
+  when one of the dependencies in your package.json depends on @playwright/test.
+      at _currentSuite (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:74:17)
+      at _describe (/home/hmjn/project/web/solid-imager/node_modules/playwright/lib/common/testType.js:114:24)
+      at /home/hmjn/project/web/solid-imager/src/tests/integration/thumbnails-api.spec.ts:7:6
+      at loadAndEvaluateModule (2:1)
+-------------------------------
+
+
+src/tests/api/media/addMedia.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) addMedia Contract > should return a Media object on successful addition [2.00ms]
+
+src/tests/api/media/add-media.test.ts:
+ 8 |         throw new core.$ZodAsyncError();
+ 9 |     }
+10 |     if (result.issues.length) {
+11 |         const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+12 |         util.captureStackTrace(e, _params?.callee);
+13 |         throw e;
+                   ^
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/zod/v4/core/parse.js:13:15)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/api/media/add-media.test.ts:23:27)
+(fail) addMedia Contract > should return a Media object on successful addition [1.00ms]
+
+src/tests/api/media/getMedia.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Contract > should return a Media object for a valid mediaId
+
+src/tests/api/media/get-media.test.ts:
+ 8 |         throw new core.$ZodAsyncError();
+ 9 |     }
+10 |     if (result.issues.length) {
+11 |         const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+12 |         util.captureStackTrace(e, _params?.callee);
+13 |         throw e;
+                   ^
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/zod/v4/core/parse.js:13:15)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/api/media/get-media.test.ts:12:20)
+(fail) getMedia Contract > should return a Media object for a valid mediaId
+
+src/tests/api/media/deleteMedia.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Contract > should return success: true on successful deletion
+
+src/tests/api/media/delete-media.test.ts:
+ 8 |         throw new core.$ZodAsyncError();
+ 9 |     }
+10 |     if (result.issues.length) {
+11 |         const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+12 |         util.captureStackTrace(e, _params?.callee);
+13 |         throw e;
+                   ^
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/zod/v4/core/parse.js:13:15)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/api/media/delete-media.test.ts:11:20)
+(fail) deleteMedia Contract > should return success: true on successful deletion
+
+src/tests/api/media/list-media.test.ts:
+ 8 |         throw new core.$ZodAsyncError();
+ 9 |     }
+10 |     if (result.issues.length) {
+11 |         const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+12 |         util.captureStackTrace(e, _params?.callee);
+13 |         throw e;
+                   ^
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/zod/v4/core/parse.js:13:15)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/api/media/list-media.test.ts:12:20)
+(fail) listMedia Contract > should return an array of Media objects for a valid directoryPath
+
+src/tests/api/media/update-media.test.ts:
+ 8 |         throw new core.$ZodAsyncError();
+ 9 |     }
+10 |     if (result.issues.length) {
+11 |         const e = new (_params?.Err ?? _Err)(result.issues.map((iss) => util.finalizeIssue(iss, ctx, core.config())));
+12 |         util.captureStackTrace(e, _params?.callee);
+13 |         throw e;
+                   ^
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/zod/v4/core/parse.js:13:15)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/api/media/update-media.test.ts:20:20)
+(fail) updateMedia Contract > should return an updated Media object on successful update [1.00ms]
+
+src/tests/api/media/listMedia.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) listMedia Contract > should return an array of Media objects for a valid directoryPath
+
+src/tests/api/media/updateMedia.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Contract > should return an updated Media object on successful update
+
+src/tests/integration/media/add-media-integration.test.ts:
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should successfully add media to the database [1.00ms]
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should throw a ZodError if required fields are missing or invalid
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should throw an error if media with same sourceId and filePath already exists
+
+src/tests/integration/media/delete-media-integration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should successfully delete media from the database
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw a ZodError for an invalid mediaId format [1.00ms]
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw a ZodError for an invalid sourceId format
+
+src/tests/integration/media/get-media-integration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should successfully retrieve media from the database
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw a ZodError for an invalid mediaId format [1.00ms]
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw a ZodError for an invalid sourceId format
+
+src/tests/integration/media/list-media-integration.test.ts:
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should return all media files within the specified directory for the given sourceId
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should return an empty array if directoryPath contains no media files for the given sourceId
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should throw a ZodError if directoryPath is empty [1.00ms]
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should throw a ZodError if sourceId is invalid
+
+src/tests/integration/media/update-media-integration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should successfully update media in the database
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for an invalid mediaId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for an invalid sourceId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for invalid update data [1.00ms]
+
+src/tests/integration/media/addMediaIntegration.test.ts:
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should successfully add media to the database
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should throw a ZodError if required fields are missing or invalid
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media"
+params: 
+  query: "delete from \"media\"",
+ params: [],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) addMedia Integration > should throw an error if media with same sourceId and filePath already exists
+
+src/tests/integration/media/deleteMediaIntegration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should successfully delete media from the database
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw a ZodError for an invalid mediaId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) deleteMedia Integration > should throw a ZodError for an invalid sourceId format
+
+src/tests/integration/media/getMediaIntegration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should successfully retrieve media from the database
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw a ZodError for an invalid mediaId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) getMedia Integration > should throw a ZodError for an invalid sourceId format
+
+src/tests/integration/media/listMediaIntegration.test.ts:
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should return all media files within the specified directory for the given sourceId [1.00ms]
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should return an empty array if directoryPath contains no media files for the given sourceId
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should throw a ZodError if directoryPath is empty
+36 |   async queryWithCache(queryString, params, query) {
+37 |     if (this.cache === void 0 || is(this.cache, NoopCache) || this.queryMetadata === void 0) {
+38 |       try {
+39 |         return await query();
+40 |       } catch (e) {
+41 |         throw new DrizzleQueryError(queryString, params, e);
+                   ^
+error: Failed query: delete from "media" where "media"."file_path" like $1
+params: /test/path/list_media/%
+  query: "delete from \"media\" where \"media\".\"file_path\" like $1",
+ params: [ "/test/path/list_media/%" ],
+
+      at queryWithCache (/home/hmjn/project/web/solid-imager/node_modules/drizzle-orm/pg-core/session.js:41:15)
+
+40 |     res = resolve
+41 |     rej = reject
+42 |   }).catch((err) => {
+43 |     // replace the stack trace that leads to `TCP.onStreamRead` with one that leads back to the
+44 |     // application that created the query
+45 |     Error.captureStackTrace(err)
+               ^
+error: Cannot use a pool after calling end on the pool
+      at <anonymous> (/home/hmjn/project/web/solid-imager/node_modules/pg-pool/index.js:45:11)
+(fail) listMedia Integration > should throw a ZodError if sourceId is invalid
+
+src/tests/integration/media/updateMediaIntegration.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should successfully update media in the database [1.00ms]
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw an error if mediaId is not found for the given sourceId
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for an invalid mediaId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for an invalid sourceId format
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) updateMedia Integration > should throw a ZodError for invalid update data
+
+src/tests/unit/api/media.test.ts:
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [
+      "sourceId"
+    ],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) Media API Unit Tests > addMedia > should add a new media entry and return it
+135 |         width: 100,
+136 |         height: 100,
+137 |       };
+138 | 
+139 |       // Mock selectMediaBySourceIdAndFilePath to return an existing media
+140 |       vi.mocked(db.select().from().where).mockResolvedValueOnce([
+               ^
+TypeError: vi.mocked is not a function. (In 'vi.mocked(db.select().from().where)', 'vi.mocked' is undefined)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:140:10)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:128:89)
+(fail) Media API Unit Tests > addMedia > should throw an error if media with same sourceId and filePath already exists
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) Media API Unit Tests > getMedia > should retrieve a media entry by ID
+173 |       expect(result).toBeDefined();
+174 |       expect(result.id).toBe(mediaId);
+175 |     });
+176 | 
+177 |     it("should throw an error if media ID is not found", async () => {
+178 |       vi.mocked(db.select().from().where).mockResolvedValueOnce([]);
+               ^
+TypeError: vi.mocked is not a function. (In 'vi.mocked(db.select().from().where)', 'vi.mocked' is undefined)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:178:10)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:177:58)
+(fail) Media API Unit Tests > getMedia > should throw an error if media ID is not found
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) Media API Unit Tests > updateMedia > should update a media entry and return the updated entry
+214 |       expect(result).toBeDefined();
+215 |       expect(result.fileName).toBe(updates.fileName);
+216 |     });
+217 | 
+218 |     it("should throw an error if media ID is not found", async () => {
+219 |       vi.mocked(db.update().set().where).mockResolvedValueOnce([]);
+               ^
+TypeError: vi.mocked is not a function. (In 'vi.mocked(db.update().set().where)', 'vi.mocked' is undefined)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:219:10)
+      at <anonymous> (/home/hmjn/project/web/solid-imager/src/tests/unit/api/media.test.ts:218:58)
+(fail) Media API Unit Tests > updateMedia > should throw an error if media ID is not found
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) Media API Unit Tests > deleteMedia > should delete a media entry and return success
+ZodError: [
+  {
+    "origin": "string",
+    "code": "invalid_format",
+    "format": "uuid",
+    "pattern": "/^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/",
+    "path": [],
+    "message": "Invalid source ID format"
+  }
+]
+(fail) Media API Unit Tests > listMedia > should return a list of media entries for a given directory path
+
+ 47 pass
+ 65 fail
+ 7 errors
+ 61 expect() calls
+Ran 112 tests across 31 files. [587.00ms]
