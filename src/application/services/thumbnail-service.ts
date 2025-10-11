@@ -1,27 +1,29 @@
+import { startThumbnailGeneration as apiStartThumbnailGeneration, clearThumbnailCache as apiClearThumbnailCache } from "../../infrastructure/api-clients/thumbnails";
+
 /**
  * ThumbnailService - サムネイル生成・管理機能
  * Feature 2: メディア配信・サムネイル作成機能
  */
 
 export const ThumbnailService = {
-	// Feature 2: サムネイル仕様
-	async getAllThumbnailLinks(_sourceId: string) {
-		// TODO: Get all thumbnail links for a source
-		throw new Error("Not implemented");
-	},
+  // Feature 2: サムネイル仕様
+  async getAllThumbnailLinks(sourceId: string): Promise<string[]> {
+    // TODO: This is a placeholder. Actual implementation needs to fetch all media IDs for the source.
+    return [`/api/thumbnails/${sourceId}/all`];
+  },
 
-	async getMediaThumbnail(_sourceId: string, _mediaId: string, _size?: number) {
-		// TODO: Get thumbnail for specific media with optional size parameter
-		throw new Error("Not implemented");
-	},
+  async getMediaThumbnail(sourceId: string, mediaId: string, size?: number): Promise<string> {
+    let url = `/api/thumbnails/${sourceId}/${mediaId}`;
+    if (size) {
+      url += `?size=${size}`;
+    }
+    return url;
+  },
 
-	async startThumbnailGeneration(_sourceId: string) {
-		// TODO: Start thumbnail generation for all media in source
-		throw new Error("Not implemented");
-	},
+  async startThumbnailGeneration(sourceId: string) {
+    return apiStartThumbnailGeneration(sourceId);
+  },
 
-	async clearThumbnailCache(_sourceId: string) {
-		// TODO: Clear thumbnail cache for source
-		throw new Error("Not implemented");
-	},
-};
+  async clearThumbnailCache(sourceId: string) {
+    return apiClearThumbnailCache(sourceId);
+  },
