@@ -1,4 +1,4 @@
-import { APIEvent } from "solid-start/api";
+import type { APIEvent } from "solid-start/api";
 import { MediaService } from "~/application/services/media-service";
 
 export async function GET({ params }: APIEvent) {

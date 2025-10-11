@@ -13,32 +13,32 @@ const FIVE_MINUTES = 5;
 const FIVE_MINUTES_IN_MS = FIVE_MINUTES * MINUTES_TO_MS;
 
 const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			retry: 1,
-			staleTime: FIVE_MINUTES_IN_MS,
-			refetchOnWindowFocus: false,
-		},
-	},
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: FIVE_MINUTES_IN_MS,
+      refetchOnWindowFocus: false,
+    },
+  },
 });
 
 export default function App() {
-	return (
-		<MetaProvider>
-			<Title>Solid Imager</Title>
-			<Meta charset="utf-8" />
-			<QueryClientProvider client={queryClient}>
-				<Router
-					root={(props) => (
-						<>
-							<Nav />
-							<Suspense>{props.children}</Suspense>
-						</>
-					)}
-				>
-					<FileRoutes />
-				</Router>
-			</QueryClientProvider>
-		</MetaProvider>
-	);
+  return (
+    <MetaProvider>
+      <Title>Solid Imager</Title>
+      <Meta charset="utf-8" />
+      <QueryClientProvider client={queryClient}>
+        <Router
+          root={(props) => (
+            <>
+              <Nav />
+              <Suspense>{props.children}</Suspense>
+            </>
+          )}
+        >
+          <FileRoutes />
+        </Router>
+      </QueryClientProvider>
+    </MetaProvider>
+  );
 }

@@ -7,8 +7,8 @@
 import type { ZodSchema } from "zod";
 
 export const SchemaValidator = {
-	validate(_schema: ZodSchema, _data: unknown): unknown {
-		// TODO: Validate data against Zod schema
-		throw new Error("Not implemented");
-	},
+  validate(_schema: ZodSchema, _data: unknown): unknown {
+    // TODO: Validate data against Zod schema
+    throw new Error("Not implemented");
+  },
 };

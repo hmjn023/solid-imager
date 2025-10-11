@@ -4,16 +4,16 @@
  */
 
 type SearchOptions = {
-	tags?: string[];
-	sortBy?: string;
-	page?: number;
-	limit?: number;
+  tags?: string[];
+  sortBy?: string;
+  page?: number;
+  limit?: number;
 };
 
 export const SearchService = {
-	// Feature 7: グローバル検索
-	async globalSearchMedia(_searchOptions: SearchOptions) {
-		// TODO: Search across all sources
-		throw new Error("Not implemented");
-	},
+  // Feature 7: グローバル検索
+  async globalSearchMedia(_searchOptions: SearchOptions) {
+    // TODO: Search across all sources
+    throw new Error("Not implemented");
+  },
 };

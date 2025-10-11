@@ -7,43 +7,43 @@ import { getDriver } from "~/infrastructure/storage/factory";
  */
 
 export const DirectoryService = {
-	// Feature 9: ディレクトリ管理機能 (Phase 1: local only)
-	async getDirectoryTree(_sourceId: string) {
-		// TODO: Get directory tree structure
-		throw new Error("Not implemented");
-	},
+  // Feature 9: ディレクトリ管理機能 (Phase 1: local only)
+  async getDirectoryTree(_sourceId: string) {
+    // TODO: Get directory tree structure
+    throw new Error("Not implemented");
+  },
 
-	async createDirectory(
-		_sourceId: string,
-		_directoryData: { path: string; name: string },
-	) {
-		// TODO: Create new directory
-		throw new Error("Not implemented");
-	},
+  async createDirectory(
+    _sourceId: string,
+    _directoryData: { path: string; name: string }
+  ) {
+    // TODO: Create new directory
+    throw new Error("Not implemented");
+  },
 
-	async deleteDirectory(
-		_sourceId: string,
-		_directoryPath: string,
-		_force?: boolean,
-	) {
-		// TODO: Delete directory (force=true required for non-empty)
-		throw new Error("Not implemented");
-	},
+  async deleteDirectory(
+    _sourceId: string,
+    _directoryPath: string,
+    _force?: boolean
+  ) {
+    // TODO: Delete directory (force=true required for non-empty)
+    throw new Error("Not implemented");
+  },
 
-	async updateDirectory(
-		_sourceId: string,
-		_directoryData: { oldPath: string; newPath: string },
-	) {
-		// TODO: Rename/move directory
-		throw new Error("Not implemented");
-	},
+  async updateDirectory(
+    _sourceId: string,
+    _directoryData: { oldPath: string; newPath: string }
+  ) {
+    // TODO: Rename/move directory
+    throw new Error("Not implemented");
+  },
 
-	async listMediaInSubdirectory(sourceId: string, directoriesPath: string) {
-		const [source] = await getMediaSourceById(sourceId);
-		if (!source) {
-			throw new Error("Media source not found");
-		}
-		const driver = getDriver(source);
-		return driver.list(directoriesPath);
-	},
+  async listMediaInSubdirectory(sourceId: string, directoriesPath: string) {
+    const [source] = await getMediaSourceById(sourceId);
+    if (!source) {
+      throw new Error("Media source not found");
+    }
+    const driver = getDriver(source);
+    return driver.list(directoriesPath);
+  },
 };

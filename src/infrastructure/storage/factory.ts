@@ -15,13 +15,13 @@ import type { MediaSourceDriver } from "./types";
  * @throws メディアソースタイプが不明な場合、または接続情報が無効な場合にエラーをスローします。
  */
 export function getDriver(source: MediaSource): MediaSourceDriver {
-	switch (source.type) {
-		case "local": {
-			const connectionInfo = localConnectionSchema.parse(source.connectionInfo);
-			return new LocalDriver(connectionInfo);
-		}
-		default:
-			// ここで`source.type`は`never`であり、すべてのケースが処理されることを保証します。
-			throw new Error(`メディアソースタイプが不明です: ${source.type}`);
-	}
+  switch (source.type) {
+    case "local": {
+      const connectionInfo = localConnectionSchema.parse(source.connectionInfo);
+      return new LocalDriver(connectionInfo);
+    }
+    default:
+      // ここで`source.type`は`never`であり、すべてのケースが処理されることを保証します。
+      throw new Error(`メディアソースタイプが不明です: ${source.type}`);
+  }
 }
