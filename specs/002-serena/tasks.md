@@ -19,12 +19,12 @@
 
 **Purpose**: Initialize environment and establish baseline
 
-- [ ] T001 Verify Serena MCP server is active and solid-imager project is activated
-- [ ] T002 Create git backup branch: `git checkout -b 002-serena-backup && git checkout 002-serena`
-- [ ] T003 Establish baseline by running: `npx tsc --noEmit > baseline-errors.txt` and `bun run check > baseline-lint.txt`
-- [ ] T004 Verify `src/db/db.ts` is unused: `grep -r "from.*db/db" src/` (should return no results)
-- [ ] T005 Delete duplicate database module: `rm src/db/db.ts`
-- [ ] T006 Verify build still works after deletion: `bun run check`
+- [X] T001 Verify Serena MCP server is active and solid-imager project is activated
+- [X] T002 Create git backup branch: `git checkout -b 002-serena-backup && git checkout 002-serena`
+- [X] T003 Establish baseline by running: `npx tsc --noEmit > baseline-errors.txt` and `bun run check > baseline-lint.txt`
+- [X] T004 Verify `src/db/db.ts` is unused: `grep -r "from.*db/db" src/` (NOTE: Found 5 test imports, fixed them first)
+- [X] T005 Delete duplicate database module: `rm src/db/db.ts`
+- [X] T006 Verify build still works after deletion: `bun run check`
 
 **Checkpoint**: Clean baseline established, duplicate file removed
 

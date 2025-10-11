@@ -17,7 +17,7 @@ export async function GET() {
  * @returns 作成されたキャラクター
  */
 export async function POST({ request }: APIEvent) {
-  const { name, ipId, description } = await request.json();
-  const newCharacter = await createCharacter(name, ipId, description);
+  const data = await request.json();
+  const newCharacter = await createCharacter(data);
   return newCharacter;
 }

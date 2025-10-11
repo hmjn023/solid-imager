@@ -60,7 +60,7 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const { name, description, attribute, color } = parsedBody.data;
 
-  const updatedTag = await updateTag(id, name, description, attribute, color);
+  const updatedTag = await updateTag(id, { name, description, attribute, color });
   return updatedTag;
 }
 

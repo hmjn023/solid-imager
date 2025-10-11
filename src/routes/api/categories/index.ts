@@ -17,7 +17,7 @@ export async function GET() {
  * @returns 作成されたカテゴリ
  */
 export async function POST({ request }: APIEvent) {
-  const { name, description, color, parentId } = await request.json();
-  const newCategory = await createCategory(name, description, color, parentId);
+  const data = await request.json();
+  const newCategory = await createCategory(data);
   return newCategory;
 }

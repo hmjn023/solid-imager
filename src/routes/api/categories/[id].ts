@@ -64,13 +64,7 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const { name, description, color, parentId } = parsedBody.data;
 
-  const updatedCategory = await updateCategory(
-    id,
-    name,
-    description,
-    color,
-    parentId
-  );
+  const updatedCategory = await updateCategory(id, { name, description, color, parentId });
   return updatedCategory;
 }
 

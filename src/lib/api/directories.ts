@@ -2,7 +2,8 @@ import { getMediaSourceById } from "~/lib/api/sources";
 import { getDriver } from "~/lib/drivers/factory";
 
 export async function getDirectoryListing(sourceId: string, path = "") {
-  const source = await getMediaSourceById(sourceId);
+  const sources = await getMediaSourceById(sourceId);
+  const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
   }
@@ -15,7 +16,8 @@ export async function createDirectory(
   path: string,
   name: string
 ) {
-  const source = await getMediaSourceById(sourceId);
+  const sources = await getMediaSourceById(sourceId);
+  const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
   }
@@ -30,7 +32,8 @@ export async function renameDirectory(
   oldPath: string,
   newPath: string
 ) {
-  const source = await getMediaSourceById(sourceId);
+  const sources = await getMediaSourceById(sourceId);
+  const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
   }
@@ -40,7 +43,8 @@ export async function renameDirectory(
 }
 
 export async function deleteDirectory(sourceId: string, path: string) {
-  const source = await getMediaSourceById(sourceId);
+  const sources = await getMediaSourceById(sourceId);
+  const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
   }

@@ -16,7 +16,7 @@ export async function GET() {
  * @returns 作成されたタグ
  */
 export async function POST({ request }: APIEvent) {
-  const { name, description, attribute, color } = await request.json();
-  const newTag = await createTag(name, description, attribute, color);
+  const data = await request.json();
+  const newTag = await createTag(data);
   return newTag;
 }

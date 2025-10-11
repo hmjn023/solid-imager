@@ -32,7 +32,8 @@ export async function updateMediaSource(
   sourceId: string,
   data: Partial<NewMediaSource>
 ) {
-  const originalSource = await selectMediaSourceById(sourceId);
+  const sources = await selectMediaSourceById(sourceId);
+  const originalSource = sources[0];
   if (!originalSource) {
     throw new Error("指定されたメディアソースが見つかりません");
   }
@@ -56,7 +57,8 @@ export function deleteMediaSource(sourceId: string) {
 }
 
 export async function testMediaSourceConnection(sourceId: string) {
-  const source = await selectMediaSourceById(sourceId);
+  const sources = await selectMediaSourceById(sourceId);
+  const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
   }
