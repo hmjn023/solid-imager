@@ -4,8 +4,8 @@
  */
 
 export function GET() {
-  return {
-    endpoint: "/api/charactors",
-    params: {},
-  };
+	return {
+		endpoint: "/api/charactors",
+		params: {},
+	};
 }

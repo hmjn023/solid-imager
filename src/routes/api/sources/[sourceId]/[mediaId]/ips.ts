@@ -4,8 +4,8 @@
  */
 
 export function GET() {
-  return {
-    endpoint: "/api/ips",
-    params: {},
-  };
+	return {
+		endpoint: "/api/ips",
+		params: {},
+	};
 }

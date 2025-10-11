@@ -9,10 +9,10 @@ import { uploadMedia } from "~/infrastructure/api-clients/media";
  * @returns アップロード結果
  */
 export async function POST({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const mediaId = params.mediaId as UUID;
-  // For placeholder, assuming path and file are in request body for simplicity
-  const uploadData = await request.json();
-  const result = await uploadMedia(sourceId, { mediaId, ...uploadData });
-  return result;
+	const sourceId = params.sourceId as UUID;
+	const mediaId = params.mediaId as UUID;
+	// For placeholder, assuming path and file are in request body for simplicity
+	const uploadData = await request.json();
+	const result = await uploadMedia(sourceId, { mediaId, ...uploadData });
+	return result;
 }
