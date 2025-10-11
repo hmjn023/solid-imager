@@ -1,8 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
 import type { UUID } from "~/domain/shared/types";
 import {
-  clearThumbnailCache,
-  startThumbnailGeneration,
+	clearThumbnailCache,
+	startThumbnailGeneration,
 } from "~/infrastructure/api-clients/thumbnails";
 
 /**
@@ -12,9 +12,9 @@ import {
  * @returns 生成開始結果
  */
 export async function POST({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const result = await startThumbnailGeneration(sourceId);
-  return result;
+	const sourceId = params.sourceId as UUID;
+	const result = await startThumbnailGeneration(sourceId);
+	return result;
 }
 
 /**
@@ -24,7 +24,7 @@ export async function POST({ params }: APIEvent) {
  * @returns キャッシュクリア結果
  */
 export async function DELETE({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const result = await clearThumbnailCache(sourceId);
-  return result;
+	const sourceId = params.sourceId as UUID;
+	const result = await clearThumbnailCache(sourceId);
+	return result;
 }

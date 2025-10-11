@@ -5,13 +5,13 @@
  */
 
 export const HashUtils = {
-  generateMd5(_filePath: string): Promise<string> {
-    // TODO: Generate MD5 hash of file
-    throw new Error("Not implemented");
-  },
+	generateMd5(_filePath: string): Promise<string> {
+		// TODO: Generate MD5 hash of file
+		throw new Error("Not implemented");
+	},
 
-  generatePerceptualHash(_filePath: string): Promise<string> {
-    // TODO: Generate perceptual hash for similarity detection
-    throw new Error("Not implemented");
-  },
+	generatePerceptualHash(_filePath: string): Promise<string> {
+		// TODO: Generate perceptual hash for similarity detection
+		throw new Error("Not implemented");
+	},
 };
