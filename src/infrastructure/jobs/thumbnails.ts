@@ -14,6 +14,9 @@ import {
 
 const CACHE_DIR = ".cache/thumbnails";
 
+const DEFAULT_THUMBNAIL_SIZE = 512;
+const DEFAULT_THUMBNAIL_QUALITY = 80;
+
 async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
 }
@@ -34,8 +37,10 @@ export async function generateThumbnail(
   await ensureCacheDir();
 
   const config = getConfig();
-  const size = config.media?.image?.thumbnail?.size?.width ?? 512;
-  const quality = config.media?.image?.thumbnail?.quality ?? 80;
+  const size =
+    config.media?.image?.thumbnail?.size?.width ?? DEFAULT_THUMBNAIL_SIZE;
+  const quality =
+    config.media?.image?.thumbnail?.quality ?? DEFAULT_THUMBNAIL_QUALITY;
 
   const inputPath = path.join(sourcePath, media.filePath);
   const outputPath = getThumbnailPath(media.id);
@@ -53,7 +58,7 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
   const thumbnailPath = getThumbnailPath(mediaId);
   try {
     await fs.unlink(thumbnailPath);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // ファイルが存在しない場合、このコンテキストではエラーではありません。
     if (error.code !== "ENOENT") {
       throw error;

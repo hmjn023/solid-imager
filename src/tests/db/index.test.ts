@@ -1,4 +1,12 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { db, pool } from "~/infrastructure/db";
 import {
   insertMediaSource,
@@ -9,7 +17,7 @@ import {
 import type { NewMediaSource } from "~/infrastructure/db/schema";
 import { mediaSources } from "~/infrastructure/db/schema";
 
-vi.mock('pg', () => ({
+vi.mock("pg", () => ({
   Pool: vi.fn(() => ({
     connect: vi.fn(() => ({
       query: vi.fn(),

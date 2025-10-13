@@ -6,10 +6,12 @@ import type {
 
 export class FetchError {
   readonly _tag = "FetchError";
-  constructor(
-    readonly message: string,
-    readonly status?: number
-  ) {}
+  readonly message: string;
+  readonly status?: number;
+  constructor(message: string, status?: number) {
+    this.message = message;
+    this.status = status;
+  }
 }
 
 const API_BASE_URL = "http://localhost:3000/api";
@@ -106,6 +108,33 @@ export const MediaSourceService = {
           return error;
         }
         return new FetchError("An unknown error occurred during updateSource");
+      },
+    });
+  },
+
+  // IDでソースを取得します。
+  fetchSourceById(
+    sourceId: string
+  ): Effect.Effect<MediaSourceInfo | undefined, FetchError, never> {
+    return Effect.tryPromise({
+      try: async () => {
+        const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`);
+        if (!response.ok) {
+          const errorBody = await response.json();
+          throw new FetchError(
+            errorBody.message || "Failed to fetch source by ID",
+            response.status
+          );
+        }
+        return response.json();
+      },
+      catch: (error) => {
+        if (error instanceof FetchError) {
+          return error;
+        }
+        return new FetchError(
+          "An unknown error occurred during fetchSourceById"
+        );
       },
     });
   },

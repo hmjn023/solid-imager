@@ -104,4 +104,4 @@ vi.mock("~/infrastructure/db", () => ({
   insertMedia: vi.fn(() => Promise.resolve([])),
   updateMedia: vi.fn(() => Promise.resolve([])),
   deleteMedia: vi.fn(() => Promise.resolve([])),
-}))
+}));

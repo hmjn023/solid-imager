@@ -3,81 +3,91 @@
  * Extracted from src/lib/api/sources.ts
  */
 
+import { Effect, pipe } from "effect";
 import {
-  deleteMediaSource as dbDeleteMediaSource,
-  insertMediaSource as dbInsertMediaSource,
-  selectMediaSources as dbSelectMediaSources,
-  updateMediaSource as dbUpdateMediaSource,
-  selectMediaSourceById,
-} from "~/infrastructure/db/index";
-import type { MediaSource, NewMediaSource } from "~/infrastructure/db/schema";
+  FetchError,
+  MediaSourceService,
+} from "~/application/services/media-source-service";
+import type { NewMediaSource } from "~/infrastructure/db/schema";
 import { getDriver } from "~/infrastructure/storage/factory";
 
+const HTTP_STATUS_NOT_FOUND = 404;
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+
 export function getMediaSources() {
-  return dbSelectMediaSources();
+  return MediaSourceService.fetchSources();
 }
 
 export function getMediaSourceById(sourceId: string) {
-  return selectMediaSourceById(sourceId);
+  return MediaSourceService.fetchSourceById(sourceId);
 }
 
-export async function createMediaSource(mediaSource: NewMediaSource) {
-  // 新規作成時にも接続テストを実行
-  const driver = getDriver(mediaSource as MediaSource);
-  const connectionTest = await driver.testConnection();
-  if (!connectionTest.success) {
-    throw new Error(
-      `接続に失敗しました: ${connectionTest.message ?? "不明なエラー"}`
-    );
-  }
-  return dbInsertMediaSource(mediaSource);
+export function createMediaSource(mediaSource: NewMediaSource) {
+  return MediaSourceService.createSource(mediaSource);
 }
 
-export async function updateMediaSource(
+export function updateMediaSource(
   sourceId: string,
   data: Partial<NewMediaSource>
 ) {
-  const sources = await selectMediaSourceById(sourceId);
-  const originalSource = sources[0];
-  if (!originalSource) {
-    throw new Error("指定されたメディアソースが見つかりません");
-  }
-  // 更新データと元のデータをマージ
-  const updatedSourceData = { ...originalSource, ...data };
-
-  // 更新時にも接続テストを実行
-  const driver = getDriver(updatedSourceData);
-  const connectionTest = await driver.testConnection();
-  if (!connectionTest.success) {
-    throw new Error(
-      `接続に失敗しました: ${connectionTest.message ?? "不明なエラー"}`
-    );
-  }
-
-  return dbUpdateMediaSource(sourceId, data);
+  return MediaSourceService.updateSource(sourceId, data);
 }
 
 export function deleteMediaSource(sourceId: string) {
-  return dbDeleteMediaSource(sourceId);
+  return MediaSourceService.deleteSource(sourceId);
 }
 
-export async function testMediaSourceConnection(sourceId: string) {
-  const sources = await selectMediaSourceById(sourceId);
-  const source = sources[0];
-  if (!source) {
-    throw new Error("指定されたメディアソースが見つかりません");
-  }
-  const driver = getDriver(source);
-  return driver.testConnection();
+export function testMediaSourceConnection(sourceId: string) {
+  return Effect.tryPromise({
+    try: async () => {
+      const source = await pipe(
+        MediaSourceService.fetchSourceById(sourceId),
+        Effect.runPromise
+      );
+      if (!source) {
+        throw new FetchError(
+          "指定されたメディアソースが見つかりません",
+          HTTP_STATUS_NOT_FOUND
+        );
+      }
+      const driver = getDriver(source);
+      const connectionTest = await driver.testConnection();
+      if (!connectionTest.success) {
+        throw new FetchError(
+          `接続に失敗しました: ${connectionTest.message ?? "不明なエラー"}`,
+          HTTP_STATUS_INTERNAL_SERVER_ERROR
+        );
+      }
+      return connectionTest;
+    },
+    catch: (error) => {
+      if (error instanceof FetchError) {
+        return error;
+      }
+      return new FetchError(
+        `Failed to test media source connection: ${error}`,
+        HTTP_STATUS_INTERNAL_SERVER_ERROR
+      );
+    },
+  });
 }
 
-export async function getMediaSourceStatus(sourceId: string) {
-  const test = await testMediaSourceConnection(sourceId);
-  const status = test.success ? "active" : "error";
-  return {
-    sourceId,
-    status,
-    message: test.message,
-    lastChecked: new Date(),
-  };
+export function getMediaSourceStatus(sourceId: string) {
+  return pipe(
+    testMediaSourceConnection(sourceId),
+    Effect.map((test) => ({
+      sourceId,
+      status: test.success ? "active" : "error",
+      message: test.message,
+      lastChecked: new Date(),
+    })),
+    Effect.catchAll((error) =>
+      Effect.succeed({
+        sourceId,
+        status: "error",
+        message: error.message,
+        lastChecked: new Date(),
+      })
+    )
+  );
 }

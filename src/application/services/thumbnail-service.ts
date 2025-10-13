@@ -10,12 +10,12 @@ import {
 
 export const ThumbnailService = {
   // Feature 2: サムネイル仕様
-  async getAllThumbnailLinks(sourceId: string): Promise<string[]> {
+  getAllThumbnailLinks(sourceId: string): Promise<string[]> {
     // TODO: This is a placeholder. Actual implementation needs to fetch all media IDs for the source.
     return [`/api/thumbnails/${sourceId}/all`];
   },
 
-  async getMediaThumbnail(
+  getMediaThumbnail(
     sourceId: string,
     mediaId: string,
     size?: number
@@ -27,11 +27,11 @@ export const ThumbnailService = {
     return url;
   },
 
-  async startThumbnailGeneration(sourceId: string) {
+  startThumbnailGeneration(sourceId: string) {
     return apiStartThumbnailGeneration(sourceId);
   },
 
-  async clearThumbnailCache(sourceId: string) {
+  clearThumbnailCache(sourceId: string) {
     return apiClearThumbnailCache(sourceId);
   },
 };

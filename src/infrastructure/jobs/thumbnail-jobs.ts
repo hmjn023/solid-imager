@@ -60,10 +60,10 @@ export function startJobQueue(
   const run = async () => {
     let queue = jobQueueMap.get(sourceId) || [];
     while (queue.length > 0) {
-      const job = queue.shift()!;
+      const job = queue.shift();
       try {
         await processor(job);
-      } catch (e: any) {
+      } catch (e: unknown) {
         const stats = getThumbnailJobStats(sourceId);
         jobStatsMap.set(sourceId, {
           ...stats,

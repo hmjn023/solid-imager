@@ -5,12 +5,12 @@
 
 export const CategoryService = {
   // Feature 10: カテゴリ管理機能
-  async getAllCategories() {
+  getAllCategories() {
     // TODO: Get all categories
     throw new Error("Not implemented");
   },
 
-  async createCategory(_categoryData: {
+  createCategory(_categoryData: {
     name: string;
     description?: string;
     color?: string;
@@ -20,12 +20,12 @@ export const CategoryService = {
     throw new Error("Not implemented");
   },
 
-  async getCategoryDetails(_categoryId: number) {
+  getCategoryDetails(_categoryId: number) {
     // TODO: Get category details by ID
     throw new Error("Not implemented");
   },
 
-  async updateCategory(
+  updateCategory(
     _categoryId: number,
     _categoryData: {
       name?: string;
@@ -38,7 +38,7 @@ export const CategoryService = {
     throw new Error("Not implemented");
   },
 
-  async deleteCategory(_categoryId: number) {
+  deleteCategory(_categoryId: number) {
     // TODO: Delete category
     throw new Error("Not implemented");
   },

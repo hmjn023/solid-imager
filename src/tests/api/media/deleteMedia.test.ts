@@ -4,7 +4,7 @@ import { mediaIdSchema } from "~/domain/media/schemas";
 import { sourceIdSchema } from "~/domain/sources/schemas";
 
 describe("deleteMedia Contract", () => {
-  it("should return success: true on successful deletion", async () => {
+  it("should return success: true on successful deletion", () => {
     const sourceId = "b0000000-0000-4000-8000-000000000000";
     const mediaId = "a0000000-0000-4000-8000-000000000000";
 
@@ -20,7 +20,7 @@ describe("deleteMedia Contract", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should return an error if mediaId is not found", async () => {
+  it("should return an error if mediaId is not found", () => {
     // This test will initially fail as deleteMedia is not yet implemented.
     // It serves as a contract definition.
     const _sourceId = "b0000000-0000-4000-8000-000000000000";
@@ -34,13 +34,13 @@ describe("deleteMedia Contract", () => {
     expect(errorResult.message).toBeTypeOf("string");
   });
 
-  it("should throw a ZodError for an invalid mediaId format", async () => {
+  it("should throw a ZodError for an invalid mediaId format", () => {
     const _sourceId = "b0000000-0000-0000-0000-000000000000";
     const mediaId = "invalid-uuid-format";
     expect(() => mediaIdSchema.parse(mediaId)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", async () => {
+  it("should throw a ZodError for an invalid sourceId format", () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);

@@ -7,6 +7,9 @@ import {
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources";
 
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+const HTTP_STATUS_NOT_FOUND = 404;
+
 /**
  *
  * @param param0 {sourceId: UUID}
@@ -14,17 +17,11 @@ import {
  */
 export async function GET({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const result = await pipe(
-    Effect.tryPromise({
-      try: () => getMediaSourceById(sourceId),
-      catch: (error) => new Error(`Failed to fetch source: ${error}`),
-    }),
-    Effect.runPromise,
-  );
+  const result = await pipe(getMediaSourceById(sourceId), Effect.runPromise);
 
-  if (result instanceof Error) {
+  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
     return new Response(JSON.stringify({ error: result.message }), {
-      status: 500,
+      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -32,13 +29,18 @@ export async function GET({ params }: APIEvent) {
   }
   if (!result) {
     return new Response(JSON.stringify({ error: "Source not found" }), {
-      status: 404,
+      status: HTTP_STATUS_NOT_FOUND,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return result;
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
 
 /**
@@ -52,22 +54,24 @@ export async function PUT({ params, request }: APIEvent) {
   const data = await request.json();
 
   const result = await pipe(
-    Effect.tryPromise({
-      try: () => updateMediaSource(sourceId, data),
-      catch: (error) => new Error(`Failed to update source: ${error}`),
-    }),
-    Effect.runPromise,
+    updateMediaSource(sourceId, data),
+    Effect.runPromise
   );
 
-  if (result instanceof Error) {
+  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
     return new Response(JSON.stringify({ error: result.message }), {
-      status: 500,
+      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return result;
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }
 
 /**
@@ -79,21 +83,20 @@ export async function PUT({ params, request }: APIEvent) {
 export async function DELETE({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
 
-  const result = await pipe(
-    Effect.tryPromise({
-      try: () => deleteMediaSource(sourceId),
-      catch: (error) => new Error(`Failed to delete source: ${error}`),
-    }),
-    Effect.runPromise,
-  );
+  const result = await pipe(deleteMediaSource(sourceId), Effect.runPromise);
 
-  if (result instanceof Error) {
+  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
     return new Response(JSON.stringify({ error: result.message }), {
-      status: 500,
+      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return { success: true, result };
+  return new Response(JSON.stringify({ success: true, result }), {
+    status: 200,
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
 }

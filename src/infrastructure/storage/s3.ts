@@ -11,15 +11,12 @@ export const S3Driver = {
     throw new Error("Not implemented");
   },
 
-  async getObject(
-    _connectionInfo: S3Connection,
-    _key: string
-  ): Promise<Buffer> {
+  getObject(_connectionInfo: S3Connection, _key: string): Promise<Buffer> {
     // TODO: Get object from S3
     throw new Error("Not implemented");
   },
 
-  async putObject(
+  putObject(
     _connectionInfo: S3Connection,
     _key: string,
     _content: Buffer
@@ -28,15 +25,12 @@ export const S3Driver = {
     throw new Error("Not implemented");
   },
 
-  async deleteObject(
-    _connectionInfo: S3Connection,
-    _key: string
-  ): Promise<void> {
+  deleteObject(_connectionInfo: S3Connection, _key: string): Promise<void> {
     // TODO: Delete object from S3
     throw new Error("Not implemented");
   },
 
-  async listObjects(
+  listObjects(
     _connectionInfo: S3Connection,
     _prefix: string
   ): Promise<string[]> {

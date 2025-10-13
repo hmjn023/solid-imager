@@ -1,10 +1,10 @@
 import { and, eq, like } from "drizzle-orm";
 import { Pool } from "pg";
 import {
-  mediaSources,
-  medias,
   type Media,
   type MediaSource,
+  mediaSources,
+  medias,
   type NewMedia,
   type NewMediaSource,
 } from "~/infrastructure/db/schema";
@@ -42,8 +42,7 @@ export const pool = new Pool({
   database: dbDatabase,
 });
 
-import { createDatabaseService, DatabaseService } from "./layer";
-import * as schema from "./schema";
+import { createDatabaseService } from "./layer";
 
 export const { db } = createDatabaseService(pool);
 

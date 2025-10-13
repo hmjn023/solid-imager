@@ -161,8 +161,27 @@ describe("Media API Unit Tests", () => {
 
   describe("getMedia", () => {
     it("should retrieve a media entry by ID", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const _sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
+
+      // Mock the return value of getMedia
+      vi.mocked(db.select().from().where).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: _sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: "image.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
+      const result = await getMedia(_sourceId, mediaId);
 
       expect(db.select).toHaveBeenCalledWith();
       expect(db.select().from).toHaveBeenCalledWith(medias);
@@ -197,6 +216,8 @@ describe("Media API Unit Tests", () => {
     it("should update a media entry and return the updated entry", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
+      const updates = { fileName: "updated_file.png", width: 1024 }; // Define updates
+
       const result = await updateMedia(sourceId, mediaId, updates);
 
       expect(db.update).toHaveBeenCalledWith(medias);
@@ -216,15 +237,23 @@ describe("Media API Unit Tests", () => {
     it("should throw an error if media ID is not found", async () => {
       vi.mocked(db.update().set().where).mockResolvedValueOnce([]);
       await expect(
-        updateMedia("b0000000-0000-4000-8000-000000000000", "c0000000-0000-4000-8000-000000000000", {
-          fileName: "test",
-        })
+        updateMedia(
+          "b0000000-0000-4000-8000-000000000000",
+          "c0000000-0000-4000-8000-000000000000",
+          {
+            fileName: "test",
+          }
+        )
       ).rejects.toThrow("Media not found or failed to update");
     });
 
     it("should throw a ZodError if no updates are provided", async () => {
       await expect(
-        updateMedia("b0000000-0000-4000-8000-000000000000", "a0000000-0000-4000-8000-000000000000", {})
+        updateMedia(
+          "b0000000-0000-4000-8000-000000000000",
+          "a0000000-0000-4000-8000-000000000000",
+          {}
+        )
       ).rejects.toThrow(ZodError);
     });
 
