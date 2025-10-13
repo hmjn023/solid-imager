@@ -154,7 +154,9 @@ export async function deleteMedia(
   }
 
   // サムネイルも非同期で削除します。
-  deleteThumbnail(validatedMediaId).catch((_err) => {});
+  deleteThumbnail(validatedMediaId).catch((_err) => {
+    /* Ignore error if thumbnail does not exist */
+  });
 
   // TODO: 実際のファイルシステム操作（例: ファイルの削除）を実装する
   // ファイルシステム操作が権限の問題で失敗した場合、ここでエラーをスローする
@@ -293,7 +295,7 @@ export async function listMedia(
  * @param mediaId - The UUID of the media.
  * @returns Media details object.
  */
-export function getMediaDetails(
+export async function getMediaDetails(
   sourceId: string,
   mediaId: string
 ): Promise<Media> {
@@ -355,7 +357,7 @@ export function uploadMedia(
 /**
  * Search media within a directory
  */
-export function searchMediaInDirectory(
+export async function searchMediaInDirectory(
   sourceId: string,
   directoryPath: string,
   _searchOptions: unknown

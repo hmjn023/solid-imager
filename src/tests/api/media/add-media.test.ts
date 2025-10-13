@@ -7,7 +7,8 @@ describe("addMedia Contract", () => {
   it("should return a Media object on successful addition", () => {
     // This test will initially fail as addMedia is not yet implemented.
     // It serves as a contract definition.
-              sourceId: "b0000000-0000-4000-8000-000000000000",,
+    const newMediaData = {
+      sourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/image.png",
       fileName: "image.png",
       size: 1024,

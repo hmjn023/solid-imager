@@ -8,7 +8,7 @@ import {
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("updateMedia Contract", () => {
-  it("should return an updated Media object on successful update", async () => {
+  it("should return an updated Media object on successful update",  () => {
     const sourceId = "b0000000-0000-4000-8000-000000000000";
     const mediaId = "a0000000-0000-4000-8000-000000000000";
     const updates = {
@@ -44,7 +44,7 @@ describe("updateMedia Contract", () => {
     expect(result.width).toBe(updates.width);
   });
 
-  it("should return an error if mediaId is not found", async () => {
+  it("should return an error if mediaId is not found",  () => {
     // This test will initially fail as updateMedia is not yet implemented.
     const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
@@ -58,21 +58,21 @@ describe("updateMedia Contract", () => {
     expect(errorResult.message).toBeTypeOf("string");
   });
 
-  it("should throw a ZodError for invalid mediaId format", async () => {
+  it("should throw a ZodError for invalid mediaId format",  () => {
     const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const mediaId = "invalid-uuid-format";
     const _updates = { description: "Updated description" };
     expect(() => mediaIdSchema.parse(mediaId)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for invalid sourceId format", async () => {
+  it("should throw a ZodError for invalid sourceId format",  () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     const _updates = { description: "Updated description" };
     expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for invalid update data", async () => {
+  it("should throw a ZodError for invalid update data",  () => {
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     const updates = { width: -100 }; // Invalid field
     expect(() => updateMediaRequestSchema.parse(updates)).toThrow(ZodError);

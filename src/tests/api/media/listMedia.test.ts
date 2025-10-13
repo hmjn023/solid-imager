@@ -5,7 +5,7 @@ import { sourceIdSchema } from "~/domain/sources/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("listMedia Contract", () => {
-  it("should return an array of Media objects for a valid directoryPath", async () => {
+  it("should return an array of Media objects for a valid directoryPath",  () => {
     const sourceId = "b0000000-0000-4000-8000-000000000000";
     const directoryPath = "/path/to/media/folder";
 
@@ -50,7 +50,7 @@ describe("listMedia Contract", () => {
     expect(result[0].filePath).toBeTypeOf("string");
   });
 
-  it("should return an empty array if directoryPath contains no media files", async () => {
+  it("should return an empty array if directoryPath contains no media files",  () => {
     const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _directoryPath = "/path/to/empty/folder";
 
@@ -63,13 +63,13 @@ describe("listMedia Contract", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("should throw a ZodError if directoryPath is invalid or inaccessible", async () => {
+  it("should throw a ZodError if directoryPath is invalid or inaccessible",  () => {
     const _sourceId = "b0000000-0000-0000-0000-000000000000";
     const directoryPath = ""; // Invalid path
     expect(() => directoryPathSchema.parse(directoryPath)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", async () => {
+  it("should throw a ZodError for an invalid sourceId format",  () => {
     const sourceId = "invalid-source-id-format";
     const _directoryPath = "/path/to/media/folder";
     expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);

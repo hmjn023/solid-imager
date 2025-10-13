@@ -6,12 +6,12 @@
 import type { SftpConnection } from "~/domain/sources/types";
 
 export const SftpDriver = {
-  async connect(_connectionInfo: SftpConnection): Promise<unknown> {
+  connect(_connectionInfo: SftpConnection): Promise<unknown> {
     // TODO: Establish SFTP connection
     throw new Error("Not implemented");
   },
 
-  async readFile(
+  readFile(
     _connectionInfo: SftpConnection,
     _remotePath: string
   ): Promise<Buffer> {
@@ -19,7 +19,7 @@ export const SftpDriver = {
     throw new Error("Not implemented");
   },
 
-  async writeFile(
+  writeFile(
     _connectionInfo: SftpConnection,
     _remotePath: string,
     _content: Buffer
@@ -28,7 +28,7 @@ export const SftpDriver = {
     throw new Error("Not implemented");
   },
 
-  async deleteFile(
+  deleteFile(
     _connectionInfo: SftpConnection,
     _remotePath: string
   ): Promise<void> {
@@ -36,7 +36,7 @@ export const SftpDriver = {
     throw new Error("Not implemented");
   },
 
-  async listDirectory(
+  listDirectory(
     _connectionInfo: SftpConnection,
     _remotePath: string
   ): Promise<string[]> {

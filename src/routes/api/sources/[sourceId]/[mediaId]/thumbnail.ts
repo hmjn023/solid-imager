@@ -1,6 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import type { UUID } from "~/domain/shared/types";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 import { getDriver } from "~/infrastructure/storage/factory";
 
@@ -35,9 +34,7 @@ export async function GET({ params }: APIEvent) {
 
       headers: { "Content-Type": "image/webp" }, // Assuming webp as per jobs/thumbnails.ts
     });
-  } catch (error) {
-    console.error("Error retrieving thumbnail:", error);
-
+  } catch (_error) {
     return new Response("Thumbnail not found", { status: 404 });
   }
 }
