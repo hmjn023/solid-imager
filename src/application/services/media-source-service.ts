@@ -3,6 +3,17 @@ import type {
   MediaSourceInfo,
   MediaSourceTypeEnum,
 } from "~/domain/sources/types";
+import {
+  deleteMediaSource,
+  insertMediaSource,
+  selectMediaSourceById,
+  selectMediaSources,
+  updateMediaSource as updateMediaSourceDb,
+} from "~/infrastructure/db";
+import type {
+  MediaSource,
+  NewMediaSource,
+} from "~/infrastructure/db/schema";
 
 export class FetchError {
   readonly _tag = "FetchError";
@@ -13,8 +24,6 @@ export class FetchError {
     this.status = status;
   }
 }
-
-const API_BASE_URL = "http://localhost:3000/api";
 
 export type CreateSourceData = {
   name: string;
@@ -27,18 +36,10 @@ export type UpdateSourceData = CreateSourceData;
 
 export const MediaSourceService = {
   // すべてのソースを取得します。
-  fetchSources(): Effect.Effect<MediaSourceInfo[], FetchError, never> {
+  fetchSources(): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
       try: async () => {
-        const response = await fetch(`${API_BASE_URL}/sources`);
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new FetchError(
-            errorBody.message || "Failed to fetch sources",
-            response.status
-          );
-        }
-        return response.json();
+        return await selectMediaSources();
       },
       catch: (error) => {
         if (error instanceof FetchError) {
@@ -51,25 +52,11 @@ export const MediaSourceService = {
 
   // 新しいソースを作成します。
   createSource(
-    sourceData: CreateSourceData
-  ): Effect.Effect<MediaSourceInfo, FetchError, never> {
+    sourceData: NewMediaSource
+  ): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
       try: async () => {
-        const response = await fetch(`${API_BASE_URL}/sources`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(sourceData),
-        });
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new FetchError(
-            errorBody.message || "Failed to create source",
-            response.status
-          );
-        }
-        return response.json();
+        return await insertMediaSource(sourceData);
       },
       catch: (error) => {
         if (error instanceof FetchError) {
@@ -83,25 +70,11 @@ export const MediaSourceService = {
   // 既存のソースを更新します。
   updateSource(
     sourceId: string,
-    sourceData: UpdateSourceData
-  ): Effect.Effect<MediaSourceInfo, FetchError, never> {
+    sourceData: MediaSource
+  ): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
       try: async () => {
-        const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(sourceData),
-        });
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new FetchError(
-            errorBody.message || "Failed to update source",
-            response.status
-          );
-        }
-        return response.json();
+        return await updateMediaSourceDb(sourceId, sourceData);
       },
       catch: (error) => {
         if (error instanceof FetchError) {
@@ -115,18 +88,10 @@ export const MediaSourceService = {
   // IDでソースを取得します。
   fetchSourceById(
     sourceId: string
-  ): Effect.Effect<MediaSourceInfo | undefined, FetchError, never> {
+  ): Effect.Effect<(MediaSource | undefined)[], FetchError, never> {
     return Effect.tryPromise({
       try: async () => {
-        const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`);
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new FetchError(
-            errorBody.message || "Failed to fetch source by ID",
-            response.status
-          );
-        }
-        return response.json();
+        return await selectMediaSourceById(sourceId);
       },
       catch: (error) => {
         if (error instanceof FetchError) {
@@ -140,20 +105,10 @@ export const MediaSourceService = {
   },
 
   // ソースを削除します。
-  deleteSource(sourceId: string): Effect.Effect<void, FetchError, never> {
+  deleteSource(sourceId: string): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
       try: async () => {
-        const response = await fetch(`${API_BASE_URL}/sources/${sourceId}`, {
-          method: "DELETE",
-        });
-        if (!response.ok) {
-          const errorBody = await response.json();
-          throw new FetchError(
-            errorBody.message || "Failed to delete source",
-            response.status
-          );
-        }
-        return;
+        return await deleteMediaSource(sourceId);
       },
       catch: (error) => {
         if (error instanceof FetchError) {
