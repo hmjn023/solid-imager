@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import {
-	createCategory,
-	getCategories,
+  createCategory,
+  getCategories,
 } from "~/infrastructure/api-clients/categories";
 
 /**
@@ -10,8 +10,8 @@ import {
  */
 
 export async function GET() {
-	const categories = await getCategories();
-	return categories;
+  const categories = await getCategories();
+  return categories;
 }
 
 /**
@@ -20,7 +20,7 @@ export async function GET() {
  * @returns 作成されたカテゴリ
  */
 export async function POST({ request }: APIEvent) {
-	const data = await request.json();
-	const newCategory = await createCategory(data);
-	return newCategory;
+  const data = await request.json();
+  const newCategory = await createCategory(data);
+  return newCategory;
 }

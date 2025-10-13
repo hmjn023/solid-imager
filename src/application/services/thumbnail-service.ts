@@ -1,4 +1,7 @@
-import { startThumbnailGeneration as apiStartThumbnailGeneration, clearThumbnailCache as apiClearThumbnailCache } from "../../infrastructure/api-clients/thumbnails";
+import {
+  startThumbnailGeneration as apiStartThumbnailGeneration,
+  clearThumbnailCache as apiClearThumbnailCache,
+} from "../../infrastructure/api-clients/thumbnails";
 
 /**
  * ThumbnailService - サムネイル生成・管理機能

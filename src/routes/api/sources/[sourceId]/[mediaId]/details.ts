@@ -5,8 +5,8 @@ import { getMediaDetails } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-	sourceId: z.string().uuid(),
-	mediaId: z.string().uuid(),
+  sourceId: z.string().uuid(),
+  mediaId: z.string().uuid(),
 });
 
 /**
@@ -15,15 +15,15 @@ const MediaParamsSchema = z.object({
  * @returns 特定のメディアのタグ、メタデータ、カテゴリ、IP、キャラクターなどの情報
  */
 export async function GET({ params }: APIEvent) {
-	const parsedParams = MediaParamsSchema.safeParse(params);
-	if (!parsedParams.success) {
-		return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-			status: 400,
-			headers: { "Content-Type": "application/json" },
-		});
-	}
-	const { sourceId, mediaId } = parsedParams.data;
+  const parsedParams = MediaParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { sourceId, mediaId } = parsedParams.data;
 
-	const details = await getMediaDetails(sourceId as UUID, mediaId as UUID);
-	return details;
+  const details = await getMediaDetails(sourceId as UUID, mediaId as UUID);
+  return details;
 }

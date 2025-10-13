@@ -5,13 +5,13 @@
  */
 
 export const JobQueue = {
-	addThumbnailJob(_mediaId: string, _sourceId: string): void {
-		// TODO: Add thumbnail generation job to queue
-		throw new Error("Not implemented");
-	},
+  addThumbnailJob(_mediaId: string, _sourceId: string): void {
+    // TODO: Add thumbnail generation job to queue
+    throw new Error("Not implemented");
+  },
 
-	processNextJob(): Promise<void> {
-		// TODO: Process next job in queue
-		throw new Error("Not implemented");
-	},
+  processNextJob(): Promise<void> {
+    // TODO: Process next job in queue
+    throw new Error("Not implemented");
+  },
 };

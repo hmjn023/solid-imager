@@ -4,8 +4,8 @@
  */
 
 export type CategoryData = {
-	name: string;
-	description?: string;
-	color?: string;
-	parentId?: number;
+  name: string;
+  description?: string;
+  color?: string;
+  parentId?: number;
 };

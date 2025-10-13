@@ -6,54 +6,38 @@ import { getDriver } from "~/infrastructure/storage/factory";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-	sourceId: z.string().uuid(),
-	mediaId: z.string().uuid(),
+  sourceId: z.string().uuid(),
+  mediaId: z.string().uuid(),
 });
 
 export async function GET({ params }: APIEvent) {
+  const parsedParams = MediaParamsSchema.safeParse(params);
 
-    const parsedParams = MediaParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
 
-    if (!parsedParams.success) {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
-        return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+  const { sourceId, mediaId } = parsedParams.data;
 
-            status: 400,
+  try {
+    const thumbnailPath = getThumbnailPath(mediaId);
 
-            headers: { "Content-Type": "application/json" },
+    const driver = getDriver(sourceId);
 
-        });
+    const thumbnailBuffer = await driver.get(thumbnailPath);
 
-    }
+    return new Response(thumbnailBuffer, {
+      status: 200,
 
-    const { sourceId, mediaId } = parsedParams.data;
+      headers: { "Content-Type": "image/webp" }, // Assuming webp as per jobs/thumbnails.ts
+    });
+  } catch (error) {
+    console.error("Error retrieving thumbnail:", error);
 
-
-
-    try {
-
-        const thumbnailPath = getThumbnailPath(mediaId);
-
-        const driver = getDriver(sourceId);
-
-        const thumbnailBuffer = await driver.get(thumbnailPath);
-
-
-
-        return new Response(thumbnailBuffer, {
-
-            status: 200,
-
-            headers: { "Content-Type": "image/webp" }, // Assuming webp as per jobs/thumbnails.ts
-
-        });
-
-    } catch (error) {
-
-        console.error("Error retrieving thumbnail:", error);
-
-        return new Response("Thumbnail not found", { status: 404 });
-
-    }
-
+    return new Response("Thumbnail not found", { status: 404 });
+  }
 }
