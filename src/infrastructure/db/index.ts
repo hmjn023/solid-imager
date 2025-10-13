@@ -180,8 +180,11 @@ export const selectMediaBySourceId = (sourceId: string) =>
 export const selectMediaGenerationInfoById = (mediaId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement metadata retrieval
-    throw new Error("Not implemented");
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(mediaGenerationInfo).where(eq(mediaGenerationInfo.mediaId, mediaId))
+      )
+    );
   });
 
 export const updateMediaGenerationInfo = (
@@ -190,8 +193,15 @@ export const updateMediaGenerationInfo = (
 ) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement metadata update
-    throw new Error("Not implemented");
+    return yield* _(
+      Effect.promise(() =>
+        db
+          .update(mediaGenerationInfo)
+          .set({ metadata: metadata as any })
+          .where(eq(mediaGenerationInfo.mediaId, mediaId))
+          .returning()
+      )
+    );
   });
 
 // ========================================
@@ -245,8 +255,19 @@ export const deleteMediaByPath = (
 ) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement media deletion by path
-    throw new Error("Not implemented");
+    return yield* _(
+      Effect.promise(() =>
+        db
+          .delete(medias)
+          .where(
+            and(
+              eq(medias.sourceId, sourceId),
+              like(medias.filePath, `${directoryPath}%`)
+            )
+          )
+          .returning()
+      )
+    );
   });
 
 // ========================================
@@ -256,22 +277,23 @@ export const deleteMediaByPath = (
 export const selectCategories = () =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement category listing
-    throw new Error("Not implemented");
+    return yield* _(Effect.promise(() => db.select().from(categories)));
   });
 
-export const insertCategory = (categoryData: unknown) =>
+export const insertCategory = (categoryData: NewCategory) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement category insertion
-    throw new Error("Not implemented");
+    return yield* _(Effect.promise(() => db.insert(categories).values(categoryData).returning()));
   });
 
 export const selectCategoryById = (categoryId: number) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement category retrieval by ID
-    throw new Error("Not implemented");
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(categories).where(eq(categories.id, categoryId))
+      )
+    );
   });
 
 export const updateCategory = (categoryId: number, categoryData: unknown) =>
