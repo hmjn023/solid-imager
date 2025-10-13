@@ -1,5 +1,3 @@
-"use server";
-
 import { and, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";

@@ -1,3 +1,6 @@
+import { getMediaSourceById } from "~/infrastructure/api-clients/sources";
+import { getDriver } from "~/infrastructure/storage/factory";
+
 /**
  * DirectoryService - ディレクトリ管理機能
  * Feature 9: ディレクトリ管理機能
@@ -35,8 +38,12 @@ export const DirectoryService = {
     throw new Error("Not implemented");
   },
 
-  async listMediaInSubdirectory(_sourceId: string, _directoriesPath: string) {
-    // TODO: List media in specific subdirectory
-    throw new Error("Not implemented");
+  async listMediaInSubdirectory(sourceId: string, directoriesPath: string) {
+    const [source] = await getMediaSourceById(sourceId);
+    if (!source) {
+      throw new Error("Media source not found");
+    }
+    const driver = getDriver(source);
+    return driver.list(directoriesPath);
   },
 };

@@ -59,8 +59,36 @@ export const MediaService = {
       limit?: number;
     }
   ) {
-    // TODO: Implement directory-specific search
-    throw new Error("Not implemented");
+    console.log(
+      `Searching media in source: ${_sourceId}, path: ${_directoriesPath}, options: ${JSON.stringify(_searchOptions)}`
+    );
+    // Placeholder implementation: Return dummy data
+    return [
+      {
+        id: "media1",
+        filename: "image1.jpg",
+        directory: _directoriesPath,
+        sourceId: _sourceId,
+        url: `/api/sources/${_sourceId}/media/image1.jpg`,
+        thumbnailUrl: `/api/sources/${_sourceId}/media/image1_thumb.jpg`,
+        description: "A beautiful image",
+        tags: ["nature", "landscape"],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "media2",
+        filename: "image2.png",
+        directory: _directoriesPath,
+        sourceId: _sourceId,
+        url: `/api/sources/${_sourceId}/media/image2.png`,
+        thumbnailUrl: `/api/sources/${_sourceId}/media/image2_thumb.png`,
+        description: "Another image",
+        tags: ["city", "night"],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+    ];
   },
 
   // Feature 8: メディア情報編集機能

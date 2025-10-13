@@ -18,7 +18,7 @@ async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
 }
 
-function getThumbnailPath(mediaId: string): string {
+export function getThumbnailPath(mediaId: string): string {
   return path.join(CACHE_DIR, `${mediaId}.webp`);
 }
 
