@@ -6,8 +6,8 @@ import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type 
 
 describe("getMedia Contract", () => {
   it("should return a Media object for a valid mediaId", () => {
-    const sourceId = "b0000000-0000-0000-0000-000000000000"; // Valid UUID
-    const mediaId = "a0000000-0000-0000-0000-000000000000"; // Valid UUID
+    const sourceId = "b0000000-0000-4000-8000-000000000000"; // Valid UUID
+    const mediaId = "a0000000-0000-4000-8000-000000000000"; // Valid UUID
 
     // Validate with Zod schema
     sourceIdSchema.parse(sourceId);
@@ -36,8 +36,7 @@ describe("getMedia Contract", () => {
 
   it("should return an error if mediaId is not found", () => {
     // This test will initially fail as getMedia is not yet implemented.
-    // It serves as a contract definition.
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000"; // Valid UUID, but not found
 
     // Placeholder for the actual getMedia function call

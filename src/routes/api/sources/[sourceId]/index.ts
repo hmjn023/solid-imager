@@ -1,4 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { Effect, pipe } from "effect";
 import type { UUID } from "~/domain/shared/types";
 import {
   deleteMediaSource,
@@ -12,26 +13,32 @@ import {
  * @returns 画像ソース内のすべてのメディア
  */
 export async function GET({ params }: APIEvent) {
-  try {
-    const sourceId = params.sourceId as UUID;
-    const source = await getMediaSourceById(sourceId);
-    if (!source) {
-      return new Response(JSON.stringify({ error: "Source not found" }), {
-        status: 404,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    }
-    return source;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to fetch source" }), {
+  const sourceId = params.sourceId as UUID;
+  const result = await pipe(
+    Effect.tryPromise({
+      try: () => getMediaSourceById(sourceId),
+      catch: (error) => new Error(`Failed to fetch source: ${error}`),
+    }),
+    Effect.runPromise,
+  );
+
+  if (result instanceof Error) {
+    return new Response(JSON.stringify({ error: result.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
+  if (!result) {
+    return new Response(JSON.stringify({ error: "Source not found" }), {
+      status: 404,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }
+  return result;
 }
 
 /**
@@ -41,19 +48,26 @@ export async function GET({ params }: APIEvent) {
  * @returns 更新されたメディアソース
  */
 export async function PUT({ params, request }: APIEvent) {
-  try {
-    const sourceId = params.sourceId as UUID;
-    const data = await request.json();
-    const updatedSource = await updateMediaSource(sourceId, data);
-    return updatedSource;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to update source" }), {
+  const sourceId = params.sourceId as UUID;
+  const data = await request.json();
+
+  const result = await pipe(
+    Effect.tryPromise({
+      try: () => updateMediaSource(sourceId, data),
+      catch: (error) => new Error(`Failed to update source: ${error}`),
+    }),
+    Effect.runPromise,
+  );
+
+  if (result instanceof Error) {
+    return new Response(JSON.stringify({ error: result.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
+  return result;
 }
 
 /**
@@ -63,16 +77,23 @@ export async function PUT({ params, request }: APIEvent) {
  * @returns 削除結果
  */
 export async function DELETE({ params }: APIEvent) {
-  try {
-    const sourceId = params.sourceId as UUID;
-    const result = await deleteMediaSource(sourceId);
-    return { success: true, result };
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to delete source" }), {
+  const sourceId = params.sourceId as UUID;
+
+  const result = await pipe(
+    Effect.tryPromise({
+      try: () => deleteMediaSource(sourceId),
+      catch: (error) => new Error(`Failed to delete source: ${error}`),
+    }),
+    Effect.runPromise,
+  );
+
+  if (result instanceof Error) {
+    return new Response(JSON.stringify({ error: result.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
+  return { success: true, result };
 }

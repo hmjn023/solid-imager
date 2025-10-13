@@ -1,4 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { Effect, pipe } from "effect";
 import {
   createMediaSource,
   getMediaSources,
@@ -10,17 +11,23 @@ import {
  */
 
 export async function GET() {
-  try {
-    const sources = await getMediaSources();
-    return sources;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to fetch sources" }), {
+  const result = await pipe(
+    Effect.tryPromise({
+      try: () => getMediaSources(),
+      catch: (error) => new Error(`Failed to fetch sources: ${error}`),
+    }),
+    Effect.runPromise,
+  );
+
+  if (result instanceof Error) {
+    return new Response(JSON.stringify({ error: result.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
+  return result;
 }
 
 /**
@@ -29,21 +36,29 @@ export async function GET() {
  * @returns 作成されたメディアソース
  */
 export async function POST({ request }: APIEvent) {
-  try {
-    const { name, description, type, connectionInfo } = await request.json();
-    const newSource = await createMediaSource({
-      name,
-      description,
-      type,
-      connectionInfo,
-    });
-    return newSource;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to create source" }), {
+  const { name, description, type, connectionInfo } = await request.json();
+
+  const result = await pipe(
+    Effect.tryPromise({
+      try: () =>
+        createMediaSource({
+          name,
+          description,
+          type,
+          connectionInfo,
+        }),
+      catch: (error) => new Error(`Failed to create source: ${error}`),
+    }),
+    Effect.runPromise,
+  );
+
+  if (result instanceof Error) {
+    return new Response(JSON.stringify({ error: result.message }), {
       status: 500,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
+  return result;
 }

@@ -1,10 +1,12 @@
 import { and, eq, like } from "drizzle-orm";
 import { Pool } from "pg";
-import type {
-  Media,
-  MediaSource,
-  NewMedia,
-  NewMediaSource,
+import {
+  mediaSources,
+  medias,
+  type Media,
+  type MediaSource,
+  type NewMedia,
+  type NewMediaSource,
 } from "~/infrastructure/db/schema";
 
 const dbHost = process.env.DB_HOST;
