@@ -7,6 +7,7 @@ import type {
   NewMedia,
   NewMediaSource,
 } from "~/infrastructure/db/schema";
+export { DbError } from "./errors";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {

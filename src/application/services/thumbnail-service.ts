@@ -29,4 +29,5 @@ export const ThumbnailService = {
 
   async clearThumbnailCache(sourceId: string) {
     return apiClearThumbnailCache(sourceId);
-  },
+  }
+}
