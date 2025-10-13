@@ -1,6 +1,6 @@
 import {
-  startThumbnailGeneration as apiStartThumbnailGeneration,
   clearThumbnailCache as apiClearThumbnailCache,
+  startThumbnailGeneration as apiStartThumbnailGeneration,
 } from "../../infrastructure/api-clients/thumbnails";
 
 /**
@@ -15,7 +15,11 @@ export const ThumbnailService = {
     return [`/api/thumbnails/${sourceId}/all`];
   },
 
-  async getMediaThumbnail(sourceId: string, mediaId: string, size?: number): Promise<string> {
+  async getMediaThumbnail(
+    sourceId: string,
+    mediaId: string,
+    size?: number
+  ): Promise<string> {
     let url = `/api/thumbnails/${sourceId}/${mediaId}`;
     if (size) {
       url += `?size=${size}`;
@@ -29,5 +33,5 @@ export const ThumbnailService = {
 
   async clearThumbnailCache(sourceId: string) {
     return apiClearThumbnailCache(sourceId);
-  }
-}
+  },
+};

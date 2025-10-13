@@ -7,7 +7,6 @@ import type {
   NewMediaSource,
 } from "~/infrastructure/db/schema";
 
-
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
   throw new Error("DB_HOST is not defined in environment variables.");
