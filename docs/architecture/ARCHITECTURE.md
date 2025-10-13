@@ -16,6 +16,7 @@
 3.  **テスト容易性**: 各レイヤーは独立してテストできます
 4.  **保守性**: 明確な境界により、コードの理解と変更が容易になります
 5.  **柔軟性**: インフラストラクチャはビジネスロジックに影響を与えることなく交換できます
+6.  **型安全性とエラーハンドリング**: Effect-TSを導入することで、型安全なコード記述と、予測可能で一貫性のあるエラーハンドリングを促進します。
 
 ## ディレクトリ構造
 
@@ -107,6 +108,7 @@ export const getMediaFromDatabase = async (id: string) => {
 - 依存性注入またはインポートを介してインフラストラクチャを使用
 - 複雑なワークフローを調整
 - トランザクション境界
+- **Effect-TSの活用**: Effect-TSを使用して、非同期操作、エラーハンドリング、および依存関係の管理を型安全かつ宣言的に行います。
 
 **ファイル** (合計19):
 - ビジネス操作をオーケストレーションするサービスファイル:
@@ -126,19 +128,26 @@ export const getMediaFromDatabase = async (id: string) => {
 **例**:
 ```typescript
 // ✅ 良い例: サービスはドメイン + インフラストラクチャをオーケストレーションする
-export async function processMedia(sourceId: string, filePath: string) {
-  // ドメインスキーマで検証
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
-  
-  // インフラストラクチャを使用してファイルを取得
-  const file = await storageDriver.readFile(filePath);
-  
-  // 処理にドメインロジックを使用
-  const metadata = await extractMetadata(file);
-  
-  // インフラストラクチャを介してデータベースに保存
-  return await db.insert(media).values({ sourceId, filePath, metadata });
-}
+import { Effect, pipe } from '@effect/io/Effect';
+import * as S from '@effect/schema/Schema';
+import { MediaSourceDriver } from '~/infrastructure/storage/types';
+import { Media, MediaMetadata, sourceIdSchema } from '~/domain/media/types';
+import { extractMetadata } from '~/domain/media/processing/image-processor';
+import { db } from '~/infrastructure/db';
+
+export const processMedia = (sourceId: string, filePath: string) =>
+  pipe(
+    Effect.sync(() => S.decodeSync(sourceIdSchema)(sourceId)), // ドメインスキーマで検証
+    Effect.flatMap(validatedSourceId =>
+      pipe(
+        Effect.serviceWithEffect(MediaSourceDriver, driver => driver.readFile(filePath)), // インフラストラクチャを使用してファイルを取得
+        Effect.flatMap(file => Effect.sync(() => extractMetadata(file))), // 処理にドメインロジックを使用
+        Effect.flatMap(metadata =>
+          Effect.promise(() => db.insert(media).values({ sourceId: validatedSourceId, filePath, metadata })) // インフラストラクチャを介してデータベースに保存
+        )
+      )
+    )
+  );
 ```
 
 ### 3. インフラストラクチャレイヤー (`src/infrastructure/`)
@@ -150,6 +159,7 @@ export async function processMedia(sourceId: string, filePath: string) {
 - アプリケーションレイヤーから独立
 - 外部システム (DB、ファイルシステム、API) を処理
 - アダプターとドライバーを含む
+- **Effect-TSの活用**: Effect-TSを使用して、外部システムとのI/O操作やエラー発生の可能性のある処理を型安全に表現し、アプリケーションレイヤーに伝播します。
 
 **ファイル** (合計21):
 - `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
@@ -168,18 +178,31 @@ export async function processMedia(sourceId: string, filePath: string) {
 **例**:
 ```typescript
 // ✅ 良い例: インフラストラクチャアダプター
+import { Effect } from '@effect/io/Effect';
+import * as fs from 'node:fs/promises';
+
 export class LocalDriver implements MediaSourceDriver {
-  async readFile(path: string): Promise<Buffer> {
-    return await fs.readFile(this.getAbsolutePath(path));
+  constructor(private basePath: string) {}
+
+  readFile(path: string): Effect<never, Error, Buffer> {
+    return Effect.tryPromise({
+      try: () => fs.readFile(this.getAbsolutePath(path)),
+      catch: (error) => new Error(`Failed to read file: ${error}`),
+    });
   }
   
-  async testConnection(): Promise<{ success: boolean; message?: string }> {
-    try {
-      await fs.access(this.basePath);
-      return { success: true };
-    } catch {
-      return { success: false, message: "Directory not accessible" };
-    }
+  testConnection(): Effect<never, Error, { success: boolean; message?: string }> {
+    return Effect.tryPromise({
+      try: async () => {
+        await fs.access(this.basePath);
+        return { success: true };
+      },
+      catch: (error) => new Error(`Directory not accessible: ${error}`),
+    });
+  }
+
+  private getAbsolutePath(relativePath: string): string {
+    return `${this.basePath}/${relativePath}`;
   }
 }
 ```
