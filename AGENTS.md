@@ -134,6 +134,18 @@ The project uses **Biome** for linting and formatting. Before committing any cha
   ```bash
   bun run check
   ```
+- **Lint only:** Run linting checks without applying fixes.
+  ```bash
+  bun run lint
+  ```
+- **Format only:** Apply formatting fixes.
+  ```bash
+  bun run format
+  ```
+- **Unsafe Fix:** Apply potentially unsafe fixes (use with caution).
+  ```bash
+  bun run unsafe-fix
+  ```
 
 ### Code Style
 
