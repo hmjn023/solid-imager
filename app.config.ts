@@ -5,7 +5,7 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     ssr: {
-      noExternal: ["drizzle-orm"],
+      noExternal: ["drizzle-orm", "effect"],
       external: ["ssh2"],
     },
     optimizeDeps: {
