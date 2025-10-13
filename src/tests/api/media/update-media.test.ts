@@ -9,8 +9,8 @@ import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type 
 
 describe("updateMedia Contract", () => {
   it("should return an updated Media object on successful update", () => {
-    const sourceId = "b0000000-0000-0000-0000-000000000000";
-    const mediaId = "a0000000-0000-0000-0000-000000000000";
+    const sourceId = "b0000000-0000-4000-8000-000000000000";
+    const mediaId = "a0000000-0000-4000-8000-000000000000";
     const updates = {
       description: "Updated description",
       width: 1024,
@@ -47,7 +47,7 @@ describe("updateMedia Contract", () => {
   it("should return an error if mediaId is not found", () => {
     // This test will initially fail as updateMedia is not yet implemented.
     // It serves as a contract definition.
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     const _updates = { description: "Updated description" };
 
@@ -60,7 +60,7 @@ describe("updateMedia Contract", () => {
   });
 
   it("should throw a ZodError for invalid mediaId format", () => {
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const mediaId = "invalid-uuid-format";
     const _updates = { description: "Updated description" };
     expect(() => mediaIdSchema.parse(mediaId)).toThrow(ZodError);

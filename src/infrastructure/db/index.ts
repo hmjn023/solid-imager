@@ -1,13 +1,13 @@
 import { and, eq, like } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import type {
-  Media,
-  MediaSource,
-  NewMedia,
-  NewMediaSource,
+import {
+  type Media,
+  type MediaSource,
+  mediaSources,
+  medias,
+  type NewMedia,
+  type NewMediaSource,
 } from "~/infrastructure/db/schema";
-export { DbError } from "./errors";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
@@ -42,51 +42,9 @@ export const pool = new Pool({
   database: dbDatabase,
 });
 
-import {
-  categories,
-  characters,
-  collectionMedia,
-  collections,
-  ips,
-  mediaCharacters,
-  mediaDetails,
-  mediaGenerationInfo,
-  mediaOrganization,
-  mediaSources,
-  mediaSync,
-  medias,
-  mediaTags,
-  mediaTechnicalInfo,
-  projects,
-  similarMedia,
-  tags,
-  users,
-  viewHistory,
-} from "~/infrastructure/db/schema";
+import { createDatabaseService } from "./layer";
 
-export const db = drizzle(pool, {
-  schema: {
-    mediaSources,
-    medias,
-    tags,
-    mediaTags,
-    mediaDetails,
-    mediaGenerationInfo,
-    categories,
-    projects,
-    ips,
-    characters,
-    mediaCharacters,
-    mediaOrganization,
-    mediaTechnicalInfo,
-    mediaSync,
-    viewHistory,
-    similarMedia,
-    users,
-    collections,
-    collectionMedia,
-  },
-});
+export const { db } = createDatabaseService(pool);
 
 export const selectMediaSources = () => db.select().from(mediaSources);
 

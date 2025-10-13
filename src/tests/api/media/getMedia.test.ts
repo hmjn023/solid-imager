@@ -5,9 +5,9 @@ import { sourceIdSchema } from "~/domain/sources/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("getMedia Contract", () => {
-  it("should return a Media object for a valid mediaId", async () => {
-    const sourceId = "b0000000-0000-0000-0000-000000000000"; // Valid UUID
-    const mediaId = "a0000000-0000-0000-0000-000000000000"; // Valid UUID
+  it("should return a Media object for a valid mediaId",  () => {
+    const sourceId = "b0000000-0000-4000-8000-000000000000"; // Valid UUID
+    const mediaId = "a0000000-0000-4000-8000-000000000000"; // Valid UUID
 
     // Validate with Zod schema
     sourceIdSchema.parse(sourceId);
@@ -34,10 +34,10 @@ describe("getMedia Contract", () => {
     expect(result.filePath).toBeTypeOf("string");
   });
 
-  it("should return an error if mediaId is not found", async () => {
+  it("should return an error if mediaId is not found",  () => {
     // This test will initially fail as getMedia is not yet implemented.
     // It serves as a contract definition.
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000"; // Valid UUID, but not found
 
     // Placeholder for the actual getMedia function call
@@ -48,13 +48,13 @@ describe("getMedia Contract", () => {
     expect(errorResult.message).toBeTypeOf("string");
   });
 
-  it("should throw a ZodError for an invalid mediaId format", async () => {
+  it("should throw a ZodError for an invalid mediaId format",  () => {
     const _sourceId = "b0000000-0000-0000-0000-000000000000";
     const mediaId = "invalid-uuid-format";
     expect(() => mediaIdSchema.parse(mediaId)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", async () => {
+  it("should throw a ZodError for an invalid sourceId format",  () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);

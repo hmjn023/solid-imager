@@ -8,12 +8,12 @@ import { getDriver } from "~/infrastructure/storage/factory";
 
 export const DirectoryService = {
   // Feature 9: ディレクトリ管理機能 (Phase 1: local only)
-  async getDirectoryTree(_sourceId: string) {
+  getDirectoryTree(_sourceId: string) {
     // TODO: Get directory tree structure
     throw new Error("Not implemented");
   },
 
-  async createDirectory(
+  createDirectory(
     _sourceId: string,
     _directoryData: { path: string; name: string }
   ) {
@@ -21,16 +21,12 @@ export const DirectoryService = {
     throw new Error("Not implemented");
   },
 
-  async deleteDirectory(
-    _sourceId: string,
-    _directoryPath: string,
-    _force?: boolean
-  ) {
+  deleteDirectory(_sourceId: string, _directoryPath: string, _force?: boolean) {
     // TODO: Delete directory (force=true required for non-empty)
     throw new Error("Not implemented");
   },
 
-  async updateDirectory(
+  updateDirectory(
     _sourceId: string,
     _directoryData: { oldPath: string; newPath: string }
   ) {

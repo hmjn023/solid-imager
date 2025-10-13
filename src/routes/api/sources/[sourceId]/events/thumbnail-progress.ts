@@ -7,7 +7,7 @@ export function GET({ params, request }: APIEvent) {
 
   const stream = new ReadableStream({
     start(controller) {
-      const sendEvent = (event: string, data: any) => {
+      const sendEvent = (event: string, data: unknown) => {
         controller.enqueue(
           `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
         );

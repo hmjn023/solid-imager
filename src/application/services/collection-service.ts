@@ -5,12 +5,12 @@
 
 export const CollectionService = {
   // Feature 14: コレクション管理機能
-  async getAllCollections() {
+  getAllCollections() {
     // TODO: Get all collections
     throw new Error("Not implemented");
   },
 
-  async createCollection(_collectionData: {
+  createCollection(_collectionData: {
     userId: string;
     name: string;
     description?: string;
@@ -19,12 +19,12 @@ export const CollectionService = {
     throw new Error("Not implemented");
   },
 
-  async getCollectionDetails(_collectionId: string) {
+  getCollectionDetails(_collectionId: string) {
     // TODO: Get collection details by ID (UUID)
     throw new Error("Not implemented");
   },
 
-  async updateCollection(
+  updateCollection(
     _collectionId: string,
     _collectionData: {
       userId?: string;
@@ -36,12 +36,12 @@ export const CollectionService = {
     throw new Error("Not implemented");
   },
 
-  async deleteCollection(_collectionId: string) {
+  deleteCollection(_collectionId: string) {
     // TODO: Delete collection
     throw new Error("Not implemented");
   },
 
-  async addMediaToCollection(
+  addMediaToCollection(
     _collectionId: string,
     _mediaId: string,
     _displayOrder?: number
@@ -50,7 +50,7 @@ export const CollectionService = {
     throw new Error("Not implemented");
   },
 
-  async removeMediaFromCollection(_collectionId: string, _mediaId: string) {
+  removeMediaFromCollection(_collectionId: string, _mediaId: string) {
     // TODO: Remove media from collection
     throw new Error("Not implemented");
   },

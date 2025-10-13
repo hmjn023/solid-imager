@@ -17,7 +17,7 @@ export type MediaMetadata = {
   workflow?: object;
   parameters?: string;
   extractedTags?: string[]; // Add extracted tags
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type MediaSearchParams = Record<string, string | number | boolean>;

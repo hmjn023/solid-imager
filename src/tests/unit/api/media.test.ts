@@ -13,7 +13,7 @@ import { db } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 
 // データベースの操作をモックします。
-vi.mock("~/db", () => ({
+vi.mock("~/infrastructure/db", () => ({
   db: {
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
@@ -104,7 +104,7 @@ describe("Media API Unit Tests", () => {
   describe("addMedia", () => {
     it("should add a new media entry and return it", async () => {
       const newMediaData = {
-        sourceId: "b0000000-0000-0000-0000-000000000000",
+        sourceId: "b0000000-0000-4000-8000-000000000000",
         filePath: "/unit/test/image.png",
         fileName: "unit_image.png",
         size: 500,
@@ -127,7 +127,7 @@ describe("Media API Unit Tests", () => {
 
     it("should throw an error if media with same sourceId and filePath already exists", async () => {
       const newMediaData = {
-        sourceId: "b0000000-0000-0000-0000-000000000000",
+        sourceId: "b0000000-0000-4000-8000-000000000000",
         filePath: "/unit/test/duplicate.png",
         fileName: "unit_duplicate.png",
         size: 500,
@@ -161,9 +161,27 @@ describe("Media API Unit Tests", () => {
 
   describe("getMedia", () => {
     it("should retrieve a media entry by ID", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
-      const mediaId = "mock-uuid-123";
-      const result = await getMedia(sourceId, mediaId);
+      const _sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaId = "a0000000-0000-4000-8000-000000000000";
+
+      // Mock the return value of getMedia
+      vi.mocked(db.select().from().where).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: _sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: "image.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
+      const result = await getMedia(_sourceId, mediaId);
 
       expect(db.select).toHaveBeenCalledWith();
       expect(db.select().from).toHaveBeenCalledWith(medias);
@@ -177,13 +195,13 @@ describe("Media API Unit Tests", () => {
     it("should throw an error if media ID is not found", async () => {
       vi.mocked(db.select().from().where).mockResolvedValueOnce([]);
       await expect(
-        getMedia("b0000000-0000-0000-0000-000000000000", "non-existent")
+        getMedia("b0000000-0000-4000-8000-000000000000", "non-existent")
       ).rejects.toThrow("Media not found");
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
       await expect(
-        getMedia("b0000000-0000-0000-0000-000000000000", "invalid-format")
+        getMedia("b0000000-0000-4000-8000-000000000000", "invalid-format")
       ).rejects.toThrow(ZodError);
     });
 
@@ -196,9 +214,10 @@ describe("Media API Unit Tests", () => {
 
   describe("updateMedia", () => {
     it("should update a media entry and return the updated entry", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
-      const mediaId = "mock-uuid-123";
-      const updates = { fileName: "new_name.png", width: 150 };
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaId = "a0000000-0000-4000-8000-000000000000";
+      const updates = { fileName: "updated_file.png", width: 1024 }; // Define updates
+
       const result = await updateMedia(sourceId, mediaId, updates);
 
       expect(db.update).toHaveBeenCalledWith(medias);
@@ -218,21 +237,29 @@ describe("Media API Unit Tests", () => {
     it("should throw an error if media ID is not found", async () => {
       vi.mocked(db.update().set().where).mockResolvedValueOnce([]);
       await expect(
-        updateMedia("b0000000-0000-0000-0000-000000000000", "non-existent", {
-          fileName: "test",
-        })
+        updateMedia(
+          "b0000000-0000-4000-8000-000000000000",
+          "c0000000-0000-4000-8000-000000000000",
+          {
+            fileName: "test",
+          }
+        )
       ).rejects.toThrow("Media not found or failed to update");
     });
 
     it("should throw a ZodError if no updates are provided", async () => {
       await expect(
-        updateMedia("b0000000-0000-0000-0000-000000000000", "mock-uuid-123", {})
+        updateMedia(
+          "b0000000-0000-4000-8000-000000000000",
+          "a0000000-0000-4000-8000-000000000000",
+          {}
+        )
       ).rejects.toThrow(ZodError);
     });
 
     it("should throw a ZodError for invalid update data", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
-      const mediaId = "mock-uuid-123";
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaId = "a0000000-0000-4000-8000-000000000000";
       const invalidUpdates = { width: -100 }; // Invalid field
       await expect(
         updateMedia(sourceId, mediaId, invalidUpdates as any)
@@ -240,7 +267,7 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "invalid-format";
       const updates = { fileName: "test" };
       await expect(updateMedia(sourceId, mediaId, updates)).rejects.toThrow(
@@ -260,8 +287,8 @@ describe("Media API Unit Tests", () => {
 
   describe("deleteMedia", () => {
     it("should delete a media entry and return success", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
-      const mediaId = "mock-uuid-123";
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaId = "a0000000-0000-4000-8000-000000000000";
       const result = await deleteMedia(sourceId, mediaId);
 
       expect(db.delete).toHaveBeenCalledWith(medias);
@@ -271,7 +298,7 @@ describe("Media API Unit Tests", () => {
 
     it("should throw a ZodError for invalid media ID format", async () => {
       await expect(
-        deleteMedia("b0000000-0000-0000-0000-000000000000", "invalid-format")
+        deleteMedia("b0000000-0000-4000-8000-000000000000", "invalid-format")
       ).rejects.toThrow(ZodError);
     });
 
@@ -284,7 +311,7 @@ describe("Media API Unit Tests", () => {
 
   describe("listMedia", () => {
     it("should return a list of media entries for a given directory path", async () => {
-      const sourceId = "b0000000-0000-0000-0000-000000000000";
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
       const directoryPath = "/mock/directory/";
       const result = await listMedia(sourceId, directoryPath);
 
@@ -299,7 +326,7 @@ describe("Media API Unit Tests", () => {
 
     it("should throw a ZodError if directory path is empty", async () => {
       await expect(
-        listMedia("b0000000-0000-0000-0000-000000000000", "")
+        listMedia("b0000000-0000-4000-8000-000000000000", "")
       ).rejects.toThrow(ZodError);
     });
 

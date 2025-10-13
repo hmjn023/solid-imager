@@ -38,7 +38,7 @@ export async function GET({ params }: APIEvent) {
         "Content-Type": "image/webp",
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error.message.includes("not found")) {
       return { error: "Media not found", status: 404 };
     }

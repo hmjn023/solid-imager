@@ -46,6 +46,8 @@ export const updateMediaRequestSchema = z.object({
 
 export const mediaIdSchema = z.string().uuid("Invalid media ID format");
 
+export const sourceIdSchema = z.string().uuid("Invalid source ID format");
+
 export const directoryPathSchema = z
   .string()
   .min(1, "Directory path is required");

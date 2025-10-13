@@ -5,22 +5,18 @@
 
 export const MediaService = {
   // Feature 3: メディアメタデータ抽出機能
-  async getMediaMetadata(_sourceId: string, _mediaId: string) {
+  getMediaMetadata(_sourceId: string, _mediaId: string) {
     // TODO: Implement metadata extraction from PNG tEXt chunks
     throw new Error("Not implemented");
   },
 
-  async updateMediaMetadata(
-    _sourceId: string,
-    _mediaId: string,
-    _metadata: unknown
-  ) {
+  updateMediaMetadata(_sourceId: string, _mediaId: string, _metadata: unknown) {
     // TODO: Implement metadata update
     throw new Error("Not implemented");
   },
 
   // Feature 5: メディアアップロード機能
-  async uploadNewMedia(
+  uploadNewMedia(
     _sourceId: string,
     _uploadData: {
       file: File;
@@ -36,7 +32,7 @@ export const MediaService = {
   },
 
   // Feature 7: メディアソート・検索機能
-  async searchMedia(
+  searchMedia(
     _sourceId: string,
     _searchOptions: {
       tags?: string[];
@@ -49,7 +45,7 @@ export const MediaService = {
     throw new Error("Not implemented");
   },
 
-  async searchMediaInDirectory(
+  searchMediaInDirectory(
     _sourceId: string,
     _directoriesPath: string,
     _searchOptions: {
@@ -59,9 +55,6 @@ export const MediaService = {
       limit?: number;
     }
   ) {
-    console.log(
-      `Searching media in source: ${_sourceId}, path: ${_directoriesPath}, options: ${JSON.stringify(_searchOptions)}`
-    );
     // Placeholder implementation: Return dummy data
     return [
       {
@@ -92,7 +85,7 @@ export const MediaService = {
   },
 
   // Feature 8: メディア情報編集機能
-  async updateMedia(
+  updateMedia(
     _sourceId: string,
     _mediaId: string,
     _mediaData: {
@@ -107,12 +100,12 @@ export const MediaService = {
   },
 
   // Feature 20: フィルタ・プリセット機能
-  async getRandomMedia(_sourceId: string) {
+  getRandomMedia(_sourceId: string) {
     // TODO: Implement random media selection
     throw new Error("Not implemented");
   },
 
-  async getRecentMedia(_sourceId: string) {
+  getRecentMedia(_sourceId: string) {
     // TODO: Implement recent media retrieval
     throw new Error("Not implemented");
   },
