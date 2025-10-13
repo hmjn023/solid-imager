@@ -1,4 +1,4 @@
-import { Effect } from "@effect/io/Effect";
+import { Effect } from "effect";
 import type {
   MediaSourceInfo,
   MediaSourceTypeEnum,
