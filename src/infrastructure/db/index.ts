@@ -1,152 +1,150 @@
-"use server";
-
 import { and, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import type {
-	Media,
-	MediaSource,
-	NewMedia,
-	NewMediaSource,
+  Media,
+  MediaSource,
+  NewMedia,
+  NewMediaSource,
 } from "~/infrastructure/db/schema";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
-	throw new Error("DB_HOST is not defined in environment variables.");
+  throw new Error("DB_HOST is not defined in environment variables.");
 }
 
 const dbPort = process.env.DB_PORT;
 if (!dbPort) {
-	throw new Error("DB_PORT is not defined in environment variables.");
+  throw new Error("DB_PORT is not defined in environment variables.");
 }
 
 const dbUser = process.env.DB_USER;
 if (!dbUser) {
-	throw new Error("DB_USER is not defined in environment variables.");
+  throw new Error("DB_USER is not defined in environment variables.");
 }
 
 const dbPassword = process.env.DB_PASSWORD;
 if (!dbPassword) {
-	throw new Error("DB_PASSWORD is not defined in environment variables.");
+  throw new Error("DB_PASSWORD is not defined in environment variables.");
 }
 
 const dbDatabase = process.env.DB_DATABASE;
 if (!dbDatabase) {
-	throw new Error("DB_DATABASE is not defined in environment variables.");
+  throw new Error("DB_DATABASE is not defined in environment variables.");
 }
 
 export const pool = new Pool({
-	host: dbHost,
-	port: Number.parseInt(dbPort, 10),
-	user: dbUser,
-	password: dbPassword,
-	database: dbDatabase,
+  host: dbHost,
+  port: Number.parseInt(dbPort, 10),
+  user: dbUser,
+  password: dbPassword,
+  database: dbDatabase,
 });
 
 import {
-	categories,
-	characters,
-	collectionMedia,
-	collections,
-	ips,
-	mediaCharacters,
-	mediaDetails,
-	mediaGenerationInfo,
-	mediaOrganization,
-	mediaSources,
-	mediaSync,
-	medias,
-	mediaTags,
-	mediaTechnicalInfo,
-	projects,
-	similarMedia,
-	tags,
-	users,
-	viewHistory,
+  categories,
+  characters,
+  collectionMedia,
+  collections,
+  ips,
+  mediaCharacters,
+  mediaDetails,
+  mediaGenerationInfo,
+  mediaOrganization,
+  mediaSources,
+  mediaSync,
+  medias,
+  mediaTags,
+  mediaTechnicalInfo,
+  projects,
+  similarMedia,
+  tags,
+  users,
+  viewHistory,
 } from "~/infrastructure/db/schema";
 
 export const db = drizzle(pool, {
-	schema: {
-		mediaSources,
-		medias,
-		tags,
-		mediaTags,
-		mediaDetails,
-		mediaGenerationInfo,
-		categories,
-		projects,
-		ips,
-		characters,
-		mediaCharacters,
-		mediaOrganization,
-		mediaTechnicalInfo,
-		mediaSync,
-		viewHistory,
-		similarMedia,
-		users,
-		collections,
-		collectionMedia,
-	},
+  schema: {
+    mediaSources,
+    medias,
+    tags,
+    mediaTags,
+    mediaDetails,
+    mediaGenerationInfo,
+    categories,
+    projects,
+    ips,
+    characters,
+    mediaCharacters,
+    mediaOrganization,
+    mediaTechnicalInfo,
+    mediaSync,
+    viewHistory,
+    similarMedia,
+    users,
+    collections,
+    collectionMedia,
+  },
 });
 
 export const selectMediaSources = () => db.select().from(mediaSources);
 
 export const selectMediaSourceById = (mediaSourceId: string) =>
-	db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId));
+  db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId));
 
 export const insertMediaSource = (mediaSource: NewMediaSource) =>
-	db.insert(mediaSources).values(mediaSource).returning();
+  db.insert(mediaSources).values(mediaSource).returning();
 
 export const updateMediaSource = (
-	mediaSourceId: string,
-	mediaSource: MediaSource,
+  mediaSourceId: string,
+  mediaSource: MediaSource
 ) =>
-	db
-		.update(mediaSources)
-		.set(mediaSource)
-		.where(eq(mediaSources.id, mediaSourceId))
-		.returning();
+  db
+    .update(mediaSources)
+    .set(mediaSource)
+    .where(eq(mediaSources.id, mediaSourceId))
+    .returning();
 
 export const deleteMediaSource = (mediaSourceId: string) =>
-	db.delete(mediaSources).where(eq(mediaSources.id, mediaSourceId)).returning();
+  db.delete(mediaSources).where(eq(mediaSources.id, mediaSourceId)).returning();
 
 export const selectMediasByMediaSourceId = (mediaSourceId: string) =>
-	db.select().from(medias).where(eq(medias.sourceId, mediaSourceId));
+  db.select().from(medias).where(eq(medias.sourceId, mediaSourceId));
 
 export const selectMediaById = (mediaId: string) =>
-	db.select().from(medias).where(eq(medias.id, mediaId));
+  db.select().from(medias).where(eq(medias.id, mediaId));
 
 export const selectMediaBySourceIdAndFilePath = (
-	sourceId: string,
-	filePath: string,
+  sourceId: string,
+  filePath: string
 ) =>
-	db
-		.select()
-		.from(medias)
-		.where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
+  db
+    .select()
+    .from(medias)
+    .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
 
 export const insertMedia = (media: NewMedia) =>
-	db.insert(medias).values(media).returning();
+  db.insert(medias).values(media).returning();
 
 export const updateMedia = (mediaId: string, media: Media) =>
-	db.update(medias).set(media).where(eq(medias.id, mediaId)).returning();
+  db.update(medias).set(media).where(eq(medias.id, mediaId)).returning();
 
 export const deleteMedia = (mediaId: string) =>
-	db.delete(medias).where(eq(medias.id, mediaId));
+  db.delete(medias).where(eq(medias.id, mediaId));
 
 export const selectMediaBySourceIdAndDirectoryPath = (
-	sourceId: string,
-	directoryPath: string,
+  sourceId: string,
+  directoryPath: string
 ) =>
-	db
-		.select()
-		.from(medias)
-		.where(
-			and(
-				eq(medias.sourceId, sourceId),
-				like(medias.filePath, `${directoryPath}%`),
-			),
-		);
+  db
+    .select()
+    .from(medias)
+    .where(
+      and(
+        eq(medias.sourceId, sourceId),
+        like(medias.filePath, `${directoryPath}%`)
+      )
+    );
 
 // ========================================
 // Feature 2: Thumbnail Functions
@@ -154,7 +152,7 @@ export const selectMediaBySourceIdAndDirectoryPath = (
 
 // TODO: Implement selectMediaBySourceId
 export const selectMediaBySourceId = (_sourceId: string) => {
-	throw new Error("Not implemented");
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -162,16 +160,16 @@ export const selectMediaBySourceId = (_sourceId: string) => {
 // ========================================
 
 export const selectMediaGenerationInfoById = (_mediaId: string) => {
-	// TODO: Implement metadata retrieval
-	throw new Error("Not implemented");
+  // TODO: Implement metadata retrieval
+  throw new Error("Not implemented");
 };
 
 export const updateMediaGenerationInfo = (
-	_mediaId: string,
-	_metadata: unknown,
+  _mediaId: string,
+  _metadata: unknown
 ) => {
-	// TODO: Implement metadata update
-	throw new Error("Not implemented");
+  // TODO: Implement metadata update
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -180,7 +178,7 @@ export const updateMediaGenerationInfo = (
 
 // TODO: Implement if thumbnail job status table exists
 export const selectThumbnailJobStatus = (_sourceId: string) => {
-	throw new Error("Not implemented");
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -188,22 +186,22 @@ export const selectThumbnailJobStatus = (_sourceId: string) => {
 // ========================================
 
 export const searchMedia = (_sourceId: string, _searchOptions: unknown) => {
-	// TODO: Implement media search
-	throw new Error("Not implemented");
+  // TODO: Implement media search
+  throw new Error("Not implemented");
 };
 
 export const searchMediaInDirectory = (
-	_sourceId: string,
-	_directoriesPath: string,
-	_searchOptions: unknown,
+  _sourceId: string,
+  _directoriesPath: string,
+  _searchOptions: unknown
 ) => {
-	// TODO: Implement directory search
-	throw new Error("Not implemented");
+  // TODO: Implement directory search
+  throw new Error("Not implemented");
 };
 
 export const globalSearchMedia = (_searchOptions: unknown) => {
-	// TODO: Implement global search across all sources
-	throw new Error("Not implemented");
+  // TODO: Implement global search across all sources
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -211,11 +209,11 @@ export const globalSearchMedia = (_searchOptions: unknown) => {
 // ========================================
 
 export const deleteMediaByPath = (
-	_sourceId: string,
-	_directoryPath: string,
+  _sourceId: string,
+  _directoryPath: string
 ) => {
-	// TODO: Implement media deletion by path
-	throw new Error("Not implemented");
+  // TODO: Implement media deletion by path
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -223,28 +221,28 @@ export const deleteMediaByPath = (
 // ========================================
 
 export const selectCategories = () => {
-	// TODO: Implement category listing
-	throw new Error("Not implemented");
+  // TODO: Implement category listing
+  throw new Error("Not implemented");
 };
 
 export const insertCategory = (_categoryData: unknown) => {
-	// TODO: Implement category insertion
-	throw new Error("Not implemented");
+  // TODO: Implement category insertion
+  throw new Error("Not implemented");
 };
 
 export const selectCategoryById = (_categoryId: number) => {
-	// TODO: Implement category retrieval by ID
-	throw new Error("Not implemented");
+  // TODO: Implement category retrieval by ID
+  throw new Error("Not implemented");
 };
 
 export const updateCategory = (_categoryId: number, _categoryData: unknown) => {
-	// TODO: Implement category update
-	throw new Error("Not implemented");
+  // TODO: Implement category update
+  throw new Error("Not implemented");
 };
 
 export const deleteCategory = (_categoryId: number) => {
-	// TODO: Implement category deletion
-	throw new Error("Not implemented");
+  // TODO: Implement category deletion
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -252,31 +250,31 @@ export const deleteCategory = (_categoryId: number) => {
 // ========================================
 
 export const selectCharacters = () => {
-	// TODO: Implement character listing
-	throw new Error("Not implemented");
+  // TODO: Implement character listing
+  throw new Error("Not implemented");
 };
 
 export const insertCharacter = (_characterData: unknown) => {
-	// TODO: Implement character insertion
-	throw new Error("Not implemented");
+  // TODO: Implement character insertion
+  throw new Error("Not implemented");
 };
 
 export const selectCharacterById = (_characterId: number) => {
-	// TODO: Implement character retrieval by ID
-	throw new Error("Not implemented");
+  // TODO: Implement character retrieval by ID
+  throw new Error("Not implemented");
 };
 
 export const updateCharacter = (
-	_characterId: number,
-	_characterData: unknown,
+  _characterId: number,
+  _characterData: unknown
 ) => {
-	// TODO: Implement character update
-	throw new Error("Not implemented");
+  // TODO: Implement character update
+  throw new Error("Not implemented");
 };
 
 export const deleteCharacter = (_characterId: number) => {
-	// TODO: Implement character deletion
-	throw new Error("Not implemented");
+  // TODO: Implement character deletion
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -284,28 +282,28 @@ export const deleteCharacter = (_characterId: number) => {
 // ========================================
 
 export const selectIps = () => {
-	// TODO: Implement IP listing
-	throw new Error("Not implemented");
+  // TODO: Implement IP listing
+  throw new Error("Not implemented");
 };
 
 export const insertIp = (_ipData: unknown) => {
-	// TODO: Implement IP insertion
-	throw new Error("Not implemented");
+  // TODO: Implement IP insertion
+  throw new Error("Not implemented");
 };
 
 export const selectIpById = (_ipId: number) => {
-	// TODO: Implement IP retrieval by ID
-	throw new Error("Not implemented");
+  // TODO: Implement IP retrieval by ID
+  throw new Error("Not implemented");
 };
 
 export const updateIp = (_ipId: number, _ipData: unknown) => {
-	// TODO: Implement IP update
-	throw new Error("Not implemented");
+  // TODO: Implement IP update
+  throw new Error("Not implemented");
 };
 
 export const deleteIp = (_ipId: number) => {
-	// TODO: Implement IP deletion
-	throw new Error("Not implemented");
+  // TODO: Implement IP deletion
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -313,28 +311,28 @@ export const deleteIp = (_ipId: number) => {
 // ========================================
 
 export const selectUsers = () => {
-	// TODO: Implement user listing
-	throw new Error("Not implemented");
+  // TODO: Implement user listing
+  throw new Error("Not implemented");
 };
 
 export const insertUser = (_userData: unknown) => {
-	// TODO: Implement user insertion
-	throw new Error("Not implemented");
+  // TODO: Implement user insertion
+  throw new Error("Not implemented");
 };
 
 export const selectUserById = (_userId: string) => {
-	// TODO: Implement user retrieval by ID
-	throw new Error("Not implemented");
+  // TODO: Implement user retrieval by ID
+  throw new Error("Not implemented");
 };
 
 export const updateUser = (_userId: string, _userData: unknown) => {
-	// TODO: Implement user update
-	throw new Error("Not implemented");
+  // TODO: Implement user update
+  throw new Error("Not implemented");
 };
 
 export const deleteUser = (_userId: string) => {
-	// TODO: Implement user deletion
-	throw new Error("Not implemented");
+  // TODO: Implement user deletion
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -342,48 +340,48 @@ export const deleteUser = (_userId: string) => {
 // ========================================
 
 export const selectCollections = () => {
-	// TODO: Implement collection listing
-	throw new Error("Not implemented");
+  // TODO: Implement collection listing
+  throw new Error("Not implemented");
 };
 
 export const insertCollection = (_collectionData: unknown) => {
-	// TODO: Implement collection insertion
-	throw new Error("Not implemented");
+  // TODO: Implement collection insertion
+  throw new Error("Not implemented");
 };
 
 export const selectCollectionById = (_collectionId: string) => {
-	// TODO: Implement collection retrieval by ID
-	throw new Error("Not implemented");
+  // TODO: Implement collection retrieval by ID
+  throw new Error("Not implemented");
 };
 
 export const updateCollection = (
-	_collectionId: string,
-	_collectionData: unknown,
+  _collectionId: string,
+  _collectionData: unknown
 ) => {
-	// TODO: Implement collection update
-	throw new Error("Not implemented");
+  // TODO: Implement collection update
+  throw new Error("Not implemented");
 };
 
 export const deleteCollection = (_collectionId: string) => {
-	// TODO: Implement collection deletion
-	throw new Error("Not implemented");
+  // TODO: Implement collection deletion
+  throw new Error("Not implemented");
 };
 
 export const insertCollectionMedia = (
-	_collectionId: string,
-	_mediaId: string,
-	_displayOrder?: number,
+  _collectionId: string,
+  _mediaId: string,
+  _displayOrder?: number
 ) => {
-	// TODO: Implement adding media to collection
-	throw new Error("Not implemented");
+  // TODO: Implement adding media to collection
+  throw new Error("Not implemented");
 };
 
 export const deleteCollectionMedia = (
-	_collectionId: string,
-	_mediaId: string,
+  _collectionId: string,
+  _mediaId: string
 ) => {
-	// TODO: Implement removing media from collection
-	throw new Error("Not implemented");
+  // TODO: Implement removing media from collection
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -391,44 +389,44 @@ export const deleteCollectionMedia = (
 // ========================================
 
 export const bulkUpdateMedia = (
-	_sourceId: string,
-	_mediaIds: string[],
-	_updates: unknown,
+  _sourceId: string,
+  _mediaIds: string[],
+  _updates: unknown
 ) => {
-	// TODO: Implement bulk media update
-	throw new Error("Not implemented");
+  // TODO: Implement bulk media update
+  throw new Error("Not implemented");
 };
 
 export const bulkDeleteMedia = (_sourceId: string, _mediaIds: string[]) => {
-	// TODO: Implement bulk media deletion
-	throw new Error("Not implemented");
+  // TODO: Implement bulk media deletion
+  throw new Error("Not implemented");
 };
 
 export const bulkUpdateMediaPaths = (
-	_sourceId: string,
-	_mediaIds: string[],
-	_pathUpdates: unknown,
+  _sourceId: string,
+  _mediaIds: string[],
+  _pathUpdates: unknown
 ) => {
-	// TODO: Implement bulk path updates
-	throw new Error("Not implemented");
+  // TODO: Implement bulk path updates
+  throw new Error("Not implemented");
 };
 
 export const bulkAddMediaTags = (
-	_sourceId: string,
-	_mediaIds: string[],
-	_tagsToAdd: number[],
+  _sourceId: string,
+  _mediaIds: string[],
+  _tagsToAdd: number[]
 ) => {
-	// TODO: Implement bulk tag addition
-	throw new Error("Not implemented");
+  // TODO: Implement bulk tag addition
+  throw new Error("Not implemented");
 };
 
 export const bulkRemoveMediaTags = (
-	_sourceId: string,
-	_mediaIds: string[],
-	_tagsToRemove: number[],
+  _sourceId: string,
+  _mediaIds: string[],
+  _tagsToRemove: number[]
 ) => {
-	// TODO: Implement bulk tag removal
-	throw new Error("Not implemented");
+  // TODO: Implement bulk tag removal
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -436,29 +434,29 @@ export const bulkRemoveMediaTags = (
 // ========================================
 
 export const selectMediaSourceData = (_sourceId: string) => {
-	// TODO: Implement source data export
-	throw new Error("Not implemented");
+  // TODO: Implement source data export
+  throw new Error("Not implemented");
 };
 
 export const upsertMediaSourceData = (
-	_sourceId: string,
-	_importData: unknown,
+  _sourceId: string,
+  _importData: unknown
 ) => {
-	// TODO: Implement source data import
-	throw new Error("Not implemented");
+  // TODO: Implement source data import
+  throw new Error("Not implemented");
 };
 
 export const reconcileMediaSource = (
-	_sourceId: string,
-	_fileSystemChanges: unknown,
+  _sourceId: string,
+  _fileSystemChanges: unknown
 ) => {
-	// TODO: Implement filesystem reconciliation
-	throw new Error("Not implemented");
+  // TODO: Implement filesystem reconciliation
+  throw new Error("Not implemented");
 };
 
 export const cloneMediaData = (_sourceId: string, _newSourceId: string) => {
-	// TODO: Implement source cloning
-	throw new Error("Not implemented");
+  // TODO: Implement source cloning
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -466,28 +464,28 @@ export const cloneMediaData = (_sourceId: string, _newSourceId: string) => {
 // ========================================
 
 export const selectSourceStats = (_sourceId: string) => {
-	// TODO: Implement source statistics
-	throw new Error("Not implemented");
+  // TODO: Implement source statistics
+  throw new Error("Not implemented");
 };
 
 export const selectGlobalStats = () => {
-	// TODO: Implement global statistics
-	throw new Error("Not implemented");
+  // TODO: Implement global statistics
+  throw new Error("Not implemented");
 };
 
 export const findDuplicateMedia = (_sourceId: string) => {
-	// TODO: Implement duplicate detection
-	throw new Error("Not implemented");
+  // TODO: Implement duplicate detection
+  throw new Error("Not implemented");
 };
 
 export const findSimilarMedia = (_sourceId: string, _mediaPath: string) => {
-	// TODO: Implement similar media detection
-	throw new Error("Not implemented");
+  // TODO: Implement similar media detection
+  throw new Error("Not implemented");
 };
 
 export const selectPopularMedia = () => {
-	// TODO: Implement popular media retrieval
-	throw new Error("Not implemented");
+  // TODO: Implement popular media retrieval
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -495,8 +493,8 @@ export const selectPopularMedia = () => {
 // ========================================
 
 export const insertMediaTags = (_mediaId: string, _tags: unknown) => {
-	// TODO: Implement media tag insertion
-	throw new Error("Not implemented");
+  // TODO: Implement media tag insertion
+  throw new Error("Not implemented");
 };
 
 // ========================================
@@ -504,6 +502,6 @@ export const insertMediaTags = (_mediaId: string, _tags: unknown) => {
 // ========================================
 
 export const selectRecentMedia = (_sourceId: string) => {
-	// TODO: Implement recent media retrieval
-	throw new Error("Not implemented");
+  // TODO: Implement recent media retrieval
+  throw new Error("Not implemented");
 };
