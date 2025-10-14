@@ -419,12 +419,9 @@ export const collections = pgTable("collections", {
   /** コレクション名 */
   name: text("name").notNull(),
   /** コレクションの説明 */
-  description: text("description"),
-  /** 作成日時 */
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  /** 更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
+
 
 export const collectionMedia = pgTable(
   "collection_media",

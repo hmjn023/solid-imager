@@ -25,8 +25,14 @@ describe("addMedia Contract", () => {
     // const result = await addMedia(newMediaData);
     const result: Media = {
       id: "a0000000-0000-4000-8000-000000000000",
-      ...newMediaData,
-      sourceId: "mock-source-id",
+      sourceId: newMediaData.sourceId,
+      filePath: newMediaData.filePath,
+      fileName: newMediaData.fileName,
+      mediaType: newMediaData.mediaType,
+      width: newMediaData.width,
+      height: newMediaData.height,
+      fileSize: newMediaData.size,
+      createdAt: newMediaData.createdAt,
       modifiedAt: newMediaData.updatedAt,
       indexedAt: newMediaData.updatedAt,
     };
