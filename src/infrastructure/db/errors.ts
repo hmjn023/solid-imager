@@ -1,4 +1,4 @@
-import { Data, Tag } from "effect";
+import { Data } from "effect";
 
 export class DbError extends Data.TaggedClass("DbError")<{
   readonly message: string;

@@ -19,7 +19,12 @@ export async function GET({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
   const result = await pipe(getMediaSourceById(sourceId), Effect.runPromise);
 
-  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
+  if (
+    result &&
+    typeof result === "object" &&
+    "_tag" in result &&
+    result._tag === "FetchError"
+  ) {
     return new Response(JSON.stringify({ error: result.message }), {
       status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
@@ -58,7 +63,12 @@ export async function PUT({ params, request }: APIEvent) {
     Effect.runPromise
   );
 
-  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
+  if (
+    result &&
+    typeof result === "object" &&
+    "_tag" in result &&
+    result._tag === "FetchError"
+  ) {
     return new Response(JSON.stringify({ error: result.message }), {
       status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
@@ -85,7 +95,12 @@ export async function DELETE({ params }: APIEvent) {
 
   const result = await pipe(deleteMediaSource(sourceId), Effect.runPromise);
 
-  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
+  if (
+    result &&
+    typeof result === "object" &&
+    "_tag" in result &&
+    result._tag === "FetchError"
+  ) {
     return new Response(JSON.stringify({ error: result.message }), {
       status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {

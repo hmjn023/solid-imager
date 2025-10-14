@@ -1,8 +1,5 @@
 import { Effect } from "effect";
-import type {
-  MediaSourceInfo,
-  MediaSourceTypeEnum,
-} from "~/domain/sources/types";
+import type { MediaSourceTypeEnum } from "~/domain/sources/types";
 import {
   deleteMediaSource,
   insertMediaSource,
@@ -10,10 +7,7 @@ import {
   selectMediaSources,
   updateMediaSource as updateMediaSourceDb,
 } from "~/infrastructure/db";
-import type {
-  MediaSource,
-  NewMediaSource,
-} from "~/infrastructure/db/schema";
+import type { MediaSource, NewMediaSource } from "~/infrastructure/db/schema";
 
 export class FetchError {
   readonly _tag = "FetchError";
@@ -38,9 +32,7 @@ export const MediaSourceService = {
   // すべてのソースを取得します。
   fetchSources(): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
-      try: async () => {
-        return await selectMediaSources();
-      },
+      try: async () => await selectMediaSources(),
       catch: (error) => {
         if (error instanceof FetchError) {
           return error;
@@ -55,9 +47,7 @@ export const MediaSourceService = {
     sourceData: NewMediaSource
   ): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
-      try: async () => {
-        return await insertMediaSource(sourceData);
-      },
+      try: async () => await insertMediaSource(sourceData),
       catch: (error) => {
         if (error instanceof FetchError) {
           return error;
@@ -73,9 +63,7 @@ export const MediaSourceService = {
     sourceData: MediaSource
   ): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
-      try: async () => {
-        return await updateMediaSourceDb(sourceId, sourceData);
-      },
+      try: async () => await updateMediaSourceDb(sourceId, sourceData),
       catch: (error) => {
         if (error instanceof FetchError) {
           return error;
@@ -90,9 +78,7 @@ export const MediaSourceService = {
     sourceId: string
   ): Effect.Effect<(MediaSource | undefined)[], FetchError, never> {
     return Effect.tryPromise({
-      try: async () => {
-        return await selectMediaSourceById(sourceId);
-      },
+      try: async () => await selectMediaSourceById(sourceId),
       catch: (error) => {
         if (error instanceof FetchError) {
           return error;
@@ -105,11 +91,11 @@ export const MediaSourceService = {
   },
 
   // ソースを削除します。
-  deleteSource(sourceId: string): Effect.Effect<MediaSource[], FetchError, never> {
+  deleteSource(
+    sourceId: string
+  ): Effect.Effect<MediaSource[], FetchError, never> {
     return Effect.tryPromise({
-      try: async () => {
-        return await deleteMediaSource(sourceId);
-      },
+      try: async () => await deleteMediaSource(sourceId),
       catch: (error) => {
         if (error instanceof FetchError) {
           return error;
