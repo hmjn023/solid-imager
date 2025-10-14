@@ -52,13 +52,14 @@ export const insertMedia = vi.fn((media) => {
 });
 
 export const selectMediaById = vi.fn((id: string) => {
-  return Promise.resolve(mockDbState.medias.filter(m => m.id === id));
+  const foundMedia = mockDbState.medias.find(m => m.id === id);
+  return Promise.resolve(foundMedia ? [foundMedia] : []);
 });
 
-export const updateMedia = vi.fn((id: string, media) => {
+export const updateMedia = vi.fn((id: string, updates) => {
   const index = mockDbState.medias.findIndex((m) => m.id === id);
   if (index !== -1) {
-    mockDbState.medias[index] = { ...mockDbState.medias[index], ...media };
+    mockDbState.medias[index] = { ...mockDbState.medias[index], ...updates };
     return Promise.resolve([mockDbState.medias[index]]);
   }
   return Promise.resolve([]);
@@ -76,6 +77,10 @@ export const deleteMedia = vi.fn((id: string) => {
 export const selectMediaBySourceIdAndDirectoryPath = vi.fn((sourceId: string, directoryPath: string) => {
   return Promise.resolve(mockDbState.medias.filter(m => m.sourceId === sourceId && m.filePath.startsWith(directoryPath)));
 });
+
+export const addMediaToMockDb = (media: any) => {
+  mockDbState.medias.push(media);
+};
 
 // Mock other functions as needed
 export const pool = vi.fn();

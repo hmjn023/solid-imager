@@ -9,17 +9,41 @@ import {
   listMedia,
   updateMedia,
 } from "~/infrastructure/api-clients/media";
-import { db, insertMedia, selectMediaById, selectMediaBySourceIdAndDirectoryPath, selectMediaBySourceIdAndFilePath, updateMedia as dbUpdateMedia, deleteMedia as dbDeleteMedia } from "~/infrastructure/db";
+import { db, insertMedia, selectMediaById, selectMediaBySourceIdAndDirectoryPath, selectMediaBySourceIdAndFilePath, updateMedia as dbUpdateMedia, deleteMedia as dbDeleteMedia, resetMockDbState, addMediaToMockDb } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 
 vi.mock("~/infrastructure/db");
 
-// データベースの操作をモックします。
-
-
 describe("Media API Unit Tests", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetMockDbState();
+    // Populate mockDbState.medias for updateMedia test
+    const mediaId = "a0000000-0000-4000-8000-000000000000";
+    const sourceId = "b0000000-0000-4000-8000-000000000000";
+    const existingMedia = {
+      id: mediaId,
+      sourceId: sourceId,
+      filePath: "/mock/path/image.png",
+      fileName: "original_file.png",
+      mediaType: "image",
+      width: 800,
+      height: 600,
+      fileSize: 1024,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      indexedAt: new Date(),
+    };
+    addMediaToMockDb(existingMedia);
+
+    // Directly add to the mock state for selectMediaById to find it
+    // This bypasses the insertMedia mock for setup purposes
+    vi.mocked(selectMediaBySourceIdAndFilePath).mockImplementation((srcId, filePath) => {
+      if (srcId === sourceId && filePath === existingMedia.filePath) {
+        return Promise.resolve([existingMedia]);
+      }
+      return Promise.resolve([]);
+    });
   });
 
   describe("addMedia", () => {
@@ -135,8 +159,10 @@ describe("Media API Unit Tests", () => {
 
     it("should throw an error if media ID is not found", async () => {
       vi.mocked(selectMediaById).mockResolvedValueOnce([]);
+      const nonExistentMediaId = uuidv4();
+      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
       await expect(
-        getMedia("b0000000-0000-4000-8000-000000000000", "non-existent")
+        getMedia("b0000000-0000-4000-8000-000000000000", nonExistentMediaId)
       ).rejects.toThrow("Media not found");
     });
 

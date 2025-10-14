@@ -99,9 +99,9 @@ export async function updateMedia(
   mediaId: string,
   updates: UpdateMediaRequest
 ): Promise<Media> {
+  const validatedUpdates = updateMediaRequestSchema.parse(updates);
   const validatedSourceId = sourceIdSchema.parse(sourceId);
   const validatedMediaId = mediaIdSchema.parse(mediaId);
-  const validatedUpdates = updateMediaRequestSchema.parse(updates);
 
   const existingMedia = await selectMediaById(validatedMediaId);
   if (
