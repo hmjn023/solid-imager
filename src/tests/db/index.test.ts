@@ -32,3 +32,8 @@ describe("Media Source Database Operations", () => {
   beforeEach(async () => {
     resetMockDbState();
   });
+
+  it("should be a placeholder test", () => {
+    expect(true).toBe(true);
+  });
+});

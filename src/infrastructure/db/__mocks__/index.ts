@@ -83,7 +83,9 @@ export const addMediaToMockDb = (media: any) => {
 };
 
 // Mock other functions as needed
-export const pool = vi.fn();
+export const pool = {
+  end: vi.fn(),
+};
 export const DatabaseLive = vi.fn();
 export const selectMediaBySourceId = vi.fn();
 export const selectMediaGenerationInfoById = vi.fn();

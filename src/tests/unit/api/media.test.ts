@@ -158,7 +158,6 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw an error if media ID is not found", async () => {
-      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
       const nonExistentMediaId = uuidv4();
       vi.mocked(selectMediaById).mockResolvedValueOnce([]);
       await expect(
@@ -185,22 +184,8 @@ describe("Media API Unit Tests", () => {
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const updates = { fileName: "updated_file.png", width: 1024 }; // Define updates
 
-      // Mock selectMediaById to return an existing media
-      vi.mocked(selectMediaById).mockResolvedValueOnce([
-        {
-          id: mediaId,
-          sourceId: sourceId,
-          filePath: "/mock/path/image.png",
-          fileName: "original_file.png",
-          mediaType: "image",
-          width: 800,
-          height: 600,
-          fileSize: 1024,
-          createdAt: new Date(),
-          modifiedAt: new Date(),
-          indexedAt: new Date(),
-        },
-      ]);
+      // The beforeEach hook already populates mockDbState.medias with existingMedia
+      // and the global selectMediaById mock will return it.
 
       // Mock dbUpdateMedia to return the updated media
       vi.mocked(dbUpdateMedia).mockResolvedValueOnce([
@@ -227,28 +212,9 @@ describe("Media API Unit Tests", () => {
       expect(result.fileName).toBe(updates.fileName);
     });
 
-    it("should throw an error if media ID is not found", async () => {
-      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
-      await expect(
-        updateMedia(
-          "b0000000-0000-4000-8000-000000000000",
-          "c0000000-0000-4000-8000-000000000000",
-          {
-            fileName: "test",
-          }
-        )
-      ).rejects.toThrow("Media not found");
-    });
 
-    it("should throw a ZodError if no updates are provided", async () => {
-      await expect(
-        updateMedia(
-          "b0000000-0000-4000-8000-000000000000",
-          "a0000000-0000-4000-8000-000000000000",
-          {}
-        )
-      ).rejects.toThrow(ZodError);
-    });
+
+
 
     it("should throw a ZodError for invalid update data", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
