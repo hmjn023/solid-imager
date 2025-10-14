@@ -199,15 +199,7 @@ export const selectMediaBySourceIdAndDirectoryPath = (
 // Feature 2: Thumbnail Functions
 // ========================================
 
-export const selectMediaBySourceId = (sourceId: string) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    return yield* _(
-      Effect.promise(() =>
-        db.select().from(medias).where(eq(medias.sourceId, sourceId))
-      )
-    );
-  });
+
 
 // ========================================
 // Feature 3: Media Metadata Functions
@@ -1031,8 +1023,7 @@ export const selectGlobalStats = () =>
     );
   });
 
-export const findDuplicateMedia = (_sourceId: string)
-) =>
+export const findDuplicateMedia = (_sourceId: string) =>
   Effect.gen(
 function* (_) {
     const { db } = yield* _(DatabaseService);
@@ -1054,9 +1045,7 @@ function* (_) {
   }
 )
 
-export const findSimilarMedia = sourceId;
-: string, mediaPath: string
-) =>
+export const findSimilarMedia = (sourceId: string, mediaPath: string) =>
   Effect.gen(
 function* (_) {
     const { db } = yield* _(DatabaseService);
@@ -1116,60 +1105,14 @@ export const selectPopularMedia = () =>
 // Feature 19: Workflow Functions
 // ========================================
 
-mediaId: string, tagsToInsert;
-: string[]
-) =>
-  Effect.gen(
-function* (_) {
-    const { db } = yield* _(DatabaseService);
 
-    return yield* _(
-      Effect.promise(() =>
-        db.transaction(async (tx) => {
-          const existingTags = await tx
-            .select()
-            .from(tags)
-            .where(inArray(tags.name, tagsToInsert));
-          const existingTagNames = existingTags.map((t) => t.name);
-          const newTagNames = tagsToInsert.filter(
-            (t) => !existingTagNames.includes(t)
-          );
-
-          let newTags: Tag[] = [];
-          if (newTagNames.length > 0) {
-            newTags = await tx
-              .insert(tags)
-              .values(newTagNames.map((name) => ({ name })))
-              .returning();
-          }
-
-          const allTags = [...existingTags, ...newTags];
-          const mediaTagsToInsert = allTags.map((t) => ({
-            mediaId,
-            tagId: t.id,
-          }));
-
-          if (mediaTagsToInsert.length > 0) {
-            await tx
-              .insert(mediaTags)
-              .values(mediaTagsToInsert)
-              .onConflictDoNothing();
-          }
-        })
-      )
-    );
-  }
-)
 
 // ========================================
 // Feature 20: Filter/Preset Functions
 // ========================================
 
-export const selectRecentMedia = sourceId;
-: string
-) =>
-  Effect.gen(
-function* (_) {
+export const selectRecentMedia = (sourceId: string) =>
+  Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -1182,5 +1125,4 @@ function* (_) {
           .limit(10)
       )
     );
-  }
-)
+  });

@@ -9,92 +9,13 @@ import {
   listMedia,
   updateMedia,
 } from "~/infrastructure/api-clients/media";
-import { db } from "~/infrastructure/db";
+import { db, insertMedia, selectMediaById, selectMediaBySourceIdAndDirectoryPath, selectMediaBySourceIdAndFilePath, updateMedia as dbUpdateMedia, deleteMedia as dbDeleteMedia } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 
+vi.mock("~/infrastructure/db");
+
 // データベースの操作をモックします。
-vi.mock("~/infrastructure/db", () => ({
-  db: {
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        returning: vi.fn(() => [
-          {
-            id: uuidv4(),
-            sourceId: "mock-source-id",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => [
-          {
-            id: "mock-uuid-123",
-            sourceId: "mock-source-id",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          returning: vi.fn(() => [
-            {
-              id: "mock-uuid-123",
-              sourceId: "mock-source-id",
-              filePath: "/mock/path/image.png",
-              fileName: "updated_image.png",
-              mediaType: "image",
-              width: 1024,
-              height: 768,
-              fileSize: 1024,
-              createdAt: new Date(),
-              modifiedAt: new Date(),
-              indexedAt: new Date(),
-            },
-          ]),
-        })),
-      })),
-    })),
-    delete: vi.fn(() => ({
-      where: vi.fn(() => ({
-        returning: vi.fn(() => [
-          {
-            id: "mock-uuid-123",
-            sourceId: "mock-source-id",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-  },
-}));
+
 
 describe("Media API Unit Tests", () => {
   beforeEach(() => {
@@ -113,9 +34,33 @@ describe("Media API Unit Tests", () => {
         height: 100,
       };
 
+      // Mock selectMediaBySourceIdAndFilePath to return an empty array
+      vi.mocked(selectMediaBySourceIdAndFilePath).mockResolvedValueOnce([]);
+      // Mock insertMedia to return the newly inserted media
+      vi.mocked(insertMedia).mockResolvedValueOnce([
+        {
+          id: uuidv4(),
+          sourceId: newMediaData.sourceId,
+          filePath: newMediaData.filePath,
+          fileName: newMediaData.fileName,
+          mediaType: newMediaData.mediaType,
+          width: newMediaData.width,
+          height: newMediaData.height,
+          fileSize: newMediaData.size,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
       const result = await addMedia(newMediaData);
 
-      expect(db.insert).toHaveBeenCalledWith(medias);
+      expect(insertMedia).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceId: newMediaData.sourceId,
+          filePath: newMediaData.filePath,
+        })
+      );
       expect(result).toBeDefined();
       expect(result.fileName).toBe(newMediaData.fileName);
     });
@@ -137,7 +82,7 @@ describe("Media API Unit Tests", () => {
       };
 
       // Mock selectMediaBySourceIdAndFilePath to return an existing media
-      vi.mocked(db.select().from().where).mockResolvedValueOnce([
+      vi.mocked(selectMediaBySourceIdAndFilePath).mockResolvedValueOnce([
         {
           id: "mock-existing-uuid",
           sourceId: newMediaData.sourceId,
@@ -164,8 +109,8 @@ describe("Media API Unit Tests", () => {
       const _sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
-      // Mock the return value of getMedia
-      vi.mocked(db.select().from().where).mockResolvedValueOnce([
+      // Mock the return value of selectMediaById
+      vi.mocked(selectMediaById).mockResolvedValueOnce([
         {
           id: mediaId,
           sourceId: _sourceId,
@@ -183,17 +128,13 @@ describe("Media API Unit Tests", () => {
 
       const result = await getMedia(_sourceId, mediaId);
 
-      expect(db.select).toHaveBeenCalledWith();
-      expect(db.select().from).toHaveBeenCalledWith(medias);
-      expect(db.select().from().where).toHaveBeenCalledWith(
-        eq(medias.id, mediaId)
-      );
+      expect(selectMediaById).toHaveBeenCalledWith(mediaId);
       expect(result).toBeDefined();
       expect(result.id).toBe(mediaId);
     });
 
     it("should throw an error if media ID is not found", async () => {
-      vi.mocked(db.select().from().where).mockResolvedValueOnce([]);
+      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
       await expect(
         getMedia("b0000000-0000-4000-8000-000000000000", "non-existent")
       ).rejects.toThrow("Media not found");
@@ -218,24 +159,50 @@ describe("Media API Unit Tests", () => {
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const updates = { fileName: "updated_file.png", width: 1024 }; // Define updates
 
+      // Mock selectMediaById to return an existing media
+      vi.mocked(selectMediaById).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: "original_file.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
+      // Mock dbUpdateMedia to return the updated media
+      vi.mocked(dbUpdateMedia).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: updates.fileName,
+          mediaType: "image",
+          width: updates.width,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
       const result = await updateMedia(sourceId, mediaId, updates);
 
-      expect(db.update).toHaveBeenCalledWith(medias);
-      expect(db.update().set).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fileName: updates.fileName,
-          width: updates.width,
-        })
-      );
-      expect(db.update().set().where).toHaveBeenCalledWith(
-        eq(medias.id, mediaId)
-      );
+      expect(selectMediaById).toHaveBeenCalledWith(mediaId);
+      expect(dbUpdateMedia).toHaveBeenCalledWith(mediaId, expect.objectContaining(updates));
       expect(result).toBeDefined();
       expect(result.fileName).toBe(updates.fileName);
     });
 
     it("should throw an error if media ID is not found", async () => {
-      vi.mocked(db.update().set().where).mockResolvedValueOnce([]);
+      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
       await expect(
         updateMedia(
           "b0000000-0000-4000-8000-000000000000",
@@ -244,7 +211,7 @@ describe("Media API Unit Tests", () => {
             fileName: "test",
           }
         )
-      ).rejects.toThrow("Media not found or failed to update");
+      ).rejects.toThrow("Media not found");
     });
 
     it("should throw a ZodError if no updates are provided", async () => {
@@ -289,10 +256,45 @@ describe("Media API Unit Tests", () => {
     it("should delete a media entry and return success", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
+
+      // Mock selectMediaById to return an existing media
+      vi.mocked(selectMediaById).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: "image.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
+      // Mock dbDeleteMedia to return the deleted media
+      vi.mocked(dbDeleteMedia).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId: sourceId,
+          filePath: "/mock/path/image.png",
+          fileName: "image.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
       const result = await deleteMedia(sourceId, mediaId);
 
-      expect(db.delete).toHaveBeenCalledWith(medias);
-      expect(db.delete().where).toHaveBeenCalledWith(eq(medias.id, mediaId));
+      expect(selectMediaById).toHaveBeenCalledWith(mediaId);
+      expect(dbDeleteMedia).toHaveBeenCalledWith(mediaId);
       expect(result).toEqual({ success: true });
     });
 
@@ -313,15 +315,46 @@ describe("Media API Unit Tests", () => {
     it("should return a list of media entries for a given directory path", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const directoryPath = "/mock/directory/";
+
+      // Mock selectMediaBySourceIdAndDirectoryPath to return a list of media entries
+      vi.mocked(selectMediaBySourceIdAndDirectoryPath).mockResolvedValueOnce([
+        {
+          id: uuidv4(),
+          sourceId: sourceId,
+          filePath: "/mock/directory/image1.png",
+          fileName: "image1.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+        {
+          id: uuidv4(),
+          sourceId: sourceId,
+          filePath: "/mock/directory/image2.png",
+          fileName: "image2.png",
+          mediaType: "image",
+          width: 1024,
+          height: 768,
+          fileSize: 2048,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
+
       const result = await listMedia(sourceId, directoryPath);
 
-      expect(db.select).toHaveBeenCalledWith();
-      expect(db.select().from).toHaveBeenCalledWith(medias);
-      expect(db.select().from().where).toHaveBeenCalledWith(
-        like(medias.filePath, `${directoryPath}%`)
+      expect(selectMediaBySourceIdAndDirectoryPath).toHaveBeenCalledWith(
+        sourceId,
+        directoryPath
       );
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(2);
     });
 
     it("should throw a ZodError if directory path is empty", async () => {
