@@ -768,5 +768,5 @@ export const thumbnailJobs = pgTable("thumbnail_jobs", {
     .notNull()
     .references(() => mediaSources.id, { onDelete: "cascade" }),
   status: thumbnailJobStatusEnum("status").notNull().default("pending"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});

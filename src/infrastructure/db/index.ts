@@ -110,15 +110,6 @@ export const deleteMediaSource = (mediaSourceId: string) =>
     );
   });
 
-export const selectMediaBySourceId = (_sourceId: string) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    return yield* _(
-      Effect.promise(() =>
-        db.select().from(medias).where(eq(medias.sourceId, mediaSourceId))
-      )
-    );
-  });
 
 export const selectMediaById = (mediaId: string) =>
   Effect.gen(function* (_) {
@@ -1031,10 +1022,8 @@ export const selectGlobalStats = () =>
     );
   });
 
-export const findDuplicateMedia = (_sourceId: string)
-) =>
-  Effect.gen(
-function* (_) {
+export const findDuplicateMedia = (_sourceId: string) =>
+  Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -1054,11 +1043,11 @@ function* (_) {
   }
 )
 
-export const findSimilarMedia = sourceId;
-: string, mediaPath: string
+export const findSimilarMedia = (
+  sourceId: string,
+  mediaPath: string
 ) =>
-  Effect.gen(
-function* (_) {
+  Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
     const media = yield* _(
@@ -1116,11 +1105,11 @@ export const selectPopularMedia = () =>
 // Feature 19: Workflow Functions
 // ========================================
 
-mediaId: string, tagsToInsert;
-: string[]
+export const insertMediaTags = (
+  mediaId: string,
+  tagsToInsert: string[]
 ) =>
-  Effect.gen(
-function* (_) {
+  Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -1165,11 +1154,8 @@ function* (_) {
 // Feature 20: Filter/Preset Functions
 // ========================================
 
-export const selectRecentMedia = sourceId;
-: string
-) =>
-  Effect.gen(
-function* (_) {
+export const selectRecentMedia = (sourceId: string) =>
+  Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(

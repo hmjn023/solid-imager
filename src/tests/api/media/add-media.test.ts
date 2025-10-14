@@ -10,8 +10,7 @@ describe("addMedia Contract", () => {
     const newMediaData = {
       sourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/image.png",
-      fileName: "image.png",
-      size: 1024,
+      fileSize: 1024,
       createdAt: new Date(),
       updatedAt: new Date(),
       mediaType: "image" as const,
