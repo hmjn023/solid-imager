@@ -3,17 +3,18 @@ import { Pool } from "pg";
 import {
   type Media,
   type MediaSource,
+  mediaDetails,
   mediaSources,
   medias,
-  mediaDetails,
   mediaTags,
   mediaTechnicalInfo,
-  similarMedia,
-  tags,
   type NewMedia,
   type NewMediaSource,
   type NewMediaTag,
+  similarMedia,
   type Tag,
+  tags,
+  thumbnailJobs,
 } from "~/infrastructure/db/schema";
 
 const dbHost = process.env.DB_HOST;
@@ -49,7 +50,7 @@ export const pool = new Pool({
   database: dbDatabase,
 });
 
-import { DatabaseService, createDatabaseServiceLayer } from "./layer";
+import { createDatabaseServiceLayer, DatabaseService } from "./layer";
 
 export const DatabaseLive = createDatabaseServiceLayer(pool);
 
@@ -62,13 +63,21 @@ export const selectMediaSources = () =>
 export const selectMediaSourceById = (mediaSourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId))));
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(mediaSources).where(eq(mediaSources.id, mediaSourceId))
+      )
+    );
   });
 
 export const insertMediaSource = (mediaSource: NewMediaSource) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.insert(mediaSources).values(mediaSource).returning()));
+    return yield* _(
+      Effect.promise(() =>
+        db.insert(mediaSources).values(mediaSource).returning()
+      )
+    );
   });
 
 export const updateMediaSource = (
@@ -93,21 +102,32 @@ export const deleteMediaSource = (mediaSourceId: string) =>
     const { db } = yield* _(DatabaseService);
     return yield* _(
       Effect.promise(() =>
-        db.delete(mediaSources).where(eq(mediaSources.id, mediaSourceId)).returning()
+        db
+          .delete(mediaSources)
+          .where(eq(mediaSources.id, mediaSourceId))
+          .returning()
       )
     );
   });
 
-export const selectMediasByMediaSourceId = (mediaSourceId: string) =>
+export const selectMediaBySourceId = (_sourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.select().from(medias).where(eq(medias.sourceId, mediaSourceId))));
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(medias).where(eq(medias.sourceId, mediaSourceId))
+      )
+    );
   });
 
 export const selectMediaById = (mediaId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.select().from(medias).where(eq(medias.id, mediaId))));
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(medias).where(eq(medias.id, mediaId))
+      )
+    );
   });
 
 export const selectMediaBySourceIdAndFilePath = (
@@ -121,7 +141,9 @@ export const selectMediaBySourceIdAndFilePath = (
         db
           .select()
           .from(medias)
-          .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)))
+          .where(
+            and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath))
+          )
       )
     );
   });
@@ -129,7 +151,9 @@ export const selectMediaBySourceIdAndFilePath = (
 export const insertMedia = (media: NewMedia) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.insert(medias).values(media).returning()));
+    return yield* _(
+      Effect.promise(() => db.insert(medias).values(media).returning())
+    );
   });
 
 export const updateMedia = (mediaId: string, media: Media) =>
@@ -145,7 +169,9 @@ export const updateMedia = (mediaId: string, media: Media) =>
 export const deleteMedia = (mediaId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.delete(medias).where(eq(medias.id, mediaId))));
+    return yield* _(
+      Effect.promise(() => db.delete(medias).where(eq(medias.id, mediaId)))
+    );
   });
 
 export const selectMediaBySourceIdAndDirectoryPath = (
@@ -173,11 +199,14 @@ export const selectMediaBySourceIdAndDirectoryPath = (
 // Feature 2: Thumbnail Functions
 // ========================================
 
-// TODO: Implement selectMediaBySourceId
 export const selectMediaBySourceId = (sourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.select().from(medias).where(eq(medias.sourceId, sourceId))));
+    return yield* _(
+      Effect.promise(() =>
+        db.select().from(medias).where(eq(medias.sourceId, sourceId))
+      )
+    );
   });
 
 // ========================================
@@ -189,15 +218,15 @@ export const selectMediaGenerationInfoById = (mediaId: string) =>
     const { db } = yield* _(DatabaseService);
     return yield* _(
       Effect.promise(() =>
-        db.select().from(mediaGenerationInfo).where(eq(mediaGenerationInfo.mediaId, mediaId))
+        db
+          .select()
+          .from(mediaGenerationInfo)
+          .where(eq(mediaGenerationInfo.mediaId, mediaId))
       )
     );
   });
 
-export const updateMediaGenerationInfo = (
-  mediaId: string,
-  metadata: unknown
-) =>
+export const updateMediaGenerationInfo = (mediaId: string, metadata: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
@@ -219,47 +248,151 @@ export const updateMediaGenerationInfo = (
 export const selectThumbnailJobStatus = (sourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement if thumbnail job status table exists
-    throw new Error("Not implemented");
+    return yield* _(
+      Effect.promise(() =>
+        db
+          .select()
+          .from(thumbnailJobs)
+          .where(eq(thumbnailJobs.sourceId, sourceId))
+      )
+    );
   });
 
 // ========================================
 // Feature 7: Search Functions
 // ========================================
 
-export const searchMedia = (sourceId: string, searchOptions: unknown) =>
+export const searchMedia = (
+  sourceId: string,
+  searchOptions: { query?: string; tags?: string[] }
+) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement media search
-    throw new Error("Not implemented");
+
+    return yield* _(
+      Effect.promise(async () => {
+        let query = db
+          .select()
+          .from(medias)
+          .where(eq(medias.sourceId, sourceId));
+
+        if (searchOptions.query) {
+          query = query.where(
+            or(
+              like(medias.fileName, `%${searchOptions.query}%`),
+              like(medias.description, `%${searchOptions.query}%`)
+            )
+          );
+        }
+
+        if (searchOptions.tags && searchOptions.tags.length > 0) {
+          query = query.where(
+            inArray(
+              medias.id,
+              db
+                .select({ mediaId: mediaTags.mediaId })
+                .from(mediaTags)
+                .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+                .where(inArray(tags.name, searchOptions.tags))
+            )
+          );
+        }
+
+        return await query;
+      })
+    );
   });
 
 export const searchMediaInDirectory = (
   sourceId: string,
-  directoriesPath: string,
-  searchOptions: unknown
+  directoryPath: string,
+  searchOptions: { query?: string; tags?: string[] }
 ) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement directory search
-    throw new Error("Not implemented");
+
+    return yield* _(
+      Effect.promise(async () => {
+        let query = db
+          .select()
+          .from(medias)
+          .where(
+            and(
+              eq(medias.sourceId, sourceId),
+              like(medias.filePath, `${directoryPath}%`)
+            )
+          );
+
+        if (searchOptions.query) {
+          query = query.where(
+            or(
+              like(medias.fileName, `%${searchOptions.query}%`),
+              like(medias.description, `%${searchOptions.query}%`)
+            )
+          );
+        }
+
+        if (searchOptions.tags && searchOptions.tags.length > 0) {
+          query = query.where(
+            inArray(
+              medias.id,
+              db
+                .select({ mediaId: mediaTags.mediaId })
+                .from(mediaTags)
+                .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+                .where(inArray(tags.name, searchOptions.tags))
+            )
+          );
+        }
+
+        return await query;
+      })
+    );
   });
 
-export const globalSearchMedia = (searchOptions: unknown) =>
+export const globalSearchMedia = (searchOptions: {
+  query?: string;
+  tags?: string[];
+}) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    // TODO: Implement global search across all sources
-    throw new Error("Not implemented");
+
+    return yield* _(
+      Effect.promise(async () => {
+        let query = db.select().from(medias);
+
+        if (searchOptions.query) {
+          query = query.where(
+            or(
+              like(medias.fileName, `%${searchOptions.query}%`),
+              like(medias.description, `%${searchOptions.query}%`)
+            )
+          );
+        }
+
+        if (searchOptions.tags && searchOptions.tags.length > 0) {
+          query = query.where(
+            inArray(
+              medias.id,
+              db
+                .select({ mediaId: mediaTags.mediaId })
+                .from(mediaTags)
+                .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+                .where(inArray(tags.name, searchOptions.tags))
+            )
+          );
+        }
+
+        return await query;
+      })
+    );
   });
 
 // ========================================
 // Feature 9: Directory Functions
 // ========================================
 
-export const deleteMediaByPath = (
-  sourceId: string,
-  directoryPath: string
-) =>
+export const deleteMediaByPath = (sourceId: string, directoryPath: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
@@ -290,7 +423,11 @@ export const selectCategories = () =>
 export const insertCategory = (categoryData: NewCategory) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.insert(categories).values(categoryData).returning()));
+    return yield* _(
+      Effect.promise(() =>
+        db.insert(categories).values(categoryData).returning()
+      )
+    );
   });
 
 export const selectCategoryById = (categoryId: number) =>
@@ -341,7 +478,9 @@ export const insertCharacter = (characterData: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
-      Effect.promise(() => db.insert(characters).values(characterData).returning())
+      Effect.promise(() =>
+        db.insert(characters).values(characterData).returning()
+      )
     );
   });
 
@@ -355,10 +494,7 @@ export const selectCharacterById = (characterId: number) =>
     );
   });
 
-export const updateCharacter = (
-  characterId: number,
-  characterData: unknown
-) =>
+export const updateCharacter = (characterId: number, characterData: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
@@ -395,7 +531,9 @@ export const selectIps = () =>
 export const insertIp = (ipData: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.insert(ips).values(ipData).returning()));
+    return yield* _(
+      Effect.promise(() => db.insert(ips).values(ipData).returning())
+    );
   });
 
 export const selectIpById = (ipId: number) =>
@@ -437,7 +575,9 @@ export const selectUsers = () =>
 export const insertUser = (userData: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
-    return yield* _(Effect.promise(() => db.insert(users).values(userData).returning()));
+    return yield* _(
+      Effect.promise(() => db.insert(users).values(userData).returning())
+    );
   });
 
 export const selectUserById = (userId: string) =>
@@ -462,7 +602,9 @@ export const deleteUser = (userId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
-      Effect.promise(() => db.delete(users).where(eq(users.id, userId)).returning())
+      Effect.promise(() =>
+        db.delete(users).where(eq(users.id, userId)).returning()
+      )
     );
   });
 
@@ -480,7 +622,9 @@ export const insertCollection = (collectionData: unknown) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
-      Effect.promise(() => db.insert(collections).values(collectionData).returning())
+      Effect.promise(() =>
+        db.insert(collections).values(collectionData).returning()
+      )
     );
   });
 
@@ -516,7 +660,10 @@ export const deleteCollection = (collectionId: string) =>
     const { db } = yield* _(DatabaseService);
     return yield* _(
       Effect.promise(() =>
-        db.delete(collections).where(eq(collections.id, collectionId)).returning()
+        db
+          .delete(collections)
+          .where(eq(collections.id, collectionId))
+          .returning()
       )
     );
   });
@@ -538,10 +685,7 @@ export const insertCollectionMedia = (
     );
   });
 
-export const deleteCollectionMedia = (
-  collectionId: string,
-  mediaId: string
-) =>
+export const deleteCollectionMedia = (collectionId: string, mediaId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
@@ -575,7 +719,9 @@ export const bulkUpdateMedia = (
         db
           .update(medias)
           .set(updates as any)
-          .where(and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds)))
+          .where(
+            and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
+          )
           .returning()
       )
     );
@@ -588,7 +734,9 @@ export const bulkDeleteMedia = (sourceId: string, mediaIds: string[]) =>
       Effect.promise(() =>
         db
           .delete(medias)
-          .where(and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds)))
+          .where(
+            and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
+          )
           .returning()
       )
     );
@@ -607,7 +755,9 @@ export const bulkUpdateMediaPaths = (
           const mediaToUpdate = await tx
             .select({ id: medias.id, fileName: medias.fileName })
             .from(medias)
-            .where(and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds)));
+            .where(
+              and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
+            );
 
           const updates = mediaToUpdate.map((media) => {
             const newFilePath = `${pathUpdates}/${media.fileName}`;
@@ -624,7 +774,7 @@ export const bulkUpdateMediaPaths = (
   });
 
 export const bulkAddMediaTags = (
-  sourceId: string,
+  _sourceId: string,
   mediaIds: string[],
   tagsToAdd: number[]
 ) =>
@@ -647,7 +797,7 @@ export const bulkAddMediaTags = (
   });
 
 export const bulkRemoveMediaTags = (
-  sourceId: string,
+  _sourceId: string,
   mediaIds: string[],
   tagsToRemove: number[]
 ) =>
@@ -674,6 +824,51 @@ export const bulkRemoveMediaTags = (
   });
 
 // ========================================
+// Feature 19: Workflow Functions
+// ========================================
+
+export const insertMediaTags = (mediaId: string, tagsToInsert: string[]) =>
+  Effect.gen(function* (_) {
+    const { db } = yield* _(DatabaseService);
+
+    return yield* _(
+      Effect.promise(() =>
+        db.transaction(async (tx) => {
+          const existingTags = await tx
+            .select()
+            .from(tags)
+            .where(inArray(tags.name, tagsToInsert));
+          const existingTagNames = existingTags.map((t) => t.name);
+          const newTagNames = tagsToInsert.filter(
+            (t) => !existingTagNames.includes(t)
+          );
+
+          let newTags: Tag[] = [];
+          if (newTagNames.length > 0) {
+            newTags = await tx
+              .insert(tags)
+              .values(newTagNames.map((name) => ({ name })))
+              .returning();
+          }
+
+          const allTags = [...existingTags, ...newTags];
+          const mediaTagsToInsert = allTags.map((t) => ({
+            mediaId,
+            tagId: t.id,
+          }));
+
+          if (mediaTagsToInsert.length > 0) {
+            await tx
+              .insert(mediaTags)
+              .values(mediaTagsToInsert)
+              .onConflictDoNothing();
+          }
+        })
+      )
+    );
+  });
+
+// ========================================
 // Feature 16: Data Migration Functions
 // ========================================
 
@@ -691,7 +886,9 @@ export const selectMediaSourceData = (sourceId: string) =>
                 tags: { with: { tag: true } },
                 details: true,
                 generationInfo: true,
-                organization: { with: { category: true, project: true, ip: true } },
+                organization: {
+                  with: { category: true, project: true, ip: true },
+                },
                 technicalInfo: true,
                 sync: true,
                 characters: { with: { character: true } },
@@ -705,10 +902,7 @@ export const selectMediaSourceData = (sourceId: string) =>
     return mediaSource;
   });
 
-export const upsertMediaSourceData = (
-  sourceId: string,
-  importData: any
-) =>
+export const upsertMediaSourceData = (_sourceId: string, importData: any) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
@@ -726,7 +920,10 @@ export const upsertMediaSourceData = (
 
           // Upsert medias
           if (importData.medias && importData.medias.length > 0) {
-            await tx.insert(medias).values(importData.medias).onConflictDoNothing();
+            await tx
+              .insert(medias)
+              .values(importData.medias)
+              .onConflictDoNothing();
             // Note: This is a simplification. A real implementation would need to handle updates.
           }
 
@@ -738,7 +935,7 @@ export const upsertMediaSourceData = (
 
 export const reconcileMediaSource = (
   sourceId: string,
-  fileSystemChanges: { added: NewMedia[], deleted: string[] }
+  fileSystemChanges: { added: NewMedia[]; deleted: string[] }
 ) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
@@ -755,7 +952,10 @@ export const reconcileMediaSource = (
           }
 
           // Handle deleted files
-          if (fileSystemChanges.deleted && fileSystemChanges.deleted.length > 0) {
+          if (
+            fileSystemChanges.deleted &&
+            fileSystemChanges.deleted.length > 0
+          ) {
             await tx
               .delete(medias)
               .where(
@@ -798,8 +998,7 @@ export const cloneMediaData = (sourceId: string, newSourceId: string) =>
 // Feature 18: Analytics Functions
 // ========================================
 
-  sourceId: string
-) =>
+export const selectSourceStats = (sourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
 
@@ -832,9 +1031,10 @@ export const selectGlobalStats = () =>
     );
   });
 
-export const findDuplicateMedia = (sourceId: string)
+export const findDuplicateMedia = (_sourceId: string)
 ) =>
-  Effect.gen(function* (_) {
+  Effect.gen(
+function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -851,11 +1051,14 @@ export const findDuplicateMedia = (sourceId: string)
           .having(sql`count(${mediaTechnicalInfo.id}) > 1`)
       )
     );
-  });
+  }
+)
 
-export const findSimilarMedia =   sourceId: string, mediaPath: string
+export const findSimilarMedia = sourceId;
+: string, mediaPath: string
 ) =>
-  Effect.gen(function* (_) {
+  Effect.gen(
+function* (_) {
     const { db } = yield* _(DatabaseService);
 
     const media = yield* _(
@@ -891,7 +1094,8 @@ export const findSimilarMedia =   sourceId: string, mediaPath: string
           )
       )
     );
-  });
+  }
+)
 
 export const selectPopularMedia = () =>
   Effect.gen(function* (_) {
@@ -912,9 +1116,11 @@ export const selectPopularMedia = () =>
 // Feature 19: Workflow Functions
 // ========================================
 
-  mediaId: string, tagsToInsert: string[]
+mediaId: string, tagsToInsert;
+: string[]
 ) =>
-  Effect.gen(function* (_) {
+  Effect.gen(
+function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -952,15 +1158,18 @@ export const selectPopularMedia = () =>
         })
       )
     );
-  });
+  }
+)
 
 // ========================================
 // Feature 20: Filter/Preset Functions
 // ========================================
 
-export const selectRecentMedia =   sourceId: string
+export const selectRecentMedia = sourceId;
+: string
 ) =>
-  Effect.gen(function* (_) {
+  Effect.gen(
+function* (_) {
     const { db } = yield* _(DatabaseService);
 
     return yield* _(
@@ -973,4 +1182,5 @@ export const selectRecentMedia =   sourceId: string
           .limit(10)
       )
     );
-  });
+  }
+)

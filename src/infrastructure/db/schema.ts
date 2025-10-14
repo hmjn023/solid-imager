@@ -748,3 +748,25 @@ export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
+
+export type ThumbnailJob = InferSelectModel<typeof thumbnailJobs>;
+export type NewThumbnailJob = InferInsertModel<typeof thumbnailJobs>;
+
+export const thumbnailJobStatusEnum = pgEnum("thumbnail_job_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
+
+export const thumbnailJobs = pgTable("thumbnail_jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  mediaId: uuid("media_id")
+    .notNull()
+    .references(() => medias.id, { onDelete: "cascade" }),
+  sourceId: uuid("source_id")
+    .notNull()
+    .references(() => mediaSources.id, { onDelete: "cascade" }),
+  status: thumbnailJobStatusEnum("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),

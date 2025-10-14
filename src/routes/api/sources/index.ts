@@ -15,7 +15,12 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 export async function GET() {
   const result = await pipe(getMediaSources(), Effect.runPromise);
 
-  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
+  if (
+    result &&
+    typeof result === "object" &&
+    "_tag" in result &&
+    result._tag === "FetchError"
+  ) {
     return new Response(JSON.stringify({ error: result.message }), {
       status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
@@ -49,7 +54,12 @@ export async function POST({ request }: APIEvent) {
     Effect.runPromise
   );
 
-  if (result && typeof result === "object" && "_tag" in result && result._tag === "FetchError") {
+  if (
+    result &&
+    typeof result === "object" &&
+    "_tag" in result &&
+    result._tag === "FetchError"
+  ) {
     return new Response(JSON.stringify({ error: result.message }), {
       status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
