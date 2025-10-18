@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
 import { getMedia } from "~/infrastructure/api-clients/media";
-import { selectMediaSourceById } from "~/infrastructure/db";
+import { selectMediaSourceById } from "~/infrastructure/db/media-sources";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 
 function getThumbnailPath(mediaId: string): string {

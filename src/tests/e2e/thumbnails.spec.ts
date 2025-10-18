@@ -26,7 +26,8 @@ test.describe("Thumbnail Endpoint", () => {
     const response = await request.get(
       `/api/sources/${SOURCE_ID}/media/${fakeMediaId}/thumbnail`
     );
-    expect(response.status()).toBe(404);
+    const NotFound = 404;
+    expect(response.status()).toBe(NotFound);
   });
 
   test("should generate thumbnail on-demand if it does not exist", async ({

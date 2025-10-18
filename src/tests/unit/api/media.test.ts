@@ -9,17 +9,19 @@ import {
   updateMedia,
 } from "~/infrastructure/api-clients/media";
 import {
-  addMediaToMockDb,
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
   insertMedia,
-  resetMockDbState,
   selectMediaById,
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
-} from "~/infrastructure/db";
+} from "~/infrastructure/db/media";
+import {
+  addMediaToMockDb,
+  resetMockDbState,
+} from "~/infrastructure/db/__mocks__";
 
-vi.mock("~/infrastructure/db");
+vi.mock("~/infrastructure/db/media");
 
 describe("Media API Unit Tests", () => {
   beforeEach(() => {
@@ -45,7 +47,7 @@ describe("Media API Unit Tests", () => {
 
     // Directly add to the mock state for selectMediaById to find it
     // This bypasses the insertMedia mock for setup purposes
-    vi.mocked(selectMediaBySourceIdAndFilePath).mockImplementation(
+    selectMediaBySourceIdAndFilePath.mockImplementation(
       (srcId, filePath) => {
         if (srcId === sourceId && filePath === existingMedia.filePath) {
           return Promise.resolve([existingMedia]);
@@ -53,6 +55,13 @@ describe("Media API Unit Tests", () => {
         return Promise.resolve([]);
       }
     );
+
+    selectMediaById.mockImplementation((id) => {
+      if (id === mediaId) {
+        return Promise.resolve([existingMedia]);
+      }
+      return Promise.resolve([]);
+    });
   });
 
   describe("addMedia", () => {
@@ -68,9 +77,9 @@ describe("Media API Unit Tests", () => {
       };
 
       // Mock selectMediaBySourceIdAndFilePath to return an empty array
-      vi.mocked(selectMediaBySourceIdAndFilePath).mockResolvedValueOnce([]);
+      selectMediaBySourceIdAndFilePath.mockResolvedValueOnce([]);
       // Mock insertMedia to return the newly inserted media
-      vi.mocked(insertMedia).mockResolvedValueOnce([
+      insertMedia.mockResolvedValueOnce([
         {
           id: uuidv4(),
           sourceId: newMediaData.sourceId,
@@ -115,7 +124,7 @@ describe("Media API Unit Tests", () => {
       };
 
       // Mock selectMediaBySourceIdAndFilePath to return an existing media
-      vi.mocked(selectMediaBySourceIdAndFilePath).mockResolvedValueOnce([
+      selectMediaBySourceIdAndFilePath.mockResolvedValueOnce([
         {
           id: "mock-existing-uuid",
           sourceId: newMediaData.sourceId,
@@ -143,7 +152,7 @@ describe("Media API Unit Tests", () => {
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
       // Mock the return value of selectMediaById
-      vi.mocked(selectMediaById).mockResolvedValueOnce([
+      selectMediaById.mockResolvedValueOnce([
         {
           id: mediaId,
           sourceId: _sourceId,
@@ -168,7 +177,7 @@ describe("Media API Unit Tests", () => {
 
     it("should throw an error if media ID is not found", async () => {
       const nonExistentMediaId = uuidv4();
-      vi.mocked(selectMediaById).mockResolvedValueOnce([]);
+      selectMediaById.mockResolvedValueOnce([]);
       await expect(
         getMedia("b0000000-0000-4000-8000-000000000000", nonExistentMediaId)
       ).rejects.toThrow("Media not found");
@@ -197,7 +206,7 @@ describe("Media API Unit Tests", () => {
       // and the global selectMediaById mock will return it.
 
       // Mock dbUpdateMedia to return the updated media
-      vi.mocked(dbUpdateMedia).mockResolvedValueOnce([
+      dbUpdateMedia.mockResolvedValueOnce([
         {
           id: mediaId,
           sourceId,
@@ -258,7 +267,7 @@ describe("Media API Unit Tests", () => {
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
       // Mock selectMediaById to return an existing media
-      vi.mocked(selectMediaById).mockResolvedValueOnce([
+      selectMediaById.mockResolvedValueOnce([
         {
           id: mediaId,
           sourceId,
@@ -275,7 +284,7 @@ describe("Media API Unit Tests", () => {
       ]);
 
       // Mock dbDeleteMedia to return the deleted media
-      vi.mocked(dbDeleteMedia).mockResolvedValueOnce([
+      dbDeleteMedia.mockResolvedValueOnce([
         {
           id: mediaId,
           sourceId,
@@ -317,7 +326,7 @@ describe("Media API Unit Tests", () => {
       const directoryPath = "/mock/directory/";
 
       // Mock selectMediaBySourceIdAndDirectoryPath to return a list of media entries
-      vi.mocked(selectMediaBySourceIdAndDirectoryPath).mockResolvedValueOnce([
+      selectMediaBySourceIdAndDirectoryPath.mockResolvedValueOnce([
         {
           id: uuidv4(),
           sourceId,

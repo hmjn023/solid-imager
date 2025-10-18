@@ -5,9 +5,9 @@ import {
   addMedia,
   getMedia,
   updateMedia,
-} from "~/infrastructure/api-clients/media";
-import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+} from "../../infrastructure/api-clients/media";
+import { db } from "../../infrastructure/db/index";
+import { medias } from "../../infrastructure/db/schema";
 
 describe("updateMedia Integration", () => {
   let testMediaId: string;

@@ -6,7 +6,7 @@ import {
   selectMediaSourceById,
   selectMediaSources,
   updateMediaSource as updateMediaSourceDb,
-} from "~/infrastructure/db";
+} from "~/infrastructure/db/media-sources";
 import type { MediaSource, NewMediaSource } from "~/infrastructure/db/schema";
 
 export class FetchError {

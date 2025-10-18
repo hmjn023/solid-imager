@@ -2,7 +2,7 @@ import { eq, like } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia, listMedia } from "~/infrastructure/api-clients/media";
-import { db } from "~/infrastructure/db";
+import { db } from "~/infrastructure/db/client";
 import { medias } from "~/infrastructure/db/schema";
 
 describe("listMedia Integration", () => {

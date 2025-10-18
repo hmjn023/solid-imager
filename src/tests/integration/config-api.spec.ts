@@ -5,7 +5,8 @@ test.describe("/api/config", () => {
     const response = await request.get("/api/config");
     expect(response.ok()).toBeTruthy();
     const config = await response.json();
-    expect(config.media.image.thumbnail.size.width).toBe(512);
+    const DefaultThumbnailWidth = 512;
+    expect(config.media.image.thumbnail.size.width).toBe(DefaultThumbnailWidth);
   });
 
   test("PUT should be handled (mock update)", async ({ request }) => {
@@ -18,7 +19,10 @@ test.describe("/api/config", () => {
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
     // このテストはエンドポイントが機能することを確認するだけであり、実際のファイル保存はまだ実装されていません。
-    expect(data.config.media.image.thumbnail.size.width).toBe(256);
+    const UpdatedThumbnailWidth = 256;
+    expect(data.config.media.image.thumbnail.size.width).toBe(
+      UpdatedThumbnailWidth
+    );
   });
 
   test("POST should be handled (mock reset)", async ({ request }) => {

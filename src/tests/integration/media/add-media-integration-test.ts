@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
-import { db } from "~/infrastructure/db";
+import { db } from "~/infrastructure/db/client";
 import { medias } from "~/infrastructure/db/schema";
 
 describe("addMedia Integration", () => {
@@ -54,7 +54,9 @@ describe("addMedia Integration", () => {
       // fileName、sizeなどが不足しています。
     };
 
-    await expect(addMedia(invalidMediaData as any)).rejects.toThrow(ZodError);
+    await expect(
+      addMedia(invalidMediaData as Partial<NewMedia>)
+    ).rejects.toThrow(ZodError);
   });
 
   it("should throw an error if media with same sourceId and filePath already exists", async () => {

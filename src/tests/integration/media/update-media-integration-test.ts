@@ -6,7 +6,7 @@ import {
   getMedia,
   updateMedia,
 } from "~/infrastructure/api-clients/media";
-import { db } from "~/infrastructure/db";
+import { db } from "~/infrastructure/db/client";
 import { medias } from "~/infrastructure/db/schema";
 
 describe("updateMedia Integration", () => {
@@ -85,7 +85,7 @@ describe("updateMedia Integration", () => {
   it("should throw a ZodError for invalid update data", async () => {
     const invalidUpdates = { width: -100 }; // 無効なフィールド
     await expect(
-      updateMedia(testSourceId, testMediaId, invalidUpdates as any)
+      updateMedia(testSourceId, testMediaId, invalidUpdates as Partial<Media>)
     ).rejects.toThrow(ZodError);
   });
 });
