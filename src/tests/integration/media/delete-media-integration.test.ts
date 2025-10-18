@@ -3,8 +3,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import {
   addMedia,
+  deleteMedia,
   getMedia,
-} from "../../infrastructure/api-clients/media";
+} from "~/infrastructure/api-clients/media";
 import { db } from "../../infrastructure/db/index";
 import { medias } from "../../infrastructure/db/schema";
 

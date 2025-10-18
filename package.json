@@ -8,7 +8,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-		"db:drop": "drizzle-kit drop",
+    "db:drop": "drizzle-kit drop",
     "db:studio": "drizzle-kit studio",
     "lint": "biome lint ./src",
     "format": "biome format --fix ./src",
@@ -31,7 +31,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.5",
     "effect": "^3.18.4",
-    "pg": "^8.16.3",
+    "postgres": "latest",
     "sharp": "^0.34.4",
     "solid-js": "^1.9.9",
     "tailwind-merge": "^3.3.1",
@@ -53,6 +53,7 @@
     "playwright": "^1.55.1",
     "tailwindcss": "^4.1.13",
     "ultracite": "5.4.4",
+    "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "engines": {

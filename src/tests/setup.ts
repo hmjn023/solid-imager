@@ -1,7 +1,7 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { vi } from "vitest";
 import { Effect } from "effect";
+import { vi } from "vitest";
 
 // .envファイルのパスを指定して読み込む
 config({ path: path.resolve(process.cwd(), ".env") });
@@ -227,5 +227,3 @@ vi.mock("~/infrastructure/db/__mocks__", () => ({
   addMediaToMockDb: vi.fn(),
   resetMockDbState: vi.fn(),
 }));
-
-

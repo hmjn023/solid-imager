@@ -9,6 +9,10 @@ import {
   updateMedia,
 } from "~/infrastructure/api-clients/media";
 import {
+  addMediaToMockDb,
+  resetMockDbState,
+} from "~/infrastructure/db/__mocks__";
+import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
   insertMedia,
@@ -16,10 +20,6 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/media";
-import {
-  addMediaToMockDb,
-  resetMockDbState,
-} from "~/infrastructure/db/__mocks__";
 
 vi.mock("~/infrastructure/db/media");
 
@@ -47,14 +47,12 @@ describe("Media API Unit Tests", () => {
 
     // Directly add to the mock state for selectMediaById to find it
     // This bypasses the insertMedia mock for setup purposes
-    selectMediaBySourceIdAndFilePath.mockImplementation(
-      (srcId, filePath) => {
-        if (srcId === sourceId && filePath === existingMedia.filePath) {
-          return Promise.resolve([existingMedia]);
-        }
-        return Promise.resolve([]);
+    selectMediaBySourceIdAndFilePath.mockImplementation((srcId, filePath) => {
+      if (srcId === sourceId && filePath === existingMedia.filePath) {
+        return Promise.resolve([existingMedia]);
       }
-    );
+      return Promise.resolve([]);
+    });
 
     selectMediaById.mockImplementation((id) => {
       if (id === mediaId) {

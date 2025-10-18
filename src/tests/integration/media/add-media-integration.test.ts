@@ -1,5 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { ZodError } from "zod";
+import { describe, expect, it } from "vitest";
 // import { addMedia } from "../../infrastructure/api-clients/media";
 // import { db } from "../../infrastructure/db/index";
 // import { medias } from "../../infrastructure/db/schema";
@@ -10,4 +9,3 @@ describe("Add Media Integration", () => {
     expect(cn).toBeDefined();
   });
 });
-

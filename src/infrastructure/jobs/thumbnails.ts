@@ -2,8 +2,8 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { getConfig } from "~/infrastructure/api-clients/config";
-import { selectMediaSourceById } from "~/infrastructure/db/media-sources";
 import { selectMediasByMediaSourceId } from "~/infrastructure/db/media";
+import { selectMediaSourceById } from "~/infrastructure/db/media-sources";
 import type { Media } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,

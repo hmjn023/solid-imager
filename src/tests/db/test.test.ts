@@ -5,17 +5,21 @@ import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
 const f = (n: number) => {
   if (n > 0) {
     return Effect.succeed(n);
-  } else if (n === 0) {
-    return Effect.fail(new ConstraintError({
-      message: "Constraint error",
-      details: { code: "23505" },
-    }));
-  } else {
-    return Effect.fail(new UnknownDbError({
+  }
+  if (n === 0) {
+    return Effect.fail(
+      new ConstraintError({
+        message: "Constraint error",
+        details: { code: "23505" },
+      })
+    );
+  }
+  return Effect.fail(
+    new UnknownDbError({
       message: "Unknown error",
       details: "error",
-    }));
-  }
+    })
+  );
 };
 
 describe("test", () => {

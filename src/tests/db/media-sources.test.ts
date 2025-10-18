@@ -1,8 +1,8 @@
 import { Context, Effect, Layer } from "effect";
 import { pipe } from "effect/Function";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { selectMediaSources } from "~/infrastructure/db/media-sources";
 import { DatabaseService } from "~/infrastructure/db/layer";
+import { selectMediaSources } from "~/infrastructure/db/media-sources";
 import { db } from "~/tests/setup"; // Import the mocked db
 
 // Create a mock DatabaseService Layer

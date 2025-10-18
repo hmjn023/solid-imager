@@ -2,8 +2,8 @@ import { Context, Effect, Layer } from "effect";
 import { pipe } from "effect/Function";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UnknownDbError } from "~/infrastructure/db/errors";
-import { selectRecentMedia } from "~/infrastructure/db/media-recent";
 import { DatabaseService } from "~/infrastructure/db/layer";
+import { selectRecentMedia } from "~/infrastructure/db/media-recent";
 import { db } from "~/tests/setup"; // Import the mocked db
 
 // Create a mock DatabaseService Layer
