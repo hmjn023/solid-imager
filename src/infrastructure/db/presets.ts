@@ -10,7 +10,7 @@ type Preset = {
 
 export const selectPresets = () =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(service(DatabaseService.Tag));
+    const { db } = yield* DatabaseService;
     return yield* _(
       Effect.tryPromise({
         try: async () => db.select().from(presets),
@@ -25,7 +25,7 @@ export const selectPresets = () =>
 
 export const insertPreset = (preset: Preset) =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(service(DatabaseService.Tag));
+    const { db } = yield* DatabaseService;
     return yield* _(
       Effect.tryPromise({
         try: async () => db.insert(presets).values(preset).returning(),

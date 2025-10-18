@@ -18,22 +18,18 @@ export const selectRandomMedia = (
   DatabaseService
 > =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(service(DatabaseService.Tag));
-    const result = yield* _(
-      Effect.tryPromise({
-        try: async () =>
-          db
-            .select()
-            .from(medias)
-            .where(sql`${medias.sourceId} = ${sourceId}`)
-            .orderBy(sql`RANDOM()`)
-            .limit(1),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) => new UnknownDbError({ message: String(error) })
-        )
-      )
+    const { db } = yield* DatabaseService;
+    const result = yield* Effect.tryPromise({
+      try: async () =>
+        db
+          .select()
+          .from(medias)
+          .where(sql`${medias.sourceId} = ${sourceId}`)
+          .orderBy(sql`RANDOM()`)
+          .limit(1),
+      catch: (error) => error,
+    }).pipe(
+      Effect.mapError((error) => new UnknownDbError({ message: String(error) }))
     );
 
     if (result.length === 0) {

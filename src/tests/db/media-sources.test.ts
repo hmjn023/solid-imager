@@ -1,4 +1,4 @@
-import { Effect, Layer } from "effect";
+import { Effect, Layer, service } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DatabaseService } from "~/infrastructure/db/layer";
 import { selectMediaSources } from "~/infrastructure/db/media-sources";
@@ -31,8 +31,8 @@ describe("selectMediaSources", () => {
       db: mockDb as any,
     });
     const effect = Effect.gen(function* (_) {
-      const service = yield* _(Effect.service(DatabaseService.tag));
-      return service;
+      const serviceInstance = yield* _(service(DatabaseService));
+      return serviceInstance;
     });
     const result = await Effect.runPromise(
       Effect.provide(effect, MockDatabaseLive)

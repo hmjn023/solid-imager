@@ -116,7 +116,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -148,6 +149,7 @@ describe("Media API Unit Tests", () => {
 
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
+        console.log(exit.cause);
         expect((exit.cause.value as Error).message).toBe(
           "Media with this filePath already exists for the given sourceId"
         );
@@ -206,6 +208,7 @@ describe("Media API Unit Tests", () => {
 
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
+        console.log(exit.cause);
         expect((exit.cause.value as Error).message).toBe("Media not found");
       }
     });
@@ -218,7 +221,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -227,7 +231,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
   });
@@ -288,7 +293,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -300,7 +306,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -312,7 +319,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
   });
@@ -363,7 +371,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -372,7 +381,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
   });
@@ -420,7 +430,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
 
@@ -429,7 +440,8 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        expect(exit.cause.value).toBeInstanceOf(ZodError);
+        console.log(exit.cause);
+        expect(exit.cause.failure).toBeInstanceOf(ZodError);
       }
     });
   });

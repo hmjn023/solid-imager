@@ -1,8 +1,8 @@
 import { and, eq, like } from "drizzle-orm";
 import { Effect } from "effect";
-import { DatabaseService } from "~/infrastructure/db/layer";
-import { type Media, media } from "~/infrastructure/db/schema";
+import { type Media, medias } from "~/infrastructure/db/schema";
 import { UnknownDbError } from "./errors";
+import { DatabaseService } from "./layer";
 
 export const insertMedia = (
   newMedia: Omit<Media, "id" | "createdAt" | "modifiedAt" | "indexedAt">
@@ -10,7 +10,7 @@ export const insertMedia = (
   Effect.gen(function* () {
     const { db } = yield* DatabaseService;
     const result = yield* Effect.promise(() =>
-      db.insert(media).values(newMedia).returning()
+      db.insert(medias).values(newMedia).returning()
     );
     return result[0];
   });
@@ -24,8 +24,8 @@ export const selectMediaBySourceIdAndFilePath = (
     const result = yield* Effect.promise(() =>
       db
         .select()
-        .from(media)
-        .where(and(eq(media.sourceId, sourceId), eq(media.filePath, filePath)))
+        .from(medias)
+        .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)))
     );
     return result;
   });
@@ -34,7 +34,7 @@ export const selectMediaById = (id: string) =>
   Effect.gen(function* () {
     const { db } = yield* DatabaseService;
     const result = yield* Effect.promise(() =>
-      db.select().from(media).where(eq(media.id, id))
+      db.select().from(medias).where(eq(medias.id, id))
     );
     return result;
   });
@@ -49,9 +49,9 @@ export const selectMediaBySourceIdAndDirectoryPath = (
     const result = yield* Effect.promise(() =>
       db
         .select()
-        .from(media)
+        .from(medias)
         .where(
-          and(eq(media.sourceId, sourceId), like(media.filePath, searchPath))
+          and(eq(medias.sourceId, sourceId), like(medias.filePath, searchPath))
         )
     );
     return result;
@@ -61,7 +61,7 @@ export const updateMedia = (id: string, updatedMedia: Partial<Media>) =>
   Effect.gen(function* () {
     const { db } = yield* DatabaseService;
     const result = yield* Effect.promise(() =>
-      db.update(media).set(updatedMedia).where(eq(media.id, id)).returning()
+      db.update(medias).set(updatedMedia).where(eq(medias.id, id)).returning()
     );
     return result[0];
   });
@@ -70,7 +70,7 @@ export const deleteMedia = (id: string) =>
   Effect.gen(function* () {
     const { db } = yield* DatabaseService;
     const result = yield* Effect.promise(() =>
-      db.delete(media).where(eq(media.id, id)).returning()
+      db.delete(medias).where(eq(medias.id, id)).returning()
     );
     return result[0];
   });
@@ -79,13 +79,13 @@ export const selectMediaBySourceId = (sourceId: string) =>
   Effect.gen(function* () {
     const { db } = yield* DatabaseService;
     return yield* Effect.tryPromise({
-      try: () => db.select().from(media).where(eq(media.sourceId, sourceId)),
+      try: () => db.select().from(medias).where(eq(medias.sourceId, sourceId)),
       catch: (error) => error,
     }).pipe(
       Effect.mapError(
         (error) =>
           new UnknownDbError({
-            message: `Failed to select media by source ID: ${sourceId}`,
+            message: `Failed to select medias by source ID: ${sourceId}`,
             details: error,
           })
       )
@@ -98,11 +98,11 @@ export const deleteMediaByPath = (sourceId: string, directoryPath: string) =>
     return yield* Effect.tryPromise({
       try: () =>
         db
-          .delete(media)
+          .delete(medias)
           .where(
             and(
-              eq(media.sourceId, sourceId),
-              like(media.filePath, `${directoryPath}%`)
+              eq(medias.sourceId, sourceId),
+              like(medias.filePath, `${directoryPath}%`)
             )
           )
           .returning(),
@@ -111,7 +111,7 @@ export const deleteMediaByPath = (sourceId: string, directoryPath: string) =>
       Effect.mapError(
         (error) =>
           new UnknownDbError({
-            message: `Failed to delete media by path ${directoryPath} for source ID: ${sourceId}`,
+            message: `Failed to delete medias by path ${directoryPath} for source ID: ${sourceId}`,
             details: error,
           })
       )

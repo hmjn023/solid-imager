@@ -25,7 +25,6 @@ type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 export function addMedia(data: AddMediaRequest) {
   return Effect.gen(function* (_) {
     const validatedData = addMediaRequestSchema.parse(data);
-
     const existingMedia = yield* _(
       Effect.option(
         selectMediaBySourceIdAndFilePath(
@@ -54,7 +53,6 @@ export function addMedia(data: AddMediaRequest) {
       height: validatedData.height,
       fileSize: validatedData.size,
     };
-
     const result = yield* _(insertMedia(newMedia));
     if (result.length === 0) {
       return yield* _(
@@ -70,7 +68,6 @@ export function getMedia(sourceId: string, mediaId: string) {
   return Effect.gen(function* (_) {
     const validatedSourceId = sourceIdSchema.parse(sourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
-
     const result = yield* _(selectMediaById(validatedMediaId));
 
     if (result.sourceId !== validatedSourceId) {
@@ -92,7 +89,6 @@ export function updateMedia(
     const validatedUpdates = updateMediaRequestSchema.parse(updates);
     const validatedSourceId = sourceIdSchema.parse(sourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
-
     const existingMedia = yield* _(selectMediaById(validatedMediaId));
     if (existingMedia.sourceId !== validatedSourceId) {
       return yield* _(Effect.fail(new Error("Media not found")));
@@ -103,7 +99,6 @@ export function updateMedia(
       ...validatedUpdates,
       updatedAt: new Date(),
     };
-
     const result = yield* _(dbUpdateMedia(validatedMediaId, updatedMediaData));
 
     if (result.length === 0) {
@@ -120,12 +115,10 @@ export function deleteMedia(sourceId: string, mediaId: string) {
   return Effect.gen(function* (_) {
     const validatedSourceId = sourceIdSchema.parse(sourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
-
     const existingMedia = yield* _(selectMediaById(validatedMediaId));
     if (existingMedia.sourceId !== validatedSourceId) {
       return yield* _(Effect.fail(new Error("Media not found")));
     }
-
     const result = yield* _(dbDeleteMedia(validatedMediaId));
 
     if (result.length === 0) {
@@ -184,7 +177,6 @@ export function registerExistingMedia(sourceId: string, basePath: string) {
     for (const fullPath of mediaFiles) {
       const processFile = Effect.gen(function* (_effect) {
         const relativePath = path.relative(basePath, fullPath);
-
         const existingMedia = yield* _(
           Effect.option(
             selectMediaBySourceIdAndFilePath(validatedSourceId, relativePath)
@@ -217,7 +209,6 @@ export function registerExistingMedia(sourceId: string, basePath: string) {
           createdAt: stats.birthtime,
           modifiedAt: stats.mtime,
         };
-
         const [inserted] = yield* _(insertMedia(newMedia));
         addedMedia.push(inserted);
       });
@@ -250,7 +241,6 @@ export function listMedia(sourceId: string, directoryPath: string) {
   return Effect.gen(function* (_) {
     const validatedSourceId = sourceIdSchema.parse(sourceId);
     const validatedDirectoryPath = directoryPathSchema.parse(directoryPath);
-
     const result = yield* _(
       selectMediaBySourceIdAndDirectoryPath(
         validatedSourceId,

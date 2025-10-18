@@ -1,14 +1,15 @@
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { drizzle } from "drizzle-orm/node-postgres";
 import { Context, Effect, Layer } from "effect";
-import type { Pool } from "pg";
+import type { NodePostgresClient } from "../node-postgres-client";
 
-export type DatabaseService = {
-  readonly db: PostgresJsDatabase;
+export type DbService = {
+  readonly db: NodePostgresClient;
 };
 
-export const DatabaseService = {
-  tag: Context.Tag<DatabaseService>(),
-};
+export class DatabaseService extends Context.Tag("DatabaseService")<
+  DatabaseService,
+  DbService
+>() {}
 
 export const createDatabaseServiceLayer = (pool: Pool) =>
   Layer.effect(
