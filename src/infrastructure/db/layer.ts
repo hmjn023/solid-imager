@@ -1,17 +1,16 @@
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Context, Layer } from "effect";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { Context, Effect } from "effect";
 import type { Pool } from "pg";
-// biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the entire schema object for its type-safe queries.
-import * as schema from "./schema";
 
 export type DatabaseService = {
   readonly _: unique symbol;
-  readonly db: ReturnType<typeof drizzle<typeof schema>>;
+  readonly db: PostgresJsDatabase;
 };
 
 export const DatabaseService = Context.Tag<DatabaseService>();
 
 export const createDatabaseServiceLayer = (pool: Pool) =>
-  Layer.succeed(DatabaseService, {
-    db: drizzle(pool, { schema }),
+  Effect.sync(() => {
+    const db = drizzle(pool);
+    return DatabaseService.of({ _: Context.Tag(), db });
   });

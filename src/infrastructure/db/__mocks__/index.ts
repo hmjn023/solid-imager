@@ -1,6 +1,8 @@
+import { v4 as uuidv4 } from "uuid";
 import { vi } from "vitest";
+import type { Media, MediaSource, NewMedia } from "~/infrastructure/db/schema";
 
-let mockDbState: { mediaSources: any[]; medias: any[] };
+let mockDbState: { mediaSources: MediaSource[]; medias: Media[] };
 
 export const resetMockDbState = () => {
   mockDbState = { mediaSources: [], medias: [] };
@@ -57,8 +59,17 @@ export const selectMediaBySourceIdAndFilePath = vi.fn(
     )
 );
 
-export const insertMedia = vi.fn((media) => {
-  const newEntry = { id: uuidv4(), ...media };
+export const insertMedia = vi.fn((media: NewMedia) => {
+  const newEntry: Media = {
+    id: uuidv4(),
+    ...media,
+    createdAt: media.createdAt || new Date(),
+    modifiedAt: media.modifiedAt || new Date(),
+    indexedAt: media.indexedAt || new Date(),
+    description: media.description || null,
+    sourceUrl: media.sourceUrl || null,
+    fileSize: media.fileSize || null,
+  };
   mockDbState.medias.push(newEntry);
   return Promise.resolve([newEntry]);
 });
@@ -95,7 +106,7 @@ export const selectMediaBySourceIdAndDirectoryPath = vi.fn(
     )
 );
 
-export const addMediaToMockDb = (media: any) => {
+export const addMediaToMockDb = (media: Media) => {
   mockDbState.medias.push(media);
 };
 
