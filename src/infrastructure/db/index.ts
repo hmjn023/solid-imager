@@ -1,8 +1,8 @@
-import { Effect } from "effect";
-
 import { and, count, desc, eq, inArray, like, or, sql, sum } from "drizzle-orm";
+import { Effect } from "effect";
 import { Pool } from "pg";
 import {
+  jobs,
   type Media,
   type MediaSource,
   mediaDetails,
@@ -13,11 +13,12 @@ import {
   type NewMedia,
   type NewMediaSource,
   type NewMediaTag,
+  presets,
   similarMedia,
   type Tag,
   tags,
-  thumbnailJobs,
 } from "~/infrastructure/db/schema";
+import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
 
 const dbHost = process.env.DB_HOST;
 if (!dbHost) {
@@ -62,8 +63,16 @@ export const selectMediaSources = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(mediaSources),
-        catch: (error) => new UnknownDbError({ message: "Failed to select media sources", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select media sources",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -77,16 +86,24 @@ export const selectMediaSourceById = (mediaSourceId: string) =>
             .select()
             .from(mediaSources)
             .where(eq(mediaSources.id, mediaSourceId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media source by ID: ${mediaSourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media source by ID: ${mediaSourceId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media source with ID ${mediaSourceId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media source with ID ${mediaSourceId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -97,15 +114,27 @@ export const insertMediaSource = (mediaSource: NewMediaSource) =>
     const { db } = yield* _(DatabaseService);
     return yield* _(
       Effect.tryPromise({
-        try: () =>
-          db.insert(mediaSources).values(mediaSource).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Media source with this name or ID already exists", details: error });
+        try: () => db.insert(mediaSources).values(mediaSource).returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Media source with this name or ID already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert media source", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert media source",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -123,17 +152,34 @@ export const updateMediaSource = (
             .set(mediaSource)
             .where(eq(mediaSources.id, mediaSourceId))
             .returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Media source with this name or ID already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Media source with this name or ID already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to update media source", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to update media source",
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media source with ID ${mediaSourceId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media source with ID ${mediaSourceId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -149,39 +195,51 @@ export const deleteMediaSource = (mediaSourceId: string) =>
             .delete(mediaSources)
             .where(eq(mediaSources.id, mediaSourceId))
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete media source with ID: ${mediaSourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete media source with ID: ${mediaSourceId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media source with ID ${mediaSourceId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media source with ID ${mediaSourceId} not found`,
+          })
+        )
       );
     }
     return result[0];
   });
-
 
 export const selectMediaById = (mediaId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     const result = yield* _(
       Effect.tryPromise({
-        try: () =>
-          db.select().from(medias).where(eq(medias.id, mediaId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media by ID: ${mediaId}`,
-            details: error,
-          }),
-      })
+        try: () => db.select().from(medias).where(eq(medias.id, mediaId)),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media by ID: ${mediaId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media with ID ${mediaId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `Media with ID ${mediaId} not found` })
+        )
       );
     }
     return result[0];
@@ -202,16 +260,24 @@ export const selectMediaBySourceIdAndFilePath = (
             .where(
               and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath))
             ),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media by source ID ${sourceId} and file path ${filePath}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media by source ID ${sourceId} and file path ${filePath}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media with source ID ${sourceId} and file path ${filePath} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media with source ID ${sourceId} and file path ${filePath} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -223,13 +289,26 @@ export const insertMedia = (media: NewMedia) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(medias).values(media).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Media with this source ID and file path already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Media with this source ID and file path already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert media", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert media",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -239,18 +318,37 @@ export const updateMedia = (mediaId: string, media: Media) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
-          db.update(medias).set(media).where(eq(medias.id, mediaId)).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Media with this source ID and file path already exists", details: error });
+          db
+            .update(medias)
+            .set(media)
+            .where(eq(medias.id, mediaId))
+            .returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Media with this source ID and file path already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to update media", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to update media",
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media with ID ${mediaId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `Media with ID ${mediaId} not found` })
+        )
       );
     }
     return result[0];
@@ -262,16 +360,22 @@ export const deleteMedia = (mediaId: string) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () => db.delete(medias).where(eq(medias.id, mediaId)).returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete media with ID: ${mediaId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete media with ID: ${mediaId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media with ID ${mediaId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `Media with ID ${mediaId} not found` })
+        )
       );
     }
     return result[0];
@@ -295,12 +399,16 @@ export const selectMediaBySourceIdAndDirectoryPath = (
                 like(medias.filePath, `${directoryPath}%`)
               )
             ),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media by source ID ${sourceId} and directory path ${directoryPath}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media by source ID ${sourceId} and directory path ${directoryPath}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -311,20 +419,22 @@ export const selectMediaBySourceId = (sourceId: string) =>
       Effect.tryPromise({
         try: () =>
           db.select().from(medias).where(eq(medias.sourceId, sourceId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media by source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media by source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
 // ========================================
 // Feature 2: Thumbnail Functions
 // ========================================
-
-
 
 // ========================================
 // Feature 3: Media Metadata Functions
@@ -340,16 +450,24 @@ export const selectMediaGenerationInfoById = (mediaId: string) =>
             .select()
             .from(mediaGenerationInfo)
             .where(eq(mediaGenerationInfo.mediaId, mediaId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media generation info by media ID: ${mediaId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media generation info by media ID: ${mediaId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media generation info for media ID ${mediaId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media generation info for media ID ${mediaId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -366,16 +484,24 @@ export const updateMediaGenerationInfo = (mediaId: string, metadata: unknown) =>
             .set({ metadata: metadata as any })
             .where(eq(mediaGenerationInfo.mediaId, mediaId))
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to update media generation info for media ID: ${mediaId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to update media generation info for media ID: ${mediaId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media generation info for media ID ${mediaId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media generation info for media ID ${mediaId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -386,22 +512,22 @@ export const updateMediaGenerationInfo = (mediaId: string, metadata: unknown) =>
 // ========================================
 
 // TODO: Implement if thumbnail job status table exists
-export const selectThumbnailJobStatus = (sourceId: string) =>
+export const selectJobsBySourceId = (sourceId: string) =>
   Effect.gen(function* (_) {
     const { db } = yield* _(DatabaseService);
     return yield* _(
       Effect.tryPromise({
-        try: () =>
-          db
-            .select()
-            .from(thumbnailJobs)
-            .where(eq(thumbnailJobs.sourceId, sourceId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select thumbnail job status for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        try: () => db.select().from(jobs).where(eq(jobs.sourceId, sourceId)),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select jobs for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -448,12 +574,16 @@ export const searchMedia = (
 
           return await query;
         },
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to search media for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to search media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -502,12 +632,16 @@ export const searchMediaInDirectory = (
 
           return await query;
         },
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to search media in directory ${directoryPath} for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to search media in directory ${directoryPath} for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -547,12 +681,16 @@ export const globalSearchMedia = (searchOptions: {
 
           return await query;
         },
-        catch: (error) =>
-          new UnknownDbError({
-            message: "Failed to perform global media search",
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to perform global media search",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -575,12 +713,16 @@ export const deleteMediaByPath = (sourceId: string, directoryPath: string) =>
               )
             )
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete media by path ${directoryPath} for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete media by path ${directoryPath} for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -594,9 +736,16 @@ export const selectCategories = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(categories),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select categories", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select categories",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -606,13 +755,26 @@ export const insertCategory = (categoryData: NewCategory) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(categories).values(categoryData).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Category with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Category with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert category", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert category",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -623,16 +785,24 @@ export const selectCategoryById = (categoryId: number) =>
       Effect.tryPromise({
         try: () =>
           db.select().from(categories).where(eq(categories.id, categoryId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select category by ID: ${categoryId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select category by ID: ${categoryId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Category with ID ${categoryId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Category with ID ${categoryId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -649,17 +819,34 @@ export const updateCategory = (categoryId: number, categoryData: unknown) =>
             .set(categoryData)
             .where(eq(categories.id, categoryId))
             .returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Category with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Category with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to update category with ID: ${categoryId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to update category with ID: ${categoryId}`,
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Category with ID ${categoryId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Category with ID ${categoryId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -671,17 +858,28 @@ export const deleteCategory = (categoryId: number) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
-          db.delete(categories).where(eq(categories.id, categoryId)).returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete category with ID: ${categoryId}`,
-            details: error,
-          }),
-      })
+          db
+            .delete(categories)
+            .where(eq(categories.id, categoryId))
+            .returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete category with ID: ${categoryId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Category with ID ${categoryId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Category with ID ${categoryId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -697,9 +895,16 @@ export const selectCharacters = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(characters),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select characters", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select characters",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -709,13 +914,26 @@ export const insertCharacter = (characterData: unknown) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(characters).values(characterData).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Character with this name and IP already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Character with this name and IP already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert character", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert character",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -726,16 +944,24 @@ export const selectCharacterById = (characterId: number) =>
       Effect.tryPromise({
         try: () =>
           db.select().from(characters).where(eq(characters.id, characterId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select character by ID: ${characterId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select character by ID: ${characterId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Character with ID ${characterId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Character with ID ${characterId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -752,17 +978,34 @@ export const updateCharacter = (characterId: number, characterData: unknown) =>
             .set(characterData)
             .where(eq(characters.id, characterId))
             .returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Character with this name and IP already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Character with this name and IP already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to update character with ID: ${characterId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to update character with ID: ${characterId}`,
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Character with ID ${characterId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Character with ID ${characterId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -774,17 +1017,28 @@ export const deleteCharacter = (characterId: number) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
-          db.delete(characters).where(eq(characters.id, characterId)).returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete character with ID: ${characterId}`,
-            details: error,
-          }),
-      })
+          db
+            .delete(characters)
+            .where(eq(characters.id, characterId))
+            .returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete character with ID: ${characterId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Character with ID ${characterId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Character with ID ${characterId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -800,9 +1054,16 @@ export const selectIps = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(ips),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select IPs", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select IPs",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -812,13 +1073,26 @@ export const insertIp = (ipData: unknown) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(ips).values(ipData).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "IP with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "IP with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert IP", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert IP",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -828,16 +1102,22 @@ export const selectIpById = (ipId: number) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () => db.select().from(ips).where(eq(ips.id, ipId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select IP by ID: ${ipId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select IP by ID: ${ipId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `IP with ID ${ipId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `IP with ID ${ipId} not found` })
+        )
       );
     }
     return result[0];
@@ -850,62 +1130,67 @@ export const updateIp = (ipId: number, ipData: unknown) =>
       Effect.tryPromise({
         try: () =>
           db.update(ips).set(ipData).where(eq(ips.id, ipId)).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "IP with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "IP with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to update IP with ID: ${ipId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to update IP with ID: ${ipId}`,
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `IP with ID ${ipId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `IP with ID ${ipId} not found` })
+        )
       );
     }
     return result[0];
   });
 
 export const deleteIp = (ipId: number) =>
-
   Effect.gen(function* (_) {
-
     const { db } = yield* _(DatabaseService);
 
     const result = yield* _(
-
       Effect.tryPromise({
+        try: () => db.delete(ips).where(eq(ips.id, ipId)).returning(),
 
-        try: () =>
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete IP with ID: ${ipId}`,
 
-          db.delete(ips).where(eq(ips.id, ipId)).returning(),
-
-        catch: (error) =>
-
-          new UnknownDbError({
-
-            message: `Failed to delete IP with ID: ${ipId}`,
-
-            details: error,
-
-          }),
-
-      })
-
+              details: error,
+            })
+        )
+      )
     );
 
     if (result.length === 0) {
-
       return yield* _(
-
-        Effect.fail(new NotFoundError({ message: `IP with ID ${ipId} not found` }))
-
+        Effect.fail(
+          new NotFoundError({ message: `IP with ID ${ipId} not found` })
+        )
       );
-
     }
 
     return result[0];
-
   });
 
 // ========================================
@@ -918,9 +1203,16 @@ export const selectUsers = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(users),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select users", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select users",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -930,13 +1222,26 @@ export const insertUser = (userData: unknown) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(users).values(userData).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "User with this email already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "User with this email already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert user", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert user",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -946,16 +1251,22 @@ export const selectUserById = (userId: string) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () => db.select().from(users).where(eq(users.id, userId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select user by ID: ${userId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select user by ID: ${userId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `User with ID ${userId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `User with ID ${userId} not found` })
+        )
       );
     }
     return result[0];
@@ -967,18 +1278,37 @@ export const updateUser = (userId: string, userData: unknown) =>
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
-          db.update(users).set(userData).where(eq(users.id, userId)).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "User with this email already exists", details: error });
+          db
+            .update(users)
+            .set(userData)
+            .where(eq(users.id, userId))
+            .returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "User with this email already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to update user with ID: ${userId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to update user with ID: ${userId}`,
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `User with ID ${userId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `User with ID ${userId} not found` })
+        )
       );
     }
     return result[0];
@@ -989,18 +1319,23 @@ export const deleteUser = (userId: string) =>
     const { db } = yield* _(DatabaseService);
     const result = yield* _(
       Effect.tryPromise({
-        try: () =>
-          db.delete(users).where(eq(users.id, userId)).returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete user with ID: ${userId}`,
-            details: error,
-          }),
-      })
+        try: () => db.delete(users).where(eq(users.id, userId)).returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete user with ID: ${userId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `User with ID ${userId} not found` }))
+        Effect.fail(
+          new NotFoundError({ message: `User with ID ${userId} not found` })
+        )
       );
     }
     return result[0];
@@ -1016,9 +1351,16 @@ export const selectCollections = () =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(collections),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select collections", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select collections",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1028,13 +1370,26 @@ export const insertCollection = (collectionData: unknown) =>
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(collections).values(collectionData).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Collection with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Collection with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to insert collection", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to insert collection",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -1045,16 +1400,24 @@ export const selectCollectionById = (collectionId: string) =>
       Effect.tryPromise({
         try: () =>
           db.select().from(collections).where(eq(collections.id, collectionId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select collection by ID: ${collectionId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select collection by ID: ${collectionId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Collection with ID ${collectionId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Collection with ID ${collectionId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -1074,17 +1437,34 @@ export const updateCollection = (
             .set(collectionData)
             .where(eq(collections.id, collectionId))
             .returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Collection with this name already exists", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Collection with this name already exists",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to update collection with ID: ${collectionId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to update collection with ID: ${collectionId}`,
+            details: error,
+          });
+        })
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Collection with ID ${collectionId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Collection with ID ${collectionId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -1100,16 +1480,24 @@ export const deleteCollection = (collectionId: string) =>
             .delete(collections)
             .where(eq(collections.id, collectionId))
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete collection with ID: ${collectionId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete collection with ID: ${collectionId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Collection with ID ${collectionId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Collection with ID ${collectionId} not found`,
+          })
+        )
       );
     }
     return result[0];
@@ -1129,13 +1517,26 @@ export const insertCollectionMedia = (
             .insert(collectionMedia)
             .values({ collectionId, mediaId, displayOrder })
             .returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "Media already exists in this collection", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Media already exists in this collection",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to insert media ${mediaId} into collection ${collectionId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to insert media ${mediaId} into collection ${collectionId}`,
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -1154,16 +1555,24 @@ export const deleteCollectionMedia = (collectionId: string, mediaId: string) =>
               )
             )
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to delete media ${mediaId} from collection ${collectionId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to delete media ${mediaId} from collection ${collectionId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media ${mediaId} not found in collection ${collectionId}` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media ${mediaId} not found in collection ${collectionId}`,
+          })
+        )
       );
     }
     return result[0];
@@ -1190,12 +1599,16 @@ export const bulkUpdateMedia = (
               and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
             )
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to bulk update media for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to bulk update media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1211,12 +1624,16 @@ export const bulkDeleteMedia = (sourceId: string, mediaIds: string[]) =>
               and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
             )
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to bulk delete media for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to bulk delete media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1248,12 +1665,16 @@ export const bulkUpdateMediaPaths = (
 
             return Promise.all(updates);
           }),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to bulk update media paths for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to bulk update media paths for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1278,13 +1699,26 @@ export const bulkAddMediaTags = (
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(mediaTags).values(values).returning(),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "One or more media tags already exist", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "One or more media tags already exist",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: "Failed to bulk add media tags", details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: "Failed to bulk add media tags",
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -1312,12 +1746,16 @@ export const bulkRemoveMediaTags = (
               )
             )
             .returning(),
-        catch: (error) =>
-          new UnknownDbError({
-            message: "Failed to bulk remove media tags",
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to bulk remove media tags",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1326,8 +1764,6 @@ export const bulkRemoveMediaTags = (
 // Feature 19: Workflow Functions
 
 // ========================================
-
-
 
 export const insertMediaTags = (mediaId: string, tagsToInsert: string[]) =>
   Effect.gen(function* (_) {
@@ -1367,13 +1803,26 @@ export const insertMediaTags = (mediaId: string, tagsToInsert: string[]) =>
                 .onConflictDoNothing();
             }
           }),
-        catch: (error) => {
-          if (error && typeof error === "object" && "code" in error && error.code === "23505") {
-            return new ConstraintError({ message: "One or more media tags already exist", details: error });
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "One or more media tags already exist",
+              details: error,
+            });
           }
-          return new UnknownDbError({ message: `Failed to insert media tags for media ID: ${mediaId}`, details: error });
-        },
-      })
+          return new UnknownDbError({
+            message: `Failed to insert media tags for media ID: ${mediaId}`,
+            details: error,
+          });
+        })
+      )
     );
   });
 
@@ -1406,17 +1855,25 @@ export const selectMediaSourceData = (sourceId: string) =>
               },
             },
           }),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select media source data for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select media source data for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
 
     if (!mediaSource) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media source data for ID ${sourceId} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media source data for ID ${sourceId} not found`,
+          })
+        )
       );
     }
 
@@ -1451,12 +1908,16 @@ export const upsertMediaSourceData = (_sourceId: string, importData: any) =>
 
             // ... other tables would be handled here
           }),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to upsert media source data for source ID: ${_sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to upsert media source data for source ID: ${_sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1494,12 +1955,16 @@ export const reconcileMediaSource = (
                 );
             }
           }),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to reconcile media source for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to reconcile media source for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1524,12 +1989,16 @@ export const cloneMediaData = (sourceId: string, newSourceId: string) =>
               await tx.insert(medias).values(newMedias);
             }
           }),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to clone media data from source ID: ${sourceId} to ${newSourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to clone media data from source ID: ${sourceId} to ${newSourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1551,12 +2020,16 @@ export const selectSourceStats = (sourceId: string) =>
             })
             .from(medias)
             .where(eq(medias.sourceId, sourceId)),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select source statistics for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select source statistics for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1573,9 +2046,16 @@ export const selectGlobalStats = () =>
               totalSize: sum(medias.fileSize),
             })
             .from(medias),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select global statistics", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select global statistics",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1596,12 +2076,16 @@ export const findDuplicateMedia = (sourceId: string) =>
             .where(eq(medias.sourceId, sourceId))
             .groupBy(mediaTechnicalInfo.hashMd5)
             .having(sql`count(${mediaTechnicalInfo.id}) > 1`),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to find duplicate media for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to find duplicate media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1616,22 +2100,27 @@ export const findSimilarMedia = (sourceId: string, mediaPath: string) =>
             .select({ id: medias.id })
             .from(medias)
             .where(
-              and(
-                eq(medias.sourceId, sourceId),
-                eq(medias.filePath, mediaPath)
-              )
+              and(eq(medias.sourceId, sourceId), eq(medias.filePath, mediaPath))
             ),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to find media for source ID ${sourceId} and path ${mediaPath}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to find media for source ID ${sourceId} and path ${mediaPath}`,
+              details: error,
+            })
+        )
+      )
     );
 
     if (media.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `Media with source ID ${sourceId} and path ${mediaPath} not found` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `Media with source ID ${sourceId} and path ${mediaPath} not found`,
+          })
+        )
       );
     }
 
@@ -1649,12 +2138,16 @@ export const findSimilarMedia = (sourceId: string, mediaPath: string) =>
                 eq(similarMedia.media2Id, mediaId)
               )
             ),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to find similar media for media ID: ${mediaId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to find similar media for media ID: ${mediaId}`,
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1670,9 +2163,16 @@ export const selectPopularMedia = () =>
             .from(mediaDetails)
             .orderBy(desc(mediaDetails.viewCount))
             .limit(10),
-        catch: (error) =>
-          new UnknownDbError({ message: "Failed to select popular media", details: error }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select popular media",
+              details: error,
+            })
+        )
+      )
     );
   });
 
@@ -1696,16 +2196,24 @@ export const selectRandomMedia = (sourceId: string) =>
             .where(eq(medias.sourceId, sourceId))
             .orderBy(sql`RANDOM()`)
             .limit(1),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select random media for source ID: ${sourceId}`,
-            details: error,
-          }),
-      })
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select random media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
     );
     if (result.length === 0) {
       return yield* _(
-        Effect.fail(new NotFoundError({ message: `No random media found for source ID ${sourceId}` }))
+        Effect.fail(
+          new NotFoundError({
+            message: `No random media found for source ID ${sourceId}`,
+          })
+        )
       );
     }
     return result[0];
@@ -1724,11 +2232,192 @@ export const selectRecentMedia = (sourceId: string) =>
             .where(eq(medias.sourceId, sourceId))
             .orderBy(desc(medias.createdAt))
             .limit(10),
-        catch: (error) =>
-          new UnknownDbError({
-            message: `Failed to select recent media for source ID: ${sourceId}`,
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: `Failed to select recent media for source ID: ${sourceId}`,
+              details: error,
+            })
+        )
+      )
+    );
+  });
+
+export const selectJobs = () =>
+  Effect.gen(function* (_) {
+    const { db } = yield* _(DatabaseService);
+    return yield* _(
+      Effect.tryPromise({
+        try: () => db.select().from(jobs),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select jobs",
+              details: error,
+            })
+        )
+      )
+    );
+  });
+
+export const updateJobStatus = (jobId: string, status: "pending" | "in_progress" | "completed" | "failed") =>
+
+  Effect.gen(function* (_) {
+
+    const { db } = yield* _(DatabaseService);
+
+    const result = yield* _(
+
+      Effect.tryPromise({
+
+        try: () =>
+
+          db
+
+            .update(jobs)
+
+            .set({ status })
+
+            .where(eq(jobs.id, jobId))
+
+            .returning(),
+
+        catch: (error) => error,
+
+      }).pipe(
+
+        Effect.mapError(
+
+          (error) =>
+
+            new UnknownDbError({
+
+              message: `Failed to update job status for job ID: ${jobId}`,
+
+              details: error,
+
+            })
+
+        )
+
+      )
+
+    );
+
+    if (result.length === 0) {
+
+      return yield* _(
+
+        Effect.fail(
+
+          new NotFoundError({
+
+            message: `Job with ID ${jobId} not found`,
+
+          })
+
+        )
+
+      );
+
+    }
+
+    return result[0];
+
+  });
+
+export const selectMediaForAutoTagging = (sourceId: string) =>
+
+  Effect.gen(function* (_) {
+
+    const { db } = yield* _(DatabaseService);
+
+    return yield* _(
+
+      Effect.tryPromise({
+
+        try: () =>
+
+          db
+
+            .select()
+
+            .from(medias)
+
+            .where(eq(medias.sourceId, sourceId)),
+
+        catch: (error) => error,
+
+      }).pipe(
+
+        Effect.mapError(
+
+          (error) =>
+
+            new UnknownDbError({
+
+              message: `Failed to select media for auto-tagging for source ID: ${sourceId}`,
+
+              details: error,
+
+            })
+
+        )
+
+      )
+
+    );
+
+  });
+
+export const selectPresets = () =>
+  Effect.gen(function* (_) {
+    const { db } = yield* _(DatabaseService);
+    return yield* _(
+      Effect.tryPromise({
+        try: () => db.select().from(presets),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) =>
+            new UnknownDbError({
+              message: "Failed to select presets",
+              details: error,
+            })
+        )
+      )
+    );
+  });
+
+export const insertPreset = (presetData: any) =>
+  Effect.gen(function* (_) {
+    const { db } = yield* _(DatabaseService);
+    return yield* _(
+      Effect.tryPromise({
+        try: () => db.insert(presets).values(presetData).returning(),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError((error) => {
+          if (
+            error &&
+            typeof error === "object" &&
+            "code" in error &&
+            error.code === "23505"
+          ) {
+            return new ConstraintError({
+              message: "Preset with this name already exists",
+              details: error,
+            });
+          }
+          return new UnknownDbError({
+            message: "Failed to insert preset",
             details: error,
-          }),
-      })
+          });
+        })
+      )
     );
   });

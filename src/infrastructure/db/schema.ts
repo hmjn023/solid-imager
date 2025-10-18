@@ -35,6 +35,12 @@ export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
   "failed",
 ]);
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
+export const jobStatusEnum = pgEnum("job_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
 
 // テーブル
 export const mediaSources = pgTable("media_sources", {
@@ -422,7 +428,6 @@ export const collections = pgTable("collections", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-
 export const collectionMedia = pgTable(
   "collection_media",
   {
@@ -441,6 +446,27 @@ export const collectionMedia = pgTable(
     pk: primaryKey({ columns: [table.collectionId, table.mediaId] }),
   })
 );
+
+export const jobs = pgTable("jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(),
+  sourceId: uuid("source_id").references(() => mediaSources.id, {
+    onDelete: "cascade",
+  }),
+  status: jobStatusEnum("status").notNull().default("pending"),
+  payload: jsonb("payload"),
+  result: jsonb("result"),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const presets = pgTable("presets", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  value: jsonb("value").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 // リレーション
 /** メディアソースとメディアのリレーション */
@@ -746,24 +772,8 @@ export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
 
-export type ThumbnailJob = InferSelectModel<typeof thumbnailJobs>;
-export type NewThumbnailJob = InferInsertModel<typeof thumbnailJobs>;
+export type Job = InferSelectModel<typeof jobs>;
+export type NewJob = InferInsertModel<typeof jobs>;
 
-export const thumbnailJobStatusEnum = pgEnum("thumbnail_job_status", [
-  "pending",
-  "in_progress",
-  "completed",
-  "failed",
-]);
-
-export const thumbnailJobs = pgTable("thumbnail_jobs", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  mediaId: uuid("media_id")
-    .notNull()
-    .references(() => medias.id, { onDelete: "cascade" }),
-  sourceId: uuid("source_id")
-    .notNull()
-    .references(() => mediaSources.id, { onDelete: "cascade" }),
-  status: thumbnailJobStatusEnum("status").notNull().default("pending"),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+export type Preset = InferSelectModel<typeof presets>;
+export type NewPreset = InferInsertModel<typeof presets>;

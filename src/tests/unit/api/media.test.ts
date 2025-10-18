@@ -1,4 +1,3 @@
-import { eq, like } from "drizzle-orm";
 import { v4 as uuidv4 } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
@@ -9,8 +8,16 @@ import {
   listMedia,
   updateMedia,
 } from "~/infrastructure/api-clients/media";
-import { db, insertMedia, selectMediaById, selectMediaBySourceIdAndDirectoryPath, selectMediaBySourceIdAndFilePath, updateMedia as dbUpdateMedia, deleteMedia as dbDeleteMedia, resetMockDbState, addMediaToMockDb } from "~/infrastructure/db";
-import { medias } from "~/infrastructure/db/schema";
+import {
+  addMediaToMockDb,
+  deleteMedia as dbDeleteMedia,
+  updateMedia as dbUpdateMedia,
+  insertMedia,
+  resetMockDbState,
+  selectMediaById,
+  selectMediaBySourceIdAndDirectoryPath,
+  selectMediaBySourceIdAndFilePath,
+} from "~/infrastructure/db";
 
 vi.mock("~/infrastructure/db");
 
@@ -23,7 +30,7 @@ describe("Media API Unit Tests", () => {
     const sourceId = "b0000000-0000-4000-8000-000000000000";
     const existingMedia = {
       id: mediaId,
-      sourceId: sourceId,
+      sourceId,
       filePath: "/mock/path/image.png",
       fileName: "original_file.png",
       mediaType: "image",
@@ -38,12 +45,14 @@ describe("Media API Unit Tests", () => {
 
     // Directly add to the mock state for selectMediaById to find it
     // This bypasses the insertMedia mock for setup purposes
-    vi.mocked(selectMediaBySourceIdAndFilePath).mockImplementation((srcId, filePath) => {
-      if (srcId === sourceId && filePath === existingMedia.filePath) {
-        return Promise.resolve([existingMedia]);
+    vi.mocked(selectMediaBySourceIdAndFilePath).mockImplementation(
+      (srcId, filePath) => {
+        if (srcId === sourceId && filePath === existingMedia.filePath) {
+          return Promise.resolve([existingMedia]);
+        }
+        return Promise.resolve([]);
       }
-      return Promise.resolve([]);
-    });
+    );
   });
 
   describe("addMedia", () => {
@@ -191,7 +200,7 @@ describe("Media API Unit Tests", () => {
       vi.mocked(dbUpdateMedia).mockResolvedValueOnce([
         {
           id: mediaId,
-          sourceId: sourceId,
+          sourceId,
           filePath: "/mock/path/image.png",
           fileName: updates.fileName,
           mediaType: "image",
@@ -207,14 +216,13 @@ describe("Media API Unit Tests", () => {
       const result = await updateMedia(sourceId, mediaId, updates);
 
       expect(selectMediaById).toHaveBeenCalledWith(mediaId);
-      expect(dbUpdateMedia).toHaveBeenCalledWith(mediaId, expect.objectContaining(updates));
+      expect(dbUpdateMedia).toHaveBeenCalledWith(
+        mediaId,
+        expect.objectContaining(updates)
+      );
       expect(result).toBeDefined();
       expect(result.fileName).toBe(updates.fileName);
     });
-
-
-
-
 
     it("should throw a ZodError for invalid update data", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
@@ -253,7 +261,7 @@ describe("Media API Unit Tests", () => {
       vi.mocked(selectMediaById).mockResolvedValueOnce([
         {
           id: mediaId,
-          sourceId: sourceId,
+          sourceId,
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -270,7 +278,7 @@ describe("Media API Unit Tests", () => {
       vi.mocked(dbDeleteMedia).mockResolvedValueOnce([
         {
           id: mediaId,
-          sourceId: sourceId,
+          sourceId,
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -312,7 +320,7 @@ describe("Media API Unit Tests", () => {
       vi.mocked(selectMediaBySourceIdAndDirectoryPath).mockResolvedValueOnce([
         {
           id: uuidv4(),
-          sourceId: sourceId,
+          sourceId,
           filePath: "/mock/directory/image1.png",
           fileName: "image1.png",
           mediaType: "image",
@@ -325,7 +333,7 @@ describe("Media API Unit Tests", () => {
         },
         {
           id: uuidv4(),
-          sourceId: sourceId,
+          sourceId,
           filePath: "/mock/directory/image2.png",
           fileName: "image2.png",
           mediaType: "image",

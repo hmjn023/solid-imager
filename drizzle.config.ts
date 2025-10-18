@@ -13,7 +13,7 @@ if (!(DB_HOST && DB_PORT && DB_USER && DB_PASSWORD && DB_DATABASE)) {
 const databaseUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}`;
 
 export default {
-  schema: "./src/db/schema.ts",
+  schema: "./src/infrastructure/db/schema.ts",
   out: "./drizzle", // マイグレーションファイルの出力先
   dialect: "postgresql", // `driver`から`dialect`に変更
   dbCredentials: {

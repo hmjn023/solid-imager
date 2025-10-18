@@ -6,7 +6,7 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./src/tests/setup.ts"], // Add setup files here if needed
-    exclude: ['**/*.spec.ts', 'src/tests/e2e/**'],
+    exclude: ['**/*.spec.ts', 'src/tests/e2e/**', 'node_modules/**'],
   },
   resolve: {
     alias: {

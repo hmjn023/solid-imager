@@ -121,14 +121,14 @@
 - [x] `db.selectPopularMedia()`
 
 ### 4.19. ワークフロー・自動化機能
-- [ ] `db.selectJobs()` (Requires `jobs` table in schema)
-- [ ] `db.updateJobStatus(jobId, status)` (Requires `jobs` table in schema)
-- [ ] `db.selectMediaForAutoTagging(sourceId)` (Requires `jobs` table in schema)
+- [x] `db.selectJobs()` (Requires `jobs` table in schema)
+- [x] `db.updateJobStatus(jobId, status)` (Requires `jobs` table in schema)
+- [x] `db.selectMediaForAutoTagging(sourceId)` (Requires `jobs` table in schema)
 - [x] `db.insertMediaTags(...)`
 
 ### 4.20. フィルタ・プリセット機能
-- [ ] `db.selectPresets()` (Requires `presets` table in schema)
-- [ ] `db.insertPreset(...)` (Requires `presets` table in schema)
+- [x] `db.selectPresets()` (Requires `presets` table in schema)
+- [x] `db.insertPreset(...)` (Requires `presets` table in schema)
 - [x] `db.selectRandomMedia(sourceId)`
 - [x] `db.selectRecentMedia(sourceId)`
 

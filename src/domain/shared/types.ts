@@ -4,7 +4,7 @@
  * Extracted from src/lib/types.ts during architecture reorganization
  */
 
-export type UUID = string;
+export type Uuid = string;
 
 export type AppConfig = {
   server?: {

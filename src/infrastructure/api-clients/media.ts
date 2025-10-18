@@ -295,7 +295,7 @@ export async function listMedia(
  * @param mediaId - The UUID of the media.
  * @returns Media details object.
  */
-export async function getMediaDetails(
+export function getMediaDetails(
   sourceId: string,
   mediaId: string
 ): Promise<Media> {
@@ -357,7 +357,7 @@ export function uploadMedia(
 /**
  * Search media within a directory
  */
-export async function searchMediaInDirectory(
+export function searchMediaInDirectory(
   sourceId: string,
   directoryPath: string,
   _searchOptions: unknown
