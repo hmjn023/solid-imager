@@ -93,6 +93,8 @@ export const db = {
   transaction: vi.fn((fn) => fn(db)),
 };
 
+vi.mock("~/infrastructure/db/index", () => ({ db }));
+
 export const pool = {
   end: vi.fn(),
   connect: vi.fn(() => ({
@@ -116,111 +118,6 @@ vi.mock("~/infrastructure/db/media-random", () => ({
 
 vi.mock("~/infrastructure/db/media-recent", () => ({
   selectRecentMedia: vi.fn(() => Effect.succeed([])),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
 }));
 
 vi.mock("~/infrastructure/db/__mocks__", () => ({

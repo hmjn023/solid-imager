@@ -6,12 +6,12 @@ import {
   deleteMedia,
   getMedia,
 } from "~/infrastructure/api-clients/media";
-import { db } from "../../infrastructure/db/index";
-import { medias } from "../../infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
+import { medias } from "~/infrastructure/db/schema";
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "b0000000-0000-0000-0000-000000000000";
+  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
     sourceId: testSourceId,
     filePath: "/test/path/delete_image.png",

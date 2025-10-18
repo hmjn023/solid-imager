@@ -1,5 +1,4 @@
 import { Context, Effect, Layer } from "effect";
-import { pipe } from "effect/Function";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { DatabaseService } from "~/infrastructure/db/layer";
@@ -7,7 +6,7 @@ import { selectRandomMedia } from "~/infrastructure/db/media-random";
 import { db } from "~/tests/setup"; // Import the mocked db
 
 // Create a mock DatabaseService Layer
-const MockDatabaseLive = Layer.succeed(
+const _MockDatabaseLive = Layer.succeed(
   DatabaseService,
   Context.make(DatabaseService, { db: db as any })
 );
@@ -25,55 +24,64 @@ describe("selectRandomMedia", () => {
 
   it("should return a random media item on success", async () => {
     const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
-    (db.select as vi.Mock).mockReturnValueOnce({
-      from: vi.fn().mockReturnValueOnce({
-        where: vi.fn().mockReturnValueOnce({
-          orderBy: vi.fn().mockReturnValueOnce({
-            limit: vi.fn().mockResolvedValueOnce([media1]),
-          }),
-        }),
+    const mockDb = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValueOnce([media1]),
       }),
-    });
+    };
+    const MockDatabaseLive = Layer.succeed(
+      DatabaseService,
+      Context.make(DatabaseService, { db: mockDb as any })
+    );
     const result = await Effect.runPromise(
-      pipe(selectRandomMedia("source1"), Layer.provide(MockDatabaseLive))
+      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );
     expect(result).toEqual(media1);
-    expect(db.select).toHaveBeenCalled();
+    expect(mockDb.select).toHaveBeenCalled();
   });
 
   it("should return NotFoundError if no random media found", async () => {
-    (db.select as vi.Mock).mockReturnValueOnce({
-      from: vi.fn().mockReturnValueOnce({
-        where: vi.fn().mockReturnValueOnce({
-          orderBy: vi.fn().mockReturnValueOnce({
-            limit: vi.fn().mockResolvedValueOnce([]),
-          }),
-        }),
+    const mockDb = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValueOnce([]),
       }),
-    });
+    };
+    const MockDatabaseLive = Layer.succeed(
+      DatabaseService,
+      Context.make(DatabaseService, { db: mockDb as any })
+    );
     const result = await Effect.runPromiseExit(
-      pipe(selectRandomMedia("source1"), Layer.provide(MockDatabaseLive))
+      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );
     expect(result._tag).toBe("Failure");
     expect(result.cause.value).toBeInstanceOf(NotFoundError);
-    expect(db.select).toHaveBeenCalled();
+    expect(mockDb.select).toHaveBeenCalled();
   });
 
   it("should return UnknownDbError on failure", async () => {
-    (db.select as vi.Mock).mockReturnValueOnce({
-      from: vi.fn().mockReturnValueOnce({
-        where: vi.fn().mockReturnValueOnce({
-          orderBy: vi.fn().mockReturnValueOnce({
-            limit: vi.fn().mockRejectedValueOnce(new Error("DB error")),
-          }),
-        }),
+    const mockDb = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        orderBy: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockRejectedValueOnce(new Error("DB error")),
       }),
-    });
+    };
+    const MockDatabaseLive = Layer.succeed(
+      DatabaseService,
+      Context.make(DatabaseService, { db: mockDb as any })
+    );
     const result = await Effect.runPromiseExit(
-      pipe(selectRandomMedia("source1"), Layer.provide(MockDatabaseLive))
+      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );
     expect(result._tag).toBe("Failure");
     expect(result.cause.value).toBeInstanceOf(UnknownDbError);
-    expect(db.select).toHaveBeenCalled();
+    expect(mockDb.select).toHaveBeenCalled();
   });
 });

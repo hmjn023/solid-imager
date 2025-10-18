@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Cause, Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
 
@@ -15,10 +15,7 @@ const f = (n: number) => {
     );
   }
   return Effect.fail(
-    new UnknownDbError({
-      message: "Unknown error",
-      details: "error",
-    })
+    new UnknownDbError({ message: "Unknown error", details: "error" })
   );
 };
 
@@ -32,8 +29,8 @@ describe("test", () => {
     const result = await Effect.runPromiseExit(f(0));
     console.log(JSON.stringify(result, null, 2));
     expect(result._tag).toBe("Failure");
-    if (result._tag === "Failure") {
-      expect(result.cause.value).toBeInstanceOf(ConstraintError);
+    if (result._tag === "Failure" && Cause.isFailType(result.cause)) {
+      expect(result.cause.error).toBeInstanceOf(ConstraintError);
     }
   });
 
@@ -41,8 +38,8 @@ describe("test", () => {
     const result = await Effect.runPromiseExit(f(-1));
     console.log(JSON.stringify(result, null, 2));
     expect(result._tag).toBe("Failure");
-    if (result._tag === "Failure") {
-      expect(result.cause.value).toBeInstanceOf(UnknownDbError);
+    if (result._tag === "Failure" && Cause.isFailType(result.cause)) {
+      expect(result.cause.error).toBeInstanceOf(UnknownDbError);
     }
   });
 });

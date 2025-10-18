@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { addMedia, getMedia } from "../../infrastructure/api-clients/media";
-import { db } from "../../infrastructure/db/index";
-import { medias } from "../../infrastructure/db/schema";
+import { addMedia, getMedia } from "~/infrastructure/api-clients/media";
+import { db } from "~/infrastructure/db/index";
+import { medias } from "~/infrastructure/db/schema";
 
 describe("getMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "b0000000-0000-0000-0000-000000000000";
+  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const newMediaData = {
     sourceId: testSourceId,
     filePath: "/test/path/get_image.png",
