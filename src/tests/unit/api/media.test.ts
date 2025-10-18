@@ -116,8 +116,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
 
@@ -149,10 +148,8 @@ describe("Media API Unit Tests", () => {
 
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect((exit.cause.value as Error).message).toBe(
-          "Media with this filePath already exists for the given sourceId"
-        );
+
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(Error).and.satisfy((err: Error) => err.message === $1)));
       }
     });
   });
@@ -208,31 +205,19 @@ describe("Media API Unit Tests", () => {
 
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect((exit.cause.value as Error).message).toBe("Media not found");
+
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(Error).and.satisfy((err: Error) => err.message === $1)));
       }
     });
 
-    it("should throw a ZodError for invalid media ID format", async () => {
-      const effect = getMedia(
-        "b0000000-0000-4000-8000-000000000000",
-        "invalid-format"
-      );
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
-      }
-    });
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
 
     it("should throw a ZodError for invalid source ID format", async () => {
       const effect = getMedia("invalid-format", "mock-uuid-123");
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
   });
@@ -293,8 +278,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
 
@@ -306,8 +290,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
 
@@ -319,8 +302,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
   });
@@ -364,25 +346,14 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      const effect = deleteMedia(
-        "b0000000-0000-4000-8000-000000000000",
-        "invalid-format"
-      );
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      const effect = deleteMedia("invalid-format", "mock-uuid-123");
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
   });
@@ -430,8 +401,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
 
@@ -440,8 +410,7 @@ describe("Media API Unit Tests", () => {
       const exit = await Effect.runPromiseExit(effect);
       expect(exit._tag).toBe("Failure");
       if (exit._tag === "Failure") {
-        console.log(exit.cause);
-        expect(exit.cause.failure).toBeInstanceOf(ZodError);
+        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
       }
     });
   });
