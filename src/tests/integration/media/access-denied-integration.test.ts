@@ -1,3 +1,4 @@
+import { Effect } from "effect";
 import { describe, expect, it } from "vitest";
 import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 
@@ -15,12 +16,16 @@ describe("File System Access Denied Integration", () => {
       height: 600,
     };
 
-    await expect(addMedia(newMediaData)).rejects.toThrow();
+    const exit = await Effect.runPromiseExit(addMedia(newMediaData));
+    expect(exit._tag).toBe("Failure");
   });
 
   it("should throw an error when deleteMedia encounters file system access denied", async () => {
     const mediaId = "mock-uuid-for-denied-access";
 
-    await expect(deleteMedia(testSourceId, mediaId)).rejects.toThrow();
+    const exit = await Effect.runPromiseExit(
+      deleteMedia(testSourceId, mediaId)
+    );
+    expect(exit._tag).toBe("Failure");
   });
 });

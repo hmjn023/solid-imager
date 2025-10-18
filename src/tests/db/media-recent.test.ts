@@ -1,16 +1,10 @@
 /// <reference types="vitest/globals" />
-import { Context, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UnknownDbError } from "~/infrastructure/db/errors";
 import { DatabaseService } from "~/infrastructure/db/layer";
 import { selectRecentMedia } from "~/infrastructure/db/media-recent";
 import { db } from "~/tests/setup"; // Import the mocked db
-
-// Create a mock DatabaseService Layer
-const _MockDatabaseLive = Layer.succeed(
-  DatabaseService,
-  Context.make(DatabaseService, { db: db as any })
-);
 
 describe("selectRecentMedia", () => {
   beforeEach(() => {
@@ -33,10 +27,9 @@ describe("selectRecentMedia", () => {
         limit: vi.fn().mockResolvedValueOnce([media1]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromise(
       Effect.provide(selectRecentMedia("source1"), MockDatabaseLive)
     );
@@ -53,10 +46,9 @@ describe("selectRecentMedia", () => {
         limit: vi.fn().mockRejectedValueOnce(new Error("DB error")),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromiseExit(
       Effect.provide(selectRecentMedia("source1"), MockDatabaseLive)
     );

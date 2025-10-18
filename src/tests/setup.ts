@@ -1,6 +1,5 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { Effect } from "effect";
 import { vi } from "vitest";
 
 // .envファイルのパスを指定して読み込む
@@ -102,23 +101,6 @@ export const pool = {
     release: vi.fn(),
   })),
 };
-
-vi.mock("~/infrastructure/db/media-sources", () => ({
-  selectMediaSources: vi.fn(() => Effect.succeed([])),
-}));
-
-vi.mock("~/infrastructure/db/presets", () => ({
-  insertPreset: vi.fn(() => Effect.succeed([])),
-  selectPresets: vi.fn(() => Effect.succeed([])),
-}));
-
-vi.mock("~/infrastructure/db/media-random", () => ({
-  selectRandomMedia: vi.fn(() => Effect.succeed([])),
-}));
-
-vi.mock("~/infrastructure/db/media-recent", () => ({
-  selectRecentMedia: vi.fn(() => Effect.succeed([])),
-}));
 
 vi.mock("~/infrastructure/db/__mocks__", () => ({
   addMediaToMockDb: vi.fn(),

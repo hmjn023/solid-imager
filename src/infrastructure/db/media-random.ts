@@ -1,5 +1,6 @@
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
+import { sql } from "drizzle-orm";
 import { Effect } from "effect";
+import { medias } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
 import { DatabaseService } from "./layer";
 
@@ -16,21 +17,27 @@ export const selectRandomMedia = (
   UnknownDbError | NotFoundError,
   DatabaseService
 > =>
-  Effect.tryPromise({
-    try: () => {
-      // Placeholder implementation
-      if (sourceId === "source1") {
-        return { id: "media1", sourceId: "source1", createdAt: new Date() };
-      }
-      return;
-    },
-    catch: (error) => new UnknownDbError({ message: String(error) }),
-  }).pipe(
-    Effect.flatMap((media) =>
-      media ? Effect.succeed(media) : Effect.fail(new NotFoundError())
-    ),
-    Effect.provideService(
-      DatabaseService,
-      DatabaseService.of({ _: DatabaseService(), db: {} as PostgresJsDatabase })
-    )
-  );
+  Effect.gen(function* (_) {
+    const { db } = yield* _(service(DatabaseService.Tag));
+    const result = yield* _(
+      Effect.tryPromise({
+        try: async () =>
+          db
+            .select()
+            .from(medias)
+            .where(sql`${medias.sourceId} = ${sourceId}`)
+            .orderBy(sql`RANDOM()`)
+            .limit(1),
+        catch: (error) => error,
+      }).pipe(
+        Effect.mapError(
+          (error) => new UnknownDbError({ message: String(error) })
+        )
+      )
+    );
+
+    if (result.length === 0) {
+      return yield* _(Effect.fail(new NotFoundError()));
+    }
+    return result[0];
+  });

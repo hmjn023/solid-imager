@@ -1,15 +1,9 @@
-import { Context, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { DatabaseService } from "~/infrastructure/db/layer";
 import { selectRandomMedia } from "~/infrastructure/db/media-random";
 import { db } from "~/tests/setup"; // Import the mocked db
-
-// Create a mock DatabaseService Layer
-const _MockDatabaseLive = Layer.succeed(
-  DatabaseService,
-  Context.make(DatabaseService, { db: db as any })
-);
 
 describe("selectRandomMedia", () => {
   beforeEach(() => {
@@ -32,10 +26,9 @@ describe("selectRandomMedia", () => {
         limit: vi.fn().mockResolvedValueOnce([media1]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromise(
       Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );
@@ -52,10 +45,9 @@ describe("selectRandomMedia", () => {
         limit: vi.fn().mockResolvedValueOnce([]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromiseExit(
       Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );
@@ -73,10 +65,9 @@ describe("selectRandomMedia", () => {
         limit: vi.fn().mockRejectedValueOnce(new Error("DB error")),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromiseExit(
       Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
     );

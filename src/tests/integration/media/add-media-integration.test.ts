@@ -1,10 +1,12 @@
 import { eq } from "drizzle-orm";
-import { describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { medias } from "~/infrastructure/db/schema";
+import { TestDatabaseLive } from "~/tests/db/test-layer";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
@@ -33,7 +35,9 @@ describe("addMedia Integration", () => {
       height: 600,
     };
 
-    const result = await addMedia(newMediaData);
+    const result = await Effect.runPromise(
+      Effect.provide(addMedia(newMediaData), TestDatabaseLive)
+    );
     addedMediaId = result.id;
 
     expect(result).toBeDefined();
@@ -55,9 +59,15 @@ describe("addMedia Integration", () => {
       // fileName、sizeなどが不足しています。
     };
 
-    await expect(
-      addMedia(invalidMediaData as Partial<NewMedia>)
-    ).rejects.toThrow(ZodError);
+    const effect = addMedia(invalidMediaData as Partial<NewMedia>);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
+    );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(ZodError);
+    }
   });
 
   it("should throw an error if media with same sourceId and filePath already exists", async () => {
@@ -71,11 +81,21 @@ describe("addMedia Integration", () => {
       height: 600,
     };
 
-    await addMedia(newMediaData); // 最初のメディアを追加します。
+    await Effect.runPromise(
+      Effect.provide(addMedia(newMediaData), TestDatabaseLive)
+    ); // 最初のメディアを追加します。
 
     // 同じsourceIdとfilePathで再度追加を試みます。
-    await expect(addMedia(newMediaData)).rejects.toThrow(
-      "Media with this filePath already exists for the given sourceId"
+    const effect = addMedia(newMediaData);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
     );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect((exit.cause.value as Error).message).toBe(
+        "Media with this filePath already exists for the given sourceId"
+      );
+    }
   });
 });

@@ -1,72 +1,91 @@
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import {
-  addMedia,
-  deleteMedia,
-  getMedia,
-} from "~/infrastructure/api-clients/media";
+import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
+import type { NewMedia } from "~/infrastructure/db/schema";
 import { medias } from "~/infrastructure/db/schema";
+import { TestDatabaseLive } from "~/tests/db/test-layer";
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
-  const initialMediaData = {
-    sourceId: testSourceId,
-    filePath: "/test/path/delete_image.png",
-    fileName: "delete_image.png",
-    size: 512,
-    mediaType: "image" as const,
-    width: 400,
-    height: 300,
-  };
+  const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    await db.delete(medias);
+    const initialMediaData: NewMedia = {
+      sourceId,
+      filePath: "/test/path/to_delete.png",
+      fileName: "to_delete.png",
+      size: 1024,
+      mediaType: "image",
+      width: 800,
+      height: 600,
+    };
     // データベースに初期メディアエントリを追加します。
-    const addedMedia = await addMedia(initialMediaData);
+    const addedMedia = await Effect.runPromise(
+      Effect.provide(addMedia(initialMediaData), TestDatabaseLive)
+    );
     testMediaId = addedMedia.id;
   });
 
-  afterEach(async () => {
-    // テストが失敗した場合でも、各テスト後にメディアが削除されることを保証します。
-    try {
-      await db.delete(medias).where(eq(medias.id, testMediaId));
-    } catch (_error) {
-      // テストによって既に削除されている場合は無視します。
-    }
+  afterAll(async () => {
+    // クリーンアップ
+    await db.delete(medias);
   });
 
   it("should successfully delete media from the database", async () => {
-    const result = await deleteMedia(testSourceId, testMediaId);
-
-    expect(result).toBeDefined();
+    const result = await Effect.runPromise(
+      Effect.provide(deleteMedia(sourceId, testMediaId), TestDatabaseLive)
+    );
     expect(result.success).toBe(true);
 
-    // メディアがデータベースに存在しないことを確認します。
-    await expect(getMedia(testSourceId, testMediaId)).rejects.toThrow(
-      "Media not found"
-    );
+    // メディアがデータベースから削除されたことを確認します。
+    const mediaInDb = await db
+      .select()
+      .from(medias)
+      .where(eq(medias.id, testMediaId));
+    expect(mediaInDb.length).toBe(0);
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000";
-    await expect(deleteMedia(testSourceId, nonExistentId)).rejects.toThrow(
-      "Media not found"
+    const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
+    const effect = deleteMedia(sourceId, nonExistentMediaId);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
     );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(Error);
+      expect((exit.cause.value as Error).message).toBe("Media not found");
+    }
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
-    const invalidId = "invalid-uuid";
-    await expect(deleteMedia(testSourceId, invalidId)).rejects.toThrow(
-      ZodError
+    const invalidMediaId = "invalid-uuid";
+    const effect = deleteMedia(sourceId, invalidMediaId);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
     );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(ZodError);
+    }
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {
-    const invalidSourceId = "invalid-source-id";
-    await expect(deleteMedia(invalidSourceId, testMediaId)).rejects.toThrow(
-      ZodError
+    const invalidSourceId = "invalid-uuid";
+    const effect = deleteMedia(invalidSourceId, testMediaId);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
     );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(ZodError);
+    }
   });
 });

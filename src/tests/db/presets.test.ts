@@ -1,15 +1,9 @@
-import { Context, Effect, Layer } from "effect";
+import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
 import { DatabaseService } from "~/infrastructure/db/layer";
 import { insertPreset, selectPresets } from "~/infrastructure/db/presets";
 import { db } from "~/tests/setup"; // Import the mocked db
-
-// Create a mock DatabaseService Layer
-const _MockDatabaseLive = Layer.succeed(
-  DatabaseService,
-  Context.make(DatabaseService, { db: db as any })
-);
 
 describe("Preset Database Operations", () => {
   beforeEach(() => {
@@ -28,10 +22,9 @@ describe("Preset Database Operations", () => {
         from: vi.fn().mockResolvedValueOnce([preset1]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromise(
       Effect.provide(selectPresets(), MockDatabaseLive)
     );
@@ -47,10 +40,9 @@ describe("Preset Database Operations", () => {
         returning: vi.fn().mockResolvedValueOnce([newPreset]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromise(
       Effect.provide(insertPreset(newPreset), MockDatabaseLive)
     );
@@ -65,10 +57,9 @@ describe("Preset Database Operations", () => {
         returning: vi.fn().mockRejectedValueOnce({ code: "23505" }),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromiseExit(
       Effect.provide(
         insertPreset({ id: "preset2", name: "Preset 2" }),
@@ -87,10 +78,9 @@ describe("Preset Database Operations", () => {
         returning: vi.fn().mockRejectedValueOnce(new Error("DB error")),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(
-      DatabaseService,
-      Context.make(DatabaseService, { db: mockDb as any })
-    );
+    const MockDatabaseLive = Layer.succeed(DatabaseService, {
+      db: mockDb as any,
+    });
     const result = await Effect.runPromiseExit(
       Effect.provide(
         insertPreset({ id: "preset2", name: "Preset 2" }),

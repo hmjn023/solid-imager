@@ -10,7 +10,7 @@ import { DatabaseService } from "./layer";
 
 export const selectMediaSources = () =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
+    const { db } = yield* _(service(DatabaseService.Tag));
     return yield* _(
       Effect.tryPromise({
         try: () => db.select().from(mediaSources),
@@ -29,7 +29,7 @@ export const selectMediaSources = () =>
 
 export const selectMediaSourceById = (mediaSourceId: string) =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
+    const { db } = yield* _(service(DatabaseService.Tag));
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
@@ -62,7 +62,7 @@ export const selectMediaSourceById = (mediaSourceId: string) =>
 
 export const insertMediaSource = (mediaSource: NewMediaSource) =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
+    const { db } = yield* _(service(DatabaseService.Tag));
     return yield* _(
       Effect.tryPromise({
         try: () => db.insert(mediaSources).values(mediaSource).returning(),
@@ -94,7 +94,7 @@ export const updateMediaSource = (
   mediaSource: MediaSource
 ) =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
+    const { db } = yield* _(service(DatabaseService.Tag));
     const result = yield* _(
       Effect.tryPromise({
         try: () =>
@@ -138,7 +138,7 @@ export const updateMediaSource = (
 
 export const deleteMediaSource = (mediaSourceId: string) =>
   Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
+    const { db } = yield* _(service(DatabaseService.Tag));
     const result = yield* _(
       Effect.tryPromise({
         try: () =>

@@ -1,94 +1,103 @@
-import { eq, like } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { Effect } from "effect";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia, listMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
+import type { NewMedia } from "~/infrastructure/db/schema";
 import { medias } from "~/infrastructure/db/schema";
+import { TestDatabaseLive } from "~/tests/db/test-layer";
 
 describe("listMedia Integration", () => {
-  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
-  const testDirectory = "/test/path/list_media/";
-  const mediaEntries = [
+  const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
+  const directoryPath = "/test/path";
+  const addedMediaIds: string[] = [];
+
+  const mediaEntries: NewMedia[] = [
     {
-      sourceId: testSourceId,
-      filePath: `${testDirectory}image1.png`,
+      sourceId,
+      filePath: `${directoryPath}/image1.png`,
       fileName: "image1.png",
-      size: 100,
-      mediaType: "image" as const,
-      width: 100,
-      height: 100,
+      size: 1024,
+      mediaType: "image",
+      width: 800,
+      height: 600,
     },
     {
-      sourceId: testSourceId,
-      filePath: `${testDirectory}image2.png`,
+      sourceId,
+      filePath: `${directoryPath}/image2.png`,
       fileName: "image2.png",
-      size: 200,
-      mediaType: "image" as const,
-      width: 200,
-      height: 200,
+      size: 2048,
+      mediaType: "image",
+      width: 1024,
+      height: 768,
     },
     {
-      sourceId: "c0000000-0000-0000-0000-000000000000", // 異なるsourceId
-      filePath: "/another/path/image3.png",
-      fileName: "image3.png",
-      size: 300,
-      mediaType: "image" as const,
-      width: 300,
-      height: 300,
+      sourceId: "a0000000-0000-4000-8000-000000000000", // 別のsourceId
+      filePath: `${directoryPath}/other_image.png`,
+      fileName: "other_image.png",
+      size: 1024,
+      mediaType: "image",
+      width: 800,
+      height: 600,
     },
   ];
-  let addedMediaIds: string[] = [];
 
-  beforeEach(async () => {
-    // 以前のテストデータをクリーンアップします。
-    await db.delete(medias).where(like(medias.filePath, `${testDirectory}%`));
-    await db
-      .delete(medias)
-      .where(eq(medias.filePath, "/another/path/image3.png"));
-
-    // テストメディアエントリを追加します。
+  beforeAll(async () => {
+    await db.delete(medias);
     for (const data of mediaEntries) {
-      const added = await addMedia(data);
+      const added = await Effect.runPromise(
+        Effect.provide(addMedia(data), TestDatabaseLive)
+      );
       addedMediaIds.push(added.id);
     }
   });
 
-  afterEach(async () => {
-    // 各テスト後に、追加されたすべてのメディアをクリーンアップします。
-    for (const id of addedMediaIds) {
-      await db.delete(medias).where(eq(medias.id, id));
-    }
-    addedMediaIds = [];
+  afterAll(async () => {
+    await db.delete(medias);
   });
 
   it("should return all media files within the specified directory for the given sourceId", async () => {
-    const result = await listMedia(testSourceId, testDirectory);
-
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-    expect(result.length).toBe(2); // testSourceIdのtestDirectoryには2つのメディアエントリのみが存在します。
-
-    const fileNames = result.map((m) => m.fileName).sort();
-    expect(fileNames).toEqual(["image1.png", "image2.png"]);
+    const result = await Effect.runPromise(
+      Effect.provide(listMedia(sourceId, directoryPath), TestDatabaseLive)
+    );
+    expect(result.length).toBe(2);
+    expect(result.every((m) => m.sourceId === sourceId)).toBe(true);
+    expect(result.map((m) => m.fileName).sort()).toEqual([
+      "image1.png",
+      "image2.png",
+    ]);
   });
 
   it("should return an empty array if directoryPath contains no media files for the given sourceId", async () => {
-    const emptyDirectory = "/test/path/empty_folder/";
-    const result = await listMedia(testSourceId, emptyDirectory);
-
-    expect(result).toBeDefined();
-    expect(Array.isArray(result)).toBe(true);
-    expect(result).toHaveLength(0);
+    const emptyDirectoryPath = "/test/empty_path";
+    const result = await Effect.runPromise(
+      Effect.provide(listMedia(sourceId, emptyDirectoryPath), TestDatabaseLive)
+    );
+    expect(result.length).toBe(0);
   });
 
   it("should throw a ZodError if directoryPath is empty", async () => {
-    await expect(listMedia(testSourceId, "")).rejects.toThrow(ZodError);
+    const effect = listMedia(sourceId, "");
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
+    );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(ZodError);
+    }
   });
 
   it("should throw a ZodError if sourceId is invalid", async () => {
-    const invalidSourceId = "invalid-source-id";
-    await expect(listMedia(invalidSourceId, testDirectory)).rejects.toThrow(
-      ZodError
+    const invalidSourceId = "invalid-uuid";
+    const effect = listMedia(invalidSourceId, directoryPath);
+    const exit = await Effect.runPromiseExit(
+      Effect.provide(effect, TestDatabaseLive)
     );
+
+    expect(exit._tag).toBe("Failure");
+    if (exit._tag === "Failure") {
+      expect(exit.cause.value).toBeInstanceOf(ZodError);
+    }
   });
 });
