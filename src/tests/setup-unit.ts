@@ -1,18 +1,9 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeEach, vi } from "vitest";
+import { vi } from "vitest";
 
 // .envファイルのパスを指定して読み込む
 config({ path: path.resolve(process.cwd(), ".env") });
-
-// 統合テスト用のDB接続情報を設定
-if (!process.env.DB_HOST) {
-  process.env.DB_HOST = "localhost";
-  process.env.DB_PORT = "5432";
-  process.env.DB_DATABASE = "solid_imager_test";
-  process.env.DB_USER = "test";
-  process.env.DB_PASSWORD = "test";
-}
 
 // モックされたdbオブジェクトを作成
 const mockDb = {
@@ -113,32 +104,13 @@ export const pool = {
   })),
 };
 
-// モックを設定 - 統合テスト以外でのみ適用
+// モックを設定
 vi.mock("~/infrastructure/db/__mocks__", () => ({
   addMediaToMockDb: vi.fn(),
   resetMockDbState: vi.fn(),
 }));
 
-// 統合テストファイルのパターンを判定
-const isIntegrationTest = (filePath: string) => {
-  return filePath.includes("/integration/");
-};
-
-// ~/infrastructure/db/index のモックを条件付きで設定
-vi.mock("~/infrastructure/db/index", async (importOriginal) => {
-  // テストファイルのパスを取得
-  const testPath = expect.getState?.()?.testPath || "";
-  
-  if (isIntegrationTest(testPath)) {
-    // 統合テストの場合は実際のdbを使用
-    return importOriginal();
-  }
-  
-  // ユニット/DBテストの場合はモックを使用
-  return { db: mockDb };
-});
-
-// 各テストの前にモックをクリア
-beforeEach(() => {
-  vi.clearAllMocks();
-});
+// ~/infrastructure/db/index をモック
+vi.mock("~/infrastructure/db/index", () => ({
+  db: mockDb,
+}));

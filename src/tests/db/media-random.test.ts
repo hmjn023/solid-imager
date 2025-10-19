@@ -1,7 +1,5 @@
-import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
-import { DatabaseService } from "~/infrastructure/db/layer";
 import { selectRandomMedia } from "~/infrastructure/db/media-random";
 import { db } from "~/tests/setup"; // Import the mocked db
 
@@ -18,61 +16,49 @@ describe("selectRandomMedia", () => {
 
   it("should return a random media item on success", async () => {
     const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValueOnce([media1]),
+    
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([media1]),
+          }),
+        }),
       }),
-    };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
     });
-    const result = await Effect.runPromise(
-      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
-    );
+
+    const result = await selectRandomMedia("source1");
     expect(result).toEqual(media1);
-    expect(mockDb.select).toHaveBeenCalled();
+    expect(db.select).toHaveBeenCalled();
   });
 
   it("should return NotFoundError if no random media found", async () => {
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValueOnce([]),
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockResolvedValue([]), // No media found
+          }),
+        }),
       }),
-    };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
     });
-    const result = await Effect.runPromiseExit(
-      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
-    );
-    expect(result._tag).toBe("Failure");
-    expect(result.cause.value).toBeInstanceOf(NotFoundError);
-    expect(mockDb.select).toHaveBeenCalled();
+
+    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(NotFoundError);
+    expect(db.select).toHaveBeenCalled();
   });
 
   it("should return UnknownDbError on failure", async () => {
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockRejectedValueOnce(new Error("DB error")),
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          orderBy: vi.fn().mockReturnValue({
+            limit: vi.fn().mockRejectedValue(new Error("DB error")),
+          }),
+        }),
       }),
-    };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
     });
-    const result = await Effect.runPromiseExit(
-      Effect.provide(selectRandomMedia("source1"), MockDatabaseLive)
-    );
-    expect(result._tag).toBe("Failure");
-    expect(result.cause.value).toBeInstanceOf(UnknownDbError);
-    expect(mockDb.select).toHaveBeenCalled();
+
+    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(UnknownDbError);
+    expect(db.select).toHaveBeenCalled();
   });
 });

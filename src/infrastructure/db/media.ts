@@ -1,119 +1,153 @@
 import { and, eq, like } from "drizzle-orm";
-import { Effect } from "effect";
+import { db } from "~/infrastructure/db/index";
 import { type Media, medias } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "./errors";
-import { DatabaseService } from "./layer";
+import { NotFoundError, UnknownDbError } from "./errors";
 
-export const insertMedia = (
+export const insertMedia = async (
   newMedia: Omit<Media, "id" | "createdAt" | "modifiedAt" | "indexedAt">
-) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.promise(() =>
-      db.insert(medias).values(newMedia).returning()
-    );
+): Promise<Media> => {
+  try {
+    const result = await db.insert(medias).values(newMedia).returning();
     return result[0];
-  });
+  } catch (error) {
+    throw new UnknownDbError({
+      message: "Failed to insert media",
+      details: error,
+    });
+  }
+};
 
-export const selectMediaBySourceIdAndFilePath = (
+export const selectMediaBySourceIdAndFilePath = async (
   sourceId: string,
   filePath: string
-) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.promise(() =>
-      db
-        .select()
-        .from(medias)
-        .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)))
-    );
+): Promise<Media[]> => {
+  try {
+    const result = await db
+      .select()
+      .from(medias)
+      .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
     return result;
-  });
+  } catch (error) {
+    throw new UnknownDbError({
+      message: "Failed to select media by source ID and file path",
+      details: error,
+    });
+  }
+};
 
-export const selectMediaById = (id: string) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.promise(() =>
-      db.select().from(medias).where(eq(medias.id, id))
-    );
-    return result;
-  });
+export const selectMediaById = async (id: string): Promise<Media> => {
+  try {
+    const result = await db.select().from(medias).where(eq(medias.id, id));
+    if (result.length === 0) {
+      throw new NotFoundError({ message: `Media with ID ${id} not found` });
+    }
+    return result[0];
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to select media by ID: ${id}`,
+      details: error,
+    });
+  }
+};
 
-export const selectMediaBySourceIdAndDirectoryPath = (
+export const selectMediaBySourceIdAndDirectoryPath = async (
   sourceId: string,
   directoryPath: string
-) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
+): Promise<Media[]> => {
+  try {
     const searchPath = `${directoryPath}%`;
-    const result = yield* Effect.promise(() =>
-      db
-        .select()
-        .from(medias)
-        .where(
-          and(eq(medias.sourceId, sourceId), like(medias.filePath, searchPath))
-        )
-    );
+    const result = await db
+      .select()
+      .from(medias)
+      .where(
+        and(eq(medias.sourceId, sourceId), like(medias.filePath, searchPath))
+      );
     return result;
-  });
+  } catch (error) {
+    throw new UnknownDbError({
+      message: "Failed to select media by source ID and directory path",
+      details: error,
+    });
+  }
+};
 
-export const updateMedia = (id: string, updatedMedia: Partial<Media>) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.promise(() =>
-      db.update(medias).set(updatedMedia).where(eq(medias.id, id)).returning()
-    );
+export const updateMedia = async (
+  id: string,
+  updatedMedia: Partial<Media>
+): Promise<Media> => {
+  try {
+    const result = await db
+      .update(medias)
+      .set(updatedMedia)
+      .where(eq(medias.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new NotFoundError({ message: `Media with ID ${id} not found` });
+    }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to update media with ID: ${id}`,
+      details: error,
+    });
+  }
+};
 
-export const deleteMedia = (id: string) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.promise(() =>
-      db.delete(medias).where(eq(medias.id, id)).returning()
-    );
+export const deleteMedia = async (id: string): Promise<Media> => {
+  try {
+    const result = await db.delete(medias).where(eq(medias.id, id)).returning();
+    if (result.length === 0) {
+      throw new NotFoundError({ message: `Media with ID ${id} not found` });
+    }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to delete media with ID: ${id}`,
+      details: error,
+    });
+  }
+};
 
-export const selectMediaBySourceId = (sourceId: string) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    return yield* Effect.tryPromise({
-      try: () => db.select().from(medias).where(eq(medias.sourceId, sourceId)),
-      catch: (error) => error,
-    }).pipe(
-      Effect.mapError(
-        (error) =>
-          new UnknownDbError({
-            message: `Failed to select medias by source ID: ${sourceId}`,
-            details: error,
-          })
-      )
-    );
-  });
+export const selectMediaBySourceId = async (
+  sourceId: string
+): Promise<Media[]> => {
+  try {
+    return await db.select().from(medias).where(eq(medias.sourceId, sourceId));
+  } catch (error) {
+    throw new UnknownDbError({
+      message: `Failed to select medias by source ID: ${sourceId}`,
+      details: error,
+    });
+  }
+};
 
-export const deleteMediaByPath = (sourceId: string, directoryPath: string) =>
-  Effect.gen(function* () {
-    const { db } = yield* DatabaseService;
-    return yield* Effect.tryPromise({
-      try: () =>
-        db
-          .delete(medias)
-          .where(
-            and(
-              eq(medias.sourceId, sourceId),
-              like(medias.filePath, `${directoryPath}%`)
-            )
-          )
-          .returning(),
-      catch: (error) => error,
-    }).pipe(
-      Effect.mapError(
-        (error) =>
-          new UnknownDbError({
-            message: `Failed to delete medias by path ${directoryPath} for source ID: ${sourceId}`,
-            details: error,
-          })
+export const deleteMediaByPath = async (
+  sourceId: string,
+  directoryPath: string
+): Promise<Media[]> => {
+  try {
+    return await db
+      .delete(medias)
+      .where(
+        and(
+          eq(medias.sourceId, sourceId),
+          like(medias.filePath, `${directoryPath}%`)
+        )
       )
-    );
-  });
+      .returning();
+  } catch (error) {
+    throw new UnknownDbError({
+      message: `Failed to delete medias by path ${directoryPath} for source ID: ${sourceId}`,
+      details: error,
+    });
+  }
+};

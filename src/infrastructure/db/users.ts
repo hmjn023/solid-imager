@@ -1,149 +1,110 @@
 import { eq } from "drizzle-orm";
-import { Effect } from "effect";
+import { db } from "~/infrastructure/db/index";
 import { users } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
-import { DatabaseService } from "./layer";
 
-export const selectUsers = () =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    return yield* _(
-      Effect.tryPromise({
-        try: () => db.select().from(users),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) =>
-            new UnknownDbError({
-              message: "Failed to select users",
-              details: error,
-            })
-        )
-      )
-    );
-  });
+export const selectUsers = async () => {
+  try {
+    return await db.select().from(users);
+  } catch (error) {
+    throw new UnknownDbError({
+      message: "Failed to select users",
+      details: error,
+    });
+  }
+};
 
-export const insertUser = (userData: unknown) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    return yield* _(
-      Effect.tryPromise({
-        try: () => db.insert(users).values(userData).returning(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError((error) => {
-          if (
-            error &&
-            typeof error === "object" &&
-            "code" in error &&
-            error.code === "23505"
-          ) {
-            return new ConstraintError({
-              message: "User with this email already exists",
-              details: error,
-            });
-          }
-          return new UnknownDbError({
-            message: "Failed to insert user",
-            details: error,
-          });
-        })
-      )
-    );
-  });
+export const insertUser = async (userData: unknown) => {
+  try {
+    return await db.insert(users).values(userData).returning();
+  } catch (error: unknown) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "23505"
+    ) {
+      throw new ConstraintError({
+        message: "User with this email already exists",
+        details: error,
+      });
+    }
+    throw new UnknownDbError({
+      message: "Failed to insert user",
+      details: error,
+    });
+  }
+};
 
-export const selectUserById = (userId: string) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    const result = yield* _(
-      Effect.tryPromise({
-        try: () => db.select().from(users).where(eq(users.id, userId)),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) =>
-            new UnknownDbError({
-              message: `Failed to select user by ID: ${userId}`,
-              details: error,
-            })
-        )
-      )
-    );
+export const selectUserById = async (userId: string) => {
+  try {
+    const result = await db.select().from(users).where(eq(users.id, userId));
     if (result.length === 0) {
-      return yield* _(
-        Effect.fail(
-          new NotFoundError({ message: `User with ID ${userId} not found` })
-        )
-      );
+      throw new NotFoundError({ message: `User with ID ${userId} not found` });
     }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to select user by ID: ${userId}`,
+      details: error,
+    });
+  }
+};
 
-export const updateUser = (userId: string, userData: unknown) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    const result = yield* _(
-      Effect.tryPromise({
-        try: () =>
-          db
-            .update(users)
-            .set(userData)
-            .where(eq(users.id, userId))
-            .returning(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError((error) => {
-          if (
-            error &&
-            typeof error === "object" &&
-            "code" in error &&
-            error.code === "23505"
-          ) {
-            return new ConstraintError({
-              message: "User with this email already exists",
-              details: error,
-            });
-          }
-          return new UnknownDbError({
-            message: `Failed to update user with ID: ${userId}`,
-            details: error,
-          });
-        })
-      )
-    );
+export const updateUser = async (userId: string, userData: unknown) => {
+  try {
+    const result = await db
+      .update(users)
+      .set(userData)
+      .where(eq(users.id, userId))
+      .returning();
     if (result.length === 0) {
-      return yield* _(
-        Effect.fail(
-          new NotFoundError({ message: `User with ID ${userId} not found` })
-        )
-      );
+      throw new NotFoundError({ message: `User with ID ${userId} not found` });
     }
     return result[0];
-  });
+  } catch (error: unknown) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      "code" in error &&
+      error.code === "23505"
+    ) {
+      throw new ConstraintError({
+        message: "User with this email already exists",
+        details: error,
+      });
+    }
+    throw new UnknownDbError({
+      message: `Failed to update user with ID: ${userId}`,
+      details: error,
+    });
+  }
+};
 
-export const deleteUser = (userId: string) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    const result = yield* _(
-      Effect.tryPromise({
-        try: () => db.delete(users).where(eq(users.id, userId)).returning(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) =>
-            new UnknownDbError({
-              message: `Failed to delete user with ID: ${userId}`,
-              details: error,
-            })
-        )
-      )
-    );
+export const deleteUser = async (userId: string) => {
+  try {
+    const result = await db
+      .delete(users)
+      .where(eq(users.id, userId))
+      .returning();
     if (result.length === 0) {
-      return yield* _(
-        Effect.fail(
-          new NotFoundError({ message: `User with ID ${userId} not found` })
-        )
-      );
+      throw new NotFoundError({ message: `User with ID ${userId} not found` });
     }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to delete user with ID: ${userId}`,
+      details: error,
+    });
+  }
+};

@@ -1,72 +1,56 @@
 import { eq } from "drizzle-orm";
-import { Effect } from "effect";
+import { db } from "~/infrastructure/db/index";
 import { mediaGenerationInfo } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
-import { DatabaseService } from "./layer";
 
-export const selectMediaGenerationInfoById = (mediaId: string) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    const result = yield* _(
-      Effect.tryPromise({
-        try: () =>
-          db
-            .select()
-            .from(mediaGenerationInfo)
-            .where(eq(mediaGenerationInfo.mediaId, mediaId)),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) =>
-            new UnknownDbError({
-              message: `Failed to select media generation info by media ID: ${mediaId}`,
-              details: error,
-            })
-        )
-      )
-    );
+export const selectMediaGenerationInfoById = async (
+  mediaId: string
+): Promise<typeof mediaGenerationInfo.$inferSelect> => {
+  try {
+    const result = await db
+      .select()
+      .from(mediaGenerationInfo)
+      .where(eq(mediaGenerationInfo.mediaId, mediaId));
     if (result.length === 0) {
-      return yield* _(
-        Effect.fail(
-          new NotFoundError({
-            message: `Media generation info for media ID ${mediaId} not found`,
-          })
-        )
-      );
+      throw new NotFoundError({
+        message: `Media generation info for media ID ${mediaId} not found`,
+      });
     }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to select media generation info by media ID: ${mediaId}`,
+      details: error,
+    });
+  }
+};
 
-export const updateMediaGenerationInfo = (mediaId: string, metadata: object) =>
-  Effect.gen(function* (_) {
-    const { db } = yield* _(DatabaseService);
-    const result = yield* _(
-      Effect.tryPromise({
-        try: () =>
-          db
-            .update(mediaGenerationInfo)
-            .set({ metadata })
-            .where(eq(mediaGenerationInfo.mediaId, mediaId))
-            .returning(),
-        catch: (error) => error,
-      }).pipe(
-        Effect.mapError(
-          (error) =>
-            new UnknownDbError({
-              message: `Failed to update media generation info for media ID: ${mediaId}`,
-              details: error,
-            })
-        )
-      )
-    );
+export const updateMediaGenerationInfo = async (
+  mediaId: string,
+  metadata: object
+): Promise<typeof mediaGenerationInfo.$inferSelect> => {
+  try {
+    const result = await db
+      .update(mediaGenerationInfo)
+      .set({ metadata })
+      .where(eq(mediaGenerationInfo.mediaId, mediaId))
+      .returning();
     if (result.length === 0) {
-      return yield* _(
-        Effect.fail(
-          new NotFoundError({
-            message: `Media generation info for media ID ${mediaId} not found`,
-          })
-        )
-      );
+      throw new NotFoundError({
+        message: `Media generation info for media ID ${mediaId} not found`,
+      });
     }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({
+      message: `Failed to update media generation info for media ID: ${mediaId}`,
+      details: error,
+    });
+  }
+};

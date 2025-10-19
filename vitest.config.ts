@@ -10,8 +10,17 @@ export default defineConfig({
     },
     environment: "node",
     globals: true,
-    setupFiles: ["./src/tests/setup.ts"], // Add setup files here if needed
+    setupFiles: ["./src/tests/setup.ts"],
     exclude: ['**/*.spec.ts', 'src/tests/e2e/**', 'node_modules/**'],
-    
+    // 統合テストを順次実行（実際のDBを使用するため）
+    sequence: {
+      hooks: 'stack',
+    },
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
   },
 });

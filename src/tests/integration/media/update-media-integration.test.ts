@@ -1,5 +1,4 @@
-import { eq } from "drizzle-orm";
-import { Effect } from "effect";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import {
@@ -9,7 +8,6 @@ import {
 } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import { medias } from "~/infrastructure/db/schema";
-import { TestDatabaseLive } from "~/tests/db/test-layer";
 
 describe("updateMedia Integration", () => {
   let testMediaId: string;
@@ -17,7 +15,7 @@ describe("updateMedia Integration", () => {
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
     sourceId: testSourceId,
-    filePath: "/test/path/initial_image.png",
+    filePath: `/test/path/initial_image-${Date.now()}.png`,
     fileName: "initial_image.png",
     size: 1024,
     mediaType: "image" as const,
@@ -26,10 +24,10 @@ describe("updateMedia Integration", () => {
   };
 
   beforeEach(async () => {
+    // 以前のテストデータをクリーンアップします。
+    await db.delete(medias).where(sql`true`);
     // データベースに初期メディアエントリを追加します。
-    const addedMedia = await Effect.runPromise(
-      Effect.provide(addMedia(initialMediaData), TestDatabaseLive)
-    );
+    const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
@@ -47,12 +45,7 @@ describe("updateMedia Integration", () => {
       width: 1200,
     };
 
-    const updatedMedia = await Effect.runPromise(
-      Effect.provide(
-        updateMedia(testSourceId, testMediaId, updates),
-        TestDatabaseLive
-      )
-    );
+    const updatedMedia = await updateMedia(testSourceId, testMediaId, updates);
 
     expect(updatedMedia).toBeDefined();
     expect(updatedMedia.id).toBe(testMediaId);
@@ -62,9 +55,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia.updatedAt).toBeInstanceOf(Date);
 
     // 変更がデータベースに永続化されていることを確認します。
-    const mediaInDb = await Effect.runPromise(
-      Effect.provide(getMedia(testSourceId, testMediaId), TestDatabaseLive)
-    );
+    const mediaInDb = await getMedia(testSourceId, testMediaId);
     expect(mediaInDb.fileName).toBe(updates.fileName);
     expect(mediaInDb.description).toBe(updates.description);
     expect(mediaInDb.width).toBe(updates.width);
@@ -73,60 +64,31 @@ describe("updateMedia Integration", () => {
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
     const nonExistentId = "a0000000-0000-0000-0000-000000000000";
     const updates = { fileName: "non_existent.png" };
-    const effect = updateMedia(testSourceId, nonExistentId, updates);
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
-    );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect(exit.cause.value).toBeInstanceOf(Error);
-      expect((exit.cause.value as Error).message).toBe("Media not found");
-    }
+    await expect(
+      updateMedia(testSourceId, nonExistentId, updates)
+    ).rejects.toThrow("Media not found");
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
     const invalidId = "invalid-uuid";
     const updates = { fileName: "test.png" };
-    const effect = updateMedia(testSourceId, invalidId, updates);
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
-    );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect(exit.cause.value).toBeInstanceOf(ZodError);
-    }
+    await expect(
+      updateMedia(testSourceId, invalidId, updates)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {
     const invalidSourceId = "invalid-uuid";
     const updates = { fileName: "test.png" };
-    const effect = updateMedia(invalidSourceId, testMediaId, updates);
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
-    );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect(exit.cause.value).toBeInstanceOf(ZodError);
-    }
+    await expect(
+      updateMedia(invalidSourceId, testMediaId, updates)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for invalid update data", async () => {
     const invalidUpdates = { width: -100 }; // 無効なフィールド
-    const effect = updateMedia(
-      testSourceId,
-      testMediaId,
-      invalidUpdates as any
-    );
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
-    );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect(exit.cause.value).toBeInstanceOf(ZodError);
-    }
+    await expect(
+      updateMedia(testSourceId, testMediaId, invalidUpdates as any)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });

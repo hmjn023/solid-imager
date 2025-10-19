@@ -1,19 +1,17 @@
-import { eq } from "drizzle-orm";
-import { Effect } from "effect";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { medias } from "~/infrastructure/db/schema";
-import { TestDatabaseLive } from "~/tests/db/test-layer";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
 
   beforeEach(async () => {
     // 必要に応じて、以前のテストデータをクリーンアップします。
-    await db.delete(medias);
+    await db.delete(medias).where(sql`true`);
   });
 
   afterEach(async () => {
@@ -27,7 +25,7 @@ describe("addMedia Integration", () => {
   it("should successfully add media to the database", async () => {
     const newMediaData = {
       sourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
-      filePath: "/test/path/image.png",
+      filePath: `/test/path/image-${Date.now()}.png`,
       fileName: "test_image.png",
       size: 1024,
       mediaType: "image" as const,
@@ -35,9 +33,7 @@ describe("addMedia Integration", () => {
       height: 600,
     };
 
-    const result = await Effect.runPromise(
-      Effect.provide(addMedia(newMediaData), TestDatabaseLive)
-    );
+    const result = await addMedia(newMediaData);
     addedMediaId = result.id;
 
     expect(result).toBeDefined();
@@ -59,15 +55,9 @@ describe("addMedia Integration", () => {
       // fileName、sizeなどが不足しています。
     };
 
-    const effect = addMedia(invalidMediaData as Partial<NewMedia>);
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
-    );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect(exit.cause.value).toBeInstanceOf(ZodError);
-    }
+    await expect(
+      addMedia(invalidMediaData as Partial<NewMedia>)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw an error if media with same sourceId and filePath already exists", async () => {
@@ -81,21 +71,11 @@ describe("addMedia Integration", () => {
       height: 600,
     };
 
-    await Effect.runPromise(
-      Effect.provide(addMedia(newMediaData), TestDatabaseLive)
-    ); // 最初のメディアを追加します。
+    await addMedia(newMediaData); // 最初のメディアを追加します。
 
     // 同じsourceIdとfilePathで再度追加を試みます。
-    const effect = addMedia(newMediaData);
-    const exit = await Effect.runPromiseExit(
-      Effect.provide(effect, TestDatabaseLive)
+    await expect(addMedia(newMediaData)).rejects.toThrow(
+      "Media with this filePath already exists for the given sourceId"
     );
-
-    expect(exit._tag).toBe("Failure");
-    if (exit._tag === "Failure") {
-      expect((exit.cause.value as Error).message).toBe(
-        "Media with this filePath already exists for the given sourceId"
-      );
-    }
   });
 });

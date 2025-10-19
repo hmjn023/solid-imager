@@ -1,8 +1,7 @@
 import { sql } from "drizzle-orm";
-import { Effect } from "effect";
+import { db } from "~/infrastructure/db/index";
 import { medias } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
-import { DatabaseService } from "./layer";
 
 type Media = {
   id: string;
@@ -10,30 +9,23 @@ type Media = {
   createdAt: Date;
 };
 
-export const selectRandomMedia = (
-  sourceId: string
-): Effect.Effect<
-  Media | undefined,
-  UnknownDbError | NotFoundError,
-  DatabaseService
-> =>
-  Effect.gen(function* (_) {
-    const { db } = yield* DatabaseService;
-    const result = yield* Effect.tryPromise({
-      try: async () =>
-        db
-          .select()
-          .from(medias)
-          .where(sql`${medias.sourceId} = ${sourceId}`)
-          .orderBy(sql`RANDOM()`)
-          .limit(1),
-      catch: (error) => error,
-    }).pipe(
-      Effect.mapError((error) => new UnknownDbError({ message: String(error) }))
-    );
+export const selectRandomMedia = async (sourceId: string): Promise<Media> => {
+  try {
+    const result = await db
+      .select()
+      .from(medias)
+      .where(sql`${medias.sourceId} = ${sourceId}`)
+      .orderBy(sql`RANDOM()`)
+      .limit(1);
 
     if (result.length === 0) {
-      return yield* _(Effect.fail(new NotFoundError()));
+      throw new NotFoundError({ message: "No random media found for the given sourceId" });
     }
     return result[0];
-  });
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({ message: String(error) });
+  }
+};

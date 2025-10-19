@@ -1,5 +1,4 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { Effect, pipe } from "effect";
 import {
   createMediaSource,
   getMediaSources,
@@ -13,27 +12,22 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
  */
 
 export async function GET() {
-  const result = await pipe(getMediaSources(), Effect.runPromise);
-
-  if (
-    result &&
-    typeof result === "object" &&
-    "_tag" in result &&
-    result._tag === "FetchError"
-  ) {
-    return new Response(JSON.stringify({ error: result.message }), {
-      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  try {
+    const result = await getMediaSources();
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return new Response(JSON.stringify(result), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }
 
 /**
@@ -44,33 +38,25 @@ export async function GET() {
 export async function POST({ request }: APIEvent) {
   const { name, description, type, connectionInfo } = await request.json();
 
-  const result = await pipe(
-    createMediaSource({
+  try {
+    const result = await createMediaSource({
       name,
       description,
       type,
       connectionInfo,
-    }),
-    Effect.runPromise
-  );
-
-  if (
-    result &&
-    typeof result === "object" &&
-    "_tag" in result &&
-    result._tag === "FetchError"
-  ) {
-    return new Response(JSON.stringify({ error: result.message }), {
-      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+    });
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return new Response(JSON.stringify(result), {
-    status: 201,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }

@@ -1,4 +1,3 @@
-import { Effect } from "effect";
 import type { MediaSourceTypeEnum } from "~/domain/sources/types";
 import {
   deleteMediaSource,
@@ -30,78 +29,30 @@ export type UpdateSourceData = CreateSourceData;
 
 export const MediaSourceService = {
   // すべてのソースを取得します。
-  fetchSources(): Effect.Effect<MediaSource[], FetchError, never> {
-    return Effect.tryPromise({
-      try: async () => await selectMediaSources(),
-      catch: (error) => {
-        if (error instanceof FetchError) {
-          return error;
-        }
-        return new FetchError("An unknown error occurred during fetchSources");
-      },
-    });
+  fetchSources(): Promise<MediaSource[]> {
+    return selectMediaSources();
   },
 
   // 新しいソースを作成します。
-  createSource(
-    sourceData: NewMediaSource
-  ): Effect.Effect<MediaSource[], FetchError, never> {
-    return Effect.tryPromise({
-      try: async () => await insertMediaSource(sourceData),
-      catch: (error) => {
-        if (error instanceof FetchError) {
-          return error;
-        }
-        return new FetchError("An unknown error occurred during createSource");
-      },
-    });
+  createSource(sourceData: NewMediaSource): Promise<MediaSource[]> {
+    return insertMediaSource(sourceData);
   },
 
   // 既存のソースを更新します。
   updateSource(
     sourceId: string,
     sourceData: MediaSource
-  ): Effect.Effect<MediaSource[], FetchError, never> {
-    return Effect.tryPromise({
-      try: async () => await updateMediaSourceDb(sourceId, sourceData),
-      catch: (error) => {
-        if (error instanceof FetchError) {
-          return error;
-        }
-        return new FetchError("An unknown error occurred during updateSource");
-      },
-    });
+  ): Promise<MediaSource[]> {
+    return updateMediaSourceDb(sourceId, sourceData);
   },
 
   // IDでソースを取得します。
-  fetchSourceById(
-    sourceId: string
-  ): Effect.Effect<(MediaSource | undefined)[], FetchError, never> {
-    return Effect.tryPromise({
-      try: async () => await selectMediaSourceById(sourceId),
-      catch: (error) => {
-        if (error instanceof FetchError) {
-          return error;
-        }
-        return new FetchError(
-          "An unknown error occurred during fetchSourceById"
-        );
-      },
-    });
+  fetchSourceById(sourceId: string): Promise<(MediaSource | undefined)[]> {
+    return selectMediaSourceById(sourceId);
   },
 
   // ソースを削除します。
-  deleteSource(
-    sourceId: string
-  ): Effect.Effect<MediaSource[], FetchError, never> {
-    return Effect.tryPromise({
-      try: async () => await deleteMediaSource(sourceId),
-      catch: (error) => {
-        if (error instanceof FetchError) {
-          return error;
-        }
-        return new FetchError("An unknown error occurred during deleteSource");
-      },
-    });
+  deleteSource(sourceId: string): Promise<MediaSource[]> {
+    return deleteMediaSource(sourceId);
   },
 };

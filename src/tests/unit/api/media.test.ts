@@ -1,4 +1,3 @@
-import { Effect, Layer } from "effect";
 import { v4 as uuidv4 } from "uuid";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ZodError } from "zod";
@@ -13,11 +12,16 @@ import {
   addMediaToMockDb,
   resetMockDbState,
 } from "~/infrastructure/db/__mocks__";
-import { DatabaseService } from "~/infrastructure/db/layer";
+import { NotFoundError } from "~/infrastructure/db/errors";
 import {
+  deleteMedia as deleteMediaDb,
+  insertMedia,
   selectMediaById,
+  selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
+  updateMedia as updateMediaDb,
 } from "~/infrastructure/db/media";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
 vi.mock("~/infrastructure/db/media", () => ({
   selectMediaById: vi.fn(),
@@ -26,6 +30,10 @@ vi.mock("~/infrastructure/db/media", () => ({
   updateMedia: vi.fn(),
   deleteMedia: vi.fn(),
   selectMediaBySourceIdAndDirectoryPath: vi.fn(),
+}));
+
+vi.mock("~/infrastructure/jobs/thumbnails", () => ({
+  deleteThumbnail: vi.fn(),
 }));
 
 describe("Media API Unit Tests", () => {
@@ -52,18 +60,20 @@ describe("Media API Unit Tests", () => {
 
     // Directly add to the mock state for selectMediaById to find it
     // This bypasses the insertMedia mock for setup purposes
-    selectMediaBySourceIdAndFilePath.mockImplementation((srcId, filePath) => {
-      if (srcId === sourceId && filePath === existingMedia.filePath) {
-        return Effect.succeed([existingMedia]);
+    (selectMediaBySourceIdAndFilePath as vi.Mock).mockImplementation(
+      (srcId, filePath) => {
+        if (srcId === sourceId && filePath === existingMedia.filePath) {
+          return [existingMedia];
+        }
+        return [];
       }
-      return Effect.succeed([]);
-    });
+    );
 
-    selectMediaById.mockImplementation((id) => {
+    (selectMediaById as vi.Mock).mockImplementation((id) => {
       if (id === mediaId) {
-        return Effect.succeed([existingMedia]);
+        return existingMedia;
       }
-      return Effect.succeed([]);
+      return;
     });
   });
 
@@ -79,45 +89,29 @@ describe("Media API Unit Tests", () => {
         height: 100,
       };
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([]),
-        }),
-        insert: vi.fn().mockReturnValue({
-          values: vi.fn().mockReturnThis(),
-          returning: vi.fn().mockResolvedValueOnce([
-            {
-              id: uuidv4(),
-              ...newMediaData,
-              createdAt: new Date(),
-              modifiedAt: new Date(),
-              indexedAt: new Date(),
-            },
-          ]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
-      });
+      (selectMediaBySourceIdAndFilePath as vi.Mock).mockResolvedValueOnce([]);
+      (insertMedia as vi.Mock).mockResolvedValueOnce([
+        {
+          id: uuidv4(),
+          ...newMediaData,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
 
-      const result = await Effect.runPromise(
-        Effect.provide(addMedia(newMediaData), MockDatabaseLive)
-      );
+      const result = await addMedia(newMediaData);
 
-      expect(mockDb.insert).toHaveBeenCalled();
+      expect(insertMedia).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(result.fileName).toBe(newMediaData.fileName);
     });
 
     it("should throw a ZodError if required fields are missing", async () => {
       const invalidData = { filePath: "/path" };
-      const effect = addMedia(invalidData as any);
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      await expect(addMedia(invalidData as any)).rejects.toBeInstanceOf(
+        ZodError
+      );
     });
 
     it("should throw an error if media with same sourceId and filePath already exists", async () => {
@@ -131,26 +125,13 @@ describe("Media API Unit Tests", () => {
         height: 100,
       };
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([newMediaData]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
-      });
+      (selectMediaBySourceIdAndFilePath as vi.Mock).mockResolvedValueOnce([
+        newMediaData,
+      ]);
 
-      const effect = addMedia(newMediaData);
-      const exit = await Effect.runPromiseExit(
-        Effect.provide(effect, MockDatabaseLive)
+      await expect(addMedia(newMediaData)).rejects.toThrow(
+        "Media with this filePath already exists for the given sourceId"
       );
-
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(Error).and.satisfy((err: Error) => err.message === $1)));
-      }
     });
   });
 
@@ -159,27 +140,15 @@ describe("Media API Unit Tests", () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValueOnce([
-            {
-              id: mediaId,
-              sourceId,
-              /* other fields */
-            },
-          ]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
+      (selectMediaById as vi.Mock).mockResolvedValueOnce({
+        id: mediaId,
+        sourceId,
+        /* other fields */
       });
 
-      const result = await Effect.runPromise(
-        Effect.provide(getMedia(sourceId, mediaId), MockDatabaseLive)
-      );
+      const result = await getMedia(sourceId, mediaId);
 
-      expect(mockDb.select).toHaveBeenCalled();
+      expect(selectMediaById).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(result.id).toBe(mediaId);
     });
@@ -188,37 +157,29 @@ describe("Media API Unit Tests", () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const nonExistentMediaId = uuidv4();
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValue([]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
-      });
-
-      const effect = getMedia(sourceId, nonExistentMediaId);
-      const exit = await Effect.runPromiseExit(
-        Effect.provide(effect, MockDatabaseLive)
+      (selectMediaById as vi.Mock).mockRejectedValueOnce(
+        new NotFoundError({ message: "Media not found" })
       );
 
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(Error).and.satisfy((err: Error) => err.message === $1)));
-      }
+      await expect(getMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
+        "Media not found"
+      );
     });
 
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
+    it("should throw a ZodError for invalid media ID format", async () => {
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const invalidMediaId = "invalid-format";
+      await expect(getMedia(sourceId, invalidMediaId)).rejects.toBeInstanceOf(
+        ZodError
+      );
+    });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      const effect = getMedia("invalid-format", "mock-uuid-123");
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      const invalidSourceId = "invalid-format";
+      const mediaId = "mock-uuid-123";
+      await expect(getMedia(invalidSourceId, mediaId)).rejects.toBeInstanceOf(
+        ZodError
+      );
     });
   });
 
@@ -228,44 +189,26 @@ describe("Media API Unit Tests", () => {
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const updates = { fileName: "updated_file.png", width: 1024 };
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValueOnce([
-            {
-              id: mediaId,
-              sourceId,
-              /* other fields */
-            },
-          ]),
-        }),
-        update: vi.fn().mockReturnValue({
-          set: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          returning: vi.fn().mockResolvedValueOnce([
-            {
-              id: mediaId,
-              sourceId,
-              fileName: updates.fileName,
-              width: updates.width,
-              /* other fields */
-            },
-          ]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
+      (selectMediaById as vi.Mock).mockResolvedValueOnce({
+        id: mediaId,
+        sourceId,
+        fileName: "original_file.png",
+        width: 800,
       });
+      (updateMediaDb as vi.Mock).mockResolvedValueOnce([
+        {
+          id: mediaId,
+          sourceId,
+          fileName: updates.fileName,
+          width: updates.width,
+          /* other fields */
+        },
+      ]);
 
-      const result = await Effect.runPromise(
-        Effect.provide(
-          updateMedia(sourceId, mediaId, updates),
-          MockDatabaseLive
-        )
-      );
+      const result = await updateMedia(sourceId, mediaId, updates);
 
-      expect(mockDb.select).toHaveBeenCalled();
-      expect(mockDb.update).toHaveBeenCalled();
+      expect(selectMediaById).toHaveBeenCalled();
+      expect(updateMediaDb).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(result.fileName).toBe(updates.fileName);
     });
@@ -274,36 +217,27 @@ describe("Media API Unit Tests", () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const invalidUpdates = { width: -100 }; // Invalid field
-      const effect = updateMedia(sourceId, mediaId, invalidUpdates as any);
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      await expect(
+        updateMedia(sourceId, mediaId, invalidUpdates as any)
+      ).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "invalid-format";
       const updates = { fileName: "test" };
-      const effect = updateMedia(sourceId, mediaId, updates);
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      await expect(
+        updateMedia(sourceId, mediaId, updates)
+      ).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
       const sourceId = "invalid-format";
       const mediaId = "mock-uuid-123";
       const updates = { fileName: "test" };
-      const effect = updateMedia(sourceId, mediaId, updates);
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      await expect(
+        updateMedia(sourceId, mediaId, updates)
+      ).rejects.toBeInstanceOf(ZodError);
     });
   });
 
@@ -312,49 +246,40 @@ describe("Media API Unit Tests", () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValueOnce([
-            {
-              id: mediaId,
-              sourceId,
-              /* other fields */
-            },
-          ]),
-        }),
-        delete: vi.fn().mockReturnValue({
-          where: vi.fn().mockReturnThis(),
-          returning: vi.fn().mockResolvedValueOnce([
-            {
-              id: mediaId,
-            },
-          ]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
+      (selectMediaById as vi.Mock).mockResolvedValueOnce({
+        id: mediaId,
+        sourceId,
+        /* other fields */
       });
+      (deleteMediaDb as vi.Mock).mockResolvedValueOnce([
+        {
+          id: mediaId,
+        },
+      ]);
+      (deleteThumbnail as vi.Mock).mockResolvedValueOnce(undefined);
 
-      const result = await Effect.runPromise(
-        Effect.provide(deleteMedia(sourceId, mediaId), MockDatabaseLive)
-      );
+      const result = await deleteMedia(sourceId, mediaId);
 
-      expect(mockDb.select).toHaveBeenCalled();
-      expect(mockDb.delete).toHaveBeenCalled();
+      expect(selectMediaById).toHaveBeenCalled();
+      expect(deleteMediaDb).toHaveBeenCalled();
+      expect(deleteThumbnail).toHaveBeenCalledWith(mediaId);
       expect(result).toEqual({ success: true });
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaId = "invalid-format";
+      await expect(deleteMedia(sourceId, mediaId)).rejects.toBeInstanceOf(
+        ZodError
+      );
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      const sourceId = "invalid-format";
+      const mediaId = "mock-uuid-123";
+      await expect(deleteMedia(sourceId, mediaId)).rejects.toBeInstanceOf(
+        ZodError
+      );
     });
   });
 
@@ -363,55 +288,39 @@ describe("Media API Unit Tests", () => {
       const sourceId = "b0000000-0000-4000-8000-000000000000";
       const directoryPath = "/mock/directory/";
 
-      const mockDb = {
-        select: vi.fn().mockReturnValue({
-          from: vi.fn().mockReturnThis(),
-          where: vi.fn().mockResolvedValueOnce([
-            {
-              id: uuidv4(),
-              sourceId,
-              filePath: "/mock/directory/image1.png",
-              fileName: "image1.png",
-              mediaType: "image",
-              width: 800,
-              height: 600,
-              fileSize: 1024,
-              createdAt: new Date(),
-              modifiedAt: new Date(),
-              indexedAt: new Date(),
-            },
-          ]),
-        }),
-      };
-      const MockDatabaseLive = Layer.succeed(DatabaseService, {
-        db: mockDb as any,
-      });
+      (selectMediaBySourceIdAndDirectoryPath as vi.Mock).mockResolvedValueOnce([
+        {
+          id: uuidv4(),
+          sourceId,
+          filePath: "/mock/directory/image1.png",
+          fileName: "image1.png",
+          mediaType: "image",
+          width: 800,
+          height: 600,
+          fileSize: 1024,
+          createdAt: new Date(),
+          modifiedAt: new Date(),
+          indexedAt: new Date(),
+        },
+      ]);
 
-      const result = await Effect.runPromise(
-        Effect.provide(listMedia(sourceId, directoryPath), MockDatabaseLive)
-      );
+      const result = await listMedia(sourceId, directoryPath);
 
-      expect(mockDb.select).toHaveBeenCalled();
+      expect(selectMediaBySourceIdAndDirectoryPath).toHaveBeenCalled();
       expect(result).toBeDefined();
       expect(Array.isArray(result)).toBe(true);
     });
 
     it("should throw a ZodError if directory path is empty", async () => {
-      const effect = listMedia("665fc9fb-d2b9-49e2-beb3-63cf68fa2b11", "");
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      const sourceId = "665fc9fb-d2b9-49e2-beb3-63cf68fa2b11";
+      await expect(listMedia(sourceId, "")).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError if source ID is invalid", async () => {
-      const effect = listMedia("invalid-format", "/mock/directory/");
-      const exit = await Effect.runPromiseExit(effect);
-      expect(exit._tag).toBe("Failure");
-      if (exit._tag === "Failure") {
-        expect(Effect.Cause.failureOption(exit.cause)).pipe(Effect.Option.map((e) => expect(e).toBeInstanceOf(ZodError)));
-      }
+      const directoryPath = "/mock/directory/";
+      await expect(
+        listMedia("invalid-format", directoryPath)
+      ).rejects.toBeInstanceOf(ZodError);
     });
   });
 });

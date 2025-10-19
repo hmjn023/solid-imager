@@ -1,5 +1,4 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { Effect, pipe } from "effect";
 import type { UUID } from "~/domain/shared/types";
 import {
   deleteMediaSource,
@@ -17,35 +16,33 @@ const HTTP_STATUS_NOT_FOUND = 404;
  */
 export async function GET({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
-  const result = await pipe(getMediaSourceById(sourceId), Effect.runPromise);
-
-  if (
-    result &&
-    typeof result === "object" &&
-    "_tag" in result &&
-    result._tag === "FetchError"
-  ) {
-    return new Response(JSON.stringify({ error: result.message }), {
-      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  try {
+    const result = await getMediaSourceById(sourceId);
+    if (!result) {
+      return new Response(JSON.stringify({ error: "Source not found" }), {
+        status: HTTP_STATUS_NOT_FOUND,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+    }
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status:
+        (error instanceof FetchError && error.status) ||
+        HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  if (!result) {
-    return new Response(JSON.stringify({ error: "Source not found" }), {
-      status: HTTP_STATUS_NOT_FOUND,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-  }
-  return new Response(JSON.stringify(result), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }
 
 /**
@@ -58,30 +55,22 @@ export async function PUT({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;
   const data = await request.json();
 
-  const result = await pipe(
-    updateMediaSource(sourceId, data),
-    Effect.runPromise
-  );
-
-  if (
-    result &&
-    typeof result === "object" &&
-    "_tag" in result &&
-    result._tag === "FetchError"
-  ) {
-    return new Response(JSON.stringify({ error: result.message }), {
-      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  try {
+    const result = await updateMediaSource(sourceId, data);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return new Response(JSON.stringify(result), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }
 
 /**
@@ -93,25 +82,20 @@ export async function PUT({ params, request }: APIEvent) {
 export async function DELETE({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;
 
-  const result = await pipe(deleteMediaSource(sourceId), Effect.runPromise);
-
-  if (
-    result &&
-    typeof result === "object" &&
-    "_tag" in result &&
-    result._tag === "FetchError"
-  ) {
-    return new Response(JSON.stringify({ error: result.message }), {
-      status: result.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  try {
+    const result = await deleteMediaSource(sourceId);
+    return new Response(JSON.stringify({ success: true, result }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
     });
   }
-  return new Response(JSON.stringify({ success: true, result }), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  });
 }

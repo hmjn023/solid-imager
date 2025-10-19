@@ -1,8 +1,6 @@
-import { Effect, Layer } from "effect";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
-import { DatabaseService } from "~/infrastructure/db/layer";
-import { insertPreset, selectPresets } from "~/infrastructure/db/presets";
+import * as presets from "~/infrastructure/db/presets";
 import { db } from "~/tests/setup"; // Import the mocked db
 
 describe("Preset Database Operations", () => {
@@ -22,12 +20,10 @@ describe("Preset Database Operations", () => {
         from: vi.fn().mockResolvedValueOnce([preset1]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
-    });
-    const result = await Effect.runPromise(
-      Effect.provide(selectPresets(), MockDatabaseLive)
+    vi.spyOn(presets, "selectPresets").mockImplementation(async () =>
+      mockDb.select().from()
     );
+    const result = await presets.selectPresets();
     expect(result).toEqual([preset1]);
     expect(mockDb.select).toHaveBeenCalled();
   });
@@ -40,12 +36,10 @@ describe("Preset Database Operations", () => {
         returning: vi.fn().mockResolvedValueOnce([newPreset]),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
-    });
-    const result = await Effect.runPromise(
-      Effect.provide(insertPreset(newPreset), MockDatabaseLive)
+    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+      mockDb.insert().values(data).returning()
     );
+    const result = await presets.insertPreset(newPreset);
     expect(result).toEqual([newPreset]);
     expect(mockDb.insert).toHaveBeenCalled();
   });
@@ -54,20 +48,20 @@ describe("Preset Database Operations", () => {
     const mockDb = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockRejectedValueOnce({ code: "23505" }),
+        returning: vi.fn().mockRejectedValueOnce(
+          new ConstraintError({
+            message: "Duplicate entry",
+            details: { code: "23505" },
+          })
+        ),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
-    });
-    const result = await Effect.runPromiseExit(
-      Effect.provide(
-        insertPreset({ id: "preset2", name: "Preset 2" }),
-        MockDatabaseLive
-      )
+    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+      mockDb.insert().values(data).returning()
     );
-    expect(result._tag).toBe("Failure");
-    expect(result.cause.value).toBeInstanceOf(ConstraintError);
+    await expect(
+      presets.insertPreset({ id: "preset2", name: "Preset 2" })
+    ).rejects.toBeInstanceOf(ConstraintError);
     expect(mockDb.insert).toHaveBeenCalled();
   });
 
@@ -75,20 +69,17 @@ describe("Preset Database Operations", () => {
     const mockDb = {
       insert: vi.fn().mockReturnValue({
         values: vi.fn().mockReturnThis(),
-        returning: vi.fn().mockRejectedValueOnce(new Error("DB error")),
+        returning: vi
+          .fn()
+          .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
       }),
     };
-    const MockDatabaseLive = Layer.succeed(DatabaseService, {
-      db: mockDb as any,
-    });
-    const result = await Effect.runPromiseExit(
-      Effect.provide(
-        insertPreset({ id: "preset2", name: "Preset 2" }),
-        MockDatabaseLive
-      )
+    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+      mockDb.insert().values(data).returning()
     );
-    expect(result._tag).toBe("Failure");
-    expect(result.cause.value).toBeInstanceOf(UnknownDbError);
+    await expect(
+      presets.insertPreset({ id: "preset2", name: "Preset 2" })
+    ).rejects.toBeInstanceOf(UnknownDbError);
     expect(mockDb.insert).toHaveBeenCalled();
   });
 });

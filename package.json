@@ -30,7 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.6",
-    "effect": "latest",
+
     "postgres": "latest",
     "sharp": "^0.34.4",
     "solid-js": "^1.9.9",
