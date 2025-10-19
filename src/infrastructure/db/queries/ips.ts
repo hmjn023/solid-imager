@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { ips } from "~/infrastructure/db/schema";
+import { ips, type NewIp } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectIps = async () => {
@@ -14,7 +14,7 @@ export const selectIps = async () => {
   }
 };
 
-export const insertIp = async (ipData: unknown) => {
+export const insertIp = async (ipData: NewIp) => {
   try {
     return await db.insert(ips).values(ipData).returning();
   } catch (error: unknown) {
@@ -54,7 +54,7 @@ export const selectIpById = async (ipId: number) => {
   }
 };
 
-export const updateIp = async (ipId: number, ipData: unknown) => {
+export const updateIp = async (ipId: number, ipData: Partial<NewIp>) => {
   try {
     const result = await db
       .update(ips)
