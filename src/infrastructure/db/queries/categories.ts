@@ -61,17 +61,13 @@ export const selectCategoryById = async (categoryId: number) => {
 
 export const updateCategory = async (
   categoryId: number,
-  categoryData: unknown
+  categoryData: Partial<NewCategory>
 ) => {
   try {
     const result = await db
-
       .update(categories)
-
       .set(categoryData)
-
       .where(eq(categories.id, categoryId))
-
       .returning();
 
     if (result.length === 0) {
@@ -107,17 +103,21 @@ export const updateCategory = async (
   }
 };
 
-export const deleteCategory = async (categoryId: number) => {
+export const deleteCategory = async (
+  categoryId: number
+): Promise<typeof categories.$inferSelect> => {
   try {
     const result = await db
       .delete(categories)
       .where(eq(categories.id, categoryId))
       .returning();
+
     if (result.length === 0) {
       throw new NotFoundError({
         message: `Category with ID ${categoryId} not found`,
       });
     }
+
     return result[0];
   } catch (error) {
     if (error instanceof NotFoundError) {
