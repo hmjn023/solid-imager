@@ -1,7 +1,7 @@
 import { inArray } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
-import { ConstraintError, UnknownDbError } from "./errors";
+import { ConstraintError, UnknownDbError } from "../errors";
 
 export const insertMediaTags = async (
   mediaId: string,

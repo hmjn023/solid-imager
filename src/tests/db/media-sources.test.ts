@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { selectMediaSources } from "~/infrastructure/db/media-sources";
+import { selectMediaSources } from "~/infrastructure/db/queries/media-sources";
 
-vi.mock("~/infrastructure/db/media-sources");
+vi.mock("~/infrastructure/db/queries/media-sources");
 
 describe("selectMediaSources", () => {
   beforeEach(() => {

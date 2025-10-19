@@ -1,7 +1,7 @@
 import { and, eq, like } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { type Media, medias } from "~/infrastructure/db/schema";
-import { NotFoundError, UnknownDbError } from "./errors";
+import { NotFoundError, UnknownDbError } from "../errors";
 
 export const insertMedia = async (
   newMedia: Omit<Media, "id" | "createdAt" | "modifiedAt" | "indexedAt">

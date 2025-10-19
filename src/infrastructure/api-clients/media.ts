@@ -16,7 +16,7 @@ import {
   selectMediaById,
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
-} from "~/infrastructure/db/media";
+} from "~/infrastructure/db/queries/media";
 import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;

@@ -5,7 +5,7 @@ import {
   mediaSources,
   type NewMediaSource,
 } from "~/infrastructure/db/schema";
-import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
+import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectMediaSources = async (): Promise<MediaSource[]> => {
   try {

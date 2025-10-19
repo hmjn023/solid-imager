@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { ips } from "~/infrastructure/db/schema";
-import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
+import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectIps = async () => {
   try {

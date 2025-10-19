@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { categories, type NewCategory } from "~/infrastructure/db/schema";
-import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
+import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectCategories = async () => {
   try {

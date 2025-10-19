@@ -25,7 +25,7 @@ export type UpdateSourceData = CreateSourceData;
 const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
   "use server";
   const { selectMediaSources } = await import(
-    "~/infrastructure/db/media-sources"
+    "~/infrastructure/db/queries/media-sources"
   );
   return selectMediaSources();
 }, "fetchSources");
@@ -35,7 +35,7 @@ const createSourceServer = async (
 ): Promise<MediaSource[]> => {
   "use server";
   const { insertMediaSource } = await import(
-    "~/infrastructure/db/media-sources"
+    "~/infrastructure/db/queries/media-sources"
   );
   return insertMediaSource(sourceData);
 };
@@ -46,7 +46,7 @@ const updateSourceServer = async (
 ): Promise<MediaSource[]> => {
   "use server";
   const { updateMediaSource } = await import(
-    "~/infrastructure/db/media-sources"
+    "~/infrastructure/db/queries/media-sources"
   );
   return updateMediaSource(sourceId, sourceData);
 };
@@ -55,7 +55,7 @@ const fetchSourceByIdServer = cache(
   async (sourceId: string): Promise<(MediaSource | undefined)[]> => {
     "use server";
     const { selectMediaSourceById } = await import(
-      "~/infrastructure/db/media-sources"
+      "~/infrastructure/db/queries/media-sources"
     );
     return selectMediaSourceById(sourceId);
   },
@@ -65,7 +65,7 @@ const fetchSourceByIdServer = cache(
 const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
   "use server";
   const { deleteMediaSource } = await import(
-    "~/infrastructure/db/media-sources"
+    "~/infrastructure/db/queries/media-sources"
   );
   return deleteMediaSource(sourceId);
 };

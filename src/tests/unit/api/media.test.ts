@@ -20,10 +20,10 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
   updateMedia as updateMediaDb,
-} from "~/infrastructure/db/media";
+} from "~/infrastructure/db/queries/media";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
-vi.mock("~/infrastructure/db/media", () => ({
+vi.mock("~/infrastructure/db/queries/media", () => ({
   selectMediaById: vi.fn(),
   selectMediaBySourceIdAndFilePath: vi.fn(),
   insertMedia: vi.fn(),
