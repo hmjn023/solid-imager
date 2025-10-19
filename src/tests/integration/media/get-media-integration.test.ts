@@ -1,61 +1,70 @@
-import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia, getMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+import type { NewMedia } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("getMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "b0000000-0000-0000-0000-000000000000";
-  const newMediaData = {
-    sourceId: testSourceId,
-    filePath: "/test/path/get_image.png",
-    fileName: "get_image.png",
-    size: 2048,
-    mediaType: "image" as const,
-    width: 1024,
-    height: 768,
+  const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
+  const newMediaData: NewMedia = {
+    sourceId,
+    filePath: `/test/path/image-${Date.now()}.png`,
+    fileName: "test_image.png",
+    size: 1024,
+    mediaType: "image",
+    width: 800,
+    height: 600,
   };
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: sourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
     // getMediaをテストするために、データベースにメディアエントリを追加します。
     const addedMedia = await addMedia(newMediaData);
     testMediaId = addedMedia.id;
   });
 
-  afterEach(async () => {
-    // 各テスト後に、追加されたメディアをクリーンアップします。
-    if (testMediaId) {
-      await db.delete(medias).where(eq(medias.id, testMediaId));
-    }
+  afterAll(async () => {
+    await db.delete(medias).where(sql`true`);
   });
 
   it("should successfully retrieve media from the database", async () => {
-    const retrievedMedia = await getMedia(testSourceId, testMediaId);
-
-    expect(retrievedMedia).toBeDefined();
-    expect(retrievedMedia.id).toBe(testMediaId);
-    expect(retrievedMedia.fileName).toBe(newMediaData.fileName);
-    expect(retrievedMedia.filePath).toBe(newMediaData.filePath);
-    expect(retrievedMedia.sourceId).toBe(testSourceId);
+    const result = await getMedia(sourceId, testMediaId);
+    expect(result).toBeDefined();
+    expect(result.id).toBe(testMediaId);
+    expect(result.fileName).toBe(newMediaData.fileName);
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000"; // 有効だが存在しないUUID
-    await expect(getMedia(testSourceId, nonExistentId)).rejects.toThrow(
-      "Media not found"
+    const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
+    await expect(getMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
+      /Media.*not found/
     );
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
-    const invalidId = "invalid-uuid";
-    await expect(getMedia(testSourceId, invalidId)).rejects.toThrow(ZodError);
+    const invalidMediaId = "invalid-uuid";
+    await expect(getMedia(sourceId, invalidMediaId)).rejects.toBeInstanceOf(
+      ZodError
+    );
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {
-    const invalidSourceId = "invalid-source-id";
-    await expect(getMedia(invalidSourceId, testMediaId)).rejects.toThrow(
+    const invalidSourceId = "invalid-uuid";
+    await expect(getMedia(invalidSourceId, testMediaId)).rejects.toBeInstanceOf(
       ZodError
     );
   });

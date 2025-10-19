@@ -1,4 +1,4 @@
-import { APIEvent } from "solid-start/api";
+import type { APIEvent } from "solid-start/api";
 import { MediaService } from "~/application/services/media-service";
 
 export async function GET({ params }: APIEvent) {
@@ -25,7 +25,7 @@ export async function GET({ params }: APIEvent) {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

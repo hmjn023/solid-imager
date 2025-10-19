@@ -5,12 +5,12 @@
 
 export const CharacterService = {
   // Feature 11: キャラクター管理機能
-  async getAllCharacters() {
+  getAllCharacters() {
     // TODO: Get all characters
     throw new Error("Not implemented");
   },
 
-  async createCharacter(_characterData: {
+  createCharacter(_characterData: {
     name: string;
     ipId?: number;
     description?: string;
@@ -19,12 +19,12 @@ export const CharacterService = {
     throw new Error("Not implemented");
   },
 
-  async getCharacterDetails(_characterId: number) {
+  getCharacterDetails(_characterId: number) {
     // TODO: Get character details by ID
     throw new Error("Not implemented");
   },
 
-  async updateCharacter(
+  updateCharacter(
     _characterId: number,
     _characterData: {
       name?: string;
@@ -36,7 +36,7 @@ export const CharacterService = {
     throw new Error("Not implemented");
   },
 
-  async deleteCharacter(_characterId: number) {
+  deleteCharacter(_characterId: number) {
     // TODO: Delete character
     throw new Error("Not implemented");
   },

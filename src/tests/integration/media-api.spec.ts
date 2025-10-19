@@ -59,6 +59,7 @@ test.describe("Media API", () => {
     const getResponse = await request.get(
       `/api/sources/${SOURCE_ID}/media/${MEDIA_ID}`
     );
-    expect(getResponse.status()).toBe(404);
+    const NotFound = 404;
+    expect(getResponse.status()).toBe(NotFound);
   });
 });

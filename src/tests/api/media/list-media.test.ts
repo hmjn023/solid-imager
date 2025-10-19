@@ -6,7 +6,7 @@ import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type 
 
 describe("listMedia Contract", () => {
   it("should return an array of Media objects for a valid directoryPath", () => {
-    const sourceId = "b0000000-0000-0000-0000-000000000000";
+    const sourceId = "b0000000-0000-4000-8000-000000000000";
     const directoryPath = "/path/to/media/folder";
 
     // Validate with Zod schema
@@ -51,7 +51,7 @@ describe("listMedia Contract", () => {
   });
 
   it("should return an empty array if directoryPath contains no media files", () => {
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _directoryPath = "/path/to/empty/folder";
 
     // Placeholder for the actual listMedia function call

@@ -4,7 +4,7 @@
  * Extracted from src/lib/types.ts during architecture reorganization
  */
 
-export type UUID = string;
+export type Uuid = string;
 
 export type AppConfig = {
   server?: {
@@ -33,13 +33,13 @@ export type SearchOptions = {
     to?: Date;
   };
   // Add other search parameters as needed, e.g., for metadata
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export type ImportData = {
   url?: string;
   file?: File;
-  data?: any; // For direct data payload
+  data?: unknown; // For direct data payload
 };
 
 export type UserData = {

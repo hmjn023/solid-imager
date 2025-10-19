@@ -6,27 +6,36 @@ import {
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources";
 
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+const HTTP_STATUS_NOT_FOUND = 404;
+
 /**
  *
  * @param param0 {sourceId: UUID}
  * @returns 画像ソース内のすべてのメディア
  */
 export async function GET({ params }: APIEvent) {
+  const sourceId = params.sourceId as UUID;
   try {
-    const sourceId = params.sourceId as UUID;
-    const source = await getMediaSourceById(sourceId);
-    if (!source) {
+    const result = await getMediaSourceById(sourceId);
+    if (!result) {
       return new Response(JSON.stringify({ error: "Source not found" }), {
-        status: 404,
+        status: HTTP_STATUS_NOT_FOUND,
         headers: {
           "Content-Type": "application/json",
         },
       });
     }
-    return source;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to fetch source" }), {
-      status: 500,
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -41,14 +50,21 @@ export async function GET({ params }: APIEvent) {
  * @returns 更新されたメディアソース
  */
 export async function PUT({ params, request }: APIEvent) {
+  const sourceId = params.sourceId as UUID;
+  const data = await request.json();
+
   try {
-    const sourceId = params.sourceId as UUID;
-    const data = await request.json();
-    const updatedSource = await updateMediaSource(sourceId, data);
-    return updatedSource;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to update source" }), {
-      status: 500,
+    const result = await updateMediaSource(sourceId, data);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -63,13 +79,20 @@ export async function PUT({ params, request }: APIEvent) {
  * @returns 削除結果
  */
 export async function DELETE({ params }: APIEvent) {
+  const sourceId = params.sourceId as UUID;
+
   try {
-    const sourceId = params.sourceId as UUID;
     const result = await deleteMediaSource(sourceId);
-    return { success: true, result };
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to delete source" }), {
-      status: 500,
+    return new Response(JSON.stringify({ success: true, result }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },

@@ -2,12 +2,12 @@ import { createEffect } from "solid-js";
 import type { APIEvent } from "solid-start/api";
 import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
 
-export function GET({ params, request }: APIEvent) {
+export function GET({ params }: APIEvent) {
   const sourceId = params.sourceId;
 
   const stream = new ReadableStream({
     start(controller) {
-      const sendEvent = (event: string, data: any) => {
+      const sendEvent = (event: string, data: unknown) => {
         controller.enqueue(
           `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
         );
@@ -45,7 +45,7 @@ export function GET({ params, request }: APIEvent) {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive",
+      connection: "keep-alive",
     },
   });
 }

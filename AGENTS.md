@@ -25,6 +25,7 @@ Runtime: Bun
 Framework: SolidStart  
 UI Components: solid-ui (shadcn/ui for Solid.js)
 Linter/Formatter: Biome
+Functional Programming: Effect-TS (type-safe, error handling)
 Data Fetching/State Management: TanStack Query
 Client-side Reactive Store: TanStack DB
 Form Management: TanStack Form
@@ -132,6 +133,18 @@ The project uses **Biome** for linting and formatting. Before committing any cha
 - **Check and Fix:** Lint, format, and apply safe fixes.
   ```bash
   bun run check
+  ```
+- **Lint only:** Run linting checks without applying fixes.
+  ```bash
+  bun run lint
+  ```
+- **Format only:** Apply formatting fixes.
+  ```bash
+  bun run format
+  ```
+- **Unsafe Fix:** Apply potentially unsafe fixes (use with caution).
+  ```bash
+  bun run unsafe-fix
   ```
 
 ### Code Style

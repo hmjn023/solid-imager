@@ -7,6 +7,7 @@ Runtime: Bun
 Framework: SolidStart  
 UI Components: solid-ui (shadcn/ui for Solid.js)
 Linter/Formatter: Biome
+Functional Programming: Effect-TS (型安全、エラーハンドリング)
 Data Fetching/State Management: TanStack Query
 Client-side Reactive Store: TanStack DB
 Form Management: TanStack Form

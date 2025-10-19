@@ -8,10 +8,10 @@ describe("addMedia Contract", () => {
     // This test will initially fail as addMedia is not yet implemented.
     // It serves as a contract definition.
     const newMediaData = {
-      sourceId: "a0000000-0000-0000-0000-000000000000",
+      sourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/image.png",
-      fileName: "image.png",
-      size: 1024,
+      fileName: "image.png", // Added missing fileName
+      size: 1024, // Changed from fileSize to size
       createdAt: new Date(),
       updatedAt: new Date(),
       mediaType: "image" as const,
@@ -25,9 +25,15 @@ describe("addMedia Contract", () => {
     // Placeholder for the actual addMedia function call
     // const result = await addMedia(newMediaData);
     const result: Media = {
-      id: "mock-uuid-123",
-      ...newMediaData,
-      sourceId: "mock-source-id",
+      id: "a0000000-0000-4000-8000-000000000000",
+      sourceId: newMediaData.sourceId,
+      filePath: newMediaData.filePath,
+      fileName: newMediaData.fileName,
+      mediaType: newMediaData.mediaType,
+      width: newMediaData.width,
+      height: newMediaData.height,
+      fileSize: newMediaData.size,
+      createdAt: newMediaData.createdAt,
       modifiedAt: newMediaData.updatedAt,
       indexedAt: newMediaData.updatedAt,
     };
@@ -57,7 +63,7 @@ describe("addMedia Contract", () => {
 
   it("should throw an error if media with same sourceId and filePath already exists", () => {
     const _newMediaData = {
-      sourceId: "a0000000-0000-0000-0000-000000000000",
+      sourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/duplicate.png",
       fileName: "duplicate.png",
       size: 1024,

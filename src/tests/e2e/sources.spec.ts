@@ -313,7 +313,8 @@ test.describe("Media Sources Management", () => {
 
       // Mock slow API response to see loading state
       await page.route("**/api/sources", async (route) => {
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        const DelayMs = 1000;
+        await new Promise((resolve) => setTimeout(resolve, DelayMs));
         await route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -343,7 +344,8 @@ test.describe("Media Sources Management", () => {
       // Mock slow delete API response
       await page.route("**/api/sources/*", async (route) => {
         if (route.request().method() === "DELETE") {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const DelayMs = 1000;
+          await new Promise((resolve) => setTimeout(resolve, DelayMs));
           await route.fulfill({ status: 200 });
         } else {
           await route.continue();

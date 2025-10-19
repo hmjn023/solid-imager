@@ -1,16 +1,29 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+import type { NewMedia } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
+  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
   beforeEach(async () => {
     // 必要に応じて、以前のテストデータをクリーンアップします。
-    await db.delete(medias);
+    await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: testSourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
   });
 
   afterEach(async () => {
@@ -23,8 +36,8 @@ describe("addMedia Integration", () => {
 
   it("should successfully add media to the database", async () => {
     const newMediaData = {
-      sourceId: "b0000000-0000-0000-0000-000000000000",
-      filePath: "/test/path/image.png",
+      sourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
+      filePath: `/test/path/image-${Date.now()}.png`,
       fileName: "test_image.png",
       size: 1024,
       mediaType: "image" as const,
@@ -54,12 +67,14 @@ describe("addMedia Integration", () => {
       // fileName、sizeなどが不足しています。
     };
 
-    await expect(addMedia(invalidMediaData as any)).rejects.toThrow(ZodError);
+    await expect(
+      addMedia(invalidMediaData as Partial<NewMedia>)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw an error if media with same sourceId and filePath already exists", async () => {
     const newMediaData = {
-      sourceId: "b0000000-0000-0000-0000-000000000000",
+      sourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
       filePath: "/test/path/duplicate_image.png",
       fileName: "duplicate_image.png",
       size: 1024,

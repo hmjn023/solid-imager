@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import {
@@ -7,14 +7,15 @@ import {
   updateMedia,
 } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("updateMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "b0000000-0000-0000-0000-000000000000";
+  // const testSourceId = "b0000000-0000-0000-0000-000000000000";
+  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
     sourceId: testSourceId,
-    filePath: "/test/path/initial_image.png",
+    filePath: `/test/path/initial_image-${Date.now()}.png`,
     fileName: "initial_image.png",
     size: 1024,
     mediaType: "image" as const,
@@ -23,6 +24,19 @@ describe("updateMedia Integration", () => {
   };
 
   beforeEach(async () => {
+    // 以前のテストデータをクリーンアップします。
+    await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: testSourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
     // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
@@ -49,7 +63,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia.fileName).toBe(updates.fileName);
     expect(updatedMedia.description).toBe(updates.description);
     expect(updatedMedia.width).toBe(updates.width);
-    expect(updatedMedia.updatedAt).toBeInstanceOf(Date);
+    expect(updatedMedia.modifiedAt).toBeInstanceOf(Date);
 
     // 変更がデータベースに永続化されていることを確認します。
     const mediaInDb = await getMedia(testSourceId, testMediaId);
@@ -59,33 +73,33 @@ describe("updateMedia Integration", () => {
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000";
+    const nonExistentId = "a0000000-0000-4000-8000-000000000000";
     const updates = { fileName: "non_existent.png" };
     await expect(
       updateMedia(testSourceId, nonExistentId, updates)
-    ).rejects.toThrow("Media not found");
+    ).rejects.toThrow(/Media.*not found/);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
     const invalidId = "invalid-uuid";
     const updates = { fileName: "test.png" };
-    await expect(updateMedia(testSourceId, invalidId, updates)).rejects.toThrow(
-      ZodError
-    );
+    await expect(
+      updateMedia(testSourceId, invalidId, updates)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {
-    const invalidSourceId = "invalid-source-id";
+    const invalidSourceId = "invalid-uuid";
     const updates = { fileName: "test.png" };
     await expect(
       updateMedia(invalidSourceId, testMediaId, updates)
-    ).rejects.toThrow(ZodError);
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for invalid update data", async () => {
     const invalidUpdates = { width: -100 }; // 無効なフィールド
     await expect(
       updateMedia(testSourceId, testMediaId, invalidUpdates as any)
-    ).rejects.toThrow(ZodError);
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });

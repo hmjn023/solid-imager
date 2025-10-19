@@ -9,7 +9,8 @@ test.describe("Thumbnail API", () => {
     request,
   }) => {
     const response = await request.post(`/api/sources/${SOURCE_ID}/thumbnails`);
-    expect(response.status()).toBe(202); // 202 Accepted
+    const Accepted = 202;
+    expect(response.status()).toBe(Accepted); // Accepted
     const data = await response.json();
     expect(data.message).toContain("Thumbnail generation job started");
   });
@@ -21,7 +22,8 @@ test.describe("Thumbnail API", () => {
     const response = await request.post(
       `/api/sources/${fakeSourceId}/thumbnails`
     );
-    expect(response.status()).toBe(404);
+    const NotFound = 404;
+    expect(response.status()).toBe(NotFound);
     const data = await response.json();
     expect(data.error).toContain("Source not found");
   });

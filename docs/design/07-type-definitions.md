@@ -177,4 +177,10 @@ export type AddMediaToCollectionRequest = {
   mediaId: UUID;
   displayOrder?: number;
 };
-```
+
+export type AppError =
+  | { _tag: "NotFoundError"; message: string }
+  | { _tag: "ValidationError"; message: string; issues?: any[] }
+  | { _tag: "ConnectionError"; message: string; details?: any }
+  | { _tag: "UnauthorizedError"; message: string }
+  | { _tag: "InternalServerError"; message: string; originalError?: any };```

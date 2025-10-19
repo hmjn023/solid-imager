@@ -1,72 +1,77 @@
-import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { eq, sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import {
-  addMedia,
-  deleteMedia,
-  getMedia,
-} from "~/infrastructure/api-clients/media";
+import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+import type { NewMedia } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
-  const testSourceId = "b0000000-0000-0000-0000-000000000000";
-  const initialMediaData = {
-    sourceId: testSourceId,
-    filePath: "/test/path/delete_image.png",
-    fileName: "delete_image.png",
-    size: 512,
-    mediaType: "image" as const,
-    width: 400,
-    height: 300,
-  };
+  const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
-  beforeEach(async () => {
+  beforeAll(async () => {
+    await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: sourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
+    const initialMediaData: NewMedia = {
+      sourceId,
+      filePath: `/test/path/to_delete-${Date.now()}.png`,
+      fileName: "to_delete.png",
+      size: 1024,
+      mediaType: "image",
+      width: 800,
+      height: 600,
+    };
     // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
-  afterEach(async () => {
-    // テストが失敗した場合でも、各テスト後にメディアが削除されることを保証します。
-    try {
-      await db.delete(medias).where(eq(medias.id, testMediaId));
-    } catch (_error) {
-      // テストによって既に削除されている場合は無視します。
-    }
+  afterAll(async () => {
+    // クリーンアップ
+    await db.delete(medias).where(sql`true`);
   });
 
   it("should successfully delete media from the database", async () => {
-    const result = await deleteMedia(testSourceId, testMediaId);
-
-    expect(result).toBeDefined();
+    const result = await deleteMedia(sourceId, testMediaId);
     expect(result.success).toBe(true);
 
-    // メディアがデータベースに存在しないことを確認します。
-    await expect(getMedia(testSourceId, testMediaId)).rejects.toThrow(
-      "Media not found"
-    );
+    // メディアがデータベースから削除されたことを確認します。
+    const mediaInDb = await db
+      .select()
+      .from(medias)
+      .where(eq(medias.id, testMediaId));
+    expect(mediaInDb.length).toBe(0);
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000";
-    await expect(deleteMedia(testSourceId, nonExistentId)).rejects.toThrow(
-      "Media not found"
+    const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
+    await expect(deleteMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
+      /Media.*not found/
     );
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
-    const invalidId = "invalid-uuid";
-    await expect(deleteMedia(testSourceId, invalidId)).rejects.toThrow(
+    const invalidMediaId = "invalid-uuid";
+    await expect(deleteMedia(sourceId, invalidMediaId)).rejects.toBeInstanceOf(
       ZodError
     );
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {
-    const invalidSourceId = "invalid-source-id";
-    await expect(deleteMedia(invalidSourceId, testMediaId)).rejects.toThrow(
-      ZodError
-    );
+    const invalidSourceId = "invalid-uuid";
+    await expect(
+      deleteMedia(invalidSourceId, testMediaId)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });

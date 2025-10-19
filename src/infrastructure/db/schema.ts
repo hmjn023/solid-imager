@@ -35,6 +35,12 @@ export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
   "failed",
 ]);
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
+export const jobStatusEnum = pgEnum("job_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "failed",
+]);
 
 // テーブル
 export const mediaSources = pgTable("media_sources", {
@@ -85,7 +91,7 @@ export const medias = pgTable(
     indexedAt: timestamp("indexed_at").notNull().defaultNow(),
   },
   (table) => ({
-    sourceId_filePath_unique: unique("source_id_file_path_unique").on(
+    sourceIdFilePathUnique: unique("source_id_file_path_unique").on(
       table.sourceId,
       table.filePath
     ),
@@ -112,7 +118,7 @@ export const tags = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
-    name_unique: unique("tags_name_unique").on(table.name),
+    nameUnique: unique("tags_name_unique").on(table.name),
     nameIndex: index("idx_tags_name").on(table.name),
   })
 );
@@ -208,7 +214,7 @@ export const categories = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (table) => ({
-    name_unique: unique("categories_name_unique").on(table.name),
+    nameUnique: unique("categories_name_unique").on(table.name),
   })
 );
 
@@ -234,7 +240,7 @@ export const ips = pgTable(
     description: text("description"),
   },
   (table) => ({
-    name_unique: unique("ips_name_unique").on(table.name),
+    nameUnique: unique("ips_name_unique").on(table.name),
   })
 );
 
@@ -252,7 +258,7 @@ export const characters = pgTable(
     description: text("description"),
   },
   (table) => ({
-    name_ipId_unique: unique("name_ipId_unique").on(table.name, table.ipId),
+    nameIpIdUnique: unique("name_ipId_unique").on(table.name, table.ipId),
   })
 );
 
@@ -379,7 +385,7 @@ export const similarMedia = pgTable(
     createdAt: timestamp("created_at").defaultNow(),
   },
   (table) => ({
-    media1Id_media2Id_algorithm_unique: unique(
+    media1IdMedia2IdAlgorithmUnique: unique(
       "media1Id_media2Id_algorithm_unique"
     ).on(table.media1Id, table.media2Id, table.algorithm),
     similarityScoreIndex: index("idx_similar_media_score").on(
@@ -406,7 +412,7 @@ export const users = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    email_unique: unique("users_email_unique").on(table.email),
+    emailUnique: unique("users_email_unique").on(table.email),
   })
 );
 
@@ -419,10 +425,6 @@ export const collections = pgTable("collections", {
   /** コレクション名 */
   name: text("name").notNull(),
   /** コレクションの説明 */
-  description: text("description"),
-  /** 作成日時 */
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  /** 更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
@@ -444,6 +446,27 @@ export const collectionMedia = pgTable(
     pk: primaryKey({ columns: [table.collectionId, table.mediaId] }),
   })
 );
+
+export const jobs = pgTable("jobs", {
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(),
+  sourceId: uuid("source_id").references(() => mediaSources.id, {
+    onDelete: "cascade",
+  }),
+  status: jobStatusEnum("status").notNull().default("pending"),
+  payload: jsonb("payload"),
+  result: jsonb("result"),
+  error: text("error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const presets = pgTable("presets", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull().unique(),
+  value: jsonb("value").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
 
 // リレーション
 /** メディアソースとメディアのリレーション */
@@ -748,3 +771,9 @@ export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
+
+export type Job = InferSelectModel<typeof jobs>;
+export type NewJob = InferInsertModel<typeof jobs>;
+
+export type Preset = InferSelectModel<typeof presets>;
+export type NewPreset = InferInsertModel<typeof presets>;

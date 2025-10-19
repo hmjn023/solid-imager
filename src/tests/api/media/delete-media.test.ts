@@ -5,8 +5,8 @@ import { sourceIdSchema } from "~/domain/sources/schemas";
 
 describe("deleteMedia Contract", () => {
   it("should return success: true on successful deletion", () => {
-    const sourceId = "b0000000-0000-0000-0000-000000000000";
-    const mediaId = "a0000000-0000-0000-0000-000000000000";
+    const sourceId = "b0000000-0000-4000-8000-000000000000";
+    const mediaId = "a0000000-0000-4000-8000-000000000000";
 
     // Validate with Zod schema
     sourceIdSchema.parse(sourceId);
@@ -22,8 +22,7 @@ describe("deleteMedia Contract", () => {
 
   it("should return an error if mediaId is not found", () => {
     // This test will initially fail as deleteMedia is not yet implemented.
-    // It serves as a contract definition.
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _sourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
 
     // Placeholder for the actual deleteMedia function call

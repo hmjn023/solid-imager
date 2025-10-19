@@ -4,6 +4,8 @@ import {
   getMediaSources,
 } from "~/infrastructure/api-clients/sources";
 
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+
 /**
  *
  * @returns すべてのメディアソース
@@ -11,11 +13,17 @@ import {
 
 export async function GET() {
   try {
-    const sources = await getMediaSources();
-    return sources;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to fetch sources" }), {
-      status: 500,
+    const result = await getMediaSources();
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -29,18 +37,25 @@ export async function GET() {
  * @returns 作成されたメディアソース
  */
 export async function POST({ request }: APIEvent) {
+  const { name, description, type, connectionInfo } = await request.json();
+
   try {
-    const { name, description, type, connectionInfo } = await request.json();
-    const newSource = await createMediaSource({
+    const result = await createMediaSource({
       name,
       description,
       type,
       connectionInfo,
     });
-    return newSource;
-  } catch (_error) {
-    return new Response(JSON.stringify({ error: "Failed to create source" }), {
-      status: 500,
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },

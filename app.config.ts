@@ -5,11 +5,16 @@ export default defineConfig({
   vite: {
     plugins: [tailwindcss()],
     ssr: {
-      noExternal: ["drizzle-orm"],
-      external: ["ssh2"],
+      noExternal: ["drizzle-orm", "effect"],
+      external: ["ssh2", "pg"],
     },
     optimizeDeps: {
       exclude: ["ssh2", "cpu-features", "pg"],
+    },
+    build: {
+      rollupOptions: {
+        external: ["pg"],
+      },
     },
   },
 });

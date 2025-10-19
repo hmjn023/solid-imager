@@ -1,3 +1,4 @@
+CREATE TYPE "public"."job_status" AS ENUM('pending', 'in_progress', 'completed', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."media_organization_status" AS ENUM('active', 'archived', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."media_source_type" AS ENUM('local', 'sftp', 's3');--> statement-breakpoint
 CREATE TYPE "public"."media_sync_status" AS ENUM('synced', 'pending', 'failed');--> statement-breakpoint
@@ -31,8 +32,6 @@ CREATE TABLE "collections" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"name" text NOT NULL,
-	"description" text,
-	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -43,21 +42,16 @@ CREATE TABLE "ips" (
 	CONSTRAINT "ips_name_unique" UNIQUE("name")
 );
 --> statement-breakpoint
-CREATE TABLE "media" (
+CREATE TABLE "jobs" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"source_id" uuid NOT NULL,
-	"file_path" text NOT NULL,
-	"file_name" text NOT NULL,
-	"media_type" "media_type" NOT NULL,
-	"width" integer NOT NULL,
-	"height" integer NOT NULL,
-	"file_size" bigint,
-	"description" text,
-	"source_url" text,
-	"created_at" timestamp NOT NULL,
-	"modified_at" timestamp NOT NULL,
-	"indexed_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "source_id_file_path_unique" UNIQUE("source_id","file_path")
+	"type" text NOT NULL,
+	"source_id" uuid,
+	"status" "job_status" DEFAULT 'pending' NOT NULL,
+	"payload" jsonb,
+	"result" jsonb,
+	"error" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "media_characters" (
@@ -127,6 +121,31 @@ CREATE TABLE "media_technical_info" (
 	"audio_codec" text
 );
 --> statement-breakpoint
+CREATE TABLE "media" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"source_id" uuid NOT NULL,
+	"file_path" text NOT NULL,
+	"file_name" text NOT NULL,
+	"media_type" "media_type" NOT NULL,
+	"width" integer NOT NULL,
+	"height" integer NOT NULL,
+	"file_size" bigint,
+	"description" text,
+	"source_url" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"modified_at" timestamp DEFAULT now() NOT NULL,
+	"indexed_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "source_id_file_path_unique" UNIQUE("source_id","file_path")
+);
+--> statement-breakpoint
+CREATE TABLE "presets" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"name" text NOT NULL,
+	"value" jsonb NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "presets_name_unique" UNIQUE("name")
+);
+--> statement-breakpoint
 CREATE TABLE "projects" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" text NOT NULL,
@@ -178,7 +197,7 @@ ALTER TABLE "characters" ADD CONSTRAINT "characters_ip_id_ips_id_fk" FOREIGN KEY
 ALTER TABLE "collection_media" ADD CONSTRAINT "collection_media_collection_id_collections_id_fk" FOREIGN KEY ("collection_id") REFERENCES "public"."collections"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "collection_media" ADD CONSTRAINT "collection_media_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "collections" ADD CONSTRAINT "collections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "media" ADD CONSTRAINT "media_source_id_media_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."media_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "jobs" ADD CONSTRAINT "jobs_source_id_media_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."media_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_characters" ADD CONSTRAINT "media_characters_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_characters" ADD CONSTRAINT "media_characters_character_id_characters_id_fk" FOREIGN KEY ("character_id") REFERENCES "public"."characters"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_details" ADD CONSTRAINT "media_details_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -191,13 +210,10 @@ ALTER TABLE "media_sync" ADD CONSTRAINT "media_sync_media_id_media_id_fk" FOREIG
 ALTER TABLE "media_tags" ADD CONSTRAINT "media_tags_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_tags" ADD CONSTRAINT "media_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_technical_info" ADD CONSTRAINT "media_technical_info_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media" ADD CONSTRAINT "media_source_id_media_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."media_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "similar_media" ADD CONSTRAINT "similar_media_media1_id_media_id_fk" FOREIGN KEY ("media1_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "similar_media" ADD CONSTRAINT "similar_media_media2_id_media_id_fk" FOREIGN KEY ("media2_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "view_history" ADD CONSTRAINT "view_history_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "idx_media_source_id" ON "media" USING btree ("source_id");--> statement-breakpoint
-CREATE INDEX "idx_media_file_name" ON "media" USING btree ("file_name");--> statement-breakpoint
-CREATE INDEX "idx_media_created_at" ON "media" USING btree ("created_at");--> statement-breakpoint
-CREATE INDEX "idx_media_description" ON "media" USING btree ("description");--> statement-breakpoint
 CREATE INDEX "idx_media_details_rating" ON "media_details" USING btree ("rating");--> statement-breakpoint
 CREATE INDEX "idx_media_details_favorite" ON "media_details" USING btree ("favorite");--> statement-breakpoint
 CREATE INDEX "idx_media_details_view_count" ON "media_details" USING btree ("view_count");--> statement-breakpoint
@@ -209,5 +225,9 @@ CREATE INDEX "idx_media_organization_project_id" ON "media_organization" USING b
 CREATE INDEX "idx_media_organization_ip_id" ON "media_organization" USING btree ("ip_id");--> statement-breakpoint
 CREATE INDEX "idx_media_organization_status" ON "media_organization" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "idx_media_technical_info_hash_md5" ON "media_technical_info" USING btree ("hash_md5");--> statement-breakpoint
+CREATE INDEX "idx_media_source_id" ON "media" USING btree ("source_id");--> statement-breakpoint
+CREATE INDEX "idx_media_file_name" ON "media" USING btree ("file_name");--> statement-breakpoint
+CREATE INDEX "idx_media_created_at" ON "media" USING btree ("created_at");--> statement-breakpoint
+CREATE INDEX "idx_media_description" ON "media" USING btree ("description");--> statement-breakpoint
 CREATE INDEX "idx_similar_media_score" ON "similar_media" USING btree ("similarity_score");--> statement-breakpoint
 CREATE INDEX "idx_tags_name" ON "tags" USING btree ("name");
