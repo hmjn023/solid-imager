@@ -1,11 +1,5 @@
+import { cache } from "@solidjs/router";
 import type { MediaSourceTypeEnum } from "~/domain/sources/types";
-import {
-  deleteMediaSource,
-  insertMediaSource,
-  selectMediaSourceById,
-  selectMediaSources,
-  updateMediaSource as updateMediaSourceDb,
-} from "~/infrastructure/db/media-sources";
 import type { MediaSource, NewMediaSource } from "~/infrastructure/db/schema";
 
 export class FetchError {
@@ -27,32 +21,53 @@ export type CreateSourceData = {
 
 export type UpdateSourceData = CreateSourceData;
 
-export const MediaSourceService = {
-  // すべてのソースを取得します。
-  fetchSources(): Promise<MediaSource[]> {
-    return selectMediaSources();
-  },
+// Server functions - これらはサーバー側でのみ実行されます
+const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
+  "use server";
+  const {
+    selectMediaSources,
+  } = await import("~/infrastructure/db/media-sources");
+  return selectMediaSources();
+}, "fetchSources");
 
-  // 新しいソースを作成します。
-  createSource(sourceData: NewMediaSource): Promise<MediaSource[]> {
-    return insertMediaSource(sourceData);
-  },
+const createSourceServer = async (
+  sourceData: NewMediaSource
+): Promise<MediaSource[]> => {
+  "use server";
+  const { insertMediaSource } = await import("~/infrastructure/db/media-sources");
+  return insertMediaSource(sourceData);
+};
 
-  // 既存のソースを更新します。
-  updateSource(
-    sourceId: string,
-    sourceData: MediaSource
-  ): Promise<MediaSource[]> {
-    return updateMediaSourceDb(sourceId, sourceData);
-  },
+const updateSourceServer = async (
+  sourceId: string,
+  sourceData: MediaSource
+): Promise<MediaSource[]> => {
+  "use server";
+  const { updateMediaSource } = await import("~/infrastructure/db/media-sources");
+  return updateMediaSource(sourceId, sourceData);
+};
 
-  // IDでソースを取得します。
-  fetchSourceById(sourceId: string): Promise<(MediaSource | undefined)[]> {
+const fetchSourceByIdServer = cache(
+  async (sourceId: string): Promise<(MediaSource | undefined)[]> => {
+    "use server";
+    const { selectMediaSourceById } = await import(
+      "~/infrastructure/db/media-sources"
+    );
     return selectMediaSourceById(sourceId);
   },
+  "fetchSourceById"
+);
 
-  // ソースを削除します。
-  deleteSource(sourceId: string): Promise<MediaSource[]> {
-    return deleteMediaSource(sourceId);
-  },
+const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
+  "use server";
+  const { deleteMediaSource } = await import("~/infrastructure/db/media-sources");
+  return deleteMediaSource(sourceId);
+};
+
+export const MediaSourceService = {
+  fetchSources: fetchSourcesServer,
+  createSource: createSourceServer,
+  updateSource: updateSourceServer,
+  fetchSourceById: fetchSourceByIdServer,
+  deleteSource: deleteSourceServer,
 };
