@@ -6,14 +6,14 @@ export default defineConfig({
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm", "effect"],
-      external: ["ssh2", "postgres", "pg"],
+      external: ["ssh2", "pg"],
     },
     optimizeDeps: {
-      exclude: ["ssh2", "cpu-features", "pg", "postgres"],
+      exclude: ["ssh2", "cpu-features", "pg"],
     },
     build: {
       rollupOptions: {
-        external: ["postgres", "pg"],
+        external: ["pg"],
       },
     },
   },

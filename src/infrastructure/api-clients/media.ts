@@ -44,11 +44,7 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
     fileSize: validatedData.size,
   };
   const result = await insertMedia(newMedia);
-  if (result.length === 0) {
-    throw new Error("Failed to insert media into database");
-  }
-
-  return result[0];
+  return result;
 }
 
 export async function getMedia(
@@ -84,15 +80,10 @@ export async function updateMedia(
   const updatedMediaData = {
     ...existingMedia,
     ...validatedUpdates,
-    updatedAt: new Date(),
+    modifiedAt: new Date(),
   };
   const result = await dbUpdateMedia(validatedMediaId, updatedMediaData);
-
-  if (result.length === 0) {
-    throw new Error("Media not found or failed to update");
-  }
-
-  return result[0];
+  return result;
 }
 
 export async function deleteMedia(
@@ -105,11 +96,7 @@ export async function deleteMedia(
   if (existingMedia.sourceId !== validatedSourceId) {
     throw new Error("Media not found");
   }
-  const result = await dbDeleteMedia(validatedMediaId);
-
-  if (result.length === 0) {
-    throw new Error("Media not found or failed to delete");
-  }
+  await dbDeleteMedia(validatedMediaId);
 
   // サムネイルも非同期で削除します。
   try {
@@ -197,7 +184,7 @@ export async function registerExistingMedia(
         createdAt: stats.birthtime,
         modifiedAt: stats.mtime,
       };
-      const [inserted] = await insertMedia(newMedia);
+      const inserted = await insertMedia(newMedia);
       addedMedia.push(inserted);
     } catch (_error) {
       failed++;

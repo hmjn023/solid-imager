@@ -24,9 +24,9 @@ export type UpdateSourceData = CreateSourceData;
 // Server functions - これらはサーバー側でのみ実行されます
 const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
   "use server";
-  const {
-    selectMediaSources,
-  } = await import("~/infrastructure/db/media-sources");
+  const { selectMediaSources } = await import(
+    "~/infrastructure/db/media-sources"
+  );
   return selectMediaSources();
 }, "fetchSources");
 
@@ -34,7 +34,9 @@ const createSourceServer = async (
   sourceData: NewMediaSource
 ): Promise<MediaSource[]> => {
   "use server";
-  const { insertMediaSource } = await import("~/infrastructure/db/media-sources");
+  const { insertMediaSource } = await import(
+    "~/infrastructure/db/media-sources"
+  );
   return insertMediaSource(sourceData);
 };
 
@@ -43,7 +45,9 @@ const updateSourceServer = async (
   sourceData: MediaSource
 ): Promise<MediaSource[]> => {
   "use server";
-  const { updateMediaSource } = await import("~/infrastructure/db/media-sources");
+  const { updateMediaSource } = await import(
+    "~/infrastructure/db/media-sources"
+  );
   return updateMediaSource(sourceId, sourceData);
 };
 
@@ -60,7 +64,9 @@ const fetchSourceByIdServer = cache(
 
 const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
   "use server";
-  const { deleteMediaSource } = await import("~/infrastructure/db/media-sources");
+  const { deleteMediaSource } = await import(
+    "~/infrastructure/db/media-sources"
+  );
   return deleteMediaSource(sourceId);
 };
 

@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
-import { medias } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
@@ -12,6 +12,17 @@ describe("deleteMedia Integration", () => {
 
   beforeAll(async () => {
     await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: sourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
     const initialMediaData: NewMedia = {
       sourceId,
       filePath: `/test/path/to_delete-${Date.now()}.png`,
@@ -46,7 +57,7 @@ describe("deleteMedia Integration", () => {
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
     const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
     await expect(deleteMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
-      "Media not found"
+      /Media.*not found/
     );
   });
 

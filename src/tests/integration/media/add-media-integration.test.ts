@@ -4,14 +4,26 @@ import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
-import { medias } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
+  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
   beforeEach(async () => {
     // 必要に応じて、以前のテストデータをクリーンアップします。
     await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: testSourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
   });
 
   afterEach(async () => {

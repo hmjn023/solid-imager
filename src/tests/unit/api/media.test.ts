@@ -90,15 +90,13 @@ describe("Media API Unit Tests", () => {
       };
 
       (selectMediaBySourceIdAndFilePath as vi.Mock).mockResolvedValueOnce([]);
-      (insertMedia as vi.Mock).mockResolvedValueOnce([
-        {
-          id: uuidv4(),
-          ...newMediaData,
-          createdAt: new Date(),
-          modifiedAt: new Date(),
-          indexedAt: new Date(),
-        },
-      ]);
+      (insertMedia as vi.Mock).mockResolvedValueOnce({
+        id: uuidv4(),
+        ...newMediaData,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        indexedAt: new Date(),
+      });
 
       const result = await addMedia(newMediaData);
 
@@ -195,15 +193,13 @@ describe("Media API Unit Tests", () => {
         fileName: "original_file.png",
         width: 800,
       });
-      (updateMediaDb as vi.Mock).mockResolvedValueOnce([
-        {
-          id: mediaId,
-          sourceId,
-          fileName: updates.fileName,
-          width: updates.width,
-          /* other fields */
-        },
-      ]);
+      (updateMediaDb as vi.Mock).mockResolvedValueOnce({
+        id: mediaId,
+        sourceId,
+        fileName: updates.fileName,
+        width: updates.width,
+        /* other fields */
+      });
 
       const result = await updateMedia(sourceId, mediaId, updates);
 

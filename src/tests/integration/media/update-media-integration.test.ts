@@ -7,7 +7,7 @@ import {
   updateMedia,
 } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("updateMedia Integration", () => {
   let testMediaId: string;
@@ -26,6 +26,17 @@ describe("updateMedia Integration", () => {
   beforeEach(async () => {
     // 以前のテストデータをクリーンアップします。
     await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourceを作成
+    await db
+      .insert(mediaSources)
+      .values({
+        id: testSourceId,
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: "/test" },
+      })
+      .onConflictDoNothing();
     // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
     testMediaId = addedMedia.id;
@@ -52,7 +63,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia.fileName).toBe(updates.fileName);
     expect(updatedMedia.description).toBe(updates.description);
     expect(updatedMedia.width).toBe(updates.width);
-    expect(updatedMedia.updatedAt).toBeInstanceOf(Date);
+    expect(updatedMedia.modifiedAt).toBeInstanceOf(Date);
 
     // 変更がデータベースに永続化されていることを確認します。
     const mediaInDb = await getMedia(testSourceId, testMediaId);
@@ -62,11 +73,11 @@ describe("updateMedia Integration", () => {
   });
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
-    const nonExistentId = "a0000000-0000-0000-0000-000000000000";
+    const nonExistentId = "a0000000-0000-4000-8000-000000000000";
     const updates = { fileName: "non_existent.png" };
     await expect(
       updateMedia(testSourceId, nonExistentId, updates)
-    ).rejects.toThrow("Media not found");
+    ).rejects.toThrow(/Media.*not found/);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {

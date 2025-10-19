@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { addMedia, listMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
-import { medias } from "~/infrastructure/db/schema";
+import { medias, mediaSources } from "~/infrastructure/db/schema";
 
 describe("listMedia Integration", () => {
   const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
@@ -43,6 +43,25 @@ describe("listMedia Integration", () => {
 
   beforeAll(async () => {
     await db.delete(medias).where(sql`true`);
+    
+    // テスト用のmedia sourcesを作成
+    await db
+      .insert(mediaSources)
+      .values([
+        {
+          id: sourceId,
+          name: "Test Source",
+          type: "local",
+          connectionInfo: { path: "/test" },
+        },
+        {
+          id: "a0000000-0000-4000-8000-000000000000",
+          name: "Other Source",
+          type: "local",
+          connectionInfo: { path: "/other" },
+        },
+      ])
+      .onConflictDoNothing();
     for (const data of mediaEntries) {
       const added = await addMedia(data);
       addedMediaIds.push(added.id);

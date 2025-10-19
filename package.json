@@ -30,8 +30,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.44.6",
-
-    "postgres": "latest",
+    "pg": "^8.16.3",
     "sharp": "^0.34.4",
     "solid-js": "^1.9.9",
     "tailwind-merge": "^3.3.1",
@@ -52,6 +51,7 @@
     "drizzle-kit": "^0.31.5",
     "playwright": "^1.56.1",
     "tailwindcss": "^4.1.14",
+    "tsx": "^4.20.6",
     "ultracite": "5.4.4",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"

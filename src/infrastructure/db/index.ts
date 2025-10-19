@@ -1,10 +1,10 @@
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
 let _db: ReturnType<typeof drizzle> | null = null;
-let _queryClient: ReturnType<typeof postgres> | null = null;
+let _queryClient: Pool | null = null;
 
 function initializeDb() {
   if (_db) {
@@ -24,7 +24,7 @@ function initializeDb() {
   }
 
   const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-  _queryClient = postgres(connectionString);
+  _queryClient = new Pool({ connectionString });
   _db = drizzle(_queryClient, { schema });
   return _db;
 }
