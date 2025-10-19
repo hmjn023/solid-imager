@@ -35,9 +35,7 @@ export async function GET({ params }: APIEvent) {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
-      status:
-        (error instanceof FetchError && error.status) ||
-        HTTP_STATUS_INTERNAL_SERVER_ERROR,
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -63,9 +61,10 @@ export async function PUT({ params, request }: APIEvent) {
         "Content-Type": "application/json",
       },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -90,9 +89,10 @@ export async function DELETE({ params }: APIEvent) {
         "Content-Type": "application/json",
       },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },

@@ -17,8 +17,10 @@ function initializeDb() {
   const dbUser = process.env.DB_USER;
   const dbPassword = process.env.DB_PASSWORD;
 
-  if (!dbHost || !dbName || !dbUser || !dbPassword) {
-    throw new Error("Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)");
+  if (!(dbHost && dbName && dbUser && dbPassword)) {
+    throw new Error(
+      "Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)"
+    );
   }
 
   const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;

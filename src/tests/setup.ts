@@ -120,20 +120,20 @@ vi.mock("~/infrastructure/db/__mocks__", () => ({
 }));
 
 // 統合テストファイルのパターンを判定
-const isIntegrationTest = (filePath: string) => {
-  return filePath.includes("/integration/");
-};
+const isIntegrationTest = (filePath: string) =>
+  filePath.includes("/integration/");
 
 // ~/infrastructure/db/index のモックを条件付きで設定
-vi.mock("~/infrastructure/db/index", async (importOriginal) => {
-  // テストファイルのパスを取得
-  const testPath = expect.getState?.()?.testPath || "";
-  
+vi.mock("~/infrastructure/db/index", (importOriginal) => {
+  // テストファイルのパスを取得（グローバル変数から）
+  // @ts-expect-error - accessing internal test state
+  const testPath = globalThis.__vitest_worker__?.filepath || "";
+
   if (isIntegrationTest(testPath)) {
     // 統合テストの場合は実際のdbを使用
     return importOriginal();
   }
-  
+
   // ユニット/DBテストの場合はモックを使用
   return { db: mockDb };
 });

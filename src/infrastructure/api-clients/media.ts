@@ -114,7 +114,9 @@ export async function deleteMedia(
   // サムネイルも非同期で削除します。
   try {
     await deleteThumbnail(validatedMediaId);
-  } catch (_error) {}
+  } catch (_error) {
+    // サムネイル削除のエラーは無視（メディア削除は成功）
+  }
 
   return { success: true };
 }

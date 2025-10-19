@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import * as mediaSources from "~/infrastructure/db/media-sources";
 import { selectMediaSources } from "~/infrastructure/db/media-sources";
+
+vi.mock("~/infrastructure/db/media-sources");
 
 describe("selectMediaSources", () => {
   beforeEach(() => {
@@ -13,7 +14,7 @@ describe("selectMediaSources", () => {
         from: vi.fn().mockResolvedValueOnce([]),
       }),
     };
-    vi.spyOn(mediaSources, "selectMediaSources").mockImplementation(async () =>
+    vi.mocked(selectMediaSources).mockImplementation(async () =>
       mockDb.select().from()
     );
 

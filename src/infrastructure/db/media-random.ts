@@ -19,7 +19,9 @@ export const selectRandomMedia = async (sourceId: string): Promise<Media> => {
       .limit(1);
 
     if (result.length === 0) {
-      throw new NotFoundError({ message: "No random media found for the given sourceId" });
+      throw new NotFoundError({
+        message: "No random media found for the given sourceId",
+      });
     }
     return result[0];
   } catch (error) {

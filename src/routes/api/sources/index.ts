@@ -20,9 +20,10 @@ export async function GET() {
         "Content-Type": "application/json",
       },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },
@@ -51,9 +52,10 @@ export async function POST({ request }: APIEvent) {
         "Content-Type": "application/json",
       },
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: error.status || HTTP_STATUS_INTERNAL_SERVER_ERROR,
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {
         "Content-Type": "application/json",
       },

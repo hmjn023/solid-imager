@@ -16,7 +16,7 @@ describe("selectRandomMedia", () => {
 
   it("should return a random media item on success", async () => {
     const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
-    
+
     (db.select as vi.Mock).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -43,7 +43,9 @@ describe("selectRandomMedia", () => {
       }),
     });
 
-    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(NotFoundError);
+    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(
+      NotFoundError
+    );
     expect(db.select).toHaveBeenCalled();
   });
 
@@ -58,7 +60,9 @@ describe("selectRandomMedia", () => {
       }),
     });
 
-    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(UnknownDbError);
+    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(
+      UnknownDbError
+    );
     expect(db.select).toHaveBeenCalled();
   });
 });

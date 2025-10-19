@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
-import * as presets from "~/infrastructure/db/presets";
+import { insertPreset, selectPresets } from "~/infrastructure/db/presets";
 import { db } from "~/tests/setup"; // Import the mocked db
+
+vi.mock("~/infrastructure/db/presets");
 
 describe("Preset Database Operations", () => {
   beforeEach(() => {
@@ -20,10 +22,10 @@ describe("Preset Database Operations", () => {
         from: vi.fn().mockResolvedValueOnce([preset1]),
       }),
     };
-    vi.spyOn(presets, "selectPresets").mockImplementation(async () =>
+    vi.mocked(selectPresets).mockImplementation(async () =>
       mockDb.select().from()
     );
-    const result = await presets.selectPresets();
+    const result = await selectPresets();
     expect(result).toEqual([preset1]);
     expect(mockDb.select).toHaveBeenCalled();
   });
@@ -36,10 +38,10 @@ describe("Preset Database Operations", () => {
         returning: vi.fn().mockResolvedValueOnce([newPreset]),
       }),
     };
-    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+    vi.mocked(insertPreset).mockImplementation(async (data) =>
       mockDb.insert().values(data).returning()
     );
-    const result = await presets.insertPreset(newPreset);
+    const result = await insertPreset(newPreset);
     expect(result).toEqual([newPreset]);
     expect(mockDb.insert).toHaveBeenCalled();
   });
@@ -56,11 +58,11 @@ describe("Preset Database Operations", () => {
         ),
       }),
     };
-    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+    vi.mocked(insertPreset).mockImplementation(async (data) =>
       mockDb.insert().values(data).returning()
     );
     await expect(
-      presets.insertPreset({ id: "preset2", name: "Preset 2" })
+      insertPreset({ id: "preset2", name: "Preset 2" })
     ).rejects.toBeInstanceOf(ConstraintError);
     expect(mockDb.insert).toHaveBeenCalled();
   });
@@ -74,11 +76,11 @@ describe("Preset Database Operations", () => {
           .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
       }),
     };
-    vi.spyOn(presets, "insertPreset").mockImplementation(async (data) =>
+    vi.mocked(insertPreset).mockImplementation(async (data) =>
       mockDb.insert().values(data).returning()
     );
     await expect(
-      presets.insertPreset({ id: "preset2", name: "Preset 2" })
+      insertPreset({ id: "preset2", name: "Preset 2" })
     ).rejects.toBeInstanceOf(UnknownDbError);
     expect(mockDb.insert).toHaveBeenCalled();
   });

@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UnknownDbError } from "~/infrastructure/db/errors";
-import * as mediaRecent from "~/infrastructure/db/media-recent";
+import { selectRecentMedia } from "~/infrastructure/db/media-recent";
 import { db } from "~/tests/setup"; // Import the mocked db
+
+vi.mock("~/infrastructure/db/media-recent");
 
 describe("selectRecentMedia", () => {
   beforeEach(() => {
@@ -24,11 +26,10 @@ describe("selectRecentMedia", () => {
         limit: vi.fn().mockResolvedValueOnce([media1]),
       }),
     };
-    vi.spyOn(mediaRecent, "selectRecentMedia").mockImplementation(
-      async (_sourceId, _limit) =>
-        mockDb.select().from().where().orderBy().limit()
+    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
+      mockDb.select().from().where().orderBy().limit()
     );
-    const result = await mediaRecent.selectRecentMedia("source1", 1);
+    const result = await selectRecentMedia("source1", 1);
     expect(result).toEqual([media1]);
     expect(mockDb.select).toHaveBeenCalled();
   });
@@ -42,11 +43,10 @@ describe("selectRecentMedia", () => {
         limit: vi.fn().mockResolvedValueOnce([]),
       }),
     };
-    vi.spyOn(mediaRecent, "selectRecentMedia").mockImplementation(
-      async (_sourceId, _limit) =>
-        mockDb.select().from().where().orderBy().limit()
+    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
+      mockDb.select().from().where().orderBy().limit()
     );
-    const result = await mediaRecent.selectRecentMedia("source1", 1);
+    const result = await selectRecentMedia("source1", 1);
     expect(result).toEqual([]);
     expect(mockDb.select).toHaveBeenCalled();
   });
@@ -62,13 +62,12 @@ describe("selectRecentMedia", () => {
           .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
       }),
     };
-    vi.spyOn(mediaRecent, "selectRecentMedia").mockImplementation(
-      async (_sourceId, _limit) =>
-        mockDb.select().from().where().orderBy().limit()
+    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
+      mockDb.select().from().where().orderBy().limit()
     );
-    await expect(
-      mediaRecent.selectRecentMedia("source1", 1)
-    ).rejects.toBeInstanceOf(UnknownDbError);
+    await expect(selectRecentMedia("source1", 1)).rejects.toBeInstanceOf(
+      UnknownDbError
+    );
     expect(mockDb.select).toHaveBeenCalled();
   });
 });
