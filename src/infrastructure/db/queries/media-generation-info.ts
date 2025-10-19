@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { mediaGenerationInfo } from "~/infrastructure/db/schema";
-import { NotFoundError, UnknownDbError } from "./errors";
+import { NotFoundError, UnknownDbError } from "../errors";
 
 export const selectMediaGenerationInfoById = async (
   mediaId: string

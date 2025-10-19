@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { medias } from "~/infrastructure/db/schema";
-import { NotFoundError, UnknownDbError } from "./errors";
+import { NotFoundError, UnknownDbError } from "../errors";
 
 type Media = {
   id: string;

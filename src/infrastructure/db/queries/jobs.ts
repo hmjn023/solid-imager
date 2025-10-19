@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { jobs } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "./errors";
+import { UnknownDbError } from "../errors";
 
 export const selectJobsBySourceId = async (
   sourceId: string

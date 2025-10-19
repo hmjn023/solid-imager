@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { users } from "~/infrastructure/db/schema";
-import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
+import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectUsers = async () => {
   try {

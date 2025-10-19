@@ -1,6 +1,6 @@
 import { db } from "~/infrastructure/db/index";
 import { presets } from "~/infrastructure/db/schema";
-import { ConstraintError, UnknownDbError } from "./errors";
+import { ConstraintError, UnknownDbError } from "../errors";
 
 type Preset = {
   id: string;

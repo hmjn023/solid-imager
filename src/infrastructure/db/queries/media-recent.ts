@@ -1,7 +1,7 @@
 import { desc, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { medias } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "./errors";
+import { UnknownDbError } from "../errors";
 
 export const selectRecentMedia = async (sourceId: string) => {
   try {

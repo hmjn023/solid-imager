@@ -1,7 +1,7 @@
 import { and, eq, inArray, like, or } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { medias, mediaTags, tags } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "./errors";
+import { UnknownDbError } from "../errors";
 
 export const searchMedia = async (
   sourceId: string,

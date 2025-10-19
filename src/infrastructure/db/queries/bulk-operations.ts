@@ -6,7 +6,7 @@ import {
   mediaTags,
   type NewMediaTag,
 } from "~/infrastructure/db/schema";
-import { ConstraintError, UnknownDbError } from "./errors";
+import { ConstraintError, UnknownDbError } from "../errors";
 
 export const bulkUpdateMedia = async (
   sourceId: string,

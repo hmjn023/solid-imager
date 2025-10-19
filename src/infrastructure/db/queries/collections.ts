@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { collectionMedia, collections } from "~/infrastructure/db/schema";
-import { ConstraintError, NotFoundError, UnknownDbError } from "./errors";
+import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectCollections = async () => {
   try {
