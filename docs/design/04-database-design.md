@@ -36,6 +36,7 @@ CREATE TABLE media (
   created_at TIMESTAMP NOT NULL,     -- ファイル作成日時
   modified_at TIMESTAMP NOT NULL,    -- ファイル更新日時
   indexed_at TIMESTAMP NOT NULL DEFAULT NOW(),     -- DB登録日時
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')) -- メディアの状態
   
   UNIQUE(source_id, file_path)
 );
@@ -50,7 +51,8 @@ CREATE TABLE tags (
   attribute TEXT,                     -- タグの属性や分類 (例: "style", "clothing")
   color TEXT,                         -- UIで表示する際の色 (例: "#808080")
   source TEXT NOT NULL DEFAULT 'manual', -- タグの起源 (manual, comfyui_workflow, tagger_program_Aなど)
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
 );
 ```
 
@@ -81,7 +83,14 @@ CREATE TABLE media_details (
 ```sql
 CREATE TABLE media_generation_info (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
-  metadata JSONB,                    -- prompt, workflow等
+  metadata JSONB,                    -- prompt, workflow等（レガシー）
+  prompt TEXT,                       -- プロンプト文字列
+  negative_prompt TEXT,              -- ネガティブプロンプト
+  workflow JSONB,                    -- ComfyUIワークフロー全体
+  loras JSONB,                       -- LoRA情報 [{"name": "...", "weight": 0.8}]
+  vae TEXT,                          -- VAE名
+  hypernetworks JSONB,               -- Hypernetwork情報
+  embeddings JSONB,                  -- Embedding/Textual Inversion情報
   ai_generated BOOLEAN DEFAULT FALSE, -- AIによって生成されたかどうか
   model_name TEXT DEFAULT '',      -- 使用されたモデル名
   seed BIGINT DEFAULT -1,             -- シード値
@@ -90,13 +99,30 @@ CREATE TABLE media_generation_info (
 );
 ```
 
-#### media_organization テーブル (分類・整理系) -- メディアの組織情報
+#### media_categories テーブル -- メディアとカテゴリの多対多関係
 ```sql
-CREATE TABLE media_organization (
-  media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
-  category_id INTEGER REFERENCES categories(id), -- カテゴリID
-  project_id INTEGER REFERENCES projects(id),   -- プロジェクトID
-  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')) -- 状態
+CREATE TABLE media_categories (
+  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,     -- メディアID
+  category_id INTEGER NOT NULL REFERENCES categories(id) ON DELETE CASCADE, -- カテゴリID
+  PRIMARY KEY (media_id, category_id)
+);
+```
+
+#### media_projects テーブル -- メディアとプロジェクトの多対多関係
+```sql
+CREATE TABLE media_projects (
+  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,    -- メディアID
+  project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE, -- プロジェクトID
+  PRIMARY KEY (media_id, project_id)
+);
+```
+
+#### media_ips テーブル -- メディアとIPの多対多関係
+```sql
+CREATE TABLE media_ips (
+  media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,    -- メディアID
+  ip_id INTEGER NOT NULL REFERENCES ips(id) ON DELETE CASCADE,      -- IP(作品)ID
+  PRIMARY KEY (media_id, ip_id)
 );
 ```
 
@@ -122,6 +148,9 @@ CREATE TABLE media_sync (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   sync_status TEXT DEFAULT 'synced' CHECK (sync_status IN ('synced', 'pending', 'failed')), -- 同期ステータス
   backup_urls TEXT[] DEFAULT '{}'    -- バックアップURL
+  last_synced_at TIMESTAMP,          -- 最後の同期日時
+  sync_attempts INTEGER DEFAULT 0,   -- 同期試行回数
+  last_error TEXT                    -- 最後のエラーメッセージ
 );
 ```
 
@@ -133,7 +162,9 @@ CREATE TABLE categories (
   description TEXT DEFAULT '',       -- カテゴリの説明
   color TEXT DEFAULT '#808080',      -- UIで表示する際の色
   parent_id INTEGER REFERENCES categories(id), -- 親カテゴリID
-  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+  source TEXT NOT NULL DEFAULT 'manual', -- カテゴリの起源 (manual)
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
 );
 ```
 
@@ -144,6 +175,7 @@ CREATE TABLE projects (
   name TEXT NOT NULL,                 -- プロジェクト名
   description TEXT DEFAULT '',       -- プロジェクトの説明
   created_at TIMESTAMP DEFAULT NOW(),  -- 作成日時
+  updated_at TIMESTAMP DEFAULT NOW(),  -- 更新日時
   archived_at TIMESTAMP             -- アーカイブ日時
 );
 ```
@@ -153,8 +185,10 @@ CREATE TABLE projects (
 CREATE TABLE ips (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL UNIQUE,          -- IP(作品)名
-  description TEXT,
-  source TEXT NOT NULL DEFAULT 'manual' -- IPの起源 (manual, ai_generatedなど)
+  description TEXT DEFAULT '',       -- IP(作品)の説明
+  source TEXT NOT NULL DEFAULT 'manual', -- IPの起源 (manual, ai_generatedなど)
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
 );
 ```
 
@@ -164,8 +198,11 @@ CREATE TABLE characters (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,                 -- キャラクター名
   ip_id INTEGER REFERENCES ips(id) ON DELETE SET NULL, -- どのIP(作品)に属しているか
-  description TEXT,
+  description TEXT DEFAULT '',       -- キャラクターの説明
   source TEXT NOT NULL DEFAULT 'manual', -- キャラクターの起源 (manual, ai_generatedなど)
+  aliases JSONB,                     -- キャラクターの別名リスト (例: {"aliases": ["霊夢", "Reimu"]})
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
   UNIQUE(name, ip_id)
 );
 ```
@@ -205,6 +242,63 @@ CREATE TABLE similar_media (
 );
 ```
 
+#### media_relations テーブル -- メディア間の関連付け（差分、ページ、バージョン等）
+```sql
+CREATE TABLE media_relations (
+  id SERIAL PRIMARY KEY,
+  parent_media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- 親メディアID
+  child_media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,  -- 子メディアID
+  relation_type TEXT NOT NULL CHECK (relation_type IN (
+    'variant',      -- 差分・バリエーション
+    'version',      -- 別バージョン
+    'page',         -- ページ（漫画等）
+    'derivative',   -- 派生作品
+    'edit',         -- 編集版
+    'source'        -- 元素材
+  )),
+  order_index INTEGER,           -- ページ番号等の順序（オプショナル）
+  metadata JSONB,                -- 追加情報（差分内容の説明等）をJSON形式で保存
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  UNIQUE(parent_media_id, child_media_id, relation_type)
+);
+```
+
+**用途**: メディア間の親子関係や関連性を管理する。差分イラスト、漫画のページ、別バージョンなどの関係を表現できる。
+
+**ユースケース例**:
+
+1. **差分イラスト**:
+```
+親: "キャラクター立ち絵.png"
+  ├─ 子 (variant): "キャラクター立ち絵_表情差分1.png"
+  ├─ 子 (variant): "キャラクター立ち絵_表情差分2.png"
+  └─ 子 (variant): "キャラクター立ち絵_服装差分.png"
+```
+
+2. **漫画のページ**:
+```
+親: "漫画_第1話"
+  ├─ 子 (page, order: 1): "page_001.png"
+  ├─ 子 (page, order: 2): "page_002.png"
+  └─ 子 (page, order: 3): "page_003.png"
+```
+
+3. **バージョン管理**:
+```
+親: "イラスト_v1.png"
+  ├─ 子 (version): "イラスト_v2.png"
+  └─ 子 (version): "イラスト_final.png"
+```
+
+**metadataカラムの例**:
+```json
+{
+  "diff_description": "表情を笑顔に変更",
+  "tags": ["happy", "smile"],
+  "notes": "クライアント要望による差分"
+}
+```
+
 #### users テーブル -- ユーザー
 ```sql
 CREATE TABLE users (
@@ -223,20 +317,83 @@ CREATE TABLE collections (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- どのユーザーのコレクションか (ユーザー管理を導入する場合)
   name TEXT NOT NULL,                 -- コレクション名
-  description TEXT,                   -- コレクションの説明
+  description TEXT DEFAULT '',       -- コレクションの説明
   created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
 );
 ```
 
-#### collection_media テーブル -- コレクションとメディアの中間テーブル
+#### media_collections テーブル -- メディアとコレクションの中間テーブル
 ```sql
-CREATE TABLE collection_media (
+CREATE TABLE media_collections (
   collection_id UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE, -- コレクションID
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,       -- メディアID
   display_order INTEGER, -- コレクション内での表示順序
   PRIMARY KEY (collection_id, media_id)
 );
+```
+
+#### jobs テーブル -- バックグラウンドジョブ管理
+```sql
+CREATE TABLE jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  type TEXT NOT NULL,                 -- ジョブの種類（例: "thumbnail_generation", "metadata_extraction"）
+  source_id UUID REFERENCES media_sources(id) ON DELETE CASCADE, -- 関連するメディアソースID（オプショナル）
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')), -- ジョブのステータス
+  payload JSONB,                      -- ジョブのペイロード（入力パラメータ等）
+  result JSONB,                       -- ジョブの実行結果
+  error TEXT,                         -- エラーメッセージ（失敗時）
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- ジョブ作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 最終更新日時
+);
+```
+
+**用途**: サムネイル生成、メタデータ抽出、一括タグ付けなどの時間のかかる処理を非同期で実行し、その進捗状況と結果を管理する。元々は `thumbnail_jobs` として実装されていたが、汎用性を高めるために `jobs` テーブルに統合された。
+
+**typeの例**:
+- `thumbnail_generation` - サムネイル生成
+- `metadata_extraction` - メタデータ抽出
+- `auto_tagging` - AI自動タグ付け
+- `bulk_operation` - 一括操作
+
+**payloadの例**:
+```json
+{
+  "sourceId": "550e8400-e29b-41d4-a716-446655440000",
+  "options": {
+    "size": 256,
+    "quality": 80
+  }
+}
+```
+
+#### presets テーブル -- フィルタプリセット（検索条件の保存）
+```sql
+CREATE TABLE presets (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,          -- プリセット名（例: "お気に入りの高評価画像"）
+  value JSONB NOT NULL,               -- フィルター条件をJSON形式で保存
+                                      -- 例: {"tags": [1,5,12], "rating": 5, "dateRange": {...}}
+  created_at TIMESTAMP NOT NULL DEFAULT NOW() -- 作成日時
+);
+```
+
+**用途**: ユーザーがよく使う検索条件（タグ、評価、日付範囲、メディアタイプなど）に名前を付けて保存し、ワンクリックで再適用できるようにする機能。Feature 20（フィルタ・プリセット機能）の一部。
+
+**valueカラムの保存例**:
+```json
+{
+  "tags": [1, 5, 12],
+  "dateRange": {
+    "from": "2024-01-01",
+    "to": "2024-12-31"
+  },
+  "rating": 5,
+  "favorite": true,
+  "mediaType": "image",
+  "characters": [3, 7],
+  "ips": [2]
+}
 ```
 
 ### インデックス
@@ -255,10 +412,12 @@ CREATE INDEX idx_media_details_favorite ON media_details(favorite) WHERE favorit
 CREATE INDEX idx_media_details_view_count ON media_details(view_count);
 CREATE INDEX idx_media_generation_info_ai_generated ON media_generation_info(ai_generated);
 CREATE INDEX idx_media_generation_info_model_name ON media_generation_info(model_name) WHERE model_name != '';
-CREATE INDEX idx_media_organization_category_id ON media_organization(category_id);
-CREATE INDEX idx_media_organization_project_id ON media_organization(project_id);
-CREATE INDEX idx_media_organization_ip_id ON media_organization(ip_id);
-CREATE INDEX idx_media_organization_status ON media_organization(status);
+CREATE INDEX idx_media_categories_category_id ON media_categories(category_id);
+CREATE INDEX idx_media_projects_project_id ON media_projects(project_id);
+CREATE INDEX idx_media_ips_ip_id ON media_ips(ip_id);
 CREATE INDEX idx_media_technical_info_hash_md5 ON media_technical_info(hash_md5) WHERE hash_md5 != '';
 CREATE INDEX idx_similar_media_score ON similar_media(similarity_score);
+CREATE INDEX idx_media_relations_parent ON media_relations(parent_media_id);
+CREATE INDEX idx_media_relations_child ON media_relations(child_media_id);
+CREATE INDEX idx_media_relations_type ON media_relations(relation_type);
 ```

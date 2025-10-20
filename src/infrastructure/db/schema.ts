@@ -41,6 +41,14 @@ export const jobStatusEnum = pgEnum("job_status", [
   "completed",
   "failed",
 ]);
+export const mediaRelationTypeEnum = pgEnum("media_relation_type", [
+  "variant", // 差分・バリエーション
+  "version", // 別バージョン
+  "page", // ページ（漫画等）
+  "derivative", // 派生作品
+  "edit", // 編集版
+  "source", // 元素材
+]);
 
 // テーブル
 export const mediaSources = pgTable("media_sources", {
@@ -89,6 +97,8 @@ export const medias = pgTable(
     modifiedAt: timestamp("modified_at").notNull().defaultNow(),
     /** DB登録日時 */
     indexedAt: timestamp("indexed_at").notNull().defaultNow(),
+    /** メディアの状態 */
+    status: mediaOrganizationStatusEnum("status").notNull().default("active"),
   },
   (table) => ({
     sourceIdFilePathUnique: unique("source_id_file_path_unique").on(
@@ -114,8 +124,12 @@ export const tags = pgTable(
     attribute: text("attribute"),
     /** UIで表示する際の色 (例: "#808080") */
     color: text("color"),
+    /** タグの起源 (manual, comfyui_workflow, tagger_program_Aなど) */
+    source: text("source").notNull().default("manual"),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("tags_name_unique").on(table.name),
@@ -134,6 +148,8 @@ export const mediaTags = pgTable(
     tagId: integer("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
+    /** AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
+    confidence: real("confidence"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.tagId] }),
@@ -174,6 +190,20 @@ export const mediaGenerationInfo = pgTable(
       .references(() => medias.id, { onDelete: "cascade" }),
     /** prompt, workflowなどのメタデータ */
     metadata: jsonb("metadata"),
+    /** プロンプト文字列 */
+    prompt: text("prompt"),
+    /** ネガティブプロンプト */
+    negativePrompt: text("negative_prompt"),
+    /** ComfyUIワークフロー全体 */
+    workflow: jsonb("workflow"),
+    /** LoRA情報 [{"name": "...", "weight": 0.8}] */
+    loras: jsonb("loras"),
+    /** VAE名 */
+    vae: text("vae"),
+    /** Hypernetwork情報 */
+    hypernetworks: jsonb("hypernetworks"),
+    /** Embedding/Textual Inversion情報 */
+    embeddings: jsonb("embeddings"),
     /** AIによって生成されたかどうか */
     aiGenerated: boolean("ai_generated").default(false),
     /** 使用されたモデル名 */
@@ -212,6 +242,10 @@ export const categories = pgTable(
     parentId: integer("parent_id").references(() => categories.id),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** カテゴリの起源 (manual) */
+    source: text("source").notNull().default("manual"),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("categories_name_unique").on(table.name),
@@ -226,6 +260,8 @@ export const projects = pgTable("projects", {
   description: text("description").default(""),
   /** 作成日時 */
   createdAt: timestamp("created_at").defaultNow(),
+  /** 更新日時 */
+  updatedAt: timestamp("updated_at").defaultNow(),
   /** アーカイブ日時 */
   archivedAt: timestamp("archived_at"),
 });
@@ -237,7 +273,13 @@ export const ips = pgTable(
     /** IP(作品)名 */
     name: text("name").notNull(),
     /** IP(作品)の説明 */
-    description: text("description"),
+    description: text("description").default(""),
+    /** IPの起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("ips_name_unique").on(table.name),
@@ -255,7 +297,15 @@ export const characters = pgTable(
       onDelete: "set null",
     }),
     /** キャラクターの説明 */
-    description: text("description"),
+    description: text("description").default(""),
+    /** キャラクターの起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+    /** キャラクターの別名（エイリアス）のリスト */
+    aliases: jsonb("aliases"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameIpIdUnique: unique("name_ipId_unique").on(table.name, table.ipId),
@@ -273,37 +323,70 @@ export const mediaCharacters = pgTable(
     characterId: integer("character_id")
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
+    /** AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
+    confidence: real("confidence"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
   })
 );
 
-export const mediaOrganization = pgTable(
-  "media_organization",
+/** メディアとカテゴリの多対多関係 */
+export const mediaCategories = pgTable(
+  "media_categories",
   {
     /** メディアID */
     mediaId: uuid("media_id")
-      .primaryKey()
+      .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** カテゴリID */
-    categoryId: integer("category_id").references(() => categories.id),
-    /** プロジェクトID */
-    projectId: integer("project_id").references(() => projects.id),
-    /** IP(作品)ID */
-    ipId: integer("ip_id").references(() => ips.id),
-    /** 状態 */
-    status: mediaOrganizationStatusEnum("status").default("active"),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
   },
   (table) => ({
-    categoryIdIndex: index("idx_media_organization_category_id").on(
+    pk: primaryKey({ columns: [table.mediaId, table.categoryId] }),
+    categoryIdIndex: index("idx_media_categories_category_id").on(
       table.categoryId
     ),
-    projectIdIndex: index("idx_media_organization_project_id").on(
-      table.projectId
-    ),
-    ipIdIndex: index("idx_media_organization_ip_id").on(table.ipId),
-    statusIndex: index("idx_media_organization_status").on(table.status),
+  })
+);
+
+/** メディアとプロジェクトの多対多関係 */
+export const mediaProjects = pgTable(
+  "media_projects",
+  {
+    /** メディアID */
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** プロジェクトID */
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.projectId] }),
+    projectIdIndex: index("idx_media_projects_project_id").on(table.projectId),
+  })
+);
+
+/** メディアとIPの多対多関係 */
+export const mediaIps = pgTable(
+  "media_ips",
+  {
+    /** メディアID */
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** IP(作品)ID */
+    ipId: integer("ip_id")
+      .notNull()
+      .references(() => ips.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.ipId] }),
+    ipIdIndex: index("idx_media_ips_ip_id").on(table.ipId),
   })
 );
 
@@ -349,7 +432,13 @@ export const mediaSync = pgTable("media_sync", {
   syncStatus: mediaSyncStatusEnum("sync_status").default("synced"),
   /** バックアップURL */
   backupUrls: text("backup_urls").array().default(sql`'{}'`),
-});
+  /** 最後の同期日時 */
+  lastSyncedAt: timestamp("last_synced_at"),
+  /** 同期試行回数 */
+  syncAttempts: integer("sync_attempts").default(0),
+  /** 最後のエラーメッセージ */
+  lastError: text("last_error"),
+});;
 
 export const viewHistory = pgTable("view_history", {
   id: serial("id").primaryKey(),
@@ -394,6 +483,60 @@ export const similarMedia = pgTable(
   })
 );
 
+/** メディア間の関連付けテーブル（差分、ページ、バージョン等）
+ *
+ * メディア間の親子関係や関連性を管理する。
+ * 差分イラスト、漫画のページ、別バージョンなどの関係を表現できる。
+ *
+ * @example 差分イラスト
+ * parent: "キャラクター立ち絵.png"
+ *   ├─ child (variant): "キャラクター立ち絵_表情差分1.png"
+ *   ├─ child (variant): "キャラクター立ち絵_表情差分2.png"
+ *   └─ child (variant): "キャラクター立ち絵_服装差分.png"
+ *
+ * @example 漫画のページ
+ * parent: "漫画_第1話"
+ *   ├─ child (page, order: 1): "page_001.png"
+ *   ├─ child (page, order: 2): "page_002.png"
+ *   └─ child (page, order: 3): "page_003.png"
+ */
+export const mediaRelationsTable = pgTable(
+  "media_relations",
+  {
+    id: serial("id").primaryKey(),
+    /** 親メディアID */
+    parentMediaId: uuid("parent_media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** 子メディアID */
+    childMediaId: uuid("child_media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** 関係の種類 */
+    relationType: mediaRelationTypeEnum("relation_type").notNull(),
+    /** ページ番号等の順序（オプショナル） */
+    orderIndex: integer("order_index"),
+    /** 追加情報（差分内容の説明等）をJSON形式で保存 */
+    metadata: jsonb("metadata"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    parentChildTypeUnique: unique("parent_child_type_unique").on(
+      table.parentMediaId,
+      table.childMediaId,
+      table.relationType
+    ),
+    parentMediaIdIndex: index("idx_media_relations_parent").on(
+      table.parentMediaId
+    ),
+    childMediaIdIndex: index("idx_media_relations_child").on(
+      table.childMediaId
+    ),
+    relationTypeIndex: index("idx_media_relations_type").on(table.relationType),
+  })
+);
+
 /** ユーザー */
 export const users = pgTable(
   "users",
@@ -425,11 +568,15 @@ export const collections = pgTable("collections", {
   /** コレクション名 */
   name: text("name").notNull(),
   /** コレクションの説明 */
+  description: text("description").default(""),
+  /** 作成日時 */
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** 更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const collectionMedia = pgTable(
-  "collection_media",
+export const mediaCollections = pgTable(
+  "media_collections",
   {
     /** コレクションID */
     collectionId: uuid("collection_id")
@@ -447,24 +594,63 @@ export const collectionMedia = pgTable(
   })
 );
 
+/** バックグラウンドジョブ管理テーブル
+ *
+ * サムネイル生成、メタデータ抽出、一括タグ付けなどの時間のかかる処理を
+ * 非同期で実行し、その進捗状況と結果を管理する。
+ *
+ * 元々は thumbnail_jobs として実装されていたが、汎用性を高めるために
+ * jobs テーブルに統合された。
+ */
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  /** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
   type: text("type").notNull(),
+  /** 関連するメディアソースID (オプショナル) */
   sourceId: uuid("source_id").references(() => mediaSources.id, {
     onDelete: "cascade",
   }),
+  /** ジョブのステータス */
   status: jobStatusEnum("status").notNull().default("pending"),
+  /** ジョブの入力パラメータ (JSON) */
   payload: jsonb("payload"),
+  /** ジョブの実行結果 (JSON) */
   result: jsonb("result"),
+  /** エラーメッセージ (失敗時) */
   error: text("error"),
+  /** ジョブ作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** 最終更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/** フィルタプリセット（検索条件の保存）テーブル
+ *
+ * ユーザーがよく使う検索条件（タグ、評価、日付範囲、メディアタイプなど）に
+ * 名前を付けて保存し、ワンクリックで再適用できるようにする機能。
+ *
+ * Feature 20: フィルタ・プリセット機能の一部。
+ *
+ * @example valueの保存例
+ * ```json
+ * {
+ *   "tags": [1, 5, 12],
+ *   "dateRange": { "from": "2024-01-01", "to": "2024-12-31" },
+ *   "rating": 5,
+ *   "favorite": true,
+ *   "mediaType": "image",
+ *   "characters": [3, 7],
+ *   "ips": [2]
+ * }
+ * ```
+ */
 export const presets = pgTable("presets", {
   id: serial("id").primaryKey(),
+  /** プリセット名 (例: "お気に入りの高評価画像", "2024年の青い目キャラクター") */
   name: text("name").notNull().unique(),
+  /** フィルター条件をJSON形式で保存 */
   value: jsonb("value").notNull(),
+  /** 作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -498,12 +684,15 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
     fields: [medias.id],
     references: [mediaGenerationInfo.mediaId],
   }),
-  /** メディアの組織情報 */
+  /** メディアが属するカテゴリ */
 
-  organization: one(mediaOrganization, {
-    fields: [medias.id],
-    references: [mediaOrganization.mediaId],
-  }),
+  categories: many(mediaCategories),
+  /** メディアが属するプロジェクト */
+
+  projects: many(mediaProjects),
+  /** メディアが属するIP */
+
+  ips: many(mediaIps),
   /** メディアの技術情報 */
 
   technicalInfo: one(mediaTechnicalInfo, {
@@ -527,10 +716,16 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
   similarMedia2: many(similarMedia, { relationName: "media2" }),
   /** メディアが属するコレクション */
 
-  collectionMedia: many(collectionMedia),
+  collections: many(mediaCollections),
   /** メディアに含まれるキャラクター */
 
   characters: many(mediaCharacters),
+  /** このメディアを親とする関連メディア */
+
+  childRelations: many(mediaRelationsTable, { relationName: "parent" }),
+  /** このメディアを子とする関連メディア */
+
+  parentRelations: many(mediaRelationsTable, { relationName: "child" }),
 }));
 
 /** タグとメディアのリレーション */
@@ -569,20 +764,20 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   children: many(categories, { relationName: "parent_category" }),
   /** カテゴリに属するメディア */
 
-  media: many(mediaOrganization),
+  media: many(mediaCategories),
 }));
 
 /** プロジェクトとメディアのリレーション */
 export const projectsRelations = relations(projects, ({ many }) => ({
   /** プロジェクトに属するメディア */
-  media: many(mediaOrganization),
+  media: many(mediaProjects),
 }));
 
 /** IPとメディア、キャラクターのリレーション */
 export const ipsRelations = relations(ips, ({ many }) => ({
   /** IPに属するメディア */
 
-  media: many(mediaOrganization),
+  media: many(mediaIps),
   /** IPに属するキャラクター */
 
   characters: many(characters),
@@ -620,36 +815,50 @@ export const mediaCharactersRelations = relations(
   })
 );
 
-/** メディアの組織情報と各テーブルのリレーション */
-export const mediaOrganizationRelations = relations(
-  mediaOrganization,
+/** メディアとカテゴリの中間テーブルのリレーション */
+export const mediaCategoriesRelations = relations(
+  mediaCategories,
   ({ one }) => ({
-    /** 組織情報が参照するメディア */
-
+    /** 中間テーブルが参照するメディア */
     media: one(medias, {
-      fields: [mediaOrganization.mediaId],
+      fields: [mediaCategories.mediaId],
       references: [medias.id],
     }),
-    /** 組織情報が参照するカテゴリ */
-
+    /** 中間テーブルが参照するカテゴリ */
     category: one(categories, {
-      fields: [mediaOrganization.categoryId],
+      fields: [mediaCategories.categoryId],
       references: [categories.id],
-    }),
-    /** 組織情報が参照するプロジェクト */
-
-    project: one(projects, {
-      fields: [mediaOrganization.projectId],
-      references: [projects.id],
-    }),
-    /** 組織情報が参照するIP */
-
-    ip: one(ips, {
-      fields: [mediaOrganization.ipId],
-      references: [ips.id],
     }),
   })
 );
+
+/** メディアとプロジェクトの中間テーブルのリレーション */
+export const mediaProjectsRelations = relations(mediaProjects, ({ one }) => ({
+  /** 中間テーブルが参照するメディア */
+  media: one(medias, {
+    fields: [mediaProjects.mediaId],
+    references: [medias.id],
+  }),
+  /** 中間テーブルが参照するプロジェクト */
+  project: one(projects, {
+    fields: [mediaProjects.projectId],
+    references: [projects.id],
+  }),
+}));
+
+/** メディアとIPの中間テーブルのリレーション */
+export const mediaIpsRelations = relations(mediaIps, ({ one }) => ({
+  /** 中間テーブルが参照するメディア */
+  media: one(medias, {
+    fields: [mediaIps.mediaId],
+    references: [medias.id],
+  }),
+  /** 中間テーブルが参照するIP */
+  ip: one(ips, {
+    fields: [mediaIps.ipId],
+    references: [ips.id],
+  }),
+}));
 
 /** 閲覧履歴とメディアのリレーション */
 export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
@@ -678,8 +887,27 @@ export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
   }),
 }));
 
+/** メディア間の関連付けのリレーション */
+export const mediaRelationsTableRelations = relations(
+  mediaRelationsTable,
+  ({ one }) => ({
+    /** 親メディア */
+    parentMedia: one(medias, {
+      fields: [mediaRelationsTable.parentMediaId],
+      references: [medias.id],
+      relationName: "parent",
+    }),
+    /** 子メディア */
+    childMedia: one(medias, {
+      fields: [mediaRelationsTable.childMediaId],
+      references: [medias.id],
+      relationName: "child",
+    }),
+  })
+);
+
 export const collectionsRelations = relations(collections, ({ one, many }) => ({
-  media: many(collectionMedia),
+  media: many(mediaCollections),
   /** どのユーザーのコレクションか */
   user: one(users, {
     fields: [collections.userId],
@@ -688,19 +916,19 @@ export const collectionsRelations = relations(collections, ({ one, many }) => ({
 }));
 
 /** コレクションとメディアの中間テーブルのリレーション */
-export const collectionMediaRelations = relations(
-  collectionMedia,
+export const mediaCollectionsRelations = relations(
+  mediaCollections,
   ({ one }) => ({
     /** 中間テーブルが参照するコレクション */
 
     collection: one(collections, {
-      fields: [collectionMedia.collectionId],
+      fields: [mediaCollections.collectionId],
       references: [collections.id],
     }),
     /** 中間テーブルが参照するメディア */
 
     media: one(medias, {
-      fields: [collectionMedia.mediaId],
+      fields: [mediaCollections.mediaId],
       references: [medias.id],
     }),
   })
@@ -748,8 +976,14 @@ export type NewCharacter = InferInsertModel<typeof characters>;
 export type MediaCharacter = InferSelectModel<typeof mediaCharacters>;
 export type NewMediaCharacter = InferInsertModel<typeof mediaCharacters>;
 
-export type MediaOrganization = InferSelectModel<typeof mediaOrganization>;
-export type NewMediaOrganization = InferInsertModel<typeof mediaOrganization>;
+export type MediaCategory = InferSelectModel<typeof mediaCategories>;
+export type NewMediaCategory = InferInsertModel<typeof mediaCategories>;
+
+export type MediaProject = InferSelectModel<typeof mediaProjects>;
+export type NewMediaProject = InferInsertModel<typeof mediaProjects>;
+
+export type MediaIp = InferSelectModel<typeof mediaIps>;
+export type NewMediaIp = InferInsertModel<typeof mediaIps>;
 
 export type MediaTechnicalInfo = InferSelectModel<typeof mediaTechnicalInfo>;
 export type NewMediaTechnicalInfo = InferInsertModel<typeof mediaTechnicalInfo>;
@@ -766,8 +1000,8 @@ export type NewSimilarMedia = InferInsertModel<typeof similarMedia>;
 export type Collection = InferSelectModel<typeof collections>;
 export type NewCollection = InferInsertModel<typeof collections>;
 
-export type CollectionMedia = InferSelectModel<typeof collectionMedia>;
-export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
+export type MediaCollection = InferSelectModel<typeof mediaCollections>;
+export type NewMediaCollection = InferInsertModel<typeof mediaCollections>;
 
 export type User = InferSelectModel<typeof users>;
 export type NewUser = InferInsertModel<typeof users>;
@@ -777,3 +1011,6 @@ export type NewJob = InferInsertModel<typeof jobs>;
 
 export type Preset = InferSelectModel<typeof presets>;
 export type NewPreset = InferInsertModel<typeof presets>;
+
+export type MediaRelation = InferSelectModel<typeof mediaRelationsTable>;
+export type NewMediaRelation = InferInsertModel<typeof mediaRelationsTable>;

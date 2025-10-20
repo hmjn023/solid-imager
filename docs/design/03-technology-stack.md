@@ -7,7 +7,6 @@ Runtime: Bun
 Framework: SolidStart  
 UI Components: solid-ui (shadcn/ui for Solid.js)
 Linter/Formatter: Biome
-Functional Programming: Effect-TS (型安全、エラーハンドリング)
 Data Fetching/State Management: TanStack Query
 Client-side Reactive Store: TanStack DB
 Form Management: TanStack Form
@@ -45,14 +44,14 @@ Authentication: なし (個人利用想定)
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",
     "@solidjs/start": "^1.2.0",
-    "@tanstack/solid-db": "^0.1.25",
-    "@tanstack/solid-form": "^1.23.5",
-    "@tanstack/solid-query": "^5.90.3",
+    "@tanstack/solid-db": "^0.1.33",
+    "@tanstack/solid-form": "^1.23.7",
+    "@tanstack/solid-query": "^5.90.6",
     "@tanstack/zod-form-adapter": "^0.42.1",
     "chokidar": "^4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "drizzle-orm": "^0.44.5",
+    "drizzle-orm": "^0.44.6",
     "pg": "^8.16.3",
     "sharp": "^0.34.4",
     "solid-js": "^1.9.9",
@@ -60,20 +59,20 @@ Authentication: なし (個人利用想定)
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "vinxi": "^0.5.8",
-    "zod": "^4.1.11"
+    "zod": "^4.1.12"
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
-    "@playwright/test": "^1.55.1",
-    "@tailwindcss/vite": "^4.1.13",
-    "@types/node": "^24.6.1",
+    "@playwright/test": "^1.56.1",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/node": "^24.8.1",
     "@types/pg": "^8.15.5",
     "@types/ssh2-sftp-client": "^9.0.5",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.5",
-    "playwright": "^1.55.1",
-    "tailwindcss": "^4.1.13",
+    "playwright": "^1.56.1",
+    "tailwindcss": "^4.1.14",
     "ultracite": "5.4.4",
     "vitest": "^3.2.4"
   },

@@ -1,6 +1,28 @@
 # 型定義
 
-このドキュメントでは、アプリケーション全体で使用される主要な型定義を記述します。これらの型は `src/lib/types.ts` で定義されており、APIリクエスト/レスポンス、データベース操作、内部ロジック間のデータ構造の一貫性を保証します。
+このドキュメントでは、アプリケーション全体で使用される主要な型定義を記述します。
+
+## 型定義の配置
+
+このプロジェクトはクリーンアーキテクチャを採用しており、型定義はドメインごとに分散配置されています：
+
+- **ドメイン型**: `src/domain/{domain}/types.ts`
+  - `src/domain/media/types.ts` - メディア関連の型
+  - `src/domain/sources/types.ts` - メディアソース関連の型
+  - `src/domain/tags/types.ts` - タグ関連の型
+  - `src/domain/categories/types.ts` - カテゴリ関連の型
+  - `src/domain/characters/types.ts` - キャラクター関連の型
+  - `src/domain/ips/types.ts` - IP（知的財産）関連の型
+  - `src/domain/shared/types.ts` - 共通型（UUID, AppConfig等）
+
+- **検証スキーマ**: `src/domain/{domain}/schemas.ts`
+  - Zodスキーマによる実行時の型検証
+
+この分散配置により、各ドメインの独立性が保たれ、変更の影響範囲が限定されます。
+
+## 主要な型定義
+
+以下は、主要な型定義の概要です。詳細は各ドメインのファイルを参照してください。
 
 ```typescript
 export type UUID = string;

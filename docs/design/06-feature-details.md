@@ -97,7 +97,10 @@ interface MediaMetadata {
 
 #### DB関数
 - `db.selectMediaGenerationInfoById(mediaId)`
-- `db.updateMediaGenerationInfo(mediaId, ...)`
+- `db.updateMediaGenerationInfo(mediaId, updates: { metadata?, prompt?, negativePrompt?, workflow?, loras?, vae?, hypernetworks?, embeddings?, aiGenerated?, modelName?, seed?, cfgScale?, steps? })`
+- `db.insertMediaGenerationInfo(mediaId, generationInfo: { metadata?, prompt?, negativePrompt?, workflow?, loras?, vae?, hypernetworks?, embeddings?, aiGenerated?, modelName?, seed?, cfgScale?, steps? })`
+- `db.selectMediaByWorkflow(workflowHash: string)` - ワークフローハッシュから類似メディアを検索
+- `db.selectMediaByPrompt(promptText: string)` - プロンプトテキストから検索
 
 #### 内部ヘルパー関数
 - `ImageProcessor.extractMetadata(mediaPath: string)`
@@ -161,24 +164,47 @@ interface MediaMetadata {
 ### 7. メディアソート・検索機能
 
 #### ソート条件
+- 作成日時（created_at）
+- 更新日時（modified_at）
+- ファイル名（file_name）
+- 評価（rating）
+- 閲覧回数（view_count）
 
 #### 検索条件
+- ファイル名（部分一致）
+- 説明文（description）
+- タグ（AND/OR条件）
+- キャラクター（名前またはエイリアス）
+- カテゴリ
+- プロジェクト
+- IP（作品）
+- 評価範囲
+- 日付範囲
+- AI生成フラグ
+- 使用モデル名
+- プロンプト文字列（部分一致）
+- LoRA名（JSONB検索）
 
 #### 実装方針
 - **Phase 1**: ファイルシステムベース（都度メタデータ読み取り）
 - **Phase 2**: DB対応でパフォーマンス改善予定
 - ページネーション対応（デフォルト50件）
 - タグ検索は AND 条件で実装
+- AI生成パラメータでの高度な検索対応
 
 #### API関数
 - `MediaService.searchMedia(sourceId: UUID, searchOptions: SearchOptions)`
 - `MediaService.searchMediaInDirectory(sourceId: UUID, directoriesPath: string, searchOptions: SearchOptions)`
 - `SearchService.globalSearchMedia(searchOptions: SearchOptions)`
+- `SearchService.searchByGenerationParams(params: { modelName?, prompt?, loras?, minCfgScale?, maxCfgScale? })`
+- `SearchService.searchByCharacter(characterNameOrAlias: string)` - キャラクター名またはエイリアスから検索
 
 #### DB関数
-- `db.searchMedia(sourceId, ...)`
-- `db.searchMediaInDirectory(sourceId, directoriesPath, ...)`
-- `db.globalSearchMedia(...)`
+- `db.searchMedia(sourceId, filters: { fileName?, description?, tags?, characters?, categories?, projects?, ips?, ratingMin?, ratingMax?, dateFrom?, dateTo?, aiGenerated?, modelName?, prompt? })`
+- `db.searchMediaInDirectory(sourceId, directoriesPath, filters)`
+- `db.globalSearchMedia(filters)`
+- `db.searchMediaByGenerationParams(params: { modelName?, prompt?, workflow?, loras?, cfgScaleMin?, cfgScaleMax?, stepsMin?, stepsMax? })`
+- `db.searchMediaByLoRA(loraName: string)` - 特定LoRAを使用したメディアを検索（JSONB検索）
 
 ### 8. メディア情報編集機能
 
@@ -243,21 +269,24 @@ interface MediaMetadata {
 ### 11. キャラクター管理機能
 
 #### 概要
-メディアに登場するキャラクターのCRUD操作を提供します。
+メディアに登場するキャラクターのCRUD操作を提供します。キャラクターには別名（エイリアス）を設定でき、異なる表記での検索に対応します。
 
 #### API関数
 - `CharacterService.getAllCharacters()`
-- `CharacterService.createCharacter(characterData: { name: string, ipId?: number, description?: string })`
+- `CharacterService.createCharacter(characterData: { name: string, ipId?: number, description?: string, aliases?: string[] })`
 - `CharacterService.getCharacterDetails(characterId: number)`
-- `CharacterService.updateCharacter(characterId: number, characterData: { name?: string, ipId?: number, description?: string })`
+- `CharacterService.updateCharacter(characterId: number, characterData: { name?: string, ipId?: number, description?: string, aliases?: string[] })`
 - `CharacterService.deleteCharacter(characterId: number)`
+- `CharacterService.searchCharacterByName(query: string)` - 名前とエイリアスの両方から検索
 
 #### DB関数
 - `db.selectCharacters()`
-- `db.insertCharacter(...)`
+- `db.insertCharacter(data: { name: string, ipId?: number, description?: string, source?: string, aliases?: string[] })`
 - `db.selectCharacterById(characterId)`
-- `db.updateCharacter(characterId, ...)`
+- `db.updateCharacter(characterId, updates: { name?, ipId?, description?, source?, aliases? })`
 - `db.deleteCharacter(characterId)`
+- `db.searchCharacterByAlias(alias: string)` - エイリアスからキャラクターを検索（JSONB検索）
+- `db.selectCharactersByIp(ipId: number)` - 特定IPに属するキャラクター一覧
 
 ### 12. IP (知的財産) 管理機能
 
@@ -323,25 +352,32 @@ interface MediaMetadata {
 ### 15. バルク操作機能
 
 #### 概要
-複数メディアの一括編集、削除、移動、タグ付けなど、効率的なメディア管理操作を提供します。
+複数メディアの一括編集、削除、移動、タグ付けなど、効率的なメディア管理操作を提供します。AI生成情報やキャラクター情報の一括更新にも対応します。
 
 #### API関数
 - `BulkOperationService.bulkEditMedia(sourceId: UUID, mediaIds: UUID[], updates: any)`
 - `BulkOperationService.bulkDeleteMedia(sourceId: UUID, mediaIds: UUID[])`
 - `BulkOperationService.bulkMoveMedia(sourceId: UUID, mediaIds: UUID[], destinationPath: string)`
 - `BulkOperationService.bulkTagMedia(sourceId: UUID, mediaIds: UUID[], tagsToAdd: number[], tagsToRemove: number[])`
+- `BulkOperationService.bulkUpdateGenerationInfo(mediaIds: UUID[], updates: { modelName?, prompt?, negativePrompt?, loras?, vae? })` - AI生成情報の一括更新
+- `BulkOperationService.bulkAssignCharacters(mediaIds: UUID[], characterIds: number[], confidence?: number)` - キャラクターの一括割り当て
+- `BulkOperationService.bulkUpdateCharacterAliases(characterIds: number[], aliasesToAdd: string[], aliasesToRemove: string[])` - キャラクターエイリアスの一括更新
 
 #### DB関数
-- `db.bulkUpdateMedia(sourceId, mediaIds, ...)`
+- `db.bulkUpdateMedia(sourceId, mediaIds, updates)`
 - `db.bulkDeleteMedia(sourceId, mediaIds)`
-- `db.bulkUpdateMediaPaths(sourceId, mediaIds, ...)`
+- `db.bulkUpdateMediaPaths(sourceId, mediaIds, newPaths)`
 - `db.bulkAddMediaTags(sourceId, mediaIds, tagsToAdd)`
 - `db.bulkRemoveMediaTags(sourceId, mediaIds, tagsToRemove)`
+- `db.bulkUpdateMediaGenerationInfo(mediaIds, updates: { metadata?, prompt?, negativePrompt?, workflow?, loras?, vae?, hypernetworks?, embeddings?, modelName?, seed?, cfgScale?, steps? })`
+- `db.bulkInsertMediaCharacters(mediaCharacterPairs: Array<{ mediaId: UUID, characterId: number, confidence?: number }>)`
+- `db.bulkRemoveMediaCharacters(mediaIds, characterIds)`
+- `db.bulkUpdateCharacterAliases(characterIds, aliasUpdates: Array<{ characterId: number, aliases: string[] }>)`
 
 ### 16. データ移行・同期機能
 
 #### 概要
-メディアソースのエクスポート、インポート、スキャン、複製など、データ移行と同期に関する機能を提供します。
+メディアソースのエクスポート、インポート、スキャン、複製など、データ移行と同期に関する機能を提供します。バックアップと同期の状態管理も含みます。
 
 #### API関数
 - `DataMigrationService.exportSource(sourceId: UUID, format: 'zip')`
@@ -349,6 +385,9 @@ interface MediaMetadata {
 - `DataMigrationService.scanSource(sourceId: UUID)`
 - `DataMigrationService.cloneSource(sourceId: UUID, newName: string)`
 - `DataMigrationService.downloadMedia(sourceId: UUID, mediaId: UUID)`
+- `SyncService.syncMediaToBackup(mediaId: UUID, backupUrl: string)` - メディアを指定バックアップ先に同期
+- `SyncService.getSyncStatus(mediaId: UUID)` - 同期ステータスを取得
+- `SyncService.retryFailedSync(mediaId: UUID)` - 失敗した同期を再試行
 
 #### DB関数
 - `db.selectMediaSourceData(sourceId)`
@@ -358,6 +397,12 @@ interface MediaMetadata {
 - `db.insertMediaSource(...)`
 - `db.cloneMediaData(sourceId, newSourceId)`
 - `db.selectMediaById(mediaId)`
+- `db.selectMediaSyncByMediaId(mediaId)` - メディアの同期情報を取得
+- `db.insertMediaSync(mediaId, syncData: { syncStatus?, backupUrls?, lastSyncedAt?, syncAttempts?, lastError? })`
+- `db.updateMediaSyncStatus(mediaId, updates: { syncStatus?, backupUrls?, lastSyncedAt?, syncAttempts?, lastError? })` - 同期ステータスを更新
+- `db.incrementSyncAttempts(mediaId)` - 同期試行回数をインクリメント
+- `db.selectFailedSyncMedia()` - 同期失敗メディア一覧を取得
+- `db.selectPendingSyncMedia()` - 同期待ちメディア一覧を取得
 
 ### 17. 内部ヘルパー関数 (Internal Helper Functions)
 
@@ -422,7 +467,7 @@ API関数やDB関数をサポートする、より低レベルの内部関数群
 ### 18. 統計・分析機能
 
 #### 概要
-メディアの利用状況やシステム全体のパフォーマンスに関するデータ分析と監視機能を提供します。
+メディアの利用状況やシステム全体のパフォーマンスに関するデータ分析と監視機能を提供します。AI生成パラメータの統計やキャラクター出現頻度なども含みます。
 
 #### API関数
 - `AnalyticsService.getSourceStats(sourceId: UUID)`
@@ -430,6 +475,10 @@ API関数やDB関数をサポートする、より低レベルの内部関数群
 - `AnalyticsService.getDuplicateMedia(sourceId: UUID)`
 - `AnalyticsService.getSimilarMedia(sourceId: UUID, mediaPath: string)`
 - `AnalyticsService.getPopularMedia()`
+- `AnalyticsService.getModelUsageStats()` - 使用モデル別の統計
+- `AnalyticsService.getLoRAUsageStats()` - LoRA使用頻度の統計
+- `AnalyticsService.getCharacterStats()` - キャラクター別メディア数の統計
+- `AnalyticsService.getGenerationParamsTrends()` - AI生成パラメータの傾向分析
 
 #### DB関数
 - `db.selectSourceStats(sourceId)`
@@ -437,6 +486,11 @@ API関数やDB関数をサポートする、より低レベルの内部関数群
 - `db.findDuplicateMedia(sourceId)`
 - `db.findSimilarMedia(sourceId, mediaPath)`
 - `db.selectPopularMedia()`
+- `db.selectModelUsageStats()` - モデル名別メディア数を集計
+- `db.selectLoRAUsageStats()` - LoRA名別使用回数を集計（JSONB集計）
+- `db.selectCharacterFrequency()` - キャラクター別出現回数を集計
+- `db.selectAverageGenerationParams()` - CFGスケール、ステップ数等の平均値を取得
+- `db.selectPromptKeywords()` - プロンプトから頻出キーワードを抽出
 
 ### 17. 内部ヘルパー関数 (Internal Helper Functions)
 
