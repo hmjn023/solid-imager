@@ -28,11 +28,11 @@ describe("collections queries Integration", () => {
   let testMediaId: string;
 
   beforeAll(async () => {
-    await db.delete(collectionMedia).where(sql`true`);
-    await db.delete(collections).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(users).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(collectionMedia);
+    await db.delete(collections);
+    await db.delete(medias);
+    await db.delete(users);
+    await db.delete(mediaSources);
 
     const testUser: NewUser = {
       name: "CollTestUser",
@@ -74,11 +74,11 @@ describe("collections queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(collectionMedia).where(sql`true`);
-    await db.delete(collections).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(users).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(collectionMedia);
+    await db.delete(collections);
+    await db.delete(medias);
+    await db.delete(users);
+    await db.delete(mediaSources);
   });
 
   it("should select all collections", async () => {

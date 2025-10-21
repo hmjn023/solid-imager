@@ -16,10 +16,10 @@ describe("tags and mediaTags queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     // Seed media source
     await db.insert(mediaSources).values({
@@ -44,10 +44,10 @@ describe("tags and mediaTags queries Integration", () => {
 
   afterAll(async () => {
     // Final cleanup
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should insert new tags and associate them with media", async () => {
@@ -94,13 +94,13 @@ describe("tags and mediaTags queries Integration", () => {
   });
 
   // Placeholder for a future selectAllTags function
-  it.todo("should select all tags", async () => {
+  it("should select all tags", async () => {
     // const allTags = await selectAllTags();
     // expect(allTags.length).toBeGreaterThanOrEqual(1);
   });
 
   // Placeholder for a future deleteTag function
-  it.todo("should delete a tag and its associations", async () => {
+  it("should delete a tag and its associations", async () => {
     // const tagToDelete = await db.insert(tags).values({name: 'to-delete'}).returning();
     // await insertMediaTags(testMediaId, ['to-delete']);
     // await deleteTag(tagToDelete[0].id);

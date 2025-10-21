@@ -8,57 +8,22 @@ This document outlines the dependency-ordered tasks required to fix the test sui
 
 ### Phase 1: Prerequisites & Initial Fixes
 
--   **T001 (Setup)**: Apply database migrations to synchronize the test database schema with the application schema.
-    -   **File(s)**: `drizzle/` folder, affects the test database.
-    -   **Action**: Run the command `bun run db:migrate`.
-    -   **Depends On**: None
-
--   **T002 (Fix)**: Correct the invalid SQL query generation in the `collections` integration test.
-    -   **File(s)**: `src/tests/integration/queries/collections.test.ts`
-    -   **Action**: Inspect the `beforeAll` and `afterAll` hooks and fix the `db.delete()` calls to generate valid SQL.
-    -   **Depends On**: T001
+-   **T001 (Setup)**: [X] Apply database migrations to synchronize the test database schema with the application schema.
+-   **T002 (Fix)**: [X] Correct the invalid SQL query generation in the `collections` integration test.
 
 ---
 
 ### Phase 2: Fix Failing Tests (Parallelizable)
 
-These tasks can be worked on in parallel after T001 is complete. The main action is to remove the `.skip` modifiers and fix any remaining logic errors now that the schema is correct.
-
--   **T003 (Test) [P]**: Fix tests for the core `media` service.
-    -   **File(s)**:
-        -   `src/tests/integration/media/update-media-integration.test.ts`
-        -   `src/tests/integration/media/add-media-integration.test.ts`
-        -   `src/tests/integration/media/delete-media-integration.test.ts`
-        -   `src/tests/integration/media/get-media-integration.test.ts`
-        -   `src/tests/integration/media/list-media-integration.test.ts`
-    -   **Depends On**: T001
-
--   **T004 (Test) [P]**: Fix query tests affected by the missing `status` column in the `media` table.
-    -   **File(s)**:
-        -   `src/tests/integration/queries/bulk-operations.test.ts`
-        -   `src/tests/integration/queries/media-generation-info.test.ts`
-        -   `src/tests/integration/queries/media-random.test.ts`
-        -   `src/tests/integration/queries/media-recent.test.ts`
-        -   `src/tests/integration/queries/media.test.ts`
-        -   `src/tests/integration/queries/search.test.ts`
-        -   `src/tests/integration/queries/tags.test.ts`
-    -   **Depends On**: T001
-
--   **T005 (Test) [P]**: Fix query tests affected by the missing `source` column.
-    -   **File(s)**:
-        -   `src/tests/integration/queries/categories.test.ts`
-        -   `src/tests/integration/queries/characters.test.ts`
-        -   `src/tests/integration/queries/ips.test.ts`
-    -   **Depends On**: T001
+-   **T003 (Test) [P]**: [X] Fix tests for the core `media` service.
+-   **T004 (Test) [P]**: [X] Fix query tests affected by the missing `status` column in the `media` table.
+-   **T005 (Test) [P]**: [X] Fix query tests affected by the missing `source` column.
 
 ---
 
 ### Phase 3: Final Validation
 
--   **T006 (Polish)**: Perform a final, full run of the entire test suite to ensure all tests pass.
-    -   **File(s)**: All test files.
-    -   **Action**: Run the command `bun run test`.
-    -   **Depends On**: T002, T003, T004, T005
+-   **T006 (Polish)**: [X] Perform a final, full run of the entire test suite to ensure all tests pass.
 
 ---
 

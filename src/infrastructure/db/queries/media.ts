@@ -23,7 +23,22 @@ export const selectMediaBySourceIdAndFilePath = async (
 ): Promise<Media[]> => {
   try {
     const result = await db
-      .select()
+      .select({
+        id: medias.id,
+        sourceId: medias.sourceId,
+        filePath: medias.filePath,
+        fileName: medias.fileName,
+        mediaType: medias.mediaType,
+        width: medias.width,
+        height: medias.height,
+        fileSize: medias.fileSize,
+        description: medias.description,
+        sourceUrl: medias.sourceUrl,
+        createdAt: medias.createdAt,
+        modifiedAt: medias.modifiedAt,
+        indexedAt: medias.indexedAt,
+        status: medias.status,
+      })
       .from(medias)
       .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
     return result;
