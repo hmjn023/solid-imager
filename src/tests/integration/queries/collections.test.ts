@@ -12,8 +12,8 @@ import {
   updateCollection,
 } from "~/infrastructure/db/queries/collections";
 import {
-  collectionMedia,
   collections,
+  mediaCollections,
   mediaSources,
   medias,
   type NewCollection,
@@ -28,7 +28,7 @@ describe("collections queries Integration", () => {
   let testMediaId: string;
 
   beforeAll(async () => {
-    await db.delete(collectionMedia);
+    await db.delete(mediaCollections);
     await db.delete(collections);
     await db.delete(medias);
     await db.delete(users);
@@ -74,7 +74,7 @@ describe("collections queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(collectionMedia);
+    await db.delete(mediaCollections);
     await db.delete(collections);
     await db.delete(medias);
     await db.delete(users);
@@ -117,14 +117,14 @@ describe("collections queries Integration", () => {
     await insertCollectionMedia(testCollectionId, testMediaId);
     let mediaInCollection = await db
       .select()
-      .from(collectionMedia)
+      .from(mediaCollections)
       .where(sql`collection_id = ${testCollectionId}`);
     expect(mediaInCollection.length).toBe(1);
 
     await deleteCollectionMedia(testCollectionId, testMediaId);
     mediaInCollection = await db
       .select()
-      .from(collectionMedia)
+      .from(mediaCollections)
       .where(sql`collection_id = ${testCollectionId}`);
     expect(mediaInCollection.length).toBe(0);
   });

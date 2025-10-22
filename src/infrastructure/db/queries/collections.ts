@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { collectionMedia, collections } from "~/infrastructure/db/schema";
+import { collections, mediaCollections } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 export const selectCollections = async () => {
@@ -127,7 +127,7 @@ export const insertCollectionMedia = async (
 ) => {
   try {
     return await db
-      .insert(collectionMedia)
+      .insert(mediaCollections)
       .values({ collectionId, mediaId, displayOrder })
       .returning();
   } catch (error: unknown) {
@@ -155,11 +155,11 @@ export const deleteCollectionMedia = async (
 ) => {
   try {
     const result = await db
-      .delete(collectionMedia)
+      .delete(mediaCollections)
       .where(
         and(
-          eq(collectionMedia.collectionId, collectionId),
-          eq(collectionMedia.mediaId, mediaId)
+          eq(mediaCollections.collectionId, collectionId),
+          eq(mediaCollections.mediaId, mediaId)
         )
       )
       .returning();

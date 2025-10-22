@@ -438,7 +438,7 @@ export const mediaSync = pgTable("media_sync", {
   syncAttempts: integer("sync_attempts").default(0),
   /** 最後のエラーメッセージ */
   lastError: text("last_error"),
-});;
+});
 
 export const viewHistory = pgTable("view_history", {
   id: serial("id").primaryKey(),
