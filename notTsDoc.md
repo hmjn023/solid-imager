@@ -66,10 +66,21 @@
 *   **`src/components/ui/input.tsx`**
     *   `export type InputProps` - TSDocがありません。
     *   `export function Input` - TSDocがありません。
+*   **`src/components/counter.tsx`** - デフォルト関数`Counter`にTSDocがありません。
+*   **`src/components/nav.tsx`** - デフォルト関数`Nav`にTSDocがありません。
+*   **`src/components/simple-modal.tsx`** - デフォルト関数`SimpleModal`にTSDocがありません。
+*   **`src/components/source-card.tsx`** - デフォルト関数`SourceCard`と`SourceCardProps`型にTSDocがありません。
+*   **`src/components/source-delete-modal.tsx`** - デフォルト関数`SourceDeleteModal`と`SourceDeleteModalProps`型にTSDocがありません。
+*   **`src/components/source-form-modal.tsx`** - デフォルト関数`SourceFormModal`と`SourceFormModalProps`型にTSDocがありません。
 
 ## `src/routes` ディレクトリ
 
 多数のAPIルートファイル（`GET`, `POST`, `PUT`, `DELETE`関数）でTSDocがありません。
+
+*   **`src/routes/[...404].tsx`** - デフォルト関数`NotFound`にTSDocがありません。
+*   **`src/routes/about.tsx`** - デフォルト関数`About`にTSDocがありません。
+*   **`src/routes/index.tsx`** - デフォルト関数`Home`にTSDocがありません。
+*   **`src/routes/sources.tsx`** - デフォルト関数`Sources`とヘルパー関数/定数にTSDocがありません。
 
 ## `src/application/services` ディレクトリ
 
@@ -156,6 +167,37 @@
 *   **`src/tests/api/sources/[sourceId]/[mediaId]/ips.test.ts`**: テスト変数とモックデータにTSDocがありません。
 *   **`src/tests/api/sources/[sourceId]/[mediaId]/metadata.test.ts`**: テスト変数とモックデータにTSDocがありません。
 *   **`src/tests/api/sources/[sourceId]/[mediaId]/tags.test.ts`**: テスト変数とモックデータにTSDocがありません。
+*   **`src/tests/api/tags/index.test.ts`**: テスト変数とモックデータにTSDocがありません。
+*   **`src/tests/api/tags/tag-id-test.ts`**: テスト変数とモックデータにTSDocがありません。
+*   **`src/tests/db/media-random.test.ts`**: `Media`型、関数、`db`モックにTSDocがありません。
+*   **`src/tests/db/media-recent.test.ts`**: 関数、`db`モックにTSDocがありません。
+*   **`src/tests/db/media-sources.test.ts`**: `mockDb`変数にTSDocがありません。
+*   **`src/tests/db/presets.test.ts`**: `Preset`型、関数、`db`モックにTSDocがありません。
+*   **`src/tests/integration/config-api.spec.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media-api.spec.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/thumbnails-api.spec.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/access-denied-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/add-media-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/delete-media-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/get-media-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/list-media-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/media/update-media-integration.test.ts`**: テスト変数と定数にTSDocがありません。
+*   **`src/tests/integration/queries/bulk-operations.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/categories.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/characters.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/collections.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/ips.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/jobs.test.ts`**: 関数にTSDocがありません。
+*   **`src/tests/integration/queries/media-generation-info.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/media-random.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/media-recent.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/media-sources.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/media.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/presets.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/search.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/integration/queries/tags.test.ts`**: 関数にTSDocがありません。
+*   **`src/tests/integration/queries/users.test.ts`**: すべての関数にTSDocがありません。
+*   **`src/tests/unit/api/media.test.ts`**: テスト変数、モックデータ、`vi.mock`呼び出しにTSDocがありません。
 
 # 未調査のディレクトリとファイル
 
@@ -176,11 +218,9 @@
 *   `src/routes/about.tsx` (デフォルト関数`About`にTSDocがありません)
 *   `src/routes/index.tsx` (デフォルト関数`Home`にTSDocがありません)
 *   `src/routes/sources.tsx` (デフォルト関数`Sources`とヘルパー関数/定数にTSDocがありません)
-*   `src/tests/api/tags` (ディレクトリ)
-*   `src/tests/db` (ディレクトリ)
 *   `src/tests/e2e` (ディレクトリ)
 *   `src/tests/integration` (ディレクトリ)
 *   `src/tests/unit` (ディレクトリ)
-*   `src/tests/setup-integration.ts`
-*   `src/tests/setup-unit.ts`
-*   `src/tests/setup.ts`
+*   `src/tests/setup-integration.ts` (ファイル全体と定数にTSDocがありません)
+*   `src/tests/setup-unit.ts` (`mockDb`と`pool`定数、ファイル全体にTSDocがありません)
+*   `src/tests/setup.ts` (`mockDb`と`pool`定数、ファイル全体にTSDocがありません)
