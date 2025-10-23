@@ -5,8 +5,14 @@
 
 import { z } from "zod";
 
+/**
+ * Schema for validating media types.
+ */
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 
+/**
+ * Schema for validating requests to add new media.
+ */
 export const addMediaRequestSchema = z.object({
   sourceId: z.string().uuid("Invalid source ID format"),
   filePath: z.string().min(1, "File path is required"),
@@ -19,6 +25,9 @@ export const addMediaRequestSchema = z.object({
   height: z.number().int().positive("Height must be a positive integer"),
 });
 
+/**
+ * Schema for validating requests to update existing media.
+ */
 export const updateMediaRequestSchema = z.object({
   filePath: z.string().min(1, "File path cannot be empty").optional(),
   fileName: z.string().min(1, "File name cannot be empty").optional(),
@@ -44,10 +53,19 @@ export const updateMediaRequestSchema = z.object({
   sourceUrl: z.string().url("Invalid URL format").optional(),
 });
 
+/**
+ * Schema for validating media IDs.
+ */
 export const mediaIdSchema = z.string().uuid("Invalid media ID format");
 
+/**
+ * Schema for validating source IDs.
+ */
 export const sourceIdSchema = z.string().uuid("Invalid source ID format");
 
+/**
+ * Schema for validating directory paths.
+ */
 export const directoryPathSchema = z
   .string()
   .min(1, "Directory path is required");
