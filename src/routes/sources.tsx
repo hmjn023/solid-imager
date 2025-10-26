@@ -4,6 +4,11 @@ import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
 
+/**
+ * The main component for managing media sources.
+ * It displays a list of media sources, and provides functionality to add, edit, and delete them.
+ * @returns {JSX.Element} The rendered media sources management page.
+ */
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);

@@ -1,6 +1,11 @@
 import { A } from "@solidjs/router";
 import Counter from "~/components/counter";
 
+/**
+ * The About page component.
+ * Displays information about the application and includes a counter component.
+ * @returns {JSX.Element} The rendered About page.
+ */
 export default function About() {
   return (
     <main class="mx-auto p-4 text-center text-gray-700">
