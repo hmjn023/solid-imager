@@ -21,6 +21,12 @@ import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
+/**
+ * Adds a new media entry to the database.
+ * @param {AddMediaRequest} data - The data for the new media entry.
+ * @returns {Promise<Media>} A promise that resolves with the newly created media object.
+ * @throws {Error} If media with the same file path already exists for the given source ID.
+ */
 export async function addMedia(data: AddMediaRequest): Promise<Media> {
   const validatedData = addMediaRequestSchema.parse(data);
   const existingMedia = await selectMediaBySourceIdAndFilePath(
@@ -47,6 +53,13 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
   return result;
 }
 
+/**
+ * Retrieves a specific media item by its source ID and media ID.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Media>} A promise that resolves with the media object.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function getMedia(
   sourceId: string,
   mediaId: string
@@ -64,6 +77,14 @@ export async function getMedia(
 
 type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
+/**
+ * Updates an existing media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item to update.
+ * @param {UpdateMediaRequest} updates - The updates to apply to the media item.
+ * @returns {Promise<Media>} A promise that resolves with the updated media object.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function updateMedia(
   sourceId: string,
   mediaId: string,
@@ -86,6 +107,13 @@ export async function updateMedia(
   return result;
 }
 
+/**
+ * Deletes a media item from the database and attempts to delete its thumbnail.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item to delete.
+ * @returns {Promise<{ success: boolean }>} A promise that resolves with a success status.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function deleteMedia(
   sourceId: string,
   mediaId: string
@@ -119,6 +147,11 @@ import {
 
 const SUPPORTED_MEDIA_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
 
+/**
+ * Recursively retrieves a list of all files within a given directory.
+ * @param {string} dir - The directory path to scan.
+ * @returns {Promise<string[]>} A promise that resolves with an array of absolute file paths.
+ */
 async function getFiles(dir: string): Promise<string[]> {
   const dirents = await fs.readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
@@ -130,6 +163,13 @@ async function getFiles(dir: string): Promise<string[]> {
   return Array.prototype.concat(...files);
 }
 
+/**
+ * Registers existing media files from a given base path into the database.
+ * It filters for supported media types, checks for existing entries, and generates thumbnails for new media.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} basePath - The base path where media files are located.
+ * @returns {Promise<{ added: number; skipped: number; failed: number }>} A promise that resolves with counts of added, skipped, and failed media.
+ */
 export async function registerExistingMedia(
   sourceId: string,
   basePath: string
@@ -208,6 +248,12 @@ export async function registerExistingMedia(
   return { added: addedMedia.length, skipped, failed };
 }
 
+/**
+ * Lists media items within a specific directory of a media source.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} directoryPath - The path to the directory to list media from.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export async function listMedia(
   sourceId: string,
   directoryPath: string
@@ -222,6 +268,13 @@ export async function listMedia(
   return result;
 }
 
+/**
+ * Retrieves detailed information for a specific media item.
+ * This function currently delegates to `getMedia`.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Media>} A promise that resolves with the detailed media object.
+ */
 export function getMediaDetails(
   sourceId: string,
   mediaId: string
@@ -229,6 +282,12 @@ export function getMediaDetails(
   return getMedia(sourceId, mediaId);
 }
 
+/**
+ * Retrieves metadata for a specific media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Record<string, unknown>>} A promise that resolves with a record of metadata.
+ */
 export async function getMediaMetadata(
   sourceId: string,
   mediaId: string
@@ -237,6 +296,12 @@ export async function getMediaMetadata(
   return { mediaId: media.id, metadata: {} };
 }
 
+/**
+ * Retrieves tags associated with a specific media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<unknown[]>} A promise that resolves with an array of tags.
+ */
 export async function getMediaTags(
   sourceId: string,
   mediaId: string
@@ -245,6 +310,12 @@ export async function getMediaTags(
   return [];
 }
 
+/**
+ * Retrieves the thumbnail for a specific media item.
+ * @param {string} _sourceId - The ID of the media source.
+ * @param {string} _mediaId - The ID of the media item.
+ * @returns {Promise<Buffer>} A promise that resolves with the thumbnail data as a Buffer.
+ */
 export function getMediaThumbnail(
   _sourceId: string,
   _mediaId: string
@@ -252,6 +323,12 @@ export function getMediaThumbnail(
   throw new Error("Not implemented");
 }
 
+/**
+ * Uploads a media file.
+ * @param {string} _sourceId - The ID of the media source.
+ * @param {unknown} _uploadData - The data for the upload.
+ * @returns {Promise<Media>} A promise that resolves with the newly uploaded media item.
+ */
 export function uploadMedia(
   _sourceId: string,
   _uploadData: unknown
@@ -259,6 +336,14 @@ export function uploadMedia(
   throw new Error("Not implemented");
 }
 
+/**
+ * Searches for media within a specific directory of a media source.
+ * This function currently delegates to `listMedia`.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} directoryPath - The path to the directory to search within.
+ * @param {unknown} _searchOptions - Search options (currently unused, delegates to listMedia).
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export function searchMediaInDirectory(
   sourceId: string,
   directoryPath: string,
@@ -267,6 +352,12 @@ export function searchMediaInDirectory(
   return listMedia(sourceId, directoryPath);
 }
 
+/**
+ * Searches for media across a specific media source.
+ * @param {string} _sourceId - The ID of the media source.
+ * @param {unknown} _searchOptions - Search options.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export function searchMedia(
   _sourceId: string,
   _searchOptions: unknown
