@@ -44,8 +44,7 @@ export const AnalyticsService = {
    */
   getSimilarMedia(_sourceId: string, _mediaPath: string) {
     // TODO: Find similar media using perceptual hash
-    throw new Error("Not implemented
-");
+    throw new Error("Not implemented");
   },
 
   /**
