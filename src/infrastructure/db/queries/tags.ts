@@ -3,6 +3,15 @@ import { db } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
 import { ConstraintError, UnknownDbError } from "../errors";
 
+/**
+ * Inserts new tags for a specific media item into the database.
+ * It handles creating new tags if they don't exist and associating them with the media.
+ * @param {string} mediaId - The ID of the media item to tag.
+ * @param {string[]} tagsToInsert - An array of tag names to insert and associate with the media.
+ * @returns {Promise<void>} A promise that resolves when the tags have been inserted.
+ * @throws {ConstraintError} If one or more media tags already exist for the media item.
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const insertMediaTags = async (
   mediaId: string,
   tagsToInsert: string[]

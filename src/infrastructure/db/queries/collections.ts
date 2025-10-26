@@ -3,6 +3,11 @@ import { db } from "~/infrastructure/db/index";
 import { collections, mediaCollections } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
+/**
+ * Selects all collections from the database.
+ * @returns {Promise<Collection[]>} A promise that resolves with an array of collection objects.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectCollections = async () => {
   try {
     return await db.select().from(collections);
@@ -14,6 +19,13 @@ export const selectCollections = async () => {
   }
 };
 
+/**
+ * Inserts a new collection into the database.
+ * @param {unknown} collectionData - The data for the new collection.
+ * @returns {Promise<Collection[]>} A promise that resolves with an array containing the newly inserted collection.
+ * @throws {ConstraintError} If a collection with the same name already exists.
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const insertCollection = async (collectionData: unknown) => {
   try {
     return await db.insert(collections).values(collectionData).returning();
@@ -36,6 +48,13 @@ export const insertCollection = async (collectionData: unknown) => {
   }
 };
 
+/**
+ * Selects a collection by its ID from the database.
+ * @param {string} collectionId - The ID of the collection to select.
+ * @returns {Promise<Collection>} A promise that resolves with the collection object.
+ * @throws {NotFoundError} If no collection with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectCollectionById = async (collectionId: string) => {
   try {
     const result = await db
@@ -59,6 +78,15 @@ export const selectCollectionById = async (collectionId: string) => {
   }
 };
 
+/**
+ * Updates an existing collection in the database.
+ * @param {string} collectionId - The ID of the collection to update.
+ * @param {unknown} collectionData - The partial data to update the collection with.
+ * @returns {Promise<Collection>} A promise that resolves with the updated collection object.
+ * @throws {NotFoundError} If no collection with the given ID is found.
+ * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name).
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const updateCollection = async (
   collectionId: string,
   collectionData: unknown
@@ -97,6 +125,13 @@ export const updateCollection = async (
   }
 };
 
+/**
+ * Deletes a collection from the database.
+ * @param {string} collectionId - The ID of the collection to delete.
+ * @returns {Promise<Collection>} A promise that resolves with the deleted collection object.
+ * @throws {NotFoundError} If no collection with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const deleteCollection = async (collectionId: string) => {
   try {
     const result = await db
@@ -120,6 +155,15 @@ export const deleteCollection = async (collectionId: string) => {
   }
 };
 
+/**
+ * Inserts a media item into a collection.
+ * @param {string} collectionId - The ID of the collection.
+ * @param {string} mediaId - The ID of the media item to insert.
+ * @param {number} [displayOrder] - The display order of the media item within the collection.
+ * @returns {Promise<MediaCollection[]>} A promise that resolves with an array containing the newly inserted media collection relationship.
+ * @throws {ConstraintError} If the media item already exists in the collection.
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const insertCollectionMedia = async (
   collectionId: string,
   mediaId: string,
@@ -149,6 +193,14 @@ export const insertCollectionMedia = async (
   }
 };
 
+/**
+ * Deletes a media item from a collection.
+ * @param {string} collectionId - The ID of the collection.
+ * @param {string} mediaId - The ID of the media item to delete from the collection.
+ * @returns {Promise<MediaCollection[]>} A promise that resolves with an array containing the deleted media collection relationship.
+ * @throws {NotFoundError} If the media item is not found in the specified collection.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const deleteCollectionMedia = async (
   collectionId: string,
   mediaId: string

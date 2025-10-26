@@ -8,12 +8,24 @@ import {
 } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
 
+/**
+ * Represents the data structure for importing media source data, including media items.
+ * @property {MediaSource} mediaSource - The media source object to import.
+ * @property {NewMedia[]} medias - An array of new media items associated with the source.
+ * @property {any} [otherTables] - Placeholder for other tables that might be included in the import.
+ */
 type ImportData = {
   mediaSource: MediaSource;
   medias: NewMedia[];
   // Add other tables as needed
 };
-
+/**
+ * Selects all data related to a specific media source, including its associated media, tags, details, etc.
+ * @param {string} sourceId - The ID of the media source to select data for.
+ * @returns {Promise<any>} A promise that resolves with the comprehensive media source data.
+ * @throws {NotFoundError} If the media source data for the given ID is not found.
+ * @throws {UnknownDbError} If a database error occurs during the selection process.
+ */
 export const selectMediaSourceData = async (sourceId: string) => {
   try {
     const mediaSource = await db.query.mediaSources.findFirst({
@@ -53,6 +65,13 @@ export const selectMediaSourceData = async (sourceId: string) => {
   }
 };
 
+/**
+ * Inserts or updates media source data, including the media source itself and its associated media items.
+ * @param {string} _sourceId - The ID of the media source to upsert data for.
+ * @param {ImportData} importData - The data to upsert.
+ * @returns {Promise<void>} A promise that resolves when the upsert operation is complete.
+ * @throws {UnknownDbError} If a database error occurs during the upsert process.
+ */
 export const upsertMediaSourceData = async (
   _sourceId: string,
   importData: ImportData
@@ -84,6 +103,16 @@ export const upsertMediaSourceData = async (
   }
 };
 
+/**
+ * Reconciles the media source data in the database with changes detected in the file system.
+ * Handles adding new files and deleting removed files.
+ * @param {string} sourceId - The ID of the media source to reconcile.
+ * @param {object} fileSystemChanges - An object containing added and deleted file information.
+ * @param {NewMedia[]} fileSystemChanges.added - An array of new media items to add.
+ * @param {string[]} fileSystemChanges.deleted - An array of file paths for media items to delete.
+ * @returns {Promise<void>} A promise that resolves when the reconciliation is complete.
+ * @throws {UnknownDbError} If a database error occurs during the reconciliation process.
+ */
 export const reconcileMediaSource = async (
   sourceId: string,
   fileSystemChanges: { added: NewMedia[]; deleted: string[] }
@@ -118,6 +147,13 @@ export const reconcileMediaSource = async (
   }
 };
 
+/**
+ * Clones media data from an original source to a new source.
+ * @param {string} originalSourceId - The ID of the original media source.
+ * @param {string} newSourceId - The ID of the new media source.
+ * @returns {Promise<void>} A promise that resolves when the media data has been cloned.
+ * @throws {UnknownDbError} If a database error occurs during the cloning process.
+ */
 export const cloneMediaData = async (
   originalSourceId: string,
   newSourceId: string

@@ -3,6 +3,13 @@ import { db } from "~/infrastructure/db/index";
 import { mediaGenerationInfo } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "../errors";
 
+/**
+ * Selects media generation information by media ID from the database.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<MediaGenerationInfo>} A promise that resolves with the media generation information object.
+ * @throws {NotFoundError} If no media generation information is found for the given media ID.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectMediaGenerationInfoById = async (
   mediaId: string
 ): Promise<typeof mediaGenerationInfo.$inferSelect> => {
@@ -28,6 +35,14 @@ export const selectMediaGenerationInfoById = async (
   }
 };
 
+/**
+ * Updates media generation information for a specific media item in the database.
+ * @param {string} mediaId - The ID of the media item.
+ * @param {object} metadata - The metadata to update.
+ * @returns {Promise<MediaGenerationInfo>} A promise that resolves with the updated media generation information object.
+ * @throws {NotFoundError} If no media generation information is found for the given media ID.
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const updateMediaGenerationInfo = async (
   mediaId: string,
   metadata: object

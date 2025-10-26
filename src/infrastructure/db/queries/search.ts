@@ -3,6 +3,15 @@ import { db } from "~/infrastructure/db/index";
 import { medias, mediaTags, tags } from "~/infrastructure/db/schema";
 import { UnknownDbError } from "../errors";
 
+/**
+ * Searches for media within a specific source based on a query and/or tags.
+ * @param {string} sourceId - The ID of the media source to search within.
+ * @param {object} searchOptions - Options for the search.
+ * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
+ * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items.
+ * @throws {UnknownDbError} If a database error occurs during the search.
+ */
 export const searchMedia = async (
   sourceId: string,
   searchOptions: { query?: string; tags?: string[] }
@@ -41,6 +50,16 @@ export const searchMedia = async (
   }
 };
 
+/**
+ * Searches for media within a specific directory of a given source based on a query and/or tags.
+ * @param {string} sourceId - The ID of the media source to search within.
+ * @param {string} directoryPath - The path to the directory to search.
+ * @param {object} searchOptions - Options for the search.
+ * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
+ * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items within the directory.
+ * @throws {UnknownDbError} If a database error occurs during the search.
+ */
 export const searchMediaInDirectory = async (
   sourceId: string,
   directoryPath: string,
@@ -88,6 +107,14 @@ export const searchMediaInDirectory = async (
   }
 };
 
+/**
+ * Performs a global search for media across all sources based on a query and/or tags.
+ * @param {object} searchOptions - Options for the search.
+ * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
+ * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items from all sources.
+ * @throws {UnknownDbError} If a database error occurs during the search.
+ */
 export const globalSearchMedia = async (searchOptions: {
   query?: string;
   tags?: string[];

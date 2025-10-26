@@ -8,6 +8,14 @@ import {
 } from "~/infrastructure/db/schema";
 import { ConstraintError, UnknownDbError } from "../errors";
 
+/**
+ * Performs a bulk update on multiple media items.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string[]} mediaIds - An array of media IDs to update.
+ * @param {Partial<Media>} updates - The partial media object with fields to update.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of the updated media items.
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const bulkUpdateMedia = async (
   sourceId: string,
   mediaIds: string[],
@@ -27,6 +35,13 @@ export const bulkUpdateMedia = async (
   }
 };
 
+/**
+ * Performs a bulk delete operation on multiple media items.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string[]} mediaIds - An array of media IDs to delete.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of the deleted media items.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const bulkDeleteMedia = async (sourceId: string, mediaIds: string[]) => {
   try {
     return await db
@@ -41,6 +56,15 @@ export const bulkDeleteMedia = async (sourceId: string, mediaIds: string[]) => {
   }
 };
 
+/**
+ * Performs a bulk update on the file paths of multiple media items.
+ * This is typically used for moving media to a new directory.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string[]} mediaIds - An array of media IDs whose paths are to be updated.
+ * @param {string} pathUpdates - The new base path for the media files.
+ * @returns {Promise<any[]>} A promise that resolves when all paths have been updated.
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const bulkUpdateMediaPaths = async (
   sourceId: string,
   mediaIds: string[],
@@ -73,6 +97,15 @@ export const bulkUpdateMediaPaths = async (
   }
 };
 
+/**
+ * Performs a bulk operation to add tags to multiple media items.
+ * @param {string} _sourceId - The ID of the media source (currently unused but kept for consistency).
+ * @param {string[]} mediaIds - An array of media IDs to add tags to.
+ * @param {number[]} tagsToAdd - An array of tag IDs to add.
+ * @returns {Promise<NewMediaTag[]>} A promise that resolves with an array of the newly created media tag relationships.
+ * @throws {ConstraintError} If one or more media tags already exist (due to unique constraint).
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const bulkAddMediaTags = async (
   _sourceId: string,
   mediaIds: string[],
@@ -110,6 +143,14 @@ export const bulkAddMediaTags = async (
   }
 };
 
+/**
+ * Performs a bulk operation to remove tags from multiple media items.
+ * @param {string} _sourceId - The ID of the media source (currently unused but kept for consistency).
+ * @param {string[]} mediaIds - An array of media IDs to remove tags from.
+ * @param {number[]} tagsToRemove - An array of tag IDs to remove.
+ * @returns {Promise<NewMediaTag[]>} A promise that resolves with an array of the removed media tag relationships.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const bulkRemoveMediaTags = async (
   _sourceId: string,
   mediaIds: string[],

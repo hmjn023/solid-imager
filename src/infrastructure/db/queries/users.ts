@@ -3,6 +3,11 @@ import { db } from "~/infrastructure/db/index";
 import { users } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
+/**
+ * Selects all users from the database.
+ * @returns {Promise<User[]>} A promise that resolves with an array of user objects.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectUsers = async () => {
   try {
     return await db.select().from(users);
@@ -14,6 +19,13 @@ export const selectUsers = async () => {
   }
 };
 
+/**
+ * Inserts a new user into the database.
+ * @param {unknown} userData - The data for the new user.
+ * @returns {Promise<User[]>} A promise that resolves with an array containing the newly inserted user.
+ * @throws {ConstraintError} If a user with the same email already exists.
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const insertUser = async (userData: unknown) => {
   try {
     return await db.insert(users).values(userData).returning();
@@ -36,6 +48,13 @@ export const insertUser = async (userData: unknown) => {
   }
 };
 
+/**
+ * Selects a user by their ID from the database.
+ * @param {string} userId - The ID of the user to select.
+ * @returns {Promise<User>} A promise that resolves with the user object.
+ * @throws {NotFoundError} If no user with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectUserById = async (userId: string) => {
   try {
     const result = await db.select().from(users).where(eq(users.id, userId));
@@ -54,6 +73,15 @@ export const selectUserById = async (userId: string) => {
   }
 };
 
+/**
+ * Updates an existing user in the database.
+ * @param {string} userId - The ID of the user to update.
+ * @param {unknown} userData - The partial data to update the user with.
+ * @returns {Promise<User>} A promise that resolves with the updated user object.
+ * @throws {NotFoundError} If no user with the given ID is found.
+ * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate email).
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const updateUser = async (userId: string, userData: unknown) => {
   try {
     const result = await db
@@ -88,6 +116,13 @@ export const updateUser = async (userId: string, userData: unknown) => {
   }
 };
 
+/**
+ * Deletes a user from the database.
+ * @param {string} userId - The ID of the user to delete.
+ * @returns {Promise<User>} A promise that resolves with the deleted user object.
+ * @throws {NotFoundError} If no user with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const deleteUser = async (userId: string) => {
   try {
     const result = await db

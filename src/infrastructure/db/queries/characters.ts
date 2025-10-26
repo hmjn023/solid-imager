@@ -3,6 +3,11 @@ import { db } from "~/infrastructure/db/index";
 import { characters } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
+/**
+ * Selects all characters from the database.
+ * @returns {Promise<Character[]>} A promise that resolves with an array of character objects.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectCharacters = async () => {
   try {
     return await db.select().from(characters);
@@ -14,6 +19,13 @@ export const selectCharacters = async () => {
   }
 };
 
+/**
+ * Inserts a new character into the database.
+ * @param {unknown} characterData - The data for the new character.
+ * @returns {Promise<Character[]>} A promise that resolves with an array containing the newly inserted character.
+ * @throws {ConstraintError} If a character with the same name and IP already exists.
+ * @throws {UnknownDbError} If a database error occurs during the insertion.
+ */
 export const insertCharacter = async (characterData: unknown) => {
   try {
     return await db.insert(characters).values(characterData).returning();
@@ -36,6 +48,13 @@ export const insertCharacter = async (characterData: unknown) => {
   }
 };
 
+/**
+ * Selects a character by its ID from the database.
+ * @param {number} characterId - The ID of the character to select.
+ * @returns {Promise<Character>} A promise that resolves with the character object.
+ * @throws {NotFoundError} If no character with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the selection.
+ */
 export const selectCharacterById = async (characterId: number) => {
   try {
     const result = await db
@@ -59,6 +78,15 @@ export const selectCharacterById = async (characterId: number) => {
   }
 };
 
+/**
+ * Updates an existing character in the database.
+ * @param {number} characterId - The ID of the character to update.
+ * @param {unknown} characterData - The partial data to update the character with.
+ * @returns {Promise<Character>} A promise that resolves with the updated character object.
+ * @throws {NotFoundError} If no character with the given ID is found.
+ * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name and IP).
+ * @throws {UnknownDbError} If a database error occurs during the update.
+ */
 export const updateCharacter = async (
   characterId: number,
   characterData: unknown
@@ -107,6 +135,13 @@ export const updateCharacter = async (
   }
 };
 
+/**
+ * Deletes a character from the database.
+ * @param {number} characterId - The ID of the character to delete.
+ * @returns {Promise<Character>} A promise that resolves with the deleted character object.
+ * @throws {NotFoundError} If no character with the given ID is found.
+ * @throws {UnknownDbError} If a database error occurs during the deletion.
+ */
 export const deleteCharacter = async (characterId: number) => {
   try {
     const result = await db

@@ -6,6 +6,13 @@ import * as schema from "./schema";
 let _db: ReturnType<typeof drizzle> | null = null;
 let _queryClient: Pool | null = null;
 
+/**
+ * Initializes and returns the Drizzle ORM database instance.
+ * This function ensures that the database connection is established only once.
+ * It reads database connection details from environment variables.
+ * @returns {ReturnType<typeof drizzle>} The initialized Drizzle ORM database instance.
+ * @throws {Error} If required database environment variables are not set.
+ */
 function initializeDb() {
   if (_db) {
     return _db;
@@ -29,6 +36,10 @@ function initializeDb() {
   return _db;
 }
 
+/**
+ * A proxy object for the Drizzle ORM database instance.
+ * It ensures that the database is initialized lazily upon first access.
+ */
 export const db = new Proxy({} as ReturnType<typeof drizzle>, {
   get(_target, prop) {
     const instance = initializeDb();
