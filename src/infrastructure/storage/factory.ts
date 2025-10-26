@@ -9,10 +9,10 @@ import { LocalDriver } from "./local";
 import type { MediaSourceDriver } from "./types";
 
 /**
- * 指定されたメディアソースのドライバーインスタンスを返します。
- * @param source - データベースからのメディアソース。
- * @returns MediaSourceDriverインターフェースを実装するクラスのインスタンス。
- * @throws メディアソースタイプが不明な場合、または接続情報が無効な場合にエラーをスローします。
+ * Returns a driver instance for the specified media source.
+ * @param {MediaSource} source - The media source object from the database.
+ * @returns {MediaSourceDriver} An instance of a class implementing the MediaSourceDriver interface.
+ * @throws {Error} If the media source type is unknown or connection information is invalid.
  */
 export function getDriver(source: MediaSource): MediaSourceDriver {
   switch (source.type) {
