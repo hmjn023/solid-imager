@@ -1,5 +1,9 @@
 import { useLocation } from "@solidjs/router";
 
+/**
+ * Navigation component that displays a list of links and highlights the active link based on the current route.
+ * @returns {JSX.Element} The rendered navigation bar.
+ */
 export default function Nav() {
   const location = useLocation();
   const active = (path: string) =>

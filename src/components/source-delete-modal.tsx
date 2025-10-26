@@ -2,13 +2,25 @@ import { createSignal } from "solid-js";
 import { Portal } from "solid-js/web";
 import type { MediaSourceInfo } from "~/domain/sources/types";
 
+/**
+ * Props for the SourceDeleteModal component.
+ * @property {boolean} isOpen - Controls the visibility of the modal.
+ * @property {MediaSourceInfo | null} [sourceToDelete] - The media source object to be deleted.
+ * @property {() => void} onClose - Callback function to close the modal.
+ * @property {(sourceId: string) => Promise<void>} onConfirm - Callback function to confirm and perform the deletion.
+ */
 type SourceDeleteModalProps = {
   isOpen: boolean;
   sourceToDelete?: MediaSourceInfo | null;
   onClose: () => void;
   onConfirm: (sourceId: string) => Promise<void>;
 };
-
+/**
+ * A modal component for confirming the deletion of a media source.
+ * It displays the name of the source to be deleted and provides confirm/cancel options.
+ * @param {SourceDeleteModalProps} props - The properties for the SourceDeleteModal component.
+ * @returns {JSX.Element} The rendered delete confirmation modal.
+ */
 export default function SourceDeleteModal(props: SourceDeleteModalProps) {
   const [isDeleting, setIsDeleting] = createSignal(false);
 

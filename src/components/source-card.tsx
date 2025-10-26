@@ -7,12 +7,23 @@ import {
 } from "~/components/ui/card";
 import type { MediaSourceInfo } from "~/domain/sources/types";
 
+/**
+ * Props for the SourceCard component.
+ * @property {MediaSourceInfo} mediaSource - The media source object to display.
+ * @property {(source: MediaSourceInfo) => void} [onEdit] - Callback function when the edit button is clicked.
+ * @property {(source: MediaSourceInfo) => void} [onDelete] - Callback function when the delete button is clicked.
+ */
 type SourceCardProps = {
   mediaSource: MediaSourceInfo;
   onEdit?: (source: MediaSourceInfo) => void;
   onDelete?: (source: MediaSourceInfo) => void;
 };
-
+/**
+ * A card component to display information about a single media source.
+ * It includes options to edit and delete the media source.
+ * @param {SourceCardProps} props - The properties for the SourceCard component.
+ * @returns {JSX.Element} The rendered media source card.
+ */
 export default function SourceCard(props: SourceCardProps) {
   return (
     <Card class="relative" data-testid="source-card">
