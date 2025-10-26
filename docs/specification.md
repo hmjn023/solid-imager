@@ -642,7 +642,7 @@ export type ConnectionInfo =
     2. メディアソースの種類に応じたストレージドライバー（`local`, `sftp`など）を取得します。
     3. ドライバーを用いて、指定された`filePath`からファイル内容を読み込みます。
     4. ファイル内容を適切な`Content-Type`ヘッダーと共にレスポンスとして返します。
-- **API関数**: `MediaService.getMediaContent(sourceId: string, filePath: string)`
+- **API関数**: `MediaService.getMediaContent(sourceId: string, mediaId: string)`
 
 #### サムネイル仕様
 - サイズ: クエリパラメータで指定 (?size=200, ?size=400等)

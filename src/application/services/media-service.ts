@@ -3,10 +3,35 @@
  * Feature 2, 3, 5, 7, 8
  */
 
+import { getAllMedia, getMedia } from "~/infrastructure/api-clients/media";
+import { getMediaSourceById } from "~/infrastructure/api-clients/sources";
+import { getDriver } from "~/infrastructure/storage/factory";
+
 /**
  * Provides services for media delivery, thumbnail creation, metadata extraction, upload, search, and editing.
  */
 export const MediaService = {
+  /**
+   * Retrieves the content of a specific media file for delivery.
+   * @param {string} sourceId - The ID of the media source.
+   * @param {string} filePath - The path of the media file.
+   * @returns {Promise<Buffer>} A promise that resolves with the file content as a Buffer.
+   */
+  async getMediaContent(sourceId: string, mediaId: string): Promise<Buffer> {
+    const [source] = await getMediaSourceById(sourceId);
+    if (!source) {
+      throw new Error("Media source not found");
+    }
+
+    const media = await getMedia(sourceId, mediaId);
+    if (!media) {
+      throw new Error("Media not found");
+    }
+
+    const driver = getDriver(source);
+    return driver.get(media.filePath);
+  },
+
   /**
    * Retrieves metadata for a specific media item.
    * @param {string} _sourceId - The ID of the media source.
@@ -173,5 +198,14 @@ export const MediaService = {
   getRecentMedia(_sourceId: string) {
     // TODO: Implement recent media retrieval
     throw new Error("Not implemented");
+  },
+
+  /**
+   * Retrieves all media items for a specific media source.
+   * @param {string} sourceId - The ID of the media source.
+   * @returns {Promise<any>} A list of all media items for the source.
+   */
+  getAllMedia(sourceId: string) {
+    return getAllMedia(sourceId);
   },
 };

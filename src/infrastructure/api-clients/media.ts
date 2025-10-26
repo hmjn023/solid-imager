@@ -14,6 +14,7 @@ import {
   updateMedia as dbUpdateMedia,
   insertMedia,
   selectMediaById,
+  selectMediaBySourceId,
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
@@ -363,4 +364,15 @@ export function searchMedia(
   _searchOptions: unknown
 ): Promise<Media[]> {
   return [];
+}
+
+/**
+ * Retrieves all media items for a specific media source.
+ * @param {string} sourceId - The ID of the media source.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
+export async function getAllMedia(sourceId: string): Promise<Media[]> {
+  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const result = await selectMediaBySourceId(validatedSourceId);
+  return result;
 }
