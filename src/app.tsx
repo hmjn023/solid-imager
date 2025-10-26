@@ -12,6 +12,10 @@ const MINUTES_TO_MS = SECONDS_PER_MINUTE * MS_PER_SECOND;
 const FIVE_MINUTES = 5;
 const FIVE_MINUTES_IN_MS = FIVE_MINUTES * MINUTES_TO_MS;
 
+/**
+ * Initializes a new TanStack Query client with default options.
+ * Configures queries to retry once, have a stale time of 5 minutes, and not refetch on window focus.
+ */
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -22,6 +26,11 @@ const queryClient = new QueryClient({
   },
 });
 
+/**
+ * The main application component.
+ * Sets up MetaProvider for SEO, QueryClientProvider for data fetching, and Solid Router for navigation.
+ * @returns {JSX.Element} The root of the Solid Imager application.
+ */
 export default function App() {
   return (
     <MetaProvider>
