@@ -15,18 +15,31 @@ const CACHE_DIR = ".cache/thumbnails";
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
 
+/**
+ * Ensures that the thumbnail cache directory exists.
+ * If the directory does not exist, it will be created recursively.
+ * @returns {Promise<void>} A promise that resolves when the directory is ensured.
+ */
 async function ensureCacheDir() {
   await fs.mkdir(CACHE_DIR, { recursive: true });
 }
 
+/**
+ * Generates the full path for a thumbnail file given a media ID.
+ * The thumbnail files are stored in WebP format.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {string} The absolute path to the thumbnail file.
+ */
 export function getThumbnailPath(mediaId: string): string {
   return path.join(CACHE_DIR, `${mediaId}.webp`);
 }
 
 /**
- * 指定されたメディアアイテムのサムネイルを生成します。
- * @param media - データベースからのメディアオブジェクト。
- * @param sourcePath - メディアソースディレクトリの絶対パス。
+ * Generates a thumbnail for the specified media item.
+ * The thumbnail is resized, converted to WebP format, and saved to the cache directory.
+ * @param {Media} media - The media object from the database.
+ * @param {string} sourcePath - The absolute path to the media source directory.
+ * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
  */
 export async function generateThumbnail(
   media: Media,
@@ -49,8 +62,10 @@ export async function generateThumbnail(
 }
 
 /**
- * キャッシュからサムネイルファイルを削除します。
- * @param mediaId - サムネイルを削除するメディアのID。
+ * Deletes a thumbnail file from the cache.
+ * Errors are ignored if the file does not exist (ENOENT).
+ * @param {string} mediaId - The ID of the media item whose thumbnail is to be deleted.
+ * @returns {Promise<void>} A promise that resolves when the thumbnail has been deleted or not found.
  */
 export async function deleteThumbnail(mediaId: string): Promise<void> {
   const thumbnailPath = getThumbnailPath(mediaId);
@@ -65,8 +80,10 @@ export async function deleteThumbnail(mediaId: string): Promise<void> {
 }
 
 /**
- * 指定されたソースのすべてのメディアをサムネイル生成のためにキューに入れます。
- * @param sourceId - メディアソースのID。
+ * Queues all media items from a specified source for thumbnail generation.
+ * @param {string} sourceId - The ID of the media source.
+ * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
+ * @throws {Error} If the source is not found or is not a local source.
  */
 export async function generateThumbnailsForSource(
   sourceId: string
