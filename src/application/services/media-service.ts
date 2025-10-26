@@ -3,19 +3,45 @@
  * Feature 2, 3, 5, 7, 8
  */
 
+/**
+ * Provides services for media delivery, thumbnail creation, metadata extraction, upload, search, and editing.
+ */
 export const MediaService = {
-  // Feature 3: メディアメタデータ抽出機能
+  /**
+   * Retrieves metadata for a specific media item.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaId - The ID of the media item.
+   * @returns {any} The extracted media metadata.
+   */
   getMediaMetadata(_sourceId: string, _mediaId: string) {
     // TODO: Implement metadata extraction from PNG tEXt chunks
     throw new Error("Not implemented");
   },
 
+  /**
+   * Updates metadata for a specific media item.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaId - The ID of the media item.
+   * @param {unknown} _metadata - The metadata to update.
+   * @returns {any} The updated media metadata.
+   */
   updateMediaMetadata(_sourceId: string, _mediaId: string, _metadata: unknown) {
     // TODO: Implement metadata update
     throw new Error("Not implemented");
   },
 
-  // Feature 5: メディアアップロード機能
+  /**
+   * Uploads a new media file to a specified media source.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {object} _uploadData - The data for the media upload.
+   * @param {File} _uploadData.file - The file to be uploaded.
+   * @param {string} [_uploadData.filename] - Optional custom filename.
+   * @param {boolean} [_uploadData.autoIncrement] - Whether to auto-increment filename on conflict.
+   * @param {string} [_uploadData.description] - Optional description for the media.
+   * @param {string} [_uploadData.sourceUrl] - Optional source URL for the media.
+   * @param {boolean} [_uploadData.overwrite] - Whether to overwrite existing file on conflict.
+   * @returns {any} The result of the upload operation.
+   */
   uploadNewMedia(
     _sourceId: string,
     _uploadData: {
@@ -31,7 +57,16 @@ export const MediaService = {
     throw new Error("Not implemented");
   },
 
-  // Feature 7: メディアソート・検索機能
+  /**
+   * Searches for media within a specific media source based on various criteria.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
+   * @param {string[]} [_searchOptions.tags] - Tags to filter by.
+   * @param {string} [_searchOptions.sortBy] - Field to sort by.
+   * @param {number} [_searchOptions.page] - Page number for pagination.
+   * @param {number} [_searchOptions.limit] - Number of items per page.
+   * @returns {any} A list of media items matching the search criteria.
+   */
   searchMedia(
     _sourceId: string,
     _searchOptions: {
@@ -45,6 +80,17 @@ export const MediaService = {
     throw new Error("Not implemented");
   },
 
+  /**
+   * Searches for media within a specific subdirectory of a media source.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _directoriesPath - The path to the subdirectory to search within.
+   * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
+   * @param {string[]} [_searchOptions.tags] - Tags to filter by.
+   * @param {string} [_searchOptions.sortBy] - Field to sort by.
+   * @param {number} [_searchOptions.page] - Page number for pagination.
+   * @param {number} [_searchOptions.limit] - Number of items per page.
+   * @returns {any} A list of media items matching the search criteria within the subdirectory.
+   */
   searchMediaInDirectory(
     _sourceId: string,
     _directoriesPath: string,
@@ -84,7 +130,17 @@ export const MediaService = {
     ];
   },
 
-  // Feature 8: メディア情報編集機能
+  /**
+   * Updates information for a specific media item.
+   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaId - The ID of the media item to update.
+   * @param {object} _mediaData - The data to update for the media item.
+   * @param {string} [_mediaData.filename] - New filename for the media.
+   * @param {string} [_mediaData.description] - New description for the media.
+   * @param {string} [_mediaData.sourceUrl] - New source URL for the media.
+   * @param {string[]} [_mediaData.tags] - New tags for the media.
+   * @returns {any} The updated media item.
+   */
   updateMedia(
     _sourceId: string,
     _mediaId: string,
@@ -99,12 +155,21 @@ export const MediaService = {
     throw new Error("Not implemented");
   },
 
-  // Feature 20: フィルタ・プリセット機能
+  /**
+   * Retrieves a random media item from a specific source.
+   * @param {string} _sourceId - The ID of the media source.
+   * @returns {any} A random media item.
+   */
   getRandomMedia(_sourceId: string) {
     // TODO: Implement random media selection
     throw new Error("Not implemented");
   },
 
+  /**
+   * Retrieves recently added or modified media items from a specific source.
+   * @param {string} _sourceId - The ID of the media source.
+   * @returns {any} A list of recent media items.
+   */
   getRecentMedia(_sourceId: string) {
     // TODO: Implement recent media retrieval
     throw new Error("Not implemented");
