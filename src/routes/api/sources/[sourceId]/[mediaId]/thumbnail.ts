@@ -1,7 +1,7 @@
+import { promises as fs } from "node:fs";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
-import { getDriver } from "~/infrastructure/storage/factory";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -23,11 +23,9 @@ export async function GET({ params }: APIEvent) {
   const { sourceId, mediaId } = parsedParams.data;
 
   try {
-    const thumbnailPath = getThumbnailPath(mediaId);
+    const thumbnailPath = getThumbnailPath(sourceId, mediaId);
 
-    const driver = getDriver(sourceId);
-
-    const thumbnailBuffer = await driver.get(thumbnailPath);
+    const thumbnailBuffer = await fs.readFile(thumbnailPath);
 
     return new Response(thumbnailBuffer, {
       status: 200,

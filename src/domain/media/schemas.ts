@@ -23,6 +23,8 @@ export const addMediaRequestSchema = z.object({
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
   mediaType: mediaTypeSchema,
+  description: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
   width: z.number().int().positive("Width must be a positive integer"),
   height: z.number().int().positive("Height must be a positive integer"),
 });

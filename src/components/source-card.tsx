@@ -1,3 +1,4 @@
+import { A } from "@solidjs/router";
 import {
   Card,
   CardContent,
@@ -25,49 +26,66 @@ type SourceCardProps = {
  * @returns {JSX.Element} The rendered media source card.
  */
 export default function SourceCard(props: SourceCardProps) {
+  const handleEditClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    props.onEdit?.(props.mediaSource);
+  };
+
+  const handleDeleteClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    props.onDelete?.(props.mediaSource);
+  };
+
   return (
-    <Card class="relative" data-testid="source-card">
-      <CardHeader>
-        <CardTitle data-testid="source-name">
-          {props.mediaSource.name}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <CardDescription>{props.mediaSource.description}</CardDescription>
-        <p>Type: {props.mediaSource.type}</p>
-        {/* HACK: connectionInfoはパスを持つオブジェクトである保証はありません */}
-        <p>
-          Path:{" "}
-          {typeof props.mediaSource.connectionInfo === "object" &&
-          props.mediaSource.connectionInfo !== null &&
-          "path" in props.mediaSource.connectionInfo
-            ? String(props.mediaSource.connectionInfo.path)
-            : "N/A"}
-        </p>
-      </CardContent>
-      {/* 編集ボタンと削除ボタン */}
-      <div class="absolute top-2 right-2 z-10 flex gap-1">
-        {props.onEdit && (
-          <button
-            class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
-            data-testid="edit-source-btn"
-            onClick={() => props.onEdit?.(props.mediaSource)}
-            type="button"
-          >
-            Edit
-          </button>
-        )}
-        {props.onDelete && (
-          <button
-            class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
-            data-testid="delete-source-btn"
-            onClick={() => props.onDelete?.(props.mediaSource)}
-            type="button"
-          >
-            Delete
-          </button>
-        )}
-      </div>
-    </Card>
+    <A
+      class="block text-current no-underline"
+      href={`/sources/${props.mediaSource.id}`}
+    >
+      <Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
+        <CardHeader>
+          <CardTitle data-testid="source-name">
+            {props.mediaSource.name}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CardDescription>{props.mediaSource.description}</CardDescription>
+          <p>Type: {props.mediaSource.type}</p>
+          {/* HACK: connectionInfoはパスを持つオブジェクトである保証はありません */}
+          <p>
+            Path:{" "}
+            {typeof props.mediaSource.connectionInfo === "object" &&
+            props.mediaSource.connectionInfo !== null &&
+            "path" in props.mediaSource.connectionInfo
+              ? String(props.mediaSource.connectionInfo.path)
+              : "N/A"}
+          </p>
+        </CardContent>
+        {/* 編集ボタンと削除ボタン */}
+        <div class="absolute top-2 right-2 z-10 flex gap-1">
+          {props.onEdit && (
+            <button
+              class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+              data-testid="edit-source-btn"
+              onClick={handleEditClick}
+              type="button"
+            >
+              Edit
+            </button>
+          )}
+          {props.onDelete && (
+            <button
+              class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
+              data-testid="delete-source-btn"
+              onClick={handleDeleteClick}
+              type="button"
+            >
+              Delete
+            </button>
+          )}
+        </div>
+      </Card>
+    </A>
   );
 }

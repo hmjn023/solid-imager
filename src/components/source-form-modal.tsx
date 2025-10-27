@@ -169,7 +169,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 disabled={
                   !(formName().trim() && formPath().trim()) || isSubmitting()
                 }
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 type="button"
               >
                 {(() => {
@@ -184,7 +184,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
               </button>
               <button
                 class="rounded bg-gray-500 px-4 py-2 text-white"
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 type="button"
               >
                 Cancel

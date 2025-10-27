@@ -11,8 +11,14 @@ export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
       <html lang="en">
-        <body>
+        {/** biome-ignore lint/style/noHeadElement: SolidStart requires this for server-side rendering. */}
+        <head>
+          <meta charset="utf-8" />
+          <meta content="width=device-width, initial-scale=1" name="viewport" />
+          <link href="/favicon.ico" rel="icon" />
           {assets}
+        </head>
+        <body>
           <div id="app">{children}</div>
           {scripts}
         </body>

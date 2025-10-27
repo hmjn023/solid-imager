@@ -1,13 +1,18 @@
 import type { APIEvent } from "@solidjs/start/server";
-import type { UUID } from "~/domain/shared/types";
+import { z } from "zod";
+import { getAllMedia } from "~/infrastructure/api-clients/media";
 import {
   deleteMediaSource,
-  getMediaSourceById,
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_NOT_FOUND = 404;
+const HTTP_STATUS_BAD_REQUEST = 400;
+
+const SourceParamsSchema = z.object({
+  sourceId: z.string().uuid(),
+});
 
 /**
  *
@@ -15,9 +20,18 @@ const HTTP_STATUS_NOT_FOUND = 404;
  * @returns 画像ソース内のすべてのメディア
  */
 export async function GET({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const parsedParams = SourceParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: HTTP_STATUS_BAD_REQUEST,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  const { sourceId } = parsedParams.data;
+
   try {
-    const result = await getMediaSourceById(sourceId);
+    const result = await getAllMedia(sourceId);
     if (!result) {
       return new Response(JSON.stringify({ error: "Source not found" }), {
         status: HTTP_STATUS_NOT_FOUND,
@@ -50,7 +64,14 @@ export async function GET({ params }: APIEvent) {
  * @returns 更新されたメディアソース
  */
 export async function PUT({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const parsedParams = SourceParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: HTTP_STATUS_BAD_REQUEST,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { sourceId } = parsedParams.data;
   const data = await request.json();
 
   try {
@@ -79,7 +100,14 @@ export async function PUT({ params, request }: APIEvent) {
  * @returns 削除結果
  */
 export async function DELETE({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const parsedParams = SourceParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: HTTP_STATUS_BAD_REQUEST,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { sourceId } = parsedParams.data;
 
   try {
     const result = await deleteMediaSource(sourceId);

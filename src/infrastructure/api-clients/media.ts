@@ -46,6 +46,8 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
     filePath: validatedData.filePath,
     fileName: validatedData.fileName,
     mediaType: validatedData.mediaType,
+    description: validatedData.description,
+    sourceUrl: validatedData.sourceUrl,
     width: validatedData.width,
     height: validatedData.height,
     fileSize: validatedData.size,
@@ -129,7 +131,7 @@ export async function deleteMedia(
 
   // サムネイルも非同期で削除します。
   try {
-    await deleteThumbnail(validatedMediaId);
+    await deleteThumbnail(validatedSourceId, validatedMediaId);
   } catch (_error) {
     // サムネイル削除のエラーは無視（メディア削除は成功）
   }
@@ -241,7 +243,7 @@ export async function registerExistingMedia(
     startJobQueue(validatedSourceId, async (job) => {
       const media = addedMedia.find((m) => m.id === job.mediaId);
       if (media) {
-        await generateThumbnail(media, job.sourcePath);
+        await generateThumbnail(media, job.sourcePath, validatedSourceId);
       }
     });
   }

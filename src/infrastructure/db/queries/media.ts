@@ -1,17 +1,15 @@
 import { and, eq, like } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { type Media, medias } from "~/infrastructure/db/schema";
+import { type Media, medias, type NewMedia } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "../errors";
 
 /**
  * Inserts a new media item into the database.
- * @param {Omit<Media, "id" | "createdAt" | "modifiedAt" | "indexedAt">} newMedia - The data for the new media item, excluding auto-generated fields.
+ * @param {NewMedia} newMedia - The data for the new media item, excluding auto-generated fields.
  * @returns {Promise<Media>} A promise that resolves with the newly inserted media object.
  * @throws {UnknownDbError} If a database error occurs during the insertion.
  */
-export const insertMedia = async (
-  newMedia: Omit<Media, "id" | "createdAt" | "modifiedAt" | "indexedAt">
-): Promise<Media> => {
+export const insertMedia = async (newMedia: NewMedia): Promise<Media> => {
   try {
     const result = await db.insert(medias).values(newMedia).returning();
     return result[0];

@@ -1,4 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { registerExistingMedia } from "~/infrastructure/api-clients/media";
 import {
   createMediaSource,
   getMediaSources,
@@ -46,6 +47,12 @@ export async function POST({ request }: APIEvent) {
       type,
       connectionInfo,
     });
+
+    if (result && result.type === "local") {
+      // Run in background
+      registerExistingMedia(result.id, result.connectionInfo.path);
+    }
+
     return new Response(JSON.stringify(result), {
       status: 201,
       headers: {

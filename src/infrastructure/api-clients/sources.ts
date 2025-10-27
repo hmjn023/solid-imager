@@ -1,13 +1,18 @@
+import { registerExistingMedia } from "~/infrastructure/api-clients/media";
+import { insertMediaSource } from "~/infrastructure/db/queries/media-sources";
+import type { NewMediaSource } from "~/infrastructure/db/schema";
+
 /**
  * Sources API Client
  * Extracted from src/lib/api/sources.ts
  */
 
+import { MediaService } from "~/application/services/media-service";
 import {
   FetchError,
   MediaSourceService,
 } from "~/application/services/media-source-service";
-import type { NewMediaSource } from "~/infrastructure/db/schema";
+import type { Media } from "~/infrastructure/db/schema";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 const HTTP_STATUS_NOT_FOUND = 404;
@@ -22,21 +27,32 @@ export function getMediaSources() {
 }
 
 /**
- * Fetches a specific media source by its ID from the MediaSourceService.
+ * Fetches a all media by its SouceID from the MediaeService.
  * @param {string} sourceId - The ID of the media source to fetch.
- * @returns {Promise<(MediaSource | undefined)[]>} A promise that resolves with an array containing the media source, or undefined if not found.
+ * @returns {Promise<(Media | undefined)[]>} A promise that resolves with an array containing the media source, or undefined if not found.
  */
-export function getMediaSourceById(sourceId: string) {
-  return MediaSourceService.fetchSourceById(sourceId);
+export function getAllMediaBySourceId(sourceId: string) {
+  return MediaService.getAllMedia(sourceId);
 }
 
 /**
  * Creates a new media source using the MediaSourceService.
  * @param {NewMediaSource} mediaSource - The data for the new media source.
- * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the newly created media source.
+ * @returns {Promise<MediaSource>} A promise that resolves with an array containing the newly created media source.
  */
-export function createMediaSource(mediaSource: NewMediaSource) {
-  return MediaSourceService.createSource(mediaSource);
+export async function createMediaSource(mediaSource: NewMediaSource) {
+  const newSources = await insertMediaSource(mediaSource);
+  const newSource = newSources[0];
+
+  if (newSource && newSource.type === "local") {
+    // Don't await, let it run in the background
+    registerExistingMedia(
+      newSource.id,
+      newSource.connectionInfo?.path as string
+    );
+  }
+
+  return newSources;
 }
 
 /**

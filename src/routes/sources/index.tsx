@@ -1,8 +1,18 @@
 import { createResource, createSignal, For } from "solid-js";
-import { MediaSourceService } from "~/application/services/media-source-service";
+import { isServer } from "solid-js/web";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
+
+async function fetchSources() {
+  const url = "/api/sources";
+  const fullUrl = isServer ? `http://localhost:3000${url}` : url;
+  const res = await fetch(fullUrl);
+  if (!res.ok) {
+    throw new Error("Failed to fetch sources");
+  }
+  return res.json();
+}
 
 /**
  * The main component for managing media sources.
@@ -15,37 +25,7 @@ export default function Sources() {
   const [editingSource, setEditingSource] = createSignal(null);
   const [deletingSource, setDeletingSource] = createSignal(null);
 
-  // createResource + fetch を使用したAPIからの実際のデータ
-  const [mediaSources, { refetch }] = createResource(
-    MediaSourceService.fetchSources
-  );
-
-  // APIが失敗した場合、または空を返した場合のモックデータへのフォールバック
-  const mockSources = [
-    {
-      id: "1",
-      name: "Local Images",
-      description: "My local image collection",
-      type: "local",
-      connectionInfo: { path: "/home/user/images" },
-    },
-    {
-      id: "2",
-      name: "Remote Server",
-      description: "Images on remote server",
-      type: "sftp",
-      connectionInfo: { path: "/var/www/images" },
-    },
-  ];
-
-  // 利用可能な場合は実際のデータを使用し、それ以外の場合はモックデータを使用します。
-  const displaySources = () => {
-    const realData = mediaSources();
-    if (realData && realData.length > 0) {
-      return realData;
-    }
-    return mockSources;
-  };
+  const [mediaSources, { refetch }] = createResource(fetchSources);
 
   const handleAddSource = () => {
     setEditingSource(null);
@@ -59,13 +39,31 @@ export default function Sources() {
 
   const handleFormSubmit = async (sourceData) => {
     const editing = editingSource();
-    if (editing) {
-      await MediaSourceService.updateSource(editing.id, sourceData);
-    } else {
-      await MediaSourceService.createSource(sourceData);
+    try {
+      if (editing) {
+        const res = await fetch(`/api/sources/${editing.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sourceData),
+        });
+        if (!res.ok) {
+          throw new Error("Failed to update source");
+        }
+      } else {
+        const res = await fetch("/api/sources", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(sourceData),
+        });
+        if (!res.ok) {
+          throw new Error("Failed to create source");
+        }
+      }
+      await refetch();
+      setShowFormModal(false);
+    } catch (_error) {
+      // You might want to show an error to the user here
     }
-    await refetch();
-    setShowFormModal(false);
   };
 
   const handleDeleteSource = (source) => {
@@ -74,10 +72,19 @@ export default function Sources() {
   };
 
   const handleDeleteConfirm = async (sourceId) => {
-    await MediaSourceService.deleteSource(sourceId);
-    await refetch();
-    setShowDeleteModal(false);
-    setDeletingSource(null);
+    try {
+      const res = await fetch(`/api/sources/${sourceId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error("Failed to delete source");
+      }
+      await refetch();
+      setShowDeleteModal(false);
+      setDeletingSource(null);
+    } catch (_error) {
+      // You might want to show an error to the user here
+    }
   };
 
   return (
@@ -86,16 +93,15 @@ export default function Sources() {
         <h1 class="font-bold text-3xl">Media Sources</h1>
         <button
           class="rounded bg-blue-500 px-4 py-2 text-white"
-          onClick={handleAddSource}
+          onClick={() => handleAddSource()}
           type="button"
         >
           Add Source
         </button>
       </div>
 
-      {/* ソースグリッド */}
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <For each={displaySources()}>
+        <For each={mediaSources()}>
           {(source) => (
             <SourceCard
               mediaSource={source}
@@ -106,20 +112,17 @@ export default function Sources() {
         </For>
       </div>
 
-      {/* ローディング状態 */}
       {mediaSources.loading && (
         <div class="mt-8 text-center">
           <p class="text-muted-foreground">Loading sources...</p>
         </div>
       )}
 
-      {/* エラー状態 */}
       {mediaSources.error && (
         <div class="mt-8 text-center">
           <p class="text-red-500">
             Error loading sources: {mediaSources.error.message}
           </p>
-          <p class="text-gray-500 text-sm">Showing mock data instead.</p>
         </div>
       )}
 

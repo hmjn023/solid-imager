@@ -61,14 +61,14 @@ export default function SourceDeleteModal(props: SourceDeleteModalProps) {
               <button
                 class="rounded bg-red-500 px-4 py-2 text-white disabled:opacity-50"
                 disabled={isDeleting()}
-                onClick={handleConfirm}
+                onClick={() => handleConfirm()}
                 type="button"
               >
                 {isDeleting() ? "Deleting..." : "Delete"}
               </button>
               <button
                 class="rounded bg-gray-500 px-4 py-2 text-white"
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 type="button"
               >
                 Cancel

@@ -1092,7 +1092,10 @@ export type Media = InferSelectModel<typeof medias>;
 /**
  * Type definition for inserting a new media item into the database.
  */
-export type NewMedia = InferInsertModel<typeof medias>;
+export type NewMedia = Omit<
+  Media,
+  "id" | "createdAt" | "modifiedAt" | "indexedAt" | "status"
+>;
 
 /**
  * Type definition for selecting a tag from the database.

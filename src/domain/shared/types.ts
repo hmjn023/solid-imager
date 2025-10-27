@@ -5,10 +5,6 @@
  */
 
 /**
- * Represents a universally unique identifier (UUID) as a string.
- */
-export type Uuid = string;
-/**
  * Represents the application's configuration structure.
  * @property {object} [server] - Server-related settings.
  * @property {number} [server.port] - The port number the server listens on.

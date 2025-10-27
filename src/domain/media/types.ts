@@ -3,7 +3,7 @@
  * Extracted from src/lib/types.ts during architecture reorganization
  */
 
-import type { UUID } from "~/domain/shared/types";
+import type { v4 as UUID } from "uuid";
 
 /**
  * Represents the data structure for updating media information.
@@ -110,6 +110,6 @@ export type BulkTagMediaOptions = {
  * @property {number} [displayOrder] - An optional display order for the media within the collection.
  */
 export type AddMediaToCollectionRequest = {
-  mediaId: UUID;
+  mediaId: typeof UUID;
   displayOrder?: number;
 };

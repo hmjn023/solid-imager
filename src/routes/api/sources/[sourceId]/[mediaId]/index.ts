@@ -1,10 +1,10 @@
+import { promises as fs } from "node:fs";
+import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import type { UUID } from "~/domain/shared/types";
-import {
-  getMediaDetails,
-  updateMedia,
-} from "~/infrastructure/api-clients/media";
+import { getMedia, updateMedia } from "~/infrastructure/api-clients/media";
+import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -34,8 +34,26 @@ export async function GET({ params }: APIEvent) {
   }
   const { sourceId, mediaId } = parsedParams.data;
 
-  const media = await getMediaDetails(sourceId as UUID, mediaId as UUID); // 現時点ではgetMediaDetailsを再利用しています。
-  return media;
+  try {
+    const media = await getMedia(sourceId as UUID, mediaId as UUID);
+    const source = await selectMediaSourceById(sourceId as UUID);
+
+    if (!source || source.type !== "local") {
+      return new Response("Media source not found or not local", {
+        status: 404,
+      });
+    }
+
+    const imagePath = path.join(source.connectionInfo.path, media.filePath);
+    const imageBuffer = await fs.readFile(imagePath);
+
+    return new Response(imageBuffer, {
+      status: 200,
+      headers: { "Content-Type": `image/${media.mediaType}` },
+    });
+  } catch (_error) {
+    return new Response("Original image not found", { status: 404 });
+  }
 }
 
 /**
@@ -63,6 +81,6 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const data = parsedBody.data;
 
-  const result = await updateMedia(sourceId as UUID, mediaId as UUID, data);
+  const result = await updateMedia(sourceId, mediaId, data);
   return result;
 }
