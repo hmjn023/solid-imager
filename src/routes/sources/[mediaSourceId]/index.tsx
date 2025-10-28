@@ -53,7 +53,7 @@ export default function MediaListPage() {
     file: File;
     filename: string;
     description: string;
-    sourceUrl: string;
+    sourceUrl?: string;
     overwrite: boolean;
     autoIncrement: boolean;
   };
@@ -63,7 +63,9 @@ export default function MediaListPage() {
     formData.append("file", options.file);
     formData.append("filename", options.filename);
     formData.append("description", options.description);
-    formData.append("sourceUrl", options.sourceUrl);
+    if (options.sourceUrl) {
+      formData.append("sourceUrl", options.sourceUrl);
+    }
     formData.append("overwrite", String(options.overwrite));
     formData.append("autoIncrement", String(options.autoIncrement));
 

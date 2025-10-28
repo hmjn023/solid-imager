@@ -19,7 +19,7 @@ type UploadMediaModalProps = {
     file: File;
     filename: string;
     description: string;
-    sourceUrl: string;
+    sourceUrl?: string;
     overwrite: boolean;
     autoIncrement: boolean;
   }) => Promise<void>;
