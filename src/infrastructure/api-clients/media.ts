@@ -4,9 +4,12 @@ import sharp from "sharp";
 import type { z } from "zod";
 import {
   addMediaRequestSchema,
+  type conflictSchema,
   directoryPathSchema,
   mediaIdSchema,
   updateMediaRequestSchema,
+  uploadRequestSchema,
+  uploadResponseSchema,
 } from "~/domain/media/schemas";
 import { sourceIdSchema } from "~/domain/sources/schemas";
 import {
@@ -18,6 +21,7 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
+import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
@@ -221,11 +225,11 @@ export async function registerExistingMedia(
         filePath: relativePath,
         fileName: path.basename(fullPath),
         mediaType: "image",
+        description: "",
+        sourceUrl: "",
         width: metadata.width,
         height: metadata.height,
         fileSize: stats.size,
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
       };
       const inserted = await insertMedia(newMedia);
       addedMedia.push(inserted);
@@ -328,15 +332,125 @@ export function getMediaThumbnail(
 
 /**
  * Uploads a media file.
- * @param {string} _sourceId - The ID of the media source.
- * @param {unknown} _uploadData - The data for the upload.
- * @returns {Promise<Media>} A promise that resolves with the newly uploaded media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {FormData} uploadData - The FormData object containing the file and other upload details.
+ * @returns {Promise<z.infer<typeof uploadResponseSchema>>} A promise that resolves with the upload response.
+ * @throws {Error} If the media source is not found, not local, or if there's a file conflict.
  */
-export function uploadMedia(
-  _sourceId: string,
-  _uploadData: unknown
-): Promise<Media> {
-  throw new Error("Not implemented");
+export async function uploadMedia(
+  sourceId: string,
+  uploadData: FormData
+): Promise<z.infer<typeof uploadResponseSchema>> {
+  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const mediaSource = await selectMediaSourceById(validatedSourceId);
+
+  if (!mediaSource) {
+    throw new Error("Media source not found.");
+  }
+
+  if (mediaSource.type !== "local") {
+    throw new Error(
+      "Only local media sources are supported for uploads in Phase 1."
+    );
+  }
+
+  const connectionInfo = mediaSource.connectionInfo as { path: string };
+  const basePath = connectionInfo.path;
+
+  const file = uploadData.get("file") as File | null;
+  if (!file) {
+    throw new Error("No file provided for upload.");
+  }
+
+  const uploadRequest = uploadRequestSchema.parse({
+    filename: uploadData.get("filename")?.toString(),
+    autoIncrement: uploadData.get("autoIncrement")?.toString(),
+    description: uploadData.get("description")?.toString(),
+    sourceUrl: uploadData.get("sourceUrl")?.toString(),
+    overwrite: uploadData.get("overwrite")?.toString(),
+  });
+
+  let targetFileName = uploadRequest.filename || file.name;
+  let targetFilePath = path.join(basePath, targetFileName);
+  let relativeFilePath = path.relative(basePath, targetFilePath);
+  let conflict: z.infer<typeof conflictSchema> | undefined;
+
+  // Handle file name conflicts
+  let counter = 0;
+  while (
+    await fs
+      .stat(targetFilePath)
+      .then(() => true)
+      .catch(() => false)
+  ) {
+    if (uploadRequest.overwrite) {
+      break; // Overwrite existing file
+    }
+
+    if (!uploadRequest.autoIncrement) {
+      conflict = {
+        existingFile: relativeFilePath,
+        suggestedName: "", // Will be filled if autoIncrement is true
+      };
+      throw new Error("File already exists and overwrite is not allowed.");
+    }
+
+    counter++;
+    const ext = path.extname(file.name);
+    const base = path.basename(file.name, ext);
+    targetFileName = `${base}_${counter}${ext}`;
+    targetFilePath = path.join(basePath, targetFileName);
+    relativeFilePath = path.relative(basePath, targetFilePath);
+    conflict = {
+      existingFile: path.relative(
+        basePath,
+        path.join(basePath, uploadRequest.filename || file.name)
+      ),
+      suggestedName: targetFileName,
+    };
+  }
+
+  // Save the file
+  await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
+
+  // Extract metadata
+  const stats = await fs.stat(targetFilePath);
+  const metadata = await sharp(targetFilePath).metadata();
+
+  if (!(metadata.width && metadata.height)) {
+    await fs.unlink(targetFilePath); // Clean up if metadata extraction fails
+    throw new Error("Could not extract media dimensions.");
+  }
+
+  const newMedia: NewMedia = {
+    sourceId: validatedSourceId,
+    filePath: relativeFilePath,
+    fileName: targetFileName,
+    mediaType: "image", // Assuming image for now, will need to determine based on file type
+    description: uploadRequest.description || "",
+    sourceUrl: uploadRequest.sourceUrl || "",
+    width: metadata.width,
+    height: metadata.height,
+    fileSize: stats.size,
+  };
+  const insertedMedia = await insertMedia(newMedia);
+
+  // Trigger thumbnail generation
+  addJobsToQueue(validatedSourceId, [
+    { mediaId: insertedMedia.id, sourcePath: basePath },
+  ]);
+  startJobQueue(validatedSourceId, async (job) => {
+    const media = await selectMediaById(job.mediaId);
+    if (media) {
+      await generateThumbnail(media, job.sourcePath, validatedSourceId);
+    }
+  });
+
+  return uploadResponseSchema.parse({
+    success: true,
+    filePath: relativeFilePath,
+    conflict,
+  });
 }
 
 /**
