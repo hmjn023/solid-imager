@@ -77,3 +77,26 @@ export const sourceIdSchema = z.string().uuid("Invalid source ID format");
 export const directoryPathSchema = z
   .string()
   .min(1, "Directory path is required");
+
+export const uploadRequestSchema = z.object({
+  filename: z.string().optional(),
+  autoIncrement: z
+    .preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
+    .optional(),
+  description: z.string().optional(),
+  sourceUrl: z.string().url("Invalid URL format").optional(),
+  overwrite: z
+    .preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
+    .optional(),
+});
+
+export const conflictSchema = z.object({
+  existingFile: z.string(),
+  suggestedName: z.string(),
+});
+
+export const uploadResponseSchema = z.object({
+  success: z.boolean(),
+  filePath: z.string(),
+  conflict: conflictSchema.optional(),
+});

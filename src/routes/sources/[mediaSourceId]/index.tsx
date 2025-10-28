@@ -1,6 +1,14 @@
 import { useParams } from "@solidjs/router";
-import { createResource, For, Show } from "solid-js";
+import {
+  createResource,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { isServer } from "solid-js/web";
+import { UploadMediaModal } from "~/components/upload-media-modal";
 
 // APIから返されるメディアオブジェクトの型を定義します。
 // これはDBスキーマと一致することが期待されます。
@@ -33,10 +41,98 @@ async function fetchMedia(sourceId: string): Promise<Media[]> {
  */
 export default function MediaListPage() {
   const params = useParams();
-  const [media] = createResource(() => params.mediaSourceId, fetchMedia);
+  const [media, { refetch }] = createResource(
+    () => params.mediaSourceId,
+    fetchMedia
+  );
+
+  const [showUploadModal, setShowUploadModal] = createSignal(false);
+  const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
+
+  type UploadOptions = {
+    file: File;
+    filename: string;
+    description: string;
+    sourceUrl: string;
+    overwrite: boolean;
+    autoIncrement: boolean;
+  };
+
+  const handleUpload = async (options: UploadOptions) => {
+    const formData = new FormData();
+    formData.append("file", options.file);
+    formData.append("filename", options.filename);
+    formData.append("description", options.description);
+    formData.append("sourceUrl", options.sourceUrl);
+    formData.append("overwrite", String(options.overwrite));
+    formData.append("autoIncrement", String(options.autoIncrement));
+
+    const url = `/api/sources/${params.mediaSourceId}`;
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(
+        errorData.error || "メディアのアップロードに失敗しました。"
+      );
+    }
+
+    refetch(); // Re-fetch media list after successful upload
+  };
+
+  const handleDrop = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      setFileToUpload(file);
+      setShowUploadModal(true);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handlePaste = (e: ClipboardEvent) => {
+    if (e.clipboardData?.items) {
+      for (const item of e.clipboardData.items) {
+        if (item.type.indexOf("image") !== -1) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const file = new File([blob], `pasted-image-${Date.now()}.png`, {
+              type: blob.type,
+            });
+            setFileToUpload(file);
+            setShowUploadModal(true);
+            e.preventDefault();
+            break;
+          }
+        }
+      }
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("paste", handlePaste);
+  });
+
+  onCleanup(() => {
+    document.removeEventListener("paste", handlePaste);
+  });
 
   return (
-    <div class="container mx-auto p-4">
+    /* biome-ignore lint/a11y/noNoninteractiveElementInteractions: This section is a drop zone, and the event handlers are necessary for its functionality. */
+    <section
+      aria-label="Media upload area"
+      class="container mx-auto min-h-[calc(100vh-2rem)] rounded-lg border-2 border-gray-300 border-dashed p-4"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <h1 class="mb-4 font-bold text-2xl">
         Media in Source: {params.mediaSourceId}
       </h1>
@@ -67,6 +163,13 @@ export default function MediaListPage() {
           )}
         </For>
       </div>
-    </div>
+
+      <UploadMediaModal
+        initialFile={fileToUpload()}
+        isOpen={showUploadModal()}
+        onClose={() => setShowUploadModal(false)}
+        onUpload={handleUpload}
+      />
+    </section>
   );
 }
