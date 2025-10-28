@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { Button } from "~/components/ui/button";
 import {
@@ -24,6 +24,8 @@ type UploadMediaModalProps = {
     autoIncrement: boolean;
   }) => Promise<void>;
   initialFile: File | null;
+  onUrlFetch: (file: File) => void;
+  pastedUrl: string | null;
 };
 
 const formSchema = z.object({
@@ -41,11 +43,67 @@ const formSchema = z.object({
 export function UploadMediaModal(props: UploadMediaModalProps) {
   const [filename, setFilename] = createSignal(props.initialFile?.name || "");
   const [description, setDescription] = createSignal("");
-  const [sourceUrl, setSourceUrl] = createSignal("");
+  const [sourceUrl, setSourceUrl] = createSignal(props.pastedUrl || "");
   const [overwrite, setOverwrite] = createSignal(false);
   const [autoIncrement, setAutoIncrement] = createSignal(false);
   const [errors, setErrors] = createSignal<z.ZodIssue[]>([]);
   const [isUploading, setIsUploading] = createSignal(false);
+  const [isFetchingUrl, setIsFetchingUrl] = createSignal(false);
+  const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
+
+  createEffect(() => {
+    if (props.pastedUrl) {
+      setSourceUrl(props.pastedUrl);
+    }
+  });
+
+  createEffect(
+    on(sourceUrl, async (url) => {
+      if (previewUrl()) {
+        URL.revokeObjectURL(previewUrl());
+        setPreviewUrl(null);
+      }
+      if (url && z.string().url().safeParse(url).success) {
+        setIsFetchingUrl(true);
+        setErrors([]);
+        try {
+          const res = await fetch("/api/fetch-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url }),
+          });
+          if (!res.ok) {
+            throw new Error("URLからの画像の取得に失敗しました。");
+          }
+          const blob = await res.blob();
+          const fetchedFile = new File(
+            [blob],
+            url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
+            { type: blob.type }
+          );
+          props.onUrlFetch(fetchedFile);
+          setFilename(fetchedFile.name);
+          setPreviewUrl(URL.createObjectURL(fetchedFile));
+        } catch (e) {
+          setErrors([
+            {
+              message: (e as Error).message,
+              path: ["sourceUrl"],
+              code: "custom",
+            },
+          ]);
+        } finally {
+          setIsFetchingUrl(false);
+        }
+      }
+    })
+  );
+
+  onCleanup(() => {
+    if (previewUrl()) {
+      URL.revokeObjectURL(previewUrl());
+    }
+  });
 
   const handleUpload = async () => {
     setErrors([]);
@@ -136,18 +194,37 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
             <Label class="text-right" for="sourceUrl">
               ソースURL
             </Label>
-            <Input
-              class="col-span-3"
-              id="sourceUrl"
-              onInput={(e) => setSourceUrl(e.currentTarget.value)}
-              value={sourceUrl()}
-            />
+            <div class="relative col-span-3">
+              <Input
+                class="w-full"
+                disabled={isFetchingUrl()}
+                id="sourceUrl"
+                onInput={(e) => setSourceUrl(e.currentTarget.value)}
+                value={sourceUrl()}
+              />
+              <Show when={isFetchingUrl()}>
+                <div class="-translate-y-1/2 absolute top-1/2 right-2 text-sm">
+                  Loading...
+                </div>
+              </Show>
+            </div>
             <Show when={errors().find((e) => e.path[0] === "sourceUrl")}>
               {(error) => (
                 <p class="col-span-4 text-right text-red-500 text-sm">
                   {error().message}
                 </p>
               )}
+            </Show>
+            <Show when={previewUrl()}>
+              <div class="col-span-4 mt-2 flex justify-center">
+                {/* biome-ignore lint/performance/noImgElement: This is a preview image. */}
+                {/* biome-ignore lint/nursery/useImageSize: This is a preview image. */}
+                <img
+                  alt="Fetched preview"
+                  class="max-h-48"
+                  src={previewUrl()}
+                />
+              </div>
             </Show>
           </div>
           <div class="grid grid-cols-4 items-center gap-4">

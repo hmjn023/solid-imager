@@ -8,6 +8,7 @@ import {
   Show,
 } from "solid-js";
 import { isServer } from "solid-js/web";
+import { z } from "zod";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 
 // APIから返されるメディアオブジェクトの型を定義します。
@@ -48,6 +49,7 @@ export default function MediaListPage() {
 
   const [showUploadModal, setShowUploadModal] = createSignal(false);
   const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
+  const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 
   type UploadOptions = {
     file: File;
@@ -100,23 +102,71 @@ export default function MediaListPage() {
     e.stopPropagation();
   };
 
-  const handlePaste = (e: ClipboardEvent) => {
-    if (e.clipboardData?.items) {
-      for (const item of e.clipboardData.items) {
-        if (item.type.indexOf("image") !== -1) {
-          const blob = item.getAsFile();
-          if (blob) {
-            const file = new File([blob], `pasted-image-${Date.now()}.png`, {
-              type: blob.type,
-            });
-            setFileToUpload(file);
-            setShowUploadModal(true);
-            e.preventDefault();
-            break;
-          }
-        }
+  const handleImagePasteItem = (
+    item: DataTransferItem,
+    e: ClipboardEvent
+  ): boolean => {
+    if (item.type.indexOf("image") !== -1) {
+      const blob = item.getAsFile();
+
+      if (blob) {
+        const file = new File([blob], `pasted-image-${Date.now()}.png`, {
+          type: blob.type,
+        });
+        setFileToUpload(file);
+        setShowUploadModal(true);
+        e.preventDefault();
+
+        return true;
       }
     }
+
+    return false;
+  };
+
+  const handleUrlPasteItem = async (
+    item: DataTransferItem,
+    e: ClipboardEvent
+  ): Promise<boolean> => {
+    if (item.type === "text/plain") {
+      const text = await new Promise<string | null>((resolve) => {
+        item.getAsString((str) => resolve(str));
+      });
+
+      if (text && z.string().url().safeParse(text).success) {
+        setPastedUrl(text);
+        setShowUploadModal(true);
+        e.preventDefault();
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const processClipboardItems = async (
+    items: DataTransferItemList,
+    e: ClipboardEvent
+  ): Promise<boolean> => {
+    for (const item of items) {
+      if (handleImagePasteItem(item, e)) {
+        return true;
+      }
+    }
+
+    for (const item of items) {
+      if (await handleUrlPasteItem(item, e)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const handlePaste = async (e: ClipboardEvent) => {
+    if (!e.clipboardData?.items) {
+      return;
+    }
+    await processClipboardItems(e.clipboardData.items, e);
   };
 
   onMount(() => {
@@ -169,8 +219,14 @@ export default function MediaListPage() {
       <UploadMediaModal
         initialFile={fileToUpload()}
         isOpen={showUploadModal()}
-        onClose={() => setShowUploadModal(false)}
+        onClose={() => {
+          setShowUploadModal(false);
+          setPastedUrl(null);
+          setFileToUpload(null);
+        }}
         onUpload={handleUpload}
+        onUrlFetch={(file) => setFileToUpload(file)}
+        pastedUrl={pastedUrl()}
       />
     </section>
   );
