@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import { getConfig } from "~/infrastructure/api-clients/config";
@@ -13,7 +13,7 @@ import {
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
 
-function getSourceCacheDir(sourceId: string): string {
+export function getSourceCacheDir(sourceId: string): string {
   return path.join(".cache/thumbnails", sourceId);
 }
 
