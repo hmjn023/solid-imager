@@ -4,7 +4,7 @@
  */
 
 import { getAllMedia, getMedia } from "~/infrastructure/api-clients/media";
-import { getMediaSourceById } from "~/infrastructure/api-clients/sources";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 /**
@@ -18,7 +18,7 @@ export const MediaService = {
    * @returns {Promise<Buffer>} A promise that resolves with the file content as a Buffer.
    */
   async getMediaContent(sourceId: string, mediaId: string): Promise<Buffer> {
-    const [source] = await getMediaSourceById(sourceId);
+    const [source] = await MediaSourceService.fetchSourceById(sourceId);
     if (!source) {
       throw new Error("Media source not found");
     }
