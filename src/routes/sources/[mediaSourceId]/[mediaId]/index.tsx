@@ -1,10 +1,17 @@
 import { useParams } from "@solidjs/router";
 import { createMemo, createResource, Show } from "solid-js";
 import type { UUID } from "~/domain/shared/types";
-import { getMedia } from "~/infrastructure/api-clients/media";
+import type { Media as MediaType } from "~/infrastructure/db/schema";
 
-function fetchMedia(sourceId: UUID, mediaId: UUID) {
-  return getMedia(sourceId, mediaId);
+async function fetchMedia(
+  sourceId: UUID,
+  mediaId: UUID
+): Promise<MediaType> {
+  const response = await fetch(`/api/sources/${sourceId}/${mediaId}/details`);
+  if (!response.ok) {
+    throw new Error("Failed to fetch media details");
+  }
+  return response.json();
 }
 
 export default function Media() {
