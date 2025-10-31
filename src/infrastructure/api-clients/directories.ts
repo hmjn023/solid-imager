@@ -4,7 +4,6 @@
  */
 
 import { getDriver } from "~/infrastructure/storage/factory";
-import { MediaSourceService } from "~/application/services/media-source-service";
 
 /**
  * Retrieves a listing of files and subdirectories within a specified path of a media source.

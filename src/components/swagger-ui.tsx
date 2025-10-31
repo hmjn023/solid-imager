@@ -1,5 +1,5 @@
 import { onMount } from "solid-js";
-import SwaggerUI from "swagger-ui-dist/swagger-ui-bundle.js";
+import SwaggerUi from "swagger-ui-dist/swagger-ui-bundle.js";
 import "swagger-ui-dist/swagger-ui.css";
 
 export default function SwaggerUIComponent() {
@@ -7,13 +7,10 @@ export default function SwaggerUIComponent() {
 
   onMount(() => {
     if (swaggerUiRef) {
-      SwaggerUI({
+      SwaggerUi({
         url: "/openapi.json",
         domNode: swaggerUiRef,
-        presets: [
-          SwaggerUI.presets.apis,
-          SwaggerUI.presets.models,
-        ],
+        presets: [SwaggerUi.presets.apis, SwaggerUi.presets.models],
         layout: "BaseLayout",
       });
     }
