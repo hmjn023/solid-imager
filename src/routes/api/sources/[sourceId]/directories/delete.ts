@@ -3,10 +3,38 @@ import type { UUID } from "~/domain/shared/types";
 import { deleteDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
- * ディレクトリを削除します。
- *
- * @param param0 {sourceId: UUID, directories: path}
- * @returns ディレクトリ削除結果
+ * @swagger
+ * /api/sources/{sourceId}/directories/delete:
+ *   delete:
+ *     summary: Delete a directory
+ *     description: Deletes a directory within a specified media source.
+ *     tags:
+ *       - Directories
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/DeleteDirectoryRequest'
+ *     responses:
+ *       200:
+ *         description: Directory deleted successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DeleteDirectoryResponse'
+ *       400:
+ *         description: Invalid input or directory not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;

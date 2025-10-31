@@ -20,9 +20,42 @@ const UpdateMediaBodySchema = z.object({
 });
 
 /**
- *
- * @param param0 {sourceId: UUID, mediaId: UUID}
- * @returns メディア
+ * @swagger
+ * /api/sources/{sourceId}/{mediaId}:
+ *   get:
+ *     summary: Retrieve a specific media file
+ *     description: Fetches a specific media file by its source ID and media ID.
+ *     tags:
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media file.
+ *     responses:
+ *       200:
+ *         description: The requested media file.
+ *         content:
+ *           image/*:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid source ID or media ID supplied.
+ *       404:
+ *         description: Media not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = MediaParamsSchema.safeParse(params);
@@ -57,9 +90,47 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * 特定メディア情報更新
- * @param param0 {sourceId: UUID, mediaId: UUID}
- * @returns 更新結果
+ * @swagger
+ * /api/sources/{sourceId}/{mediaId}:
+ *   put:
+ *     summary: Update specific media information
+ *     description: Updates metadata and other information for a specific media file.
+ *     tags:
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media file to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateMediaRequest'
+ *     responses:
+ *       200:
+ *         description: Media information updated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UpdateMediaResponse'
+ *       400:
+ *         description: Invalid input or media ID.
+ *       404:
+ *         description: Media not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = MediaParamsSchema.safeParse(params);

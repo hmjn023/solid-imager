@@ -20,10 +20,33 @@ const UpdateTagBodySchema = z.object({
 });
 
 /**
- * タグの詳細を取得します。
- *
- * @param param0 {id: number}
- * @returns タグ詳細
+ * @swagger
+ * /api/tags/{id}:
+ *   get:
+ *     summary: Retrieve a specific tag
+ *     description: Fetches details of a tag by its ID.
+ *     tags:
+ *       - Tags
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the tag to retrieve.
+ *     responses:
+ *       200:
+ *         description: Details of the tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -39,10 +62,39 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * タグを更新します。
- *
- * @param param0 {id: number}
- * @returns 更新されたタグ
+ * @swagger
+ * /api/tags/{id}:
+ *   put:
+ *     summary: Update a specific tag
+ *     description: Updates an existing tag with the provided data.
+ *     tags:
+ *       - Tags
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the tag to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateTag'
+ *     responses:
+ *       200:
+ *         description: The updated tag.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Tag'
+ *       400:
+ *         description: Invalid ID or invalid input.
+ *       404:
+ *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -74,10 +126,29 @@ export async function PUT({ params, request }: APIEvent) {
 }
 
 /**
- * タグを削除します。
- *
- * @param param0 {id: number}
- * @returns 削除結果
+ * @swagger
+ * /api/tags/{id}:
+ *   delete:
+ *     summary: Delete a specific tag
+ *     description: Deletes a tag by its ID.
+ *     tags:
+ *       - Tags
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the tag to delete.
+ *     responses:
+ *       200:
+ *         description: Tag successfully deleted.
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Tag not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);

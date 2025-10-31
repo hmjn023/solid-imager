@@ -10,9 +10,44 @@ const MediaParamsSchema = z.object({
 });
 
 /**
- *
- * @param param0 {sourceId: UUID, mediaId: UUID}
- * @returns メディアのタグ
+ * @swagger
+ * /api/sources/{sourceId}/{mediaId}/tags:
+ *   get:
+ *     summary: Retrieve tags for a specific media
+ *     description: Fetches a list of tags associated with a specific media file.
+ *     tags:
+ *       - Media
+ *       - Tags
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media file.
+ *     responses:
+ *       200:
+ *         description: A list of tags for the media.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tag'
+ *       400:
+ *         description: Invalid source ID or media ID supplied.
+ *       404:
+ *         description: Media not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = MediaParamsSchema.safeParse(params);

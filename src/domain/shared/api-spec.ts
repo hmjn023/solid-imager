@@ -1,0 +1,576 @@
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     MediaSource:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *           description: The unique identifier for the media source.
+ *         name:
+ *           type: string
+ *           description: The name of the media source.
+ *         description:
+ *           type: string
+ *           description: A description of the media source.
+ *         type:
+ *           type: string
+ *           enum: [local, sftp, s3]
+ *           description: The type of the media source.
+ *         connectionInfo:
+ *           type: object
+ *           description: Connection information for the media source.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the media source was created.
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the media source was last updated.
+ *     NewMediaSource:
+ *       type: object
+ *       required:
+ *         - name
+ *         - type
+ *         - connectionInfo
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the media source.
+ *         description:
+ *           type: string
+ *           description: A description of the media source.
+ *         type:
+ *           type: string
+ *           enum: [local, sftp, s3]
+ *           description: The type of the media source.
+ *         connectionInfo:
+ *           type: object
+ *           description: >
+ *             Connection information for the media source. Varies based on the `type`.
+ *             For `local`, it should be `{ "path": "/path/to/media" }`.
+ *     Media:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           format: uuid
+ *         sourceId:
+ *           type: string
+ *           format: uuid
+ *         filePath:
+ *           type: string
+ *         fileName:
+ *           type: string
+ *         mediaType:
+ *           type: string
+ *           enum: [image, video, audio]
+ *         width:
+ *           type: integer
+ *         height:
+ *           type: integer
+ *         fileSize:
+ *           type: integer
+ *         description:
+ *           type: string
+ *         sourceUrl:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         modifiedAt:
+ *           type: string
+ *           format: date-time
+ *         indexedAt:
+ *           type: string
+ *           format: date-time
+ *         status:
+ *           type: string
+ *           enum: [active, archived, deleted]
+ *     Category:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: The unique identifier for the category.
+ *         name:
+ *           type: string
+ *           description: The name of the category.
+ *         description:
+ *           type: string
+ *           description: A description of the category.
+ *         color:
+ *           type: string
+ *           description: The color associated with the category (e.g., hex code).
+ *         parentId:
+ *           type: integer
+ *           nullable: true
+ *           description: The ID of the parent category, if any.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the category was created.
+ *     NewCategory:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the new category.
+ *         description:
+ *           type: string
+ *           description: A description of the new category.
+ *         color:
+ *           type: string
+ *           description: The color associated with the new category.
+ *         parentId:
+ *           type: integer
+ *           nullable: true
+ *           description: The ID of the parent category, if any.
+ *     UpdateCategory:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The new name for the category.
+ *         description:
+ *           type: string
+ *           description: The new description for the category.
+ *         color:
+ *           type: string
+ *           description: The new color for the category.
+ *         parentId:
+ *           type: integer
+ *           nullable: true
+ *           description: The new parent ID for the category.
+ 
+ *     IP:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: The unique identifier for the Intellectual Property.
+ *         name:
+ *           type: string
+ *           description: The name of the Intellectual Property.
+ *         description:
+ *           type: string
+ *           description: A description of the Intellectual Property.
+ *     NewIP:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the new Intellectual Property.
+ *         description:
+ *           type: string
+ *           description: A description of the new Intellectual Property.
+ *     UpdateIP:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The new name for the Intellectual Property.
+ *         description:
+ *           type: string
+ *           description: The new description for the Intellectual Property.
+
+ *     AppConfig:
+ *       type: object
+ *       properties:
+ *         server:
+ *           type: object
+ *           properties:
+ *             port:
+ *               type: integer
+ *             host:
+ *               type: string
+ *         media:
+ *           type: object
+ *           properties:
+ *             supportedFormats:
+ *               type: array
+ *               items:
+ *                 type: string
+ *             thumbnailSizes:
+ *               type: array
+ *               items:
+ *                 type: integer
+ *             cacheDirectory:
+ *               type: string
+ *             autoGenerate:
+ *               type: boolean
+ *             maxConcurrentJobs:
+ *               type: integer
+ *         upload:
+ *           type: object
+ *           properties:
+ *             maxFileSize:
+ *               type: integer
+ *             allowOverwrite:
+ *               type: boolean
+
+ *     UpdateMediaSource:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The new name for the media source.
+ *         description:
+ *           type: string
+ *           description: The new description for the media source.
+ *         connectionInfo:
+ *           type: object
+ *           description: The new connection information for the media source.
+ *     UploadRequest:
+ *       type: object
+ *       required:
+ *         - file
+ *       properties:
+ *         file:
+ *           type: string
+ *           format: binary
+ *           description: The media file to upload.
+ *         filename:
+ *           type: string
+ *           description: Custom file name for the uploaded media.
+ *         autoIncrement:
+ *           type: boolean
+ *           description: Whether to auto-increment filename on conflict.
+ *         description:
+ *           type: string
+ *           description: Description for the media.
+ *         sourceUrl:
+ *           type: string
+ *           description: Source URL for the media.
+ *         overwrite:
+ *           type: boolean
+ *           description: Whether to overwrite existing file on conflict.
+ *     UploadResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: Indicates if the upload was successful.
+ *         filePath:
+ *           type: string
+ *           description: The path where the file was saved.
+ *         conflict:
+ *           type: object
+ *           properties:
+ *             existingFile:
+ *               type: string
+ *               description: The path of the existing file.
+ *             suggestedName:
+ *               type: string
+ *               description: A suggested new name to avoid conflict.
+
+ *     MediaSourceStatus:
+ *       type: object
+ *       properties:
+ *         sourceId:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the media source.
+ *         status:
+ *           type: string
+ *           enum: [idle, scanning, indexing, error]
+ *           description: Current status of the media source.
+ *         lastScan:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           description: Timestamp of the last scan.
+ *         indexedFiles:
+ *           type: integer
+ *           description: Number of files currently indexed.
+ *         totalFiles:
+ *           type: integer
+ *           description: Total number of files found in the source.
+ *         errorMessage:
+ *           type: string
+ *           nullable: true
+ *           description: Any error message if the source is in an error state.
+
+ *     UpdateMediaRequest:
+ *       type: object
+ *       properties:
+ *         filename:
+ *           type: string
+ *           description: New filename for the media.
+ *         description:
+ *           type: string
+ *           description: New description for the media.
+ *         sourceUrl:
+ *           type: string
+ *           description: New source URL for the media.
+ *         tags:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of tags to associate with the media (replaces existing tags).
+ *     UpdateMediaResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: Indicates if the update was successful.
+ *         updatedFields:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of fields that were updated.
+ *         oldFilePath:
+ *           type: string
+ *           description: Old file path if filename was changed.
+ *         newFilePath:
+ *           type: string
+ *           description: New file path if filename was changed.
+ *         warnings:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Any warnings generated during the update.
+
+ *     MediaDetails:
+ *       type: object
+ *       properties:
+ *         mediaId:
+ *           type: string
+ *           format: uuid
+ *           description: The ID of the media.
+ *         rating:
+ *           type: integer
+ *           description: User rating for the media (0-5).
+ *         favorite:
+ *           type: boolean
+ *           description: Whether the media is marked as favorite.
+ *         viewCount:
+ *           type: integer
+ *           description: Number of times the media has been viewed.
+ *         lastViewedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp of the last view.
+ *         category:
+ *           $ref: '#/components/schemas/Category'
+ *         project:
+ *           $ref: '#/components/schemas/Project'
+ *         ip:
+ *           $ref: '#/components/schemas/IP'
+ *         characters:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Character'
+ *         metadata:
+ *           $ref: '#/components/schemas/MediaMetadata'
+ *         tags:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Tag'
+
+ *     Project:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: The unique identifier for the project.
+ *         name:
+ *           type: string
+ *           description: The name of the project.
+ *         description:
+ *           type: string
+ *           description: A description of the project.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the project was created.
+ *         archivedAt:
+ *           type: string
+ *           format: date-time
+ *           nullable: true
+ *           description: The date and time the project was archived.
+ *     MediaMetadata:
+ *       type: object
+ *       properties:
+ *         prompt:
+ *           type: object
+ *           description: JSON object representing the prompt used for generation.
+ *         workflow:
+ *           type: object
+ *           description: JSON object representing the workflow used for generation.
+ *         parameters:
+ *           type: string
+ *           description: Other parameters as a string.
+ *     Tag:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *           description: The unique identifier for the tag.
+ *         name:
+ *           type: string
+ *           description: The name of the tag.
+ *         description:
+ *           type: string
+ *           description: A description of the tag.
+ *         attribute:
+ *           type: string
+ *           description: The attribute or classification of the tag.
+ *         color:
+ *           type: string
+ *           description: The color for UI display.
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time the tag was created.
+
+ *     DirectoryItem:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the directory or file.
+ *         path:
+ *           type: string
+ *           description: The relative path of the directory or file.
+ *         type:
+ *           type: string
+ *           enum: [directory, file]
+ *           description: The type of the item.
+ *         mediaType:
+ *           type: string
+ *           enum: [image, video, audio, unknown]
+ *           description: The media type if the item is a file.
+ *         size:
+ *           type: integer
+ *           description: The size of the file in bytes.
+ *         lastModified:
+ *           type: string
+ *           format: date-time
+ *           description: The last modified timestamp.
+
+ *     CreateDirectoryRequest:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         path:
+ *           type: string
+ *           description: The parent path where the new directory will be created.
+ *         name:
+ *           type: string
+ *           description: The name of the new directory.
+ *         recursive:
+ *           type: boolean
+ *           description: Whether to create parent directories if they don't exist.
+ *     CreateDirectoryResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: Indicates if the directory creation was successful.
+ *         fullPath:
+ *           type: string
+ *           description: The full path of the created directory.
+ *         created:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: List of directories that were actually created.
+
+ *     DeleteDirectoryRequest:
+ *       type: object
+ *       required:
+ *         - path
+ *       properties:
+ *         path:
+ *           type: string
+ *           description: The path of the directory to delete.
+ *         force:
+ *           type: boolean
+ *           description: Whether to force delete non-empty directories.
+ *     DeleteDirectoryResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: Indicates if the directory deletion was successful.
+ *         deletedFiles:
+ *           type: integer
+ *           description: Number of media files deleted within the directory.
+ *         warnings:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Any warnings generated during the deletion.
+
+ *     RenameDirectoryRequest:
+ *       type: object
+ *       required:
+ *         - oldPath
+ *         - newPath
+ *       properties:
+ *         oldPath:
+ *           type: string
+ *           description: The current path of the directory to rename.
+ *         newPath:
+ *           type: string
+ *           description: The new path for the directory.
+ *     RenameDirectoryResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           description: Indicates if the directory rename was successful.
+ *         oldPath:
+ *           type: string
+ *           description: The old path of the directory.
+ *         newPath:
+ *           type: string
+ *           description: The new path of the directory.
+ *         warnings:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Any warnings generated during the rename.
+
+ *     NewTag:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The name of the new tag.
+ *         description:
+ *           type: string
+ *           description: A description of the new tag.
+ *         attribute:
+ *           type: string
+ *           description: The attribute or classification of the new tag.
+ *         color:
+ *           type: string
+ *           description: The color for UI display of the new tag.
+ *     UpdateTag:
+ *       type: object
+ *       properties:
+ *         name:
+ *           type: string
+ *           description: The new name for the tag.
+ *         description:
+ *           type: string
+ *           description: The new description for the tag.
+ *         attribute:
+ *           type: string
+ *           description: The new attribute or classification for the tag.
+ *         color:
+ *           type: string
+ *           description: The new color for UI display of the tag.
+ */

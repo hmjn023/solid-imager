@@ -15,9 +15,37 @@ const SourceParamsSchema = z.object({
 });
 
 /**
- *
- * @param param0 {sourceId: UUID}
- * @returns 画像ソース内のすべてのメディア
+ * @swagger
+ * /api/sources/{sourceId}:
+ *   get:
+ *     summary: Retrieve all media within a specific media source
+ *     description: Fetches a list of all media files associated with a given media source ID.
+ *     tags:
+ *       - Media Sources
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *     responses:
+ *       200:
+ *         description: A list of media files.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Media'
+ *       400:
+ *         description: Invalid source ID supplied.
+ *       404:
+ *         description: Media source not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = SourceParamsSchema.safeParse(params);
@@ -58,10 +86,40 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * メディアソースを更新します。
- *
- * @param param0 {sourceId: UUID}
- * @returns 更新されたメディアソース
+ * @swagger
+ * /api/sources/{sourceId}:
+ *   put:
+ *     summary: Update a specific media source
+ *     description: Updates an existing media source with the provided data.
+ *     tags:
+ *       - Media Sources
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateMediaSource'
+ *     responses:
+ *       200:
+ *         description: The updated media source.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MediaSource'
+ *       400:
+ *         description: Invalid source ID or invalid input.
+ *       404:
+ *         description: Media source not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = SourceParamsSchema.safeParse(params);
@@ -94,10 +152,30 @@ export async function PUT({ params, request }: APIEvent) {
 }
 
 /**
- * メディアソースを削除します。
- *
- * @param param0 {sourceId: UUID}
- * @returns 削除結果
+ * @swagger
+ * /api/sources/{sourceId}:
+ *   delete:
+ *     summary: Delete a specific media source
+ *     description: Deletes a media source by its ID.
+ *     tags:
+ *       - Media Sources
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source to delete.
+ *     responses:
+ *       200:
+ *         description: Media source successfully deleted.
+ *       400:
+ *         description: Invalid source ID supplied.
+ *       404:
+ *         description: Media source not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
   const parsedParams = SourceParamsSchema.safeParse(params);
@@ -129,10 +207,39 @@ export async function DELETE({ params }: APIEvent) {
 }
 
 /**
- * Uploads media to a specific media source.
- *
- * @param param0 {sourceId: UUID}
- * @returns UploadResponse
+ * @swagger
+ * /api/sources/{sourceId}:
+ *   post:
+ *     summary: Upload media to a specific media source
+ *     description: Uploads a new media file to the specified media source.
+ *     tags:
+ *       - Media Sources
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source to upload to.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/UploadRequest'
+ *     responses:
+ *       200:
+ *         description: Media uploaded successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UploadResponse'
+ *       400:
+ *         description: Invalid input or file conflict.
+ *       500:
+ *         description: Internal server error.
  */
 export async function POST({ params, request }: APIEvent) {
   const parsedParams = SourceParamsSchema.safeParse(params);
