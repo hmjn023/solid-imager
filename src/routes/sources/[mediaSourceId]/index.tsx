@@ -170,11 +170,15 @@ export default function MediaListPage() {
   };
 
   onMount(() => {
-    document.addEventListener("paste", handlePaste);
+    if (!isServer) {
+      document.addEventListener("paste", handlePaste);
+    }
   });
 
   onCleanup(() => {
-    document.removeEventListener("paste", handlePaste);
+    if (!isServer) {
+      document.removeEventListener("paste", handlePaste);
+    }
   });
 
   return (
