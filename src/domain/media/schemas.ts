@@ -31,6 +31,13 @@ export const addMediaRequestSchema = z.object({
 });
 export type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
+export const imageMetadataCommentSchema = z.object({
+  keyword: z.string().min(1, "keyword is required"),
+  text: z.string().min(1, "keyword is required"),
+});
+
+export type ImageMetadataComment = z.infer<typeof imageMetadataCommentSchema>;
+
 /**
  * Zod schema for validating the request body when updating existing media.
  * All fields are optional, allowing partial updates.
@@ -86,10 +93,10 @@ export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
 // biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
 export {
-  Conflict,
+  type Conflict,
   conflictSchema,
-  UploadMediaRequest,
-  UploadResponse,
+  type UploadMediaRequest,
+  type UploadResponse,
   uploadMediaRequestSchema,
   uploadResponseSchema,
 } from "./upload-schemas";

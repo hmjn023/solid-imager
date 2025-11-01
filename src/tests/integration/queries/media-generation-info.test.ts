@@ -5,6 +5,7 @@ import { NotFoundError } from "~/infrastructure/db/errors";
 import {
   selectMediaGenerationInfoById,
   updateMediaGenerationInfo,
+  upsertMediaGenerationInfo,
 } from "~/infrastructure/db/queries/media-generation-info";
 import {
   mediaGenerationInfo,
@@ -79,5 +80,66 @@ describe("media-generation-info queries Integration", () => {
 
     const selected = await selectMediaGenerationInfoById(testMediaId);
     expect(selected.metadata).toEqual(updatedMetadata);
+  });
+
+  it("should insert new media generation info if it does not exist", async () => {
+    const newMediaId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a56";
+    const newPrompt = "new prompt";
+    const newWorkflow = { nodes: [] };
+
+    const source = await db
+      .insert(mediaSources)
+      .values({
+        name: "gen-info-test-new-media",
+        type: "local",
+        connectionInfo: { path: "/new" },
+      })
+      .returning();
+    const media: NewMedia = {
+      sourceId: source[0].id,
+      filePath: "b",
+      fileName: "b",
+      mediaType: "image",
+      width: 1,
+      height: 1,
+      id: newMediaId,
+    };
+    await db.insert(medias).values(media);
+
+    const inserted = await upsertMediaGenerationInfo(
+      newMediaId,
+      newPrompt,
+      newWorkflow
+    );
+
+    expect(inserted).toBeDefined();
+    expect(inserted.mediaId).toBe(newMediaId);
+    expect(inserted.prompt).toBe(newPrompt);
+    expect(inserted.workflow).toEqual(newWorkflow);
+
+    const selected = await selectMediaGenerationInfoById(newMediaId);
+    expect(selected.prompt).toBe(newPrompt);
+    expect(selected.workflow).toEqual(newWorkflow);
+  });
+
+  it("should update existing media generation info if it exists", async () => {
+    const existingMediaId = testMediaId;
+    const updatedPrompt = "updated prompt for existing";
+    const updatedWorkflow = { nodes: [{ type: "updated" }] };
+
+    const updated = await upsertMediaGenerationInfo(
+      existingMediaId,
+      updatedPrompt,
+      updatedWorkflow
+    );
+
+    expect(updated).toBeDefined();
+    expect(updated.mediaId).toBe(existingMediaId);
+    expect(updated.prompt).toBe(updatedPrompt);
+    expect(updated.workflow).toEqual(updatedWorkflow);
+
+    const selected = await selectMediaGenerationInfoById(existingMediaId);
+    expect(selected.prompt).toBe(updatedPrompt);
+    expect(selected.workflow).toEqual(updatedWorkflow);
   });
 });

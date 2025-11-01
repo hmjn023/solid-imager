@@ -51,7 +51,11 @@ describe("tags and mediaTags queries Integration", () => {
   });
 
   it("should insert new tags and associate them with media", async () => {
-    const newTags = ["tag1", "tag2", "new-tag"];
+    const newTags = [
+      { name: "tag1", type: "positive" as const },
+      { name: "tag2", type: "positive" as const },
+      { name: "new-tag", type: "positive" as const },
+    ];
     const ExpectedTagCount = newTags.length;
     await db.insert(tags).values({ name: "tag1" }); // Pre-existing tag
 
@@ -69,10 +73,14 @@ describe("tags and mediaTags queries Integration", () => {
       .from(mediaTags)
       .where(eq(mediaTags.mediaId, testMediaId));
     expect(associated.length).toBe(ExpectedTagCount);
+    expect(associated.every(t => t.tagType === "positive")).toBe(true);
   });
 
   it("should not create duplicate tags or associations", async () => {
-    const tagsToInsert = ["unique-tag1", "unique-tag2"];
+    const tagsToInsert = [
+      { name: "unique-tag1", type: "positive" as const },
+      { name: "unique-tag2", type: "negative" as const },
+    ];
     await insertMediaTags(testMediaId, tagsToInsert, "manual");
 
     await insertMediaTags(testMediaId, tagsToInsert, "manual");
@@ -90,6 +98,41 @@ describe("tags and mediaTags queries Integration", () => {
     // Ensure no duplicates were created
     const tagNames = createdTags.map((t) => t.name);
     expect(new Set(tagNames).size).toBe(tagNames.length);
+    expect(associated.length).toBe(tagsToInsert.length); // Should be 2 unique associations
+  });
+
+  it("should insert both positive and negative tags", async () => {
+    const mixedTags = [
+      { name: "positive-tag", type: "positive" as const },
+      { name: "negative-tag", type: "negative" as const },
+    ];
+    const mediaIdForMixedTags = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a57";
+
+    // Seed media for this test
+    await db.insert(medias).values({
+      id: mediaIdForMixedTags,
+      sourceId: testSourceId,
+      filePath: "/tag/test/mixed.jpg",
+      fileName: "mixed.jpg",
+      mediaType: "image",
+      width: 100,
+      height: 100,
+    });
+
+    await insertMediaTags(mediaIdForMixedTags, mixedTags, "manual");
+
+    const associated = await db
+      .select()
+      .from(mediaTags)
+      .where(eq(mediaTags.mediaId, mediaIdForMixedTags));
+
+    expect(associated.length).toBe(mixedTags.length);
+    expect(associated).toContainEqual(
+      expect.objectContaining({ tagType: "positive" })
+    );
+    expect(associated).toContainEqual(
+      expect.objectContaining({ tagType: "negative" })
+    );
   });
 
   // Placeholder for a future selectAllTags function
