@@ -7,25 +7,27 @@ import { ConstraintError, UnknownDbError } from "../errors";
  * Inserts new tags for a specific media item into the database.
  * It handles creating new tags if they don't exist and associating them with the media.
  * @param {string} mediaId - The ID of the media item to tag.
- * @param {string[]} tagsToInsert - An array of tag names to insert and associate with the media.
+ * @param {{ name: string; type: 'positive' | 'negative' }[]} tagsToInsert - An array of tag objects to insert and associate with the media.
+ * @param {string} source - The source of the tag assignment (e.g., "manual", "comfyui_workflow").
  * @returns {Promise<void>} A promise that resolves when the tags have been inserted.
  * @throws {ConstraintError} If one or more media tags already exist for the media item.
  * @throws {UnknownDbError} If a database error occurs during the insertion.
  */
 export const insertMediaTags = async (
   mediaId: string,
-  tagsToInsert: string[],
+  tagsToInsert: { name: string; type: "positive" | "negative" }[],
   source = "manual"
 ): Promise<void> => {
   try {
     await db.transaction(async (tx) => {
+      const tagNames = tagsToInsert.map((t) => t.name);
       const existingTags = await tx
         .select()
         .from(tags)
-        .where(inArray(tags.name, tagsToInsert));
+        .where(inArray(tags.name, tagNames));
       const existingTagNames = existingTags.map((t) => t.name);
-      const newTagNames = tagsToInsert.filter(
-        (t) => !existingTagNames.includes(t)
+      const newTagNames = tagNames.filter(
+        (name) => !existingTagNames.includes(name)
       );
 
       let newTags: (typeof tags.$inferSelect)[] = [];
@@ -37,11 +39,18 @@ export const insertMediaTags = async (
       }
 
       const allTags = [...existingTags, ...newTags];
-      const mediaTagsToInsert = allTags.map((t) => ({
-        mediaId,
-        tagId: t.id,
-        source,
-      }));
+      const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
+        const foundTag = allTags.find((t) => t.name === tagToInsert.name);
+        if (!foundTag) {
+          throw new Error(`Tag ${tagToInsert.name} not found after insertion`);
+        }
+        return {
+          mediaId,
+          tagId: foundTag.id,
+          tagType: tagToInsert.type,
+          source,
+        };
+      });
 
       if (mediaTagsToInsert.length > 0) {
         await tx
