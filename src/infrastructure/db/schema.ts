@@ -190,6 +190,8 @@ export const mediaTags = pgTable(
       .references(() => tags.id, { onDelete: "cascade" }),
     /** AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
     confidence: real("confidence"),
+    /** メディアへのタグ付与の起源 (manual, comfyui_workflow, tagger_program_Aなど) */
+    source: text("source").notNull().default("manual"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.tagId] }),
@@ -393,6 +395,8 @@ export const mediaCharacters = pgTable(
       .references(() => characters.id, { onDelete: "cascade" }),
     /** AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
     confidence: real("confidence"),
+    /** メディアへのキャラクター付与の起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
@@ -460,6 +464,8 @@ export const mediaIps = pgTable(
     ipId: integer("ip_id")
       .notNull()
       .references(() => ips.id, { onDelete: "cascade" }),
+    /** メディアへのIP付与の起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.ipId] }),
