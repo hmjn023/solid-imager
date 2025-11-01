@@ -5,13 +5,32 @@
  * This file serves as a placeholder for future tag domain schemas
  */
 
-import { z } from "zod";
+import { boolean, number, string, z } from "zod";
 
 export const tagDataSchema = z.object({
   name: z.string(),
   description: z.string().optional(),
   attribute: z.string().optional(),
   color: z.string().optional(),
-  source: z.string().optional(), // Added based on database design
+  source: z.string().optional(),
 });
 export type TagData = z.infer<typeof tagDataSchema>;
+
+export const TagsSchema = z.object({
+  positiveTags: z.array(tagDataSchema),
+  negativeTags: z.array(tagDataSchema),
+});
+
+export type Tags = z.infer<typeof TagsSchema>;
+
+export const workflowNodeSchema = z.object({
+  type: z.string(),
+  widgetValues: z.array(z.string()).optional(),
+  title: z.string().optional(),
+});
+export type WorkflowNode = z.infer<typeof workflowNodeSchema>;
+
+export const workflowSchema = z.object({
+  nodes: z.array(workflowNodeSchema),
+});
+export type Workflow = z.infer<typeof workflowSchema>;
