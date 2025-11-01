@@ -7,6 +7,7 @@
     "start": "vinxi start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
     "db:push": "drizzle-kit push",
     "db:drop": "drizzle-kit drop",
     "db:studio": "drizzle-kit studio",
@@ -19,6 +20,7 @@
     "unsafe-fix": "biome check --fix --unsafe ./src"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.11",
     "@kobalte/core": "^0.13.11",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.3",

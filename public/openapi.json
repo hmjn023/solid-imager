@@ -1,0 +1,3078 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Solid Imager API",
+    "version": "1.0.0",
+    "description": "API documentation for the Solid Imager application."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Development server"
+    }
+  ],
+  "paths": {
+    "/api/categories/{id}": {
+      "get": {
+        "summary": "Retrieve a specific category",
+        "description": "Fetches details of a category by its ID.",
+        "tags": [
+          "Categories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the category to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the category.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Category not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a specific category",
+        "description": "Updates an existing category with the provided data.",
+        "tags": [
+          "Categories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the category to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated category.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "Category not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific category",
+        "description": "Deletes a category by its ID.",
+        "tags": [
+          "Categories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the category to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Category not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "summary": "Retrieve all categories",
+        "description": "Fetches a list of all configured categories.",
+        "tags": [
+          "Categories"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of categories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new category",
+        "description": "Creates a new category with the provided data.",
+        "tags": [
+          "Categories"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewCategory"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created category.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/charactors/{id}": {
+      "get": {
+        "summary": "Retrieve a specific character",
+        "description": "Fetches details of a character by its ID.",
+        "tags": [
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the character to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the character.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Character"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Character not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a specific character",
+        "description": "Updates an existing character with the provided data.",
+        "tags": [
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the character to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCharacter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated character.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Character"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "Character not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific character",
+        "description": "Deletes a character by its ID.",
+        "tags": [
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the character to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Character successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Character not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/charactors": {
+      "get": {
+        "summary": "Retrieve all characters",
+        "description": "Fetches a list of all configured characters.",
+        "tags": [
+          "Characters"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of characters.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Character"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new character",
+        "description": "Creates a new character with the provided data.",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewCharacter"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created character.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Character"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/config": {
+      "get": {
+        "summary": "Retrieve application settings",
+        "description": "Fetches the current application configuration.",
+        "tags": [
+          "Configuration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Current application settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update application settings",
+        "description": "Updates the application configuration with the provided data.",
+        "tags": [
+          "Configuration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppConfig"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated application settings.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Reset application settings",
+        "description": "Resets the application configuration to default values.",
+        "tags": [
+          "Configuration"
+        ],
+        "responses": {
+          "200": {
+            "description": "Application settings successfully reset.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppConfig"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/fetch-url": {
+      "post": {
+        "summary": "Fetch content from a URL",
+        "description": "Fetches content from a specified URL. Useful for proxying requests or retrieving external resources.",
+        "tags": [
+          "Utilities"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "url"
+                ],
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The URL to fetch content from."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Content fetched successfully.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "default": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "URL is required or invalid."
+          },
+          "500": {
+            "description": "Failed to fetch URL or internal server error."
+          }
+        }
+      }
+    },
+    "/api/ips/{id}": {
+      "get": {
+        "summary": "Retrieve a specific IP (Intellectual Property)",
+        "description": "Fetches details of an Intellectual Property by its ID.",
+        "tags": [
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the IP to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IP"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "IP not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a specific IP (Intellectual Property)",
+        "description": "Updates an existing Intellectual Property with the provided data.",
+        "tags": [
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the IP to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateIP"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IP"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "IP not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific IP (Intellectual Property)",
+        "description": "Deletes an Intellectual Property by its ID.",
+        "tags": [
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the IP to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "IP successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "IP not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/ips": {
+      "get": {
+        "summary": "Retrieve all IPs (Intellectual Properties)",
+        "description": "Fetches a list of all configured Intellectual Properties.",
+        "tags": [
+          "IPs"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of IPs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IP"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new IP (Intellectual Property)",
+        "description": "Creates a new Intellectual Property with the provided data.",
+        "tags": [
+          "IPs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewIP"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created IP.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IP"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/charactors": {
+      "get": {
+        "summary": "Retrieve characters associated with a media",
+        "description": "Fetches a list of characters linked to a specific media file.",
+        "tags": [
+          "Media",
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of characters associated with the media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Character"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media or characters not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/details": {
+      "get": {
+        "summary": "Retrieve media details",
+        "description": "Fetches detailed information for a specific media file, including tags, metadata, category, IP, and character information.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed information about the media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaDetails"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}": {
+      "get": {
+        "summary": "Retrieve a specific media file",
+        "description": "Fetches a specific media file by its source ID and media ID.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The requested media file.",
+            "content": {
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update specific media information",
+        "description": "Updates metadata and other information for a specific media file.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media information updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpdateMediaResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or media ID."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/ips": {
+      "get": {
+        "summary": "Retrieve IPs associated with a media",
+        "description": "Fetches a list of Intellectual Properties linked to a specific media file.",
+        "tags": [
+          "Media",
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of IPs associated with the media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/IP"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media or IPs not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/metadata": {
+      "get": {
+        "summary": "Retrieve media metadata",
+        "description": "Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The metadata of the media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaMetadata"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/tags": {
+      "get": {
+        "summary": "Retrieve tags for a specific media",
+        "description": "Fetches a list of tags associated with a specific media file.",
+        "tags": [
+          "Media",
+          "Tags"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of tags for the media.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tag"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/{mediaId}/thumbnail": {
+      "get": {
+        "summary": "Retrieve a thumbnail for a specific media",
+        "description": "Delivers a generated thumbnail image for a given media file.",
+        "tags": [
+          "Media",
+          "Thumbnails"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          },
+          {
+            "in": "query",
+            "name": "size",
+            "schema": {
+              "type": "integer",
+              "description": "Desired size of the thumbnail (e.g., 200, 400)."
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The thumbnail image.",
+            "content": {
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Thumbnail not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories/{directories}": {
+      "get": {
+        "summary": "Retrieve all media and directories under a specific directory",
+        "description": "Fetches a list of all media files and subdirectories within a specified path under a media source.",
+        "tags": [
+          "Directories",
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "directories",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The complete relative path to the directory (e.g., 'folder1/subfolder2')."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of media and directories.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DirectoryItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or directory path supplied."
+          },
+          "404": {
+            "description": "Media source or directory not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories/{directories}/search": {
+      "get": {
+        "summary": "Search for media within a specific subdirectory",
+        "description": "Searches for media files within a specified subdirectory of a media source, based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
+        "tags": [
+          "Directories",
+          "Media",
+          "Search"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "directories",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The complete relative path to the directory to search within (e.g., 'folder1/subfolder2')."
+          },
+          {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "List of tags to filter by (AND condition)."
+          },
+          {
+            "in": "query",
+            "name": "filename",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Partial match for filename."
+          },
+          {
+            "in": "query",
+            "name": "fromDate",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start date for media creation date range."
+          },
+          {
+            "in": "query",
+            "name": "toDate",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End date for media creation date range."
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Number of items per page for pagination."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of matching media files and pagination information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Media"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        },
+                        "currentPage": {
+                          "type": "integer"
+                        },
+                        "itemsPerPage": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or search parameters."
+          },
+          "404": {
+            "description": "Media source or directory not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories/create": {
+      "post": {
+        "summary": "Create a new directory",
+        "description": "Creates a new directory within a specified media source.",
+        "tags": [
+          "Directories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDirectoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Directory created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateDirectoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or directory already exists."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories/delete": {
+      "delete": {
+        "summary": "Delete a directory",
+        "description": "Deletes a directory within a specified media source.",
+        "tags": [
+          "Directories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteDirectoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Directory deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteDirectoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or directory not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories": {
+      "get": {
+        "summary": "Retrieve a list of directories within a media source",
+        "description": "Fetches a hierarchical listing of directories and their contents for a given media source. Can be filtered by a parent path.",
+        "tags": [
+          "Directories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "query",
+            "name": "path",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Optional. The path to the parent directory to list. If not provided, lists the root directories."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of directories and media within the specified path.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DirectoryItem"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "404": {
+            "description": "Media source or directory not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/directories/rename": {
+      "put": {
+        "summary": "Rename a directory",
+        "description": "Renames an existing directory within a specified media source.",
+        "tags": [
+          "Directories"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameDirectoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Directory renamed successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameDirectoryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or directory not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/events": {
+      "get": {
+        "summary": "Monitor real-time updates via Server-Sent Events (SSE)",
+        "description": "Establishes an SSE connection to receive real-time updates on file changes and other events for a specific media source. Only supported for local media sources.",
+        "tags": [
+          "Real-time Updates"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to monitor."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An SSE stream providing real-time updates.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "404": {
+            "description": "Media source not found."
+          },
+          "500": {
+            "description": "Internal server error or source type not supported for SSE."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/events/thumbnail-progress": {
+      "get": {
+        "summary": "Monitor thumbnail generation progress via Server-Sent Events (SSE)",
+        "description": "Establishes an SSE connection to receive real-time updates on the progress of thumbnail generation for a specific media source.",
+        "tags": [
+          "Real-time Updates",
+          "Thumbnails"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to monitor thumbnail generation for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "An SSE stream providing thumbnail generation progress updates.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}": {
+      "get": {
+        "summary": "Retrieve all media within a specific media source",
+        "description": "Fetches a list of all media files associated with a given media source ID.",
+        "tags": [
+          "Media Sources",
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of media files.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Media"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "404": {
+            "description": "Media source not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a specific media source",
+        "description": "Updates an existing media source with the provided data.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMediaSource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated media source.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSource"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or invalid input."
+          },
+          "404": {
+            "description": "Media source not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific media source",
+        "description": "Deletes a media source by its ID.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Media source successfully deleted."
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "404": {
+            "description": "Media source not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Upload media to a specific media source",
+        "description": "Uploads a new media file to the specified media source.",
+        "tags": [
+          "Media Sources",
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to upload to."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or file conflict."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/search": {
+      "get": {
+        "summary": "Search for media within a specific media source",
+        "description": "Searches for media files within a given media source based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
+        "tags": [
+          "Media",
+          "Search"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to search within."
+          },
+          {
+            "in": "query",
+            "name": "tags",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "description": "List of tags to filter by (AND condition)."
+          },
+          {
+            "in": "query",
+            "name": "filename",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Partial match for filename."
+          },
+          {
+            "in": "query",
+            "name": "fromDate",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Start date for media creation date range."
+          },
+          {
+            "in": "query",
+            "name": "toDate",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "End date for media creation date range."
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            },
+            "description": "Page number for pagination."
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer",
+              "default": 50
+            },
+            "description": "Number of items per page for pagination."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of matching media files and pagination information.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Media"
+                      }
+                    },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "totalItems": {
+                          "type": "integer"
+                        },
+                        "totalPages": {
+                          "type": "integer"
+                        },
+                        "currentPage": {
+                          "type": "integer"
+                        },
+                        "itemsPerPage": {
+                          "type": "integer"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID or search parameters."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/status": {
+      "get": {
+        "summary": "Retrieve the status of a specific media source",
+        "description": "Fetches the current operational status of a media source, including details like last sync time, number of indexed files, and any ongoing tasks.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to retrieve status for."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The status of the media source.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSourceStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "404": {
+            "description": "Media source not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/thumbnails": {
+      "post": {
+        "summary": "Start manual thumbnail generation",
+        "description": "Initiates the process of generating thumbnails for all media within a specified source.",
+        "tags": [
+          "Thumbnails"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source for which to generate thumbnails."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thumbnail generation started successfully."
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Clear thumbnail cache",
+        "description": "Clears all generated thumbnail images for a specified media source.",
+        "tags": [
+          "Thumbnails"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source for which to clear the thumbnail cache."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Thumbnail cache cleared successfully."
+          },
+          "400": {
+            "description": "Invalid source ID supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources": {
+      "get": {
+        "summary": "Retrieve all media sources",
+        "description": "Fetches a list of all configured media sources.",
+        "tags": [
+          "Media Sources"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of media sources.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MediaSource"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new media source",
+        "description": "Adds a new media source to the system and starts scanning it if it's a local source.",
+        "tags": [
+          "Media Sources"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewMediaSource"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created media source.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaSource"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/tags/{id}": {
+      "get": {
+        "summary": "Retrieve a specific tag",
+        "description": "Fetches details of a tag by its ID.",
+        "tags": [
+          "Tags"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the tag to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the tag.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Tag not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "put": {
+        "summary": "Update a specific tag",
+        "description": "Updates an existing tag with the provided data.",
+        "tags": [
+          "Tags"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the tag to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated tag.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "Tag not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific tag",
+        "description": "Deletes a tag by its ID.",
+        "tags": [
+          "Tags"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the tag to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tag successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Tag not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/tags": {
+      "get": {
+        "summary": "Retrieve all tags",
+        "description": "Fetches a list of all configured tags.",
+        "tags": [
+          "Tags"
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of tags.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Tag"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new tag",
+        "description": "Creates a new tag with the provided data.",
+        "tags": [
+          "Tags"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewTag"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The created tag.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Tag"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "MediaSource": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The unique identifier for the media source."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the media source."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the media source."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "local",
+              "sftp",
+              "s3"
+            ],
+            "description": "The type of the media source."
+          },
+          "connectionInfo": {
+            "type": "object",
+            "description": "Connection information for the media source."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the media source was created."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the media source was last updated."
+          }
+        }
+      },
+      "NewMediaSource": {
+        "type": "object",
+        "required": [
+          "name",
+          "type",
+          "connectionInfo"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the media source."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the media source."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "local",
+              "sftp",
+              "s3"
+            ],
+            "description": "The type of the media source."
+          },
+          "connectionInfo": {
+            "type": "object",
+            "description": "Connection information for the media source. Varies based on the `type`. For `local`, it should be `{ \"path\": \"/path/to/media\" }`.\n"
+          }
+        }
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "filePath": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "audio"
+            ]
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "fileSize": {
+            "type": "integer"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sourceUrl": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "modifiedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "indexedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "archived",
+              "deleted"
+            ]
+          }
+        }
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The unique identifier for the category."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the category."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the category."
+          },
+          "color": {
+            "type": "string",
+            "description": "The color associated with the category (e.g., hex code)."
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The ID of the parent category, if any."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the category was created."
+          }
+        }
+      },
+      "NewCategory": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the new category."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the new category."
+          },
+          "color": {
+            "type": "string",
+            "description": "The color associated with the new category."
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The ID of the parent category, if any."
+          }
+        }
+      },
+      "UpdateCategory": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The new name for the category."
+          },
+          "description": {
+            "type": "string",
+            "description": "The new description for the category."
+          },
+          "color": {
+            "type": "string",
+            "description": "The new color for the category."
+          },
+          "parentId": {
+            "type": "integer",
+            "nullable": true,
+            "description": "The new parent ID for the category."
+          }
+        }
+      },
+      "IP": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The unique identifier for the Intellectual Property."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the Intellectual Property."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the Intellectual Property."
+          }
+        }
+      },
+      "NewIP": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the new Intellectual Property."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the new Intellectual Property."
+          }
+        }
+      },
+      "UpdateIP": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The new name for the Intellectual Property."
+          },
+          "description": {
+            "type": "string",
+            "description": "The new description for the Intellectual Property."
+          }
+        }
+      },
+      "AppConfig": {
+        "type": "object",
+        "properties": {
+          "server": {
+            "type": "object",
+            "properties": {
+              "port": {
+                "type": "integer"
+              },
+              "host": {
+                "type": "string"
+              }
+            }
+          },
+          "media": {
+            "type": "object",
+            "properties": {
+              "supportedFormats": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "thumbnailSizes": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "cacheDirectory": {
+                "type": "string"
+              },
+              "autoGenerate": {
+                "type": "boolean"
+              },
+              "maxConcurrentJobs": {
+                "type": "integer"
+              }
+            }
+          },
+          "upload": {
+            "type": "object",
+            "properties": {
+              "maxFileSize": {
+                "type": "integer"
+              },
+              "allowOverwrite": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      },
+      "UpdateMediaSource": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The new name for the media source."
+          },
+          "description": {
+            "type": "string",
+            "description": "The new description for the media source."
+          },
+          "connectionInfo": {
+            "type": "object",
+            "description": "The new connection information for the media source."
+          }
+        }
+      },
+      "UploadRequest": {
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "format": "binary",
+            "description": "The media file to upload."
+          },
+          "filename": {
+            "type": "string",
+            "description": "Custom file name for the uploaded media."
+          },
+          "autoIncrement": {
+            "type": "boolean",
+            "description": "Whether to auto-increment filename on conflict."
+          },
+          "description": {
+            "type": "string",
+            "description": "Description for the media."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "description": "Source URL for the media."
+          },
+          "overwrite": {
+            "type": "boolean",
+            "description": "Whether to overwrite existing file on conflict."
+          }
+        }
+      },
+      "UploadResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the upload was successful."
+          },
+          "filePath": {
+            "type": "string",
+            "description": "The path where the file was saved."
+          },
+          "conflict": {
+            "type": "object",
+            "properties": {
+              "existingFile": {
+                "type": "string",
+                "description": "The path of the existing file."
+              },
+              "suggestedName": {
+                "type": "string",
+                "description": "A suggested new name to avoid conflict."
+              }
+            }
+          }
+        }
+      },
+      "MediaSourceStatus": {
+        "type": "object",
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ID of the media source."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "idle",
+              "scanning",
+              "indexing",
+              "error"
+            ],
+            "description": "Current status of the media source."
+          },
+          "lastScan": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Timestamp of the last scan."
+          },
+          "indexedFiles": {
+            "type": "integer",
+            "description": "Number of files currently indexed."
+          },
+          "totalFiles": {
+            "type": "integer",
+            "description": "Total number of files found in the source."
+          },
+          "errorMessage": {
+            "type": "string",
+            "nullable": true,
+            "description": "Any error message if the source is in an error state."
+          }
+        }
+      },
+      "UpdateMediaRequest": {
+        "type": "object",
+        "properties": {
+          "filename": {
+            "type": "string",
+            "description": "New filename for the media."
+          },
+          "description": {
+            "type": "string",
+            "description": "New description for the media."
+          },
+          "sourceUrl": {
+            "type": "string",
+            "description": "New source URL for the media."
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of tags to associate with the media (replaces existing tags)."
+          }
+        }
+      },
+      "UpdateMediaResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the update was successful."
+          },
+          "updatedFields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of fields that were updated."
+          },
+          "oldFilePath": {
+            "type": "string",
+            "description": "Old file path if filename was changed."
+          },
+          "newFilePath": {
+            "type": "string",
+            "description": "New file path if filename was changed."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Any warnings generated during the update."
+          }
+        }
+      },
+      "MediaDetails": {
+        "type": "object",
+        "properties": {
+          "mediaId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "The ID of the media."
+          },
+          "rating": {
+            "type": "integer",
+            "description": "User rating for the media (0-5)."
+          },
+          "favorite": {
+            "type": "boolean",
+            "description": "Whether the media is marked as favorite."
+          },
+          "viewCount": {
+            "type": "integer",
+            "description": "Number of times the media has been viewed."
+          },
+          "lastViewedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Timestamp of the last view."
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          },
+          "ip": {
+            "$ref": "#/components/schemas/IP"
+          },
+          "characters": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Character"
+            }
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/MediaMetadata"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Tag"
+            }
+          }
+        }
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The unique identifier for the project."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the project."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the project."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the project was created."
+          },
+          "archivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "The date and time the project was archived."
+          }
+        }
+      },
+      "MediaMetadata": {
+        "type": "object",
+        "properties": {
+          "prompt": {
+            "type": "object",
+            "description": "JSON object representing the prompt used for generation."
+          },
+          "workflow": {
+            "type": "object",
+            "description": "JSON object representing the workflow used for generation."
+          },
+          "parameters": {
+            "type": "string",
+            "description": "Other parameters as a string."
+          }
+        }
+      },
+      "Tag": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "description": "The unique identifier for the tag."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the tag."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the tag."
+          },
+          "attribute": {
+            "type": "string",
+            "description": "The attribute or classification of the tag."
+          },
+          "color": {
+            "type": "string",
+            "description": "The color for UI display."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time the tag was created."
+          }
+        }
+      },
+      "DirectoryItem": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the directory or file."
+          },
+          "path": {
+            "type": "string",
+            "description": "The relative path of the directory or file."
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "directory",
+              "file"
+            ],
+            "description": "The type of the item."
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "unknown"
+            ],
+            "description": "The media type if the item is a file."
+          },
+          "size": {
+            "type": "integer",
+            "description": "The size of the file in bytes."
+          },
+          "lastModified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The last modified timestamp."
+          }
+        }
+      },
+      "CreateDirectoryRequest": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The parent path where the new directory will be created."
+          },
+          "name": {
+            "type": "string",
+            "description": "The name of the new directory."
+          },
+          "recursive": {
+            "type": "boolean",
+            "description": "Whether to create parent directories if they don't exist."
+          }
+        }
+      },
+      "CreateDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the directory creation was successful."
+          },
+          "fullPath": {
+            "type": "string",
+            "description": "The full path of the created directory."
+          },
+          "created": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of directories that were actually created."
+          }
+        }
+      },
+      "DeleteDirectoryRequest": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "The path of the directory to delete."
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Whether to force delete non-empty directories."
+          }
+        }
+      },
+      "DeleteDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the directory deletion was successful."
+          },
+          "deletedFiles": {
+            "type": "integer",
+            "description": "Number of media files deleted within the directory."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Any warnings generated during the deletion."
+          }
+        }
+      },
+      "RenameDirectoryRequest": {
+        "type": "object",
+        "required": [
+          "oldPath",
+          "newPath"
+        ],
+        "properties": {
+          "oldPath": {
+            "type": "string",
+            "description": "The current path of the directory to rename."
+          },
+          "newPath": {
+            "type": "string",
+            "description": "The new path for the directory."
+          }
+        }
+      },
+      "RenameDirectoryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indicates if the directory rename was successful."
+          },
+          "oldPath": {
+            "type": "string",
+            "description": "The old path of the directory."
+          },
+          "newPath": {
+            "type": "string",
+            "description": "The new path of the directory."
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Any warnings generated during the rename."
+          }
+        }
+      },
+      "NewTag": {
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The name of the new tag."
+          },
+          "description": {
+            "type": "string",
+            "description": "A description of the new tag."
+          },
+          "attribute": {
+            "type": "string",
+            "description": "The attribute or classification of the new tag."
+          },
+          "color": {
+            "type": "string",
+            "description": "The color for UI display of the new tag."
+          }
+        }
+      },
+      "UpdateTag": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "The new name for the tag."
+          },
+          "description": {
+            "type": "string",
+            "description": "The new description for the tag."
+          },
+          "attribute": {
+            "type": "string",
+            "description": "The new attribute or classification for the tag."
+          },
+          "color": {
+            "type": "string",
+            "description": "The new color for UI display of the tag."
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}
