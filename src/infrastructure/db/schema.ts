@@ -74,6 +74,12 @@ export const mediaRelationTypeEnum = pgEnum("media_relation_type", [
   "source", // 元素材
 ]);
 
+/**
+ * Enum for tag types.
+ * Defines whether a tag is positive (included) or negative (excluded).
+ */
+export const tagTypeEnum = pgEnum("tag_type", ["positive", "negative"]);
+
 // テーブル
 /**
  * Schema for the media_sources table.
@@ -188,13 +194,15 @@ export const mediaTags = pgTable(
     tagId: integer("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
+    /** タグのタイプ (positive/negative) */
+    tagType: tagTypeEnum("tag_type").notNull().default("positive"),
     /** AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
     confidence: real("confidence"),
     /** メディアへのタグ付与の起源 (manual, comfyui_workflow, tagger_program_Aなど) */
     source: text("source").notNull().default("manual"),
   },
   (table) => ({
-    pk: primaryKey({ columns: [table.mediaId, table.tagId] }),
+    pk: primaryKey({ columns: [table.mediaId, table.tagId, table.tagType] }),
   })
 );
 
