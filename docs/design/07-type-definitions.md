@@ -364,7 +364,7 @@ export type BulkEditMediaUpdates = {
  * @property {number[]} [tagsToRemove] - An array of tag IDs to remove from the selected media.
  */
 export type BulkTagMediaOptions = {
-  tagsToAdd?: number[]; // Assuming tag IDs
+  tagsToAdd?: { tagId: number, source?: string }[]; // Assuming tag IDs
   tagsToRemove?: number[]; // Assuming tag IDs
 };
 

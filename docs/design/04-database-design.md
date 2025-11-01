@@ -32,8 +32,8 @@ CREATE TABLE media (
   source_url TEXT,                   -- 取得元リンク（ユーザー入力）
   
   -- ファイル情報
-  created_at TIMESTAMP NOT NULL,     -- ファイル作成日時
-  modified_at TIMESTAMP NOT NULL,    -- ファイル更新日時
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),     -- ファイル作成日時
+  modified_at TIMESTAMP NOT NULL DEFAULT NOW(),    -- ファイル更新日時
   indexed_at TIMESTAMP NOT NULL DEFAULT NOW(),     -- DB登録日時
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')) -- メディアの状態
   
@@ -61,6 +61,7 @@ CREATE TABLE media_tags (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE CASCADE,   -- タグID
   confidence REAL DEFAULT NULL,       -- AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
+  source TEXT NOT NULL DEFAULT 'manual', -- メディアへのタグ付与の起源 (manual, comfyui_workflow, tagger_program_Aなど)
   PRIMARY KEY (media_id, tag_id)
 );
 ```
@@ -83,6 +84,13 @@ CREATE TABLE media_details (
 CREATE TABLE media_generation_info (
   media_id UUID PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   metadata JSONB,                    -- prompt, workflow等（レガシー）
+  prompt TEXT,                       -- プロンプト文字列
+  negative_prompt TEXT,              -- ネガティブプロンプト
+  workflow JSONB,                    -- ComfyUIワークフロー全体
+  loras JSONB,                       -- LoRA情報 [{"name": "...", "weight": 0.8}]
+  vae TEXT,                          -- VAE名
+  hypernetworks JSONB,               -- Hypernetwork情報
+  embeddings JSONB,                  -- Embedding/Textual Inversion情報
   prompt TEXT,                       -- プロンプト文字列
   negative_prompt TEXT,              -- ネガティブプロンプト
   workflow JSONB,                    -- ComfyUIワークフロー全体
@@ -121,6 +129,7 @@ CREATE TABLE media_projects (
 CREATE TABLE media_ips (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,    -- メディアID
   ip_id INTEGER NOT NULL REFERENCES ips(id) ON DELETE CASCADE,      -- IP(作品)ID
+  source TEXT NOT NULL DEFAULT 'manual', -- メディアへのIP付与の起源 (manual, ai_generatedなど)
   PRIMARY KEY (media_id, ip_id)
 );
 ```
@@ -212,6 +221,7 @@ CREATE TABLE media_characters (
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE,       -- メディアID
   character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE, -- キャラクターID
   confidence REAL DEFAULT NULL,       -- AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL
+  source TEXT NOT NULL DEFAULT 'manual', -- メディアへのキャラクター付与の起源 (manual, ai_generatedなど)
   PRIMARY KEY (media_id, character_id)
 );
 ```
@@ -224,7 +234,7 @@ CREATE TABLE view_history (
   id SERIAL PRIMARY KEY,
   media_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディアID
   viewed_at TIMESTAMP DEFAULT NOW(),    -- 閲覧日時
-  ip_address TEXT,                    -- IPアドレス
+  ip_address INET,                    -- IPアドレス
   user_agent TEXT DEFAULT ''         -- ユーザーエージェント
 );
 ```
@@ -237,7 +247,8 @@ CREATE TABLE similar_media (
   media2_id UUID NOT NULL REFERENCES media(id) ON DELETE CASCADE, -- メディア2のID
   similarity_score REAL DEFAULT 0,    -- 類似度スコア
   algorithm TEXT DEFAULT 'perceptual', -- 類似度計算アルゴリズム
-  created_at TIMESTAMP DEFAULT NOW()   -- 作成日時
+  created_at TIMESTAMP DEFAULT NOW(),   -- 作成日時
+  UNIQUE(media1_id, media2_id, algorithm)
 );
 ```
 
@@ -318,6 +329,8 @@ CREATE TABLE collections (
   name TEXT NOT NULL,                 -- コレクション名
   description TEXT DEFAULT '',       -- コレクションの説明
   created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
+  description TEXT DEFAULT '',       -- コレクションの説明
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- 作成日時
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 更新日時
 );
 ```
@@ -330,6 +343,69 @@ CREATE TABLE media_collections (
   display_order INTEGER, -- コレクション内での表示順序
   PRIMARY KEY (collection_id, media_id)
 );
+```
+
+#### jobs テーブル -- バックグラウンドジョブ管理
+```sql
+CREATE TABLE jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  type TEXT NOT NULL,                 -- ジョブの種類（例: "thumbnail_generation", "metadata_extraction"）
+  source_id UUID REFERENCES media_sources(id) ON DELETE CASCADE, -- 関連するメディアソースID（オプショナル）
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')), -- ジョブのステータス
+  payload JSONB,                      -- ジョブのペイロード（入力パラメータ等）
+  result JSONB,                       -- ジョブの実行結果
+  error TEXT,                         -- エラーメッセージ（失敗時）
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(), -- ジョブ作成日時
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()  -- 最終更新日時
+);
+```
+
+**用途**: サムネイル生成、メタデータ抽出、一括タグ付けなどの時間のかかる処理を非同期で実行し、その進捗状況と結果を管理する。元々は `thumbnail_jobs` として実装されていたが、汎用性を高めるために `jobs` テーブルに統合された。
+
+**typeの例**:
+- `thumbnail_generation` - サムネイル生成
+- `metadata_extraction` - メタデータ抽出
+- `auto_tagging` - AI自動タグ付け
+- `bulk_operation` - 一括操作
+
+**payloadの例**:
+```json
+{
+  "sourceId": "550e8400-e29b-41d4-a716-446655440000",
+  "options": {
+    "size": 256,
+    "quality": 80
+  }
+}
+```
+
+#### presets テーブル -- フィルタプリセット（検索条件の保存）
+```sql
+CREATE TABLE presets (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,          -- プリセット名（例: "お気に入りの高評価画像"）
+  value JSONB NOT NULL,               -- フィルター条件をJSON形式で保存
+                                      -- 例: {"tags": [1,5,12], "rating": 5, "dateRange": {...}}
+  created_at TIMESTAMP NOT NULL DEFAULT NOW() -- 作成日時
+);
+```
+
+**用途**: ユーザーがよく使う検索条件（タグ、評価、日付範囲、メディアタイプなど）に名前を付けて保存し、ワンクリックで再適用できるようにする機能。Feature 20（フィルタ・プリセット機能）の一部。
+
+**valueカラムの保存例**:
+```json
+{
+  "tags": [1, 5, 12],
+  "dateRange": {
+    "from": "2024-01-01",
+    "to": "2024-12-31"
+  },
+  "rating": 5,
+  "favorite": true,
+  "mediaType": "image",
+  "characters": [3, 7],
+  "ips": [2]
+}
 ```
 
 #### jobs テーブル -- バックグラウンドジョブ管理
