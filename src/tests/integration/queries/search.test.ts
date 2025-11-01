@@ -83,9 +83,9 @@ describe("search queries Integration", () => {
 
     // Associate tags
     await db.insert(mediaTags).values([
-      { mediaId: insertedMedia[0].id, tagId: insertedTags[0].id }, // apple -> fruit
-      { mediaId: insertedMedia[1].id, tagId: insertedTags[0].id }, // banana -> fruit
-      { mediaId: insertedMedia[2].id, tagId: insertedTags[1].id }, // apple_pie -> dessert
+      { mediaId: insertedMedia[0].id, tagId: insertedTags[0].id, tagType: "positive", source: "manual" }, // apple -> fruit
+      { mediaId: insertedMedia[1].id, tagId: insertedTags[0].id, tagType: "positive", source: "manual" }, // banana -> fruit
+      { mediaId: insertedMedia[2].id, tagId: insertedTags[1].id, tagType: "positive", source: "manual" }, // apple_pie -> dessert
     ]);
   });
 

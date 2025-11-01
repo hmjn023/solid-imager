@@ -1,5 +1,5 @@
 {
-  "id": "dc6c19c5-f1b0-44de-9438-dc0a1f019276",
+  "id": "4953a655-a156-4491-9dc1-5d146356a88e",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -42,6 +42,20 @@
         },
         "created_at": {
           "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -104,7 +118,35 @@
           "name": "description",
           "type": "text",
           "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "aliases": {
+          "name": "aliases",
+          "type": "jsonb",
+          "primaryKey": false,
           "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -138,72 +180,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.collection_media": {
-      "name": "collection_media",
-      "schema": "",
-      "columns": {
-        "collection_id": {
-          "name": "collection_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "media_id": {
-          "name": "media_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "display_order": {
-          "name": "display_order",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "collection_media_collection_id_collections_id_fk": {
-          "name": "collection_media_collection_id_collections_id_fk",
-          "tableFrom": "collection_media",
-          "tableTo": "collections",
-          "columnsFrom": [
-            "collection_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "collection_media_media_id_media_id_fk": {
-          "name": "collection_media_media_id_media_id_fk",
-          "tableFrom": "collection_media",
-          "tableTo": "media",
-          "columnsFrom": [
-            "media_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "collection_media_collection_id_media_id_pk": {
-          "name": "collection_media_collection_id_media_id_pk",
-          "columns": [
-            "collection_id",
-            "media_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.collections": {
       "name": "collections",
       "schema": "",
@@ -226,6 +202,20 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         },
         "updated_at": {
           "name": "updated_at",
@@ -277,7 +267,29 @@
           "name": "description",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": false,
+          "default": "''"
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {},
@@ -382,6 +394,82 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.media_categories": {
+      "name": "media_categories",
+      "schema": "",
+      "columns": {
+        "media_id": {
+          "name": "media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_media_categories_category_id": {
+          "name": "idx_media_categories_category_id",
+          "columns": [
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "media_categories_media_id_media_id_fk": {
+          "name": "media_categories_media_id_media_id_fk",
+          "tableFrom": "media_categories",
+          "tableTo": "media",
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "media_categories_category_id_categories_id_fk": {
+          "name": "media_categories_category_id_categories_id_fk",
+          "tableFrom": "media_categories",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "media_categories_media_id_category_id_pk": {
+          "name": "media_categories_media_id_category_id_pk",
+          "columns": [
+            "media_id",
+            "category_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.media_characters": {
       "name": "media_characters",
       "schema": "",
@@ -397,6 +485,19 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
         }
       },
       "indexes": {},
@@ -434,6 +535,72 @@
           "columns": [
             "media_id",
             "character_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.media_collections": {
+      "name": "media_collections",
+      "schema": "",
+      "columns": {
+        "collection_id": {
+          "name": "collection_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "media_id": {
+          "name": "media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_order": {
+          "name": "display_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "media_collections_collection_id_collections_id_fk": {
+          "name": "media_collections_collection_id_collections_id_fk",
+          "tableFrom": "media_collections",
+          "tableTo": "collections",
+          "columnsFrom": [
+            "collection_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "media_collections_media_id_media_id_fk": {
+          "name": "media_collections_media_id_media_id_fk",
+          "tableFrom": "media_collections",
+          "tableTo": "media",
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "media_collections_collection_id_media_id_pk": {
+          "name": "media_collections_collection_id_media_id_pk",
+          "columns": [
+            "collection_id",
+            "media_id"
           ]
         }
       },
@@ -565,6 +732,48 @@
           "primaryKey": false,
           "notNull": false
         },
+        "prompt": {
+          "name": "prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "negative_prompt": {
+          "name": "negative_prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "workflow": {
+          "name": "workflow",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "loras": {
+          "name": "loras",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vae": {
+          "name": "vae",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "hypernetworks": {
+          "name": "hypernetworks",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "embeddings": {
+          "name": "embeddings",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "ai_generated": {
           "name": "ai_generated",
           "type": "boolean",
@@ -669,76 +878,33 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.media_organization": {
-      "name": "media_organization",
+    "public.media_ips": {
+      "name": "media_ips",
       "schema": "",
       "columns": {
         "media_id": {
           "name": "media_id",
           "type": "uuid",
-          "primaryKey": true,
+          "primaryKey": false,
           "notNull": true
-        },
-        "category_id": {
-          "name": "category_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "project_id": {
-          "name": "project_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         },
         "ip_id": {
           "name": "ip_id",
           "type": "integer",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "status": {
-          "name": "status",
-          "type": "media_organization_status",
-          "typeSchema": "public",
+        "source": {
+          "name": "source",
+          "type": "text",
           "primaryKey": false,
-          "notNull": false,
-          "default": "'active'"
+          "notNull": true,
+          "default": "'manual'"
         }
       },
       "indexes": {
-        "idx_media_organization_category_id": {
-          "name": "idx_media_organization_category_id",
-          "columns": [
-            {
-              "expression": "category_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_media_organization_project_id": {
-          "name": "idx_media_organization_project_id",
-          "columns": [
-            {
-              "expression": "project_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "idx_media_organization_ip_id": {
-          "name": "idx_media_organization_ip_id",
+        "idx_media_ips_ip_id": {
+          "name": "idx_media_ips_ip_id",
           "columns": [
             {
               "expression": "ip_id",
@@ -751,12 +917,73 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        }
+      },
+      "foreignKeys": {
+        "media_ips_media_id_media_id_fk": {
+          "name": "media_ips_media_id_media_id_fk",
+          "tableFrom": "media_ips",
+          "tableTo": "media",
+          "columnsFrom": [
+            "media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
-        "idx_media_organization_status": {
-          "name": "idx_media_organization_status",
+        "media_ips_ip_id_ips_id_fk": {
+          "name": "media_ips_ip_id_ips_id_fk",
+          "tableFrom": "media_ips",
+          "tableTo": "ips",
+          "columnsFrom": [
+            "ip_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "media_ips_media_id_ip_id_pk": {
+          "name": "media_ips_media_id_ip_id_pk",
+          "columns": [
+            "media_id",
+            "ip_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.media_projects": {
+      "name": "media_projects",
+      "schema": "",
+      "columns": {
+        "media_id": {
+          "name": "media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "idx_media_projects_project_id": {
+          "name": "idx_media_projects_project_id",
           "columns": [
             {
-              "expression": "status",
+              "expression": "project_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -769,9 +996,9 @@
         }
       },
       "foreignKeys": {
-        "media_organization_media_id_media_id_fk": {
-          "name": "media_organization_media_id_media_id_fk",
-          "tableFrom": "media_organization",
+        "media_projects_media_id_media_id_fk": {
+          "name": "media_projects_media_id_media_id_fk",
+          "tableFrom": "media_projects",
           "tableTo": "media",
           "columnsFrom": [
             "media_id"
@@ -782,22 +1009,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "media_organization_category_id_categories_id_fk": {
-          "name": "media_organization_category_id_categories_id_fk",
-          "tableFrom": "media_organization",
-          "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "media_organization_project_id_projects_id_fk": {
-          "name": "media_organization_project_id_projects_id_fk",
-          "tableFrom": "media_organization",
+        "media_projects_project_id_projects_id_fk": {
+          "name": "media_projects_project_id_projects_id_fk",
+          "tableFrom": "media_projects",
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
@@ -805,25 +1019,160 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "media_projects_media_id_project_id_pk": {
+          "name": "media_projects_media_id_project_id_pk",
+          "columns": [
+            "media_id",
+            "project_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.media_relations": {
+      "name": "media_relations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "serial",
+          "primaryKey": true,
+          "notNull": true
         },
-        "media_organization_ip_id_ips_id_fk": {
-          "name": "media_organization_ip_id_ips_id_fk",
-          "tableFrom": "media_organization",
-          "tableTo": "ips",
+        "parent_media_id": {
+          "name": "parent_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "child_media_id": {
+          "name": "child_media_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "relation_type": {
+          "name": "relation_type",
+          "type": "media_relation_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_index": {
+          "name": "order_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_media_relations_parent": {
+          "name": "idx_media_relations_parent",
+          "columns": [
+            {
+              "expression": "parent_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_media_relations_child": {
+          "name": "idx_media_relations_child",
+          "columns": [
+            {
+              "expression": "child_media_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_media_relations_type": {
+          "name": "idx_media_relations_type",
+          "columns": [
+            {
+              "expression": "relation_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "media_relations_parent_media_id_media_id_fk": {
+          "name": "media_relations_parent_media_id_media_id_fk",
+          "tableFrom": "media_relations",
+          "tableTo": "media",
           "columnsFrom": [
-            "ip_id"
+            "parent_media_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "media_relations_child_media_id_media_id_fk": {
+          "name": "media_relations_child_media_id_media_id_fk",
+          "tableFrom": "media_relations",
+          "tableTo": "media",
+          "columnsFrom": [
+            "child_media_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "parent_child_type_unique": {
+          "name": "parent_child_type_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "parent_media_id",
+            "child_media_id",
+            "relation_type"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -911,6 +1260,25 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'{}'"
+        },
+        "last_synced_at": {
+          "name": "last_synced_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_attempts": {
+          "name": "sync_attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false,
+          "default": 0
+        },
+        "last_error": {
+          "name": "last_error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -950,6 +1318,27 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "tag_type": {
+          "name": "tag_type",
+          "type": "tag_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'positive'"
+        },
+        "confidence": {
+          "name": "confidence",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
         }
       },
       "indexes": {},
@@ -982,11 +1371,12 @@
         }
       },
       "compositePrimaryKeys": {
-        "media_tags_media_id_tag_id_pk": {
-          "name": "media_tags_media_id_tag_id_pk",
+        "media_tags_media_id_tag_id_tag_type_pk": {
+          "name": "media_tags_media_id_tag_id_tag_type_pk",
           "columns": [
             "media_id",
-            "tag_id"
+            "tag_id",
+            "tag_type"
           ]
         }
       },
@@ -1188,6 +1578,14 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "status": {
+          "name": "status",
+          "type": "media_organization_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
         }
       },
       "indexes": {
@@ -1358,6 +1756,13 @@
           "notNull": false,
           "default": "now()"
         },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
         "archived_at": {
           "name": "archived_at",
           "type": "timestamp",
@@ -1512,8 +1917,22 @@
           "primaryKey": false,
           "notNull": false
         },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'manual'"
+        },
         "created_at": {
           "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
@@ -1692,6 +2111,18 @@
         "deleted"
       ]
     },
+    "public.media_relation_type": {
+      "name": "media_relation_type",
+      "schema": "public",
+      "values": [
+        "variant",
+        "version",
+        "page",
+        "derivative",
+        "edit",
+        "source"
+      ]
+    },
     "public.media_source_type": {
       "name": "media_source_type",
       "schema": "public",
@@ -1717,6 +2148,14 @@
         "image",
         "video",
         "audio"
+      ]
+    },
+    "public.tag_type": {
+      "name": "tag_type",
+      "schema": "public",
+      "values": [
+        "positive",
+        "negative"
       ]
     }
   },

@@ -114,7 +114,7 @@ export const bulkAddMediaTags = async (
   const values: NewMediaTag[] = [];
   for (const mediaId of mediaIds) {
     for (const tagId of tagsToAdd) {
-      values.push({ mediaId, tagId });
+      values.push({ mediaId, tagId, tagType: "positive", source: "manual" });
     }
   }
 
