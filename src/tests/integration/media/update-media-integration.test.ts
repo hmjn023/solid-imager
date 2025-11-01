@@ -23,6 +23,8 @@ describe("updateMedia Integration", () => {
     mediaType: "image" as const,
     width: 800,
     height: 600,
+    description: null,
+    sourceUrl: null,
   };
 
   beforeEach(async () => {

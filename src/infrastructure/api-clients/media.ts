@@ -4,13 +4,15 @@ import sharp from "sharp";
 import type { z } from "zod";
 import {
   addMediaRequestSchema,
-  type conflictSchema,
   directoryPathSchema,
   mediaIdSchema,
   updateMediaRequestSchema,
-  uploadRequestSchema,
-  uploadResponseSchema,
 } from "~/domain/media/schemas";
+import {
+  type conflictSchema,
+  uploadMediaRequestSchema,
+  uploadResponseSchema,
+} from "~/domain/media/upload-schemas";
 import { sourceIdSchema } from "~/domain/sources/schemas";
 import {
   deleteMedia as dbDeleteMedia,
@@ -362,7 +364,7 @@ export async function uploadMedia(
     throw new Error("No file provided for upload.");
   }
 
-  const uploadRequest = uploadRequestSchema.parse({
+  const uploadRequest = uploadMediaRequestSchema.parse({
     filename: uploadData.get("filename")?.toString(),
     autoIncrement: uploadData.get("autoIncrement")?.toString(),
     description: uploadData.get("description")?.toString(),

@@ -5,5 +5,11 @@
  * This file serves as a placeholder for future character domain schemas
  */
 
-// Placeholder for future character schemas
-// export const characterIdSchema = z.number().int().positive("Invalid character ID");
+import { z } from "zod";
+
+export const characterDataSchema = z.object({
+  name: z.string(),
+  ipId: z.number().int().optional(),
+  description: z.string().optional(),
+});
+export type CharacterData = z.infer<typeof characterDataSchema>;

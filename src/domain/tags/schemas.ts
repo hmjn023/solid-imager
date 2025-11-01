@@ -5,5 +5,13 @@
  * This file serves as a placeholder for future tag domain schemas
  */
 
-// Placeholder for future tag schemas
-// export const tagIdSchema = z.string().uuid("Invalid tag ID format");
+import { z } from "zod";
+
+export const tagDataSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  attribute: z.string().optional(),
+  color: z.string().optional(),
+  source: z.string().optional(), // Added based on database design
+});
+export type TagData = z.infer<typeof tagDataSchema>;

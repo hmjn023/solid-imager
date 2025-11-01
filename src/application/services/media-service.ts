@@ -4,6 +4,10 @@
  */
 
 import { MediaSourceService } from "~/application/services/media-source-service";
+import type {
+  updateMediaRequest,
+  uploadMediaRequest,
+} from "~/domain/media/schemas";
 import { getAllMedia, getMedia } from "~/infrastructure/api-clients/media";
 import { getDriver } from "~/infrastructure/storage/factory";
 
@@ -67,17 +71,7 @@ export const MediaService = {
    * @param {boolean} [_uploadData.overwrite] - Whether to overwrite existing file on conflict.
    * @returns {any} The result of the upload operation.
    */
-  uploadNewMedia(
-    _sourceId: string,
-    _uploadData: {
-      file: File;
-      filename?: string;
-      autoIncrement?: boolean;
-      description?: string;
-      sourceUrl?: string;
-      overwrite?: boolean;
-    }
-  ) {
+  uploadNewMedia(_sourceId: string, _uploadData: uploadMediaRequest) {
     // TODO: Implement file upload for local sources
     throw new Error("Not implemented");
   },
@@ -169,12 +163,7 @@ export const MediaService = {
   updateMedia(
     _sourceId: string,
     _mediaId: string,
-    _mediaData: {
-      filename?: string;
-      description?: string;
-      sourceUrl?: string;
-      tags?: string[];
-    }
+    _mediaData: updateMediaRequest
   ) {
     // TODO: Implement media update with file rename support
     throw new Error("Not implemented");

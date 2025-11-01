@@ -10,6 +10,7 @@ import { z } from "zod";
  * Allowed values are "image", "video", and "audio".
  */
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
+export type MediaType = z.infer<typeof mediaTypeSchema>;
 
 /**
  * Zod schema for validating the request body when adding new media.
@@ -28,6 +29,7 @@ export const addMediaRequestSchema = z.object({
   width: z.number().int().positive("Width must be a positive integer"),
   height: z.number().int().positive("Height must be a positive integer"),
 });
+export type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
 /**
  * Zod schema for validating the request body when updating existing media.
@@ -54,21 +56,24 @@ export const updateMediaRequestSchema = z.object({
     .int()
     .positive("Height must be a positive integer")
     .optional(),
-  description: z.string().optional(),
-  sourceUrl: z.string().url("Invalid URL format").optional(),
+  description: z.string().nullable().optional(),
+  sourceUrl: z.string().url("Invalid URL format").nullable().optional(),
 });
+export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
 /**
  * Zod schema for validating a media ID.
  * Ensures the ID is a valid UUID format.
  */
 export const mediaIdSchema = z.string().uuid("Invalid media ID format");
+export type MediaId = z.infer<typeof mediaIdSchema>;
 
 /**
  * Zod schema for validating a source ID.
  * Ensures the ID is a valid UUID format.
  */
 export const sourceIdSchema = z.string().uuid("Invalid source ID format");
+export type SourceId = z.infer<typeof sourceIdSchema>;
 
 /**
  * Zod schema for validating a directory path.
@@ -77,26 +82,14 @@ export const sourceIdSchema = z.string().uuid("Invalid source ID format");
 export const directoryPathSchema = z
   .string()
   .min(1, "Directory path is required");
+export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
-export const uploadRequestSchema = z.object({
-  filename: z.string().optional(),
-  autoIncrement: z
-    .preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
-    .optional(),
-  description: z.string().optional(),
-  sourceUrl: z.string().url("Invalid URL format").optional(),
-  overwrite: z
-    .preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
-    .optional(),
-});
-
-export const conflictSchema = z.object({
-  existingFile: z.string(),
-  suggestedName: z.string(),
-});
-
-export const uploadResponseSchema = z.object({
-  success: z.boolean(),
-  filePath: z.string(),
-  conflict: conflictSchema.optional(),
-});
+// biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
+export {
+  Conflict,
+  conflictSchema,
+  UploadMediaRequest,
+  UploadResponse,
+  uploadMediaRequestSchema,
+  uploadResponseSchema,
+} from "./upload-schemas";

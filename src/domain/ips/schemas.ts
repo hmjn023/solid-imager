@@ -5,5 +5,10 @@
  * This file serves as a placeholder for future IP domain schemas
  */
 
-// Placeholder for future IP schemas
-// export const ipIdSchema = z.number().int().positive("Invalid IP ID");
+import { z } from "zod";
+
+export const ipDataSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+});
+export type IpData = z.infer<typeof ipDataSchema>;

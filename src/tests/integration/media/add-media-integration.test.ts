@@ -43,6 +43,8 @@ describe("addMedia Integration", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     const result = await addMedia(newMediaData);
@@ -81,6 +83,8 @@ describe("addMedia Integration", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     await addMedia(newMediaData); // 最初のメディアを追加します。

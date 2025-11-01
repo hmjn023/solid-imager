@@ -17,6 +17,8 @@ describe("addMedia Contract", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     // Validate with Zod schema
@@ -72,6 +74,8 @@ describe("addMedia Contract", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     // Simulate existing media

@@ -5,5 +5,12 @@
  * This file serves as a placeholder for future category domain schemas
  */
 
-// Placeholder for future category schemas
-// export const categoryIdSchema = z.number().int().positive("Invalid category ID");
+import { z } from "zod";
+
+export const categoryDataSchema = z.object({
+  name: z.string(),
+  description: z.string().optional(),
+  color: z.string().optional(),
+  parentId: z.number().int().optional(),
+});
+export type CategoryData = z.infer<typeof categoryDataSchema>;

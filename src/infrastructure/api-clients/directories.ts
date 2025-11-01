@@ -3,6 +3,7 @@
  * Extracted from src/lib/api/directories.ts
  */
 
+import { MediaSourceService } from "~/application/services/media-source-service";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 /**
@@ -13,7 +14,7 @@ import { getDriver } from "~/infrastructure/storage/factory";
  * @throws {Error} If the specified media source is not found.
  */
 export async function getDirectoryListing(sourceId: string, path = "") {
-  const sources = await getMediaSourceById(sourceId);
+  const sources = await MediaSourceService.fetchSourceById(sourceId);
   const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
@@ -35,7 +36,7 @@ export async function createDirectory(
   path: string,
   name: string
 ) {
-  const sources = await getMediaSourceById(sourceId);
+  const sources = await MediaSourceService.fetchSourceById(sourceId);
   const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
@@ -59,7 +60,7 @@ export async function renameDirectory(
   oldPath: string,
   newPath: string
 ) {
-  const sources = await getMediaSourceById(sourceId);
+  const sources = await MediaSourceService.fetchSourceById(sourceId);
   const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
@@ -77,7 +78,7 @@ export async function renameDirectory(
  * @throws {Error} If the specified media source is not found.
  */
 export async function deleteDirectory(sourceId: string, path: string) {
-  const sources = await getMediaSourceById(sourceId);
+  const sources = await MediaSourceService.fetchSourceById(sourceId);
   const source = sources[0];
   if (!source) {
     throw new Error("指定されたメディアソースが見つかりません");
