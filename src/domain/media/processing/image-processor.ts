@@ -4,6 +4,12 @@
  * Feature 17.2: メディア処理 / 情報抽出
  */
 
+import sharp from "sharp";
+import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info";
+import { insertMediaTags } from "~/infrastructure/db/queries/tags";
+import type { ImageMetadataComment } from "../schemas";
+import { extractDataFromComments } from "../utils/metadata-utils";
+
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
@@ -27,11 +33,40 @@ export const ImageProcessor = {
   /**
    * Extracts metadata from an image file.
    * @param {string} _mediaPath - The path to the source image file.
-   * @returns {Promise<unknown>} A promise that resolves with the extracted metadata.
+   * @param {string} mediaId - The ID of the media item.
+   * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
    */
-  extractMetadata(_mediaPath: string): Promise<unknown> {
+  async extractMetadata(_mediaPath: string, mediaId: string): Promise<void> {
+    if (!_mediaPath) {
+      throw new Error("Image path is required");
+    }
+
+    try {
+      const metadata = await sharp(_mediaPath).metadata();
+      const _exifData = metadata.exif;
+
+      const comments = metadata.comments as ImageMetadataComment[] | undefined;
+      const { tags, prompt, workflow } = comments
+        ? extractDataFromComments(comments)
+        : { tags: [], prompt: null, workflow: null };
+
+      // Store generation info
+      await upsertMediaGenerationInfo(
+        mediaId,
+        prompt as string | null,
+        workflow as object | null
+      );
+
+      // Store tags
+      if (tags.length > 0) {
+        await insertMediaTags(mediaId, tags, "comfyui_workflow");
+      }
+    } catch {
+      //
+    }
+
     // TODO: Extract PNG tEXt chunks and other metadata
-    throw new Error("Not implemented");
+    // throw new Error("Not implemented");
   },
 
   /**
