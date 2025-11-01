@@ -1,21 +1,21 @@
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
+import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
 type NodePostgresDb = ReturnType<typeof drizzleNodePostgres>;
-type PGliteDb = ReturnType<typeof drizzlePglite>;
+type PgLiteDb = ReturnType<typeof drizzlePglite>;
 
-let _db: NodePostgresDb | PGliteDb | null = null;
+let _db: NodePostgresDb | PgLiteDb | null = null;
 let _queryClient: Pool | PGlite | null = null;
 
 /**
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
  * It reads database connection details from environment variables.
- * @returns {NodePostgresDb | PGliteDb} The initialized Drizzle ORM database instance.
+ * @returns {NodePostgresDb | PgLiteDb} The initialized Drizzle ORM database instance.
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
@@ -26,7 +26,6 @@ function initializeDb() {
   const dbHost = process.env.DB_HOST;
 
   if (dbHost === "pglite") {
-    // biome-ignore lint/style/noNonNullAssertion: <explanation>
     _queryClient = new PGlite("./.data/pglite");
     _db = drizzlePglite(_queryClient, { schema });
     return _db;
