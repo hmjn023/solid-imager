@@ -148,6 +148,11 @@ The database schema is managed with Drizzle ORM and is defined in `src/db/schema
   bun run db:migrate
   ```
 
+- **Applying PGlite Migrations:** To apply pending migrations specifically for PGlite:
+  ```bash
+  bun run db:migrate:pglite
+  ```
+
 - **Database Studio:** To browse the database contents, use Drizzle Studio:
   ```bash
   bun run db:studio
@@ -915,6 +920,7 @@ Integration with ComfyUI and other services.
 ### Development Commands
 - **Install dependencies**: `bun install`
 - **Run development server**: `bun run dev` (runs with hot reload on port 3000)
+- **Run tests**: `bun run test`
 
 ### Supported Environment
 - Runtime: Bun
