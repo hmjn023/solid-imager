@@ -19,30 +19,66 @@ import {
 } from "drizzle-orm/pg-core";
 
 // 列挙型
+/**
+ * Enum for media source types.
+ * Defines where the media files are stored and how they are managed.
+ */
 export const mediaSourceTypeEnum = pgEnum("media_source_type", [
   "local",
   "sftp",
   "s3",
 ]);
+/**
+ * Enum for media organization status.
+ * Defines the lifecycle status of a media item within the system.
+ */
 export const mediaOrganizationStatusEnum = pgEnum("media_organization_status", [
   "active",
   "archived",
   "deleted",
 ]);
+/**
+ * Enum for media synchronization status.
+ * Defines the current state of a media item's synchronization with external backups or systems.
+ */
 export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
   "synced",
   "pending",
   "failed",
 ]);
+/**
+ * Enum for media types.
+ * Defines the primary content type of a media file.
+ */
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
+/**
+ * Enum for job status.
+ * Defines the current state of a background job.
+ */
 export const jobStatusEnum = pgEnum("job_status", [
   "pending",
   "in_progress",
   "completed",
   "failed",
 ]);
+/**
+ * Enum for media relation types.
+ * Defines various ways media items can be related to each other.
+ */
+export const mediaRelationTypeEnum = pgEnum("media_relation_type", [
+  "variant", // 差分・バリエーション
+  "version", // 別バージョン
+  "page", // ページ（漫画等）
+  "derivative", // 派生作品
+  "edit", // 編集版
+  "source", // 元素材
+]);
 
 // テーブル
+/**
+ * Schema for the media_sources table.
+ * Stores information about different media sources configured in the system.
+ */
 export const mediaSources = pgTable("media_sources", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   /** 表示されるメディアソースの名前 */
@@ -59,6 +95,10 @@ export const mediaSources = pgTable("media_sources", {
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * Schema for the media table.
+ * Stores core information about individual media files.
+ */
 export const medias = pgTable(
   "media",
   {
@@ -89,6 +129,8 @@ export const medias = pgTable(
     modifiedAt: timestamp("modified_at").notNull().defaultNow(),
     /** DB登録日時 */
     indexedAt: timestamp("indexed_at").notNull().defaultNow(),
+    /** メディアの状態 */
+    status: mediaOrganizationStatusEnum("status").notNull().default("active"),
   },
   (table) => ({
     sourceIdFilePathUnique: unique("source_id_file_path_unique").on(
@@ -102,6 +144,10 @@ export const medias = pgTable(
   })
 );
 
+/**
+ * Schema for the tags table.
+ * Stores information about tags used to categorize media.
+ */
 export const tags = pgTable(
   "tags",
   {
@@ -114,8 +160,12 @@ export const tags = pgTable(
     attribute: text("attribute"),
     /** UIで表示する際の色 (例: "#808080") */
     color: text("color"),
+    /** タグの起源 (manual, comfyui_workflow, tagger_program_Aなど) */
+    source: text("source").notNull().default("manual"),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("tags_name_unique").on(table.name),
@@ -123,6 +173,10 @@ export const tags = pgTable(
   })
 );
 
+/**
+ * Schema for the media_tags join table.
+ * Represents the many-to-many relationship between media items and tags.
+ */
 export const mediaTags = pgTable(
   "media_tags",
   {
@@ -134,12 +188,20 @@ export const mediaTags = pgTable(
     tagId: integer("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
+    /** AIがタグを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
+    confidence: real("confidence"),
+    /** メディアへのタグ付与の起源 (manual, comfyui_workflow, tagger_program_Aなど) */
+    source: text("source").notNull().default("manual"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.tagId] }),
   })
 );
 
+/**
+ * Schema for the media_details table.
+ * Stores additional, often user-generated, details about media items.
+ */
 export const mediaDetails = pgTable(
   "media_details",
   {
@@ -165,6 +227,10 @@ export const mediaDetails = pgTable(
   })
 );
 
+/**
+ * Schema for the media_generation_info table.
+ * Stores information related to how a media item was generated, especially for AI-generated content.
+ */
 export const mediaGenerationInfo = pgTable(
   "media_generation_info",
   {
@@ -174,6 +240,20 @@ export const mediaGenerationInfo = pgTable(
       .references(() => medias.id, { onDelete: "cascade" }),
     /** prompt, workflowなどのメタデータ */
     metadata: jsonb("metadata"),
+    /** プロンプト文字列 */
+    prompt: text("prompt"),
+    /** ネガティブプロンプト */
+    negativePrompt: text("negative_prompt"),
+    /** ComfyUIワークフロー全体 */
+    workflow: jsonb("workflow"),
+    /** LoRA情報 [{"name": "...", "weight": 0.8}] */
+    loras: jsonb("loras"),
+    /** VAE名 */
+    vae: text("vae"),
+    /** Hypernetwork情報 */
+    hypernetworks: jsonb("hypernetworks"),
+    /** Embedding/Textual Inversion情報 */
+    embeddings: jsonb("embeddings"),
     /** AIによって生成されたかどうか */
     aiGenerated: boolean("ai_generated").default(false),
     /** 使用されたモデル名 */
@@ -198,6 +278,10 @@ export const mediaGenerationInfo = pgTable(
   })
 );
 
+/**
+ * Schema for the categories table.
+ * Organizes media into user-defined categories.
+ */
 export const categories = pgTable(
   "categories",
   {
@@ -212,12 +296,20 @@ export const categories = pgTable(
     parentId: integer("parent_id").references(() => categories.id),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** カテゴリの起源 (manual) */
+    source: text("source").notNull().default("manual"),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("categories_name_unique").on(table.name),
   })
 );
 
+/**
+ * Schema for the projects table.
+ * Stores information about projects that media items can be associated with.
+ */
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   /** プロジェクト名 */
@@ -226,10 +318,16 @@ export const projects = pgTable("projects", {
   description: text("description").default(""),
   /** 作成日時 */
   createdAt: timestamp("created_at").defaultNow(),
+  /** 更新日時 */
+  updatedAt: timestamp("updated_at").defaultNow(),
   /** アーカイブ日時 */
   archivedAt: timestamp("archived_at"),
 });
 
+/**
+ * Schema for the ips table.
+ * Stores information about Intellectual Properties (IPs) that media items or characters can be associated with.
+ */
 export const ips = pgTable(
   "ips",
   {
@@ -237,13 +335,23 @@ export const ips = pgTable(
     /** IP(作品)名 */
     name: text("name").notNull(),
     /** IP(作品)の説明 */
-    description: text("description"),
+    description: text("description").default(""),
+    /** IPの起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameUnique: unique("ips_name_unique").on(table.name),
   })
 );
 
+/**
+ * Schema for the characters table.
+ * Stores information about characters, potentially linked to IPs.
+ */
 export const characters = pgTable(
   "characters",
   {
@@ -255,13 +363,25 @@ export const characters = pgTable(
       onDelete: "set null",
     }),
     /** キャラクターの説明 */
-    description: text("description"),
+    description: text("description").default(""),
+    /** キャラクターの起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+    /** キャラクターの別名（エイリアス）のリスト */
+    aliases: jsonb("aliases"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
     nameIpIdUnique: unique("name_ipId_unique").on(table.name, table.ipId),
   })
 );
 
+/**
+ * Schema for the media_characters join table.
+ * Represents the many-to-many relationship between media items and characters.
+ */
 export const mediaCharacters = pgTable(
   "media_characters",
   {
@@ -273,40 +393,90 @@ export const mediaCharacters = pgTable(
     characterId: integer("character_id")
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
+    /** AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
+    confidence: real("confidence"),
+    /** メディアへのキャラクター付与の起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
   })
 );
 
-export const mediaOrganization = pgTable(
-  "media_organization",
+/**
+ * Schema for the media_categories join table.
+ * Represents the many-to-many relationship between media items and categories.
+ */
+export const mediaCategories = pgTable(
+  "media_categories",
   {
     /** メディアID */
     mediaId: uuid("media_id")
-      .primaryKey()
+      .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** カテゴリID */
-    categoryId: integer("category_id").references(() => categories.id),
-    /** プロジェクトID */
-    projectId: integer("project_id").references(() => projects.id),
-    /** IP(作品)ID */
-    ipId: integer("ip_id").references(() => ips.id),
-    /** 状態 */
-    status: mediaOrganizationStatusEnum("status").default("active"),
+    categoryId: integer("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
   },
   (table) => ({
-    categoryIdIndex: index("idx_media_organization_category_id").on(
+    pk: primaryKey({ columns: [table.mediaId, table.categoryId] }),
+    categoryIdIndex: index("idx_media_categories_category_id").on(
       table.categoryId
     ),
-    projectIdIndex: index("idx_media_organization_project_id").on(
-      table.projectId
-    ),
-    ipIdIndex: index("idx_media_organization_ip_id").on(table.ipId),
-    statusIndex: index("idx_media_organization_status").on(table.status),
   })
 );
 
+/**
+ * Schema for the media_projects join table.
+ * Represents the many-to-many relationship between media items and projects.
+ */
+export const mediaProjects = pgTable(
+  "media_projects",
+  {
+    /** メディアID */
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** プロジェクトID */
+    projectId: integer("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.projectId] }),
+    projectIdIndex: index("idx_media_projects_project_id").on(table.projectId),
+  })
+);
+
+/**
+ * Schema for the media_ips join table.
+ * Represents the many-to-many relationship between media items and Intellectual Properties (IPs).
+ */
+export const mediaIps = pgTable(
+  "media_ips",
+  {
+    /** メディアID */
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** IP(作品)ID */
+    ipId: integer("ip_id")
+      .notNull()
+      .references(() => ips.id, { onDelete: "cascade" }),
+    /** メディアへのIP付与の起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.ipId] }),
+    ipIdIndex: index("idx_media_ips_ip_id").on(table.ipId),
+  })
+);
+
+/**
+ * Schema for the media_technical_info table.
+ * Stores technical details about media files, such as color profiles, EXIF data, and video/audio codecs.
+ */
 export const mediaTechnicalInfo = pgTable(
   "media_technical_info",
   {
@@ -340,6 +510,10 @@ export const mediaTechnicalInfo = pgTable(
   })
 );
 
+/**
+ * Schema for the media_sync table.
+ * Manages synchronization and backup status for media items.
+ */
 export const mediaSync = pgTable("media_sync", {
   /** メディアID */
   mediaId: uuid("media_id")
@@ -349,8 +523,18 @@ export const mediaSync = pgTable("media_sync", {
   syncStatus: mediaSyncStatusEnum("sync_status").default("synced"),
   /** バックアップURL */
   backupUrls: text("backup_urls").array().default(sql`'{}'`),
+  /** 最後の同期日時 */
+  lastSyncedAt: timestamp("last_synced_at"),
+  /** 同期試行回数 */
+  syncAttempts: integer("sync_attempts").default(0),
+  /** 最後のエラーメッセージ */
+  lastError: text("last_error"),
 });
 
+/**
+ * Schema for the view_history table.
+ * Records user views of media items for analytics and personalized recommendations.
+ */
 export const viewHistory = pgTable("view_history", {
   id: serial("id").primaryKey(),
   /** メディアID */
@@ -365,6 +549,10 @@ export const viewHistory = pgTable("view_history", {
   userAgent: text("user_agent").default(""),
 });
 
+/**
+ * Schema for the similar_media table.
+ * Stores relationships between similar media items, often determined by perceptual hashing.
+ */
 export const similarMedia = pgTable(
   "similar_media",
   {
@@ -394,7 +582,63 @@ export const similarMedia = pgTable(
   })
 );
 
-/** ユーザー */
+/**
+ * Schema for the media_relations table.
+ * Manages relationships between media items, such as variants, versions, or pages in a series.
+ *
+ * @example Variant illustrations
+ * parent: "Character_Standing.png"
+ *   ├─ child (variant): "Character_Standing_Expression1.png"
+ *   ├─ child (variant): "Character_Standing_Expression2.png"
+ *   └─ child (variant): "Character_Standing_Outfit.png"
+ *
+ * @example Manga pages
+ * parent: "Manga_Chapter1"
+ *   ├─ child (page, order: 1): "page_001.png"
+ *   ├─ child (page, order: 2): "page_002.png"
+ *   └─ child (page, order: 3): "page_003.png"
+ */
+export const mediaRelationsTable = pgTable(
+  "media_relations",
+  {
+    id: serial("id").primaryKey(),
+    /** 親メディアID */
+    parentMediaId: uuid("parent_media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** 子メディアID */
+    childMediaId: uuid("child_media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    /** 関係の種類 */
+    relationType: mediaRelationTypeEnum("relation_type").notNull(),
+    /** ページ番号等の順序（オプショナル） */
+    orderIndex: integer("order_index"),
+    /** 追加情報（差分内容の説明等）をJSON形式で保存 */
+    metadata: jsonb("metadata"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    parentChildTypeUnique: unique("parent_child_type_unique").on(
+      table.parentMediaId,
+      table.childMediaId,
+      table.relationType
+    ),
+    parentMediaIdIndex: index("idx_media_relations_parent").on(
+      table.parentMediaId
+    ),
+    childMediaIdIndex: index("idx_media_relations_child").on(
+      table.childMediaId
+    ),
+    relationTypeIndex: index("idx_media_relations_type").on(table.relationType),
+  })
+);
+
+/**
+ * Schema for the users table.
+ * Stores user account information.
+ */
 export const users = pgTable(
   "users",
   {
@@ -416,6 +660,10 @@ export const users = pgTable(
   })
 );
 
+/**
+ * Schema for the collections table.
+ * Stores user-created collections of media items.
+ */
 export const collections = pgTable("collections", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   /** どのユーザーのコレクションか (ユーザー管理を導入する場合) */
@@ -425,11 +673,19 @@ export const collections = pgTable("collections", {
   /** コレクション名 */
   name: text("name").notNull(),
   /** コレクションの説明 */
+  description: text("description").default(""),
+  /** 作成日時 */
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** 更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
-export const collectionMedia = pgTable(
-  "collection_media",
+/**
+ * Schema for the media_collections join table.
+ * Represents the many-to-many relationship between collections and media items.
+ */
+export const mediaCollections = pgTable(
+  "media_collections",
   {
     /** コレクションID */
     collectionId: uuid("collection_id")
@@ -447,35 +703,71 @@ export const collectionMedia = pgTable(
   })
 );
 
+/**
+ * Schema for the jobs table.
+ * Manages background jobs such as thumbnail generation, metadata extraction, and bulk tagging.
+ * It tracks their progress and results.
+ */
 export const jobs = pgTable("jobs", {
   id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+  /** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
   type: text("type").notNull(),
+  /** 関連するメディアソースID (オプショナル) */
   sourceId: uuid("source_id").references(() => mediaSources.id, {
     onDelete: "cascade",
   }),
+  /** ジョブのステータス */
   status: jobStatusEnum("status").notNull().default("pending"),
+  /** ジョブの入力パラメータ (JSON) */
   payload: jsonb("payload"),
+  /** ジョブの実行結果 (JSON) */
   result: jsonb("result"),
+  /** エラーメッセージ (失敗時) */
   error: text("error"),
+  /** ジョブ作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  /** 最終更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
 
+/**
+ * Schema for the presets table.
+ * Stores user-defined filter presets for searching media.
+ * @example valueの保存例
+ * ```json
+ * {
+ *   "tags": [1, 5, 12],
+ *   "dateRange": { "from": "2024-01-01", "to": "2024-12-31" },
+ *   "rating": 5,
+ *   "favorite": true,
+ *   "mediaType": "image",
+ *   "characters": [3, 7],
+ *   "ips": [2]
+ * }
+ * ```
+ */
 export const presets = pgTable("presets", {
   id: serial("id").primaryKey(),
+  /** プリセット名 (例: "お気に入りの高評価画像", "2024年の青い目キャラクター") */
   name: text("name").notNull().unique(),
+  /** フィルター条件をJSON形式で保存 */
   value: jsonb("value").notNull(),
+  /** 作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 // リレーション
-/** メディアソースとメディアのリレーション */
+/**
+ * Defines the relations for the media_sources table.
+ */
 export const mediaSourcesRelations = relations(mediaSources, ({ many }) => ({
   /** メディアソースに属するメディア */
   media: many(medias),
 }));
 
-/** メディアと他のテーブルのリレーション */
+/**
+ * Defines the relations for the medias table.
+ */
 export const mediaRelations = relations(medias, ({ one, many }) => ({
   /** メディアが属するメディアソース */
 
@@ -498,12 +790,15 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
     fields: [medias.id],
     references: [mediaGenerationInfo.mediaId],
   }),
-  /** メディアの組織情報 */
+  /** メディアが属するカテゴリ */
 
-  organization: one(mediaOrganization, {
-    fields: [medias.id],
-    references: [mediaOrganization.mediaId],
-  }),
+  categories: many(mediaCategories),
+  /** メディアが属するプロジェクト */
+
+  projects: many(mediaProjects),
+  /** メディアが属するIP */
+
+  ips: many(mediaIps),
   /** メディアの技術情報 */
 
   technicalInfo: one(mediaTechnicalInfo, {
@@ -527,19 +822,29 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
   similarMedia2: many(similarMedia, { relationName: "media2" }),
   /** メディアが属するコレクション */
 
-  collectionMedia: many(collectionMedia),
+  collections: many(mediaCollections),
   /** メディアに含まれるキャラクター */
 
   characters: many(mediaCharacters),
+  /** このメディアを親とする関連メディア */
+
+  childRelations: many(mediaRelationsTable, { relationName: "parent" }),
+  /** このメディアを子とする関連メディア */
+
+  parentRelations: many(mediaRelationsTable, { relationName: "child" }),
 }));
 
-/** タグとメディアのリレーション */
+/**
+ * Defines the relations for the tags table.
+ */
 export const tagsRelations = relations(tags, ({ many }) => ({
   /** タグが付与されたメディア */
   media: many(mediaTags),
 }));
 
-/** メディアとタグの中間テーブルのリレーション */
+/**
+ * Defines the relations for the media_tags join table.
+ */
 export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
   /** 中間テーブルが参照するメディア */
 
@@ -555,7 +860,9 @@ export const mediaTagsRelations = relations(mediaTags, ({ one }) => ({
   }),
 }));
 
-/** カテゴリの親子関係とメディアとのリレーション */
+/**
+ * Defines the relations for the categories table.
+ */
 export const categoriesRelations = relations(categories, ({ one, many }) => ({
   /** 親カテゴリ */
 
@@ -566,29 +873,37 @@ export const categoriesRelations = relations(categories, ({ one, many }) => ({
   }),
   /** 子カテゴリ */
 
-  children: many(categories, { relationName: "parent_category" }),
+  children: many(categories, {
+    relationName: "parent_category",
+  }),
   /** カテゴリに属するメディア */
 
-  media: many(mediaOrganization),
+  media: many(mediaCategories),
 }));
 
-/** プロジェクトとメディアのリレーション */
+/**
+ * Defines the relations for the projects table.
+ */
 export const projectsRelations = relations(projects, ({ many }) => ({
   /** プロジェクトに属するメディア */
-  media: many(mediaOrganization),
+  media: many(mediaProjects),
 }));
 
-/** IPとメディア、キャラクターのリレーション */
+/**
+ * Defines the relations for the ips table.
+ */
 export const ipsRelations = relations(ips, ({ many }) => ({
   /** IPに属するメディア */
 
-  media: many(mediaOrganization),
+  media: many(mediaIps),
   /** IPに属するキャラクター */
 
   characters: many(characters),
 }));
 
-/** キャラクターとIP、メディアのリレーション */
+/**
+ * Defines the relations for the characters table.
+ */
 export const charactersRelations = relations(characters, ({ one, many }) => ({
   /** キャラクターが属するIP */
 
@@ -601,7 +916,9 @@ export const charactersRelations = relations(characters, ({ one, many }) => ({
   media: many(mediaCharacters),
 }));
 
-/** メディアとキャラクターの中間テーブルのリレーション */
+/**
+ * Defines the relations for the media_characters join table.
+ */
 export const mediaCharactersRelations = relations(
   mediaCharacters,
   ({ one }) => ({
@@ -620,38 +937,60 @@ export const mediaCharactersRelations = relations(
   })
 );
 
-/** メディアの組織情報と各テーブルのリレーション */
-export const mediaOrganizationRelations = relations(
-  mediaOrganization,
+/**
+ * Defines the relations for the media_categories join table.
+ */
+export const mediaCategoriesRelations = relations(
+  mediaCategories,
   ({ one }) => ({
-    /** 組織情報が参照するメディア */
-
+    /** 中間テーブルが参照するメディア */
     media: one(medias, {
-      fields: [mediaOrganization.mediaId],
+      fields: [mediaCategories.mediaId],
       references: [medias.id],
     }),
-    /** 組織情報が参照するカテゴリ */
-
+    /** 中間テーブルが参照するカテゴリ */
     category: one(categories, {
-      fields: [mediaOrganization.categoryId],
+      fields: [mediaCategories.categoryId],
       references: [categories.id],
-    }),
-    /** 組織情報が参照するプロジェクト */
-
-    project: one(projects, {
-      fields: [mediaOrganization.projectId],
-      references: [projects.id],
-    }),
-    /** 組織情報が参照するIP */
-
-    ip: one(ips, {
-      fields: [mediaOrganization.ipId],
-      references: [ips.id],
     }),
   })
 );
 
-/** 閲覧履歴とメディアのリレーション */
+/**
+ * Defines the relations for the media_projects join table.
+ */
+export const mediaProjectsRelations = relations(mediaProjects, ({ one }) => ({
+  /** 中間テーブルが参照するメディア */
+  media: one(medias, {
+    fields: [mediaProjects.mediaId],
+    references: [medias.id],
+  }),
+  /** 中間テーブルが参照するプロジェクト */
+  project: one(projects, {
+    fields: [mediaProjects.projectId],
+    references: [projects.id],
+  }),
+}));
+
+/**
+ * Defines the relations for the media_ips join table.
+ */
+export const mediaIpsRelations = relations(mediaIps, ({ one }) => ({
+  /** 中間テーブルが参照するメディア */
+  media: one(medias, {
+    fields: [mediaIps.mediaId],
+    references: [medias.id],
+  }),
+  /** 中間テーブルが参照するIP */
+  ip: one(ips, {
+    fields: [mediaIps.ipId],
+    references: [ips.id],
+  }),
+}));
+
+/**
+ * Defines the relations for the view_history table.
+ */
 export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
   /** 閲覧履歴が参照するメディア */
   media: one(medias, {
@@ -660,7 +999,9 @@ export const viewHistoryRelations = relations(viewHistory, ({ one }) => ({
   }),
 }));
 
-/** 類似メディアのリレーション */
+/**
+ * Defines the relations for the similar_media table.
+ */
 export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
   /** 類似メディア1 */
 
@@ -678,8 +1019,32 @@ export const similarMediaRelations = relations(similarMedia, ({ one }) => ({
   }),
 }));
 
+/**
+ * Defines the relations for the mediaRelationsTable.
+ */
+export const mediaRelationsTableRelations = relations(
+  mediaRelationsTable,
+  ({ one }) => ({
+    /** 親メディア */
+    parentMedia: one(medias, {
+      fields: [mediaRelationsTable.parentMediaId],
+      references: [medias.id],
+      relationName: "parent",
+    }),
+    /** 子メディア */
+    childMedia: one(medias, {
+      fields: [mediaRelationsTable.childMediaId],
+      references: [medias.id],
+      relationName: "child",
+    }),
+  })
+);
+
+/**
+ * Defines the relations for the collections table.
+ */
 export const collectionsRelations = relations(collections, ({ one, many }) => ({
-  media: many(collectionMedia),
+  media: many(mediaCollections),
   /** どのユーザーのコレクションか */
   user: one(users, {
     fields: [collections.userId],
@@ -687,93 +1052,253 @@ export const collectionsRelations = relations(collections, ({ one, many }) => ({
   }),
 }));
 
-/** コレクションとメディアの中間テーブルのリレーション */
-export const collectionMediaRelations = relations(
-  collectionMedia,
+/**
+ * Defines the relations for the media_collections join table.
+ */
+export const mediaCollectionsRelations = relations(
+  mediaCollections,
   ({ one }) => ({
     /** 中間テーブルが参照するコレクション */
 
     collection: one(collections, {
-      fields: [collectionMedia.collectionId],
+      fields: [mediaCollections.collectionId],
       references: [collections.id],
     }),
     /** 中間テーブルが参照するメディア */
 
     media: one(medias, {
-      fields: [collectionMedia.mediaId],
+      fields: [mediaCollections.mediaId],
       references: [medias.id],
     }),
   })
 );
 
-/** ユーザーとコレクションのリレーション */
+/**
+ * Defines the relations for the users table.
+ */
 export const usersRelations = relations(users, ({ many }) => ({
   /** ユーザーが持つコレクション */
   collections: many(collections),
 }));
 
 // 型
+/**
+ * Type definition for selecting a media source from the database.
+ */
 export type MediaSource = InferSelectModel<typeof mediaSources>;
+/**
+ * Type definition for inserting a new media source into the database.
+ */
 export type NewMediaSource = InferInsertModel<typeof mediaSources>;
 
+/**
+ * Type definition for selecting a media item from the database.
+ */
 export type Media = InferSelectModel<typeof medias>;
-export type NewMedia = InferInsertModel<typeof medias>;
+/**
+ * Type definition for inserting a new media item into the database.
+ */
+export type NewMedia = Omit<
+  Media,
+  "id" | "createdAt" | "modifiedAt" | "indexedAt" | "status"
+>;
 
+/**
+ * Type definition for selecting a tag from the database.
+ */
 export type Tag = InferSelectModel<typeof tags>;
+/**
+ * Type definition for inserting a new tag into the database.
+ */
 export type NewTag = InferInsertModel<typeof tags>;
 
+/**
+ * Type definition for selecting a media tag relationship from the database.
+ */
 export type MediaTag = InferSelectModel<typeof mediaTags>;
+/**
+ * Type definition for inserting a new media tag relationship into the database.
+ */
 export type NewMediaTag = InferInsertModel<typeof mediaTags>;
 
+/**
+ * Type definition for selecting media details from the database.
+ */
 export type MediaDetails = InferSelectModel<typeof mediaDetails>;
+/**
+ * Type definition for inserting new media details into the database.
+ */
 export type NewMediaDetails = InferInsertModel<typeof mediaDetails>;
 
+/**
+ * Type definition for selecting media generation information from the database.
+ */
 export type MediaGenerationInfo = InferSelectModel<typeof mediaGenerationInfo>;
+/**
+ * Type definition for inserting new media generation information into the database.
+ */
 export type NewMediaGenerationInfo = InferInsertModel<
   typeof mediaGenerationInfo
 >;
 
+/**
+ * Type definition for selecting a category from the database.
+ */
 export type Category = InferSelectModel<typeof categories>;
+/**
+ * Type definition for inserting a new category into the database.
+ */
 export type NewCategory = InferInsertModel<typeof categories>;
 
+/**
+ * Type definition for selecting a project from the database.
+ */
 export type Project = InferSelectModel<typeof projects>;
+/**
+ * Type definition for inserting a new project into the database.
+ */
 export type NewProject = InferInsertModel<typeof projects>;
 
+/**
+ * Type definition for selecting an IP from the database.
+ */
 export type Ip = InferSelectModel<typeof ips>;
+/**
+ * Type definition for inserting a new IP into the database.
+ */
 export type NewIp = InferInsertModel<typeof ips>;
 
+/**
+ * Type definition for selecting a character from the database.
+ */
 export type Character = InferSelectModel<typeof characters>;
+/**
+ * Type definition for inserting a new character into the database.
+ */
 export type NewCharacter = InferInsertModel<typeof characters>;
 
+/**
+ * Type definition for selecting a media character relationship from the database.
+ */
 export type MediaCharacter = InferSelectModel<typeof mediaCharacters>;
+/**
+ * Type definition for inserting a new media character relationship into the database.
+ */
 export type NewMediaCharacter = InferInsertModel<typeof mediaCharacters>;
 
-export type MediaOrganization = InferSelectModel<typeof mediaOrganization>;
-export type NewMediaOrganization = InferInsertModel<typeof mediaOrganization>;
+/**
+ * Type definition for selecting a media category relationship from the database.
+ */
+export type MediaCategory = InferSelectModel<typeof mediaCategories>;
+/**
+ * Type definition for inserting a new media category relationship into the database.
+ */
+export type NewMediaCategory = InferInsertModel<typeof mediaCategories>;
 
+/**
+ * Type definition for selecting a media project relationship from the database.
+ */
+export type MediaProject = InferSelectModel<typeof mediaProjects>;
+/**
+ * Type definition for inserting a new media project relationship into the database.
+ */
+export type NewMediaProject = InferInsertModel<typeof mediaProjects>;
+
+/**
+ * Type definition for selecting a media IP relationship from the database.
+ */
+export type MediaIp = InferSelectModel<typeof mediaIps>;
+/**
+ * Type definition for inserting a new media IP relationship into the database.
+ */
+export type NewMediaIp = InferInsertModel<typeof mediaIps>;
+
+/**
+ * Type definition for selecting media technical information from the database.
+ */
 export type MediaTechnicalInfo = InferSelectModel<typeof mediaTechnicalInfo>;
+/**
+ * Type definition for inserting new media technical information into the database.
+ */
 export type NewMediaTechnicalInfo = InferInsertModel<typeof mediaTechnicalInfo>;
 
+/**
+ * Type definition for selecting media sync information from the database.
+ */
 export type MediaSync = InferSelectModel<typeof mediaSync>;
+/**
+ * Type definition for inserting new media sync information into the database.
+ */
 export type NewMediaSync = InferInsertModel<typeof mediaSync>;
 
+/**
+ * Type definition for selecting a view history entry from the database.
+ */
 export type ViewHistory = InferSelectModel<typeof viewHistory>;
+/**
+ * Type definition for inserting a new view history entry into the database.
+ */
 export type NewViewHistory = InferInsertModel<typeof viewHistory>;
 
+/**
+ * Type definition for selecting similar media relationships from the database.
+ */
 export type SimilarMedia = InferSelectModel<typeof similarMedia>;
+/**
+ * Type definition for inserting new similar media relationships into the database.
+ */
 export type NewSimilarMedia = InferInsertModel<typeof similarMedia>;
 
+/**
+ * Type definition for selecting a collection from the database.
+ */
 export type Collection = InferSelectModel<typeof collections>;
+/**
+ * Type definition for inserting a new collection into the database.
+ */
 export type NewCollection = InferInsertModel<typeof collections>;
 
-export type CollectionMedia = InferSelectModel<typeof collectionMedia>;
-export type NewCollectionMedia = InferInsertModel<typeof collectionMedia>;
+/**
+ * Type definition for selecting a media collection relationship from the database.
+ */
+export type MediaCollection = InferSelectModel<typeof mediaCollections>;
+/**
+ * Type definition for inserting a new media collection relationship into the database.
+ */
+export type NewMediaCollection = InferInsertModel<typeof mediaCollections>;
 
+/**
+ * Type definition for selecting a user from the database.
+ */
 export type User = InferSelectModel<typeof users>;
+/**
+ * Type definition for inserting a new user into the database.
+ */
 export type NewUser = InferInsertModel<typeof users>;
 
+/**
+ * Type definition for selecting a job from the database.
+ */
 export type Job = InferSelectModel<typeof jobs>;
+/**
+ * Type definition for inserting a new job into the database.
+ */
 export type NewJob = InferInsertModel<typeof jobs>;
 
+/**
+ * Type definition for selecting a preset from the database.
+ */
 export type Preset = InferSelectModel<typeof presets>;
+/**
+ * Type definition for inserting a new preset into the database.
+ */
 export type NewPreset = InferInsertModel<typeof presets>;
+
+/**
+ * Type definition for selecting a media relation from the database.
+ */
+export type MediaRelation = InferSelectModel<typeof mediaRelationsTable>;
+/**
+ * Type definition for inserting a new media relation into the database.
+ */
+export type NewMediaRelation = InferInsertModel<typeof mediaRelationsTable>;

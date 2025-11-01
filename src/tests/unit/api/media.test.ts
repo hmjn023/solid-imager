@@ -20,10 +20,10 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
   updateMedia as updateMediaDb,
-} from "~/infrastructure/db/media";
+} from "~/infrastructure/db/queries/media";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
-vi.mock("~/infrastructure/db/media", () => ({
+vi.mock("~/infrastructure/db/queries/media", () => ({
   selectMediaById: vi.fn(),
   selectMediaBySourceIdAndFilePath: vi.fn(),
   insertMedia: vi.fn(),
@@ -55,6 +55,8 @@ describe("Media API Unit Tests", () => {
       createdAt: new Date(),
       modifiedAt: new Date(),
       indexedAt: new Date(),
+      description: null,
+      sourceUrl: null,
     };
     addMediaToMockDb(existingMedia);
 
@@ -87,6 +89,8 @@ describe("Media API Unit Tests", () => {
         mediaType: "image" as const,
         width: 100,
         height: 100,
+        description: null,
+        sourceUrl: null,
       };
 
       (selectMediaBySourceIdAndFilePath as vi.Mock).mockResolvedValueOnce([]);
@@ -121,6 +125,8 @@ describe("Media API Unit Tests", () => {
         mediaType: "image" as const,
         width: 100,
         height: 100,
+        description: null,
+        sourceUrl: null,
       };
 
       (selectMediaBySourceIdAndFilePath as vi.Mock).mockResolvedValueOnce([
@@ -257,8 +263,8 @@ describe("Media API Unit Tests", () => {
       const result = await deleteMedia(sourceId, mediaId);
 
       expect(selectMediaById).toHaveBeenCalled();
-      expect(deleteMediaDb).toHaveBeenCalled();
-      expect(deleteThumbnail).toHaveBeenCalledWith(mediaId);
+      expect(deleteMediaDb).toHaveBeenCalledWith(mediaId);
+      expect(deleteThumbnail).toHaveBeenCalledWith(sourceId, mediaId);
       expect(result).toEqual({ success: true });
     });
 

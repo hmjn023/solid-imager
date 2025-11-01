@@ -5,12 +5,12 @@
 ## フェーズ1: MVP（最小実行可能製品）
 
 ### 1. 環境セットアップ
-- [ ] **説明:** PostgreSQL、Drizzle ORM、Bunのセットアップ。
+- [x] **説明:** PostgreSQL、Drizzle ORM、Bunのセットアップ。
 - **依存関係:** なし
 - **機能:**
-    - [ ] `drizzle.config.ts`
-    - [ ] `schema.ts`
-    - [ ] `bun install`
+    - [x] `drizzle.config.ts`
+    - [x] `schema.ts`
+    - [x] `bun install`
 
 ### 2. 設定管理
 - [ ] **説明:** `config.json` の読み書き。

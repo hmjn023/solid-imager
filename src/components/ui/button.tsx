@@ -7,6 +7,10 @@ import { splitProps } from "solid-js";
 
 import { cn } from "~/presentation/utils/cn";
 
+/**
+ * Defines the styles for the button component using `class-variance-authority`.
+ * It includes various visual variants and sizes.
+ */
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
@@ -36,13 +40,26 @@ const buttonVariants = cva(
   }
 );
 
+/**
+ * Props for the Button component.
+ * Extends ButtonRootProps from `@kobalte/core/button` and VariantProps from `class-variance-authority`.
+ * @template T - The valid component type, defaults to "button".
+ * @property {string} [class] - Optional CSS class for custom styling.
+ * @property {JSX.Element} [children] - The content to be rendered inside the button.
+ */
 type ButtonProps<T extends ValidComponent = "button"> =
   ButtonPrimitiveRoot.ButtonRootProps<T> &
     VariantProps<typeof buttonVariants> & {
       class?: string | undefined;
       children?: JSX.Element;
     };
-
+/**
+ * A customizable button component that supports various styles and sizes.
+ * It leverages `@kobalte/core/button` for accessibility and `class-variance-authority` for styling.
+ * @template T - The valid component type, defaults to "button".
+ * @param {PolymorphicProps<T, ButtonProps<T>>} props - The properties for the button component.
+ * @returns {JSX.Element} The rendered button component.
+ */
 const Button = <T extends ValidComponent = "button">(
   props: PolymorphicProps<T, ButtonProps<T>>
 ) => {
@@ -61,6 +78,5 @@ const Button = <T extends ValidComponent = "button">(
     />
   );
 };
-
 export { Button, buttonVariants };
 export type { ButtonProps };

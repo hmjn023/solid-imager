@@ -5,6 +5,13 @@ import type {
   MediaSourceTypeEnum,
 } from "~/domain/sources/types";
 
+/**
+ * Props for the SourceFormModal component.
+ * @property {boolean} isOpen - Controls the visibility of the modal.
+ * @property {MediaSourceInfo | null} [editingSource] - The media source object being edited, if any.
+ * @property {() => void} onClose - Callback function to close the modal.
+ * @property {(sourceData: { name: string; description: string | null; type: MediaSourceTypeEnum; connectionInfo: { path: string } }) => Promise<void>} onSubmit - Callback function to handle form submission.
+ */
 type SourceFormModalProps = {
   isOpen: boolean;
   editingSource?: MediaSourceInfo | null;
@@ -16,7 +23,12 @@ type SourceFormModalProps = {
     connectionInfo: { path: string };
   }) => Promise<void>;
 };
-
+/**
+ * A modal component for adding or editing media sources.
+ * It provides a form to input source details like name, description, type, and connection path.
+ * @param {SourceFormModalProps} props - The properties for the SourceFormModal component.
+ * @returns {JSX.Element} The rendered media source form modal.
+ */
 export default function SourceFormModal(props: SourceFormModalProps) {
   const [formName, setFormName] = createSignal("");
   const [formPath, setFormPath] = createSignal("");
@@ -157,7 +169,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                 disabled={
                   !(formName().trim() && formPath().trim()) || isSubmitting()
                 }
-                onClick={handleSubmit}
+                onClick={() => handleSubmit()}
                 type="button"
               >
                 {(() => {
@@ -172,7 +184,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
               </button>
               <button
                 class="rounded bg-gray-500 px-4 py-2 text-white"
-                onClick={handleClose}
+                onClick={() => handleClose()}
                 type="button"
               >
                 Cancel

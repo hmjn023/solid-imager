@@ -11,4 +11,6 @@
 - `05-api-design.md`: APIの設計
 - `06-feature-details.md`: 各機能の詳細な仕様
 - `07-type-definitions.md`: 型定義
+- `08-frontend.md`: フロントエンドの設計
+- `09-api-documentation.md`: APIドキュメンテーション (Swagger)
 - `XX-schedule.md`: バックエンド実装スケジュール

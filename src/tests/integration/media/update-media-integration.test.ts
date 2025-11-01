@@ -7,7 +7,9 @@ import {
   updateMedia,
 } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
-import { medias, mediaSources } from "~/infrastructure/db/schema";
+import { mediaSources, medias } from "~/infrastructure/db/schema";
+
+const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
 describe("updateMedia Integration", () => {
   let testMediaId: string;
@@ -21,12 +23,14 @@ describe("updateMedia Integration", () => {
     mediaType: "image" as const,
     width: 800,
     height: 600,
+    description: null,
+    sourceUrl: null,
   };
 
   beforeEach(async () => {
     // 以前のテストデータをクリーンアップします。
     await db.delete(medias).where(sql`true`);
-    
+
     // テスト用のmedia sourceを作成
     await db
       .insert(mediaSources)
@@ -77,7 +81,7 @@ describe("updateMedia Integration", () => {
     const updates = { fileName: "non_existent.png" };
     await expect(
       updateMedia(testSourceId, nonExistentId, updates)
-    ).rejects.toThrow(/Media.*not found/);
+    ).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {

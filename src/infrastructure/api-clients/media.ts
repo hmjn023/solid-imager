@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import type { z } from "zod";
@@ -8,19 +8,32 @@ import {
   mediaIdSchema,
   updateMediaRequestSchema,
 } from "~/domain/media/schemas";
+import {
+  type conflictSchema,
+  uploadMediaRequestSchema,
+  uploadResponseSchema,
+} from "~/domain/media/upload-schemas";
 import { sourceIdSchema } from "~/domain/sources/schemas";
 import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
   insertMedia,
   selectMediaById,
+  selectMediaBySourceId,
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
-} from "~/infrastructure/db/media";
+} from "~/infrastructure/db/queries/media";
+import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
+/**
+ * Adds a new media entry to the database.
+ * @param {AddMediaRequest} data - The data for the new media entry.
+ * @returns {Promise<Media>} A promise that resolves with the newly created media object.
+ * @throws {Error} If media with the same file path already exists for the given source ID.
+ */
 export async function addMedia(data: AddMediaRequest): Promise<Media> {
   const validatedData = addMediaRequestSchema.parse(data);
   const existingMedia = await selectMediaBySourceIdAndFilePath(
@@ -39,6 +52,8 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
     filePath: validatedData.filePath,
     fileName: validatedData.fileName,
     mediaType: validatedData.mediaType,
+    description: validatedData.description,
+    sourceUrl: validatedData.sourceUrl,
     width: validatedData.width,
     height: validatedData.height,
     fileSize: validatedData.size,
@@ -47,6 +62,13 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
   return result;
 }
 
+/**
+ * Retrieves a specific media item by its source ID and media ID.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Media>} A promise that resolves with the media object.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function getMedia(
   sourceId: string,
   mediaId: string
@@ -64,6 +86,14 @@ export async function getMedia(
 
 type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
+/**
+ * Updates an existing media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item to update.
+ * @param {UpdateMediaRequest} updates - The updates to apply to the media item.
+ * @returns {Promise<Media>} A promise that resolves with the updated media object.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function updateMedia(
   sourceId: string,
   mediaId: string,
@@ -86,6 +116,13 @@ export async function updateMedia(
   return result;
 }
 
+/**
+ * Deletes a media item from the database and attempts to delete its thumbnail.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item to delete.
+ * @returns {Promise<{ success: boolean }>} A promise that resolves with a success status.
+ * @throws {Error} If the media is not found or does not belong to the specified source.
+ */
 export async function deleteMedia(
   sourceId: string,
   mediaId: string
@@ -100,7 +137,7 @@ export async function deleteMedia(
 
   // サムネイルも非同期で削除します。
   try {
-    await deleteThumbnail(validatedMediaId);
+    await deleteThumbnail(validatedSourceId, validatedMediaId);
   } catch (_error) {
     // サムネイル削除のエラーは無視（メディア削除は成功）
   }
@@ -119,6 +156,11 @@ import {
 
 const SUPPORTED_MEDIA_TYPES = ["png", "jpg", "jpeg", "webp", "gif"];
 
+/**
+ * Recursively retrieves a list of all files within a given directory.
+ * @param {string} dir - The directory path to scan.
+ * @returns {Promise<string[]>} A promise that resolves with an array of absolute file paths.
+ */
 async function getFiles(dir: string): Promise<string[]> {
   const dirents = await fs.readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
@@ -130,6 +172,13 @@ async function getFiles(dir: string): Promise<string[]> {
   return Array.prototype.concat(...files);
 }
 
+/**
+ * Registers existing media files from a given base path into the database.
+ * It filters for supported media types, checks for existing entries, and generates thumbnails for new media.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} basePath - The base path where media files are located.
+ * @returns {Promise<{ added: number; skipped: number; failed: number }>} A promise that resolves with counts of added, skipped, and failed media.
+ */
 export async function registerExistingMedia(
   sourceId: string,
   basePath: string
@@ -178,11 +227,11 @@ export async function registerExistingMedia(
         filePath: relativePath,
         fileName: path.basename(fullPath),
         mediaType: "image",
+        description: "",
+        sourceUrl: "",
         width: metadata.width,
         height: metadata.height,
         fileSize: stats.size,
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
       };
       const inserted = await insertMedia(newMedia);
       addedMedia.push(inserted);
@@ -200,7 +249,7 @@ export async function registerExistingMedia(
     startJobQueue(validatedSourceId, async (job) => {
       const media = addedMedia.find((m) => m.id === job.mediaId);
       if (media) {
-        await generateThumbnail(media, job.sourcePath);
+        await generateThumbnail(media, job.sourcePath, validatedSourceId);
       }
     });
   }
@@ -208,6 +257,12 @@ export async function registerExistingMedia(
   return { added: addedMedia.length, skipped, failed };
 }
 
+/**
+ * Lists media items within a specific directory of a media source.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} directoryPath - The path to the directory to list media from.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export async function listMedia(
   sourceId: string,
   directoryPath: string
@@ -222,6 +277,13 @@ export async function listMedia(
   return result;
 }
 
+/**
+ * Retrieves detailed information for a specific media item.
+ * This function currently delegates to `getMedia`.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Media>} A promise that resolves with the detailed media object.
+ */
 export function getMediaDetails(
   sourceId: string,
   mediaId: string
@@ -229,6 +291,12 @@ export function getMediaDetails(
   return getMedia(sourceId, mediaId);
 }
 
+/**
+ * Retrieves metadata for a specific media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<Record<string, unknown>>} A promise that resolves with a record of metadata.
+ */
 export async function getMediaMetadata(
   sourceId: string,
   mediaId: string
@@ -237,6 +305,12 @@ export async function getMediaMetadata(
   return { mediaId: media.id, metadata: {} };
 }
 
+/**
+ * Retrieves tags associated with a specific media item.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaId - The ID of the media item.
+ * @returns {Promise<unknown[]>} A promise that resolves with an array of tags.
+ */
 export async function getMediaTags(
   sourceId: string,
   mediaId: string
@@ -245,6 +319,12 @@ export async function getMediaTags(
   return [];
 }
 
+/**
+ * Retrieves the thumbnail for a specific media item.
+ * @param {string} _sourceId - The ID of the media source.
+ * @param {string} _mediaId - The ID of the media item.
+ * @returns {Promise<Buffer>} A promise that resolves with the thumbnail data as a Buffer.
+ */
 export function getMediaThumbnail(
   _sourceId: string,
   _mediaId: string
@@ -252,13 +332,137 @@ export function getMediaThumbnail(
   throw new Error("Not implemented");
 }
 
-export function uploadMedia(
-  _sourceId: string,
-  _uploadData: unknown
-): Promise<Media> {
-  throw new Error("Not implemented");
+/**
+ * Uploads a media file.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {FormData} uploadData - The FormData object containing the file and other upload details.
+ * @returns {Promise<z.infer<typeof uploadResponseSchema>>} A promise that resolves with the upload response.
+ * @throws {Error} If the media source is not found, not local, or if there's a file conflict.
+ */
+export async function uploadMedia(
+  sourceId: string,
+  uploadData: FormData
+): Promise<z.infer<typeof uploadResponseSchema>> {
+  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const mediaSource = await selectMediaSourceById(validatedSourceId);
+
+  if (!mediaSource) {
+    throw new Error("Media source not found.");
+  }
+
+  if (mediaSource.type !== "local") {
+    throw new Error(
+      "Only local media sources are supported for uploads in Phase 1."
+    );
+  }
+
+  const connectionInfo = mediaSource.connectionInfo as { path: string };
+  const basePath = connectionInfo.path;
+
+  const file = uploadData.get("file") as File | null;
+  if (!file) {
+    throw new Error("No file provided for upload.");
+  }
+
+  const uploadRequest = uploadMediaRequestSchema.parse({
+    filename: uploadData.get("filename")?.toString(),
+    autoIncrement: uploadData.get("autoIncrement")?.toString(),
+    description: uploadData.get("description")?.toString(),
+    sourceUrl: uploadData.get("sourceUrl")?.toString(),
+    overwrite: uploadData.get("overwrite")?.toString(),
+  });
+
+  let targetFileName = uploadRequest.filename || file.name;
+  let targetFilePath = path.join(basePath, targetFileName);
+  let relativeFilePath = path.relative(basePath, targetFilePath);
+  let conflict: z.infer<typeof conflictSchema> | undefined;
+
+  // Handle file name conflicts
+  let counter = 0;
+  while (
+    await fs
+      .stat(targetFilePath)
+      .then(() => true)
+      .catch(() => false)
+  ) {
+    if (uploadRequest.overwrite) {
+      break; // Overwrite existing file
+    }
+
+    if (!uploadRequest.autoIncrement) {
+      conflict = {
+        existingFile: relativeFilePath,
+        suggestedName: "", // Will be filled if autoIncrement is true
+      };
+      throw new Error("File already exists and overwrite is not allowed.");
+    }
+
+    counter++;
+    const ext = path.extname(file.name);
+    const base = path.basename(file.name, ext);
+    targetFileName = `${base}_${counter}${ext}`;
+    targetFilePath = path.join(basePath, targetFileName);
+    relativeFilePath = path.relative(basePath, targetFilePath);
+    conflict = {
+      existingFile: path.relative(
+        basePath,
+        path.join(basePath, uploadRequest.filename || file.name)
+      ),
+      suggestedName: targetFileName,
+    };
+  }
+
+  // Save the file
+  await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
+
+  // Extract metadata
+  const stats = await fs.stat(targetFilePath);
+  const metadata = await sharp(targetFilePath).metadata();
+
+  if (!(metadata.width && metadata.height)) {
+    await fs.unlink(targetFilePath); // Clean up if metadata extraction fails
+    throw new Error("Could not extract media dimensions.");
+  }
+
+  const newMedia: NewMedia = {
+    sourceId: validatedSourceId,
+    filePath: relativeFilePath,
+    fileName: targetFileName,
+    mediaType: "image", // Assuming image for now, will need to determine based on file type
+    description: uploadRequest.description || "",
+    sourceUrl: uploadRequest.sourceUrl || "",
+    width: metadata.width,
+    height: metadata.height,
+    fileSize: stats.size,
+  };
+  const insertedMedia = await insertMedia(newMedia);
+
+  // Trigger thumbnail generation
+  addJobsToQueue(validatedSourceId, [
+    { mediaId: insertedMedia.id, sourcePath: basePath },
+  ]);
+  startJobQueue(validatedSourceId, async (job) => {
+    const media = await selectMediaById(job.mediaId);
+    if (media) {
+      await generateThumbnail(media, job.sourcePath, validatedSourceId);
+    }
+  });
+
+  return uploadResponseSchema.parse({
+    success: true,
+    filePath: relativeFilePath,
+    conflict,
+  });
 }
 
+/**
+ * Searches for media within a specific directory of a media source.
+ * This function currently delegates to `listMedia`.
+ * @param {string} sourceId - The ID of the media source.
+ * @param {string} directoryPath - The path to the directory to search within.
+ * @param {unknown} _searchOptions - Search options (currently unused, delegates to listMedia).
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export function searchMediaInDirectory(
   sourceId: string,
   directoryPath: string,
@@ -267,9 +471,26 @@ export function searchMediaInDirectory(
   return listMedia(sourceId, directoryPath);
 }
 
+/**
+ * Searches for media across a specific media source.
+ * @param {string} _sourceId - The ID of the media source.
+ * @param {unknown} _searchOptions - Search options.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
 export function searchMedia(
   _sourceId: string,
   _searchOptions: unknown
 ): Promise<Media[]> {
   return [];
+}
+
+/**
+ * Retrieves all media items for a specific media source.
+ * @param {string} sourceId - The ID of the media source.
+ * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ */
+export async function getAllMedia(sourceId: string): Promise<Media[]> {
+  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const result = await selectMediaBySourceId(validatedSourceId);
+  return result;
 }

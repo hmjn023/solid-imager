@@ -18,10 +18,33 @@ const UpdateIpBodySchema = z.object({
 });
 
 /**
- * IPの詳細を取得します。
- *
- * @param param0 {id: number}
- * @returns IP詳細
+ * @swagger
+ * /api/ips/{id}:
+ *   get:
+ *     summary: Retrieve a specific IP (Intellectual Property)
+ *     description: Fetches details of an Intellectual Property by its ID.
+ *     tags:
+ *       - IPs
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the IP to retrieve.
+ *     responses:
+ *       200:
+ *         description: Details of the IP.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/IP'
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: IP not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -37,10 +60,39 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * IPを更新します。
- *
- * @param param0 {id: number}
- * @returns 更新されたIP
+ * @swagger
+ * /api/ips/{id}:
+ *   put:
+ *     summary: Update a specific IP (Intellectual Property)
+ *     description: Updates an existing Intellectual Property with the provided data.
+ *     tags:
+ *       - IPs
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the IP to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateIP'
+ *     responses:
+ *       200:
+ *         description: The updated IP.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/IP'
+ *       400:
+ *         description: Invalid ID or invalid input.
+ *       404:
+ *         description: IP not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -67,10 +119,29 @@ export async function PUT({ params, request }: APIEvent) {
 }
 
 /**
- * IPを削除します。
- *
- * @param param0 {id: number}
- * @returns 削除結果
+ * @swagger
+ * /api/ips/{id}:
+ *   delete:
+ *     summary: Delete a specific IP (Intellectual Property)
+ *     description: Deletes an Intellectual Property by its ID.
+ *     tags:
+ *       - IPs
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the IP to delete.
+ *     responses:
+ *       200:
+ *         description: IP successfully deleted.
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: IP not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);

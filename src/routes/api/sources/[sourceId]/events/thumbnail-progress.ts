@@ -2,6 +2,35 @@ import { createEffect } from "solid-js";
 import type { APIEvent } from "solid-start/api";
 import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
 
+/**
+ * @swagger
+ * /api/sources/{sourceId}/events/thumbnail-progress:
+ *   get:
+ *     summary: Monitor thumbnail generation progress via Server-Sent Events (SSE)
+ *     description: Establishes an SSE connection to receive real-time updates on the progress of thumbnail generation for a specific media source.
+ *     tags:
+ *       - Real-time Updates
+ *       - Thumbnails
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source to monitor thumbnail generation for.
+ *     responses:
+ *       200:
+ *         description: An SSE stream providing thumbnail generation progress updates.
+ *         content:
+ *           text/event-stream:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid source ID supplied.
+ *       500:
+ *         description: Internal server error.
+ */
 export function GET({ params }: APIEvent) {
   const sourceId = params.sourceId;
 

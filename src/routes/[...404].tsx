@@ -1,5 +1,10 @@
 import { A } from "@solidjs/router";
 
+/**
+ * A 404 Not Found page component.
+ * Displays a message indicating the page was not found and provides links to the home and about pages.
+ * @returns {JSX.Element} The rendered 404 page.
+ */
 export default function NotFound() {
   return (
     <main class="mx-auto p-4 text-center text-gray-700">

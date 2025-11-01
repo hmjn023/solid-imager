@@ -19,10 +19,33 @@ const UpdateCharacterBodySchema = z.object({
 });
 
 /**
- * キャラクターの詳細を取得します。
- *
- * @param param0 {id: number}
- * @returns キャラクター詳細
+ * @swagger
+ * /api/charactors/{id}:
+ *   get:
+ *     summary: Retrieve a specific character
+ *     description: Fetches details of a character by its ID.
+ *     tags:
+ *       - Characters
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the character to retrieve.
+ *     responses:
+ *       200:
+ *         description: Details of the character.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Character'
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Character not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -38,10 +61,39 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * キャラクターを更新します。
- *
- * @param param0 {id: number}
- * @returns 更新されたキャラクター
+ * @swagger
+ * /api/charactors/{id}:
+ *   put:
+ *     summary: Update a specific character
+ *     description: Updates an existing character with the provided data.
+ *     tags:
+ *       - Characters
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the character to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateCharacter'
+ *     responses:
+ *       200:
+ *         description: The updated character.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Character'
+ *       400:
+ *         description: Invalid ID or invalid input.
+ *       404:
+ *         description: Character not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -72,10 +124,29 @@ export async function PUT({ params, request }: APIEvent) {
 }
 
 /**
- * キャラクターを削除します。
- *
- * @param param0 {id: number}
- * @returns 削除結果
+ * @swagger
+ * /api/charactors/{id}:
+ *   delete:
+ *     summary: Delete a specific character
+ *     description: Deletes a character by its ID.
+ *     tags:
+ *       - Characters
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the character to delete.
+ *     responses:
+ *       200:
+ *         description: Character successfully deleted.
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Character not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);

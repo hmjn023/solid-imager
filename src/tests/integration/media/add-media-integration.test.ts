@@ -4,7 +4,7 @@ import { ZodError } from "zod";
 import { addMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
-import { medias, mediaSources } from "~/infrastructure/db/schema";
+import { mediaSources, medias } from "~/infrastructure/db/schema";
 
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
@@ -13,7 +13,7 @@ describe("addMedia Integration", () => {
   beforeEach(async () => {
     // 必要に応じて、以前のテストデータをクリーンアップします。
     await db.delete(medias).where(sql`true`);
-    
+
     // テスト用のmedia sourceを作成
     await db
       .insert(mediaSources)
@@ -43,6 +43,8 @@ describe("addMedia Integration", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     const result = await addMedia(newMediaData);
@@ -81,6 +83,8 @@ describe("addMedia Integration", () => {
       mediaType: "image" as const,
       width: 800,
       height: 600,
+      description: null,
+      sourceUrl: null,
     };
 
     await addMedia(newMediaData); // 最初のメディアを追加します。

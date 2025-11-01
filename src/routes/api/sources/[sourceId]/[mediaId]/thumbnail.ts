@@ -1,7 +1,7 @@
+import { promises as fs } from "node:fs";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
-import { getDriver } from "~/infrastructure/storage/factory";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -9,6 +9,50 @@ const MediaParamsSchema = z.object({
   mediaId: z.string().uuid(),
 });
 
+/**
+ * @swagger
+ * /api/sources/{sourceId}/{mediaId}/thumbnail:
+ *   get:
+ *     summary: Retrieve a thumbnail for a specific media
+ *     description: Delivers a generated thumbnail image for a given media file.
+ *     tags:
+ *       - Media
+ *       - Thumbnails
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media file.
+ *       - in: query
+ *         name: size
+ *         schema:
+ *           type: integer
+ *           description: Desired size of the thumbnail (e.g., 200, 400).
+ *     responses:
+ *       200:
+ *         description: The thumbnail image.
+ *         content:
+ *           image/webp:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       400:
+ *         description: Invalid source ID or media ID supplied.
+ *       404:
+ *         description: Thumbnail not found.
+ *       500:
+ *         description: Internal server error.
+ */
 export async function GET({ params }: APIEvent) {
   const parsedParams = MediaParamsSchema.safeParse(params);
 
@@ -23,11 +67,9 @@ export async function GET({ params }: APIEvent) {
   const { sourceId, mediaId } = parsedParams.data;
 
   try {
-    const thumbnailPath = getThumbnailPath(mediaId);
+    const thumbnailPath = getThumbnailPath(sourceId, mediaId);
 
-    const driver = getDriver(sourceId);
-
-    const thumbnailBuffer = await driver.get(thumbnailPath);
+    const thumbnailBuffer = await fs.readFile(thumbnailPath);
 
     return new Response(thumbnailBuffer, {
       status: 200,

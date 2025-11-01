@@ -3,10 +3,38 @@ import type { UUID } from "~/domain/shared/types";
 import { renameDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
- * ディレクトリ名を変更します。
- *
- * @param param0 {sourceId: UUID, directories: path}
- * @returns ディレクトリ名変更結果
+ * @swagger
+ * /api/sources/{sourceId}/directories/rename:
+ *   put:
+ *     summary: Rename a directory
+ *     description: Renames an existing directory within a specified media source.
+ *     tags:
+ *       - Directories
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RenameDirectoryRequest'
+ *     responses:
+ *       200:
+ *         description: Directory renamed successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/RenameDirectoryResponse'
+ *       400:
+ *         description: Invalid input or directory not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const sourceId = params.sourceId as UUID;

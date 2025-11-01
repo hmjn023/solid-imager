@@ -1,5 +1,9 @@
 import { createSignal } from "solid-js";
 
+/**
+ * A simple counter component that displays a button to increment a count.
+ * @returns {JSX.Element} The rendered counter button.
+ */
 export default function Counter() {
   const [count, setCount] = createSignal(0);
   return (

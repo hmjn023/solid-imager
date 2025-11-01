@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UnknownDbError } from "~/infrastructure/db/errors";
-import { selectRecentMedia } from "~/infrastructure/db/media-recent";
+import { selectRecentMedia } from "~/infrastructure/db/queries/media-recent";
 import { db } from "~/tests/setup"; // Import the mocked db
-
-vi.mock("~/infrastructure/db/media-recent");
 
 describe("selectRecentMedia", () => {
   beforeEach(() => {
@@ -18,56 +16,41 @@ describe("selectRecentMedia", () => {
 
   it("should return a list of recent media on success", async () => {
     const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValueOnce([media1]),
-      }),
-    };
-    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
-      mockDb.select().from().where().orderBy().limit()
-    );
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValueOnce([media1]),
+    });
     const result = await selectRecentMedia("source1", 1);
     expect(result).toEqual([media1]);
-    expect(mockDb.select).toHaveBeenCalled();
+    expect(db.select).toHaveBeenCalled();
   });
 
   it("should return an empty array if no recent media found", async () => {
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi.fn().mockResolvedValueOnce([]),
-      }),
-    };
-    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
-      mockDb.select().from().where().orderBy().limit()
-    );
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValueOnce([]),
+    });
     const result = await selectRecentMedia("source1", 1);
     expect(result).toEqual([]);
-    expect(mockDb.select).toHaveBeenCalled();
+    expect(db.select).toHaveBeenCalled();
   });
 
   it("should return UnknownDbError on failure", async () => {
-    const mockDb = {
-      select: vi.fn().mockReturnValue({
-        from: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        orderBy: vi.fn().mockReturnThis(),
-        limit: vi
-          .fn()
-          .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
-      }),
-    };
-    vi.mocked(selectRecentMedia).mockImplementation(async (_sourceId, _limit) =>
-      mockDb.select().from().where().orderBy().limit()
-    );
+    (db.select as vi.Mock).mockReturnValue({
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockReturnThis(),
+      limit: vi
+        .fn()
+        .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
+    });
     await expect(selectRecentMedia("source1", 1)).rejects.toBeInstanceOf(
       UnknownDbError
     );
-    expect(mockDb.select).toHaveBeenCalled();
+    expect(db.select).toHaveBeenCalled();
   });
 });

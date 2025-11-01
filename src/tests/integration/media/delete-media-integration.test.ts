@@ -4,7 +4,9 @@ import { ZodError } from "zod";
 import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
-import { medias, mediaSources } from "~/infrastructure/db/schema";
+import { mediaSources, medias } from "~/infrastructure/db/schema";
+
+const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
@@ -12,7 +14,7 @@ describe("deleteMedia Integration", () => {
 
   beforeAll(async () => {
     await db.delete(medias).where(sql`true`);
-    
+
     // テスト用のmedia sourceを作成
     await db
       .insert(mediaSources)
@@ -31,6 +33,8 @@ describe("deleteMedia Integration", () => {
       mediaType: "image",
       width: 800,
       height: 600,
+      description: "",
+      sourceUrl: "",
     };
     // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
@@ -57,7 +61,7 @@ describe("deleteMedia Integration", () => {
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
     const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
     await expect(deleteMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
-      /Media.*not found/
+      MEDIA_NOT_FOUND_PATTERN
     );
   });
 

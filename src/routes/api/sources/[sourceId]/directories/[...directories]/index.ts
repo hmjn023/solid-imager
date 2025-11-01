@@ -3,9 +3,43 @@ import type { UUID } from "~/domain/shared/types";
 import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
 
 /**
- *
- * @param param0 {sourceId: UUID, directories: path}
- * @returns 特定のディレクトリ下のすべてのメディアとディレクトリ
+ * @swagger
+ * /api/sources/{sourceId}/directories/{directories}:
+ *   get:
+ *     summary: Retrieve all media and directories under a specific directory
+ *     description: Fetches a list of all media files and subdirectories within a specified path under a media source.
+ *     tags:
+ *       - Directories
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: sourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: directories
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The complete relative path to the directory (e.g., 'folder1/subfolder2').
+ *     responses:
+ *       200:
+ *         description: A list of media and directories.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/DirectoryItem'
+ *       400:
+ *         description: Invalid source ID or directory path supplied.
+ *       404:
+ *         description: Media source or directory not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const sourceId = params.sourceId as UUID;

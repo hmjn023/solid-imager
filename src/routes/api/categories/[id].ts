@@ -20,10 +20,33 @@ const UpdateCategoryBodySchema = z.object({
 });
 
 /**
- * カテゴリの詳細を取得します。
- *
- * @param param0 {id: number}
- * @returns カテゴリ詳細
+ * @swagger
+ * /api/categories/{id}:
+ *   get:
+ *     summary: Retrieve a specific category
+ *     description: Fetches details of a category by its ID.
+ *     tags:
+ *       - Categories
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the category to retrieve.
+ *     responses:
+ *       200:
+ *         description: Details of the category.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Category not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -39,10 +62,39 @@ export async function GET({ params }: APIEvent) {
 }
 
 /**
- * カテゴリを更新します。
- *
- * @param param0 {id: number}
- * @returns 更新されたカテゴリ
+ * @swagger
+ * /api/categories/{id}:
+ *   put:
+ *     summary: Update a specific category
+ *     description: Updates an existing category with the provided data.
+ *     tags:
+ *       - Categories
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the category to update.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/UpdateCategory'
+ *     responses:
+ *       200:
+ *         description: The updated category.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       400:
+ *         description: Invalid ID or invalid input.
+ *       404:
+ *         description: Category not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);
@@ -74,10 +126,29 @@ export async function PUT({ params, request }: APIEvent) {
 }
 
 /**
- * カテゴリを削除します。
- *
- * @param param0 {id: number}
- * @returns 削除結果
+ * @swagger
+ * /api/categories/{id}:
+ *   delete:
+ *     summary: Delete a specific category
+ *     description: Deletes a category by its ID.
+ *     tags:
+ *       - Categories
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Numeric ID of the category to delete.
+ *     responses:
+ *       200:
+ *         description: Category successfully deleted.
+ *       400:
+ *         description: Invalid ID supplied.
+ *       404:
+ *         description: Category not found.
+ *       500:
+ *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
   const parsedParams = IdParamSchema.safeParse(params);

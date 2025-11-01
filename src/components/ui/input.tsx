@@ -3,8 +3,16 @@ import { splitProps } from "solid-js";
 
 import { cn } from "~/presentation/utils/cn";
 
+/**
+ * Props for the Input component, extending standard HTML input attributes.
+ */
 export type InputProps = JSX.InputHTMLAttributes<HTMLInputElement>;
-
+/**
+ * A customizable input component that extends standard HTML input functionality.
+ * It applies consistent styling and handles common input attributes.
+ * @param {InputProps} props - The properties for the input component.
+ * @returns {JSX.Element} The rendered input element.
+ */
 export function Input(props: InputProps) {
   const [local, rest] = splitProps(props, ["class"]);
   return (

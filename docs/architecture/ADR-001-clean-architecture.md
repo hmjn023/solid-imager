@@ -92,13 +92,15 @@ src/
    - Domain logic tested with pure functions (no mocking)
    - Application services mocked with infrastructure stubs
    - Infrastructure tested with integration tests
-   - **Enhanced by Effect-TS**: Effect-TS's functional approach and explicit error handling make units of logic even more testable and predictable.
+
+ Effect-TS's functional approach and explicit error handling make units of logic even more testable and predictable.
 
 2. **Maintainability**: Clear boundaries make code easier to understand
    - Developers immediately know where to find functionality
    - Changes to one layer don't cascade to others
    - Onboarding new developers is faster
-   - **Enhanced by Effect-TS**: Effect-TS promotes a consistent and type-safe way to handle effects and errors, leading to more robust and understandable code.
+
+ Effect-TS promotes a consistent and type-safe way to handle effects and errors, leading to more robust and understandable code.
 
 3. **Flexibility**: Infrastructure can be swapped without affecting business logic
    - Switch from PostgreSQL to MongoDB without changing domain
@@ -142,8 +144,8 @@ src/
 4. **✅ Reduced Duplication**: 24% fewer files (82 → 58)
 5. **✅ Clearer Responsibilities**: Each file has single, well-defined purpose
 6. **✅ Better Onboarding**: New developers understand structure immediately
-7. **✅ Enhanced Type Safety**: Effect-TS provides robust type inference and compile-time error checking, reducing runtime bugs.
-8. **✅ Consistent Error Handling**: Effect-TS enforces a standardized approach to error management, improving predictability and maintainability.
+
+ Effect-TS enforces a standardized approach to error management, improving predictability and maintainability.
 
 ### Negative
 
