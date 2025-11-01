@@ -55,7 +55,7 @@ describe("tags and mediaTags queries Integration", () => {
     const ExpectedTagCount = newTags.length;
     await db.insert(tags).values({ name: "tag1" }); // Pre-existing tag
 
-    await insertMediaTags(testMediaId, newTags);
+    await insertMediaTags(testMediaId, newTags, "manual");
 
     // Verification
     const createdTags = await db
@@ -73,10 +73,9 @@ describe("tags and mediaTags queries Integration", () => {
 
   it("should not create duplicate tags or associations", async () => {
     const tagsToInsert = ["unique-tag1", "unique-tag2"];
-    await insertMediaTags(testMediaId, tagsToInsert);
+    await insertMediaTags(testMediaId, tagsToInsert, "manual");
 
-    // Try to insert again
-    await insertMediaTags(testMediaId, tagsToInsert);
+    await insertMediaTags(testMediaId, tagsToInsert, "manual");
 
     const associated = await db
       .select()

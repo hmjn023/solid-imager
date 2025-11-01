@@ -14,7 +14,8 @@ import { ConstraintError, UnknownDbError } from "../errors";
  */
 export const insertMediaTags = async (
   mediaId: string,
-  tagsToInsert: string[]
+  tagsToInsert: string[],
+  source = "manual"
 ): Promise<void> => {
   try {
     await db.transaction(async (tx) => {
@@ -39,6 +40,7 @@ export const insertMediaTags = async (
       const mediaTagsToInsert = allTags.map((t) => ({
         mediaId,
         tagId: t.id,
+        source,
       }));
 
       if (mediaTagsToInsert.length > 0) {
