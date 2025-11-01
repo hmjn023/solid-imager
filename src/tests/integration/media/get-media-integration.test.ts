@@ -19,6 +19,8 @@ describe("getMedia Integration", () => {
     mediaType: "image",
     width: 800,
     height: 600,
+    description: "",
+    sourceUrl: "",
   };
 
   beforeAll(async () => {

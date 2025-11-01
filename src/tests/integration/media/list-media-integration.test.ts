@@ -20,6 +20,8 @@ describe("listMedia Integration", () => {
       mediaType: "image",
       width: 800,
       height: 600,
+      description: "",
+      sourceUrl: "",
     },
     {
       sourceId,
@@ -29,6 +31,8 @@ describe("listMedia Integration", () => {
       mediaType: "image",
       width: 1024,
       height: 768,
+      description: "",
+      sourceUrl: "",
     },
     {
       sourceId: "a0000000-0000-4000-8000-000000000000", // 別のsourceId
@@ -38,6 +42,8 @@ describe("listMedia Integration", () => {
       mediaType: "image",
       width: 800,
       height: 600,
+      description: "",
+      sourceUrl: "",
     },
   ];
 

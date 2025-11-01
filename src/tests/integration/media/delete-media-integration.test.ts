@@ -33,6 +33,8 @@ describe("deleteMedia Integration", () => {
       mediaType: "image",
       width: 800,
       height: 600,
+      description: "",
+      sourceUrl: "",
     };
     // データベースに初期メディアエントリを追加します。
     const addedMedia = await addMedia(initialMediaData);
