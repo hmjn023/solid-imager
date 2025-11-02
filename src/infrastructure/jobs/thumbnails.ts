@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
+import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import { getConfig } from "~/infrastructure/api-clients/config";
 import { selectMediaBySourceId } from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
@@ -60,10 +60,8 @@ export async function generateThumbnail(
 
   const inputPath = path.join(sourcePath, media.filePath);
   const outputPath = getThumbnailPath(sourceId, media.id);
-  await sharp(inputPath)
-    .resize(size, size, { fit: "inside", withoutEnlargement: true })
-    .webp({ quality })
-    .toFile(outputPath);
+
+  await ImageProcessor.generateThumbnail(inputPath, outputPath, size, quality);
 }
 
 /**
@@ -116,6 +114,8 @@ export async function generateThumbnailsForSource(
     const media = mediaItems.find((m) => m.id === job.mediaId);
     if (media) {
       await generateThumbnail(media, job.sourcePath, sourceId);
+      const mediaPath = path.join(job.sourcePath, media.filePath);
+      await ImageProcessor.extractMetadata(mediaPath, media.id);
     }
   });
 

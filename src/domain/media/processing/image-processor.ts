@@ -21,13 +21,16 @@ export const ImageProcessor = {
    * @param {number} _size - The desired size for the thumbnail (e.g., width or height, depending on implementation).
    * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
    */
-  generateThumbnail(
-    _mediaPath: string,
-    _outputPath: string,
-    _size: number
+  async generateThumbnail(
+    mediaPath: string,
+    outputPath: string,
+    size: number,
+    quality: number
   ): Promise<void> {
-    // TODO: Generate thumbnail from image
-    throw new Error("Not implemented");
+    await sharp(mediaPath)
+      .resize(size, size, { fit: "inside", withoutEnlargement: true })
+      .webp({ quality })
+      .toFile(outputPath);
   },
 
   /**
