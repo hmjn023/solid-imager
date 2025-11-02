@@ -23,10 +23,10 @@ describe("bulk-operations queries Integration", () => {
   let tagIds: number[];
 
   beforeAll(async () => {
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
       id: sourceId,
@@ -79,10 +79,10 @@ describe("bulk-operations queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should bulk update media descriptions", async () => {

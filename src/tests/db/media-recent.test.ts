@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { UnknownDbError } from "~/infrastructure/db/errors";
 import { selectRecentMedia } from "~/infrastructure/db/queries/media-recent";
-import { db } from "~/tests/setup"; // Import the mocked db
+import { db } from "~/infrastructure/db/index"; // Import the mocked db
 
 describe("selectRecentMedia", () => {
   beforeEach(() => {

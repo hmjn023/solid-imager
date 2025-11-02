@@ -22,8 +22,8 @@ describe("characters queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up
-    await db.delete(characters).where(sql`true`);
-    await db.delete(ips).where(sql`true`);
+    await db.delete(characters);
+    await db.delete(ips);
 
     // Seed IP
     const initialIp: NewIp = { name: "Test IP for Character" };
@@ -44,8 +44,8 @@ describe("characters queries Integration", () => {
 
   afterAll(async () => {
     // Clean up
-    await db.delete(characters).where(sql`true`);
-    await db.delete(ips).where(sql`true`);
+    await db.delete(characters);
+    await db.delete(ips);
   });
 
   it("should select all characters", async () => {

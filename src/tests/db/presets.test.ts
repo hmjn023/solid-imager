@@ -4,7 +4,7 @@ import {
   insertPreset,
   selectPresets,
 } from "~/infrastructure/db/queries/presets";
-import { db } from "~/tests/setup"; // Import the mocked db
+import { db } from "~/infrastructure/db/index"; // Import the mocked db
 
 describe("Preset Database Operations", () => {
   beforeEach(() => {

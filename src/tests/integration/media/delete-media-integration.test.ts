@@ -13,7 +13,7 @@ describe("deleteMedia Integration", () => {
   const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
 
     // テスト用のmedia sourceを作成
     await db
@@ -43,7 +43,7 @@ describe("deleteMedia Integration", () => {
 
   afterAll(async () => {
     // クリーンアップ
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
   });
 
   it("should successfully delete media from the database", async () => {

@@ -29,7 +29,7 @@ describe("updateMedia Integration", () => {
 
   beforeEach(async () => {
     // 以前のテストデータをクリーンアップします。
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
 
     // テスト用のmedia sourceを作成
     await db

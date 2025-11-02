@@ -19,9 +19,9 @@ describe("media-generation-info queries Integration", () => {
   let testMediaId: string;
 
   beforeAll(async () => {
-    await db.delete(mediaGenerationInfo).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaGenerationInfo);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     const source = await db
       .insert(mediaSources)
@@ -50,9 +50,9 @@ describe("media-generation-info queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(mediaGenerationInfo).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaGenerationInfo);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select media generation info by media ID", async () => {

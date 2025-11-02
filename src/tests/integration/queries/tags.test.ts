@@ -1,5 +1,5 @@
 import { eq, sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { insertMediaTags } from "~/infrastructure/db/queries/tags";
 import {
@@ -14,7 +14,7 @@ describe("tags and mediaTags queries Integration", () => {
   const testSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13";
   let testMediaId: string;
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     // Clean up
     await db.delete(mediaTags);
     await db.delete(tags);
@@ -42,7 +42,7 @@ describe("tags and mediaTags queries Integration", () => {
     testMediaId = inserted[0].id;
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     // Final cleanup
     await db.delete(mediaTags);
     await db.delete(tags);

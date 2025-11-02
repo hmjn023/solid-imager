@@ -15,8 +15,8 @@ describe("media-recent queries Integration", () => {
   const ExpectedMediaCount = 3; // Defined at top level
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
       id: sourceId,
@@ -58,8 +58,8 @@ describe("media-recent queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select the most recent media from the source", async () => {

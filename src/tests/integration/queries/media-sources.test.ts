@@ -22,14 +22,14 @@ describe("media-sources queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up previous test data
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaSources);
     // Seed initial data
     await db.insert(mediaSources).values(initialMediaSource);
   });
 
   afterAll(async () => {
     // Clean up all data
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaSources);
   });
 
   it("should select all media sources", async () => {

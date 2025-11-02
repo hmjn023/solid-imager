@@ -22,8 +22,8 @@ describe("media queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up previous test data
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     // Seed a media source for the media to belong to
     await db.insert(mediaSources).values({
@@ -48,8 +48,8 @@ describe("media queries Integration", () => {
 
   afterAll(async () => {
     // Clean up all data
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select media by its ID", async () => {

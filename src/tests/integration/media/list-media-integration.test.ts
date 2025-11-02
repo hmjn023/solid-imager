@@ -48,7 +48,7 @@ describe("listMedia Integration", () => {
   ];
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
 
     // テスト用のmedia sourcesを作成
     await db
@@ -75,7 +75,7 @@ describe("listMedia Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
   });
 
   it("should return all media files within the specified directory for the given sourceId", async () => {

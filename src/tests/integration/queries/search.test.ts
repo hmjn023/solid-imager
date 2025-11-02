@@ -21,10 +21,10 @@ describe("search queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     // Seed sources
     await db.insert(mediaSources).values([
@@ -90,10 +90,10 @@ describe("search queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should search media by query within a source", async () => {

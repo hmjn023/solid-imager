@@ -12,8 +12,8 @@ describe("media-random queries Integration", () => {
   const sourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16";
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
       id: sourceId,
@@ -44,8 +44,8 @@ describe("media-random queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select a random media from the source", async () => {

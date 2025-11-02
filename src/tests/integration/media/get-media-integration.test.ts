@@ -24,7 +24,7 @@ describe("getMedia Integration", () => {
   };
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
 
     // テスト用のmedia sourceを作成
     await db
@@ -42,7 +42,7 @@ describe("getMedia Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(medias).where(sql`true`);
+    await db.delete(medias);
   });
 
   it("should successfully retrieve media from the database", async () => {

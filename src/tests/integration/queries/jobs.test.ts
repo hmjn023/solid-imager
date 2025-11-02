@@ -8,8 +8,8 @@ describe("jobs queries Integration", () => {
   const sourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18";
 
   beforeAll(async () => {
-    await db.delete(jobs).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(jobs);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
       id: sourceId,
@@ -23,8 +23,8 @@ describe("jobs queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(jobs).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(jobs);
+    await db.delete(mediaSources);
   });
 
   it("should select jobs by source ID", async () => {
