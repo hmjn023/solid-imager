@@ -71,7 +71,7 @@ export default function MediaListPage() {
     formData.append("overwrite", String(options.overwrite));
     formData.append("autoIncrement", String(options.autoIncrement));
 
-    const url = `/api/sources/${params.mediaSourceId}`;
+    const url = `/api/sources/${params.mediaSourceId}/upload`;
     const response = await fetch(url, {
       method: "POST",
       body: formData,
