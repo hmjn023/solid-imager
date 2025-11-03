@@ -43,6 +43,8 @@ export function getCategoryById(id: number) {
   };
 }
 
+import type { UpdateCategoryBody } from "~/routes/api/categories/[id]";
+
 /**
  * Updates an existing category via the API.
  * @param {number} id - The ID of the category to update.
@@ -55,12 +57,7 @@ export function getCategoryById(id: number) {
  */
 export function updateCategory(
   id: number,
-  data: {
-    name?: string;
-    description?: string;
-    color?: string;
-    parentId?: number;
-  }
+  data: UpdateCategoryBody
 ) {
   const { name, description } = data;
   return {

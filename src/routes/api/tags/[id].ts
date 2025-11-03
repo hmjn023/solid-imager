@@ -10,6 +10,7 @@ import {
 const IdParamSchema = z.object({
   id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 // PUTリクエストボディのスキーマ
 const UpdateTagBodySchema = z.object({
@@ -18,6 +19,7 @@ const UpdateTagBodySchema = z.object({
   attribute: z.string().optional(),
   color: z.string().optional(),
 });
+export type UpdateTagBody = z.infer<typeof UpdateTagBodySchema>;
 
 /**
  * @swagger

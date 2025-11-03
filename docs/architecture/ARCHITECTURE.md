@@ -91,8 +91,6 @@ export const getMediaFromDatabase = async (id: string) => {
 - 複雑なワークフローを調整
 - トランザクション境界
 
- Effect-TSを使用して、非同期操作、エラーハンドリング、および依存関係の管理を型安全かつ宣言的に行います。
-
 **ファイル** (合計19):
 - ビジネス操作をオーケストレーションするサービスファイル:
   - `media-service.ts` - メディア管理操作
@@ -138,8 +136,6 @@ export async function processMedia(sourceId: string, filePath: string) {
 - アプリケーションレイヤーから独立
 - 外部システム (DB、ファイルシステム、API) を処理
 - アダプターとドライバーを含む
-
- Effect-TSを使用して、外部システムとのI/O操作やエラー発生の可能性のある処理を型安全に表現し、アプリケーションレイヤーに伝播します。
 
 **ファイル** (合計21):
 - `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)

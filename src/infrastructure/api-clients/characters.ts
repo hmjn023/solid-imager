@@ -41,6 +41,8 @@ export function getCharacterById(id: number) {
   };
 }
 
+import type { UpdateCharacterBody } from "~/routes/api/charactors/[id]";
+
 /**
  * Updates an existing character via the API.
  * @param {number} id - The ID of the character to update.
@@ -52,11 +54,7 @@ export function getCharacterById(id: number) {
  */
 export function updateCharacter(
   id: number,
-  data: {
-    name?: string;
-    ipId?: number;
-    description?: string;
-  }
+  data: UpdateCharacterBody
 ) {
   const { name, description } = data;
   return {

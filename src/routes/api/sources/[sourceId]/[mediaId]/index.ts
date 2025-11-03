@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
+import { updateMediaRequestSchema } from "~/domain/media/schemas";
 import type { UUID } from "~/domain/shared/types";
 import { getMedia, updateMedia } from "~/infrastructure/api-clients/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
@@ -11,13 +12,8 @@ const MediaParamsSchema = z.object({
   sourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
+export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
-// PUTリクエストボディのスキーマ（例、必要に応じて調整）
-const UpdateMediaBodySchema = z.object({
-  description: z.string().optional(),
-  sourceUrl: z.string().url().optional(),
-  // 更新可能な他のフィールドを追加
-});
 
 /**
  * @swagger
@@ -143,7 +139,7 @@ export async function PUT({ params, request }: APIEvent) {
   const { sourceId, mediaId } = parsedParams.data;
 
   const body = await request.json();
-  const parsedBody = UpdateMediaBodySchema.safeParse(body);
+  const parsedBody = updateMediaRequestSchema.safeParse(body);
   if (!parsedBody.success) {
     return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
       status: 400,

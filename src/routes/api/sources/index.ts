@@ -27,6 +27,11 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
  *       500:
  *         description: Internal server error.
  */
+/**
+ * Handles GET requests to retrieve all media sources.
+ * It fetches the media sources from the database and returns them as a JSON response.
+ * @returns {Promise<Response>} A Response object containing the list of media sources or an error message.
+ */
 export async function GET() {
   try {
     const result = await getMediaSources();
@@ -70,6 +75,13 @@ export async function GET() {
  *               $ref: '#/components/schemas/MediaSource'
  *       500:
  *         description: Internal server error.
+ */
+/**
+ * Handles POST requests to create a new media source.
+ * It creates a new media source in the database and, if it's a local source,
+ * triggers a background job to register existing media.
+ * @param {APIEvent} event - The API event object, containing the request.
+ * @returns {Promise<Response>} A Response object containing the newly created media source or an error message.
  */
 export async function POST({ request }: APIEvent) {
   const { name, description, type, connectionInfo } = await request.json();

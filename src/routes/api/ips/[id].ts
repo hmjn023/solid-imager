@@ -10,12 +10,14 @@ import {
 const IdParamSchema = z.object({
   id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 // PUTリクエストボディのスキーマ
 const UpdateIpBodySchema = z.object({
   name: z.string().optional(),
   description: z.string().optional(),
 });
+export type UpdateIpBody = z.infer<typeof UpdateIpBodySchema>;
 
 /**
  * @swagger
@@ -114,7 +116,7 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const { name, description } = parsedBody.data;
 
-  const updatedIp = await updateIp(id, name, description);
+  const updatedIp = await updateIp(id, { name, description });
   return updatedIp;
 }
 

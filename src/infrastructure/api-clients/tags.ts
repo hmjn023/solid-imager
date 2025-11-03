@@ -39,6 +39,8 @@ export function getTagById(id: number) {
   return { id, name: `Tag ${id}`, description: `Description for tag ${id}` };
 }
 
+import type { UpdateTagBody } from "~/routes/api/tags/[id]";
+
 /**
  * Updates an existing tag via the API.
  * @param {number} id - The ID of the tag to update.
@@ -51,12 +53,7 @@ export function getTagById(id: number) {
  */
 export function updateTag(
   id: number,
-  data: {
-    name?: string;
-    description?: string;
-    attribute?: string;
-    color?: string;
-  }
+  data: UpdateTagBody
 ) {
   const { name, description } = data;
   return {

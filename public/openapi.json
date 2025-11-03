@@ -1743,54 +1743,6 @@
             "description": "Internal server error."
           }
         }
-      },
-      "post": {
-        "summary": "Upload media to a specific media source",
-        "description": "Uploads a new media file to the specified media source.",
-        "tags": [
-          "Media Sources",
-          "Media"
-        ],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "sourceId",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "UUID of the media source to upload to."
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/UploadRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Media uploaded successfully.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/UploadResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid input or file conflict."
-          },
-          "500": {
-            "description": "Internal server error."
-          }
-        }
       }
     },
     "/api/sources/{sourceId}/search": {
@@ -2010,6 +1962,56 @@
           },
           "400": {
             "description": "Invalid source ID supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{sourceId}/upload": {
+      "post": {
+        "summary": "Upload media to a specific media source",
+        "description": "Uploads a new media file to the specified media source.",
+        "tags": [
+          "Media Sources",
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to upload to."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or file conflict."
           },
           "500": {
             "description": "Internal server error."

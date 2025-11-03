@@ -8,6 +8,7 @@ const MediaParamsSchema = z.object({
   sourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
+export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
