@@ -205,4 +205,3 @@ export async function DELETE({ params }: APIEvent) {
     });
   }
 }
-
