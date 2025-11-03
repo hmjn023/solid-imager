@@ -5,7 +5,7 @@
  * This file serves as a placeholder for future tag domain schemas
  */
 
-import { boolean, number, string, z } from "zod";
+import { z } from "zod";
 
 export const tagDataSchema = z.object({
   name: z.string(),

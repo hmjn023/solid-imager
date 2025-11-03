@@ -16,16 +16,16 @@ function _processCommentChunk(
       const parsedPrompt = workflowSchema.parse(JSON.parse(chunk.text));
       data.prompt = parsedPrompt;
       const extracted = extractTagsFromWorkflow(parsedPrompt);
-        data.tags.push(
-          ...extracted.positiveTags.map((t) => ({
-            name: t.name,
-            type: "positive",
-          })),
-          ...extracted.negativeTags.map((t) => ({
-            name: t.name,
-            type: "negative",
-          })),
-        );
+      data.tags.push(
+        ...extracted.positiveTags.map((t) => ({
+          name: t.name,
+          type: "positive",
+        })),
+        ...extracted.negativeTags.map((t) => ({
+          name: t.name,
+          type: "negative",
+        }))
+      );
     } catch (_error) {
       data.prompt = chunk.text;
     }
