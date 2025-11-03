@@ -30,6 +30,8 @@ export function getIpById(id: number) {
   return { id, name: `IP ${id}`, description: `Description for IP ${id}` };
 }
 
+import type { UpdateIpBody } from "~/routes/api/ips/[id]";
+
 /**
  * Updates an existing Intellectual Property (IP) via the API.
  * @param {number} id - The ID of the IP to update.
@@ -37,7 +39,8 @@ export function getIpById(id: number) {
  * @param {string} [description] - The new description for the IP.
  * @returns {object} The updated IP object.
  */
-export function updateIp(id: number, name?: string, description?: string) {
+export function updateIp(id: number, data: UpdateIpBody) {
+  const { name, description } = data;
   return {
     id,
     name: name || `IP ${id}`,

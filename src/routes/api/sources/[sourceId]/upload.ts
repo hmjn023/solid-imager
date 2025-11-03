@@ -8,6 +8,7 @@ const HTTP_STATUS_BAD_REQUEST = 400;
 const SourceParamsSchema = z.object({
   sourceId: z.string().uuid(),
 });
+export type SourceParams = z.infer<typeof SourceParamsSchema>;
 
 /**
  * @swagger

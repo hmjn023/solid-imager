@@ -33,10 +33,16 @@ export type CreateSourceData = {
 };
 /**
  * Represents the data required to update an existing media source.
- * It has the same structure as `CreateSourceData`.
+ * This type alias is used to ensure consistency between create and update operations.
  */
 export type UpdateSourceData = CreateSourceData;
-// Server functions - これらはサーバー側でのみ実行されます
+
+/**
+ * Fetches all media sources from the database.
+ * This function is intended to be executed on the server.
+ * The result is cached.
+ * @returns {Promise<MediaSource[]>} A promise that resolves to an array of media sources.
+ */
 const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
   "use server";
   const { selectMediaSources } = await import(
@@ -45,6 +51,12 @@ const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
   return selectMediaSources();
 }, "fetchSources");
 
+/**
+ * Inserts a new media source into the database.
+ * This function is intended to be executed on the server.
+ * @param {NewMediaSource} sourceData - The data for the new media source to create.
+ * @returns {Promise<MediaSource[]>} A promise that resolves to an array containing the newly created media source.
+ */
 const createSourceServer = async (
   sourceData: NewMediaSource
 ): Promise<MediaSource[]> => {
@@ -55,6 +67,13 @@ const createSourceServer = async (
   return insertMediaSource(sourceData);
 };
 
+/**
+ * Updates an existing media source in the database.
+ * This function is intended to be executed on the server.
+ * @param {string} sourceId - The UUID of the media source to update.
+ * @param {MediaSource} sourceData - An object containing the updated data for the media source.
+ * @returns {Promise<MediaSource[]>} A promise that resolves to an array containing the updated media source.
+ */
 const updateSourceServer = async (
   sourceId: string,
   sourceData: MediaSource
@@ -66,6 +85,13 @@ const updateSourceServer = async (
   return updateMediaSource(sourceId, sourceData);
 };
 
+/**
+ * Fetches a single media source by its UUID from the database.
+ * This function is intended to be executed on the server.
+ * The result is cached.
+ * @param {string} sourceId - The UUID of the media source to fetch.
+ * @returns {Promise<(MediaSource | undefined)[]>} A promise that resolves to an array containing the media source if found, otherwise undefined.
+ */
 const fetchSourceByIdServer = cache(
   async (sourceId: string): Promise<(MediaSource | undefined)[]> => {
     "use server";
@@ -77,6 +103,12 @@ const fetchSourceByIdServer = cache(
   "fetchSourceById"
 );
 
+/**
+ * Deletes a media source from the database by its UUID.
+ * This function is intended to be executed on the server.
+ * @param {string} sourceId - The UUID of the media source to delete.
+ * @returns {Promise<MediaSource[]>} A promise that resolves to an array containing the deleted media source.
+ */
 const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
   "use server";
   const { deleteMediaSource } = await import(
