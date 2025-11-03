@@ -73,7 +73,7 @@ describe("tags and mediaTags queries Integration", () => {
       .from(mediaTags)
       .where(eq(mediaTags.mediaId, testMediaId));
     expect(associated.length).toBe(ExpectedTagCount);
-    expect(associated.every(t => t.tagType === "positive")).toBe(true);
+    expect(associated.every((t) => t.tagType === "positive")).toBe(true);
   });
 
   it("should not create duplicate tags or associations", async () => {

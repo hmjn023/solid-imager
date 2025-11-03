@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
-import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";
 import { db } from "~/infrastructure/db/index"; // Import the mocked db
+import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";
 
 describe("selectRandomMedia", () => {
   beforeEach(() => {

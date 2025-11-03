@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
