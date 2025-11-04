@@ -70,35 +70,35 @@ const createSourceServer = async (
 /**
  * Updates an existing media source in the database.
  * This function is intended to be executed on the server.
- * @param {string} sourceId - The UUID of the media source to update.
+ * @param {string} mediaSourceId - The UUID of the media source to update.
  * @param {MediaSource} sourceData - An object containing the updated data for the media source.
  * @returns {Promise<MediaSource[]>} A promise that resolves to an array containing the updated media source.
  */
 const updateSourceServer = async (
-  sourceId: string,
+  mediaSourceId: string,
   sourceData: MediaSource
 ): Promise<MediaSource[]> => {
   "use server";
   const { updateMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return updateMediaSource(sourceId, sourceData);
+  return updateMediaSource(mediaSourceId, sourceData);
 };
 
 /**
  * Fetches a single media source by its UUID from the database.
  * This function is intended to be executed on the server.
  * The result is cached.
- * @param {string} sourceId - The UUID of the media source to fetch.
+ * @param {string} mediaSourceId - The UUID of the media source to fetch.
  * @returns {Promise<(MediaSource | undefined)[]>} A promise that resolves to an array containing the media source if found, otherwise undefined.
  */
 const fetchSourceByIdServer = cache(
-  async (sourceId: string): Promise<(MediaSource | undefined)[]> => {
+  async (mediaSourceId: string): Promise<(MediaSource | undefined)[]> => {
     "use server";
     const { selectMediaSourceById } = await import(
       "~/infrastructure/db/queries/media-sources"
     );
-    return selectMediaSourceById(sourceId);
+    return selectMediaSourceById(mediaSourceId);
   },
   "fetchSourceById"
 );
@@ -106,15 +106,17 @@ const fetchSourceByIdServer = cache(
 /**
  * Deletes a media source from the database by its UUID.
  * This function is intended to be executed on the server.
- * @param {string} sourceId - The UUID of the media source to delete.
+ * @param {string} mediaSourceId - The UUID of the media source to delete.
  * @returns {Promise<MediaSource[]>} A promise that resolves to an array containing the deleted media source.
  */
-const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
+const deleteSourceServer = async (
+  mediaSourceId: string
+): Promise<MediaSource[]> => {
   "use server";
   const { deleteMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return deleteMediaSource(sourceId);
+  return deleteMediaSource(mediaSourceId);
 };
 
 /**
@@ -137,7 +139,7 @@ export const MediaSourceService = {
   /**
    * Updates an existing media source on the server.
    * This function is executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to update.
+   * @param {string} mediaSourceId - The ID of the media source to update.
    * @param {MediaSource} sourceData - The updated data for the media source.
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the updated media source.
    */
@@ -145,14 +147,14 @@ export const MediaSourceService = {
   /**
    * Fetches a specific media source by its ID from the server.
    * This function is cached and executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to fetch.
+   * @param {string} mediaSourceId - The ID of the media source to fetch.
    * @returns {Promise<(MediaSource | undefined)[]>} A promise that resolves with an array containing the media source, or undefined if not found.
    */
   fetchSourceById: fetchSourceByIdServer,
   /**
    * Deletes a media source from the server.
    * This function is executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to delete.
+   * @param {string} mediaSourceId - The ID of the media source to delete.
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the deleted media source.
    */
   deleteSource: deleteSourceServer,

@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { directoryPathSchema } from "~/domain/media/schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { mediaSourceIdSchema } from "~/domain/sources/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("listMedia Contract", () => {
   it("should return an array of Media objects for a valid directoryPath", () => {
-    const sourceId = "b0000000-0000-4000-8000-000000000000";
+    const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
     const directoryPath = "/path/to/media/folder";
 
     // Validate with Zod schema
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(mediaSourceId);
     directoryPathSchema.parse(directoryPath);
 
     // Placeholder for the actual listMedia function call
-    // const result = await listMedia(sourceId, directoryPath);
+    // const result = await listMedia(mediaSourceId, directoryPath);
     const result: Media[] = [
       {
         id: "mock-uuid-1",
@@ -26,7 +26,7 @@ describe("listMedia Contract", () => {
         mediaType: "image",
         width: 800,
         height: 600,
-        sourceId,
+        mediaSourceId,
         indexedAt: new Date(),
       },
       {
@@ -39,7 +39,7 @@ describe("listMedia Contract", () => {
         mediaType: "video",
         width: 1280,
         height: 720,
-        sourceId,
+        mediaSourceId,
         indexedAt: new Date(),
       },
     ];
@@ -51,11 +51,11 @@ describe("listMedia Contract", () => {
   });
 
   it("should return an empty array if directoryPath contains no media files", () => {
-    const _sourceId = "b0000000-0000-4000-8000-000000000000";
+    const _mediaSourceId = "b0000000-0000-4000-8000-000000000000";
     const _directoryPath = "/path/to/empty/folder";
 
     // Placeholder for the actual listMedia function call
-    // const result = await listMedia(sourceId, directoryPath);
+    // const result = await listMedia(mediaSourceId, directoryPath);
     const result: Media[] = [];
 
     expect(result).toBeDefined();
@@ -64,14 +64,14 @@ describe("listMedia Contract", () => {
   });
 
   it("should throw a ZodError if directoryPath is invalid or inaccessible", () => {
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _mediaSourceId = "b0000000-0000-0000-0000-000000000000";
     const directoryPath = ""; // Invalid path
     expect(() => directoryPathSchema.parse(directoryPath)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", () => {
-    const sourceId = "invalid-source-id-format";
+  it("should throw a ZodError for an invalid mediaSourceId format", () => {
+    const mediaSourceId = "invalid-source-id-format";
     const _directoryPath = "/path/to/media/folder";
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(mediaSourceId)).toThrow(ZodError);
   });
 });

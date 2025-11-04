@@ -7,7 +7,7 @@ const MEDIA_ID = "... pre-existing-media-id ...";
 const DIRECTORY_PATH = "... pre-existing-directory ...";
 
 test.describe("Media API", () => {
-  test("GET /api/sources/:sourceId/directories/[...directories] should list media", async ({
+  test("GET /api/sources/:mediaSourceId/directories/[...directories] should list media", async ({
     request,
   }) => {
     const response = await request.get(
@@ -18,7 +18,7 @@ test.describe("Media API", () => {
     expect(Array.isArray(mediaList)).toBeTruthy();
   });
 
-  test("GET /api/sources/:sourceId/media/:mediaId should get a media item", async ({
+  test("GET /api/sources/:mediaSourceId/media/:mediaId should get a media item", async ({
     request,
   }) => {
     const response = await request.get(
@@ -29,7 +29,7 @@ test.describe("Media API", () => {
     expect(media.id).toBe(MEDIA_ID);
   });
 
-  test("PUT /api/sources/:sourceId/media/:mediaId should update a media item", async ({
+  test("PUT /api/sources/:mediaSourceId/media/:mediaId should update a media item", async ({
     request,
   }) => {
     const newDescription = `Updated at ${new Date().toISOString()}`;
@@ -46,7 +46,7 @@ test.describe("Media API", () => {
 
   // 注: DELETEテストは通常、新しいアイテムを作成してから削除します。
   // これは、ベースとなるテストデータを永続的に変更するのを避けるためです。
-  test("DELETE /api/sources/:sourceId/media/:mediaId should delete a media item", async ({
+  test("DELETE /api/sources/:mediaSourceId/media/:mediaId should delete a media item", async ({
     request,
   }) => {
     // このテストは、サンプルメディアアイテムの削除を避けるためにスキップされています。

@@ -1,5 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 import { renameDirectory } from "~/infrastructure/api-clients/directories";
 
 /**

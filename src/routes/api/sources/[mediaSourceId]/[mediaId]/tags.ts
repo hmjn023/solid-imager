@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 import { getMediaTags } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ

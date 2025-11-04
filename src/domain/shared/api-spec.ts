@@ -58,7 +58,7 @@
  *         id:
  *           type: string
  *           format: uuid
- *         sourceId:
+ *         mediaSourceId:
  *           type: string
  *           format: uuid
  *         filePath:
@@ -274,7 +274,7 @@
  *     MediaSourceStatus:
  *       type: object
  *       properties:
- *         sourceId:
+ *         mediaSourceId:
  *           type: string
  *           format: uuid
  *           description: The ID of the media source.

@@ -1,16 +1,16 @@
 import { useParams } from "@solidjs/router";
 import { createMemo, createResource, Show } from "solid-js";
 import { getRequestEvent } from "solid-js/web";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 import type { Media as MediaType } from "~/infrastructure/db/schema";
 
 async function fetchMedia(
-  sourceId: UUID,
+  mediaSourceId: UUID,
   mediaId: UUID,
   origin: string
 ): Promise<MediaType> {
   const response = await fetch(
-    `${origin}/api/sources/${sourceId}/${mediaId}/details`
+    `${origin}/api/sources/${mediaSourceId}/${mediaId}/details`
   );
   if (!response.ok) {
     throw new Error("Failed to fetch media details");
@@ -21,16 +21,16 @@ async function fetchMedia(
 export default function Media() {
   const params = useParams();
   const mediaParams = createMemo(() => ({
-    sourceId: params.mediaSourceId as UUID,
+    mediaSourceId: params.mediaSourceId as UUID,
     mediaId: params.mediaId as UUID,
   }));
 
-  const [media] = createResource(mediaParams, ({ sourceId, mediaId }) => {
+  const [media] = createResource(mediaParams, ({ mediaSourceId, mediaId }) => {
     const event = getRequestEvent();
     const origin = event?.request.url
       ? new URL(event.request.url).origin
       : "http://localhost:3000";
-    return fetchMedia(sourceId, mediaId, origin);
+    return fetchMedia(mediaSourceId, mediaId, origin);
   });
 
   return (

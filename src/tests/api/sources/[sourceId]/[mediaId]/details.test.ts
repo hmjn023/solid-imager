@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 
-describe("GET /api/sources/:sourceId/:mediaId/details", () => {
+describe("GET /api/sources/:mediaSourceId/:mediaId/details", () => {
   it("should return media details", () => {
-    const sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after GET function is available
-    // const result = await GET({ params: { sourceId, mediaId } });
+    // const result = await GET({ params: { mediaSourceId, mediaId } });
     const result = {
       id: mediaId,
-      sourceId,
+      mediaSourceId,
       filePath: "/path/to/file.jpg",
       fileName: "file.jpg",
     };
@@ -23,30 +23,30 @@ describe("GET /api/sources/:sourceId/:mediaId/details", () => {
     // TODO: Test not found scenario
     const _fakeMediaId = "ffffffff-ffff-ffff-ffff-ffffffffffff" as UUID;
 
-    // await expect(GET({ params: { sourceId: '...', mediaId: fakeMediaId } })).rejects.toThrow('not found');
+    // await expect(GET({ params: { mediaSourceId: '...', mediaId: fakeMediaId } })).rejects.toThrow('not found');
   });
 
   it("should throw error for invalid UUID format", () => {
     // TODO: Test validation
     const _invalidId = "invalid-uuid";
 
-    // await expect(GET({ params: { sourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
+    // await expect(GET({ params: { mediaSourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
   });
 });
 
-describe("PUT /api/sources/:sourceId/:mediaId/details", () => {
+describe("PUT /api/sources/:mediaSourceId/:mediaId/details", () => {
   it("should update media details", () => {
-    const sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const updateData = {
       fileName: "updated-file.jpg",
     };
 
     // TODO: Implement after PUT function is available
-    // const result = await PUT({ params: { sourceId, mediaId }, request: new Request('', { method: 'PUT', body: JSON.stringify(updateData) }) });
+    // const result = await PUT({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'PUT', body: JSON.stringify(updateData) }) });
     const result = {
       id: mediaId,
-      sourceId,
+      mediaSourceId,
       ...updateData,
     };
 
@@ -58,7 +58,7 @@ describe("PUT /api/sources/:sourceId/:mediaId/details", () => {
     // TODO: Test not found scenario
     const _fakeMediaId = "ffffffff-ffff-ffff-ffff-ffffffffffff" as UUID;
 
-    // await expect(PUT({ params: { sourceId: '...', mediaId: fakeMediaId }, request: ... })).rejects.toThrow('not found');
+    // await expect(PUT({ params: { mediaSourceId: '...', mediaId: fakeMediaId }, request: ... })).rejects.toThrow('not found');
   });
 
   it("should throw error for invalid update data", () => {

@@ -3,7 +3,7 @@ import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { updateMediaRequestSchema } from "~/domain/media/schemas";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 import { getMedia, updateMedia } from "~/infrastructure/api-clients/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 

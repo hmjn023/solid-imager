@@ -26,48 +26,48 @@ export type JobStats = {
   errors: { file: string; reason: string }[];
   status: "idle" | "processing" | "completed";
 };
-// sourceIdごとのジョブ統計を保存するためにMapを使用します。
+// mediaSourceIdごとのジョブ統計を保存するためにMapを使用します。
 const jobStatsMap = new Map<string, JobStats>();
 const jobQueueMap = new Map<string, ThumbnailJob[]>();
 
 /**
  * Initializes job statistics for a given source ID.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {JobStats} The initialized job statistics object.
  */
-function initializeJobStats(sourceId: string): JobStats {
+function initializeJobStats(mediaSourceId: string): JobStats {
   const newStats = {
     total: 0,
     processed: 0,
     errors: [],
     status: "idle" as "idle" | "processing" | "completed",
   };
-  jobStatsMap.set(sourceId, newStats);
+  jobStatsMap.set(mediaSourceId, newStats);
   return newStats;
 }
 
 /**
  * Retrieves the current job statistics for a given source ID.
  * If no stats exist for the source, it initializes them.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {JobStats} The job statistics object for the specified source.
  */
-export function getThumbnailJobStats(sourceId: string): JobStats {
-  return jobStatsMap.get(sourceId) || initializeJobStats(sourceId);
+export function getThumbnailJobStats(mediaSourceId: string): JobStats {
+  return jobStatsMap.get(mediaSourceId) || initializeJobStats(mediaSourceId);
 }
 
 /**
  * Adds a list of thumbnail jobs to the queue for a specific source.
  * Updates the job statistics accordingly.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {ThumbnailJob[]} jobs - An array of thumbnail jobs to add.
  */
-export function addJobsToQueue(sourceId: string, jobs: ThumbnailJob[]) {
-  const currentQueue = jobQueueMap.get(sourceId) || [];
-  jobQueueMap.set(sourceId, [...currentQueue, ...jobs]);
+export function addJobsToQueue(mediaSourceId: string, jobs: ThumbnailJob[]) {
+  const currentQueue = jobQueueMap.get(mediaSourceId) || [];
+  jobQueueMap.set(mediaSourceId, [...currentQueue, ...jobs]);
 
-  const currentStats = getThumbnailJobStats(sourceId);
-  jobStatsMap.set(sourceId, {
+  const currentStats = getThumbnailJobStats(mediaSourceId);
+  jobStatsMap.set(mediaSourceId, {
     ...currentStats,
     total: currentStats.total + jobs.length,
   });
@@ -75,40 +75,43 @@ export function addJobsToQueue(sourceId: string, jobs: ThumbnailJob[]) {
 
 /**
  * Starts processing the job queue for a specific source.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {(job: ThumbnailJob) => Promise<void>} processor - The function to process each job.
  */
 export function startJobQueue(
-  sourceId: string,
+  mediaSourceId: string,
   processor: (job: ThumbnailJob) => Promise<void>
 ) {
-  const currentStats = getThumbnailJobStats(sourceId);
+  const currentStats = getThumbnailJobStats(mediaSourceId);
   if (currentStats.status === "processing") {
     return;
   }
 
-  jobStatsMap.set(sourceId, { ...currentStats, status: "processing" });
+  jobStatsMap.set(mediaSourceId, { ...currentStats, status: "processing" });
 
   const run = async () => {
-    let queue = jobQueueMap.get(sourceId) || [];
+    let queue = jobQueueMap.get(mediaSourceId) || [];
     while (queue.length > 0) {
       const job = queue.shift();
       try {
         await processor(job);
       } catch (e: unknown) {
-        const stats = getThumbnailJobStats(sourceId);
-        jobStatsMap.set(sourceId, {
+        const stats = getThumbnailJobStats(mediaSourceId);
+        jobStatsMap.set(mediaSourceId, {
           ...stats,
           errors: [...stats.errors, { file: job.mediaId, reason: e.message }],
         });
       }
-      const stats = getThumbnailJobStats(sourceId);
-      jobStatsMap.set(sourceId, { ...stats, processed: stats.processed + 1 });
-      queue = jobQueueMap.get(sourceId) || []; // キューが変更された場合に備えて、キューを再フェッチします。
+      const stats = getThumbnailJobStats(mediaSourceId);
+      jobStatsMap.set(mediaSourceId, {
+        ...stats,
+        processed: stats.processed + 1,
+      });
+      queue = jobQueueMap.get(mediaSourceId) || []; // キューが変更された場合に備えて、キューを再フェッチします。
     }
 
-    const stats = getThumbnailJobStats(sourceId);
-    jobStatsMap.set(sourceId, { ...stats, status: "completed" });
+    const stats = getThumbnailJobStats(mediaSourceId);
+    jobStatsMap.set(mediaSourceId, { ...stats, status: "completed" });
   };
 
   run();
@@ -116,9 +119,9 @@ export function startJobQueue(
 
 /**
  * Resets the job queue and statistics for a specific source.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  */
-export function resetJobQueue(sourceId: string) {
-  jobQueueMap.delete(sourceId);
-  jobStatsMap.delete(sourceId);
+export function resetJobQueue(mediaSourceId: string) {
+  jobQueueMap.delete(mediaSourceId);
+  jobStatsMap.delete(mediaSourceId);
 }

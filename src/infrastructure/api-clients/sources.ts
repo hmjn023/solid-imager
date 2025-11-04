@@ -28,11 +28,11 @@ export function getMediaSources() {
 
 /**
  * Fetches a all media by its SouceID from the MediaeService.
- * @param {string} sourceId - The ID of the media source to fetch.
+ * @param {string} mediaSourceId - The ID of the media source to fetch.
  * @returns {Promise<(Media | undefined)[]>} A promise that resolves with an array containing the media source, or undefined if not found.
  */
-export function getAllMediaBySourceId(sourceId: string) {
-  return MediaService.getAllMedia(sourceId);
+export function getAllMediaBySourceId(mediaSourceId: string) {
+  return MediaService.getAllMedia(mediaSourceId);
 }
 
 /**
@@ -57,35 +57,35 @@ export async function createMediaSource(mediaSource: NewMediaSource) {
 
 /**
  * Updates an existing media source using the MediaSourceService.
- * @param {string} sourceId - The ID of the media source to update.
+ * @param {string} mediaSourceId - The ID of the media source to update.
  * @param {Partial<NewMediaSource>} data - The partial data to update the media source with.
  * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the updated media source.
  */
 export function updateMediaSource(
-  sourceId: string,
+  mediaSourceId: string,
   data: Partial<NewMediaSource>
 ) {
-  return MediaSourceService.updateSource(sourceId, data);
+  return MediaSourceService.updateSource(mediaSourceId, data);
 }
 
 /**
  * Deletes a media source using the MediaSourceService.
- * @param {string} sourceId - The ID of the media source to delete.
+ * @param {string} mediaSourceId - The ID of the media source to delete.
  * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the deleted media source.
  */
-export function deleteMediaSource(sourceId: string) {
-  return MediaSourceService.deleteSource(sourceId);
+export function deleteMediaSource(mediaSourceId: string) {
+  return MediaSourceService.deleteSource(mediaSourceId);
 }
 
 /**
  * Tests the connection to a specified media source.
- * @param {string} sourceId - The ID of the media source to test.
+ * @param {string} mediaSourceId - The ID of the media source to test.
  * @returns {Promise<any>} A promise that resolves with the connection test result.
  * @throws {FetchError} If the media source is not found or the connection fails.
  */
-export async function testMediaSourceConnection(sourceId: string) {
+export async function testMediaSourceConnection(mediaSourceId: string) {
   try {
-    const source = await MediaSourceService.fetchSourceById(sourceId);
+    const source = await MediaSourceService.fetchSourceById(mediaSourceId);
     if (!source || source.length === 0) {
       // fetchSourceById returns array
       throw new FetchError(
@@ -116,14 +116,14 @@ export async function testMediaSourceConnection(sourceId: string) {
 
 /**
  * Retrieves the status of a specified media source by testing its connection.
- * @param {string} sourceId - The ID of the media source to get the status for.
- * @returns {Promise<{ sourceId: string; status: "active" | "error"; message?: string; lastChecked: Date }>} A promise that resolves with the status of the media source.
+ * @param {string} mediaSourceId - The ID of the media source to get the status for.
+ * @returns {Promise<{ mediaSourceId: string; status: "active" | "error"; message?: string; lastChecked: Date }>} A promise that resolves with the status of the media source.
  */
-export async function getMediaSourceStatus(sourceId: string) {
+export async function getMediaSourceStatus(mediaSourceId: string) {
   try {
-    const test = await testMediaSourceConnection(sourceId);
+    const test = await testMediaSourceConnection(mediaSourceId);
     return {
-      sourceId,
+      mediaSourceId,
       status: test.success ? "active" : "error",
       message: test.message,
       lastChecked: new Date(),
@@ -131,7 +131,7 @@ export async function getMediaSourceStatus(sourceId: string) {
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      sourceId,
+      mediaSourceId,
       status: "error",
       message: errorMessage,
       lastChecked: new Date(),

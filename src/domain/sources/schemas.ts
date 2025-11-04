@@ -5,8 +5,8 @@
 
 import { z } from "zod";
 
-export const sourceIdSchema = z.string().uuid("Invalid source ID format");
-export type SourceId = z.infer<typeof sourceIdSchema>;
+export const mediaSourceIdSchema = z.string().uuid("Invalid source ID format");
+export type MedioaSourceId = z.infer<typeof mediaSourceIdSchema>;
 
 export const localConnectionSchema = z.object({
   path: z.string().min(1, "Path is required"),
@@ -53,7 +53,7 @@ export type MediaSourceInfo = z.infer<typeof mediaSourceInfoSchema>;
 
 export const fileSystemEventSchema = z.object({
   type: z.enum(["added", "deleted", "modified"]),
-  sourceId: z.string(),
+  mediaSourceId: z.string(),
   filePath: z.string(),
   timestamp: z.date(),
 });

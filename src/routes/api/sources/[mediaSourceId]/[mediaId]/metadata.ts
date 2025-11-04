@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 import { getMediaMetadata } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
@@ -57,6 +57,9 @@ export async function GET({ params }: APIEvent) {
   }
   const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const metadata = await getMediaMetadata(mediaSourceId as UUID, mediaId as UUID);
+  const metadata = await getMediaMetadata(
+    mediaSourceId as UUID,
+    mediaId as UUID
+  );
   return metadata;
 }

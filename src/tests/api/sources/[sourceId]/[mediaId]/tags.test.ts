@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 
-describe("GET /api/sources/:sourceId/:mediaId/tags", () => {
+describe("GET /api/sources/:mediaSourceId/:mediaId/tags", () => {
   it("should return array of tags for media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after GET function is available
-    // const result = await GET({ params: { sourceId, mediaId } });
+    // const result = await GET({ params: { mediaSourceId, mediaId } });
     const result: number[] = [];
 
     expect(result).toBeInstanceOf(Array);
@@ -23,18 +23,18 @@ describe("GET /api/sources/:sourceId/:mediaId/tags", () => {
     // TODO: Test validation
     const _invalidId = "invalid-uuid";
 
-    // await expect(GET({ params: { sourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
+    // await expect(GET({ params: { mediaSourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
   });
 });
 
-describe("POST /api/sources/:sourceId/:mediaId/tags", () => {
+describe("POST /api/sources/:mediaSourceId/:mediaId/tags", () => {
   it("should add tag to media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _tagId = 1;
 
     // TODO: Implement after POST function is available
-    // const result = await POST({ params: { sourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ tagId }) }) });
+    // const result = await POST({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ tagId }) }) });
 
     // expect(result.success).toBe(true);
   });
@@ -55,14 +55,14 @@ describe("POST /api/sources/:sourceId/:mediaId/tags", () => {
   });
 });
 
-describe("DELETE /api/sources/:sourceId/:mediaId/tags", () => {
+describe("DELETE /api/sources/:mediaSourceId/:mediaId/tags", () => {
   it("should remove tag from media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _tagId = 1;
 
     // TODO: Implement after DELETE function is available
-    // const result = await DELETE({ params: { sourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ tagId }) }) });
+    // const result = await DELETE({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ tagId }) }) });
 
     // expect(result.success).toBe(true);
   });

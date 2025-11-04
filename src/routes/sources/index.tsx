@@ -71,9 +71,9 @@ export default function Sources() {
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = async (sourceId) => {
+  const handleDeleteConfirm = async (mediaSourceId) => {
     try {
-      const res = await fetch(`/api/sources/${sourceId}`, {
+      const res = await fetch(`/api/sources/${mediaSourceId}`, {
         method: "DELETE",
       });
       if (!res.ok) {

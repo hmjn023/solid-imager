@@ -6,7 +6,7 @@ describe("File System Access Denied Integration", () => {
 
   it("should throw an error when addMedia encounters file system access denied", async () => {
     const newMediaData = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/no-access/path/image.png",
       fileName: "image.png",
       size: 1024,

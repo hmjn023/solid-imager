@@ -28,10 +28,10 @@ export const WorkflowService = {
 
   /**
    * Automatically tags media using AI or workflow analysis.
-   * @param {string} _sourceId - The ID of the media source to auto-tag.
+   * @param {string} _mediaSourceId - The ID of the media source to auto-tag.
    * @returns {any} Confirmation of auto-tagging process initiation.
    */
-  autoTagMedia(_sourceId: string) {
+  autoTagMedia(_mediaSourceId: string) {
     // TODO: Auto-tag media using AI/workflow analysis
     throw new Error("Not implemented");
   },

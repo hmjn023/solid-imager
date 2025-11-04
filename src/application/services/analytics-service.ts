@@ -9,10 +9,10 @@
 export const AnalyticsService = {
   /**
    * Retrieves statistics for a specific media source.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @returns {any} Statistics data for the source.
    */
-  getSourceStats(_sourceId: string) {
+  getSourceStats(_mediaSourceId: string) {
     // TODO: Get statistics for specific source
     throw new Error("Not implemented");
   },
@@ -28,21 +28,21 @@ export const AnalyticsService = {
 
   /**
    * Finds duplicate media within a specific source, typically by comparing hashes.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @returns {any} A list of duplicate media.
    */
-  getDuplicateMedia(_sourceId: string) {
+  getDuplicateMedia(_mediaSourceId: string) {
     // TODO: Find duplicate media by hash
     throw new Error("Not implemented");
   },
 
   /**
    * Finds similar media to a given media item within a source, typically using perceptual hashing.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {string} _mediaPath - The path to the media item for which to find similar items.
    * @returns {any} A list of similar media.
    */
-  getSimilarMedia(_sourceId: string, _mediaPath: string) {
+  getSimilarMedia(_mediaSourceId: string, _mediaPath: string) {
     // TODO: Find similar media using perceptual hash
     throw new Error("Not implemented");
   },

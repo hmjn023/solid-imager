@@ -15,7 +15,11 @@ describe("selectRandomMedia", () => {
   });
 
   it("should return a random media item on success", async () => {
-    const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
+    const media1 = {
+      id: "media1",
+      mediaSourceId: "source1",
+      createdAt: new Date(),
+    };
 
     (db.select as vi.Mock).mockReturnValue({
       from: vi.fn().mockReturnValue({

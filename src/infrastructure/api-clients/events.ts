@@ -6,10 +6,10 @@
 /**
  * Initiates Server-Sent Events (SSE) monitoring for a specific media source.
  * In a real implementation, this would return an SSE stream.
- * @param {string} _sourceId - The ID of the media source to monitor.
+ * @param {string} _mediaSourceId - The ID of the media source to monitor.
  * @returns {object} An object indicating the success of starting SSE monitoring.
  */
-export function startSseMonitoring(_sourceId: string) {
+export function startSseMonitoring(_mediaSourceId: string) {
   // 実際の実装では、これはSSEストリームを返します。
   return { success: true, message: "SSE monitoring started" };
 }

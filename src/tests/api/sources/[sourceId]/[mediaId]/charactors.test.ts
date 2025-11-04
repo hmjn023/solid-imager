@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 
-describe("GET /api/sources/:sourceId/:mediaId/charactors", () => {
+describe("GET /api/sources/:mediaSourceId/:mediaId/charactors", () => {
   it("should return array of characters for media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after GET function is available
-    // const result = await GET({ params: { sourceId, mediaId } });
+    // const result = await GET({ params: { mediaSourceId, mediaId } });
     const result: number[] = [];
 
     expect(result).toBeInstanceOf(Array);
@@ -23,18 +23,18 @@ describe("GET /api/sources/:sourceId/:mediaId/charactors", () => {
     // TODO: Test validation
     const _invalidId = "invalid-uuid";
 
-    // await expect(GET({ params: { sourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
+    // await expect(GET({ params: { mediaSourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
   });
 });
 
-describe("POST /api/sources/:sourceId/:mediaId/charactors", () => {
+describe("POST /api/sources/:mediaSourceId/:mediaId/charactors", () => {
   it("should add character to media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _characterId = 1;
 
     // TODO: Implement after POST function is available
-    // const result = await POST({ params: { sourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ characterId }) }) });
+    // const result = await POST({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ characterId }) }) });
 
     // expect(result.success).toBe(true);
   });
@@ -55,13 +55,13 @@ describe("POST /api/sources/:sourceId/:mediaId/charactors", () => {
   });
 });
 
-describe("PUT /api/sources/:sourceId/:mediaId/charactors", () => {
+describe("PUT /api/sources/:mediaSourceId/:mediaId/charactors", () => {
   it("should update character assignment", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after PUT function is available
-    // const result = await PUT({ params: { sourceId, mediaId }, request: ... });
+    // const result = await PUT({ params: { mediaSourceId, mediaId }, request: ... });
 
     // expect(result).toBeDefined();
   });
@@ -79,14 +79,14 @@ describe("PUT /api/sources/:sourceId/:mediaId/charactors", () => {
   });
 });
 
-describe("DELETE /api/sources/:sourceId/:mediaId/charactors", () => {
+describe("DELETE /api/sources/:mediaSourceId/:mediaId/charactors", () => {
   it("should remove character from media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _characterId = 1;
 
     // TODO: Implement after DELETE function is available
-    // const result = await DELETE({ params: { sourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ characterId }) }) });
+    // const result = await DELETE({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ characterId }) }) });
 
     // expect(result.success).toBe(true);
   });

@@ -13,7 +13,7 @@ import {
   uploadMediaRequestSchema,
   uploadResponseSchema,
 } from "~/domain/media/upload-schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { mediaSourceIdSchema } from "~/domain/sources/schemas";
 import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
@@ -37,18 +37,18 @@ type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 export async function addMedia(data: AddMediaRequest): Promise<Media> {
   const validatedData = addMediaRequestSchema.parse(data);
   const existingMedia = await selectMediaBySourceIdAndFilePath(
-    validatedData.sourceId,
+    validatedData.mediaSourceId,
     validatedData.filePath
   );
 
   if (existingMedia.length > 0) {
     throw new Error(
-      "Media with this filePath already exists for the given sourceId"
+      "Media with this filePath already exists for the given mediaSourceId"
     );
   }
 
   const newMedia: NewMedia = {
-    sourceId: validatedData.sourceId,
+    mediaSourceId: validatedData.mediaSourceId,
     filePath: validatedData.filePath,
     fileName: validatedData.fileName,
     mediaType: validatedData.mediaType,
@@ -64,20 +64,20 @@ export async function addMedia(data: AddMediaRequest): Promise<Media> {
 
 /**
  * Retrieves a specific media item by its source ID and media ID.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {Promise<Media>} A promise that resolves with the media object.
  * @throws {Error} If the media is not found or does not belong to the specified source.
  */
 export async function getMedia(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<Media> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const validatedMediaId = mediaIdSchema.parse(mediaId);
   const result = await selectMediaById(validatedMediaId);
 
-  if (result.sourceId !== validatedSourceId) {
+  if (result.mediaSourceId !== validatedSourceId) {
     throw new Error("Media not found");
   }
 
@@ -88,22 +88,22 @@ type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
 /**
  * Updates an existing media item.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item to update.
  * @param {UpdateMediaRequest} updates - The updates to apply to the media item.
  * @returns {Promise<Media>} A promise that resolves with the updated media object.
  * @throws {Error} If the media is not found or does not belong to the specified source.
  */
 export async function updateMedia(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string,
   updates: UpdateMediaRequest
 ): Promise<Media> {
   const validatedUpdates = updateMediaRequestSchema.parse(updates);
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const validatedMediaId = mediaIdSchema.parse(mediaId);
   const existingMedia = await selectMediaById(validatedMediaId);
-  if (existingMedia.sourceId !== validatedSourceId) {
+  if (existingMedia.mediaSourceId !== validatedSourceId) {
     throw new Error("Media not found");
   }
 
@@ -118,19 +118,19 @@ export async function updateMedia(
 
 /**
  * Deletes a media item from the database and attempts to delete its thumbnail.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item to delete.
  * @returns {Promise<{ success: boolean }>} A promise that resolves with a success status.
  * @throws {Error} If the media is not found or does not belong to the specified source.
  */
 export async function deleteMedia(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<{ success: boolean }> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const validatedMediaId = mediaIdSchema.parse(mediaId);
   const existingMedia = await selectMediaById(validatedMediaId);
-  if (existingMedia.sourceId !== validatedSourceId) {
+  if (existingMedia.mediaSourceId !== validatedSourceId) {
     throw new Error("Media not found");
   }
   await dbDeleteMedia(validatedMediaId);
@@ -175,15 +175,15 @@ async function getFiles(dir: string): Promise<string[]> {
 /**
  * Registers existing media files from a given base path into the database.
  * It filters for supported media types, checks for existing entries, and generates thumbnails for new media.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} basePath - The base path where media files are located.
  * @returns {Promise<{ added: number; skipped: number; failed: number }>} A promise that resolves with counts of added, skipped, and failed media.
  */
 export async function registerExistingMedia(
-  sourceId: string,
+  mediaSourceId: string,
   basePath: string
 ): Promise<{ added: number; skipped: number; failed: number }> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 
   let allFiles: string[] = [];
   try {
@@ -223,7 +223,7 @@ export async function registerExistingMedia(
       }
 
       const newMedia: NewMedia = {
-        sourceId: validatedSourceId,
+        mediaSourceId: validatedSourceId,
         filePath: relativePath,
         fileName: path.basename(fullPath),
         mediaType: "image",
@@ -259,15 +259,15 @@ export async function registerExistingMedia(
 
 /**
  * Lists media items within a specific directory of a media source.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} directoryPath - The path to the directory to list media from.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
  */
 export async function listMedia(
-  sourceId: string,
+  mediaSourceId: string,
   directoryPath: string
 ): Promise<Media[]> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const validatedDirectoryPath = directoryPathSchema.parse(directoryPath);
   const result = await selectMediaBySourceIdAndDirectoryPath(
     validatedSourceId,
@@ -280,53 +280,53 @@ export async function listMedia(
 /**
  * Retrieves detailed information for a specific media item.
  * This function currently delegates to `getMedia`.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {Promise<Media>} A promise that resolves with the detailed media object.
  */
 export function getMediaDetails(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<Media> {
-  return getMedia(sourceId, mediaId);
+  return getMedia(mediaSourceId, mediaId);
 }
 
 /**
  * Retrieves metadata for a specific media item.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {Promise<Record<string, unknown>>} A promise that resolves with a record of metadata.
  */
 export async function getMediaMetadata(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<Record<string, unknown>> {
-  const media = await getMedia(sourceId, mediaId);
+  const media = await getMedia(mediaSourceId, mediaId);
   return { mediaId: media.id, metadata: {} };
 }
 
 /**
  * Retrieves tags associated with a specific media item.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {Promise<unknown[]>} A promise that resolves with an array of tags.
  */
 export async function getMediaTags(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<unknown[]> {
-  const _media = await getMedia(sourceId, mediaId);
+  const _media = await getMedia(mediaSourceId, mediaId);
   return [];
 }
 
 /**
  * Retrieves the thumbnail for a specific media item.
- * @param {string} _sourceId - The ID of the media source.
+ * @param {string} _mediaSourceId - The ID of the media source.
  * @param {string} _mediaId - The ID of the media item.
  * @returns {Promise<Buffer>} A promise that resolves with the thumbnail data as a Buffer.
  */
 export function getMediaThumbnail(
-  _sourceId: string,
+  _mediaSourceId: string,
   _mediaId: string
 ): Promise<Buffer> {
   throw new Error("Not implemented");
@@ -334,16 +334,16 @@ export function getMediaThumbnail(
 
 /**
  * Uploads a media file.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {FormData} uploadData - The FormData object containing the file and other upload details.
  * @returns {Promise<z.infer<typeof uploadResponseSchema>>} A promise that resolves with the upload response.
  * @throws {Error} If the media source is not found, not local, or if there's a file conflict.
  */
 export async function uploadMedia(
-  sourceId: string,
+  mediaSourceId: string,
   uploadData: FormData
 ): Promise<z.infer<typeof uploadResponseSchema>> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const mediaSource = await selectMediaSourceById(validatedSourceId);
 
   if (!mediaSource) {
@@ -425,7 +425,7 @@ export async function uploadMedia(
   }
 
   const newMedia: NewMedia = {
-    sourceId: validatedSourceId,
+    mediaSourceId: validatedSourceId,
     filePath: relativeFilePath,
     fileName: targetFileName,
     mediaType: "image", // Assuming image for now, will need to determine based on file type
@@ -458,27 +458,27 @@ export async function uploadMedia(
 /**
  * Searches for media within a specific directory of a media source.
  * This function currently delegates to `listMedia`.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} directoryPath - The path to the directory to search within.
  * @param {unknown} _searchOptions - Search options (currently unused, delegates to listMedia).
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
  */
 export function searchMediaInDirectory(
-  sourceId: string,
+  mediaSourceId: string,
   directoryPath: string,
   _searchOptions: unknown
 ): Promise<Media[]> {
-  return listMedia(sourceId, directoryPath);
+  return listMedia(mediaSourceId, directoryPath);
 }
 
 /**
  * Searches for media across a specific media source.
- * @param {string} _sourceId - The ID of the media source.
+ * @param {string} _mediaSourceId - The ID of the media source.
  * @param {unknown} _searchOptions - Search options.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
  */
 export function searchMedia(
-  _sourceId: string,
+  _mediaSourceId: string,
   _searchOptions: unknown
 ): Promise<Media[]> {
   return [];
@@ -486,11 +486,11 @@ export function searchMedia(
 
 /**
  * Retrieves all media items for a specific media source.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
  */
-export async function getAllMedia(sourceId: string): Promise<Media[]> {
-  const validatedSourceId = sourceIdSchema.parse(sourceId);
+export async function getAllMedia(mediaSourceId: string): Promise<Media[]> {
+  const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
   const result = await selectMediaBySourceId(validatedSourceId);
   return result;
 }

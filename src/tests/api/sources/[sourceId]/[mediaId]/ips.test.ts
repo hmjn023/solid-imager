@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import type { UUID } from "~/domain/shared/types";
+import type { UUID } from "~/domain/shared/schemas";
 
-describe("GET /api/sources/:sourceId/:mediaId/ips", () => {
+describe("GET /api/sources/:mediaSourceId/:mediaId/ips", () => {
   it("should return array of IPs for media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after GET function is available
-    // const result = await GET({ params: { sourceId, mediaId } });
+    // const result = await GET({ params: { mediaSourceId, mediaId } });
     const result: number[] = [];
 
     expect(result).toBeInstanceOf(Array);
@@ -23,18 +23,18 @@ describe("GET /api/sources/:sourceId/:mediaId/ips", () => {
     // TODO: Test validation
     const _invalidId = "invalid-uuid";
 
-    // await expect(GET({ params: { sourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
+    // await expect(GET({ params: { mediaSourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
   });
 });
 
-describe("POST /api/sources/:sourceId/:mediaId/ips", () => {
+describe("POST /api/sources/:mediaSourceId/:mediaId/ips", () => {
   it("should add IP to media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _ipId = 1;
 
     // TODO: Implement after POST function is available
-    // const result = await POST({ params: { sourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ ipId }) }) });
+    // const result = await POST({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ ipId }) }) });
 
     // expect(result.success).toBe(true);
   });
@@ -55,13 +55,13 @@ describe("POST /api/sources/:sourceId/:mediaId/ips", () => {
   });
 });
 
-describe("PUT /api/sources/:sourceId/:mediaId/ips", () => {
+describe("PUT /api/sources/:mediaSourceId/:mediaId/ips", () => {
   it("should update IP assignment", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
 
     // TODO: Implement after PUT function is available
-    // const result = await PUT({ params: { sourceId, mediaId }, request: ... });
+    // const result = await PUT({ params: { mediaSourceId, mediaId }, request: ... });
 
     // expect(result).toBeDefined();
   });
@@ -79,14 +79,14 @@ describe("PUT /api/sources/:sourceId/:mediaId/ips", () => {
   });
 });
 
-describe("DELETE /api/sources/:sourceId/:mediaId/ips", () => {
+describe("DELETE /api/sources/:mediaSourceId/:mediaId/ips", () => {
   it("should remove IP from media", () => {
-    const _sourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
+    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
     const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
     const _ipId = 1;
 
     // TODO: Implement after DELETE function is available
-    // const result = await DELETE({ params: { sourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ ipId }) }) });
+    // const result = await DELETE({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ ipId }) }) });
 
     // expect(result.success).toBe(true);
   });

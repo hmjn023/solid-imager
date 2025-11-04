@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export type UUID = string;
+
 export const appConfigSchema = z
   .object({
     server: z
