@@ -29,32 +29,32 @@
 |---|---|---|
 | `GET` | `/api/sources` | 全てのメディアソースを取得します。 |
 | `POST` | `/api/sources` | 新しいメディアソースを作成します。 |
-| `GET` | `/api/sources/{sourceId}` | 特定のメディアソース内の全メディアを取得します。 |
-| `PUT` | `/api/sources/{sourceId}` | 特定のメディアソースを更新します。 |
-| `DELETE` | `/api/sources/{sourceId}` | 特定のメディアソースを削除します。 |
-| `GET` | `/api/sources/{sourceId}/status` | 特定のメディアソースの状態を取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}` | 特定のメディアソース内の全メディアを取得します。 |
+| `PUT` | `/api/sources/{mediaSourceId}` | 特定のメディアソースを更新します。 |
+| `DELETE` | `/api/sources/{mediaSourceId}` | 特定のメディアソースを削除します。 |
+| `GET` | `/api/sources/{mediaSourceId}/status` | 特定のメディアソースの状態を取得します。 |
 
 ### メディア (Media)
 
 | Method | Path | 説明 |
 |---|---|---|
-| `GET` | `/api/sources/{sourceId}/search` | 特定メディアソース内のメディアを検索します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}` | 特定のメディアファイル本体を取得します。 |
-| `PUT` | `/api/sources/{sourceId}/{mediaId}` | 特定のメディア情報を更新します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}/details` | タグやメタデータを含むメディアの詳細情報を取得します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}/metadata` | メディアの生成メタデータを取得します。 |
-| `POST` | `/api/sources/{sourceId}/upload` | メディアファイルをアップロードします。 |
+| `GET` | `/api/sources/{mediaSourceId}/search` | 特定メディアソース内のメディアを検索します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}` | 特定のメディアファイル本体を取得します。 |
+| `PUT` | `/api/sources/{mediaSourceId}/{mediaId}` | 特定のメディア情報を更新します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/details` | タグやメタデータを含むメディアの詳細情報を取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/metadata` | メディアの生成メタデータを取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/upload` | メディアファイルをアップロードします。 |
 
 ### ディレクトリ (Directories)
 
 | Method | Path | 説明 |
 |---|---|---|
-| `GET` | `/api/sources/{sourceId}/directories` | 指定パス以下のディレクトリとメディア一覧を取得します。 |
-| `POST` | `/api/sources/{sourceId}/directories/create` | 新しいディレクトリを作成します。 |
-| `DELETE` | `/api/sources/{sourceId}/directories/delete` | ディレクトリを削除します。 |
-| `PUT` | `/api/sources/{sourceId}/directories/rename` | ディレクトリ名を変更します。 |
-| `GET` | `/api/sources/{sourceId}/directories/{...directories}` | 特定ディレクトリ内のメディアとサブディレクトリを取得します。 |
-| `GET` | `/api/sources/{sourceId}/directories/{...directories}/search` | 特定ディレクトリ内でメディアを検索します。 |
+| `GET` | `/api/sources/{mediaSourceId}/directories` | 指定パス以下のディレクトリとメディア一覧を取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/directories/create` | 新しいディレクトリを作成します。 |
+| `DELETE` | `/api/sources/{mediaSourceId}/directories/delete` | ディレクトリを削除します。 |
+| `PUT` | `/api/sources/{mediaSourceId}/directories/rename` | ディレクトリ名を変更します。 |
+| `GET` | `/api/sources/{mediaSourceId}/directories/{...directories}` | 特定ディレクトリ内のメディアとサブディレクトリを取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}/directories/{...directories}/search` | 特定ディレクトリ内でメディアを検索します。 |
 
 ### タグ (Tags)
 
@@ -65,7 +65,7 @@
 | `GET` | `/api/tags/{id}` | 特定のタグを取得します。 |
 | `PUT` | `/api/tags/{id}` | 特定のタグを更新します。 |
 | `DELETE` | `/api/tags/{id}` | 特定のタグを削除します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}/tags` | 特定メディアに関連付けられたタグを取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/tags` | 特定メディアに関連付けられたタグを取得します。 |
 
 ### カテゴリ (Categories)
 
@@ -88,7 +88,7 @@
 | `GET` | `/api/charactors/{id}` | 特定のキャラクターを取得します。 |
 | `PUT` | `/api/charactors/{id}` | 特定のキャラクターを更新します。 |
 | `DELETE` | `/api/charactors/{id}` | 特定のキャラクターを削除します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}/charactors` | 特定メディアに関連付けられたキャラクターを取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/charactors` | 特定メディアに関連付けられたキャラクターを取得します。 |
 
 ### IP (Intellectual Properties)
 
@@ -99,22 +99,22 @@
 | `GET` | `/api/ips/{id}` | 特定のIPを取得します。 |
 | `PUT` | `/api/ips/{id}` | 特定のIPを更新します。 |
 | `DELETE` | `/api/ips/{id}` | 特定のIPを削除します。 |
-| `GET` | `/api/sources/{sourceId}/{mediaId}/ips` | 特定メディアに関連付けられたIPを取得します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/ips` | 特定メディアに関連付けられたIPを取得します。 |
 
 ### サムネイル (Thumbnails)
 
 | Method | Path | 説明 |
 |---|---|---|
-| `GET` | `/api/sources/{sourceId}/{mediaId}/thumbnail` | 特定メディアのサムネイルを取得します。 |
-| `POST` | `/api/sources/{sourceId}/thumbnails` | サムネイルの手動生成を開始します。 |
-| `DELETE` | `/api/sources/{sourceId}/thumbnails` | サムネイルキャッシュをクリアします。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/thumbnail` | 特定メディアのサムネイルを取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/thumbnails` | サムネイルの手動生成を開始します。 |
+| `DELETE` | `/api/sources/{mediaSourceId}/thumbnails` | サムネイルキャッシュをクリアします。 |
 
 ### リアルタイム更新 (Real-time Updates)
 
 | Method | Path | 説明 |
 |---|---|---|
-| `GET` | `/api/sources/{sourceId}/events` | SSEでメディアソースのリアルタイム更新を監視します。 |
-| `GET` | `/api/sources/{sourceId}/events/thumbnail-progress` | SSEでサムネイル生成の進捗を監視します。 |
+| `GET` | `/api/sources/{mediaSourceId}/events` | SSEでメディアソースのリアルタイム更新を監視します。 |
+| `GET` | `/api/sources/{mediaSourceId}/events/thumbnail-progress` | SSEでサムネイル生成の進捗を監視します。 |
 
 ### 設定 (Configuration)
 

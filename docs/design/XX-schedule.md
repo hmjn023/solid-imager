@@ -28,26 +28,26 @@
 - **API関数:**
     - [ ] `MediaSourceService.getAllSources()`
     - [ ] `MediaSourceService.createSource(...)`
-    - [ ] `MediaSourceService.getSourceDetails(sourceId: UUID)`
+    - [ ] `MediaSourceService.getSourceDetails(mediaSourceId: UUID)`
     - [ ] `MediaSourceService.updateSource(...)`
-    - [ ] `MediaSourceService.deleteSource(sourceId: UUID)`
+    - [ ] `MediaSourceService.deleteSource(mediaSourceId: UUID)`
 - **DB関数:**
     - [ ] `db.selectMediaSources()`
     - [ ] `db.insertMediaSource(...)`
-    - [ ] `db.selectMediaSourceById(sourceId)`
-    - [ ] `db.updateMediaSource(sourceId, ...)`
-    - [ ] `db.deleteMediaSource(sourceId)`
+    - [ ] `db.selectMediaSourceById(mediaSourceId)`
+    - [ ] `db.updateMediaSource(mediaSourceId, ...)`
+    - [ ] `db.deleteMediaSource(mediaSourceId)`
 
 ### 4. メディア配信 & メディア一覧
 - [ ] **説明:** ローカルメディアの表示とディレクトリ内メディアの取得・表示。
 - **依存関係:** メディアソース管理
 - **API関数:**
-    - [ ] `MediaService.getMedia(sourceId: UUID, mediaId: UUID)`
-    - [ ] `MediaSourceService.listSourceDirectories(sourceId: UUID, parentPath?: string)`
-    - [ ] `MediaSourceService.listMediaAndSubdirectories(sourceId: UUID, directoriesPath: string)`
+    - [ ] `MediaService.getMedia(mediaSourceId: UUID, mediaId: UUID)`
+    - [ ] `MediaSourceService.listSourceDirectories(mediaSourceId: UUID, parentPath?: string)`
+    - [ ] `MediaSourceService.listMediaAndSubdirectories(mediaSourceId: UUID, directoriesPath: string)`
 - **DB関数:**
     - [ ] `db.selectMediaById(mediaId)`
-    - [ ] `db.selectMediaSourceById(sourceId)`
+    - [ ] `db.selectMediaSourceById(mediaSourceId)`
 - **内部ヘルパー関数:**
     - [ ] `LocalDriver.listDirectory(path: string)`
     - [ ] `LocalDriver.readFile(path: string)`
@@ -56,7 +56,7 @@
 - [ ] **説明:** PNG tEXt領域からprompt/workflowの取得。
 - **依存関係:** メディア配信
 - **API関数:**
-    - [ ] `MediaService.getMediaMetadata(sourceId: UUID, mediaId: UUID)`
+    - [ ] `MediaService.getMediaMetadata(mediaSourceId: UUID, mediaId: UUID)`
 - **DB関数:**
     - [ ] `db.selectMediaGenerationInfoById(mediaId)`
 - **内部ヘルパー関数:**
@@ -73,12 +73,12 @@
 - [ ] **説明:** バックグラウンド生成と進捗通知。
 - **依存関係:** メディア配信、メディアメタデータ抽出
 - **API関数:**
-    - [ ] `ThumbnailService.getAllThumbnailLinks(sourceId: UUID)`
-    - [ ] `ThumbnailService.getMediaThumbnail(sourceId: UUID, mediaId: UUID)`
-    - [ ] `ThumbnailService.startThumbnailGeneration(sourceId: UUID)`
-    - [ ] `ThumbnailService.clearThumbnailCache(sourceId: UUID)`
+    - [ ] `ThumbnailService.getAllThumbnailLinks(mediaSourceId: UUID)`
+    - [ ] `ThumbnailService.getMediaThumbnail(mediaSourceId: UUID, mediaId: UUID)`
+    - [ ] `ThumbnailService.startThumbnailGeneration(mediaSourceId: UUID)`
+    - [ ] `ThumbnailService.clearThumbnailCache(mediaSourceId: UUID)`
 - **DB関数:**
-    - [ ] `db.selectMediaBySourceId(sourceId)`
+    - [ ] `db.selectMediaBymediaSourceId(mediaSourceId)`
     - [ ] `db.selectMediaById(mediaId)`
 - **内部ヘルパー関数:**
     - [ ] `ImageProcessor.generateThumbnail(mediaPath: string, outputPath: string, size: number)`
@@ -89,10 +89,10 @@
 - [ ] **説明:** ファイル追加/削除のリアルタイム更新。
 - **依存関係:** メディアソース管理、サムネイル生成
 - **API関数:**
-    - [ ] `EventService.startSseMonitoring(sourceId: UUID)`
-    - [ ] `EventService.getThumbnailProgressEvents(sourceId: UUID)`
+    - [ ] `EventService.startSseMonitoring(mediaSourceId: UUID)`
+    - [ ] `EventService.getThumbnailProgressEvents(mediaSourceId: UUID)`
 - **DB関数:**
-    - [ ] `db.selectThumbnailJobStatus(sourceId)`
+    - [ ] `db.selectThumbnailJobStatus(mediaSourceId)`
 - **内部ヘルパー関数:**
     - [ ] `SseManager.sendEvent(...)`
     - [ ] `SseManager.monitorFileSystem(...)`
@@ -136,14 +136,14 @@
 - [ ] **説明:** フォルダ作成/削除。
 - **依存関係:** メディアソース管理
 - **API関数:**
-    - [ ] `DirectoryService.getDirectoryTree(sourceId: UUID)`
+    - [ ] `DirectoryService.getDirectoryTree(mediaSourceId: UUID)`
     - [ ] `DirectoryService.createDirectory(...)`
     - [ ] `DirectoryService.deleteDirectory(...)`
     - [ ] `DirectoryService.updateDirectory(...)`
     - [ ] `DirectoryService.listMediaInSubdirectory(...)`
 - **DB関数:**
-    - [ ] `db.selectMediaSourceById(sourceId)`
-    - [ ] `db.deleteMediaByPath(sourceId, directoryPath)`
+    - [ ] `db.selectMediaSourceById(mediaSourceId)`
+    - [ ] `db.deleteMediaByPath(mediaSourceId, directoryPath)`
 - **内部ヘルパー関数:**
     - [ ] `LocalDriver.createDirectory(...)`
     - [ ] `LocalDriver.deleteDirectory(...)`
@@ -155,7 +155,7 @@
 - [ ] **説明:** SFTP/S3対応、接続テスト。
 - **依存関係:** メディアソース管理
 - **API関数:**
-    - [ ] `MediaSourceService.testSourceConnection(sourceId: UUID)`
+    - [ ] `MediaSourceService.testSourceConnection(mediaSourceId: UUID)`
 - **内部ヘルパー関数:**
     - [ ] `SftpDriver.*`
     - [ ] `S3Driver.*`
@@ -297,28 +297,28 @@
     - [ ] `DataMigrationService.cloneSource(...)`
     - [ ] `DataMigrationService.downloadMedia(...)`
 - **DB関数:**
-    - [ ] `db.selectMediaSourceData(sourceId)`
-    - [ ] `db.upsertMediaSourceData(sourceId, importData)`
-    - [ ] `db.selectMediaSourceById(sourceId)`
-    - [ ] `db.reconcileMediaSource(sourceId, fileSystemChanges)`
+    - [ ] `db.selectMediaSourceData(mediaSourceId)`
+    - [ ] `db.upsertMediaSourceData(mediaSourceId, importData)`
+    - [ ] `db.selectMediaSourceById(mediaSourceId)`
+    - [ ] `db.reconcileMediaSource(mediaSourceId, fileSystemChanges)`
     - [ ] `db.insertMediaSource(...)`
-    - [ ] `db.cloneMediaData(sourceId, newSourceId)`
+    - [ ] `db.cloneMediaData(mediaSourceId, newmediaSourceId)`
     - [ ] `db.selectMediaById(mediaId)`
 
 ### 21. 統計・分析機能
 - [ ] **説明:** メディアの利用状況やシステム全体のパフォーマンスに関するデータ分析と監視。
 - **依存関係:** メディア管理、閲覧履歴（未定義だが想定）
 - **API関数:**
-    - [ ] `AnalyticsService.getSourceStats(sourceId: UUID)`
+    - [ ] `AnalyticsService.getSourceStats(mediaSourceId: UUID)`
     - [ ] `AnalyticsService.getGlobalStats()`
-    - [ ] `AnalyticsService.getDuplicateMedia(sourceId: UUID)`
-    - [ ] `AnalyticsService.getSimilarMedia(sourceId: UUID, mediaPath: string)`
+    - [ ] `AnalyticsService.getDuplicateMedia(mediaSourceId: UUID)`
+    - [ ] `AnalyticsService.getSimilarMedia(mediaSourceId: UUID, mediaPath: string)`
     - [ ] `AnalyticsService.getPopularMedia()`
 - **DB関数:**
-    - [ ] `db.selectSourceStats(sourceId)`
+    - [ ] `db.selectSourceStats(mediaSourceId)`
     - [ ] `db.selectGlobalStats()`
-    - [ ] `db.findDuplicateMedia(sourceId)`
-    - [ ] `db.findSimilarMedia(sourceId, mediaPath)`
+    - [ ] `db.findDuplicateMedia(mediaSourceId)`
+    - [ ] `db.findSimilarMedia(mediaSourceId, mediaPath)`
     - [ ] `db.selectPopularMedia()`
 
 ### 22. ワークフロー・自動化機能
@@ -327,11 +327,11 @@
 - **API関数:**
     - [ ] `WorkflowService.getJobList()`
     - [ ] `WorkflowService.cancelJob(jobId: number)`
-    - [ ] `WorkflowService.autoTagMedia(sourceId: UUID)`
+    - [ ] `WorkflowService.autoTagMedia(mediaSourceId: UUID)`
 - **DB関数:**
     - [ ] `db.selectJobs()`
     - [ ] `db.updateJobStatus(jobId, status)`
-    - [ ] `db.selectMediaForAutoTagging(sourceId)`
+    - [ ] `db.selectMediaForAutoTagging(mediaSourceId)`
     - [ ] `db.insertMediaTags(...)`
 
 ### 23. フィルタ・プリセット機能
@@ -340,13 +340,13 @@
 - **API関数:**
     - [ ] `FilterPresetService.getPresets()`
     - [ ] `FilterPresetService.savePreset(presetData: { name: string, conditions: any })`
-    - [ ] `MediaService.getRandomMedia(sourceId: UUID)`
-    - [ ] `MediaService.getRecentMedia(sourceId: UUID)`
+    - [ ] `MediaService.getRandomMedia(mediaSourceId: UUID)`
+    - [ ] `MediaService.getRecentMedia(mediaSourceId: UUID)`
 - **DB関数:**
     - [ ] `db.selectPresets()`
     - [ ] `db.insertPreset(...)`
-    - [ ] `db.selectRandomMedia(sourceId)`
-    - [ ] `db.selectRecentMedia(sourceId)`
+    - [ ] `db.selectRandomMedia(mediaSourceId)`
+    - [ ] `db.selectRecentMedia(mediaSourceId)`
 
 <!-- ### 24. 外部連携機能
 - [ ] **説明:** ComfyUIやDiscordなどの外部サービスとの連携。

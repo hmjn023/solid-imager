@@ -23,11 +23,11 @@ type Media = {
 
 /**
  * 指定されたソースIDのメディアリストをAPIから非同期に取得します。
- * @param sourceId メディアを取得するソースのID。
+ * @param mediaSourceId メディアを取得するソースのID。
  * @returns メディアの配列を解決するPromise。
  */
-async function fetchMedia(sourceId: string): Promise<Media[]> {
-  const url = `/api/sources/${sourceId}`;
+async function fetchMedia(mediaSourceId: string): Promise<Media[]> {
+  const url = `/api/sources/${mediaSourceId}`;
   const fullUrl = isServer ? `http://localhost:3000${url}` : url;
   const response = await fetch(fullUrl);
   if (!response.ok) {

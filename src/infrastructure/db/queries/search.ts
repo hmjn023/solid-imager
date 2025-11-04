@@ -5,7 +5,7 @@ import { UnknownDbError } from "../errors";
 
 /**
  * Searches for media within a specific source based on a query and/or tags.
- * @param {string} sourceId - The ID of the media source to search within.
+ * @param {string} mediaSourceId - The ID of the media source to search within.
  * @param {object} searchOptions - Options for the search.
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
@@ -13,11 +13,11 @@ import { UnknownDbError } from "../errors";
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const searchMedia = async (
-  sourceId: string,
+  mediaSourceId: string,
   searchOptions: { query?: string; tags?: string[] }
 ) => {
   try {
-    let query = db.select().from(medias).where(eq(medias.sourceId, sourceId));
+    let query = db.select().from(medias).where(eq(medias.mediaSourceId, mediaSourceId));
 
     if (searchOptions.query) {
       query = query.where(
@@ -44,7 +44,7 @@ export const searchMedia = async (
     return await query;
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to search media for source ID: ${sourceId}`,
+      message: `Failed to search media for source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -52,7 +52,7 @@ export const searchMedia = async (
 
 /**
  * Searches for media within a specific directory of a given source based on a query and/or tags.
- * @param {string} sourceId - The ID of the media source to search within.
+ * @param {string} mediaSourceId - The ID of the media source to search within.
  * @param {string} directoryPath - The path to the directory to search.
  * @param {object} searchOptions - Options for the search.
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
@@ -61,7 +61,7 @@ export const searchMedia = async (
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const searchMediaInDirectory = async (
-  sourceId: string,
+  mediaSourceId: string,
   directoryPath: string,
   searchOptions: { query?: string; tags?: string[] }
 ) => {
@@ -71,7 +71,7 @@ export const searchMediaInDirectory = async (
       .from(medias)
       .where(
         and(
-          eq(medias.sourceId, sourceId),
+          eq(medias.mediaSourceId, mediaSourceId),
           like(medias.filePath, `${directoryPath}%`)
         )
       );
@@ -101,7 +101,7 @@ export const searchMediaInDirectory = async (
     return await query;
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to search media in directory ${directoryPath} for source ID: ${sourceId}`,
+      message: `Failed to search media in directory ${directoryPath} for source ID: ${mediaSourceId}`,
       details: error,
     });
   }

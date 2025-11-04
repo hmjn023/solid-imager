@@ -17,7 +17,7 @@ export type MediaType = z.infer<typeof mediaTypeSchema>;
  * Ensures all required fields for new media are present and correctly formatted.
  */
 export const addMediaRequestSchema = z.object({
-  sourceId: z.string().uuid("Invalid source ID format"),
+  mediaSourceId: z.string().uuid("Invalid source ID format"),
   filePath: z.string().min(1, "File path is required"),
   fileName: z.string().min(1, "File name is required"),
   size: z.number().int().positive("File size must be a positive integer"),
@@ -76,11 +76,13 @@ export const mediaIdSchema = z.string().uuid("Invalid media ID format");
 export type MediaId = z.infer<typeof mediaIdSchema>;
 
 /**
- * Zod schema for validating a source ID.
+ * Zod schema for validating a media source ID.
  * Ensures the ID is a valid UUID format.
  */
-export const sourceIdSchema = z.string().uuid("Invalid source ID format");
-export type SourceId = z.infer<typeof sourceIdSchema>;
+export const mediaSourceIdSchema = z
+  .string()
+  .uuid("Invalid media source ID format");
+export type MediaSourceId = z.infer<typeof mediaSourceIdSchema>;
 
 /**
  * Zod schema for validating a directory path.

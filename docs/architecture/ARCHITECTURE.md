@@ -112,15 +112,15 @@ export const getMediaFromDatabase = async (id: string) => {
 import { extractMetadata } from '~/domain/media/processing/image-processor';
 import { createDriverFromSource } from '~/infrastructure/storage/factory';
 import { db } from '~/infrastructure/db';
-import { validateSourceId } from '~/domain/sources/schemas';
+import { validateMediaSourceId } from '~/domain/sources/schemas';
 
-export async function processMedia(sourceId: string, filePath: string) {
-  const validatedId = validateSourceId(sourceId);
+export async function processMedia(mediaSourceId: string, filePath: string) {
+  const validatedId = validateMediaSourceId(mediaSourceId);
   const driver = await createDriverFromSource(validatedId);
   const file = await driver.readFile(filePath);
   const metadata = extractMetadata(file);
   return await db.insert(media).values({
-    sourceId: validatedId,
+    mediaSourceId: validatedId,
     filePath,
     metadata
   });
@@ -408,7 +408,7 @@ try {
 ```typescript
 // ドメイン
 export const createMediaSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   filePath: z.string().min(1),
   // ...
 });

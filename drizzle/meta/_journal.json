@@ -8,6 +8,34 @@
       "when": 1762011192393,
       "tag": "0000_ancient_polaris",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1762011638000,
+      "tag": "0001_rename_media_source_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1762011639000,
+      "tag": "0002_rename_jobs_source_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1762011640000,
+      "tag": "0003_rename_media_source_id_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1762011641000,
+      "tag": "0004_rename_media_source_id_constraint",
+      "breakpoints": true
     }
   ]
 }

@@ -552,52 +552,52 @@ DELETE /api/ips/:id                 # 特定のIPを削除します。
 ```
 GET    /api/sources                 # すべてのメディアソースを一覧表示します。
 POST   /api/sources                 # 新しいメディアソースを作成します。
-GET    /api/sources/:sourceId       # 特定のメディアソースの詳細を取得します。(sourceId: UUID)
-PUT    /api/sources/:sourceId       # 特定のメディアソースを更新します。(sourceId: UUID)
-DELETE /api/sources/:sourceId       # 特定のメディアソースを削除します。(sourceId: UUID)
-POST   /api/sources/:sourceId/test  # メディアソースへの接続をテストします。(sourceId: UUID)
-GET    /api/sources/:sourceId/status # 特定のメディアソースの状態を取得します。(sourceId: UUID)
-GET    /api/sources/:sourceId/directories # 特定のメディアソース内のディレクトリ一覧を取得します。(sourceId: UUID)
-GET    /api/sources/:sourceId/directories/[...directories] # 特定のディレクトリ下のすべてのメディアとディレクトリを取得します。(sourceId: UUID, directories: path)
+GET    /api/sources/:mediaSourceId       # 特定のメディアソースの詳細を取得します。(mediaSourceId: UUID)
+PUT    /api/sources/:mediaSourceId       # 特定のメディアソースを更新します。(mediaSourceId: UUID)
+DELETE /api/sources/:mediaSourceId       # 特定のメディアソースを削除します。(mediaSourceId: UUID)
+POST   /api/sources/:mediaSourceId/test  # メディアソースへの接続をテストします。(mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/status # 特定のメディアソースの状態を取得します。(mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories # 特定のメディアソース内のディレクトリ一覧を取得します。(mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories/[...directories] # 特定のディレクトリ下のすべてのメディアとディレクトリを取得します。(mediaSourceId: UUID, directories: path)
 ```
 
 #### メディア管理
 ```
-GET    /api/sources/:sourceId/:mediaId                  # 特定のメディアの詳細を取得します。(sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/details          # 特定のメディアのタグ、メタデータ、カテゴリ、IP、キャラクターなどの情報を取得します。(sourceId: UUID, mediaId: UUID)
-PUT    /api/sources/:sourceId/:mediaId                  # 特定のメディア情報を更新します。(sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/metadata         # 特定のメディアのメタデータを取得します。(sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/media/[...filePath]      # 特定のメディアのファイル内容を配信します。(sourceId: UUID, filePath: path)
-GET    /api/sources/:sourceId/:mediaId/tags             # 特定のメディアのタグ一覧を取得します。(sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/thumbnail        # 特定のメディアのサムネイルを配信します。(sourceId: UUID, mediaId: UUID)
-POST   /api/sources/:sourceId/:mediaId/upload           # メディアをアップロードします。アップロードパスはリクエストボディで提供されます。
-GET    /api/sources/:sourceId/:mediaId/charactors       # メディアに関連付けられたすべてのキャラクターを取得します。(現在プレースホルダー)
-GET    /api/sources/:sourceId/:mediaId/ips              # メディアに関連付けられたすべてのIPを取得します。(現在プレースホルダー)
-GET    /api/sources/:sourceId/search                    # 特定のメディアソース内のメディアを検索します。(sourceId: UUID)
-GET    /api/sources/:sourceId/directories/[...directories]/search # 特定のサブディレクトリ内のメディアを検索します。(sourceId: UUID, directories: path)
+GET    /api/sources/:mediaSourceId/:mediaId                  # 特定のメディアの詳細を取得します。(mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/details          # 特定のメディアのタグ、メタデータ、カテゴリ、IP、キャラクターなどの情報を取得します。(mediaSourceId: UUID, mediaId: UUID)
+PUT    /api/sources/:mediaSourceId/:mediaId                  # 特定のメディア情報を更新します。(mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/metadata         # 特定のメディアのメタデータを取得します。(mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/media/[...filePath]      # 特定のメディアのファイル内容を配信します。(mediaSourceId: UUID, filePath: path)
+GET    /api/sources/:mediaSourceId/:mediaId/tags             # 特定のメディアのタグ一覧を取得します。(mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/thumbnail        # 特定のメディアのサムネイルを配信します。(mediaSourceId: UUID, mediaId: UUID)
+POST   /api/sources/:mediaSourceId/:mediaId/upload           # メディアをアップロードします。アップロードパスはリクエストボディで提供されます。
+GET    /api/sources/:mediaSourceId/:mediaId/charactors       # メディアに関連付けられたすべてのキャラクターを取得します。(現在プレースホルダー)
+GET    /api/sources/:mediaSourceId/:mediaId/ips              # メディアに関連付けられたすべてのIPを取得します。(現在プレースホルダー)
+GET    /api/sources/:mediaSourceId/search                    # 特定のメディアソース内のメディアを検索します。(mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories/[...directories]/search # 特定のサブディレクトリ内のメディアを検索します。(mediaSourceId: UUID, directories: path)
 ```
 **注記: これらの機能はまだ実装されていません。**
 
 #### サムネイル管理
 ```
-GET    /api/sources/:sourceId/:mediaId/thumbnail        # 特定のメディアのサムネイルを配信します。(sourceId: UUID, mediaId: UUID)
-POST   /api/sources/:sourceId/thumbnails                # サムネイルの手動生成を開始します。(sourceId: UUID)
-DELETE /api/sources/:sourceId/thumbnails                # サムネイルキャッシュをクリアします。(sourceId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/thumbnail        # 特定のメディアのサムネイルを配信します。(mediaSourceId: UUID, mediaId: UUID)
+POST   /api/sources/:mediaSourceId/thumbnails                # サムネイルの手動生成を開始します。(mediaSourceId: UUID)
+DELETE /api/sources/:mediaSourceId/thumbnails                # サムネイルキャッシュをクリアします。(mediaSourceId: UUID)
 ```
 **注記: これらの機能はまだ実装されていません。**
 
 #### ディレクトリ管理
 ```
-GET    /api/sources/:sourceId/directories?path=parent   # ディレクトリ一覧を取得します。(sourceId: UUID)
-POST   /api/sources/:sourceId/directories               # ディレクトリを作成します。(sourceId: UUID, body: { path: string, name: string })
-PUT    /api/sources/:sourceId/directories/rename        # ディレクトリ名を変更します。(sourceId: UUID, body: { oldPath: string, newPath: string })
-DELETE /api/sources/:sourceId/directories/delete        # ディレクトリを削除します。(sourceId: UUID, body: { path: string })
+GET    /api/sources/:mediaSourceId/directories?path=parent   # ディレクトリ一覧を取得します。(mediaSourceId: UUID)
+POST   /api/sources/:mediaSourceId/directories               # ディレクトリを作成します。(mediaSourceId: UUID, body: { path: string, name: string })
+PUT    /api/sources/:mediaSourceId/directories/rename        # ディレクトリ名を変更します。(mediaSourceId: UUID, body: { oldPath: string, newPath: string })
+DELETE /api/sources/:mediaSourceId/directories/delete        # ディレクトリを削除します。(mediaSourceId: UUID, body: { path: string })
 ```
 **注記: これらの機能はまだ実装されていません。**
 
 #### リアルタイム更新
 ```
-GET    /api/sources/:sourceId/events                    # SSE（Server-Sent Events）を監視し、リアルタイム更新を受け取ります。(sourceId: UUID)
+GET    /api/sources/:mediaSourceId/events                    # SSE（Server-Sent Events）を監視し、リアルタイム更新を受け取ります。(mediaSourceId: UUID)
 ```
 **注記: この機能はまだ実装されていません。**
 
@@ -636,13 +636,13 @@ export type ConnectionInfo =
 ### 2. メディア配信・サムネイル作成機能
 
 #### メディア配信
-- **エンドポイント**: `GET /api/sources/:sourceId/media/[...filePath]`
+- **エンドポイント**: `GET /api/sources/:mediaSourceId/media/[...filePath]`
 - **処理**:
-    1. `sourceId`と`filePath`を基に、データベースからメディアソースの情報を取得します。
+    1. `mediaSourceId`と`filePath`を基に、データベースからメディアソースの情報を取得します。
     2. メディアソースの種類に応じたストレージドライバー（`local`, `sftp`など）を取得します。
     3. ドライバーを用いて、指定された`filePath`からファイル内容を読み込みます。
     4. ファイル内容を適切な`Content-Type`ヘッダーと共にレスポンスとして返します。
-- **API関数**: `MediaService.getMediaContent(sourceId: string, mediaId: string)`
+- **API関数**: `MediaService.getMediaContent(mediaSourceId: string, mediaId: string)`
 
 #### サムネイル仕様
 - サイズ: クエリパラメータで指定 (?size=200, ?size=400等)
@@ -659,7 +659,7 @@ export type ConnectionInfo =
 ```typescript
 interface ThumbnailProgress {
   type: 'thumbnail_progress';
-  sourceId: string;
+  mediaSourceId: string;
   status: 'started' | 'processing' | 'completed' | 'error';
   progress: {
     current: number;    // 処理済みメディア数
@@ -700,7 +700,7 @@ interface MediaMetadata {
 ```typescript
 interface FileSystemEvent {
   type: 'added' | 'deleted' | 'modified';
-  sourceId: string;
+  mediaSourceId: string;
   filePath: string;    // 相対パス
   timestamp: Date;
 }
@@ -940,7 +940,7 @@ export type DeleteDirectoryRequest = {
 - GET /api/sources/:id/export?format=zip - アーカイブエクスポート
 - POST /api/sources/:id/import - インポート（URL/ファイル）
 - GET /api/sources/:id/media/*/download - メディアダウンロード
-- POST /api/sources/clone/:sourceId - ソース複製
+- POST /api/sources/clone/:mediaSourceId - ソース複製
 
 ### 4. ワークフロー・自動化機能
 バックグラウンドタスクとジョブ管理

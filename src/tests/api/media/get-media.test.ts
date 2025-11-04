@@ -1,20 +1,20 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { mediaIdSchema } from "~/domain/media/schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { mediaSourceIdSchema } from "~/domain/sources/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("getMedia Contract", () => {
   it("should return a Media object for a valid mediaId", () => {
-    const sourceId = "b0000000-0000-4000-8000-000000000000"; // Valid UUID
+    const mediaSourceId = "b0000000-0000-4000-8000-000000000000"; // Valid UUID
     const mediaId = "a0000000-0000-4000-8000-000000000000"; // Valid UUID
 
     // Validate with Zod schema
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(mediaSourceId);
     mediaIdSchema.parse(mediaId);
 
     // Placeholder for the actual getMedia function call
-    // const result = await getMedia(sourceId, mediaId);
+    // const result = await getMedia(mediaSourceId, mediaId);
     const result: Media = {
       id: mediaId,
       filePath: "/path/to/test/image.png",
@@ -25,7 +25,7 @@ describe("getMedia Contract", () => {
       mediaType: "image",
       width: 800,
       height: 600,
-      sourceId,
+      mediaSourceId,
       indexedAt: new Date(),
     };
 
@@ -36,11 +36,11 @@ describe("getMedia Contract", () => {
 
   it("should return an error if mediaId is not found", () => {
     // This test will initially fail as getMedia is not yet implemented.
-    const _sourceId = "b0000000-0000-4000-8000-000000000000";
+    const _mediaSourceId = "b0000000-0000-4000-8000-000000000000";
     const _mediaId = "a0000000-0000-0000-0000-000000000000"; // Valid UUID, but not found
 
     // Placeholder for the actual getMedia function call
-    // const errorResult = await getMedia(sourceId, mediaId);
+    // const errorResult = await getMedia(mediaSourceId, mediaId);
     const errorResult = { message: "Media not found" };
 
     expect(errorResult).toBeDefined();
@@ -48,14 +48,14 @@ describe("getMedia Contract", () => {
   });
 
   it("should throw a ZodError for an invalid mediaId format", () => {
-    const _sourceId = "b0000000-0000-0000-0000-000000000000";
+    const _mediaSourceId = "b0000000-0000-0000-0000-000000000000";
     const mediaId = "invalid-uuid-format";
     expect(() => mediaIdSchema.parse(mediaId)).toThrow(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", () => {
-    const sourceId = "invalid-source-id-format";
+  it("should throw a ZodError for an invalid mediaSourceId format", () => {
+    const mediaSourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(mediaSourceId)).toThrow(ZodError);
   });
 });

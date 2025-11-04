@@ -16,7 +16,7 @@ describe("updateMedia Integration", () => {
   // const testSourceId = "b0000000-0000-0000-0000-000000000000";
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
-    sourceId: testSourceId,
+    mediaSourceId: testSourceId,
     filePath: `/test/path/initial_image-${Date.now()}.png`,
     fileName: "initial_image.png",
     size: 1024,
@@ -76,7 +76,7 @@ describe("updateMedia Integration", () => {
     expect(mediaInDb.width).toBe(updates.width);
   });
 
-  it("should throw an error if mediaId is not found for the given sourceId", async () => {
+  it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {
     const nonExistentId = "a0000000-0000-4000-8000-000000000000";
     const updates = { fileName: "non_existent.png" };
     await expect(
@@ -92,7 +92,7 @@ describe("updateMedia Integration", () => {
     ).rejects.toBeInstanceOf(ZodError);
   });
 
-  it("should throw a ZodError for an invalid sourceId format", async () => {
+  it("should throw a ZodError for an invalid mediaSourceId format", async () => {
     const invalidSourceId = "invalid-uuid";
     const updates = { fileName: "test.png" };
     await expect(

@@ -36,7 +36,7 @@ describe("addMedia Integration", () => {
 
   it("should successfully add media to the database", async () => {
     const newMediaData = {
-      sourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
+      mediaSourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
       filePath: `/test/path/image-${Date.now()}.png`,
       fileName: "test_image.png",
       size: 1024,
@@ -74,9 +74,9 @@ describe("addMedia Integration", () => {
     ).rejects.toBeInstanceOf(ZodError);
   });
 
-  it("should throw an error if media with same sourceId and filePath already exists", async () => {
+  it("should throw an error if media with same mediaSourceId and filePath already exists", async () => {
     const newMediaData = {
-      sourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
+      mediaSourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
       filePath: "/test/path/duplicate_image.png",
       fileName: "duplicate_image.png",
       size: 1024,
@@ -89,9 +89,9 @@ describe("addMedia Integration", () => {
 
     await addMedia(newMediaData); // 最初のメディアを追加します。
 
-    // 同じsourceIdとfilePathで再度追加を試みます。
+    // 同じmediaSourceIdとfilePathで再度追加を試みます。
     await expect(addMedia(newMediaData)).rejects.toThrow(
-      "Media with this filePath already exists for the given sourceId"
+      "Media with this filePath already exists for the given mediaSourceId"
     );
   });
 });

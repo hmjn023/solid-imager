@@ -31,7 +31,7 @@ describe("media-generation-info queries Integration", () => {
       })
       .returning();
     const media: NewMedia = {
-      sourceId: source[0].id,
+      mediaSourceId: source[0].id,
       filePath: "a",
       fileName: "a",
       mediaType: "image",
@@ -95,7 +95,7 @@ describe("media-generation-info queries Integration", () => {
       })
       .returning();
     const media: NewMedia = {
-      sourceId: source[0].id,
+      mediaSourceId: source[0].id,
       filePath: "b",
       fileName: "b",
       mediaType: "image",
