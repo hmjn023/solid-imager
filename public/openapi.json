@@ -699,7 +699,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/charactors": {
+    "/api/sources/{mediaSourceId}/{mediaId}/charactors": {
       "get": {
         "summary": "Retrieve characters associated with a media",
         "description": "Fetches a list of characters linked to a specific media file.",
@@ -710,7 +710,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -755,7 +755,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/details": {
+    "/api/sources/{mediaSourceId}/{mediaId}/details": {
       "get": {
         "summary": "Retrieve media details",
         "description": "Fetches detailed information for a specific media file, including tags, metadata, category, IP, and character information.",
@@ -765,7 +765,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -807,7 +807,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}": {
+    "/api/sources/{mediaSourceId}/{mediaId}": {
       "get": {
         "summary": "Retrieve a specific media file",
         "description": "Fetches a specific media file by its source ID and media ID.",
@@ -817,7 +817,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -868,7 +868,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -920,7 +920,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/ips": {
+    "/api/sources/{mediaSourceId}/{mediaId}/ips": {
       "get": {
         "summary": "Retrieve IPs associated with a media",
         "description": "Fetches a list of Intellectual Properties linked to a specific media file.",
@@ -931,7 +931,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -976,7 +976,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/metadata": {
+    "/api/sources/{mediaSourceId}/{mediaId}/metadata": {
       "get": {
         "summary": "Retrieve media metadata",
         "description": "Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.",
@@ -986,7 +986,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1028,7 +1028,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/tags": {
+    "/api/sources/{mediaSourceId}/{mediaId}/tags": {
       "get": {
         "summary": "Retrieve tags for a specific media",
         "description": "Fetches a list of tags associated with a specific media file.",
@@ -1039,7 +1039,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1084,7 +1084,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/thumbnail": {
+    "/api/sources/{mediaSourceId}/{mediaId}/thumbnail": {
       "get": {
         "summary": "Retrieve a thumbnail for a specific media",
         "description": "Delivers a generated thumbnail image for a given media file.",
@@ -1095,7 +1095,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1146,7 +1146,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/{directories}": {
+    "/api/sources/{mediaSourceId}/directories/{directories}": {
       "get": {
         "summary": "Retrieve all media and directories under a specific directory",
         "description": "Fetches a list of all media files and subdirectories within a specified path under a media source.",
@@ -1157,7 +1157,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1201,7 +1201,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/{directories}/search": {
+    "/api/sources/{mediaSourceId}/directories/{directories}/search": {
       "get": {
         "summary": "Search for media within a specific subdirectory",
         "description": "Searches for media files within a specified subdirectory of a media source, based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
@@ -1213,7 +1213,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1334,7 +1334,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/create": {
+    "/api/sources/{mediaSourceId}/directories/create": {
       "post": {
         "summary": "Create a new directory",
         "description": "Creates a new directory within a specified media source.",
@@ -1344,7 +1344,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1383,7 +1383,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/delete": {
+    "/api/sources/{mediaSourceId}/directories/delete": {
       "delete": {
         "summary": "Delete a directory",
         "description": "Deletes a directory within a specified media source.",
@@ -1393,7 +1393,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1432,7 +1432,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories": {
+    "/api/sources/{mediaSourceId}/directories": {
       "get": {
         "summary": "Retrieve a list of directories within a media source",
         "description": "Fetches a hierarchical listing of directories and their contents for a given media source. Can be filtered by a parent path.",
@@ -1442,7 +1442,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1485,7 +1485,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/rename": {
+    "/api/sources/{mediaSourceId}/directories/rename": {
       "put": {
         "summary": "Rename a directory",
         "description": "Renames an existing directory within a specified media source.",
@@ -1495,7 +1495,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1534,7 +1534,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/events": {
+    "/api/sources/{mediaSourceId}/events": {
       "get": {
         "summary": "Monitor real-time updates via Server-Sent Events (SSE)",
         "description": "Establishes an SSE connection to receive real-time updates on file changes and other events for a specific media source. Only supported for local media sources.",
@@ -1544,7 +1544,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1576,7 +1576,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/events/thumbnail-progress": {
+    "/api/sources/{mediaSourceId}/events/thumbnail-progress": {
       "get": {
         "summary": "Monitor thumbnail generation progress via Server-Sent Events (SSE)",
         "description": "Establishes an SSE connection to receive real-time updates on the progress of thumbnail generation for a specific media source.",
@@ -1587,7 +1587,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1616,7 +1616,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}": {
+    "/api/sources/{mediaSourceId}": {
       "get": {
         "summary": "Retrieve all media within a specific media source",
         "description": "Fetches a list of all media files associated with a given media source ID.",
@@ -1627,7 +1627,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1670,7 +1670,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1720,7 +1720,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1745,7 +1745,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/search": {
+    "/api/sources/{mediaSourceId}/search": {
       "get": {
         "summary": "Search for media within a specific media source",
         "description": "Searches for media files within a given media source based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
@@ -1756,7 +1756,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1865,7 +1865,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/status": {
+    "/api/sources/{mediaSourceId}/status": {
       "get": {
         "summary": "Retrieve the status of a specific media source",
         "description": "Fetches the current operational status of a media source, including details like last sync time, number of indexed files, and any ongoing tasks.",
@@ -1875,7 +1875,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1907,7 +1907,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/thumbnails": {
+    "/api/sources/{mediaSourceId}/thumbnails": {
       "post": {
         "summary": "Start manual thumbnail generation",
         "description": "Initiates the process of generating thumbnails for all media within a specified source.",
@@ -1917,7 +1917,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1947,7 +1947,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1969,7 +1969,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/upload": {
+    "/api/sources/{mediaSourceId}/upload": {
       "post": {
         "summary": "Upload media to a specific media source",
         "description": "Uploads a new media file to the specified media source.",
@@ -1980,7 +1980,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -2344,7 +2344,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "sourceId": {
+          "mediaSourceId": {
             "type": "string",
             "format": "uuid"
           },
@@ -2655,7 +2655,7 @@
       "MediaSourceStatus": {
         "type": "object",
         "properties": {
-          "sourceId": {
+          "mediaSourceId": {
             "type": "string",
             "format": "uuid",
             "description": "The ID of the media source."

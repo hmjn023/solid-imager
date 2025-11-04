@@ -31,7 +31,7 @@ describe("tags and mediaTags queries Integration", () => {
 
     // Seed media
     const initialMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/tag/test/initial.jpg",
       fileName: "initial.jpg",
       mediaType: "image",
@@ -111,7 +111,7 @@ describe("tags and mediaTags queries Integration", () => {
     // Seed media for this test
     await db.insert(medias).values({
       id: mediaIdForMixedTags,
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/tag/test/mixed.jpg",
       fileName: "mixed.jpg",
       mediaType: "image",
