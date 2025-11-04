@@ -51,10 +51,7 @@ import type { UpdateTagBody } from "~/routes/api/tags/[id]";
  * @param {string} [data.color] - The new color for the tag.
  * @returns {object} The updated tag object.
  */
-export function updateTag(
-  id: number,
-  data: UpdateTagBody
-) {
+export function updateTag(id: number, data: UpdateTagBody) {
   const { name, description } = data;
   return {
     id,

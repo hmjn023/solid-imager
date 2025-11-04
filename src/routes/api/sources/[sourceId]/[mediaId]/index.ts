@@ -14,7 +14,6 @@ const MediaParamsSchema = z.object({
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
-
 /**
  * @swagger
  * /api/sources/{sourceId}/{mediaId}:

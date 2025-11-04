@@ -52,10 +52,7 @@ import type { UpdateCharacterBody } from "~/routes/api/charactors/[id]";
  * @param {string} [data.description] - The new description for the character.
  * @returns {object} The updated character object.
  */
-export function updateCharacter(
-  id: number,
-  data: UpdateCharacterBody
-) {
+export function updateCharacter(id: number, data: UpdateCharacterBody) {
   const { name, description } = data;
   return {
     id,

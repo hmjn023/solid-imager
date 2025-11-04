@@ -55,10 +55,7 @@ import type { UpdateCategoryBody } from "~/routes/api/categories/[id]";
  * @param {number} [data.parentId] - The new parent category ID.
  * @returns {object} The updated category object.
  */
-export function updateCategory(
-  id: number,
-  data: UpdateCategoryBody
-) {
+export function updateCategory(id: number, data: UpdateCategoryBody) {
   const { name, description } = data;
   return {
     id,
