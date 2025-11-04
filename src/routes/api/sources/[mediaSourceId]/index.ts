@@ -11,13 +11,13 @@ const HTTP_STATUS_NOT_FOUND = 404;
 const HTTP_STATUS_BAD_REQUEST = 400;
 
 const SourceParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
 });
 export type SourceParams = z.infer<typeof SourceParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   get:
  *     summary: Retrieve all media within a specific media source
  *     description: Fetches a list of all media files associated with a given media source ID.
@@ -26,7 +26,7 @@ export type SourceParams = z.infer<typeof SourceParamsSchema>;
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -57,10 +57,10 @@ export async function GET({ params }: APIEvent) {
     });
   }
 
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await getAllMedia(sourceId);
+    const result = await getAllMedia(mediaSourceId);
     if (!result) {
       return new Response(JSON.stringify({ error: "Source not found" }), {
         status: HTTP_STATUS_NOT_FOUND,
@@ -88,7 +88,7 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   put:
  *     summary: Update a specific media source
  *     description: Updates an existing media source with the provided data.
@@ -96,7 +96,7 @@ export async function GET({ params }: APIEvent) {
  *       - Media Sources
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -130,11 +130,11 @@ export async function PUT({ params, request }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
   const data = await request.json();
 
   try {
-    const result = await updateMediaSource(sourceId, data);
+    const result = await updateMediaSource(mediaSourceId, data);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
@@ -154,7 +154,7 @@ export async function PUT({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   delete:
  *     summary: Delete a specific media source
  *     description: Deletes a media source by its ID.
@@ -162,7 +162,7 @@ export async function PUT({ params, request }: APIEvent) {
  *       - Media Sources
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -186,10 +186,10 @@ export async function DELETE({ params }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await deleteMediaSource(sourceId);
+    const result = await deleteMediaSource(mediaSourceId);
     return new Response(JSON.stringify({ success: true, result }), {
       status: 200,
       headers: {

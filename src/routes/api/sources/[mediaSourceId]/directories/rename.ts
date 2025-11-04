@@ -4,7 +4,7 @@ import { renameDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/rename:
+ * /api/sources/{mediaSourceId}/directories/rename:
  *   put:
  *     summary: Rename a directory
  *     description: Renames an existing directory within a specified media source.
@@ -12,7 +12,7 @@ import { renameDirectory } from "~/infrastructure/api-clients/directories";
  *       - Directories
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -37,8 +37,8 @@ import { renameDirectory } from "~/infrastructure/api-clients/directories";
  *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const { oldPath, newPath } = await request.json(); // oldPathとnewPathがボディに含まれていると仮定します。
-  const result = await renameDirectory(sourceId, oldPath, newPath);
+  const result = await renameDirectory(mediaSourceId, oldPath, newPath);
   return result;
 }

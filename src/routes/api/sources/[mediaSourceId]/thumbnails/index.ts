@@ -6,7 +6,7 @@ import {
 
 /**
  * @swagger
- * /api/sources/{sourceId}/thumbnails:
+ * /api/sources/{mediaSourceId}/thumbnails:
  *   post:
  *     summary: Start manual thumbnail generation
  *     description: Initiates the process of generating thumbnails for all media within a specified source.
@@ -14,7 +14,7 @@ import {
  *       - Thumbnails
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -29,14 +29,14 @@ import {
  *         description: Internal server error.
  */
 export async function POST({ params }: APIEvent) {
-  const sourceId = params.sourceId;
-  const result = await startThumbnailGeneration(sourceId);
+  const mediaSourceId = params.mediaSourceId;
+  const result = await startThumbnailGeneration(mediaSourceId);
   return result;
 }
 
 /**
  * @swagger
- * /api/sources/{sourceId}/thumbnails:
+ * /api/sources/{mediaSourceId}/thumbnails:
  *   delete:
  *     summary: Clear thumbnail cache
  *     description: Clears all generated thumbnail images for a specified media source.
@@ -44,7 +44,7 @@ export async function POST({ params }: APIEvent) {
  *       - Thumbnails
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -59,7 +59,7 @@ export async function POST({ params }: APIEvent) {
  *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
-  const sourceId = params.sourceId;
-  const result = await clearThumbnailCache(sourceId);
+  const mediaSourceId = params.mediaSourceId;
+  const result = await clearThumbnailCache(mediaSourceId);
   return result;
 }

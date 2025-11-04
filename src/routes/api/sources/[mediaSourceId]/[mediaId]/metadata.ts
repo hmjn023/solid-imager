@@ -5,14 +5,14 @@ import { getMediaMetadata } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/metadata:
+ * /api/sources/{mediaSourceId}/{mediaId}/metadata:
  *   get:
  *     summary: Retrieve media metadata
  *     description: Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.
@@ -20,7 +20,7 @@ export type MediaParams = z.infer<typeof MediaParamsSchema>;
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -55,8 +55,8 @@ export async function GET({ params }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const metadata = await getMediaMetadata(sourceId as UUID, mediaId as UUID);
+  const metadata = await getMediaMetadata(mediaSourceId as UUID, mediaId as UUID);
   return metadata;
 }

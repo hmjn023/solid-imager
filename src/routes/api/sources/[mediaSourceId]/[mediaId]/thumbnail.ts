@@ -5,14 +5,14 @@ import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/thumbnail:
+ * /api/sources/{mediaSourceId}/{mediaId}/thumbnail:
  *   get:
  *     summary: Retrieve a thumbnail for a specific media
  *     description: Delivers a generated thumbnail image for a given media file.
@@ -21,7 +21,7 @@ export type MediaParams = z.infer<typeof MediaParamsSchema>;
  *       - Thumbnails
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -65,10 +65,10 @@ export async function GET({ params }: APIEvent) {
     });
   }
 
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
   try {
-    const thumbnailPath = getThumbnailPath(sourceId, mediaId);
+    const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
 
     const thumbnailBuffer = await fs.readFile(thumbnailPath);
 

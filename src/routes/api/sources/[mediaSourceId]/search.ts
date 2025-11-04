@@ -4,7 +4,7 @@ import { searchMedia } from "~/infrastructure/api-clients/media";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/search:
+ * /api/sources/{mediaSourceId}/search:
  *   get:
  *     summary: Search for media within a specific media source
  *     description: Searches for media files within a given media source based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.
@@ -13,7 +13,7 @@ import { searchMedia } from "~/infrastructure/api-clients/media";
  *       - Search
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -84,9 +84,9 @@ import { searchMedia } from "~/infrastructure/api-clients/media";
  *         description: Internal server error.
  */
 export async function GET({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
-  const result = await searchMedia(sourceId, queryParams);
+  const result = await searchMedia(mediaSourceId, queryParams);
   return result;
 }

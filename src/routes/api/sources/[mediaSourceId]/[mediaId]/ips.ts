@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/ips:
+ * /api/sources/{mediaSourceId}/{mediaId}/ips:
  *   get:
  *     summary: Retrieve IPs associated with a media
  *     description: Fetches a list of Intellectual Properties linked to a specific media file.
@@ -9,7 +9,7 @@
  *       - IPs
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string

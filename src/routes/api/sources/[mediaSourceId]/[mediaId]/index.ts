@@ -9,14 +9,14 @@ import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}:
+ * /api/sources/{mediaSourceId}/{mediaId}:
  *   get:
  *     summary: Retrieve a specific media file
  *     description: Fetches a specific media file by its source ID and media ID.
@@ -24,7 +24,7 @@ export type MediaParams = z.infer<typeof MediaParamsSchema>;
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -60,11 +60,11 @@ export async function GET({ params }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
   try {
-    const media = await getMedia(sourceId as UUID, mediaId as UUID);
-    const source = await selectMediaSourceById(sourceId as UUID);
+    const media = await getMedia(mediaSourceId as UUID, mediaId as UUID);
+    const source = await selectMediaSourceById(mediaSourceId as UUID);
 
     if (!source || source.type !== "local") {
       return new Response("Media source not found or not local", {
@@ -86,7 +86,7 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}:
+ * /api/sources/{mediaSourceId}/{mediaId}:
  *   put:
  *     summary: Update specific media information
  *     description: Updates metadata and other information for a specific media file.
@@ -94,7 +94,7 @@ export async function GET({ params }: APIEvent) {
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -135,7 +135,7 @@ export async function PUT({ params, request }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
   const body = await request.json();
   const parsedBody = updateMediaRequestSchema.safeParse(body);
@@ -147,6 +147,6 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const data = parsedBody.data;
 
-  const result = await updateMedia(sourceId, mediaId, data);
+  const result = await updateMedia(mediaSourceId, mediaId, data);
   return result;
 }

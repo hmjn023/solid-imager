@@ -4,7 +4,7 @@ import { startSseMonitoring } from "~/infrastructure/api-clients/events";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/events:
+ * /api/sources/{mediaSourceId}/events:
  *   get:
  *     summary: Monitor real-time updates via Server-Sent Events (SSE)
  *     description: Establishes an SSE connection to receive real-time updates on file changes and other events for a specific media source. Only supported for local media sources.
@@ -12,7 +12,7 @@ import { startSseMonitoring } from "~/infrastructure/api-clients/events";
  *       - Real-time Updates
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -33,7 +33,7 @@ import { startSseMonitoring } from "~/infrastructure/api-clients/events";
  *         description: Internal server error or source type not supported for SSE.
  */
 export async function GET({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const result = await startSseMonitoring(sourceId);
+  const mediaSourceId = params.mediaSourceId as UUID;
+  const result = await startSseMonitoring(mediaSourceId);
   return result;
 }

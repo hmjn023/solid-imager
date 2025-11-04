@@ -1,6 +1,6 @@
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/charactors:
  *   get:
  *     summary: Retrieve characters associated with a media
  *     description: Fetches a list of characters linked to a specific media file.
@@ -9,7 +9,7 @@
  *       - Characters
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string

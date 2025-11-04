@@ -5,14 +5,14 @@ import { getMediaTags } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/tags:
+ * /api/sources/{mediaSourceId}/{mediaId}/tags:
  *   get:
  *     summary: Retrieve tags for a specific media
  *     description: Fetches a list of tags associated with a specific media file.
@@ -21,7 +21,7 @@ export type MediaParams = z.infer<typeof MediaParamsSchema>;
  *       - Tags
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -58,8 +58,8 @@ export async function GET({ params }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const tags = await getMediaTags(sourceId as UUID, mediaId as UUID);
+  const tags = await getMediaTags(mediaSourceId as UUID, mediaId as UUID);
   return tags;
 }

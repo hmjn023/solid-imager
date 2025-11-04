@@ -6,13 +6,13 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
 
 const SourceParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
 });
 export type SourceParams = z.infer<typeof SourceParamsSchema>;
 
 /**
  * @swagger
- * /api/sources/{sourceId}/upload:
+ * /api/sources/{mediaSourceId}/upload:
  *   post:
  *     summary: Upload media to a specific media source
  *     description: Uploads a new media file to the specified media source.
@@ -21,7 +21,7 @@ export type SourceParams = z.infer<typeof SourceParamsSchema>;
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -53,11 +53,11 @@ export async function POST({ params, request }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
     const formData = await request.formData();
-    const result = await uploadMedia(sourceId, formData);
+    const result = await uploadMedia(mediaSourceId, formData);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {

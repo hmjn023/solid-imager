@@ -4,7 +4,7 @@ import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/{directories}/search:
+ * /api/sources/{mediaSourceId}/directories/{directories}/search:
  *   get:
  *     summary: Search for media within a specific subdirectory
  *     description: Searches for media files within a specified subdirectory of a media source, based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.
@@ -14,7 +14,7 @@ import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
  *       - Search
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -93,12 +93,12 @@ import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
  *         description: Internal server error.
  */
 export async function GET({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const directoriesPath = params.directories.join("/"); // パスを再構築します。
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
   const result = await searchMediaInDirectory(
-    sourceId,
+    mediaSourceId,
     directoriesPath,
     queryParams
   );

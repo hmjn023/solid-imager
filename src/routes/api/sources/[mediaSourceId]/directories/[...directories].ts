@@ -3,10 +3,10 @@ import { MediaService } from "~/application/services/media-service";
 
 export async function GET({ params }: APIEvent) {
   try {
-    const { sourceId } = params;
+    const { mediaSourceId } = params;
     const directories = params.directories.split("/");
 
-    if (!sourceId) {
+    if (!mediaSourceId) {
       return new Response(JSON.stringify({ error: "Source ID is required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -16,7 +16,7 @@ export async function GET({ params }: APIEvent) {
     // Assuming searchMediaInDirectory can handle an array of directory segments
     // and will return media within that path.
     const mediaList = await MediaService.searchMediaInDirectory(
-      sourceId,
+      mediaSourceId,
       directories.join("/"), // Re-join for the service
       {} // No search options for now
     );

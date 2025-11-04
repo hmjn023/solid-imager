@@ -4,7 +4,7 @@ import { deleteDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/delete:
+ * /api/sources/{mediaSourceId}/directories/delete:
  *   delete:
  *     summary: Delete a directory
  *     description: Deletes a directory within a specified media source.
@@ -12,7 +12,7 @@ import { deleteDirectory } from "~/infrastructure/api-clients/directories";
  *       - Directories
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -37,8 +37,8 @@ import { deleteDirectory } from "~/infrastructure/api-clients/directories";
  *         description: Internal server error.
  */
 export async function DELETE({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const { path } = await request.json(); // パスがボディに含まれていると仮定します。
-  const result = await deleteDirectory(sourceId, path);
+  const result = await deleteDirectory(mediaSourceId, path);
   return result;
 }
