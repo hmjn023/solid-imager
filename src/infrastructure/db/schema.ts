@@ -104,7 +104,7 @@ export const medias = pgTable(
   {
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** どのメディアソースに属しているか */
-    sourceId: uuid("source_id")
+    mediaSourceId: uuid("media_source_id")
       .notNull()
       .references(() => mediaSources.id, { onDelete: "cascade" }),
     /** ソース内の相対パス */
@@ -133,11 +133,11 @@ export const medias = pgTable(
     status: mediaOrganizationStatusEnum("status").notNull().default("active"),
   },
   (table) => ({
-    sourceIdFilePathUnique: unique("source_id_file_path_unique").on(
-      table.sourceId,
+    mediaSourceIdFilePathUnique: unique("media_source_id_file_path_unique").on(
+      table.mediaSourceId,
       table.filePath
     ),
-    sourceIdIndex: index("idx_media_source_id").on(table.sourceId),
+    mediaSourceIdIndex: index("idx_media_media_source_id").on(table.mediaSourceId),
     fileNameIndex: index("idx_media_file_name").on(table.fileName),
     createdAtIndex: index("idx_media_created_at").on(table.createdAt),
     descriptionIndex: index("idx_media_description").on(table.description),
@@ -713,7 +713,7 @@ export const jobs = pgTable("jobs", {
   /** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
   type: text("type").notNull(),
   /** 関連するメディアソースID (オプショナル) */
-  sourceId: uuid("source_id").references(() => mediaSources.id, {
+  mediaSourceId: uuid("media_source_id").references(() => mediaSources.id, {
     onDelete: "cascade",
   }),
   /** ジョブのステータス */
@@ -772,7 +772,7 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
   /** メディアが属するメディアソース */
 
   source: one(mediaSources, {
-    fields: [medias.sourceId],
+    fields: [medias.mediaSourceId],
     references: [mediaSources.id],
   }),
   /** メディアに付けられたタグ */

@@ -1,13 +1,13 @@
 # 機能詳細仕様
 ### 2. メディア配信・サムネイル作成機能
 #### メディア配信
-- **エンドポイント**: `GET /api/sources/:sourceId/media/[...filePath]`
+- **エンドポイント**: `GET /api/sources/:mediaSourceId/media/[...filePath]`
 - **処理**:
-    1. `sourceId`と`filePath`を基に、データベースからメディアソースの情報を取得します。
+    1. `mediaSourceId`と`filePath`を基に、データベースからメディアソースの情報を取得します。
     2. メディアソースの種類に応じたストレージドライバー（`local`, `sftp`など）を取得します。
     3. ドライバーを用いて、指定された`filePath`からファイル内容を読み込みます。
     4. ファイル内容を適切な`Content-Type`ヘッダーと共にレスポンスとして返します。
-- **API関数**: `MediaService.getMediaContent(sourceId: string, mediaId: string)`
+- **API関数**: `MediaService.getMediaContent(mediaSourceId: string, mediaId: string)`
 
 #### サムネイル仕様
 - サイズ: クエリパラメータで指定 (?size=200, ?size=400等)
@@ -24,7 +24,7 @@
 ```typescript
 export type ThumbnailProgress = {
   type: "thumbnail_progress";
-  sourceId: string;
+  mediaSourceId: string;
   status: "started" | "processing" | "completed" | "error";
   progress: {
     current: number;
@@ -67,7 +67,7 @@ export type MediaMetadata = {
 ```typescript
 export type FileSystemEvent = {
   type: "added" | "deleted" | "modified";
-  sourceId: string;
+  mediaSourceId: string;
   filePath: string;
   timestamp: Date;
 };

@@ -13,29 +13,29 @@ import {
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
 
-export function getSourceCacheDir(sourceId: string): string {
-  return path.join(".cache/thumbnails", sourceId);
+export function getSourceCacheDir(mediaSourceId: string): string {
+  return path.join(".cache/thumbnails", mediaSourceId);
 }
 
 /**
  * Ensures that the thumbnail cache directory for a specific source exists.
  * If the directory does not exist, it will be created recursively.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<void>} A promise that resolves when the directory is ensured.
  */
-async function ensureCacheDir(sourceId: string) {
-  await fs.mkdir(getSourceCacheDir(sourceId), { recursive: true });
+async function ensureCacheDir(mediaSourceId: string) {
+  await fs.mkdir(getSourceCacheDir(mediaSourceId), { recursive: true });
 }
 
 /**
  * Generates the full path for a thumbnail file given a media ID and source ID.
  * The thumbnail files are stored in WebP format.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {string} The absolute path to the thumbnail file.
  */
-export function getThumbnailPath(sourceId: string, mediaId: string): string {
-  return path.join(getSourceCacheDir(sourceId), `${mediaId}.webp`);
+export function getThumbnailPath(mediaSourceId: string, mediaId: string): string {
+  return path.join(getSourceCacheDir(mediaSourceId), `${mediaId}.webp`);
 }
 
 /**
@@ -48,9 +48,9 @@ export function getThumbnailPath(sourceId: string, mediaId: string): string {
 export async function generateThumbnail(
   media: Media,
   sourcePath: string,
-  sourceId: string
+  mediaSourceId: string
 ): Promise<void> {
-  await ensureCacheDir(sourceId);
+  await ensureCacheDir(mediaSourceId);
 
   const config = getConfig();
   const size =
@@ -59,7 +59,7 @@ export async function generateThumbnail(
     config.media?.image?.thumbnail?.quality ?? DEFAULT_THUMBNAIL_QUALITY;
 
   const inputPath = path.join(sourcePath, media.filePath);
-  const outputPath = getThumbnailPath(sourceId, media.id);
+  const outputPath = getThumbnailPath(mediaSourceId, media.id);
   await sharp(inputPath)
     .resize(size, size, { fit: "inside", withoutEnlargement: true })
     .webp({ quality })
@@ -73,10 +73,10 @@ export async function generateThumbnail(
  * @returns {Promise<void>} A promise that resolves when the thumbnail has been deleted or not found.
  */
 export async function deleteThumbnail(
-  sourceId: string,
+  mediaSourceId: string,
   mediaId: string
 ): Promise<void> {
-  const thumbnailPath = getThumbnailPath(sourceId, mediaId);
+  const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
   try {
     await fs.unlink(thumbnailPath);
   } catch (error: unknown) {
@@ -89,19 +89,19 @@ export async function deleteThumbnail(
 
 /**
  * Queues all media items from a specified source for thumbnail generation.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
  */
 export async function generateThumbnailsForSource(
-  sourceId: string
+  mediaSourceId: string
 ): Promise<number> {
-  const source = await selectMediaSourceById(sourceId);
+  const source = await selectMediaSourceById(mediaSourceId);
   if (!source || source.type !== "local") {
     throw new Error("Source not found or not a local source");
   }
 
-  const mediaItems = await selectMediaBySourceId(sourceId);
+  const mediaItems = await selectMediaBySourceId(mediaSourceId);
   if (mediaItems.length === 0) {
     return 0;
   }
@@ -111,11 +111,11 @@ export async function generateThumbnailsForSource(
     sourcePath: source.connectionInfo?.path,
   }));
 
-  addJobsToQueue(sourceId, jobs);
-  startJobQueue(sourceId, async (job) => {
+  addJobsToQueue(mediaSourceId, jobs);
+  startJobQueue(mediaSourceId, async (job) => {
     const media = mediaItems.find((m) => m.id === job.mediaId);
     if (media) {
-      await generateThumbnail(media, job.sourcePath, sourceId);
+      await generateThumbnail(media, job.sourcePath, mediaSourceId);
     }
   });
 

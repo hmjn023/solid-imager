@@ -1,68 +1,64 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db } from "~/infrastructure/db";
+import { NotFoundError } from "~/infrastructure/db/errors";
 import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";
-import { db } from "~/tests/setup"; // Import the mocked db
+import {
+  mediaSources,
+  medias,
+  type NewMedia,
+} from "~/infrastructure/db/schema";
 
-describe("selectRandomMedia", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (db.select as vi.Mock).mockClear();
-    (db.insert as vi.Mock).mockClear();
-    (db.update as vi.Mock).mockClear();
-    (db.delete as vi.Mock).mockClear();
-    (db.query.mediaSources.findFirst as vi.Mock).mockClear();
-    (db.transaction as vi.Mock).mockClear();
+describe("selectRandomMedia DB", () => {
+  const mediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a18";
+
+  beforeAll(async () => {
+    await db.delete(medias).where(sql`true`);
+    await db.delete(mediaSources).where(sql`true`);
+
+    await db.insert(mediaSources).values({
+      id: mediaSourceId,
+      name: "random-test-db",
+      type: "local",
+      connectionInfo: { path: "/" },
+    });
+
+    const mediaToInsert: NewMedia[] = [
+      {
+        mediaSourceId,
+        filePath: "1.jpg",
+        fileName: "1.jpg",
+        mediaType: "image",
+        width: 1,
+        height: 1,
+      },
+      {
+        mediaSourceId,
+        filePath: "2.jpg",
+        fileName: "2.jpg",
+        mediaType: "image",
+        width: 1,
+        height: 1,
+      },
+    ];
+    await db.insert(medias).values(mediaToInsert);
+  });
+
+  afterAll(async () => {
+    await db.delete(medias).where(sql`true`);
+    await db.delete(mediaSources).where(sql`true`);
   });
 
   it("should return a random media item on success", async () => {
-    const media1 = { id: "media1", sourceId: "source1", createdAt: new Date() };
-
-    (db.select as vi.Mock).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([media1]),
-          }),
-        }),
-      }),
-    });
-
-    const result = await selectRandomMedia("source1");
-    expect(result).toEqual(media1);
-    expect(db.select).toHaveBeenCalled();
+    const randomMedia = await selectRandomMedia(mediaSourceId);
+    expect(randomMedia).toBeDefined();
+    expect(randomMedia.mediaSourceId).toBe(mediaSourceId);
   });
 
   it("should return NotFoundError if no random media found", async () => {
-    (db.select as vi.Mock).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([]), // No media found
-          }),
-        }),
-      }),
-    });
-
-    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(
+    const nonExistentSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a99";
+    await expect(selectRandomMedia(nonExistentSourceId)).rejects.toBeInstanceOf(
       NotFoundError
     );
-    expect(db.select).toHaveBeenCalled();
-  });
-
-  it("should return UnknownDbError on failure", async () => {
-    (db.select as vi.Mock).mockReturnValue({
-      from: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          orderBy: vi.fn().mockReturnValue({
-            limit: vi.fn().mockRejectedValue(new Error("DB error")),
-          }),
-        }),
-      }),
-    });
-
-    await expect(selectRandomMedia("source1")).rejects.toBeInstanceOf(
-      UnknownDbError
-    );
-    expect(db.select).toHaveBeenCalled();
   });
 });

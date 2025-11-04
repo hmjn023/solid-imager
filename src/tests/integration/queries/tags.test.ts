@@ -11,7 +11,7 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("tags and mediaTags queries Integration", () => {
-  const testSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13";
+  const testMediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a13";
   let testMediaId: string;
 
   beforeAll(async () => {
@@ -23,7 +23,7 @@ describe("tags and mediaTags queries Integration", () => {
 
     // Seed media source
     await db.insert(mediaSources).values({
-      id: testSourceId,
+      id: testMediaSourceId,
       name: "Tag Test Source",
       type: "local",
       connectionInfo: { path: "/tag/test" },
@@ -31,7 +31,7 @@ describe("tags and mediaTags queries Integration", () => {
 
     // Seed media
     const initialMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testMediaSourceId,
       filePath: "/tag/test/initial.jpg",
       fileName: "initial.jpg",
       mediaType: "image",

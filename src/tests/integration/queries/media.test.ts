@@ -35,7 +35,7 @@ describe("media queries Integration", () => {
 
     // Seed initial media data
     const initialMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/initial.jpg",
       fileName: "initial.jpg",
       mediaType: "image",
@@ -66,7 +66,7 @@ describe("media queries Integration", () => {
 
   it("should insert new media", async () => {
     const newMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/new.png",
       fileName: "new.png",
       mediaType: "image",
@@ -102,12 +102,12 @@ describe("media queries Integration", () => {
     const mediaList = await selectMediaBySourceId(testSourceId);
     expect(mediaList).toBeInstanceOf(Array);
     expect(mediaList.length).toBeGreaterThanOrEqual(1);
-    expect(mediaList.every((m) => m.sourceId === testSourceId)).toBe(true);
+    expect(mediaList.every((m) => m.mediaSourceId === testSourceId)).toBe(true);
   });
 
   it("should delete media by path", async () => {
     const mediaToDelete: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/to-delete-by-path/image.png",
       fileName: "image.png",
       mediaType: "image",
@@ -131,7 +131,7 @@ describe("media queries Integration", () => {
 
   it("should delete media by ID", async () => {
     const mediaToDelete: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/to-delete.jpg",
       fileName: "to-delete.jpg",
       mediaType: "image",

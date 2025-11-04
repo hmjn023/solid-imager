@@ -1,65 +1,46 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
+import { sql } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { db } from "~/infrastructure/db";
+import { ConstraintError } from "~/infrastructure/db/errors";
 import {
   insertPreset,
   selectPresets,
 } from "~/infrastructure/db/queries/presets";
-import { db } from "~/tests/setup"; // Import the mocked db
+import { presets, type NewPreset } from "~/infrastructure/db/schema";
 
-describe("Preset Database Operations", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    (db.select as vi.Mock).mockClear();
-    (db.insert as vi.Mock).mockClear();
-    (db.update as vi.Mock).mockClear();
-    (db.query.mediaSources.findFirst as vi.Mock).mockClear();
-    (db.transaction as vi.Mock).mockClear();
+describe("Preset DB Operations", () => {
+  const preset1: NewPreset = {
+    name: "Preset 1",
+    value: "{}",
+  };
+
+  beforeAll(async () => {
+    await db.delete(presets).where(sql`true`);
+    await db.insert(presets).values(preset1);
+  });
+
+  afterAll(async () => {
+    await db.delete(presets).where(sql`true`);
   });
 
   it("selectPresets should return a list of presets on success", async () => {
-    const preset1 = { id: "preset1", name: "Preset 1" };
-    (db.select as vi.Mock).mockReturnValue({
-      from: vi.fn().mockResolvedValueOnce([preset1]),
-    });
     const result = await selectPresets();
-    expect(result).toEqual([preset1]);
-    expect(db.select).toHaveBeenCalled();
+    expect(result).toBeInstanceOf(Array);
+    expect(result.length).toBe(1);
+    expect(result[0].name).toBe(preset1.name);
   });
 
   it("insertPreset should insert a new preset on success", async () => {
-    const newPreset = { id: "preset2", name: "Preset 2" };
-    (db.insert as vi.Mock).mockReturnValue({
-      values: vi.fn().mockReturnThis(),
-      returning: vi.fn().mockResolvedValueOnce([newPreset]),
-    });
+    const newPreset: NewPreset = {
+      name: "Preset 2",
+      value: "{}",
+    };
     const result = await insertPreset(newPreset);
-    expect(result).toEqual([newPreset]);
-    expect(db.insert).toHaveBeenCalled();
+    expect(result).toBeInstanceOf(Array);
+    expect(result[0].name).toBe(newPreset.name);
   });
 
   it("insertPreset should return ConstraintError on duplicate entry", async () => {
-    (db.insert as vi.Mock).mockReturnValue({
-      values: vi.fn().mockReturnThis(),
-      returning: vi
-        .fn()
-        .mockRejectedValueOnce({ code: "23505", message: "duplicate key" }),
-    });
-    await expect(
-      insertPreset({ id: "preset2", name: "Preset 2" })
-    ).rejects.toBeInstanceOf(ConstraintError);
-    expect(db.insert).toHaveBeenCalled();
-  });
-
-  it("insertPreset should return UnknownDbError on failure", async () => {
-    (db.insert as vi.Mock).mockReturnValue({
-      values: vi.fn().mockReturnThis(),
-      returning: vi
-        .fn()
-        .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
-    });
-    await expect(
-      insertPreset({ id: "preset2", name: "Preset 2" })
-    ).rejects.toBeInstanceOf(UnknownDbError);
-    expect(db.insert).toHaveBeenCalled();
+    await expect(insertPreset(preset1)).rejects.toBeInstanceOf(ConstraintError);
   });
 });

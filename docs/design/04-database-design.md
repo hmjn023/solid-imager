@@ -19,7 +19,7 @@ CREATE TABLE media_sources (
 ```sql
 CREATE TABLE media (
   id UUID PRIMARY KEY,
-  source_id UUID NOT NULL REFERENCES media_sources(id) ON DELETE CASCADE, -- どのメディアソースに属しているか
+  media_source_id UUID NOT NULL REFERENCES media_sources(id) ON DELETE CASCADE, -- どのメディアソースに属しているか
   file_path TEXT NOT NULL,           -- ソース内の相対パス
   file_name TEXT NOT NULL,           -- ファイル名
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio')), -- メディア種別
@@ -37,7 +37,7 @@ CREATE TABLE media (
   indexed_at TIMESTAMP NOT NULL DEFAULT NOW(),     -- DB登録日時
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'archived', 'deleted')) -- メディアの状態
   
-  UNIQUE(source_id, file_path)
+  UNIQUE(media_source_id, file_path)
 );
 ```
 
@@ -350,7 +350,7 @@ CREATE TABLE media_collections (
 CREATE TABLE jobs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
   type TEXT NOT NULL,                 -- ジョブの種類（例: "thumbnail_generation", "metadata_extraction"）
-  source_id UUID REFERENCES media_sources(id) ON DELETE CASCADE, -- 関連するメディアソースID（オプショナル）
+  media_source_id UUID REFERENCES media_sources(id) ON DELETE CASCADE, -- 関連するメディアソースID（オプショナル）
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'failed')), -- ジョブのステータス
   payload JSONB,                      -- ジョブのペイロード（入力パラメータ等）
   result JSONB,                       -- ジョブの実行結果
@@ -371,7 +371,7 @@ CREATE TABLE jobs (
 **payloadの例**:
 ```json
 {
-  "sourceId": "550e8400-e29b-41d4-a716-446655440000",
+  "mediaSourceId": "550e8400-e29b-41d4-a716-446655440000",
   "options": {
     "size": 256,
     "quality": 80

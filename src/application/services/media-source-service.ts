@@ -56,33 +56,33 @@ const createSourceServer = async (
 };
 
 const updateSourceServer = async (
-  sourceId: string,
+  mediaSourceId: string,
   sourceData: MediaSource
 ): Promise<MediaSource[]> => {
   "use server";
   const { updateMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return updateMediaSource(sourceId, sourceData);
+  return updateMediaSource(mediaSourceId, sourceData);
 };
 
 const fetchSourceByIdServer = cache(
-  async (sourceId: string): Promise<(MediaSource | undefined)[]> => {
+  async (mediaSourceId: string): Promise<(MediaSource | undefined)[]> => {
     "use server";
     const { selectMediaSourceById } = await import(
       "~/infrastructure/db/queries/media-sources"
     );
-    return selectMediaSourceById(sourceId);
+    return selectMediaSourceById(mediaSourceId);
   },
   "fetchSourceById"
 );
 
-const deleteSourceServer = async (sourceId: string): Promise<MediaSource[]> => {
+const deleteSourceServer = async (mediaSourceId: string): Promise<MediaSource[]> => {
   "use server";
   const { deleteMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return deleteMediaSource(sourceId);
+  return deleteMediaSource(mediaSourceId);
 };
 
 /**
@@ -105,7 +105,7 @@ export const MediaSourceService = {
   /**
    * Updates an existing media source on the server.
    * This function is executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to update.
+   * @param {string} mediaSourceId - The ID of the media source to update.
    * @param {MediaSource} sourceData - The updated data for the media source.
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the updated media source.
    */
@@ -113,14 +113,14 @@ export const MediaSourceService = {
   /**
    * Fetches a specific media source by its ID from the server.
    * This function is cached and executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to fetch.
+   * @param {string} mediaSourceId - The ID of the media source to fetch.
    * @returns {Promise<(MediaSource | undefined)[]>} A promise that resolves with an array containing the media source, or undefined if not found.
    */
   fetchSourceById: fetchSourceByIdServer,
   /**
    * Deletes a media source from the server.
    * This function is executed only on the server side.
-   * @param {string} sourceId - The ID of the media source to delete.
+   * @param {string} mediaSourceId - The ID of the media source to delete.
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the deleted media source.
    */
   deleteSource: deleteSourceServer,

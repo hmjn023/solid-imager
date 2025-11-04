@@ -4,14 +4,17 @@ import { PGlite } from "@electric-sql/pglite";
 import path from "path";
 import fs from "fs";
 
-async function main() {
+export async function setup() {
   const dataDir = path.join(process.cwd(), ".data", "pglite");
   console.log("Using PGlite data directory:", dataDir);
 
-  // Ensure the data directory exists
-  if (!fs.existsSync(dataDir)) {
-    fs.mkdirSync(dataDir, { recursive: true });
+  // Clean up previous test run
+  if (fs.existsSync(dataDir)) {
+    fs.rmSync(dataDir, { recursive: true, force: true });
   }
+
+  // Ensure the data directory exists
+  fs.mkdirSync(dataDir, { recursive: true });
 
   const client = new PGlite(dataDir);
   const db = drizzle(client);
@@ -29,4 +32,10 @@ async function main() {
   }
 }
 
-main();
+export async function teardown() {
+  // Teardown logic here if needed
+}
+
+if (require.main === module) {
+  setup();
+}

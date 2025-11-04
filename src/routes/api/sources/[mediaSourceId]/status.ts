@@ -4,7 +4,7 @@ import { getMediaSourceStatus } from "~/infrastructure/api-clients/sources";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/status:
+ * /api/sources/{mediaSourceId}/status:
  *   get:
  *     summary: Retrieve the status of a specific media source
  *     description: Fetches the current operational status of a media source, including details like last sync time, number of indexed files, and any ongoing tasks.
@@ -12,7 +12,7 @@ import { getMediaSourceStatus } from "~/infrastructure/api-clients/sources";
  *       - Media Sources
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -26,14 +26,14 @@ import { getMediaSourceStatus } from "~/infrastructure/api-clients/sources";
  *             schema:
  *               $ref: '#/components/schemas/MediaSourceStatus'
  *       400:
- *         description: Invalid source ID supplied.
+ *         description: Invalid media source ID supplied.
  *       404:
  *         description: Media source not found.
  *       500:
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const status = await getMediaSourceStatus(sourceId);
+  const mediaSourceId = params.mediaSourceId as UUID;
+  const status = await getMediaSourceStatus(mediaSourceId);
   return status;
 }

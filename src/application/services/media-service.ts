@@ -17,17 +17,17 @@ import { getDriver } from "~/infrastructure/storage/factory";
 export const MediaService = {
   /**
    * Retrieves the content of a specific media file for delivery.
-   * @param {string} sourceId - The ID of the media source.
+   * @param {string} mediaSourceId - The ID of the media source.
    * @param {string} filePath - The path of the media file.
    * @returns {Promise<Buffer>} A promise that resolves with the file content as a Buffer.
    */
-  async getMediaContent(sourceId: string, mediaId: string): Promise<Buffer> {
-    const [source] = await MediaSourceService.fetchSourceById(sourceId);
+  async getMediaContent(mediaSourceId: string, mediaId: string): Promise<Buffer> {
+    const [source] = await MediaSourceService.fetchSourceById(mediaSourceId);
     if (!source) {
       throw new Error("Media source not found");
     }
 
-    const media = await getMedia(sourceId, mediaId);
+    const media = await getMedia(mediaSourceId, mediaId);
     if (!media) {
       throw new Error("Media not found");
     }
@@ -38,30 +38,30 @@ export const MediaService = {
 
   /**
    * Retrieves metadata for a specific media item.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {string} _mediaId - The ID of the media item.
    * @returns {any} The extracted media metadata.
    */
-  getMediaMetadata(_sourceId: string, _mediaId: string) {
+  getMediaMetadata(_mediaSourceId: string, _mediaId: string) {
     // TODO: Implement metadata extraction from PNG tEXt chunks
     throw new Error("Not implemented");
   },
 
   /**
    * Updates metadata for a specific media item.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {string} _mediaId - The ID of the media item.
    * @param {unknown} _metadata - The metadata to update.
    * @returns {any} The updated media metadata.
    */
-  updateMediaMetadata(_sourceId: string, _mediaId: string, _metadata: unknown) {
+  updateMediaMetadata(_mediaSourceId: string, _mediaId: string, _metadata: unknown) {
     // TODO: Implement metadata update
     throw new Error("Not implemented");
   },
 
   /**
    * Uploads a new media file to a specified media source.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {object} _uploadData - The data for the media upload.
    * @param {File} _uploadData.file - The file to be uploaded.
    * @param {string} [_uploadData.filename] - Optional custom filename.
@@ -71,14 +71,14 @@ export const MediaService = {
    * @param {boolean} [_uploadData.overwrite] - Whether to overwrite existing file on conflict.
    * @returns {any} The result of the upload operation.
    */
-  uploadNewMedia(_sourceId: string, _uploadData: uploadMediaRequest) {
+  uploadNewMedia(_mediaSourceId: string, _uploadData: uploadMediaRequest) {
     // TODO: Implement file upload for local sources
     throw new Error("Not implemented");
   },
 
   /**
    * Searches for media within a specific media source based on various criteria.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
    * @param {string[]} [_searchOptions.tags] - Tags to filter by.
    * @param {string} [_searchOptions.sortBy] - Field to sort by.
@@ -87,7 +87,7 @@ export const MediaService = {
    * @returns {any} A list of media items matching the search criteria.
    */
   searchMedia(
-    _sourceId: string,
+    _mediaSourceId: string,
     _searchOptions: {
       tags?: string[];
       sortBy?: string;
@@ -101,7 +101,7 @@ export const MediaService = {
 
   /**
    * Searches for media within a specific subdirectory of a media source.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {string} _directoriesPath - The path to the subdirectory to search within.
    * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
    * @param {string[]} [_searchOptions.tags] - Tags to filter by.
@@ -111,7 +111,7 @@ export const MediaService = {
    * @returns {any} A list of media items matching the search criteria within the subdirectory.
    */
   searchMediaInDirectory(
-    _sourceId: string,
+    _mediaSourceId: string,
     _directoriesPath: string,
     _searchOptions: {
       tags?: string[];
@@ -126,9 +126,9 @@ export const MediaService = {
         id: "media1",
         filename: "image1.jpg",
         directory: _directoriesPath,
-        sourceId: _sourceId,
-        url: `/api/sources/${_sourceId}/media/image1.jpg`,
-        thumbnailUrl: `/api/sources/${_sourceId}/media/image1_thumb.jpg`,
+        mediaSourceId: _mediaSourceId,
+        url: `/api/sources/${_mediaSourceId}/media/image1.jpg`,
+        thumbnailUrl: `/api/sources/${_mediaSourceId}/media/image1_thumb.jpg`,
         description: "A beautiful image",
         tags: ["nature", "landscape"],
         createdAt: new Date().toISOString(),
@@ -138,9 +138,9 @@ export const MediaService = {
         id: "media2",
         filename: "image2.png",
         directory: _directoriesPath,
-        sourceId: _sourceId,
-        url: `/api/sources/${_sourceId}/media/image2.png`,
-        thumbnailUrl: `/api/sources/${_sourceId}/media/image2_thumb.png`,
+        mediaSourceId: _mediaSourceId,
+        url: `/api/sources/${_mediaSourceId}/media/image2.png`,
+        thumbnailUrl: `/api/sources/${_mediaSourceId}/media/image2_thumb.png`,
         description: "Another image",
         tags: ["city", "night"],
         createdAt: new Date().toISOString(),
@@ -151,7 +151,7 @@ export const MediaService = {
 
   /**
    * Updates information for a specific media item.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @param {string} _mediaId - The ID of the media item to update.
    * @param {object} _mediaData - The data to update for the media item.
    * @param {string} [_mediaData.filename] - New filename for the media.
@@ -161,7 +161,7 @@ export const MediaService = {
    * @returns {any} The updated media item.
    */
   updateMedia(
-    _sourceId: string,
+    _mediaSourceId: string,
     _mediaId: string,
     _mediaData: updateMediaRequest
   ) {
@@ -171,30 +171,30 @@ export const MediaService = {
 
   /**
    * Retrieves a random media item from a specific source.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @returns {any} A random media item.
    */
-  getRandomMedia(_sourceId: string) {
+  getRandomMedia(_mediaSourceId: string) {
     // TODO: Implement random media selection
     throw new Error("Not implemented");
   },
 
   /**
    * Retrieves recently added or modified media items from a specific source.
-   * @param {string} _sourceId - The ID of the media source.
+   * @param {string} _mediaSourceId - The ID of the media source.
    * @returns {any} A list of recent media items.
    */
-  getRecentMedia(_sourceId: string) {
+  getRecentMedia(_mediaSourceId: string) {
     // TODO: Implement recent media retrieval
     throw new Error("Not implemented");
   },
 
   /**
    * Retrieves all media items for a specific media source.
-   * @param {string} sourceId - The ID of the media source.
+   * @param {string} mediaSourceId - The ID of the media source.
    * @returns {Promise<any>} A list of all media items for the source.
    */
-  getAllMedia(sourceId: string) {
-    return getAllMedia(sourceId);
+  getAllMedia(mediaSourceId: string) {
+    return getAllMedia(mediaSourceId);
   },
 };

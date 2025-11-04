@@ -16,8 +16,8 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("search queries Integration", () => {
-  const sourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
-  const sourceId2 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15";
+  const mediaSourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
+  const mediaSourceId2 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a15";
 
   beforeAll(async () => {
     // Clean up
@@ -29,13 +29,13 @@ describe("search queries Integration", () => {
     // Seed sources
     await db.insert(mediaSources).values([
       {
-        id: sourceId1,
+        id: mediaSourceId1,
         name: "Search Source 1",
         type: "local",
         connectionInfo: { path: "/" },
       },
       {
-        id: sourceId2,
+        id: mediaSourceId2,
         name: "Search Source 2",
         type: "local",
         connectionInfo: { path: "/" },
@@ -45,7 +45,7 @@ describe("search queries Integration", () => {
     // Seed media
     const mediaToInsert: NewMedia[] = [
       {
-        sourceId: sourceId1,
+        mediaSourceId: mediaSourceId1,
         filePath: "dir1/apple.jpg",
         fileName: "apple.jpg",
         description: "A red fruit",
@@ -54,7 +54,7 @@ describe("search queries Integration", () => {
         height: 1,
       },
       {
-        sourceId: sourceId1,
+        mediaSourceId: mediaSourceId1,
         filePath: "dir1/banana.jpg",
         fileName: "banana.jpg",
         description: "A yellow fruit",
@@ -63,7 +63,7 @@ describe("search queries Integration", () => {
         height: 1,
       },
       {
-        sourceId: sourceId2,
+        mediaSourceId: mediaSourceId2,
         filePath: "dir2/apple_pie.jpg",
         fileName: "apple_pie.jpg",
         description: "A tasty dessert",
@@ -97,18 +97,18 @@ describe("search queries Integration", () => {
   });
 
   it("should search media by query within a source", async () => {
-    const results = await searchMedia(sourceId1, { query: "red" });
+    const results = await searchMedia(mediaSourceId1, { query: "red" });
     expect(results.length).toBe(1);
     expect(results[0].fileName).toBe("apple.jpg");
   });
 
   it("should search media by tag within a source", async () => {
-    const results = await searchMedia(sourceId1, { tags: ["fruit"] });
+    const results = await searchMedia(mediaSourceId1, { tags: ["fruit"] });
     expect(results.length).toBe(2);
   });
 
   it("should search media in a specific directory", async () => {
-    const results = await searchMediaInDirectory(sourceId1, "dir1", {
+    const results = await searchMediaInDirectory(mediaSourceId1, "dir1", {
       query: "fruit",
     });
     expect(results.length).toBe(2);

@@ -22,11 +22,11 @@
 - `src/tests/api/ips/index.test.ts`
 - `src/tests/api/ips/ip-id-test.ts`
 - `src/tests/api/media/add-media.test.ts`
-- `src/tests/api/sources/[sourceId]/[mediaId]/charactors.test.ts`
-- `src/tests/api/sources/[sourceId]/[mediaId]/details.test.ts`
-- `src/tests/api/sources/[sourceId]/[mediaId]/ips.test.ts`
-- `src/tests/api/sources/[sourceId]/[mediaId]/metadata.test.ts`
-- `src/tests/api/sources/[sourceId]/[mediaId]/tags.test.ts`
+- `src/tests/api/sources/[mediaSourceId]/[mediaId]/charactors.test.ts`
+- `src/tests/api/sources/[mediaSourceId]/[mediaId]/details.test.ts`
+- `src/tests/api/sources/[mediaSourceId]/[mediaId]/ips.test.ts`
+- `src/tests/api/sources/[mediaSourceId]/[mediaId]/metadata.test.ts`
+- `src/tests/api/sources/[mediaSourceId]/[mediaId]/tags.test.ts`
 - `src/tests/api/tags/index.test.ts`
 - `src/tests/api/tags/tag-id-test.ts`
 

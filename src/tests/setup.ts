@@ -21,7 +21,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-1",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -40,7 +40,7 @@ const mockDb = {
       where: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -60,7 +60,7 @@ const mockDb = {
         returning: vi.fn(() => [
           {
             id: "mock-uuid-123",
-            sourceId: "b0000000-0000-4000-8000-000000000000",
+            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
             filePath: "/mock/path/image.png",
             fileName: "updated_image.png",
             mediaType: "image",
@@ -80,7 +80,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -118,25 +118,6 @@ vi.mock("~/infrastructure/db/__mocks__", () => ({
   addMediaToMockDb: vi.fn(),
   resetMockDbState: vi.fn(),
 }));
-
-// 統合テストファイルのパターンを判定
-const isIntegrationTest = (filePath: string) =>
-  filePath.includes("/integration/");
-
-// ~/infrastructure/db/index のモックを条件付きで設定
-vi.mock("~/infrastructure/db/index", (importOriginal) => {
-  // テストファイルのパスを取得（グローバル変数から）
-  // @ts-expect-error - accessing internal test state
-  const testPath = globalThis.__vitest_worker__?.filepath || "";
-
-  if (isIntegrationTest(testPath)) {
-    // 統合テストの場合は実際のdbを使用
-    return importOriginal();
-  }
-
-  // ユニット/DBテストの場合はモックを使用
-  return { db: mockDb };
-});
 
 // 各テストの前にモックをクリア
 beforeEach(() => {

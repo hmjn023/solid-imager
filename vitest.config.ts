@@ -22,5 +22,7 @@ export default defineConfig({
         singleFork: true,
       },
     },
+    globalSetup: ["./scripts/migrate-pglite.ts"],
+    threads: false,
   },
 });

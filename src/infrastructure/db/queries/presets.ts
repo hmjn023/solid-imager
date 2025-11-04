@@ -1,5 +1,5 @@
 import { db } from "~/infrastructure/db/index";
-import { presets } from "~/infrastructure/db/schema";
+import { presets, type NewPreset } from "~/infrastructure/db/schema";
 import { ConstraintError, UnknownDbError } from "../errors";
 
 /**
@@ -32,15 +32,16 @@ export const selectPresets = async () => {
  * @throws {ConstraintError} If a preset with the same name already exists.
  * @throws {UnknownDbError} If a database error occurs during the insertion.
  */
-export const insertPreset = async (preset: Preset) => {
+export const insertPreset = async (preset: NewPreset) => {
   try {
     return await db.insert(presets).values(preset).returning();
   } catch (error: unknown) {
+    const cause = (error as { cause?: unknown })?.cause;
     if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      error.code === "23505"
+      cause &&
+      typeof cause === "object" &&
+      "code" in cause &&
+      cause.code === "23505"
     ) {
       throw new ConstraintError({ message: "Duplicate entry" });
     }

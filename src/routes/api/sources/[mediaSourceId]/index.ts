@@ -10,13 +10,13 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_NOT_FOUND = 404;
 const HTTP_STATUS_BAD_REQUEST = 400;
 
-const SourceParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+const MediaSourceParamsSchema = z.object({
+  mediaSourceId: z.string().uuid(),
 });
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   get:
  *     summary: Retrieve all media within a specific media source
  *     description: Fetches a list of all media files associated with a given media source ID.
@@ -25,7 +25,7 @@ const SourceParamsSchema = z.object({
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -41,14 +41,14 @@ const SourceParamsSchema = z.object({
  *               items:
  *                 $ref: '#/components/schemas/Media'
  *       400:
- *         description: Invalid source ID supplied.
+ *         description: Invalid media source ID supplied.
  *       404:
  *         description: Media source not found.
  *       500:
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const parsedParams = SourceParamsSchema.safeParse(params);
+  const parsedParams = MediaSourceParamsSchema.safeParse(params);
   if (!parsedParams.success) {
     return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
       status: HTTP_STATUS_BAD_REQUEST,
@@ -56,10 +56,10 @@ export async function GET({ params }: APIEvent) {
     });
   }
 
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await getAllMedia(sourceId);
+    const result = await getAllMedia(mediaSourceId);
     if (!result) {
       return new Response(JSON.stringify({ error: "Source not found" }), {
         status: HTTP_STATUS_NOT_FOUND,
@@ -87,7 +87,7 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   put:
  *     summary: Update a specific media source
  *     description: Updates an existing media source with the provided data.
@@ -95,7 +95,7 @@ export async function GET({ params }: APIEvent) {
  *       - Media Sources
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -115,25 +115,25 @@ export async function GET({ params }: APIEvent) {
  *             schema:
  *               $ref: '#/components/schemas/MediaSource'
  *       400:
- *         description: Invalid source ID or invalid input.
+ *         description: Invalid media source ID or invalid input.
  *       404:
  *         description: Media source not found.
  *       500:
  *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
-  const parsedParams = SourceParamsSchema.safeParse(params);
+  const parsedParams = MediaSourceParamsSchema.safeParse(params);
   if (!parsedParams.success) {
     return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
       status: HTTP_STATUS_BAD_REQUEST,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
   const data = await request.json();
 
   try {
-    const result = await updateMediaSource(sourceId, data);
+    const result = await updateMediaSource(mediaSourceId, data);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
@@ -153,7 +153,7 @@ export async function PUT({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   delete:
  *     summary: Delete a specific media source
  *     description: Deletes a media source by its ID.
@@ -161,7 +161,7 @@ export async function PUT({ params, request }: APIEvent) {
  *       - Media Sources
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -171,24 +171,24 @@ export async function PUT({ params, request }: APIEvent) {
  *       200:
  *         description: Media source successfully deleted.
  *       400:
- *         description: Invalid source ID supplied.
+ *         description: Invalid media source ID supplied.
  *       404:
  *         description: Media source not found.
  *       500:
  *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
-  const parsedParams = SourceParamsSchema.safeParse(params);
+  const parsedParams = MediaSourceParamsSchema.safeParse(params);
   if (!parsedParams.success) {
     return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
       status: HTTP_STATUS_BAD_REQUEST,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await deleteMediaSource(sourceId);
+    const result = await deleteMediaSource(mediaSourceId);
     return new Response(JSON.stringify({ success: true, result }), {
       status: 200,
       headers: {
@@ -208,7 +208,7 @@ export async function DELETE({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{sourceId}:
+ * /api/sources/{mediaSourceId}:
  *   post:
  *     summary: Upload media to a specific media source
  *     description: Uploads a new media file to the specified media source.
@@ -217,7 +217,7 @@ export async function DELETE({ params }: APIEvent) {
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -242,18 +242,18 @@ export async function DELETE({ params }: APIEvent) {
  *         description: Internal server error.
  */
 export async function POST({ params, request }: APIEvent) {
-  const parsedParams = SourceParamsSchema.safeParse(params);
+  const parsedParams = MediaSourceParamsSchema.safeParse(params);
   if (!parsedParams.success) {
     return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
       status: HTTP_STATUS_BAD_REQUEST,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId } = parsedParams.data;
+  const { mediaSourceId } = parsedParams.data;
 
   try {
     const formData = await request.formData();
-    const result = await uploadMedia(sourceId, formData);
+    const result = await uploadMedia(mediaSourceId, formData);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {

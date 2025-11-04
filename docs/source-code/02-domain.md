@@ -49,7 +49,7 @@
 -   **役割**: メディアがどこから来たかを示す「メディアソース」に関するドメイン。
 -   **ファイル**:
     -   `types.ts`: `MediaSourceTypeEnum`, `ConnectionInfo`, `MediaSourceInfo`など、メディアソースの接続情報や型を定義します。
-    -   `schemas.ts`: `sourceIdSchema`, `localConnectionSchema`など、メディアソース関連のデータを検証するためのZodスキーマを定義します。
+    -   `schemas.ts`: `mediaSourceIdSchema`, `localConnectionSchema`など、メディアソース関連のデータを検証するためのZodスキーマを定義します。
 
 ### `tags`
 

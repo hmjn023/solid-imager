@@ -23,20 +23,20 @@ export const insertMedia = async (newMedia: NewMedia): Promise<Media> => {
 
 /**
  * Selects media items by source ID and file path from the database.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} filePath - The file path of the media item.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects matching the criteria.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
 export const selectMediaBySourceIdAndFilePath = async (
-  sourceId: string,
+  mediaSourceId: string,
   filePath: string
 ): Promise<Media[]> => {
   try {
     const result = await db
       .select({
         id: medias.id,
-        sourceId: medias.sourceId,
+        mediaSourceId: medias.mediaSourceId,
         filePath: medias.filePath,
         fileName: medias.fileName,
         mediaType: medias.mediaType,
@@ -51,7 +51,9 @@ export const selectMediaBySourceIdAndFilePath = async (
         status: medias.status,
       })
       .from(medias)
-      .where(and(eq(medias.sourceId, sourceId), eq(medias.filePath, filePath)));
+      .where(
+        and(eq(medias.mediaSourceId, mediaSourceId), eq(medias.filePath, filePath))
+      );
     return result;
   } catch (error) {
     throw new UnknownDbError({
@@ -88,13 +90,13 @@ export const selectMediaById = async (id: string): Promise<Media> => {
 
 /**
  * Selects media items by source ID and directory path from the database.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} directoryPath - The directory path to search within.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects within the specified directory.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
 export const selectMediaBySourceIdAndDirectoryPath = async (
-  sourceId: string,
+  mediaSourceId: string,
   directoryPath: string
 ): Promise<Media[]> => {
   try {
@@ -103,7 +105,10 @@ export const selectMediaBySourceIdAndDirectoryPath = async (
       .select()
       .from(medias)
       .where(
-        and(eq(medias.sourceId, sourceId), like(medias.filePath, searchPath))
+        and(
+          eq(medias.mediaSourceId, mediaSourceId),
+          like(medias.filePath, searchPath)
+        )
       );
     return result;
   } catch (error) {
@@ -174,18 +179,21 @@ export const deleteMedia = async (id: string): Promise<Media> => {
 
 /**
  * Selects all media items associated with a specific source ID.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
 export const selectMediaBySourceId = async (
-  sourceId: string
+  mediaSourceId: string
 ): Promise<Media[]> => {
   try {
-    return await db.select().from(medias).where(eq(medias.sourceId, sourceId));
+    return await db
+      .select()
+      .from(medias)
+      .where(eq(medias.mediaSourceId, mediaSourceId));
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to select medias by source ID: ${sourceId}`,
+      message: `Failed to select medias by source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -193,13 +201,13 @@ export const selectMediaBySourceId = async (
 
 /**
  * Deletes media items by source ID and directory path from the database.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} directoryPath - The directory path to delete media from.
  * @returns {Promise<Media[]>} A promise that resolves with an array of the deleted media objects.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
 export const deleteMediaByPath = async (
-  sourceId: string,
+  mediaSourceId: string,
   directoryPath: string
 ): Promise<Media[]> => {
   try {
@@ -207,14 +215,14 @@ export const deleteMediaByPath = async (
       .delete(medias)
       .where(
         and(
-          eq(medias.sourceId, sourceId),
+          eq(medias.mediaSourceId, mediaSourceId),
           like(medias.filePath, `${directoryPath}%`)
         )
       )
       .returning();
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to delete medias by path ${directoryPath} for source ID: ${sourceId}`,
+      message: `Failed to delete medias by path ${directoryPath} for source ID: ${mediaSourceId}`,
       details: error,
     });
   }

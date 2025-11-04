@@ -16,7 +16,7 @@ describe("updateMedia Integration", () => {
   // const testSourceId = "b0000000-0000-0000-0000-000000000000";
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
-    sourceId: testSourceId,
+    mediaSourceId: testSourceId,
     filePath: `/test/path/initial_image-${Date.now()}.png`,
     fileName: "initial_image.png",
     size: 1024,

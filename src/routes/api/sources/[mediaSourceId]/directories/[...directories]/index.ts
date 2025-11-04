@@ -4,7 +4,7 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/{directories}:
+ * /api/sources/{mediaSourceId}/directories/{directories}:
  *   get:
  *     summary: Retrieve all media and directories under a specific directory
  *     description: Fetches a list of all media files and subdirectories within a specified path under a media source.
@@ -13,7 +13,7 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -42,8 +42,8 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const directoriesPath = params.directories.join("/"); // パスを再構築します。
-  const listing = await getDirectoryListing(sourceId, directoriesPath);
+  const listing = await getDirectoryListing(mediaSourceId, directoriesPath);
   return listing;
 }

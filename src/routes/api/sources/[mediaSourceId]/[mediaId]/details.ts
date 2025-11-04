@@ -1,25 +1,25 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import type { UUID } from "~/domain/shared/types";
-import { getMediaMetadata } from "~/infrastructure/api-clients/media";
+import { getMediaDetails } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/metadata:
+ * /api/sources/{mediaSourceId}/{mediaId}/details:
  *   get:
- *     summary: Retrieve media metadata
- *     description: Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.
+ *     summary: Retrieve media details
+ *     description: Fetches detailed information for a specific media file, including tags, metadata, category, IP, and character information.
  *     tags:
  *       - Media
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -34,11 +34,11 @@ const MediaParamsSchema = z.object({
  *         description: UUID of the media file.
  *     responses:
  *       200:
- *         description: The metadata of the media.
+ *         description: Detailed information about the media.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/MediaMetadata'
+ *               $ref: '#/components/schemas/MediaDetails'
  *       400:
  *         description: Invalid source ID or media ID supplied.
  *       404:
@@ -54,8 +54,8 @@ export async function GET({ params }: APIEvent) {
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { sourceId, mediaId } = parsedParams.data;
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const metadata = await getMediaMetadata(sourceId as UUID, mediaId as UUID);
-  return metadata;
+  const details = await getMediaDetails(mediaSourceId as UUID, mediaId as UUID);
+  return details;
 }

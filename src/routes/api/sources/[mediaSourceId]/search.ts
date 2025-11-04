@@ -1,31 +1,24 @@
 import type { APIEvent } from "@solidjs/start/server";
 import type { UUID } from "~/domain/shared/types";
-import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
+import { searchMedia } from "~/infrastructure/api-clients/media";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/{directories}/search:
+ * /api/sources/{mediaSourceId}/search:
  *   get:
- *     summary: Search for media within a specific subdirectory
- *     description: Searches for media files within a specified subdirectory of a media source, based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.
+ *     summary: Search for media within a specific media source
+ *     description: Searches for media files within a given media source based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.
  *     tags:
- *       - Directories
  *       - Media
  *       - Search
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
  *           format: uuid
- *         description: UUID of the media source.
- *       - in: path
- *         name: directories
- *         required: true
- *         schema:
- *           type: string
- *         description: The complete relative path to the directory to search within (e.g., 'folder1/subfolder2').
+ *         description: UUID of the media source to search within.
  *       - in: query
  *         name: tags
  *         schema:
@@ -86,21 +79,14 @@ import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
  *                     itemsPerPage:
  *                       type: integer
  *       400:
- *         description: Invalid source ID or search parameters.
- *       404:
- *         description: Media source or directory not found.
+ *         description: Invalid media source ID or search parameters.
  *       500:
  *         description: Internal server error.
  */
 export async function GET({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
-  const directoriesPath = params.directories.join("/"); // パスを再構築します。
+  const mediaSourceId = params.mediaSourceId as UUID;
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
-  const result = await searchMediaInDirectory(
-    sourceId,
-    directoriesPath,
-    queryParams
-  );
+  const result = await searchMedia(mediaSourceId, queryParams);
   return result;
 }

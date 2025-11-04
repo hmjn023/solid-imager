@@ -1,26 +1,25 @@
-import { promises as fs } from "node:fs";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
+import type { UUID } from "~/domain/shared/types";
+import { getMediaMetadata } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  sourceId: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
 
 /**
  * @swagger
- * /api/sources/{sourceId}/{mediaId}/thumbnail:
+ * /api/sources/{mediaSourceId}/{mediaId}/metadata:
  *   get:
- *     summary: Retrieve a thumbnail for a specific media
- *     description: Delivers a generated thumbnail image for a given media file.
+ *     summary: Retrieve media metadata
+ *     description: Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.
  *     tags:
  *       - Media
- *       - Thumbnails
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -33,50 +32,30 @@ const MediaParamsSchema = z.object({
  *           type: string
  *           format: uuid
  *         description: UUID of the media file.
- *       - in: query
- *         name: size
- *         schema:
- *           type: integer
- *           description: Desired size of the thumbnail (e.g., 200, 400).
  *     responses:
  *       200:
- *         description: The thumbnail image.
+ *         description: The metadata of the media.
  *         content:
- *           image/webp:
+ *           application/json:
  *             schema:
- *               type: string
- *               format: binary
+ *               $ref: '#/components/schemas/MediaMetadata'
  *       400:
  *         description: Invalid source ID or media ID supplied.
  *       404:
- *         description: Thumbnail not found.
+ *         description: Media not found.
  *       500:
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
   const parsedParams = MediaParamsSchema.safeParse(params);
-
   if (!parsedParams.success) {
     return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
       status: 400,
-
       headers: { "Content-Type": "application/json" },
     });
   }
+  const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const { sourceId, mediaId } = parsedParams.data;
-
-  try {
-    const thumbnailPath = getThumbnailPath(sourceId, mediaId);
-
-    const thumbnailBuffer = await fs.readFile(thumbnailPath);
-
-    return new Response(thumbnailBuffer, {
-      status: 200,
-
-      headers: { "Content-Type": "image/webp" }, // Assuming webp as per jobs/thumbnails.ts
-    });
-  } catch (_error) {
-    return new Response("Thumbnail not found", { status: 404 });
-  }
+  const metadata = await getMediaMetadata(mediaSourceId as UUID, mediaId as UUID);
+  return metadata;
 }

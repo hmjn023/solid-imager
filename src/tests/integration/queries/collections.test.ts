@@ -52,7 +52,7 @@ describe("collections queries Integration", () => {
       .returning();
 
     const testMedia: NewMedia = {
-      sourceId: testSource[0].id,
+      mediaSourceId: testSource[0].id,
       filePath: "a",
       fileName: "a",
       mediaType: "image",

@@ -10,7 +10,7 @@ const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
 describe("deleteMedia Integration", () => {
   let testMediaId: string;
-  const sourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
+  const mediaSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
   beforeAll(async () => {
     await db.delete(medias).where(sql`true`);
@@ -19,14 +19,14 @@ describe("deleteMedia Integration", () => {
     await db
       .insert(mediaSources)
       .values({
-        id: sourceId,
+        id: mediaSourceId,
         name: "Test Source",
         type: "local",
         connectionInfo: { path: "/test" },
       })
       .onConflictDoNothing();
     const initialMediaData: NewMedia = {
-      sourceId,
+      mediaSourceId,
       filePath: `/test/path/to_delete-${Date.now()}.png`,
       fileName: "to_delete.png",
       size: 1024,
@@ -47,7 +47,7 @@ describe("deleteMedia Integration", () => {
   });
 
   it("should successfully delete media from the database", async () => {
-    const result = await deleteMedia(sourceId, testMediaId);
+    const result = await deleteMedia(mediaSourceId, testMediaId);
     expect(result.success).toBe(true);
 
     // メディアがデータベースから削除されたことを確認します。
@@ -60,16 +60,16 @@ describe("deleteMedia Integration", () => {
 
   it("should throw an error if mediaId is not found for the given sourceId", async () => {
     const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
-    await expect(deleteMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
-      MEDIA_NOT_FOUND_PATTERN
-    );
+    await expect(
+      deleteMedia(mediaSourceId, nonExistentMediaId)
+    ).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
     const invalidMediaId = "invalid-uuid";
-    await expect(deleteMedia(sourceId, invalidMediaId)).rejects.toBeInstanceOf(
-      ZodError
-    );
+    await expect(
+      deleteMedia(mediaSourceId, invalidMediaId)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for an invalid sourceId format", async () => {

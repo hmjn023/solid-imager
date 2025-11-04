@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { mediaIdSchema } from "~/domain/media/schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { mediaIdSchema, mediaSourceIdSchema } from "~/domain/media/schemas";
 
 describe("deleteMedia Contract", () => {
   it("should return success: true on successful deletion", () => {
@@ -9,7 +8,7 @@ describe("deleteMedia Contract", () => {
     const mediaId = "a0000000-0000-4000-8000-000000000000";
 
     // Validate with Zod schema
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(sourceId);
     mediaIdSchema.parse(mediaId);
 
     // Placeholder for the actual deleteMedia function call
@@ -42,6 +41,6 @@ describe("deleteMedia Contract", () => {
   it("should throw a ZodError for an invalid sourceId format", () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(sourceId)).toThrow(ZodError);
   });
 });

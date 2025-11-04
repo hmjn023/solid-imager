@@ -4,7 +4,7 @@ import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/events/thumbnail-progress:
+ * /api/sources/{mediaSourceId}/events/thumbnail-progress:
  *   get:
  *     summary: Monitor thumbnail generation progress via Server-Sent Events (SSE)
  *     description: Establishes an SSE connection to receive real-time updates on the progress of thumbnail generation for a specific media source.
@@ -13,7 +13,7 @@ import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
  *       - Thumbnails
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -32,7 +32,7 @@ import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
  *         description: Internal server error.
  */
 export function GET({ params }: APIEvent) {
-  const sourceId = params.sourceId;
+  const mediaSourceId = params.mediaSourceId;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -43,7 +43,7 @@ export function GET({ params }: APIEvent) {
       };
 
       createEffect(() => {
-        const stats = getThumbnailJobStats(sourceId);
+        const stats = getThumbnailJobStats(mediaSourceId);
 
         if (stats.status === "idle") {
           return;

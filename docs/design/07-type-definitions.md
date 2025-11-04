@@ -207,13 +207,13 @@ export type MediaSourceInfo = {
 /**
  * Represents a file system event, typically used for real-time updates via Server-Sent Events (SSE).
  * @property {"added" | "deleted" | "modified"} type - The type of file system event.
- * @property {string} sourceId - The ID of the media source where the event occurred.
+ * @property {string} mediaSourceId - The ID of the media source where the event occurred.
  * @property {string} filePath - The relative path of the file that was affected by the event.
  * @property {Date} timestamp - The timestamp when the event occurred.
  */
 export type FileSystemEvent = {
   type: "added" | "deleted" | "modified";
-  sourceId: string;
+  mediaSourceId: string;
   filePath: string;
   timestamp: Date;
 };
@@ -323,7 +323,7 @@ export type UploadRequest = {
 /**
  * Represents the progress of a thumbnail generation task, used for real-time updates via SSE.
  * @property {"thumbnail_progress"} type - The type of the event, always "thumbnail_progress".
- * @property {string} sourceId - The ID of the media source for which thumbnails are being generated.
+ * @property {string} mediaSourceId - The ID of the media source for which thumbnails are being generated.
  * @property {"started" | "processing" | "completed" | "error"} status - The current status of the thumbnail generation.
  * @property {object} progress - Details about the current progress.
  * @property {number} progress.current - The number of media files processed so far.
@@ -333,7 +333,7 @@ export type UploadRequest = {
  */
 export type ThumbnailProgress = {
   type: "thumbnail_progress";
-  sourceId: string;
+  mediaSourceId: string;
   status: "started" | "processing" | "completed" | "error";
   progress: {
     current: number;

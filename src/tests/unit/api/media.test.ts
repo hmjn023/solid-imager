@@ -42,10 +42,10 @@ describe("Media API Unit Tests", () => {
     resetMockDbState();
     // Populate mockDbState.medias for updateMedia test
     const mediaId = "a0000000-0000-4000-8000-000000000000";
-    const sourceId = "b0000000-0000-4000-8000-000000000000";
+    const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
     const existingMedia = {
       id: mediaId,
-      sourceId,
+      mediaSourceId,
       filePath: "/mock/path/image.png",
       fileName: "original_file.png",
       mediaType: "image",
@@ -64,7 +64,7 @@ describe("Media API Unit Tests", () => {
     // This bypasses the insertMedia mock for setup purposes
     (selectMediaBySourceIdAndFilePath as vi.Mock).mockImplementation(
       (srcId, filePath) => {
-        if (srcId === sourceId && filePath === existingMedia.filePath) {
+        if (srcId === mediaSourceId && filePath === existingMedia.filePath) {
           return [existingMedia];
         }
         return [];
@@ -82,7 +82,7 @@ describe("Media API Unit Tests", () => {
   describe("addMedia", () => {
     it("should add a new media entry and return it", async () => {
       const newMediaData = {
-        sourceId: "b0000000-0000-4000-8000-000000000000",
+        mediaSourceId: "b0000000-0000-4000-8000-000000000000",
         filePath: "/unit/test/image.png",
         fileName: "unit_image.png",
         size: 500,
@@ -116,9 +116,9 @@ describe("Media API Unit Tests", () => {
       );
     });
 
-    it("should throw an error if media with same sourceId and filePath already exists", async () => {
+    it("should throw an error if media with same mediaSourceId and filePath already exists", async () => {
       const newMediaData = {
-        sourceId: "b0000000-0000-4000-8000-000000000000",
+        mediaSourceId: "b0000000-0000-4000-8000-000000000000",
         filePath: "/unit/test/duplicate.png",
         fileName: "unit_duplicate.png",
         size: 500,
@@ -134,23 +134,23 @@ describe("Media API Unit Tests", () => {
       ]);
 
       await expect(addMedia(newMediaData)).rejects.toThrow(
-        "Media with this filePath already exists for the given sourceId"
+        "Media with this filePath already exists for the given mediaSourceId"
       );
     });
   });
 
   describe("getMedia", () => {
     it("should retrieve a media entry by ID", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
       (selectMediaById as vi.Mock).mockResolvedValueOnce({
         id: mediaId,
-        sourceId,
+        mediaSourceId,
         /* other fields */
       });
 
-      const result = await getMedia(sourceId, mediaId);
+      const result = await getMedia(mediaSourceId, mediaId);
 
       expect(selectMediaById).toHaveBeenCalled();
       expect(result).toBeDefined();
@@ -158,30 +158,30 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw an error if media ID is not found", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const nonExistentMediaId = uuidv4();
 
       (selectMediaById as vi.Mock).mockRejectedValueOnce(
         new NotFoundError({ message: "Media not found" })
       );
 
-      await expect(getMedia(sourceId, nonExistentMediaId)).rejects.toThrow(
+      await expect(getMedia(mediaSourceId, nonExistentMediaId)).rejects.toThrow(
         "Media not found"
       );
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const invalidMediaId = "invalid-format";
-      await expect(getMedia(sourceId, invalidMediaId)).rejects.toBeInstanceOf(
+      await expect(getMedia(mediaSourceId, invalidMediaId)).rejects.toBeInstanceOf(
         ZodError
       );
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      const invalidSourceId = "invalid-format";
+      const invalidMediaSourceId = "invalid-format";
       const mediaId = "mock-uuid-123";
-      await expect(getMedia(invalidSourceId, mediaId)).rejects.toBeInstanceOf(
+      await expect(getMedia(invalidMediaSourceId, mediaId)).rejects.toBeInstanceOf(
         ZodError
       );
     });
@@ -189,25 +189,25 @@ describe("Media API Unit Tests", () => {
 
   describe("updateMedia", () => {
     it("should update a media entry and return the updated entry", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const updates = { fileName: "updated_file.png", width: 1024 };
 
       (selectMediaById as vi.Mock).mockResolvedValueOnce({
         id: mediaId,
-        sourceId,
+        mediaSourceId,
         fileName: "original_file.png",
         width: 800,
       });
       (updateMediaDb as vi.Mock).mockResolvedValueOnce({
         id: mediaId,
-        sourceId,
+        mediaSourceId,
         fileName: updates.fileName,
         width: updates.width,
         /* other fields */
       });
 
-      const result = await updateMedia(sourceId, mediaId, updates);
+      const result = await updateMedia(mediaSourceId, mediaId, updates);
 
       expect(selectMediaById).toHaveBeenCalled();
       expect(updateMediaDb).toHaveBeenCalled();
@@ -216,41 +216,41 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw a ZodError for invalid update data", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
       const invalidUpdates = { width: -100 }; // Invalid field
       await expect(
-        updateMedia(sourceId, mediaId, invalidUpdates as any)
+        updateMedia(mediaSourceId, mediaId, invalidUpdates as any)
       ).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "invalid-format";
       const updates = { fileName: "test" };
       await expect(
-        updateMedia(sourceId, mediaId, updates)
+        updateMedia(mediaSourceId, mediaId, updates)
       ).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      const sourceId = "invalid-format";
+      const mediaSourceId = "invalid-format";
       const mediaId = "mock-uuid-123";
       const updates = { fileName: "test" };
       await expect(
-        updateMedia(sourceId, mediaId, updates)
+        updateMedia(mediaSourceId, mediaId, updates)
       ).rejects.toBeInstanceOf(ZodError);
     });
   });
 
   describe("deleteMedia", () => {
     it("should delete a media entry and return success", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "a0000000-0000-4000-8000-000000000000";
 
       (selectMediaById as vi.Mock).mockResolvedValueOnce({
         id: mediaId,
-        sourceId,
+        mediaSourceId,
         /* other fields */
       });
       (deleteMediaDb as vi.Mock).mockResolvedValueOnce([
@@ -260,26 +260,26 @@ describe("Media API Unit Tests", () => {
       ]);
       (deleteThumbnail as vi.Mock).mockResolvedValueOnce(undefined);
 
-      const result = await deleteMedia(sourceId, mediaId);
+      const result = await deleteMedia(mediaSourceId, mediaId);
 
       expect(selectMediaById).toHaveBeenCalled();
       expect(deleteMediaDb).toHaveBeenCalledWith(mediaId);
-      expect(deleteThumbnail).toHaveBeenCalledWith(sourceId, mediaId);
+      expect(deleteThumbnail).toHaveBeenCalledWith(mediaSourceId, mediaId);
       expect(result).toEqual({ success: true });
     });
 
     it("should throw a ZodError for invalid media ID format", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const mediaId = "invalid-format";
-      await expect(deleteMedia(sourceId, mediaId)).rejects.toBeInstanceOf(
+      await expect(deleteMedia(mediaSourceId, mediaId)).rejects.toBeInstanceOf(
         ZodError
       );
     });
 
     it("should throw a ZodError for invalid source ID format", async () => {
-      const sourceId = "invalid-format";
+      const mediaSourceId = "invalid-format";
       const mediaId = "mock-uuid-123";
-      await expect(deleteMedia(sourceId, mediaId)).rejects.toBeInstanceOf(
+      await expect(deleteMedia(mediaSourceId, mediaId)).rejects.toBeInstanceOf(
         ZodError
       );
     });
@@ -287,13 +287,13 @@ describe("Media API Unit Tests", () => {
 
   describe("listMedia", () => {
     it("should return a list of media entries for a given directory path", async () => {
-      const sourceId = "b0000000-0000-4000-8000-000000000000";
+      const mediaSourceId = "b0000000-0000-4000-8000-000000000000";
       const directoryPath = "/mock/directory/";
 
       (selectMediaBySourceIdAndDirectoryPath as vi.Mock).mockResolvedValueOnce([
         {
           id: uuidv4(),
-          sourceId,
+          mediaSourceId,
           filePath: "/mock/directory/image1.png",
           fileName: "image1.png",
           mediaType: "image",
@@ -306,7 +306,7 @@ describe("Media API Unit Tests", () => {
         },
       ]);
 
-      const result = await listMedia(sourceId, directoryPath);
+      const result = await listMedia(mediaSourceId, directoryPath);
 
       expect(selectMediaBySourceIdAndDirectoryPath).toHaveBeenCalled();
       expect(result).toBeDefined();
@@ -314,8 +314,8 @@ describe("Media API Unit Tests", () => {
     });
 
     it("should throw a ZodError if directory path is empty", async () => {
-      const sourceId = "665fc9fb-d2b9-49e2-beb3-63cf68fa2b11";
-      await expect(listMedia(sourceId, "")).rejects.toBeInstanceOf(ZodError);
+      const mediaSourceId = "665fc9fb-d2b9-49e2-beb3-63cf68fa2b11";
+      await expect(listMedia(mediaSourceId, "")).rejects.toBeInstanceOf(ZodError);
     });
 
     it("should throw a ZodError if source ID is invalid", async () => {

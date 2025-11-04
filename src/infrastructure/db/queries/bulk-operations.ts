@@ -10,14 +10,14 @@ import { ConstraintError, UnknownDbError } from "../errors";
 
 /**
  * Performs a bulk update on multiple media items.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string[]} mediaIds - An array of media IDs to update.
  * @param {Partial<Media>} updates - The partial media object with fields to update.
  * @returns {Promise<Media[]>} A promise that resolves with an array of the updated media items.
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
 export const bulkUpdateMedia = async (
-  sourceId: string,
+  mediaSourceId: string,
   mediaIds: string[],
   updates: Partial<Media>
 ) => {
@@ -25,11 +25,13 @@ export const bulkUpdateMedia = async (
     return await db
       .update(medias)
       .set(updates)
-      .where(and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds)))
+      .where(
+        and(eq(medias.mediaSourceId, mediaSourceId), inArray(medias.id, mediaIds))
+      )
       .returning();
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to bulk update media for source ID: ${sourceId}`,
+      message: `Failed to bulk update media for source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -37,20 +39,25 @@ export const bulkUpdateMedia = async (
 
 /**
  * Performs a bulk delete operation on multiple media items.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string[]} mediaIds - An array of media IDs to delete.
  * @returns {Promise<Media[]>} A promise that resolves with an array of the deleted media items.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
-export const bulkDeleteMedia = async (sourceId: string, mediaIds: string[]) => {
+export const bulkDeleteMedia = async (
+  mediaSourceId: string,
+  mediaIds: string[]
+) => {
   try {
     return await db
       .delete(medias)
-      .where(and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds)))
+      .where(
+        and(eq(medias.mediaSourceId, mediaSourceId), inArray(medias.id, mediaIds))
+      )
       .returning();
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to bulk delete media for source ID: ${sourceId}`,
+      message: `Failed to bulk delete media for source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -59,14 +66,14 @@ export const bulkDeleteMedia = async (sourceId: string, mediaIds: string[]) => {
 /**
  * Performs a bulk update on the file paths of multiple media items.
  * This is typically used for moving media to a new directory.
- * @param {string} sourceId - The ID of the media source.
+ * @param {string} mediaSourceId - The ID of the media source.
  * @param {string[]} mediaIds - An array of media IDs whose paths are to be updated.
  * @param {string} pathUpdates - The new base path for the media files.
  * @returns {Promise<any[]>} A promise that resolves when all paths have been updated.
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
 export const bulkUpdateMediaPaths = async (
-  sourceId: string,
+  mediaSourceId: string,
   mediaIds: string[],
   pathUpdates: string
 ) => {
@@ -76,7 +83,10 @@ export const bulkUpdateMediaPaths = async (
         .select({ id: medias.id, fileName: medias.fileName })
         .from(medias)
         .where(
-          and(eq(medias.sourceId, sourceId), inArray(medias.id, mediaIds))
+          and(
+            eq(medias.mediaSourceId, mediaSourceId),
+            inArray(medias.id, mediaIds)
+          )
         );
 
       const updates = mediaToUpdate.map((media) => {
@@ -91,7 +101,7 @@ export const bulkUpdateMediaPaths = async (
     });
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to bulk update media paths for source ID: ${sourceId}`,
+      message: `Failed to bulk update media paths for source ID: ${mediaSourceId}`,
       details: error,
     });
   }

@@ -9,14 +9,14 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("media-random queries Integration", () => {
-  const sourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16";
+  const mediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a16";
 
   beforeAll(async () => {
     await db.delete(medias).where(sql`true`);
     await db.delete(mediaSources).where(sql`true`);
 
     await db.insert(mediaSources).values({
-      id: sourceId,
+      id: mediaSourceId,
       name: "random-test",
       type: "local",
       connectionInfo: { path: "/" },
@@ -24,7 +24,7 @@ describe("media-random queries Integration", () => {
 
     const mediaToInsert: NewMedia[] = [
       {
-        sourceId,
+        mediaSourceId,
         filePath: "1.jpg",
         fileName: "1.jpg",
         mediaType: "image",
@@ -32,7 +32,7 @@ describe("media-random queries Integration", () => {
         height: 1,
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "2.jpg",
         fileName: "2.jpg",
         mediaType: "image",
@@ -49,8 +49,8 @@ describe("media-random queries Integration", () => {
   });
 
   it("should select a random media from the source", async () => {
-    const randomMedia = await selectRandomMedia(sourceId);
+    const randomMedia = await selectRandomMedia(mediaSourceId);
     expect(randomMedia).toBeDefined();
-    expect(randomMedia.sourceId).toBe(sourceId);
+    expect(randomMedia.mediaSourceId).toBe(mediaSourceId);
   });
 });

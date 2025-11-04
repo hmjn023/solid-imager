@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import {
   mediaIdSchema,
-  sourceIdSchema,
+  mediaSourceIdSchema,
   updateMediaRequestSchema,
 } from "~/domain/media/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
@@ -17,7 +17,7 @@ describe("updateMedia Contract", () => {
     };
 
     // Validate with Zod schemas
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(sourceId);
     mediaIdSchema.parse(mediaId);
     updateMediaRequestSchema.parse(updates);
 
@@ -33,7 +33,7 @@ describe("updateMedia Contract", () => {
       mediaType: "image",
       width: updates.width,
       height: 600,
-      sourceId,
+      mediaSourceId: sourceId,
       indexedAt: new Date(),
       description: updates.description,
     };
@@ -70,7 +70,7 @@ describe("updateMedia Contract", () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
     const _updates = { description: "Updated description" };
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(sourceId)).toThrow(ZodError);
   });
 
   it("should throw a ZodError for invalid update data", () => {

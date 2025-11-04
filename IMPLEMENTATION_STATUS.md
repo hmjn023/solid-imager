@@ -33,22 +33,22 @@
 `src/db/index.ts` に以下のDB関数を追加しました：
 
 #### Feature 2: Thumbnail Functions
-- `selectMediaBySourceId(sourceId)`
+- `selectMediaBySourceId(mediaSourceId)`
 
 #### Feature 3: Media Metadata Functions
 - `selectMediaGenerationInfoById(mediaId)`
 - `updateMediaGenerationInfo(mediaId, metadata)`
 
 #### Feature 4: SSE Functions
-- `selectThumbnailJobStatus(sourceId)`
+- `selectThumbnailJobStatus(mediaSourceId)`
 
 #### Feature 7: Search Functions
-- `searchMedia(sourceId, searchOptions)`
-- `searchMediaInDirectory(sourceId, directoriesPath, searchOptions)`
+- `searchMedia(mediaSourceId, searchOptions)`
+- `searchMediaInDirectory(mediaSourceId, directoriesPath, searchOptions)`
 - `globalSearchMedia(searchOptions)`
 
 #### Feature 9: Directory Functions
-- `deleteMediaByPath(sourceId, directoryPath)`
+- `deleteMediaByPath(mediaSourceId, directoryPath)`
 
 #### Feature 10: Category Functions
 - `selectCategories()`
@@ -88,30 +88,30 @@
 - `deleteCollectionMedia(collectionId, mediaId)`
 
 #### Feature 15: Bulk Operation Functions
-- `bulkUpdateMedia(sourceId, mediaIds, updates)`
-- `bulkDeleteMedia(sourceId, mediaIds)`
-- `bulkUpdateMediaPaths(sourceId, mediaIds, pathUpdates)`
-- `bulkAddMediaTags(sourceId, mediaIds, tagsToAdd)`
-- `bulkRemoveMediaTags(sourceId, mediaIds, tagsToRemove)`
+- `bulkUpdateMedia(mediaSourceId, mediaIds, updates)`
+- `bulkDeleteMedia(mediaSourceId, mediaIds)`
+- `bulkUpdateMediaPaths(mediaSourceId, mediaIds, pathUpdates)`
+- `bulkAddMediaTags(mediaSourceId, mediaIds, tagsToAdd)`
+- `bulkRemoveMediaTags(mediaSourceId, mediaIds, tagsToRemove)`
 
 #### Feature 16: Data Migration Functions
-- `selectMediaSourceData(sourceId)`
-- `upsertMediaSourceData(sourceId, importData)`
-- `reconcileMediaSource(sourceId, fileSystemChanges)`
+- `selectMediaSourceData(mediaSourceId)`
+- `upsertMediaSourceData(mediaSourceId, importData)`
+- `reconcileMediaSource(mediaSourceId, fileSystemChanges)`
 - `cloneMediaData(sourceId, newSourceId)`
 
 #### Feature 18: Analytics Functions
-- `selectSourceStats(sourceId)`
+- `selectSourceStats(mediaSourceId)`
 - `selectGlobalStats()`
-- `findDuplicateMedia(sourceId)`
-- `findSimilarMedia(sourceId, mediaPath)`
+- `findDuplicateMedia(mediaSourceId)`
+- `findSimilarMedia(mediaSourceId, mediaPath)`
 - `selectPopularMedia()`
 
 #### Feature 19: Workflow Functions
 - `insertMediaTags(mediaId, tags)`
 
 #### Feature 20: Filter/Preset Functions
-- `selectRecentMedia(sourceId)`
+- `selectRecentMedia(mediaSourceId)`
 
 ### 3. ヘルパー関数の作成
 
@@ -139,22 +139,22 @@ Feature 17の内部ヘルパー関数を作成しました：
 **完了日**: 2025-10-11
 
 #### 削除されたファイル（重複ルート）
-- ❌ `src/routes/api/sources/[sourceId]/[mediaId]/thumbnail.ts` - スタブ実装（削除）
-- ❌ `src/routes/api/sources/[sourceId]/directories/[...directories].ts` - スタンドアロンファイル（削除）
+- ❌ `src/routes/api/sources/[mediaSourceId]/[mediaId]/thumbnail.ts` - スタブ実装（削除）
+- ❌ `src/routes/api/sources/[mediaSourceId]/directories/[...directories].ts` - スタンドアロンファイル（削除）
 
 #### 保持されたルート（正規実装）
-- ✅ `src/routes/api/sources/[sourceId]/media/[mediaId]/thumbnail.ts` - 完全な実装（保持）
+- ✅ `src/routes/api/sources/[mediaSourceId]/media/[mediaId]/thumbnail.ts` - 完全な実装（保持）
   - オンデマンドサムネイル生成
   - ファイルシステムキャッシング (`.cache/thumbnails/`)
   - 適切なエラーハンドリング
   - WebPストリーミング
-- ✅ `src/routes/api/sources/[sourceId]/directories/[...directories]/index.ts` - ネストされた構造（保持）
-- ✅ `src/routes/api/sources/[sourceId]/directories/[...directories]/search.ts` - 検索エンドポイント（保持）
+- ✅ `src/routes/api/sources/[mediaSourceId]/directories/[...directories]/index.ts` - ネストされた構造（保持）
+- ✅ `src/routes/api/sources/[mediaSourceId]/directories/[...directories]/search.ts` - 検索エンドポイント（保持）
 
 #### ルーティング規則
-- `/api/sources/:sourceId/media/:mediaId/thumbnail` → サムネイル取得
-- `/api/sources/:sourceId/directories/**/*` → ディレクトリリスト
-- `/api/sources/:sourceId/directories/**/search` → ディレクトリ内検索
+- `/api/sources/:mediaSourceId/media/:mediaId/thumbnail` → サムネイル取得
+- `/api/sources/:mediaSourceId/directories/**/*` → ディレクトリリスト
+- `/api/sources/:mediaSourceId/directories/**/search` → ディレクトリ内検索
 
 この変更により、SolidStartのファイルベースルーティング規則に準拠し、ルート定義の重複がなくなりました。
 

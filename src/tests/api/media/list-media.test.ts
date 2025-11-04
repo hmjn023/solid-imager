@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { directoryPathSchema } from "~/domain/media/schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { directoryPathSchema, mediaSourceIdSchema } from "~/domain/media/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("listMedia Contract", () => {
@@ -10,7 +9,7 @@ describe("listMedia Contract", () => {
     const directoryPath = "/path/to/media/folder";
 
     // Validate with Zod schema
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(sourceId);
     directoryPathSchema.parse(directoryPath);
 
     // Placeholder for the actual listMedia function call
@@ -26,7 +25,7 @@ describe("listMedia Contract", () => {
         mediaType: "image",
         width: 800,
         height: 600,
-        sourceId,
+        mediaSourceId: sourceId,
         indexedAt: new Date(),
       },
       {
@@ -39,7 +38,7 @@ describe("listMedia Contract", () => {
         mediaType: "video",
         width: 1280,
         height: 720,
-        sourceId,
+        mediaSourceId: sourceId,
         indexedAt: new Date(),
       },
     ];
@@ -72,6 +71,6 @@ describe("listMedia Contract", () => {
   it("should throw a ZodError for an invalid sourceId format", () => {
     const sourceId = "invalid-source-id-format";
     const _directoryPath = "/path/to/media/folder";
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(sourceId)).toThrow(ZodError);
   });
 });

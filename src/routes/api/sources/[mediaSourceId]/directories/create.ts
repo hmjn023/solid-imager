@@ -4,7 +4,7 @@ import { createDirectory } from "~/infrastructure/api-clients/directories";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories/create:
+ * /api/sources/{mediaSourceId}/directories/create:
  *   post:
  *     summary: Create a new directory
  *     description: Creates a new directory within a specified media source.
@@ -12,7 +12,7 @@ import { createDirectory } from "~/infrastructure/api-clients/directories";
  *       - Directories
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -37,8 +37,8 @@ import { createDirectory } from "~/infrastructure/api-clients/directories";
  *         description: Internal server error.
  */
 export async function POST({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const { path, name } = await request.json(); // パスと名前がボディに含まれていると仮定します。
-  const result = await createDirectory(sourceId, path, name);
+  const result = await createDirectory(mediaSourceId, path, name);
   return result;
 }

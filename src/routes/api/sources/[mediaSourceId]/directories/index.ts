@@ -4,7 +4,7 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
 
 /**
  * @swagger
- * /api/sources/{sourceId}/directories:
+ * /api/sources/{mediaSourceId}/directories:
  *   get:
  *     summary: Retrieve a list of directories within a media source
  *     description: Fetches a hierarchical listing of directories and their contents for a given media source. Can be filtered by a parent path.
@@ -12,7 +12,7 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
  *       - Directories
  *     parameters:
  *       - in: path
- *         name: sourceId
+ *         name: mediaSourceId
  *         required: true
  *         schema:
  *           type: string
@@ -40,9 +40,9 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
  *         description: Internal server error.
  */
 export async function GET({ params, request }: APIEvent) {
-  const sourceId = params.sourceId as UUID;
+  const mediaSourceId = params.mediaSourceId as UUID;
   const url = new URL(request.url);
   const path = url.searchParams.get("path") || undefined; // ?path=parent を処理します。
-  const listing = await getDirectoryListing(sourceId, path);
+  const listing = await getDirectoryListing(mediaSourceId, path);
   return listing;
 }

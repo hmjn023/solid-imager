@@ -205,7 +205,7 @@ CREATE TABLE media_sources (
 ```sql
 CREATE TABLE media (
   id UUID PRIMARY KEY,
-  source_id UUID NOT NULL REFERENCES media_sources(id) ON DELETE CASCADE, -- Which media source it belongs to
+  media_source_id UUID NOT NULL REFERENCES media_sources(id) ON DELETE CASCADE, -- Which media source it belongs to
   file_path TEXT NOT NULL,           -- Relative path within the source
   file_name TEXT NOT NULL,           -- File name
   media_type TEXT NOT NULL CHECK (media_type IN ('image', 'video', 'audio')), -- Media type
@@ -222,7 +222,7 @@ CREATE TABLE media (
   modified_at TIMESTAMP NOT NULL,    -- File modification timestamp
   indexed_at TIMESTAMP NOT NULL DEFAULT NOW(),     -- DB registration timestamp
   
-  UNIQUE(source_id, file_path)
+  UNIQUE(media_source_id, file_path)
 );
 ```
 
@@ -421,7 +421,7 @@ CREATE TABLE collection_media (
 ### Indexes
 ```sql
 -- Basic Tables
-CREATE INDEX idx_media_source_id ON media(source_id);
+CREATE INDEX idx_media_media_source_id ON media(media_source_id);
 CREATE INDEX idx_media_file_name ON media(file_name);
 CREATE INDEX idx_media_created_at ON media(created_at);
 CREATE INDEX idx_media_description ON media(description) WHERE description IS NOT NULL;
@@ -486,48 +486,48 @@ DELETE /api/ips/:id                 # Deletes a specific IP.
 ```
 GET    /api/sources                 # Lists all media sources.
 POST   /api/sources                 # Creates a new media source.
-GET    /api/sources/:sourceId       # Retrieves details of a specific media source. (sourceId: UUID)
-PUT    /api/sources/:sourceId       # Updates a specific media source. (sourceId: UUID)
-DELETE /api/sources/:sourceId       # Deletes a specific media source. (sourceId: UUID)
-POST   /api/sources/:sourceId/test  # Tests connection to a media source. (sourceId: UUID)
-GET    /api/sources/:sourceId/status # Retrieves status of a specific media source. (sourceId: UUID)
-GET    /api/sources/:sourceId/directories # Retrieves a list of directories within a specific media source. (sourceId: UUID)
-GET    /api/sources/:sourceId/directories/[...directories] # Retrieves all media and directories under a specific directory. (sourceId: UUID, directories: path)
+GET    /api/sources/:mediaSourceId       # Retrieves details of a specific media source. (mediaSourceId: UUID)
+PUT    /api/sources/:mediaSourceId       # Updates a specific media source. (mediaSourceId: UUID)
+DELETE /api/sources/:mediaSourceId       # Deletes a specific media source. (mediaSourceId: UUID)
+POST   /api/sources/:mediaSourceId/test  # Tests connection to a media source. (mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/status # Retrieves status of a specific media source. (mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories # Retrieves a list of directories within a specific media source. (mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories/[...directories] # Retrieves all media and directories under a specific directory. (mediaSourceId: UUID, directories: path)
 ```
 
 #### Media Management
 ```
-GET    /api/sources/:sourceId/:mediaId                  # Retrieves details of a specific media. (sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/details          # Retrieves tags, metadata, category, IP, character information, etc. for a specific media. (sourceId: UUID, mediaId: UUID)
-PUT    /api/sources/:sourceId/:mediaId                  # Updates specific media information. (sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/metadata         # Retrieves metadata of a specific media. (sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/tags             # Retrieves a list of tags for a specific media. (sourceId: UUID, mediaId: UUID)
-GET    /api/sources/:sourceId/:mediaId/thumbnail        # Delivers a thumbnail for a specific media. (sourceId: UUID, mediaId: UUID)
-POST   /api/sources/:sourceId/:mediaId/upload           # Uploads media. The 'path' for upload should be provided in the request body.
-GET    /api/sources/:sourceId/:mediaId/charactors       # Retrieves all characters associated with a media. (Currently a placeholder)
-GET    /api/sources/:sourceId/:mediaId/ips              # Retrieves all IPs associated with a media. (Currently a placeholder)
-GET    /api/sources/:sourceId/search                    # Searches for media within a specific media source. (sourceId: UUID)
-GET    /api/sources/:sourceId/directories/[...directories]/search # Searches for media within a specific subdirectory. (sourceId: UUID, directories: path)
+GET    /api/sources/:mediaSourceId/:mediaId                  # Retrieves details of a specific media. (mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/details          # Retrieves tags, metadata, category, IP, character information, etc. for a specific media. (mediaSourceId: UUID, mediaId: UUID)
+PUT    /api/sources/:mediaSourceId/:mediaId                  # Updates specific media information. (mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/metadata         # Retrieves metadata of a specific media. (mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/tags             # Retrieves a list of tags for a specific media. (mediaSourceId: UUID, mediaId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/thumbnail        # Delivers a thumbnail for a specific media. (mediaSourceId: UUID, mediaId: UUID)
+POST   /api/sources/:mediaSourceId/:mediaId/upload           # Uploads media. The 'path' for upload should be provided in the request body.
+GET    /api/sources/:mediaSourceId/:mediaId/charactors       # Retrieves all characters associated with a media. (Currently a placeholder)
+GET    /api/sources/:mediaSourceId/:mediaId/ips              # Retrieves all IPs associated with a media. (Currently a placeholder)
+GET    /api/sources/:mediaSourceId/search                    # Searches for media within a specific media source. (mediaSourceId: UUID)
+GET    /api/sources/:mediaSourceId/directories/[...directories]/search # Searches for media within a specific subdirectory. (mediaSourceId: UUID, directories: path)
 ```
 
 #### Thumbnail Management
 ```
-GET    /api/sources/:sourceId/:mediaId/thumbnail        # Delivers a thumbnail for a specific media. (sourceId: UUID, mediaId: UUID)
-POST   /api/sources/:sourceId/thumbnails                # Starts manual thumbnail generation. (sourceId: UUID)
-DELETE /api/sources/:sourceId/thumbnails                # Clears thumbnail cache. (sourceId: UUID)
+GET    /api/sources/:mediaSourceId/:mediaId/thumbnail        # Delivers a thumbnail for a specific media. (mediaSourceId: UUID, mediaId: UUID)
+POST   /api/sources/:mediaSourceId/thumbnails                # Starts manual thumbnail generation. (mediaSourceId: UUID)
+DELETE /api/sources/:mediaSourceId/thumbnails                # Clears thumbnail cache. (mediaSourceId: UUID)
 ```
 
 #### Directory Management
 ```
-GET    /api/sources/:sourceId/directories?path=parent   # Retrieves a list of directories. (sourceId: UUID)
-POST   /api/sources/:sourceId/directories               # Creates a directory. (sourceId: UUID, body: { path: string, name: string })
-PUT    /api/sources/:sourceId/directories/rename        # Renames a directory. (sourceId: UUID, body: { oldPath: string, newPath: string })
-DELETE /api/sources/:sourceId/directories/delete        # Deletes a directory. (sourceId: UUID, body: { path: string })
+GET    /api/sources/:mediaSourceId/directories?path=parent   # Retrieves a list of directories. (mediaSourceId: UUID)
+POST   /api/sources/:mediaSourceId/directories               # Creates a directory. (mediaSourceId: UUID, body: { path: string, name: string })
+PUT    /api/sources/:mediaSourceId/directories/rename        # Renames a directory. (mediaSourceId: UUID, body: { oldPath: string, newPath: string })
+DELETE /api/sources/:mediaSourceId/directories/delete        # Deletes a directory. (mediaSourceId: UUID, body: { path: string })
 ```
 
 #### Real-time Updates
 ```
-GET    /api/sources/:sourceId/events                    # Monitors SSE (Server-Sent Events) and receives real-time updates. (sourceId: UUID)
+GET    /api/sources/:mediaSourceId/events                    # Monitors SSE (Server-Sent Events) and receives real-time updates. (mediaSourceId: UUID)
 ```
 
 #### Configuration Management
@@ -601,7 +601,7 @@ interface S3Connection {
 ```typescript
 interface ThumbnailProgress {
   type: 'thumbnail_progress';
-  sourceId: string;
+  mediaSourceId: string;
   status: 'started' | 'processing' | 'completed' | 'error';
   progress: {
     current: number;    // Number of media processed
@@ -644,7 +644,7 @@ interface MediaMetadata {
 ```typescript
 interface FileSystemEvent {
   type: 'added' | 'deleted' | 'modified';
-  sourceId: string;
+  mediaSourceId: string;
   filePath: string;    // Relative path
   timestamp: Date;
 }
@@ -888,7 +888,7 @@ Data migration and backup support.
 - GET /api/sources/:id/export?format=zip - Archive export.
 - POST /api/sources/:id/import - Import (URL/file).
 - GET /api/sources/:id/media/*/download - Media download.
-- POST /api/sources/clone/:sourceId - Clone source.
+- POST /api/sources/clone/:mediaSourceId - Clone source.
 
 ### 4. Workflow and Automation Functions
 Background tasks and job management.

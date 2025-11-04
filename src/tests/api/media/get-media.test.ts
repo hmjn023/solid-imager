@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { mediaIdSchema } from "~/domain/media/schemas";
-import { sourceIdSchema } from "~/domain/sources/schemas";
+import { mediaIdSchema, mediaSourceIdSchema } from "~/domain/media/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("getMedia Contract", () => {
@@ -10,7 +9,7 @@ describe("getMedia Contract", () => {
     const mediaId = "a0000000-0000-4000-8000-000000000000"; // Valid UUID
 
     // Validate with Zod schema
-    sourceIdSchema.parse(sourceId);
+    mediaSourceIdSchema.parse(sourceId);
     mediaIdSchema.parse(mediaId);
 
     // Placeholder for the actual getMedia function call
@@ -25,7 +24,7 @@ describe("getMedia Contract", () => {
       mediaType: "image",
       width: 800,
       height: 600,
-      sourceId,
+      mediaSourceId: sourceId,
       indexedAt: new Date(),
     };
 
@@ -56,6 +55,6 @@ describe("getMedia Contract", () => {
   it("should throw a ZodError for an invalid sourceId format", () => {
     const sourceId = "invalid-source-id-format";
     const _mediaId = "a0000000-0000-0000-0000-000000000000";
-    expect(() => sourceIdSchema.parse(sourceId)).toThrow(ZodError);
+    expect(() => mediaSourceIdSchema.parse(sourceId)).toThrow(ZodError);
   });
 });

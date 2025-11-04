@@ -25,7 +25,7 @@ function initializeDb() {
 
   const dbHost = process.env.DB_HOST;
 
-  if (dbHost === "pglite") {
+  if (process.env.NODE_ENV === "test" || dbHost === "pglite") {
     _queryClient = new PGlite("./.data/pglite");
     _db = drizzlePglite(_queryClient, { schema });
     return _db;

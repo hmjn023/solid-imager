@@ -29,6 +29,20 @@
       "when": 1761976110695,
       "tag": "0003_watery_tenebrous",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1762000000000,
+      "tag": "0004_rename_media_source_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1762000000001,
+      "tag": "0005_rename_jobs_source_id",
+      "breakpoints": true
     }
   ]
 }
