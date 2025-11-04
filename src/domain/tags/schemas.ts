@@ -34,3 +34,9 @@ export const workflowSchema = z.object({
   nodes: z.array(workflowNodeSchema),
 });
 export type Workflow = z.infer<typeof workflowSchema>;
+
+export const newTagSchema = tagDataSchema.extend({
+  name: z.string().min(1, "Tag name cannot be empty"),
+});
+
+export const updateTagSchema = tagDataSchema.partial();

@@ -1,6 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { z } from "zod";
-import type { UUID } from "~/domain/shared/schemas";
+import { z, ZodError } from "zod";
 import { getMediaTags } from "~/infrastructure/api-clients/media";
 
 // パスパラメータのスキーマ
@@ -8,7 +7,6 @@ const MediaParamsSchema = z.object({
   mediaSourceId: z.string().uuid(),
   mediaId: z.string().uuid(),
 });
-export type MediaParams = z.infer<typeof MediaParamsSchema>;
 
 /**
  * @swagger
@@ -51,15 +49,31 @@ export type MediaParams = z.infer<typeof MediaParamsSchema>;
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const parsedParams = MediaParamsSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = MediaParamsSchema.parse(params);
+    const { mediaSourceId, mediaId } = parsedParams;
+
+    const tags = await getMediaTags(mediaSourceId, mediaId);
+    return new Response(JSON.stringify(tags), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (error instanceof Error && error.message === "Media not found") {
+      return new Response(JSON.stringify({ error: "Media not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { mediaSourceId, mediaId } = parsedParams.data;
-
-  const tags = await getMediaTags(mediaSourceId as UUID, mediaId as UUID);
-  return tags;
 }
