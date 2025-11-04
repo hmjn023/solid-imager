@@ -25,7 +25,7 @@ import {
 } from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import { getMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
-import type { Media, NewMedia, tags } from "~/infrastructure/db/schema";
+import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
@@ -310,12 +310,12 @@ export async function getMediaMetadata(
  * Retrieves tags associated with a specific media item.
  * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
- * @returns {Promise<(typeof tags.$inferSelect)[]>} A promise that resolves with an array of tags.
+ * @returns {Promise<Tag[]>} A promise that resolves with an array of tags.
  */
 export async function getMediaTags(
   mediaSourceId: string,
   mediaId: string
-): Promise<(typeof tags.$inferSelect)[]> {
+): Promise<Tag[]> {
   await getMedia(mediaSourceId, mediaId);
   return await getMediaTagsByMediaId(mediaId);
 }

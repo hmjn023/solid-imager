@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, not } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { mediaTags, tags } from "~/infrastructure/db/schema";
+import { mediaTags, tags, type NewTag, type Tag } from "~/infrastructure/db/schema";
 import { ConstraintError, UnknownDbError } from "../errors";
 
 /**
@@ -30,7 +30,7 @@ export const insertMediaTags = async (
         (name) => !existingTagNames.includes(name)
       );
 
-      let newTags: (typeof tags.$inferSelect)[] = [];
+      let newTags: Tag[] = [];
       if (newTagNames.length > 0) {
         newTags = await tx
           .insert(tags)
@@ -80,38 +80,38 @@ export const insertMediaTags = async (
 
 /**
  * Fetches all tags from the database.
- * @returns {Promise<(typeof tags.$inferSelect)[]>} A promise that resolves with an array of all tags.
+ * @returns {Promise<Tag[]>} A promise that resolves with an array of all tags.
  */
-export const getTags = async () => {
+export const getTags = async (): Promise<Tag[]> => {
   return await db.select().from(tags);
 }
 
 /**
  * Creates a new tag in the database.
- * @param {typeof tags.$inferInsert} newTag - The new tag to create.
- * @returns {Promise<(typeof tags.$inferSelect)[]>} A promise that resolves with the created tag.
+ * @param {NewTag} newTag - The new tag to create.
+ * @returns {Promise<Tag[]>} A promise that resolves with the created tag.
  */
-export const createTag = async (newTag: typeof tags.$inferInsert) => {
+export const createTag = async (newTag: NewTag): Promise<Tag[]> => {
   return await db.insert(tags).values(newTag).returning();
 };
 
 /**
  * Fetches a single tag by its ID from the database.
  * @param {number} id - The ID of the tag to fetch.
- * @returns {Promise<(typeof tags.$inferSelect) | undefined>} A promise that resolves with the tag, or undefined if not found.
+ * @returns {Promise<Tag | undefined>} A promise that resolves with the tag, or undefined if not found.
  */
-export const getTagById = async (id: number) => {
+export const getTagById = async (id: number): Promise<Tag | undefined> => {
   return (await db.select().from(tags).where(eq(tags.id, id)))[0];
 };
 
 /**
  * Updates an existing tag in the database.
  * @param {number} id - The ID of the tag to update.
- * @param {Partial<typeof tags.$inferInsert>} tag - The updated tag data.
- * @returns {Promise<(typeof tags.$inferSelect)[]>} A promise that resolves with the updated tag.
+ * @param {Partial<NewTag>} tag - The updated tag data.
+ * @returns {Promise<Tag[]>} A promise that resolves with the updated tag.
  * @throws {Error} If the tag name is empty or already exists.
  */
-export const updateTag = async (id: number, tag: Partial<typeof tags.$inferInsert>) => {
+export const updateTag = async (id: number, tag: Partial<NewTag>): Promise<Tag[]> => {
   if (tag.name === "") {
     throw new Error("Tag name cannot be empty.");
   }
@@ -130,7 +130,7 @@ export const updateTag = async (id: number, tag: Partial<typeof tags.$inferInser
  * @returns {Promise<void>}
  * @throws {Error} If the tag is associated with any media.
  */
-export const deleteTag = async (id: number) => {
+export const deleteTag = async (id: number): Promise<void> => {
   const mediaCount = await db.select().from(mediaTags).where(eq(mediaTags.tagId, id));
   if (mediaCount.length > 0) {
     throw new Error("Cannot delete tag that is associated with media.");
@@ -142,9 +142,9 @@ export const deleteTag = async (id: number) => {
 /**
  * Fetches all tags for a specific media item.
  * @param {string} mediaId - The ID of the media item.
- * @returns {Promise<(typeof tags.$inferSelect)[]>} A promise that resolves with an array of tags.
+ * @returns {Promise<Tag[]>} A promise that resolves with an array of tags.
  */
-export const getMediaTagsByMediaId = async (mediaId: string) => {
+export const getMediaTagsByMediaId = async (mediaId: string): Promise<Tag[]> => {
   const result = await db
     .select({
       id: tags.id,
