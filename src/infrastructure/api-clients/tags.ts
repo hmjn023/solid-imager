@@ -1,9 +1,9 @@
 import {
-  getTags as dbGetTags,
   createTag as dbCreateTag,
-  getTagById as dbGetTagById,
-  updateTag as dbUpdateTag,
   deleteTag as dbDeleteTag,
+  getTagById as dbGetTagById,
+  getTags as dbGetTags,
+  updateTag as dbUpdateTag,
 } from "~/infrastructure/db/queries/tags";
 import type { NewTag, Tag } from "~/infrastructure/db/schema";
 
@@ -39,7 +39,10 @@ export async function getTagById(id: number): Promise<Tag | undefined> {
  * @param {object} data - The updated data for the tag.
  * @returns {Promise<Tag[]>} The updated tag object.
  */
-export async function updateTag(id: number, data: Partial<NewTag>): Promise<Tag[]> {
+export async function updateTag(
+  id: number,
+  data: Partial<NewTag>
+): Promise<Tag[]> {
   return await dbUpdateTag(id, data);
 }
 

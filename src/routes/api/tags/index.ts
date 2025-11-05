@@ -1,7 +1,7 @@
-import { type APIEvent } from "@solidjs/start/server";
-import { createTag, getTags } from "~/infrastructure/api-clients/tags";
-import { newTagSchema } from "~/domain/tags/schemas";
+import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
+import { newTagSchema } from "~/domain/tags/schemas";
+import { createTag, getTags } from "~/infrastructure/api-clients/tags";
 
 /**
  * @swagger
@@ -30,7 +30,7 @@ export async function GET() {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (error) {
+  } catch (_error) {
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

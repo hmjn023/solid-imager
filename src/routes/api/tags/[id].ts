@@ -1,11 +1,11 @@
-import { type APIEvent } from "@solidjs/start/server";
-import { z, ZodError } from "zod";
+import type { APIEvent } from "@solidjs/start/server";
+import { ZodError, z } from "zod";
+import { updateTagSchema } from "~/domain/tags/schemas";
 import {
   deleteTag,
   getTagById,
   updateTag,
 } from "~/infrastructure/api-clients/tags";
-import { updateTagSchema } from "~/domain/tags/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -137,7 +137,7 @@ export async function PUT({ params, request }: APIEvent) {
       });
     }
     if (error instanceof Error) {
-       return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
