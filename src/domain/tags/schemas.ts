@@ -25,7 +25,8 @@ export type Tags = z.infer<typeof TagsSchema>;
 
 export const workflowNodeSchema = z.object({
   type: z.string(),
-  widgetValues: z.array(z.string()).optional(),
+  // biome-ignore lint/style/useNamingConvention: ComfyUI uses snake_case.
+  widgets_values: z.array(z.any()).optional(),
   title: z.string().optional(),
 });
 export type WorkflowNode = z.infer<typeof workflowNodeSchema>;

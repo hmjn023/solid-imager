@@ -49,10 +49,10 @@ export function extractTagsFromWorkflow(workflow: Workflow) {
   if (Array.isArray(workflow.nodes)) {
     for (const node of workflow.nodes) {
       if (
-        node.type === "CR Combine Prompt" &&
-        Array.isArray(node.widgetValues)
+        node.type === "CLIPTextEncode" &&
+        Array.isArray(node.widgets_values)
       ) {
-        for (const widgetValue of node.widgetValues) {
+        for (const widgetValue of node.widgets_values) {
           const { positiveTags: newPosTags, negativeTags: newNegTags } =
             processWidgetValueTags(widgetValue, node.title);
           positiveTags.push(
