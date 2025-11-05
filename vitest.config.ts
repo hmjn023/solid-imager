@@ -1,10 +1,9 @@
 import path from "node:path";
-import solid from "solid-start/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  plugins: [tsconfigPaths(), solid({ ssr: true })],
+  plugins: [tsconfigPaths()],
   test: {
     alias: {
       "~": path.resolve(__dirname, "./src"),

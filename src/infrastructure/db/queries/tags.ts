@@ -1,6 +1,6 @@
-import { and, eq, inArray, isNull, not } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { mediaTags, tags, type NewTag, type Tag } from "~/infrastructure/db/schema";
+import { mediaTags, tags } from "~/infrastructure/db/schema";
 import { ConstraintError, UnknownDbError } from "../errors";
 
 /**
@@ -30,7 +30,7 @@ export const insertMediaTags = async (
         (name) => !existingTagNames.includes(name)
       );
 
-      let newTags: Tag[] = [];
+      let newTags: (typeof tags.$inferSelect)[] = [];
       if (newTagNames.length > 0) {
         newTags = await tx
           .insert(tags)
@@ -76,89 +76,4 @@ export const insertMediaTags = async (
       details: error,
     });
   }
-};
-
-/**
- * Fetches all tags from the database.
- * @returns {Promise<Tag[]>} A promise that resolves with an array of all tags.
- */
-export const getTags = async (): Promise<Tag[]> => {
-  return await db.select().from(tags);
-}
-
-/**
- * Creates a new tag in the database.
- * @param {NewTag} newTag - The new tag to create.
- * @returns {Promise<Tag[]>} A promise that resolves with the created tag.
- */
-export const createTag = async (newTag: NewTag): Promise<Tag[]> => {
-  return await db.insert(tags).values(newTag).returning();
-};
-
-/**
- * Fetches a single tag by its ID from the database.
- * @param {number} id - The ID of the tag to fetch.
- * @returns {Promise<Tag | undefined>} A promise that resolves with the tag, or undefined if not found.
- */
-export const getTagById = async (id: number): Promise<Tag | undefined> => {
-  return (await db.select().from(tags).where(eq(tags.id, id)))[0];
-};
-
-/**
- * Updates an existing tag in the database.
- * @param {number} id - The ID of the tag to update.
- * @param {Partial<NewTag>} tag - The updated tag data.
- * @returns {Promise<Tag[]>} A promise that resolves with the updated tag.
- * @throws {Error} If the tag name is empty or already exists.
- */
-export const updateTag = async (id: number, tag: Partial<NewTag>): Promise<Tag[]> => {
-  if (tag.name === "") {
-    throw new Error("Tag name cannot be empty.");
-  }
-
-  const existingTag = await db.select().from(tags).where(and(eq(tags.name, tag.name!), not(eq(tags.id, id))));
-  if (existingTag.length > 0) {
-    throw new Error("Tag name already exists.");
-  }
-
-  return await db.update(tags).set(tag).where(eq(tags.id, id)).returning();
-};
-
-/**
- * Deletes a tag from the database.
- * @param {number} id - The ID of the tag to delete.
- * @returns {Promise<void>}
- * @throws {Error} If the tag is associated with any media.
- */
-export const deleteTag = async (id: number): Promise<void> => {
-  const mediaCount = await db.select().from(mediaTags).where(eq(mediaTags.tagId, id));
-  if (mediaCount.length > 0) {
-    throw new Error("Cannot delete tag that is associated with media.");
-  }
-
-  await db.delete(tags).where(eq(tags.id, id));
-};
-
-/**
- * Fetches all tags for a specific media item.
- * @param {string} mediaId - The ID of the media item.
- * @returns {Promise<Tag[]>} A promise that resolves with an array of tags.
- */
-export const getMediaTagsByMediaId = async (mediaId: string): Promise<Tag[]> => {
-  const result = await db
-    .select({
-      id: tags.id,
-      name: tags.name,
-      description: tags.description,
-      attribute: tags.attribute,
-      color: tags.color,
-      source: tags.source,
-      createdAt: tags.createdAt,
-      updatedAt: tags.updatedAt,
-    })
-    .from(mediaTags)
-    .innerJoin(tags, eq(mediaTags.tagId, tags.id))
-    .where(eq(mediaTags.mediaId, mediaId));
-
-  return result;
 };
