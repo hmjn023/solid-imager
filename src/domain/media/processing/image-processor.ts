@@ -62,7 +62,6 @@ export const ImageProcessor = {
 
       // Store tags
       if (tags.length > 0) {
-        console.log(tags);
         await insertMediaTags(mediaId, tags, "comfyui_workflow");
       }
     } catch {

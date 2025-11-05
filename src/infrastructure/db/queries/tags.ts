@@ -39,7 +39,7 @@ export const insertMediaTags = async (
       if (newTagNames.length > 0) {
         newTags = await tx
           .insert(tags)
-          .values(newTagNames.map((name) => ({ name })))
+          .values(newTagNames.map((name) => ({ name, source })))
           .returning();
       }
 

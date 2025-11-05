@@ -16,5 +16,5 @@ export async function extractTags(
     name: tag,
     type: "positive" as const,
   }));
-  await insertMediaTags(mediaId, tagsToInsert, "comfyui_workflow");
+  await insertMediaTags(mediaId, tagsToInsert, "extracted_from_workflow");
 }
