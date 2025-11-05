@@ -8,7 +8,7 @@ import type { Media } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,
   startJobQueue,
-} from "~/infrastructure/jobs/thumbnail-jobs";
+} from "~/infrastructure/jobs/job-manager";
 
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
@@ -110,10 +110,14 @@ export async function generateThumbnailsForSource(
   const jobs = mediaItems.map((media) => ({
     mediaId: media.id,
     sourcePath: source.connectionInfo?.path,
+    type: "thumbnail" as const,
   }));
 
   addJobsToQueue(mediaSourceId, jobs);
   startJobQueue(mediaSourceId, async (job) => {
+    if (job.type !== "thumbnail") {
+      return;
+    }
     const media = mediaItems.find((m) => m.id === job.mediaId);
     if (media) {
       await generateThumbnail(media, job.sourcePath, mediaSourceId);
