@@ -1,70 +1,79 @@
+import type { ExtractedData } from "~/domain/media/schemas";
 import { extractTagsFromWorkflow } from "~/domain/tags/extractor";
-import { workflowSchema } from "~/domain/tags/schemas";
+import { type Workflow, workflowSchema } from "~/domain/tags/schemas";
 
-type ExtractedData = {
-  tags: { name: string; type: "positive" | "negative" }[];
-  prompt: object | string | null;
-  workflow: object | string | null;
-};
-
-function _processCommentChunk(
-  chunk: { keyword: string; text: string },
-  data: ExtractedData
-) {
-  if (chunk.keyword === "prompt") {
-    try {
-      const parsedPrompt = workflowSchema.parse(JSON.parse(chunk.text));
-      data.prompt = parsedPrompt;
-      const extracted = extractTagsFromWorkflow(parsedPrompt);
-      data.tags.push(
-        ...extracted.positiveTags.map((t) => ({
-          name: t.name,
-          type: "positive",
-        })),
-        ...extracted.negativeTags.map((t) => ({
-          name: t.name,
-          type: "negative",
-        }))
-      );
-    } catch (_error) {
-      data.prompt = chunk.text;
-    }
-  }
-  if (chunk.keyword === "workflow") {
-    try {
-      const parsedWorkflow = workflowSchema.parse(JSON.parse(chunk.text));
-      data.workflow = parsedWorkflow;
-      const extracted = extractTagsFromWorkflow(parsedWorkflow);
-      if (extracted) {
-        data.tags = [
-          ...data.tags,
-          ...extracted.positiveTags.map((t) => ({
-            name: t.name,
-            type: "positive",
-          })),
-          ...extracted.negativeTags.map((t) => ({
-            name: t.name,
-            type: "negative",
-          })),
-        ];
+function parseWorkflowAndExtractTags(text: string): {
+  parsed: Workflow | null;
+  tags: ExtractedData["tags"];
+} {
+  const tags: ExtractedData["tags"] = [];
+  try {
+    const parsed = workflowSchema.parse(JSON.parse(text));
+    const extracted = extractTagsFromWorkflow(parsed);
+    if (extracted) {
+      for (const t of extracted.positiveTags) {
+        tags.push({ name: t.name, type: "positive" as const });
       }
-    } catch (_error) {
-      data.workflow = chunk.text;
+      for (const t of extracted.negativeTags) {
+        tags.push({ name: t.name, type: "negative" as const });
+      }
     }
+    return { parsed, tags };
+  } catch (_error) {
+    return { parsed: null, tags: [] };
   }
+}
+
+function processCommentChunk(chunk: {
+  keyword: string;
+  text: string;
+}): Partial<ExtractedData> {
+  if (chunk.keyword === "prompt") {
+    const { tags } = parseWorkflowAndExtractTags(chunk.text);
+    return { prompt: chunk.text, tags };
+  }
+
+  if (chunk.keyword === "workflow") {
+    const { parsed, tags } = parseWorkflowAndExtractTags(chunk.text);
+    return { workflow: parsed, tags };
+  }
+
+  return {};
 }
 
 export function extractDataFromComments(
   comments: { keyword: string; text: string }[]
 ): ExtractedData {
-  const data: ExtractedData = {
+  const finalData: ExtractedData = {
     tags: [],
     prompt: null,
     workflow: null,
   };
 
   for (const chunk of comments) {
-    _processCommentChunk(chunk, data);
+    const processedChunk = processCommentChunk(chunk);
+    if (processedChunk.tags) {
+      finalData.tags.push(...processedChunk.tags);
+    }
+    if (processedChunk.prompt) {
+      finalData.prompt = processedChunk.prompt;
+    }
+    if (processedChunk.workflow) {
+      finalData.workflow = processedChunk.workflow;
+    }
   }
-  return data;
+
+  // Deduplicate tags
+  const uniqueTags: ExtractedData["tags"] = [];
+  const seenTags = new Set<string>();
+  for (const tag of finalData.tags) {
+    const tagIdentifier = `${tag.name}:${tag.type}`;
+    if (!seenTags.has(tagIdentifier)) {
+      uniqueTags.push(tag);
+      seenTags.add(tagIdentifier);
+    }
+  }
+  finalData.tags = uniqueTags;
+
+  return finalData;
 }

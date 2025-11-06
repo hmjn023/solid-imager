@@ -29,7 +29,6 @@ export function processWidgetValueTags(
       .map((s) => s.replace(/"/g, ""));
 
     if (tags.length > 0) {
-      console.log(tags)
       if (
         nodeTitle?.toLowerCase().includes("negative") ||
         tags.includes("lowres")
@@ -50,7 +49,7 @@ export function extractTagsFromWorkflow(workflow: Workflow) {
   if (Array.isArray(workflow.nodes)) {
     for (const node of workflow.nodes) {
       if (
-        (node.type === "CLIPTextEncode"||node.type === "CR Combine Prompt") &&
+        (node.type === "CLIPTextEncode" || node.type === "CR Combine Prompt") &&
         Array.isArray(node.widgets_values)
       ) {
         for (const widgetValue of node.widgets_values) {

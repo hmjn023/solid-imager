@@ -91,6 +91,19 @@ export const directoryPathSchema = z
   .min(1, "Directory path is required");
 export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
+export const extractedDataSchema = z.object({
+  tags: z.array(
+    z.object({
+      name: z.string(),
+      type: z.enum(["positive", "negative"]),
+    })
+  ),
+  prompt: z.any().nullable(),
+  workflow: z.any().nullable(),
+});
+
+export type ExtractedData = z.infer<typeof extractedDataSchema>;
+
 // biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
 export {
   type Conflict,
