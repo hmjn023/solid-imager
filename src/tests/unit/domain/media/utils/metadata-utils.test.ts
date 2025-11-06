@@ -10,7 +10,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              widgetValues: ["1girl, solo, smile"],
+              widgets_values: ["1girl, solo, smile"],
               title: "Positive Prompt",
             },
           ],
@@ -22,7 +22,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              widgetValues: ["bad anatomy, ugly, disfigured"],
+              widgets_values: ["bad anatomy, ugly, disfigured"],
               title: "Negative Prompt",
             },
           ],
@@ -40,7 +40,7 @@ describe("extractDataFromComments", () => {
       { name: "ugly", type: "negative" },
       { name: "disfigured", type: "negative" },
     ]);
-    expect(result.prompt).toBeTypeOf("object");
+    expect(result.prompt).toBeTypeOf("string");
     expect(result.workflow).toBeTypeOf("object");
   });
 
@@ -52,7 +52,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              widgetValues: ["1girl, solo, smile"],
+              widgets_values: ["1girl, solo, smile"],
               title: "Positive Prompt",
             },
           ],
@@ -67,7 +67,7 @@ describe("extractDataFromComments", () => {
       { name: "solo", type: "positive" },
       { name: "smile", type: "positive" },
     ]);
-    expect(result.prompt).toBeTypeOf("object");
+    expect(result.prompt).toBeTypeOf("string");
     expect(result.workflow).toBeNull();
   });
 
@@ -79,7 +79,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              widgetValues: ["bad anatomy, ugly"],
+              widgets_values: ["bad anatomy, ugly"],
               title: "Negative Prompt",
             },
           ],
@@ -128,6 +128,31 @@ describe("extractDataFromComments", () => {
 
     expect(result.tags).toEqual([]);
     expect(result.prompt).toBe("not a json");
-    expect(result.workflow).toBe("{invalid json");
+    expect(result.workflow).toBeNull();
+  });
+
+  it("should deduplicate tags", () => {
+    const comments = [
+      {
+        keyword: "prompt",
+        text: JSON.stringify({
+          nodes: [
+            {
+              type: "CR Combine Prompt",
+              widgets_values: ["1girl, solo, smile, 1girl"],
+              title: "Positive Prompt",
+            },
+          ],
+        }),
+      },
+    ];
+
+    const result = extractDataFromComments(comments);
+
+    expect(result.tags).toEqual([
+      { name: "1girl", type: "positive" },
+      { name: "solo", type: "positive" },
+      { name: "smile", type: "positive" },
+    ]);
   });
 });
