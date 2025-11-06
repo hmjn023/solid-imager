@@ -1,4 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { ZodError } from "zod";
+import { newTagSchema } from "~/domain/tags/schemas";
 import { createTag, getTags } from "~/infrastructure/api-clients/tags";
 
 /**
@@ -22,8 +24,18 @@ import { createTag, getTags } from "~/infrastructure/api-clients/tags";
  *         description: Internal server error.
  */
 export async function GET() {
-  const tags = await getTags();
-  return tags;
+  try {
+    const tags = await getTags();
+    return new Response(JSON.stringify(tags), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**
@@ -53,7 +65,24 @@ export async function GET() {
  *         description: Internal server error.
  */
 export async function POST({ request }: APIEvent) {
-  const data = await request.json();
-  const newTag = await createTag(data);
-  return newTag;
+  try {
+    const data = await request.json();
+    const validatedData = newTagSchema.parse(data);
+    const newTag = await createTag(validatedData);
+    return new Response(JSON.stringify(newTag[0]), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

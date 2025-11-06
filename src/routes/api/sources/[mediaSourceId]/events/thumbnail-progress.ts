@@ -1,6 +1,6 @@
 import { createEffect } from "solid-js";
 import type { APIEvent } from "solid-start/api";
-import { getThumbnailJobStats } from "~/infrastructure/jobs/thumbnail-jobs";
+import { getJobStats } from "~/infrastructure/jobs/job-manager";
 
 /**
  * @swagger
@@ -43,7 +43,7 @@ export function GET({ params }: APIEvent) {
       };
 
       createEffect(() => {
-        const stats = getThumbnailJobStats(mediaSourceId);
+        const stats = getJobStats(mediaSourceId);
 
         if (stats.status === "idle") {
           return;

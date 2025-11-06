@@ -24,7 +24,8 @@ import {
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
-import type { Media, NewMedia } from "~/infrastructure/db/schema";
+import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
+import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
@@ -148,7 +149,8 @@ export async function deleteMedia(
 import {
   addJobsToQueue,
   startJobQueue,
-} from "~/infrastructure/jobs/thumbnail-jobs";
+} from "~/infrastructure/jobs/job-manager";
+import { extractTags } from "~/infrastructure/jobs/tag-extraction";
 import {
   deleteThumbnail,
   generateThumbnail,
@@ -241,15 +243,26 @@ export async function registerExistingMedia(
   }
 
   if (addedMedia.length > 0) {
-    const jobs = addedMedia.map((media) => ({
+    const thumbnailJobs = addedMedia.map((media) => ({
       mediaId: media.id,
       sourcePath: basePath,
+      type: "thumbnail" as const,
     }));
-    addJobsToQueue(validatedSourceId, jobs);
+    const tagExtractionJobs = addedMedia.map((media) => ({
+      mediaId: media.id,
+      sourcePath: basePath,
+      type: "extractTags" as const,
+    }));
+    addJobsToQueue(validatedSourceId, [...thumbnailJobs, ...tagExtractionJobs]);
     startJobQueue(validatedSourceId, async (job) => {
       const media = addedMedia.find((m) => m.id === job.mediaId);
       if (media) {
-        await generateThumbnail(media, job.sourcePath, validatedSourceId);
+        if (job.type === "thumbnail") {
+          await generateThumbnail(media, job.sourcePath, validatedSourceId);
+        } else if (job.type === "extractTags") {
+          const mediaPath = path.join(job.sourcePath, media.filePath);
+          await extractTags(mediaPath, media.id);
+        }
       }
     });
   }
@@ -309,14 +322,14 @@ export async function getMediaMetadata(
  * Retrieves tags associated with a specific media item.
  * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
- * @returns {Promise<unknown[]>} A promise that resolves with an array of tags.
+ * @returns {Promise<Tag[]>} A promise that resolves with an array of tags.
  */
 export async function getMediaTags(
   mediaSourceId: string,
   mediaId: string
-): Promise<unknown[]> {
-  const _media = await getMedia(mediaSourceId, mediaId);
-  return [];
+): Promise<Tag[]> {
+  await getMedia(mediaSourceId, mediaId);
+  return await selectMediaTagsByMediaId(mediaId);
 }
 
 /**
@@ -437,14 +450,20 @@ export async function uploadMedia(
   };
   const insertedMedia = await insertMedia(newMedia);
 
-  // Trigger thumbnail generation
+  // Trigger thumbnail and tag extraction jobs
   addJobsToQueue(validatedSourceId, [
-    { mediaId: insertedMedia.id, sourcePath: basePath },
+    { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
+    { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
   ]);
   startJobQueue(validatedSourceId, async (job) => {
     const media = await selectMediaById(job.mediaId);
     if (media) {
-      await generateThumbnail(media, job.sourcePath, validatedSourceId);
+      if (job.type === "thumbnail") {
+        await generateThumbnail(media, job.sourcePath, validatedSourceId);
+      } else if (job.type === "extractTags") {
+        const mediaPath = path.join(job.sourcePath, media.filePath);
+        await extractTags(mediaPath, media.id);
+      }
     }
   });
 
