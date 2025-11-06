@@ -201,3 +201,36 @@ export const deleteTag = async (id: number): Promise<void> => {
     });
   }
 };
+
+/**
+ * Retrieves all tags associated with a specific media ID.
+ * @param {string} mediaId - The ID of the media to retrieve tags for.
+ * @returns {Promise<Tag[]>} A promise that resolves to an array of tag objects.
+ * @throws {UnknownDbError} If a database error occurs.
+ */
+export const selectMediaTagsByMediaId = async (
+  mediaId: string
+): Promise<Tag[]> => {
+  try {
+    const result = await db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        description: tags.description,
+        attribute: tags.attribute,
+        color: tags.color,
+        createdAt: tags.createdAt,
+        source: tags.source,
+      })
+      .from(mediaTags)
+      .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+      .where(eq(mediaTags.mediaId, mediaId));
+
+    return result;
+  } catch (error) {
+    throw new UnknownDbError({
+      message: `Failed to retrieve tags for media ID: ${mediaId}`,
+      details: error,
+    });
+  }
+};

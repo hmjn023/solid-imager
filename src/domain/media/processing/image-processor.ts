@@ -5,10 +5,10 @@
  */
 
 import sharp from "sharp";
+import type { ImageMetadataComment } from "~/domain/media/schemas";
+import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info";
 import { insertMediaTags } from "~/infrastructure/db/queries/tags";
-import type { ImageMetadataComment } from "../schemas";
-import { extractDataFromComments } from "../utils/metadata-utils";
 
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
@@ -16,9 +16,9 @@ import { extractDataFromComments } from "../utils/metadata-utils";
 export const ImageProcessor = {
   /**
    * Generates a thumbnail for a given image.
-   * @param {string} _mediaPath - The path to the source image file.
-   * @param {string} _outputPath - The path where the thumbnail will be saved.
-   * @param {number} _size - The desired size for the thumbnail (e.g., width or height, depending on implementation).
+   * @param {string} mediaPath - The path to the source image file.
+   * @param {string} outputPath - The path where the thumbnail will be saved.
+   * @param {number} size - The desired size for the thumbnail (e.g., width or height, depending on implementation).
    * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
    */
   async generateThumbnail(
@@ -35,17 +35,17 @@ export const ImageProcessor = {
 
   /**
    * Extracts metadata from an image file.
-   * @param {string} _mediaPath - The path to the source image file.
+   * @param {string} mediaPath - The path to the source image file.
    * @param {string} mediaId - The ID of the media item.
    * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
    */
-  async extractMetadata(_mediaPath: string, mediaId: string): Promise<void> {
-    if (!_mediaPath) {
+  async extractMetadata(mediaPath: string, mediaId: string): Promise<void> {
+    if (!mediaPath) {
       throw new Error("Image path is required");
     }
 
     try {
-      const metadata = await sharp(_mediaPath).metadata();
+      const metadata = await sharp(mediaPath).metadata();
       const _exifData = metadata.exif;
 
       const comments = metadata.comments as ImageMetadataComment[] | undefined;
@@ -67,9 +67,6 @@ export const ImageProcessor = {
     } catch {
       //
     }
-
-    // TODO: Extract PNG tEXt chunks and other metadata
-    // throw new Error("Not implemented");
   },
 
   /**
