@@ -24,7 +24,7 @@ import {
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
-import { getMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
+import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
 import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
 
 type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
@@ -329,7 +329,7 @@ export async function getMediaTags(
   mediaId: string
 ): Promise<Tag[]> {
   await getMedia(mediaSourceId, mediaId);
-  return await getMediaTagsByMediaId(mediaId);
+  return await selectMediaTagsByMediaId(mediaId);
 }
 
 /**
