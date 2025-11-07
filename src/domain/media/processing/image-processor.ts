@@ -46,17 +46,37 @@ export const ImageProcessor = {
 
     try {
       const metadata = await sharp(mediaPath).metadata();
-      const _exifData = metadata.exif;
 
-      const comments = metadata.comments as ImageMetadataComment[] | undefined;
-      const { tags, prompt, workflow } = comments
-        ? extractDataFromComments(comments)
-        : { tags: [], prompt: null, workflow: null };
+      const comments: ImageMetadataComment[] = [];
+      if (metadata.comments) {
+        comments.push(...metadata.comments);
+      }
+      // Attempt to read from EXIF fields
+      // biome-ignore lint/suspicious/noExplicitAny: exif structure is dynamic
+      const exif = (metadata.exif as any)?.IFD0;
+      if (exif) {
+        if (exif.UserComment) {
+          // It might be a Buffer, so convert it
+          const comment = Buffer.isBuffer(exif.UserComment)
+            ? exif.UserComment.toString("utf-8")
+            : exif.UserComment;
+          comments.push({ keyword: "workflow", text: comment.trim() });
+        }
+        if (exif.ImageDescription) {
+          comments.push({
+            keyword: "prompt",
+            text: exif.ImageDescription.trim(),
+          });
+        }
+      }
+
+      const { tags, prompt, workflow } = extractDataFromComments(comments);
 
       // Store generation info
       await upsertMediaGenerationInfo(
         mediaId,
-        prompt as string | null,
+        // Ensure prompt is stored as a string if it's an object
+        typeof prompt === "object" ? JSON.stringify(prompt) : prompt,
         workflow as object | null
       );
 
@@ -64,8 +84,8 @@ export const ImageProcessor = {
       if (tags.length > 0) {
         await insertMediaTags(mediaId, tags, "comfyui_workflow");
       }
-    } catch {
-      //
+    } catch (_error) {
+      // console.error(`[ImageProcessor] Failed to extract metadata for ${mediaId}:`, error);
     }
   },
 

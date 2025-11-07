@@ -104,6 +104,61 @@ export const extractedDataSchema = z.object({
 
 export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
+// Base schemas mirroring database tables
+export const mediaSchema = z.object({
+  id: z.string().uuid(),
+  mediaSourceId: z.string().uuid(),
+  filePath: z.string(),
+  fileName: z.string(),
+  mediaType: mediaTypeSchema,
+  width: z.number(),
+  height: z.number(),
+  fileSize: z.number().nullable(),
+  description: z.string().nullable(),
+  sourceUrl: z.string().nullable(),
+  createdAt: z.date(),
+  modifiedAt: z.date(),
+  indexedAt: z.date(),
+  status: z.enum(["active", "archived", "deleted"]),
+});
+
+export const tagSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  attribute: z.string().nullable(),
+  color: z.string().nullable(),
+  source: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  type: z.enum(["positive", "negative"]), // from mediaTags
+});
+
+export const mediaGenerationInfoSchema = z.object({
+  mediaId: z.string().uuid(),
+  metadata: z.any().nullable(),
+  prompt: z.string().nullable(),
+  negativePrompt: z.string().nullable(),
+  workflow: z.any().nullable(),
+  loras: z.any().nullable(),
+  vae: z.string().nullable(),
+  hypernetworks: z.any().nullable(),
+  embeddings: z.any().nullable(),
+  aiGenerated: z.boolean(),
+  modelName: z.string(),
+  seed: z.number(),
+  cfgScale: z.number(),
+  steps: z.number(),
+});
+
+// Combined schema for the details endpoint
+export const mediaDetailsSchema = mediaSchema.extend({
+  tags: z.array(tagSchema),
+  generationInfo: mediaGenerationInfoSchema.nullable(),
+});
+
+export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
+
 // biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
 export {
   type Conflict,

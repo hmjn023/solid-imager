@@ -28,9 +28,21 @@ function processCommentChunk(chunk: {
   keyword: string;
   text: string;
 }): Partial<ExtractedData> {
+  // InvokeAI prompt format is a JSON object containing the prompt itself.
   if (chunk.keyword === "prompt") {
-    const { tags } = parseWorkflowAndExtractTags(chunk.text);
-    return { prompt: chunk.text, tags };
+    try {
+      // It might be a simple string or a JSON object string.
+      const parsed = JSON.parse(chunk.text);
+      if (typeof parsed === "object" && parsed !== null && "nodes" in parsed) {
+        // This looks like a ComfyUI workflow embedded in a prompt
+        const { tags } = parseWorkflowAndExtractTags(chunk.text);
+        return { prompt: chunk.text, tags };
+      }
+      return { prompt: chunk.text, tags: [] };
+    } catch {
+      // Not a JSON, treat as a simple prompt string
+      return { prompt: chunk.text, tags: [] };
+    }
   }
 
   if (chunk.keyword === "workflow") {

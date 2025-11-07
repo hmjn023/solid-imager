@@ -210,17 +210,16 @@ export const deleteTag = async (id: number): Promise<void> => {
  */
 export const selectMediaTagsByMediaId = async (
   mediaId: string
-): Promise<Tag[]> => {
+): Promise<(Tag & { type: "positive" | "negative" })[]> => {
   try {
     const result = await db
       .select({
         id: tags.id,
         name: tags.name,
-        description: tags.description,
         attribute: tags.attribute,
         color: tags.color,
-        createdAt: tags.createdAt,
         source: tags.source,
+        type: mediaTags.tagType,
       })
       .from(mediaTags)
       .innerJoin(tags, eq(mediaTags.tagId, tags.id))

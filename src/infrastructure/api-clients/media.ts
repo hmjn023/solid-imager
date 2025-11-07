@@ -234,6 +234,8 @@ export async function registerExistingMedia(
         width: metadata.width,
         height: metadata.height,
         fileSize: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
       };
       const inserted = await insertMedia(newMedia);
       addedMedia.push(inserted);
@@ -290,18 +292,67 @@ export async function listMedia(
   return result;
 }
 
+import { ImageProcessor } from "~/domain/media/processing/image-processor";
+import type { MediaDetails } from "~/domain/media/schemas";
+import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
+import { NotFoundError } from "../db/errors";
+
 /**
  * Retrieves detailed information for a specific media item.
- * This function currently delegates to `getMedia`.
  * @param {string} mediaSourceId - The ID of the media source.
  * @param {string} mediaId - The ID of the media item.
  * @returns {Promise<Media>} A promise that resolves with the detailed media object.
  */
-export function getMediaDetails(
+export async function getMediaDetails(
   mediaSourceId: string,
   mediaId: string
-): Promise<Media> {
-  return getMedia(mediaSourceId, mediaId);
+): Promise<MediaDetails> {
+  const media = await getMedia(mediaSourceId, mediaId);
+
+  // Parallel fetching of tags and generation info
+  const [tags, generationInfo] = await Promise.all([
+    selectMediaTagsByMediaId(mediaId).catch(() => []),
+    selectMediaGenerationInfoById(mediaId).catch((error) => {
+      if (error instanceof NotFoundError) {
+        return null;
+      }
+      throw error;
+    }),
+  ]);
+
+  let finalGenerationInfo = generationInfo;
+
+  // If generation info is not found, try to extract it
+  if (!finalGenerationInfo) {
+    const mediaSource = await selectMediaSourceById(mediaSourceId);
+    if (mediaSource.type === "local") {
+      const connectionInfo = mediaSource.connectionInfo as { path: string };
+      const fullPath = path.join(connectionInfo.path, media.filePath);
+
+      try {
+        await fs.access(fullPath); // Check if file exists
+        await ImageProcessor.extractMetadata(fullPath, mediaId);
+        // Re-fetch the data after extraction, handling case where it might still not be found
+        finalGenerationInfo = await selectMediaGenerationInfoById(
+          mediaId
+        ).catch((err) => {
+          if (err instanceof NotFoundError) {
+            return null;
+          }
+          throw err;
+        });
+      } catch (_error) {
+        // File not found or other error, return 500 as requested
+        throw new Error("Failed to process or access media file.");
+      }
+    }
+  }
+
+  return {
+    ...media,
+    tags,
+    generationInfo: finalGenerationInfo,
+  };
 }
 
 /**
@@ -447,6 +498,8 @@ export async function uploadMedia(
     width: metadata.width,
     height: metadata.height,
     fileSize: stats.size,
+    createdAt: stats.birthtime,
+    modifiedAt: stats.mtime,
   };
   const insertedMedia = await insertMedia(newMedia);
 

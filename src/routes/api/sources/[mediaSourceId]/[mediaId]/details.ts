@@ -57,6 +57,25 @@ export async function GET({ params }: APIEvent) {
   }
   const { mediaSourceId, mediaId } = parsedParams.data;
 
-  const details = await getMediaDetails(mediaSourceId as UUID, mediaId as UUID);
-  return details;
+  try {
+    const details = await getMediaDetails(
+      mediaSourceId as UUID,
+      mediaId as UUID
+    );
+    return new Response(JSON.stringify(details), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("not found")) {
+      return new Response(JSON.stringify({ error: "Media not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
