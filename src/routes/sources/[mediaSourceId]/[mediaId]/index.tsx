@@ -1,14 +1,16 @@
 import { useParams } from "@solidjs/router";
 import { createMemo, createResource, Show } from "solid-js";
 import { getRequestEvent } from "solid-js/web";
+import MediaSidebar from "~/components/media/MediaSidebar";
+import MediaViewer from "~/components/media/MediaViewer";
+import type { MediaDetails } from "~/domain/media/schemas";
 import type { UUID } from "~/domain/shared/schemas";
-import type { Media as MediaType } from "~/infrastructure/db/schema";
 
-async function fetchMedia(
+async function fetchMediaDetails(
   mediaSourceId: UUID,
   mediaId: UUID,
   origin: string
-): Promise<MediaType> {
+): Promise<MediaDetails> {
   const response = await fetch(
     `${origin}/api/sources/${mediaSourceId}/${mediaId}/details`
   );
@@ -25,32 +27,34 @@ export default function Media() {
     mediaId: params.mediaId as UUID,
   }));
 
-  const [media] = createResource(mediaParams, ({ mediaSourceId, mediaId }) => {
-    const event = getRequestEvent();
-    const origin = event?.request.url
-      ? new URL(event.request.url).origin
-      : "http://localhost:3000";
-    return fetchMedia(mediaSourceId, mediaId, origin);
-  });
+  const [mediaDetails] = createResource(
+    mediaParams,
+    ({ mediaSourceId, mediaId }) => {
+      const event = getRequestEvent();
+      const origin = event?.request.url
+        ? new URL(event.request.url).origin
+        : "http://localhost:3000";
+      return fetchMediaDetails(mediaSourceId, mediaId, origin);
+    }
+  );
 
   return (
     <div class="container mx-auto p-4">
-      <Show when={media.loading}>
+      <Show when={mediaDetails.loading}>
         <div>Loading media...</div>
       </Show>
-      <Show when={media.error}>
-        <div class="text-red-500">Error: {media.error.message}</div>
+      <Show when={mediaDetails.error}>
+        <div class="text-red-500">Error: {mediaDetails.error.message}</div>
       </Show>
-      <Show when={media()}>
-        {(item) => (
-          <div class="flex justify-center">
-            {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
-            <img
-              alt={item.fileName}
-              height={item.height}
-              src={`/api/sources/${params.mediaSourceId}/${params.mediaId}`}
-              width={item.width}
-            />
+      <Show when={mediaDetails()}>
+        {(details) => (
+          <div class="flex h-[calc(100vh-80px)] flex-col gap-4 lg:flex-row">
+            <div class="flex-grow">
+              <MediaViewer media={details} />
+            </div>
+            <div class="w-full shrink-0 lg:w-96">
+              <MediaSidebar media={details} />
+            </div>
           </div>
         )}
       </Show>

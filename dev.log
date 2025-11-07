@@ -1,1 +1,5 @@
 vinxi v0.5.8
+vinxi starting dev server
+
+  ➜ Local:    http://localhost:3000/
+  ➜ Network:  use --host to expose
