@@ -60,7 +60,7 @@ export async function GET({ params }: APIEvent) {
   try {
     const details = await getMediaDetails(
       mediaSourceId as UUID,
-      mediaId as UUID,
+      mediaId as UUID
     );
     return new Response(JSON.stringify(details), {
       status: 200,
@@ -73,12 +73,9 @@ export async function GET({ params }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      },
-    );
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }

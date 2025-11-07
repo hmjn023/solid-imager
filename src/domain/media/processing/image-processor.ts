@@ -63,7 +63,10 @@ export const ImageProcessor = {
           comments.push({ keyword: "workflow", text: comment.trim() });
         }
         if (exif.ImageDescription) {
-          comments.push({ keyword: "prompt", text: exif.ImageDescription.trim() });
+          comments.push({
+            keyword: "prompt",
+            text: exif.ImageDescription.trim(),
+          });
         }
       }
 
@@ -81,7 +84,7 @@ export const ImageProcessor = {
       if (tags.length > 0) {
         await insertMediaTags(mediaId, tags, "comfyui_workflow");
       }
-    } catch (error) {
+    } catch (_error) {
       // console.error(`[ImageProcessor] Failed to extract metadata for ${mediaId}:`, error);
     }
   },

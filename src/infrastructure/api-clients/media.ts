@@ -234,6 +234,8 @@ export async function registerExistingMedia(
         width: metadata.width,
         height: metadata.height,
         fileSize: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
       };
       const inserted = await insertMedia(newMedia);
       addedMedia.push(inserted);
@@ -303,7 +305,7 @@ import { NotFoundError } from "../db/errors";
  */
 export async function getMediaDetails(
   mediaSourceId: string,
-  mediaId: string,
+  mediaId: string
 ): Promise<MediaDetails> {
   const media = await getMedia(mediaSourceId, mediaId);
 
@@ -331,18 +333,15 @@ export async function getMediaDetails(
         await fs.access(fullPath); // Check if file exists
         await ImageProcessor.extractMetadata(fullPath, mediaId);
         // Re-fetch the data after extraction, handling case where it might still not be found
-        finalGenerationInfo = await selectMediaGenerationInfoById(mediaId).catch(
-          (err) => {
-            if (err instanceof NotFoundError) {
-              return null;
-            }
-            throw err;
-          },
-        );
-      } catch (error) {
-        // Log the error but don't block the response.
-        // The client can decide how to handle missing generation info.
-        console.error(`Failed to extract metadata for ${mediaId}:`, error);
+        finalGenerationInfo = await selectMediaGenerationInfoById(
+          mediaId
+        ).catch((err) => {
+          if (err instanceof NotFoundError) {
+            return null;
+          }
+          throw err;
+        });
+      } catch (_error) {
         // File not found or other error, return 500 as requested
         throw new Error("Failed to process or access media file.");
       }
@@ -499,6 +498,8 @@ export async function uploadMedia(
     width: metadata.width,
     height: metadata.height,
     fileSize: stats.size,
+    createdAt: stats.birthtime,
+    modifiedAt: stats.mtime,
   };
   const insertedMedia = await insertMedia(newMedia);
 

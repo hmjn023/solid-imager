@@ -210,17 +210,14 @@ export const deleteTag = async (id: number): Promise<void> => {
  */
 export const selectMediaTagsByMediaId = async (
   mediaId: string
-): Promise<(Tag & { type: 'positive' | 'negative' })[]> => {
+): Promise<(Tag & { type: "positive" | "negative" })[]> => {
   try {
     const result = await db
       .select({
         id: tags.id,
         name: tags.name,
-        description: tags.description,
         attribute: tags.attribute,
         color: tags.color,
-        createdAt: tags.createdAt,
-        updatedAt: tags.updatedAt,
         source: tags.source,
         type: mediaTags.tagType,
       })

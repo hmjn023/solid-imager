@@ -33,10 +33,10 @@ function processCommentChunk(chunk: {
     try {
       // It might be a simple string or a JSON object string.
       const parsed = JSON.parse(chunk.text);
-      if (typeof parsed === "object" && parsed !== null && "workflow" in parsed) {
+      if (typeof parsed === "object" && parsed !== null && "nodes" in parsed) {
         // This looks like a ComfyUI workflow embedded in a prompt
-        const { parsed: workflow, tags } = parseWorkflowAndExtractTags(chunk.text);
-        return { prompt: chunk.text, workflow, tags };
+        const { tags } = parseWorkflowAndExtractTags(chunk.text);
+        return { prompt: chunk.text, tags };
       }
       return { prompt: chunk.text, tags: [] };
     } catch {

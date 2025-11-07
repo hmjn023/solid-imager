@@ -1,18 +1,27 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 // This import is hoisted, so we need to be careful
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { getMediaDetails } from "~/infrastructure/api-clients/media";
+
 // We need to dynamically import these to work around Vitest's hoisting
-let PGlite, drizzle, migrate, schema, eq;
-let testDb, db;
+let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
+let testDb: any, db: any;
 
 vi.mock("~/infrastructure/db/index", async () => {
-  const { PGlite: PGliteClass } = await import('@electric-sql/pglite');
-  const { drizzle: drizzleFunc } = await import('drizzle-orm/pglite');
-  const schemaModule = await import('~/infrastructure/db/schema');
+  const { PGlite: PgLiteClass } = await import("@electric-sql/pglite");
+  const { drizzle: drizzleFunc } = await import("drizzle-orm/pglite");
+  const schemaModule = await import("~/infrastructure/db/schema");
 
-  const pg = new PGliteClass();
+  const pg = new PgLiteClass();
   const dbInstance = drizzleFunc(pg, { schema: schemaModule });
 
   // Expose the testDb instance to the global scope for the test file
@@ -29,15 +38,15 @@ describe("getMediaDetails", () => {
 
   beforeAll(async () => {
     // Dynamically import dependencies
-    const pgliteModule = await import('@electric-sql/pglite');
-    PGlite = pgliteModule.PGlite;
-    const drizzleOrmModule = await import('drizzle-orm/pglite');
+    const pgliteModule = await import("@electric-sql/pglite");
+    _PGlite = pgliteModule.PGlite;
+    const drizzleOrmModule = await import("drizzle-orm/pglite");
     drizzle = drizzleOrmModule.drizzle;
-    const drizzleOrm = await import('drizzle-orm');
-    eq = drizzleOrm.eq;
-    const migratorModule = await import('drizzle-orm/pglite/migrator');
+    const drizzleOrm = await import("drizzle-orm");
+    _eq = drizzleOrm.eq;
+    const migratorModule = await import("drizzle-orm/pglite/migrator");
     migrate = migratorModule.migrate;
-    schema = await import('~/infrastructure/db/schema');
+    schema = await import("~/infrastructure/db/schema");
 
     testDb = global.vitestTestDb;
     db = drizzle(testDb, { schema });
@@ -49,36 +58,47 @@ describe("getMediaDetails", () => {
 
   beforeEach(async () => {
     // Create a temporary directory for the media source
-    const tempSourceDir = await fs.mkdtemp(path.join(fixturesDir, "test-source-"));
+    const tempSourceDir = await fs.mkdtemp(
+      path.join(fixturesDir, "test-source-")
+    );
     await fs.copyFile(
       path.join(fixturesDir, testImageName),
-      path.join(tempSourceDir, testImageName),
+      path.join(tempSourceDir, testImageName)
     );
 
     // Insert a media source
-    [mediaSource] = await db.insert(schema.mediaSources).values({
-      name: "Test Source",
-      type: "local",
-      connectionInfo: { path: tempSourceDir },
-    }).returning();
+    [mediaSource] = await db
+      .insert(schema.mediaSources)
+      .values({
+        name: "Test Source",
+        type: "local",
+        connectionInfo: { path: tempSourceDir },
+      })
+      .returning();
 
     // Insert a media record
-    [media] = await db.insert(schema.medias).values({
-      mediaSourceId: mediaSource.id,
-      filePath: testImageName,
-      fileName: testImageName,
-      mediaType: "image",
-      width: 1,
-      height: 1,
-      fileSize: 1,
-    }).returning();
+    [media] = await db
+      .insert(schema.medias)
+      .values({
+        mediaSourceId: mediaSource.id,
+        filePath: testImageName,
+        fileName: testImageName,
+        mediaType: "image",
+        width: 1,
+        height: 1,
+        fileSize: 1,
+      })
+      .returning();
 
     // Pre-insert generation info to avoid testing the extraction logic here
     await db.insert(schema.mediaGenerationInfo).values({
       mediaId: media.id,
       prompt: JSON.stringify({ prompt: "test prompt" }),
     });
-    const [tag] = await db.insert(schema.tags).values({ name: "positive prompt" }).returning();
+    const [tag] = await db
+      .insert(schema.tags)
+      .values({ name: "positive prompt" })
+      .returning();
     await db.insert(schema.mediaTags).values({
       mediaId: media.id,
       tagId: tag.id,
@@ -95,10 +115,12 @@ describe("getMediaDetails", () => {
 
     // Clean up temp directory
     if (mediaSource.connectionInfo && "path" in mediaSource.connectionInfo) {
-      await fs.rm(mediaSource.connectionInfo.path, { recursive: true, force: true });
+      await fs.rm(mediaSource.connectionInfo.path, {
+        recursive: true,
+        force: true,
+      });
     }
   });
-
 
   it("should return full media details including tags and generation info", async () => {
     const details = await getMediaDetails(mediaSource.id, media.id);
