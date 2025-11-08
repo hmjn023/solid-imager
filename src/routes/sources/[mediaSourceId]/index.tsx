@@ -211,6 +211,7 @@ export default function MediaListPage() {
                   alt={item.fileName}
                   class="h-full w-full object-cover"
                   height={item.height}
+                  loading="lazy"
                   src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail`}
                   width={item.width}
                 />
