@@ -8,12 +8,14 @@ type MediaSidebarProps = {
 };
 
 function formatBytes(bytes: number, decimals = 2) {
-  if (bytes === 0) return "0 Bytes";
+  if (bytes === 0) {
+    return "0 Bytes";
+  }
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
   const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
+  return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }
 
 const CodeBlock = (props: { content: string }) => (
@@ -59,12 +61,12 @@ export default function MediaSidebar(props: MediaSidebarProps) {
   return (
     <aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
       <div>
-        <h1 class="text-xl font-bold">{props.media.fileName}</h1>
-        <p class="text-sm text-gray-500">{props.media.filePath}</p>
+        <h1 class="font-bold text-xl">{props.media.fileName}</h1>
+        <p class="text-gray-500 text-sm">{props.media.filePath}</p>
       </div>
 
       <div class="space-y-2">
-        <h2 class="text-lg font-semibold">Details</h2>
+        <h2 class="font-semibold text-lg">Details</h2>
         <dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
           <dt class="font-medium text-gray-600">Resolution</dt>
           <dd class="text-gray-800">
@@ -79,7 +81,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
       <Show when={positiveTags().length > 0}>
         <div class="space-y-2">
-          <h2 class="text-lg font-semibold">Positive Tags</h2>
+          <h2 class="font-semibold text-lg">Positive Tags</h2>
           <div class="flex flex-wrap gap-2">
             <For each={positiveTags()}>
               {(tag) => <Badge>{tag.name}</Badge>}
@@ -90,7 +92,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
       <Show when={negativeTags().length > 0}>
         <div class="space-y-2">
-          <h2 class="text-lg font-semibold">Negative Tags</h2>
+          <h2 class="font-semibold text-lg">Negative Tags</h2>
           <div class="flex flex-wrap gap-2">
             <For each={negativeTags()}>
               {(tag) => <Badge variant="destructive">{tag.name}</Badge>}
@@ -102,18 +104,18 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       <Show when={genInfo()}>
         {(info) => (
           <div class="space-y-2">
-            <h2 class="text-lg font-semibold">Generation Info</h2>
+            <h2 class="font-semibold text-lg">Generation Info</h2>
             <Show when={info.prompt}>
-              <CollapsibleSection title="Prompt" content={info.prompt!} />
+              <CollapsibleSection content={info.prompt} title="Prompt" />
             </Show>
             <Show when={info.negativePrompt}>
               <CollapsibleSection
+                content={info.negativePrompt}
                 title="Negative Prompt"
-                content={info.negativePrompt!}
               />
             </Show>
             <Show when={info.workflow}>
-              <CollapsibleSection title="Workflow" content={info.workflow!} />
+              <CollapsibleSection content={info.workflow} title="Workflow" />
             </Show>
           </div>
         )}
