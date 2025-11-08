@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { createMemo } from "solid-js";
-import { getRequestEvent, isServer } from "solid-js/web";
+import { isServer } from "solid-js/web";
 import type { MediaDetails } from "~/domain/media/schemas";
 
 type MediaViewerProps = {
@@ -11,13 +11,9 @@ export default function MediaViewer(props: MediaViewerProps) {
   const params = useParams();
 
   const imageUrl = createMemo(() => {
-    let origin = "";
-    if (isServer) {
-      const event = getRequestEvent();
-      origin = event?.request.url ? new URL(event.request.url).origin : "";
-    }
-    // return `${origin}/api/sources/${params.mediaSourceId}/${props.media.id}`;
-    return `${origin}/api/sources/${params.mediaSourceId}/${params.mediaId}`;
+    const url = `/api/sources/${params.mediaSourceId}/${params.mediaId}`;
+    const fullUrl = isServer ? `http://localhost:3000${url}` : url;
+    return fullUrl;
   });
 
   return (
