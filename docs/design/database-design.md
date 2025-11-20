@@ -574,3 +574,16 @@ AI生成コンテンツなど、メディアの生成に関する情報を格納
 | `name` | `text` | NOT NULL, UNIQUE | プリセット名 |
 | `value` | `jsonb` | NOT NULL | フィルター条件 |
 | `created_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 作成日時 |
+
+## インデックス設計 (Indexes)
+
+パフォーマンス向上のため、以下のインデックスを作成することを推奨します。
+
+| テーブル名 | カラム | 説明 |
+|---|---|---|
+| `media_tags` | `tag_id` | タグによるメディア検索の高速化 |
+| `media_tags` | `(tag_id, media_id)` | タグ検索時のカバリングインデックスとして |
+| `medias` | `file_name` | ファイル名検索の高速化 (Trigramインデックス推奨) |
+| `medias` | `created_at` | 作成日時ソートの高速化 |
+| `medias` | `modified_at` | 更新日時ソートの高速化 |
+

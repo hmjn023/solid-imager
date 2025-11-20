@@ -45,6 +45,22 @@
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/metadata` | メディアの生成メタデータを取得します。 |
 | `POST` | `/api/sources/{mediaSourceId}/upload` | メディアファイルをアップロードします。 |
 
+#### 検索クエリパラメータ (Search Query Parameters)
+
+`/api/sources/{mediaSourceId}/search` および `/api/sources/{mediaSourceId}/directories/{...directories}/search` エンドポイントは以下のクエリパラメータをサポートします。
+
+| パラメータ | 型 | 説明 | 例 |
+|---|---|---|---|
+| `q` | `string` | ファイル名検索（部分一致） | `miku` |
+| `tags` | `string` | タグ検索。カンマ区切りで複数指定可能。 | `tag1,tag2` |
+| `tagMode` | `string` | タグ検索モード。`and` (すべて含む) または `or` (いずれかを含む)。デフォルトは `and`。 | `or` |
+| `excludeTags` | `string` | 除外タグ検索。カンマ区切りで複数指定可能。 | `nsfw,low_quality` |
+| `sort` | `string` | ソート順。`date` (作成日), `name` (ファイル名), `size` (サイズ) など。 | `date` |
+| `order` | `string` | 昇順・降順。`asc` または `desc`。 | `desc` |
+| `limit` | `integer` | 取得件数。デフォルトは無制限（全件取得）。パフォーマンスに注意。 | `50` |
+| `offset` | `integer` | ページネーション用オフセット。 | `0` |
+
+
 ### ディレクトリ (Directories)
 
 | Method | Path | 説明 |
