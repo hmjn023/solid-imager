@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { getMediaTags } from "~/infrastructure/api-clients/media";
+import { NotFoundError } from "~/infrastructure/db/errors";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -65,7 +66,7 @@ export async function GET({ params }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error instanceof Error && error.message === "Media not found") {
+    if (error instanceof NotFoundError) {
       return new Response(JSON.stringify({ error: "Media not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },

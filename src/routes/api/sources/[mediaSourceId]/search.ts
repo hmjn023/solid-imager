@@ -87,6 +87,5 @@ export async function GET({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
-  const result = await searchMedia(mediaSourceId, queryParams);
-  return result;
+  return await searchMedia(mediaSourceId, queryParams);
 }

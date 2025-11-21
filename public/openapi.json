@@ -2185,11 +2185,11 @@
           }
         ],
         "responses": {
-          "200": {
+          "204": {
             "description": "Tag successfully deleted."
           },
           "400": {
-            "description": "Invalid ID supplied."
+            "description": "Invalid ID supplied or tag is in use."
           },
           "404": {
             "description": "Tag not found."
