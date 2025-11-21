@@ -1,11 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import type { z } from "zod";
+import { z } from "zod";
 import {
   addMediaRequestSchema,
   directoryPathSchema,
   mediaIdSchema,
+  mediaSearchRequestSchema,
+  mediaSearchResponseSchema,
   updateMediaRequestSchema,
 } from "~/domain/media/schemas";
 import {
@@ -24,6 +26,7 @@ import {
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+import { searchMedia as searchMediaQuery } from "~/infrastructure/db/queries/search";
 import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
 import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
 
@@ -545,15 +548,67 @@ export function searchMediaInDirectory(
 
 /**
  * Searches for media across a specific media source.
- * @param {string} _mediaSourceId - The ID of the media source.
- * @param {unknown} _searchOptions - Search options.
- * @returns {Promise<Media[]>} A promise that resolves with an array of media objects.
+ * @param {string} mediaSourceId - The ID of the media source.
+ * @param {Record<string, string | string[]>} searchParams - Search parameters from query string.
+ * @returns {Promise<Response>} A promise that resolves with a Response containing search results.
  */
-export function searchMedia(
-  _mediaSourceId: string,
-  _searchOptions: unknown
-): Promise<Media[]> {
-  return [];
+export async function searchMedia(
+  mediaSourceId: string,
+  searchParams: Record<string, string | string[]>
+): Promise<Response> {
+  try {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+
+    // Parse and validate search parameters
+    const parsedParams = mediaSearchRequestSchema.parse({
+      q: searchParams.q,
+      tags: searchParams.tags,
+      tagMode: searchParams.tagMode,
+      excludeTags: searchParams.excludeTags,
+      sort: searchParams.sort,
+      order: searchParams.order,
+      limit: searchParams.limit,
+      offset: searchParams.offset,
+    });
+
+    // Parse comma-separated tag strings into arrays
+    const tagsArray = parsedParams.tags
+      ? parsedParams.tags.split(",").map((t: string) => t.trim())
+      : undefined;
+    const excludeTagsArray = parsedParams.excludeTags
+      ? parsedParams.excludeTags.split(",").map((t: string) => t.trim())
+      : undefined;
+
+    // Call database query
+    const result = await searchMediaQuery(validatedSourceId, {
+      query: parsedParams.q,
+      tags: tagsArray,
+      tagMode: parsedParams.tagMode,
+      excludeTags: excludeTagsArray,
+      sort: parsedParams.sort,
+      order: parsedParams.order,
+      limit: parsedParams.limit,
+      offset: parsedParams.offset,
+    });
+
+    // Validate and return response
+    const response = mediaSearchResponseSchema.parse(result);
+    return new Response(JSON.stringify(response), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**

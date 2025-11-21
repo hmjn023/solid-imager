@@ -151,6 +151,27 @@ export const mediaGenerationInfoSchema = z.object({
   steps: z.number(),
 });
 
+// Search schemas
+export const mediaSearchRequestSchema = z.object({
+  q: z.string().optional(),
+  tags: z.string().optional(), // comma-separated tag names
+  tagMode: z.enum(["and", "or"]).default("and"),
+  excludeTags: z.string().optional(), // comma-separated tag names
+  sort: z.enum(["date", "name", "size"]).optional(),
+  order: z.enum(["asc", "desc"]).default("desc"),
+  limit: z.coerce.number().int().positive().optional(),
+  offset: z.coerce.number().int().nonnegative().default(0),
+});
+
+export type MediaSearchRequest = z.infer<typeof mediaSearchRequestSchema>;
+
+export const mediaSearchResponseSchema = z.object({
+  media: z.array(mediaSchema),
+  total: z.number(),
+});
+
+export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
+
 // Combined schema for the details endpoint
 export const mediaDetailsSchema = mediaSchema.extend({
   tags: z.array(tagSchema),

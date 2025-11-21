@@ -111,13 +111,17 @@ describe("search queries Integration", () => {
   });
 
   it("should search media by query within a source", async () => {
-    const results = await searchMedia(mediaSourceId1, { query: "red" });
+    const { media: results } = await searchMedia(mediaSourceId1, {
+      query: "red",
+    });
     expect(results.length).toBe(1);
     expect(results[0].fileName).toBe("apple.jpg");
   });
 
   it("should search media by tag within a source", async () => {
-    const results = await searchMedia(mediaSourceId1, { tags: ["fruit"] });
+    const { media: results } = await searchMedia(mediaSourceId1, {
+      tags: ["fruit"],
+    });
     expect(results.length).toBe(2);
   });
 

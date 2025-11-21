@@ -1,7 +1,37 @@
-import { and, eq, inArray, like, or } from "drizzle-orm";
+import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { medias, mediaTags, tags } from "~/infrastructure/db/schema";
+import {
+  type Media,
+  medias,
+  mediaTags,
+  tags,
+} from "~/infrastructure/db/schema";
 import { UnknownDbError } from "../errors";
+
+/**
+ * Helper function to sort media items
+ */
+function sortMediaItems(
+  items: Media[],
+  sortField?: "date" | "name" | "size",
+  sortOrder: "asc" | "desc" = "desc"
+): Media[] {
+  if (!sortField) {
+    return items;
+  }
+
+  return items.sort((a, b) => {
+    let comparison = 0;
+    if (sortField === "date") {
+      comparison = a.createdAt.getTime() - b.createdAt.getTime();
+    } else if (sortField === "name") {
+      comparison = a.fileName.localeCompare(b.fileName);
+    } else if (sortField === "size") {
+      comparison = (a.fileSize || 0) - (b.fileSize || 0);
+    }
+    return sortOrder === "asc" ? comparison : -comparison;
+  });
+}
 
 /**
  * Searches for media within a specific source based on a query and/or tags.
@@ -9,42 +39,133 @@ import { UnknownDbError } from "../errors";
  * @param {object} searchOptions - Options for the search.
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
- * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items.
+ * @param {string} [searchOptions.tagMode] - Tag matching mode: "and" (all tags) or "or" (any tag). Default: "and".
+ * @param {string[]} [searchOptions.excludeTags] - An array of tag names to exclude from results.
+ * @param {string} [searchOptions.sort] - Sort field: "date", "name", or "size".
+ * @param {string} [searchOptions.order] - Sort order: "asc" or "desc". Default: "desc".
+ * @param {number} [searchOptions.limit] - Maximum number of results to return.
+ * @param {number} [searchOptions.offset] - Number of results to skip for pagination. Default: 0.
+ * @returns {Promise<{ media: Media[]; total: number }>} A promise that resolves with matching media items and total count.
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const searchMedia = async (
   mediaSourceId: string,
-  searchOptions: { query?: string; tags?: string[] }
+  searchOptions: {
+    query?: string;
+    tags?: string[];
+    tagMode?: "and" | "or";
+    excludeTags?: string[];
+    sort?: "date" | "name" | "size";
+    order?: "asc" | "desc";
+    limit?: number;
+    offset?: number;
+  }
 ) => {
   try {
-    let query = db
+    const {
+      query: searchQuery,
+      tags: includeTags,
+      tagMode = "and",
+      excludeTags,
+      sort,
+      order = "desc",
+      limit,
+      offset = 0,
+    } = searchOptions;
+
+    let queryBuilder = db
       .select()
       .from(medias)
       .where(eq(medias.mediaSourceId, mediaSourceId));
 
-    if (searchOptions.query) {
-      query = query.where(
+    // Filename/description search
+    if (searchQuery) {
+      queryBuilder = queryBuilder.where(
         or(
-          like(medias.fileName, `%${searchOptions.query}%`),
-          like(medias.description, `%${searchOptions.query}%`)
+          like(medias.fileName, `%${searchQuery}%`),
+          like(medias.description, `%${searchQuery}%`)
         )
       );
     }
 
-    if (searchOptions.tags && searchOptions.tags.length > 0) {
-      query = query.where(
-        inArray(
-          medias.id,
-          db
-            .select({ mediaId: mediaTags.mediaId })
-            .from(mediaTags)
-            .innerJoin(tags, eq(mediaTags.tagId, tags.id))
-            .where(inArray(tags.name, searchOptions.tags))
-        )
-      );
+    // Include tags filter
+    if (includeTags && includeTags.length > 0) {
+      if (tagMode === "and") {
+        // AND mode: media must have ALL specified tags
+        // Use a subquery with GROUP BY and HAVING to ensure all tags are present
+        const mediaIdsWithAllTags = db
+          .select({ mediaId: mediaTags.mediaId })
+          .from(mediaTags)
+          .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+          .where(inArray(tags.name, includeTags))
+          .groupBy(mediaTags.mediaId)
+          .having(sql`COUNT(DISTINCT ${tags.name}) = ${includeTags.length}`);
+
+        queryBuilder = queryBuilder.where(
+          inArray(medias.id, mediaIdsWithAllTags)
+        );
+      } else {
+        // OR mode: media must have ANY of the specified tags
+        queryBuilder = queryBuilder.where(
+          inArray(
+            medias.id,
+            db
+              .select({ mediaId: mediaTags.mediaId })
+              .from(mediaTags)
+              .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+              .where(inArray(tags.name, includeTags))
+          )
+        );
+      }
     }
 
-    return await query;
+    // Exclude tags filter
+    if (excludeTags && excludeTags.length > 0) {
+      const excludedMediaIds = db
+        .select({ mediaId: mediaTags.mediaId })
+        .from(mediaTags)
+        .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+        .where(inArray(tags.name, excludeTags));
+
+      // Filter out media that have any of the excluded tags
+      const allMedia = await queryBuilder;
+      const excludedIds = await excludedMediaIds;
+      const excludedIdSet = new Set(
+        excludedIds.map((e: { mediaId: string }) => e.mediaId)
+      );
+      const filteredMedia = allMedia.filter(
+        (m: { id: string }) => !excludedIdSet.has(m.id)
+      );
+
+      // Get total count before pagination
+      const total = filteredMedia.length;
+
+      // Apply sorting
+      const sortedMedia = sortMediaItems(filteredMedia, sort, order);
+
+      // Apply pagination
+      const paginatedMedia =
+        limit !== undefined
+          ? sortedMedia.slice(offset, offset + limit)
+          : sortedMedia.slice(offset);
+
+      return { media: paginatedMedia, total };
+    }
+
+    // No exclude tags - use database sorting and pagination
+    const allMedia = await queryBuilder;
+    const total = allMedia.length;
+
+    // Apply sorting
+    const sortedMedia = sortMediaItems(allMedia, sort, order);
+
+    // Apply pagination
+    const paginatedMedia =
+      limit !== undefined
+        ? sortedMedia.slice(offset, offset + limit)
+        : sortedMedia.slice(offset);
+
+    return { media: paginatedMedia, total };
   } catch (error) {
     throw new UnknownDbError({
       message: `Failed to search media for source ID: ${mediaSourceId}`,
