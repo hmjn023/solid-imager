@@ -82,6 +82,8 @@
 | `PUT` | `/api/tags/{id}` | 特定のタグを更新します。 |
 | `DELETE` | `/api/tags/{id}` | 特定のタグを削除します。 |
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/tags` | 特定メディアに関連付けられたタグを取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/{mediaId}/tags` | 特定メディアにタグを追加します。 |
+| `DELETE` | `/api/sources/{mediaSourceId}/{mediaId}/tags/{tagId}` | 特定メディアからタグを削除します。 |
 
 ### カテゴリ (Categories)
 

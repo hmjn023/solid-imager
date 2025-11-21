@@ -82,9 +82,11 @@ API Documentation: Swagger (swagger-jsdoc, swagger-ui-dist)
 - `compose.yml` - Docker Compose の設定（PostgreSQLデータベース）
 - `tsconfig.json` - TypeScript の設定
 
-### UIコンポーネント (Kobalte + Tailwind CSS)
+### UIコンポーネント (Kobalte + Tailwind CSS + solid-ui)
 - shadcn/ui にインスパイアされたUIコンポーネント群が `src/components/ui` に実装されています。
 - これらのコンポーネントは、ヘッドレスなUIプリミティブを提供する `@kobalte/core` をベースに構築されています。
+- 一部のコンポーネント（`Command`など）は、[solid-ui](https://www.solid-ui.com/)（shadcn/uiのSolid.jsポート）から追加されています。
+- CSSクラスのマージには`clsx`と`tailwind-merge`を使用しています。
 
 ### フォーム管理 (TanStack Form)
 - **型安全なフォーム状態管理**: フォームの入力値、バリデーション状態、送信状態などを型安全に管理します。
