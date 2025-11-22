@@ -1,7 +1,7 @@
 # アーキテクチャドキュメント
 
 **プロジェクト**: solid-imager  
-**最終更新日**: 2025-10-11  
+**最終更新日**: 2025-11-23  
 **アーキテクチャスタイル**: クリーンアーキテクチャ / ヘキサゴナルアーキテクチャ
 
 ## 概要
@@ -144,8 +144,30 @@ export async function processMedia(sourceId: string, filePath: string) {
 **ファイル** (合計21):
 - `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
 - `api-clients/` - フロントエンド用APIクライアント (sources-api.ts, media-api.tsなど)
-- `jobs/` - バックグラウンドジョブ処理 (job-queue.ts, thumbnail-jobs.ts, thumbnails.ts)
+- `jobs/` - バックグラウンドジョブ処理とSSE管理
+  - `job-manager.ts` - ジョブキュー管理
+  - `thumbnails.ts` - サムネイル生成ジョブ
+  - `tag-extraction.ts` - タグ抽出ジョブ
+  - `sse-manager.ts` - Server-Sent Events (SSE) クライアント管理とイベント配信
 - `db/` - データベースアクセス (index.ts, schema.ts)
+
+#### Server-Sent Events (SSE) インフラストラクチャ
+
+リアルタイム更新のためのSSE実装:
+
+- **目的**: サムネイル生成完了などのバックグラウンドジョブの進捗をフロントエンドにリアルタイムで通知
+- **実装**: `src/infrastructure/jobs/sse-manager.ts`
+  - クライアント接続の管理 (`addClient`, `removeClient`)
+  - メディアソースごとのイベント配信 (`sendEvent`)
+  - `ReadableStreamDefaultController`を使用したストリーミング
+- **APIエンドポイント**: `/api/sse/[mediaSourceId]`
+  - GET リクエストでSSE接続を確立
+  - クライアント切断時の自動クリーンアップ
+- **イベントタイプ**:
+  - `thumbnail-generated`: サムネイル生成完了時に送信
+  - 将来的に他のイベントタイプを追加可能
+- **フロントエンド統合**: `EventSource` APIを使用してSSE接続を確立し、イベント受信時にデータを再取得
+
 
 **ガイドライン**:
 - ✅ DO: 技術的機能を実装する

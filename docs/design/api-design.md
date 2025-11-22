@@ -131,8 +131,31 @@
 
 | Method | Path | 説明 |
 |---|---|---|
-| `GET` | `/api/sources/{mediaSourceId}/events` | SSEでメディアソースのリアルタイム更新を監視します。 |
-| `GET` | `/api/sources/{mediaSourceId}/events/thumbnail-progress` | SSEでサムネイル生成の進捗を監視します。 |
+| `GET` | `/api/sse/{mediaSourceId}` | SSEでメディアソースのリアルタイム更新を監視します。 |
+
+#### SSE イベントタイプ
+
+`/api/sse/{mediaSourceId}` エンドポイントは以下のイベントタイプを送信します:
+
+- `connected`: 接続確立時に送信される初期イベント
+- `thumbnail-generated`: サムネイル生成完了時に送信
+  - データ: `{ mediaId: string }`
+  - フロントエンドはこのイベントを受信してメディアリストを再取得
+
+**使用例 (フロントエンド)**:
+```typescript
+const eventSource = new EventSource(`/api/sse/${mediaSourceId}`);
+
+eventSource.addEventListener('thumbnail-generated', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Thumbnail ready for media:', data.mediaId);
+  // メディアリストを再取得
+  refetch();
+});
+
+// クリーンアップ
+onCleanup(() => eventSource.close());
+```
 
 ### 設定 (Configuration)
 

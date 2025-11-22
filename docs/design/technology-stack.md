@@ -93,3 +93,18 @@ API Documentation: Swagger (swagger-jsdoc, swagger-ui-dist)
 - **バリデーション**: `zod` と `@tanstack/zod-form-adapter` を利用して堅牢なフォームバリデーションを実装します。
 - **ヘッドレスUI**: UIコンポーネントに依存しないため、`src/components/ui` で提供されるコンポーネントと組み合わせて柔軟なフォームUIを構築できます。
 - **パフォーマンス**: 必要な部分のみを再レンダリングする設計により、フォーム操作時のパフォーマンスを最適化します。
+
+### リアルタイム更新 (Server-Sent Events)
+- **SSE (Server-Sent Events)**: サーバーからクライアントへの一方向リアルタイム通信を実装
+- **実装場所**: `src/infrastructure/jobs/sse-manager.ts`
+- **使用技術**: 
+  - Web標準の `ReadableStream` API
+  - フロントエンドでは `EventSource` API
+- **用途**: 
+  - サムネイル生成完了通知
+  - バックグラウンドジョブの進捗通知
+  - 将来的なファイルシステム監視イベント
+- **特徴**:
+  - メディアソースごとにクライアントを管理
+  - 自動的な接続クリーンアップ
+  - 型安全なイベントペイロード
