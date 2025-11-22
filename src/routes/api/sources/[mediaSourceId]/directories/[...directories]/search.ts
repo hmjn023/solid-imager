@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { MediaService } from "~/application/services/media-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
 
 /**
  * @swagger
@@ -94,13 +94,29 @@ import { searchMediaInDirectory } from "~/infrastructure/api-clients/media";
  */
 export async function GET({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const directoriesPath = params.directories.join("/"); // パスを再構築します。
+  const directoriesParam = params.directories;
+  const directoriesPath = Array.isArray(directoriesParam)
+    ? directoriesParam.join("/")
+    : directoriesParam;
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
-  const result = await searchMediaInDirectory(
+  const result = await MediaService.searchMediaInDirectory(
     mediaSourceId,
     directoriesPath,
-    queryParams
+    {
+      query: queryParams.filename as string,
+      tags: (() => {
+        if (!queryParams.tags) {
+          return;
+        }
+        return Array.isArray(queryParams.tags)
+          ? queryParams.tags
+          : [queryParams.tags];
+      })(),
+    }
   );
-  return result;
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 }

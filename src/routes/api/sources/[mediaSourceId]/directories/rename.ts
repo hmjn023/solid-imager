@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { DirectoryService } from "~/application/services/directory-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { renameDirectory } from "~/infrastructure/api-clients/directories";
+import { updateDirectoryRequestSchema } from "~/domain/sources/schemas";
 
 /**
  * @swagger
@@ -38,7 +39,31 @@ import { renameDirectory } from "~/infrastructure/api-clients/directories";
  */
 export async function PUT({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const { oldPath, newPath } = await request.json(); // oldPathとnewPathがボディに含まれていると仮定します。
-  const result = await renameDirectory(mediaSourceId, oldPath, newPath);
-  return result;
+  try {
+    const body = await request.json();
+    const validatedData = updateDirectoryRequestSchema.parse(body);
+    const result = await DirectoryService.updateDirectory(
+      mediaSourceId,
+      validatedData
+    );
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return new Response(
+        JSON.stringify({ error: JSON.parse(error.message) }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { DirectoryService } from "~/application/services/directory-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { deleteDirectory } from "~/infrastructure/api-clients/directories";
+import { deleteDirectoryRequestSchema } from "~/domain/sources/schemas";
 
 /**
  * @swagger
@@ -38,7 +39,32 @@ import { deleteDirectory } from "~/infrastructure/api-clients/directories";
  */
 export async function DELETE({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const { path } = await request.json(); // パスがボディに含まれていると仮定します。
-  const result = await deleteDirectory(mediaSourceId, path);
-  return result;
+  try {
+    const body = await request.json();
+    const validatedData = deleteDirectoryRequestSchema.parse(body);
+    const result = await DirectoryService.deleteDirectory(
+      mediaSourceId,
+      validatedData.path,
+      validatedData.force
+    );
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return new Response(
+        JSON.stringify({ error: JSON.parse(error.message) }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

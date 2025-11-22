@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { DirectoryService } from "~/application/services/directory-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { createDirectory } from "~/infrastructure/api-clients/directories";
+import { createDirectoryRequestSchema } from "~/domain/sources/schemas";
 
 /**
  * @swagger
@@ -38,7 +39,31 @@ import { createDirectory } from "~/infrastructure/api-clients/directories";
  */
 export async function POST({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const { path, name } = await request.json(); // パスと名前がボディに含まれていると仮定します。
-  const result = await createDirectory(mediaSourceId, path, name);
-  return result;
+  try {
+    const body = await request.json();
+    const validatedData = createDirectoryRequestSchema.parse(body);
+    const result = await DirectoryService.createDirectory(
+      mediaSourceId,
+      validatedData
+    );
+    return new Response(JSON.stringify(result), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error: unknown) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return new Response(
+        JSON.stringify({ error: JSON.parse(error.message) }),
+        {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMessage }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
