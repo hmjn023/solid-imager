@@ -138,12 +138,26 @@ export default function MediaListPage() {
   onMount(() => {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
-    }
-  });
 
-  onCleanup(() => {
-    if (!isServer) {
-      document.removeEventListener("paste", handlePaste);
+      // SSE Subscription
+      const eventSource = new EventSource(`/api/sse/${params.mediaSourceId}`);
+
+      eventSource.onopen = () => {
+        // SSE Connected
+      };
+
+      eventSource.addEventListener("thumbnail-generated", (_event) => {
+        refetch();
+      });
+
+      eventSource.onerror = (_err) => {
+        eventSource.close();
+      };
+
+      onCleanup(() => {
+        document.removeEventListener("paste", handlePaste);
+        eventSource.close();
+      });
     }
   });
 

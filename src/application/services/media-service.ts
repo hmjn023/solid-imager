@@ -20,10 +20,8 @@ import {
   addJobsToQueue,
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
-import { extractTags } from "~/infrastructure/jobs/tag-extraction";
 import {
   deleteThumbnail,
-  generateThumbnail,
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -128,17 +126,9 @@ export const MediaService = {
       { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
     ]);
 
-    startJobQueue(validatedSourceId, async (job) => {
-      const media = await MediaRepository.findById(job.mediaId);
-      if (media) {
-        if (job.type === "thumbnail") {
-          await generateThumbnail(media, job.sourcePath, validatedSourceId);
-        } else if (job.type === "extractTags") {
-          const mediaPath = path.join(job.sourcePath, media.filePath);
-          await extractTags(mediaPath, media.id);
-        }
-      }
-    });
+    startJobQueue(validatedSourceId, (job) =>
+      processMediaJob(job, validatedSourceId)
+    );
 
     return {
       success: true,

@@ -39,7 +39,14 @@ export const ImageProcessor = {
    * @param {string} mediaId - The ID of the media item.
    * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
    */
-  async extractMetadata(mediaPath: string, mediaId: string): Promise<void> {
+  async extractMetadata(
+    mediaPath: string,
+    mediaId: string
+  ): Promise<{
+    tags: { name: string; type: "positive" | "negative" }[];
+    prompt: unknown;
+    workflow: unknown;
+  }> {
     if (!mediaPath) {
       throw new Error("Image path is required");
     }
@@ -84,8 +91,11 @@ export const ImageProcessor = {
       if (tags.length > 0) {
         await insertMediaTags(mediaId, tags, "comfyui_workflow");
       }
+
+      return { tags, prompt, workflow };
     } catch (_error) {
       // console.error(`[ImageProcessor] Failed to extract metadata for ${mediaId}:`, error);
+      return { tags: [], prompt: null, workflow: null };
     }
   },
 

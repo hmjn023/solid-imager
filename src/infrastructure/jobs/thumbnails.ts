@@ -12,6 +12,7 @@ import {
   type Job,
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
@@ -97,15 +98,27 @@ export async function processMediaJob(
   job: Job,
   mediaSourceId: string
 ): Promise<void> {
-  if (job.type !== "thumbnail") {
+  const media = await selectMediaById(job.mediaId);
+  if (!media) {
     return;
   }
 
-  const media = await selectMediaById(job.mediaId);
-  if (media) {
+  if (job.type === "thumbnail") {
     await generateThumbnail(media, job.sourcePath, mediaSourceId);
     const mediaPath = path.join(job.sourcePath, media.filePath);
     await ImageProcessor.extractMetadata(mediaPath, media.id);
+
+    // Notify clients that the thumbnail is ready
+    SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
+      mediaId: media.id,
+    });
+  } else if (job.type === "extractTags") {
+    const mediaPath = path.join(job.sourcePath, media.filePath);
+    // Dynamic import to avoid circular dependency if any, or just standard import
+    const { extractTags } = await import(
+      "~/infrastructure/jobs/tag-extraction"
+    );
+    await extractTags(mediaPath, media.id);
   }
 }
 

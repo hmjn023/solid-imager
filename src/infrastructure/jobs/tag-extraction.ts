@@ -13,8 +13,15 @@ export async function extractTags(
 ): Promise<void> {
   const metadata = await ImageProcessor.extractMetadata(mediaPath, mediaId);
   const tagsToInsert = metadata.tags.map((tag) => ({
-    name: tag,
-    type: "positive" as const,
+    name: tag.name,
+    type: tag.type,
   }));
-  await insertMediaTags(mediaId, tagsToInsert, "extracted_from_workflow");
+  // We might want to use a different source or keep "extracted_from_workflow"
+  // ImageProcessor already inserts them as "comfyui_workflow".
+  // If we want to duplicate them as "extracted_from_workflow", we can.
+  // But maybe we should just rely on ImageProcessor?
+  // For now, let's keep the behavior but fix the type error.
+  if (tagsToInsert.length > 0) {
+    await insertMediaTags(mediaId, tagsToInsert, "extracted_from_workflow");
+  }
 }
