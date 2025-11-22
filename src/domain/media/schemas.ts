@@ -21,8 +21,8 @@ export const addMediaRequestSchema = z.object({
   filePath: z.string().min(1, "File path is required"),
   fileName: z.string().min(1, "File name is required"),
   size: z.number().int().positive("File size must be a positive integer"),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  createdAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema,
   description: z.string().nullable(),
   sourceUrl: z.string().nullable(),
@@ -50,8 +50,8 @@ export const updateMediaRequestSchema = z.object({
     .int()
     .positive("File size must be a positive integer")
     .optional(),
-  createdAt: z.date().optional(),
-  updatedAt: z.date().optional(),
+  createdAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema.optional(),
   width: z
     .number()
@@ -116,9 +116,9 @@ export const mediaSchema = z.object({
   fileSize: z.number().nullable(),
   description: z.string().nullable(),
   sourceUrl: z.string().nullable(),
-  createdAt: z.date(),
-  modifiedAt: z.date(),
-  indexedAt: z.date(),
+  createdAt: z.coerce.date(),
+  modifiedAt: z.coerce.date(),
+  indexedAt: z.coerce.date(),
   status: z.enum(["active", "archived", "deleted"]),
 });
 
@@ -129,8 +129,8 @@ export const tagSchema = z.object({
   attribute: z.string().nullable(),
   color: z.string().nullable(),
   source: z.string(),
-  createdAt: z.date(),
-  updatedAt: z.date(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
   type: z.enum(["positive", "negative"]), // from mediaTags
 });
 

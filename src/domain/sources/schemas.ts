@@ -55,7 +55,7 @@ export const fileSystemEventSchema = z.object({
   type: z.enum(["added", "deleted", "modified"]),
   mediaSourceId: z.string(),
   filePath: z.string(),
-  timestamp: z.date(),
+  timestamp: z.coerce.date(),
 });
 export type FileSystemEvent = z.infer<typeof fileSystemEventSchema>;
 

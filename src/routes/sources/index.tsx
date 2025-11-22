@@ -1,18 +1,14 @@
 import { createResource, createSignal, For } from "solid-js";
-import { isServer } from "solid-js/web";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
-
-async function fetchSources() {
-  const url = "/api/sources";
-  const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-  const res = await fetch(fullUrl);
-  if (!res.ok) {
-    throw new Error("Failed to fetch sources");
-  }
-  return res.json();
-}
+import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import {
+  createMediaSource,
+  deleteMediaSource,
+  fetchMediaSources,
+  updateMediaSource,
+} from "~/infrastructure/api-clients/sources-api";
 
 /**
  * The main component for managing media sources.
@@ -22,42 +18,30 @@ async function fetchSources() {
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-  const [editingSource, setEditingSource] = createSignal(null);
-  const [deletingSource, setDeletingSource] = createSignal(null);
+  const [editingSource, setEditingSource] =
+    createSignal<MediaSourceInfo | null>(null);
+  const [deletingSource, setDeletingSource] =
+    createSignal<MediaSourceInfo | null>(null);
 
-  const [mediaSources, { refetch }] = createResource(fetchSources);
+  const [mediaSources, { refetch }] = createResource(fetchMediaSources);
 
   const handleAddSource = () => {
     setEditingSource(null);
     setShowFormModal(true);
   };
 
-  const handleEditSource = (source) => {
+  const handleEditSource = (source: MediaSourceInfo) => {
     setEditingSource(source);
     setShowFormModal(true);
   };
 
-  const handleFormSubmit = async (sourceData) => {
+  const handleFormSubmit = async (sourceData: unknown) => {
     const editing = editingSource();
     try {
-      if (editing) {
-        const res = await fetch(`/api/sources/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sourceData),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to update source");
-        }
+      if (editing?.id) {
+        await updateMediaSource(editing.id, sourceData);
       } else {
-        const res = await fetch("/api/sources", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sourceData),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to create source");
-        }
+        await createMediaSource(sourceData);
       }
       await refetch();
       setShowFormModal(false);
@@ -66,19 +50,14 @@ export default function Sources() {
     }
   };
 
-  const handleDeleteSource = (source) => {
+  const handleDeleteSource = (source: MediaSourceInfo) => {
     setDeletingSource(source);
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = async (mediaSourceId) => {
+  const handleDeleteConfirm = async (mediaSourceId: string) => {
     try {
-      const res = await fetch(`/api/sources/${mediaSourceId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to delete source");
-      }
+      await deleteMediaSource(mediaSourceId);
       await refetch();
       setShowDeleteModal(false);
       setDeletingSource(null);

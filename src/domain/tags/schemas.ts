@@ -41,3 +41,26 @@ export const newTagSchema = tagDataSchema.extend({
 });
 
 export const updateTagSchema = tagDataSchema.partial();
+
+/**
+ * Zod schema for tag API response (frontend)
+ * Used for validating tag data returned from the API
+ */
+export const tagResponseSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  attribute: z.string().nullable(),
+  color: z.string().nullable(),
+  source: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type TagResponse = z.infer<typeof tagResponseSchema>;
+
+/**
+ * Zod schema for tag list API response
+ */
+export const tagListResponseSchema = z.array(tagResponseSchema);
+export type TagListResponse = z.infer<typeof tagListResponseSchema>;

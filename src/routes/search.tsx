@@ -1,6 +1,5 @@
 import { A } from "@solidjs/router";
 import { createResource, createSignal, For, Show } from "solid-js";
-import { isServer } from "solid-js/web";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -21,32 +20,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import type { TagResponse } from "~/domain/tags/schemas";
+import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
+import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 
-type Tag = {
-  id: number;
-  name: string;
-};
-
-type MediaSource = {
-  id: string;
-  name: string;
-};
-
-type Media = {
-  id: string;
-  fileName: string;
-  filePath: string;
-  mediaType: string;
-  width: number | null;
-  height: number | null;
-  fileSize: number | null;
-  createdAt: string;
-};
-
-type SearchResult = {
-  media: Media[];
-  total: number;
-};
+// Type alias to avoid conflict with DOM MediaSource API
+type Source = MediaSourceInfo;
 
 export default function Search() {
   const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
@@ -63,62 +44,30 @@ export default function Search() {
   const [_excludeCommandOpen, setExcludeCommandOpen] = createSignal(false);
 
   // Fetch all tags for autocomplete
-  const [tags] = createResource<Tag[]>(async () => {
-    const url = "/api/tags";
-    const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-    const response = await fetch(fullUrl);
-    if (!response.ok) {
-      throw new Error("Failed to fetch tags");
-    }
-    return response.json();
-  });
+  const [tags] = createResource<TagResponse[]>(fetchTags);
 
   // Fetch media sources
-  const [sources] = createResource<MediaSource[]>(async () => {
-    const url = "/api/sources";
-    const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-    const response = await fetch(fullUrl);
-    if (!response.ok) {
-      throw new Error("Failed to fetch sources");
-    }
-    return response.json();
-  });
+  const [sources] = createResource<Source[]>(fetchMediaSources);
 
   // Search function
-  const [searchResults, { refetch }] = createResource<SearchResult>(
-    async () => {
-      const source = selectedSource();
-      if (!source) {
-        return { media: [], total: 0 };
-      }
-
-      const params = new URLSearchParams();
-      if (searchQuery()) {
-        params.set("q", searchQuery());
-      }
-      if (selectedTags().length > 0) {
-        params.set("tags", selectedTags().join(","));
-      }
-      if (excludeTags().length > 0) {
-        params.set("excludeTags", excludeTags().join(","));
-      }
-      params.set("tagMode", tagMode());
-      if (sortBy()) {
-        params.set("sort", sortBy());
-      }
-      params.set("order", sortOrder());
-      params.set("limit", limit().toString());
-      params.set("offset", offset().toString());
-
-      const url = `/api/sources/${source}/search?${params}`;
-      const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-      const response = await fetch(fullUrl);
-      if (!response.ok) {
-        throw new Error("Search failed");
-      }
-      return response.json();
+  const [searchResults, { refetch }] = createResource(async () => {
+    const source = selectedSource();
+    if (!source) {
+      return { media: [], total: 0 };
     }
-  );
+
+    return await searchMedia(source, {
+      q: searchQuery(),
+      tags: selectedTags().length > 0 ? selectedTags().join(",") : undefined,
+      excludeTags:
+        excludeTags().length > 0 ? excludeTags().join(",") : undefined,
+      tagMode: tagMode(),
+      sort: sortBy(),
+      order: sortOrder(),
+      limit: limit(),
+      offset: offset(),
+    });
+  });
 
   const handleSearch = () => {
     setOffset(0);
@@ -184,21 +133,21 @@ export default function Search() {
                   // The Select component passes the entire object, not just the id
                   const id =
                     typeof value === "object" && value !== null && "id" in value
-                      ? (value as MediaSource).id
+                      ? (value as Source).id
                       : "";
-                  setSelectedSource(id);
+                  setSelectedSource(id || "");
                 }}
                 options={sources() || []}
                 optionTextValue="name"
-                optionValue="id"
+                optionValue="name"
                 placeholder="ソースを選択"
                 value={sources()?.find((s) => s.id === selectedSource())}
               >
                 <SelectTrigger>
-                  <SelectValue<MediaSource>>
+                  <SelectValue<Source>>
                     {(state) => {
                       const source = state.selectedOption() as
-                        | MediaSource
+                        | Source
                         | undefined;
                       return source?.name || "ソースを選択";
                     }}

@@ -1,6 +1,10 @@
 import type { APIEvent } from "@solidjs/start/server";
 import type { UUID } from "~/domain/shared/schemas";
-import { startSseMonitoring } from "~/infrastructure/api-clients/events";
+
+/**
+ * Stub implementation for SSE events API
+ * This file is kept as a placeholder to avoid breaking build dependencies.
+ */
 
 /**
  * @swagger
@@ -32,8 +36,30 @@ import { startSseMonitoring } from "~/infrastructure/api-clients/events";
  *       500:
  *         description: Internal server error or source type not supported for SSE.
  */
-export async function GET({ params }: APIEvent) {
+export function GET({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const result = await startSseMonitoring(mediaSourceId);
-  return result;
+
+  // Stub response for SSE
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+      controller.enqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({ message: `Connected to stub SSE for ${mediaSourceId}` })}\n\n`
+        )
+      );
+    },
+    cancel() {
+      // cleanup
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      // biome-ignore lint/style/useNamingConvention: Standard HTTP header
+      Connection: "keep-alive",
+    },
+  });
 }

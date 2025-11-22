@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
-import type { UUID } from "~/domain/shared/schemas";
 import { DirectoryService } from "~/application/services/directory-service";
+import type { UUID } from "~/domain/shared/schemas";
 
 /**
  * @swagger
@@ -43,7 +43,10 @@ import { DirectoryService } from "~/application/services/directory-service";
  */
 export async function GET({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const directoriesPath = params.directories as string || "";
-  const listing = await DirectoryService.listMediaInSubdirectory(mediaSourceId, directoriesPath);
+  const directoriesPath = (params.directories as string) || "";
+  const listing = await DirectoryService.listMediaInSubdirectory(
+    mediaSourceId,
+    directoriesPath
+  );
   return listing;
 }

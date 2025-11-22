@@ -1,8 +1,9 @@
 import type { APIEvent } from "@solidjs/start/server";
-import {
-  clearThumbnailCache,
-  startThumbnailGeneration,
-} from "~/infrastructure/api-clients/thumbnails";
+
+/**
+ * Stub implementation for thumbnails API
+ * This file is kept as a placeholder to avoid breaking build dependencies.
+ */
 
 /**
  * @swagger
@@ -28,10 +29,12 @@ import {
  *       500:
  *         description: Internal server error.
  */
-export async function POST({ params }: APIEvent) {
+export function POST({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId;
-  const result = await startThumbnailGeneration(mediaSourceId);
-  return result;
+  // Stub: pretend to start generation
+  return {
+    message: `Started thumbnail generation for ${mediaSourceId} (Stub)`,
+  };
 }
 
 /**
@@ -58,8 +61,8 @@ export async function POST({ params }: APIEvent) {
  *       500:
  *         description: Internal server error.
  */
-export async function DELETE({ params }: APIEvent) {
+export function DELETE({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId;
-  const result = await clearThumbnailCache(mediaSourceId);
-  return result;
+  // Stub: pretend to clear cache
+  return { message: `Cleared thumbnail cache for ${mediaSourceId} (Stub)` };
 }

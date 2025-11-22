@@ -10,32 +10,10 @@ import {
 import { isServer } from "solid-js/web";
 import { z } from "zod";
 import { UploadMediaModal } from "~/components/upload-media-modal";
-
-// APIから返されるメディアオブジェクトの型を定義します。
-// これはDBスキーマと一致することが期待されます。
-type Media = {
-  id: string;
-  fileName: string;
-  width: number;
-  height: number;
-  // 必要に応じて他のプロパティを追加します。
-};
-
-/**
- * 指定されたソースIDのメディアリストをAPIから非同期に取得します。
- * @param mediaSourceId メディアを取得するソースのID。
- * @returns メディアの配列を解決するPromise。
- */
-async function fetchMedia(mediaSourceId: string): Promise<Media[]> {
-  const url = `/api/sources/${mediaSourceId}`;
-  const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-  const response = await fetch(fullUrl);
-  if (!response.ok) {
-    // TODO: エラーハンドリングを改善する
-    throw new Error("メディアの取得に失敗しました");
-  }
-  return response.json();
-}
+import {
+  fetchMediaList,
+  uploadMedia,
+} from "~/infrastructure/api-clients/media-api";
 
 /**
  * 特定のメディアソース内のメディアをグリッド表示するページコンポーネントです。
@@ -44,7 +22,7 @@ export default function MediaListPage() {
   const params = useParams();
   const [media, { refetch }] = createResource(
     () => params.mediaSourceId,
-    fetchMedia
+    fetchMediaList
   );
 
   const [showUploadModal, setShowUploadModal] = createSignal(false);
@@ -71,19 +49,7 @@ export default function MediaListPage() {
     formData.append("overwrite", String(options.overwrite));
     formData.append("autoIncrement", String(options.autoIncrement));
 
-    const url = `/api/sources/${params.mediaSourceId}/upload`;
-    const response = await fetch(url, {
-      method: "POST",
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(
-        errorData.error || "メディアのアップロードに失敗しました。"
-      );
-    }
-
+    await uploadMedia(params.mediaSourceId, formData);
     refetch(); // Re-fetch media list after successful upload
   };
 

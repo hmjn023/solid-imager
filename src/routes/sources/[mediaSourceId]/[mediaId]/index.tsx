@@ -1,29 +1,14 @@
 import { useParams } from "@solidjs/router";
 import { createResource, Match, Switch } from "solid-js";
-import { isServer } from "solid-js/web";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
-import type { MediaDetails } from "~/domain/media/schemas";
 import type { UUID } from "~/domain/shared/schemas";
-
-async function fetchMediaDetails(
-  mediaSourceId: UUID,
-  mediaId: UUID
-): Promise<MediaDetails> {
-  const url = `/api/sources/${mediaSourceId}/${mediaId}/details`;
-  const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-
-  const response = await fetch(fullUrl);
-  if (!response.ok) {
-    throw new Error("Failed to fetch media details");
-  }
-  return response.json();
-}
+import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
 
 export default function Media() {
   const params = useParams();
-  const mediaSourceId = params.mediaSourceId;
-  const mediaId = params.mediaId;
+  const mediaSourceId = params.mediaSourceId as UUID;
+  const mediaId = params.mediaId as UUID;
 
   const [mediaDetails] = createResource(() =>
     fetchMediaDetails(mediaSourceId, mediaId)

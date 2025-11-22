@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { ImageProcessor } from "~/domain/media/processing/image-processor";
-import { getConfig } from "~/infrastructure/api-clients/config";
 import {
   selectMediaById,
   selectMediaBySourceId,
@@ -59,11 +58,8 @@ export async function generateThumbnail(
 ): Promise<void> {
   await ensureCacheDir(mediaSourceId);
 
-  const config = getConfig();
-  const size =
-    config.media?.image?.thumbnail?.size?.width ?? DEFAULT_THUMBNAIL_SIZE;
-  const quality =
-    config.media?.image?.thumbnail?.quality ?? DEFAULT_THUMBNAIL_QUALITY;
+  const size = DEFAULT_THUMBNAIL_SIZE;
+  const quality = DEFAULT_THUMBNAIL_QUALITY;
 
   const inputPath = path.join(sourcePath, media.filePath);
   const outputPath = getThumbnailPath(mediaSourceId, media.id);

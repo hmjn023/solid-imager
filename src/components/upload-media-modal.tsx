@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type UploadMediaModalProps = {
   isOpen: boolean;
@@ -59,23 +60,16 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 
   createEffect(
     on(sourceUrl, async (url) => {
-      if (previewUrl()) {
-        URL.revokeObjectURL(previewUrl());
+      const currentPreview = previewUrl();
+      if (currentPreview) {
+        URL.revokeObjectURL(currentPreview);
         setPreviewUrl(null);
       }
       if (url && z.string().url().safeParse(url).success) {
         setIsFetchingUrl(true);
         setErrors([]);
         try {
-          const res = await fetch("/api/fetch-url", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url }),
-          });
-          if (!res.ok) {
-            throw new Error("URLからの画像の取得に失敗しました。");
-          }
-          const blob = await res.blob();
+          const blob = await fetchFromUrl(url);
           const fetchedFile = new File(
             [blob],
             url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
@@ -100,8 +94,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
   );
 
   onCleanup(() => {
-    if (previewUrl()) {
-      URL.revokeObjectURL(previewUrl());
+    const currentPreview = previewUrl();
+    if (currentPreview) {
+      URL.revokeObjectURL(currentPreview);
     }
   });
 
@@ -222,7 +217,7 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
                 <img
                   alt="Fetched preview"
                   class="max-h-48"
-                  src={previewUrl()}
+                  src={previewUrl() || undefined}
                 />
               </div>
             </Show>
