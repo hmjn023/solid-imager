@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
+import { TagService } from "~/application/services/tag-service";
 import { newTagSchema } from "~/domain/tags/schemas";
-import { createTag, getTags } from "~/infrastructure/api-clients/tags";
 
 /**
  * @swagger
@@ -25,7 +25,7 @@ import { createTag, getTags } from "~/infrastructure/api-clients/tags";
  */
 export async function GET() {
   try {
-    const tags = await getTags();
+    const tags = await TagService.getAllTags();
     return new Response(JSON.stringify(tags), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -68,8 +68,8 @@ export async function POST({ request }: APIEvent) {
   try {
     const data = await request.json();
     const validatedData = newTagSchema.parse(data);
-    const newTag = await createTag(validatedData);
-    return new Response(JSON.stringify(newTag[0]), {
+    const newTag = await TagService.createTag(validatedData);
+    return new Response(JSON.stringify(newTag), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });

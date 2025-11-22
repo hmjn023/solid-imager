@@ -1,11 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
+import { TagService } from "~/application/services/tag-service";
 import { updateTagSchema } from "~/domain/tags/schemas";
-import {
-  deleteTag,
-  getTagById,
-  updateTag,
-} from "~/infrastructure/api-clients/tags";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -46,7 +42,7 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const tag = await getTagById(id);
+    const tag = await TagService.getTagById(id);
 
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
@@ -116,16 +112,16 @@ export async function PUT({ params, request }: APIEvent) {
     const body = await request.json();
     const validatedBody = updateTagSchema.parse(body);
 
-    const updatedTag = await updateTag(id, validatedBody);
+    const updatedTag = await TagService.updateTag(id, validatedBody);
 
-    if (!updatedTag || updatedTag.length === 0) {
+    if (!updatedTag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify(updatedTag[0]), {
+    return new Response(JSON.stringify(updatedTag), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -179,7 +175,7 @@ export async function DELETE({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const tag = await getTagById(id);
+    const tag = await TagService.getTagById(id);
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
         status: 404,
@@ -187,7 +183,7 @@ export async function DELETE({ params }: APIEvent) {
       });
     }
 
-    await deleteTag(id);
+    await TagService.deleteTag(id);
     return new Response(null, { status: 204 });
   } catch (error) {
     if (error instanceof ZodError) {
