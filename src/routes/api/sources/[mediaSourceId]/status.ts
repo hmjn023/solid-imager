@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { getMediaSourceStatus } from "~/infrastructure/api-clients/sources";
 
 /**
  * @swagger
@@ -34,6 +34,6 @@ import { getMediaSourceStatus } from "~/infrastructure/api-clients/sources";
  */
 export async function GET({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const status = await getMediaSourceStatus(mediaSourceId);
+  const status = await MediaSourceService.getStatus(mediaSourceId);
   return status;
 }

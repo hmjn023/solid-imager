@@ -1,10 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { getAllMedia } from "~/infrastructure/api-clients/media";
-import {
-  deleteMediaSource,
-  updateMediaSource,
-} from "~/infrastructure/api-clients/sources";
+import { MediaService } from "~/application/services/media-service";
+import { MediaSourceService } from "~/application/services/media-source-service";
+import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_NOT_FOUND = 404;
@@ -60,7 +58,7 @@ export async function GET({ params }: APIEvent) {
   const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await getAllMedia(mediaSourceId);
+    const result = await MediaService.getAllMedia(mediaSourceId);
     if (!result) {
       return new Response(JSON.stringify({ error: "Source not found" }), {
         status: HTTP_STATUS_NOT_FOUND,
@@ -131,17 +129,37 @@ export async function PUT({ params, request }: APIEvent) {
     });
   }
   const { mediaSourceId } = parsedParams.data;
-  const data = await request.json();
 
   try {
-    const result = await updateMediaSource(mediaSourceId, data);
-    return new Response(JSON.stringify(result), {
+    const body = await request.json();
+    // Use partial schema for updates
+    const validatedData = mediaSourceInfoSchema.partial().parse(body);
+
+    const result = await MediaSourceService.updateSource(
+      mediaSourceId,
+      validatedData
+    );
+    // updateSource returns an array, we want the first item
+    const updatedSource = result[0];
+
+    return new Response(JSON.stringify(updatedSource), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
       },
     });
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return new Response(
+        JSON.stringify({ error: JSON.parse(error.message) }),
+        {
+          status: HTTP_STATUS_BAD_REQUEST,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -189,13 +207,19 @@ export async function DELETE({ params }: APIEvent) {
   const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await deleteMediaSource(mediaSourceId);
-    return new Response(JSON.stringify({ success: true, result }), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const result = await MediaSourceService.deleteSource(mediaSourceId);
+    // deleteSource returns an array, we want the first item
+    const deletedSource = result[0];
+
+    return new Response(
+      JSON.stringify({ success: true, result: deletedSource }),
+      {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
