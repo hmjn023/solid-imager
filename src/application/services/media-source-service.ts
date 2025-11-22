@@ -1,6 +1,9 @@
 import { cache } from "@solidjs/router";
-import type { MediaSourceTypeEnum } from "~/domain/sources/types";
+import type { MediaSourceTypeEnum } from "~/domain/sources/schemas";
 import type { MediaSource, NewMediaSource } from "~/infrastructure/db/schema";
+
+const HTTP_STATUS_NOT_FOUND = 404;
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 
 /**
  * Custom error class for fetch operations.
@@ -76,13 +79,14 @@ const createSourceServer = async (
  */
 const updateSourceServer = async (
   mediaSourceId: string,
-  sourceData: MediaSource
+  sourceData: Partial<MediaSource>
 ): Promise<MediaSource[]> => {
   "use server";
   const { updateMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return updateMediaSource(mediaSourceId, sourceData);
+  const result = await updateMediaSource(mediaSourceId, sourceData);
+  return [result];
 };
 
 /**
@@ -98,7 +102,12 @@ const fetchSourceByIdServer = cache(
     const { selectMediaSourceById } = await import(
       "~/infrastructure/db/queries/media-sources"
     );
-    return selectMediaSourceById(mediaSourceId);
+    try {
+      const result = await selectMediaSourceById(mediaSourceId);
+      return [result];
+    } catch (_error) {
+      return [];
+    }
   },
   "fetchSourceById"
 );
@@ -116,7 +125,75 @@ const deleteSourceServer = async (
   const { deleteMediaSource } = await import(
     "~/infrastructure/db/queries/media-sources"
   );
-  return deleteMediaSource(mediaSourceId);
+  const result = await deleteMediaSource(mediaSourceId);
+  return [result];
+};
+
+/**
+ * Tests the connection to a specified media source.
+ * @param {string} mediaSourceId - The ID of the media source to test.
+ * @returns {Promise<any>} A promise that resolves with the connection test result.
+ */
+const testConnectionServer = async (mediaSourceId: string) => {
+  "use server";
+  const { getDriver } = await import("~/infrastructure/storage/factory");
+  const { selectMediaSourceById } = await import(
+    "~/infrastructure/db/queries/media-sources"
+  );
+
+  try {
+    const source = await selectMediaSourceById(mediaSourceId);
+    if (!source) {
+      throw new FetchError(
+        "指定されたメディアソースが見つかりません",
+        HTTP_STATUS_NOT_FOUND
+      );
+    }
+    const driver = getDriver(source);
+    const connectionTest = await driver.testConnection();
+    if (!connectionTest.success) {
+      throw new FetchError(
+        `接続に失敗しました: ${connectionTest.message ?? "不明なエラー"}`,
+        HTTP_STATUS_INTERNAL_SERVER_ERROR
+      );
+    }
+    return connectionTest;
+  } catch (error: unknown) {
+    if (error instanceof FetchError) {
+      throw error;
+    }
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    throw new FetchError(
+      `Failed to test media source connection: ${errorMessage}`,
+      HTTP_STATUS_INTERNAL_SERVER_ERROR
+    );
+  }
+};
+
+/**
+ * Retrieves the status of a specified media source.
+ * @param {string} mediaSourceId - The ID of the media source.
+ * @returns {Promise<any>} The status of the media source.
+ */
+const getStatusServer = async (mediaSourceId: string) => {
+  "use server";
+  try {
+    const test = await testConnectionServer(mediaSourceId);
+    return {
+      mediaSourceId,
+      status: test.success ? "active" : "error",
+      message: test.message,
+      lastChecked: new Date(),
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      mediaSourceId,
+      status: "error",
+      message: errorMessage,
+      lastChecked: new Date(),
+    };
+  }
 };
 
 /**
@@ -140,7 +217,7 @@ export const MediaSourceService = {
    * Updates an existing media source on the server.
    * This function is executed only on the server side.
    * @param {string} mediaSourceId - The ID of the media source to update.
-   * @param {MediaSource} sourceData - The updated data for the media source.
+   * @param {Partial<MediaSource>} sourceData - The updated data for the media source.
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the updated media source.
    */
   updateSource: updateSourceServer,
@@ -158,4 +235,18 @@ export const MediaSourceService = {
    * @returns {Promise<MediaSource[]>} A promise that resolves with an array containing the deleted media source.
    */
   deleteSource: deleteSourceServer,
+
+  /**
+   * Tests the connection to a specified media source.
+   * @param {string} mediaSourceId - The ID of the media source to test.
+   * @returns {Promise<any>} A promise that resolves with the connection test result.
+   */
+  testConnection: testConnectionServer,
+
+  /**
+   * Retrieves the status of a specified media source.
+   * @param {string} mediaSourceId - The ID of the media source.
+   * @returns {Promise<any>} The status of the media source.
+   */
+  getStatus: getStatusServer,
 };
