@@ -84,7 +84,8 @@ export function addJobsToQueue(mediaSourceId: string, jobs: Job[]) {
  */
 export function startJobQueue(
   mediaSourceId: string,
-  processor: (job: Job) => Promise<void>
+  processor: (job: Job) => Promise<void>,
+  concurrencyLimit = 1000
 ) {
   const currentStats = getJobStats(mediaSourceId);
   if (currentStats.status === "processing") {
@@ -94,31 +95,71 @@ export function startJobQueue(
   jobStatsMap.set(mediaSourceId, { ...currentStats, status: "processing" });
 
   const run = async () => {
-    let queue = jobQueueMap.get(mediaSourceId) || [];
-    while (queue.length > 0) {
-      const job = queue.shift();
-      try {
-        await processor(job);
-      } catch (e: unknown) {
-        const stats = getJobStats(mediaSourceId);
-        jobStatsMap.set(mediaSourceId, {
-          ...stats,
-          errors: [...stats.errors, { file: job.mediaId, reason: e.message }],
-        });
-      }
-      const stats = getJobStats(mediaSourceId);
-      jobStatsMap.set(mediaSourceId, {
-        ...stats,
-        processed: stats.processed + 1,
-      });
-      queue = jobQueueMap.get(mediaSourceId) || []; // キューが変更された場合に備えて、キューを再フェッチします。
-    }
-
-    const stats = getJobStats(mediaSourceId);
-    jobStatsMap.set(mediaSourceId, { ...stats, status: "completed" });
+    const activeJobs = new Set<Promise<void>>();
+    await processQueue(mediaSourceId, processor, activeJobs, concurrencyLimit);
   };
 
   run();
+}
+
+async function processQueue(
+  mediaSourceId: string,
+  processor: (job: Job) => Promise<void>,
+  activeJobs: Set<Promise<void>>,
+  concurrencyLimit: number
+) {
+  let queue = jobQueueMap.get(mediaSourceId) || [];
+
+  while (queue.length > 0 || activeJobs.size > 0) {
+    // Fill the active jobs up to the limit
+    while (queue.length > 0 && activeJobs.size < concurrencyLimit) {
+      const job = queue.shift();
+      if (!job) {
+        break;
+      }
+
+      const jobPromise = (async () => {
+        try {
+          await processor(job);
+        } catch (e: unknown) {
+          const stats = getJobStats(mediaSourceId);
+          jobStatsMap.set(mediaSourceId, {
+            ...stats,
+            errors: [
+              ...stats.errors,
+              { file: job.mediaId, reason: (e as Error).message },
+            ],
+          });
+        } finally {
+          const stats = getJobStats(mediaSourceId);
+          jobStatsMap.set(mediaSourceId, {
+            ...stats,
+            processed: stats.processed + 1,
+          });
+        }
+      })();
+
+      // Add to active set and remove when done
+      const promiseWithCleanup = jobPromise.then(() => {
+        activeJobs.delete(promiseWithCleanup);
+      });
+      activeJobs.add(promiseWithCleanup);
+
+      // Refresh queue reference
+      queue = jobQueueMap.get(mediaSourceId) || [];
+    }
+
+    // Wait for at least one job to finish if we are at capacity or queue is empty but jobs are running
+    if (activeJobs.size > 0) {
+      await Promise.race(activeJobs);
+    }
+
+    // Refresh queue reference again
+    queue = jobQueueMap.get(mediaSourceId) || [];
+  }
+
+  const stats = getJobStats(mediaSourceId);
+  jobStatsMap.set(mediaSourceId, { ...stats, status: "completed" });
 }
 
 /**

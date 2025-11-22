@@ -9,7 +9,7 @@ import type {
 } from "solid-js";
 import { splitProps } from "solid-js";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
-import { cn } from "~/lib/utils";
+import { cn } from "~/presentation/utils/cn";
 
 const Command: Component<ParentProps<CommandPrimitive.CommandRootProps>> = (
   props

@@ -1,11 +1,7 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
+import { MediaService } from "~/application/services/media-service";
 import { updateMediaRequestSchema } from "~/domain/media/schemas";
-import type { UUID } from "~/domain/shared/schemas";
-import { getMedia, updateMedia } from "~/infrastructure/api-clients/media";
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -63,24 +59,21 @@ export async function GET({ params }: APIEvent) {
   const { mediaSourceId, mediaId } = parsedParams.data;
 
   try {
-    const media = await getMedia(mediaSourceId as UUID, mediaId as UUID);
-    const source = await selectMediaSourceById(mediaSourceId as UUID);
+    const media = await MediaService.getMedia(mediaSourceId, mediaId);
+    const imageBuffer = await MediaService.getMediaContent(
+      mediaSourceId,
+      mediaId
+    );
 
-    if (!source || source.type !== "local") {
-      return new Response("Media source not found or not local", {
-        status: 404,
-      });
-    }
-
-    const imagePath = path.join(source.connectionInfo.path, media.filePath);
-    const imageBuffer = await fs.readFile(imagePath);
-
-    return new Response(imageBuffer, {
+    return new Response(imageBuffer as unknown as BodyInit, {
       status: 200,
       headers: { "Content-Type": `image/${media.mediaType}` },
     });
-  } catch (_error) {
-    return new Response("Original image not found", { status: 404 });
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("not found")) {
+      return new Response("Media not found", { status: 404 });
+    }
+    return new Response("Internal Server Error", { status: 500 });
   }
 }
 
@@ -147,6 +140,6 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const data = parsedBody.data;
 
-  const result = await updateMedia(mediaSourceId, mediaId, data);
+  const result = await MediaService.updateMedia(mediaSourceId, mediaId, data);
   return result;
 }

@@ -10,7 +10,7 @@ import {
   it,
   vi,
 } from "vitest";
-import { getMediaDetails } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 
 // We need to dynamically import these to work around Vitest's hoisting
 let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
@@ -123,7 +123,10 @@ describe("getMediaDetails", () => {
   });
 
   it("should return full media details including tags and generation info", async () => {
-    const details = await getMediaDetails(mediaSource.id, media.id);
+    const details = await MediaService.getMediaDetails(
+      mediaSource.id,
+      media.id
+    );
 
     // Verify the details object is correct
     expect(details).toBeDefined();

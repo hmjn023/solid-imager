@@ -1,10 +1,11 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { addMedia, deleteMedia } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
@@ -29,7 +30,7 @@ describe("deleteMedia Integration", () => {
       mediaSourceId,
       filePath: `/test/path/to_delete-${Date.now()}.png`,
       fileName: "to_delete.png",
-      size: 1024,
+      fileSize: 1024,
       mediaType: "image",
       width: 800,
       height: 600,
@@ -37,7 +38,7 @@ describe("deleteMedia Integration", () => {
       sourceUrl: "",
     };
     // データベースに初期メディアエントリを追加します。
-    const addedMedia = await addMedia(initialMediaData);
+    const addedMedia = await MediaRepository.create(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
@@ -47,8 +48,8 @@ describe("deleteMedia Integration", () => {
   });
 
   it("should successfully delete media from the database", async () => {
-    const result = await deleteMedia(mediaSourceId, testMediaId);
-    expect(result.success).toBe(true);
+    await MediaService.deleteMedia(mediaSourceId, testMediaId);
+    // expect(result.success).toBe(true); // deleteMedia returns void now
 
     // メディアがデータベースから削除されたことを確認します。
     const mediaInDb = await db
@@ -61,21 +62,21 @@ describe("deleteMedia Integration", () => {
   it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {
     const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
     await expect(
-      deleteMedia(mediaSourceId, nonExistentMediaId)
+      MediaService.deleteMedia(mediaSourceId, nonExistentMediaId)
     ).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
     const invalidMediaId = "invalid-uuid";
     await expect(
-      deleteMedia(mediaSourceId, invalidMediaId)
+      MediaService.deleteMedia(mediaSourceId, invalidMediaId)
     ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for an invalid mediaSourceId format", async () => {
     const invalidSourceId = "invalid-uuid";
     await expect(
-      deleteMedia(invalidSourceId, testMediaId)
+      MediaService.deleteMedia(invalidSourceId, testMediaId)
     ).rejects.toBeInstanceOf(ZodError);
   });
 });

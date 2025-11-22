@@ -1,207 +1,399 @@
 /**
- * MediaService - メディア配信・サムネイル作成機能
- * Feature 2, 3, 5, 7, 8
+ * MediaService - Media Management Service
  */
 
-import { MediaSourceService } from "~/application/services/media-source-service";
-import type {
-  AddMediaRequest,
-  UpdateMediaRequest,
+import path from "node:path";
+import {
+  type MediaDetails,
+  mediaIdSchema,
+  mediaSearchRequestSchema,
+  mediaSourceIdSchema,
+  updateMediaRequestSchema,
 } from "~/domain/media/schemas";
-import { getAllMedia, getMedia } from "~/infrastructure/api-clients/media";
+import {
+  type UploadResponse,
+  uploadMediaRequestSchema,
+} from "~/domain/media/upload-schemas";
+import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+import type { NewMedia } from "~/infrastructure/db/schema";
+import {
+  addJobsToQueue,
+  startJobQueue,
+} from "~/infrastructure/jobs/job-manager";
+import { extractTags } from "~/infrastructure/jobs/tag-extraction";
+import {
+  deleteThumbnail,
+  generateThumbnail,
+  processMediaJob,
+} from "~/infrastructure/jobs/thumbnails";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { getDriver } from "~/infrastructure/storage/factory";
 
-/**
- * Provides services for media delivery, thumbnail creation, metadata extraction, upload, search, and editing.
- */
 export const MediaService = {
   /**
-   * Retrieves the content of a specific media file for delivery.
-   * @param {string} mediaSourceId - The ID of the media source.
-   * @param {string} filePath - The path of the media file.
-   * @returns {Promise<Buffer>} A promise that resolves with the file content as a Buffer.
+   * Searches for media.
+   */
+  async searchMedia(mediaSourceId: string, params: unknown) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+
+    // Parse and validate search parameters
+    // We need to handle the case where params might be raw query params (strings)
+    // The schema expects specific types, so we might need some preprocessing if coming directly from URL
+    // But for now, let's assume the caller handles basic type conversion or we use the schema's coerce
+
+    // If params is already an object with correct types (from a previous parse), we can just cast or re-parse.
+    // Since we are in Service layer, we should expect typed input or validate it.
+    // Let's assume `params` is the raw query object from the URL.
+
+    const searchRequest = mediaSearchRequestSchema.parse(params);
+    return await MediaRepository.search(validatedSourceId, searchRequest);
+  },
+
+  /**
+   * Searches for media in a directory.
+   */
+  async searchMediaInDirectory(
+    mediaSourceId: string,
+    directoryPath: string,
+    params: { query?: string; tags?: string[] }
+  ) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    // directoryPath validation?
+    return await MediaRepository.searchInDirectory(
+      validatedSourceId,
+      directoryPath,
+      params
+    );
+  },
+
+  /**
+   * Uploads a media file.
+   */
+  async uploadMedia(
+    mediaSourceId: string,
+    file: File,
+    formData: FormData
+  ): Promise<UploadResponse> {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const mediaSource = await selectMediaSourceById(validatedSourceId);
+
+    if (!mediaSource) {
+      throw new Error("Media source not found.");
+    }
+
+    if (mediaSource.type !== "local") {
+      throw new Error(
+        "Only local media sources are supported for uploads in Phase 1."
+      );
+    }
+
+    const connectionInfo = mediaSource.connectionInfo as { path: string };
+    const basePath = connectionInfo.path;
+
+    const uploadRequest = uploadMediaRequestSchema.parse({
+      filename: formData.get("filename")?.toString(),
+      autoIncrement: formData.get("autoIncrement")?.toString(),
+      description: formData.get("description")?.toString(),
+      sourceUrl: formData.get("sourceUrl")?.toString(),
+      overwrite: formData.get("overwrite")?.toString(),
+    });
+
+    // 1. Save File via Repository
+    const fileInfo = await MediaRepository.saveFile(basePath, file, {
+      filename: uploadRequest.filename,
+      overwrite: uploadRequest.overwrite,
+      autoIncrement: uploadRequest.autoIncrement,
+    });
+
+    // 2. Create Media Entry
+    const newMedia: NewMedia = {
+      mediaSourceId: validatedSourceId,
+      filePath: fileInfo.filePath,
+      fileName: fileInfo.fileName,
+      mediaType: "image", // TODO: Determine based on file type
+      description: uploadRequest.description || "",
+      sourceUrl: uploadRequest.sourceUrl || "",
+      width: fileInfo.width,
+      height: fileInfo.height,
+      fileSize: fileInfo.size,
+      createdAt: fileInfo.createdAt,
+      modifiedAt: fileInfo.modifiedAt,
+    };
+
+    const insertedMedia = await MediaRepository.create(newMedia);
+
+    // 3. Trigger Jobs
+    addJobsToQueue(validatedSourceId, [
+      { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
+      { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
+    ]);
+
+    startJobQueue(validatedSourceId, async (job) => {
+      const media = await MediaRepository.findById(job.mediaId);
+      if (media) {
+        if (job.type === "thumbnail") {
+          await generateThumbnail(media, job.sourcePath, validatedSourceId);
+        } else if (job.type === "extractTags") {
+          const mediaPath = path.join(job.sourcePath, media.filePath);
+          await extractTags(mediaPath, media.id);
+        }
+      }
+    });
+
+    return {
+      success: true,
+      filePath: fileInfo.filePath,
+      conflict: fileInfo.conflict,
+    };
+  },
+
+  /**
+   * Retrieves media details including tags and generation info.
+   */
+  async getMediaDetails(
+    mediaSourceId: string,
+    mediaId: string
+  ): Promise<MediaDetails> {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
+    }
+
+    const [tags, generationInfo] = await Promise.all([
+      MediaRepository.getTags(validatedMediaId),
+      MediaRepository.getGenerationInfo(validatedMediaId),
+    ]);
+
+    let finalGenerationInfo = generationInfo;
+
+    // If generation info is not found, try to extract it (Lazy Extraction)
+    if (!finalGenerationInfo) {
+      const mediaSource = await selectMediaSourceById(validatedSourceId);
+      if (mediaSource.type === "local") {
+        const connectionInfo = mediaSource.connectionInfo as { path: string };
+        const fullPath = path.join(connectionInfo.path, media.filePath);
+
+        try {
+          // We use Repository to extract metadata, which calls Domain/ImageProcessor
+          await MediaRepository.extractMetadataFromFile(
+            fullPath,
+            validatedMediaId
+          );
+          finalGenerationInfo =
+            await MediaRepository.getGenerationInfo(validatedMediaId);
+        } catch (_error) {
+          // Ignore error if extraction fails, just return what we have
+        }
+      }
+    }
+
+    return {
+      ...media,
+      tags,
+      generationInfo: finalGenerationInfo
+        ? {
+            ...finalGenerationInfo,
+            aiGenerated: finalGenerationInfo.aiGenerated ?? false,
+            modelName: finalGenerationInfo.modelName ?? "",
+            seed: finalGenerationInfo.seed ?? -1,
+            cfgScale: finalGenerationInfo.cfgScale ?? 0,
+            steps: finalGenerationInfo.steps ?? 0,
+          }
+        : null,
+    };
+  },
+
+  /**
+   * Retrieves media content (file buffer).
    */
   async getMediaContent(
     mediaSourceId: string,
     mediaId: string
   ): Promise<Buffer> {
-    const [source] = await MediaSourceService.fetchSourceById(mediaSourceId);
-    if (!source) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const mediaSource = await selectMediaSourceById(validatedSourceId);
+    if (!mediaSource) {
       throw new Error("Media source not found");
     }
 
-    const media = await getMedia(mediaSourceId, mediaId);
-    if (!media) {
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
       throw new Error("Media not found");
     }
 
-    const driver = getDriver(source);
+    const driver = getDriver(mediaSource);
     return driver.get(media.filePath);
   },
 
   /**
-   * Retrieves metadata for a specific media item.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {string} _mediaId - The ID of the media item.
-   * @returns {any} The extracted media metadata.
+   * Deletes media.
    */
-  getMediaMetadata(_mediaSourceId: string, _mediaId: string) {
-    // TODO: Implement metadata extraction from PNG tEXt chunks
-    throw new Error("Not implemented");
-  },
+  async deleteMedia(mediaSourceId: string, mediaId: string): Promise<void> {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-  /**
-   * Updates metadata for a specific media item.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {string} _mediaId - The ID of the media item.
-   * @param {unknown} _metadata - The metadata to update.
-   * @returns {any} The updated media metadata.
-   */
-  updateMediaMetadata(
-    _mediaSourceId: string,
-    _mediaId: string,
-    _metadata: unknown
-  ) {
-    // TODO: Implement metadata update
-    throw new Error("Not implemented");
-  },
-
-  /**
-   * Uploads a new media file to a specified media source.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {object} _uploadData - The data for the media upload.
-   * @param {File} _uploadData.file - The file to be uploaded.
-   * @param {string} [_uploadData.filename] - Optional custom filename.
-   * @param {boolean} [_uploadData.autoIncrement] - Whether to auto-increment filename on conflict.
-   * @param {string} [_uploadData.description] - Optional description for the media.
-   * @param {string} [_uploadData.sourceUrl] - Optional source URL for the media.
-   * @param {boolean} [_uploadData.overwrite] - Whether to overwrite existing file on conflict.
-   * @returns {any} The result of the upload operation.
-   */
-  uploadNewMedia(_mediaSourceId: string, _uploadData: AddMediaRequest) {
-    // TODO: Implement file upload for local sources
-    throw new Error("Not implemented");
-  },
-
-  /**
-   * Searches for media within a specific media source based on various criteria.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
-   * @param {string[]} [_searchOptions.tags] - Tags to filter by.
-   * @param {string} [_searchOptions.sortBy] - Field to sort by.
-   * @param {number} [_searchOptions.page] - Page number for pagination.
-   * @param {number} [_searchOptions.limit] - Number of items per page.
-   * @returns {any} A list of media items matching the search criteria.
-   */
-  searchMedia(
-    _mediaSourceId: string,
-    _searchOptions: {
-      tags?: string[];
-      sortBy?: string;
-      page?: number;
-      limit?: number;
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
     }
-  ) {
-    // TODO: Implement search functionality
-    throw new Error("Not implemented");
-  },
 
-  /**
-   * Searches for media within a specific subdirectory of a media source.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {string} _directoriesPath - The path to the subdirectory to search within.
-   * @param {object} _searchOptions - Options for filtering, sorting, and pagination.
-   * @param {string[]} [_searchOptions.tags] - Tags to filter by.
-   * @param {string} [_searchOptions.sortBy] - Field to sort by.
-   * @param {number} [_searchOptions.page] - Page number for pagination.
-   * @param {number} [_searchOptions.limit] - Number of items per page.
-   * @returns {any} A list of media items matching the search criteria within the subdirectory.
-   */
-  searchMediaInDirectory(
-    _mediaSourceId: string,
-    _directoriesPath: string,
-    _searchOptions: {
-      tags?: string[];
-      sortBy?: string;
-      page?: number;
-      limit?: number;
+    await MediaRepository.delete(validatedMediaId);
+
+    // Trigger thumbnail deletion (fire and forget or await?)
+    // The original implementation awaited it but swallowed errors.
+    try {
+      await deleteThumbnail(validatedSourceId, validatedMediaId);
+    } catch (_error) {
+      // Ignore
     }
-  ) {
-    // Placeholder implementation: Return dummy data
-    return [
-      {
-        id: "media1",
-        filename: "image1.jpg",
-        directory: _directoriesPath,
-        mediaSourceId: _mediaSourceId,
-        url: `/api/sources/${_mediaSourceId}/media/image1.jpg`,
-        thumbnailUrl: `/api/sources/${_mediaSourceId}/media/image1_thumb.jpg`,
-        description: "A beautiful image",
-        tags: ["nature", "landscape"],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-      {
-        id: "media2",
-        filename: "image2.png",
-        directory: _directoriesPath,
-        mediaSourceId: _mediaSourceId,
-        url: `/api/sources/${_mediaSourceId}/media/image2.png`,
-        thumbnailUrl: `/api/sources/${_mediaSourceId}/media/image2_thumb.png`,
-        description: "Another image",
-        tags: ["city", "night"],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
-    ];
   },
 
   /**
-   * Updates information for a specific media item.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @param {string} _mediaId - The ID of the media item to update.
-   * @param {object} _mediaData - The data to update for the media item.
-   * @param {string} [_mediaData.filename] - New filename for the media.
-   * @param {string} [_mediaData.description] - New description for the media.
-   * @param {string} [_mediaData.sourceUrl] - New source URL for the media.
-   * @param {string[]} [_mediaData.tags] - New tags for the media.
-   * @returns {any} The updated media item.
+   * Registers existing media from a directory.
    */
-  updateMedia(
-    _mediaSourceId: string,
-    _mediaId: string,
-    _mediaData: UpdateMediaRequest
-  ) {
-    // TODO: Implement media update with file rename support
-    throw new Error("Not implemented");
+  async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const files = await MediaRepository.scanDirectory(directoryPath);
+    const newMediaItems: { id: string; filePath: string }[] = [];
+
+    for (const file of files) {
+      try {
+        const relativePath = path.relative(directoryPath, file);
+        const existing = await MediaRepository.findBySourceAndPath(
+          validatedSourceId,
+          relativePath
+        );
+
+        if (existing.length === 0) {
+          try {
+            const metadata = await MediaRepository.getFileMetadata(file);
+
+            // Simple extension check for media type
+            const ext = path.extname(file).toLowerCase();
+            let mediaType: "image" | "video" | "audio" = "image";
+            if ([".mp4", ".webm", ".mov"].includes(ext)) {
+              mediaType = "video";
+            }
+            if ([".mp3", ".wav"].includes(ext)) {
+              mediaType = "audio";
+            }
+
+            const newMedia = await MediaRepository.create({
+              mediaSourceId: validatedSourceId,
+              filePath: relativePath,
+              fileName: path.basename(file),
+              mediaType,
+              width: metadata.width,
+              height: metadata.height,
+              fileSize: metadata.size,
+              createdAt: metadata.createdAt,
+              modifiedAt: metadata.modifiedAt,
+              indexedAt: new Date(),
+            });
+            newMediaItems.push({ id: newMedia.id, filePath: relativePath });
+          } catch (_err) {
+            // Ignore error if file already exists or other registration issues
+          }
+        }
+      } catch (_error) {
+        // Ignore error if file processing fails
+      }
+    }
+
+    if (newMediaItems.length > 0) {
+      const jobs = newMediaItems.map((item) => ({
+        mediaId: item.id,
+        sourcePath: directoryPath,
+        type: "thumbnail" as const,
+      }));
+
+      addJobsToQueue(validatedSourceId, jobs);
+      startJobQueue(validatedSourceId, (job) =>
+        processMediaJob(job, validatedSourceId)
+      );
+    }
   },
 
   /**
-   * Retrieves a random media item from a specific source.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @returns {any} A random media item.
+   * Retrieves all media for a source.
    */
-  getRandomMedia(_mediaSourceId: string) {
-    // TODO: Implement random media selection
-    throw new Error("Not implemented");
+  async getAllMedia(mediaSourceId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    return await MediaRepository.findAllBySourceId(validatedSourceId);
   },
 
   /**
-   * Retrieves recently added or modified media items from a specific source.
-   * @param {string} _mediaSourceId - The ID of the media source.
-   * @returns {any} A list of recent media items.
+   * Retrieves a single media item.
    */
-  getRecentMedia(_mediaSourceId: string) {
-    // TODO: Implement recent media retrieval
-    throw new Error("Not implemented");
+  async getMedia(mediaSourceId: string, mediaId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
+    }
+    return media;
   },
 
   /**
-   * Retrieves all media items for a specific media source.
-   * @param {string} mediaSourceId - The ID of the media source.
-   * @returns {Promise<any>} A list of all media items for the source.
+   * Updates a media item.
    */
-  getAllMedia(mediaSourceId: string) {
-    return getAllMedia(mediaSourceId);
+  async updateMedia(mediaSourceId: string, mediaId: string, updates: unknown) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+    const parsedUpdates = updateMediaRequestSchema.parse(updates);
+
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
+    }
+
+    return await MediaRepository.update(validatedMediaId, parsedUpdates);
+  },
+
+  /**
+   * Retrieves tags for a media item.
+   */
+  async getMediaTags(mediaSourceId: string, mediaId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
+    }
+
+    return await MediaRepository.getTags(validatedMediaId);
+  },
+
+  /**
+   * Retrieves metadata (generation info) for a media item.
+   */
+  async getMediaMetadata(mediaSourceId: string, mediaId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not found");
+    }
+
+    const generationInfo =
+      await MediaRepository.getGenerationInfo(validatedMediaId);
+    return generationInfo
+      ? {
+          ...generationInfo,
+          aiGenerated: generationInfo.aiGenerated ?? false,
+          modelName: generationInfo.modelName ?? "",
+          seed: generationInfo.seed ?? -1,
+          cfgScale: generationInfo.cfgScale ?? 0,
+          steps: generationInfo.steps ?? 0,
+        }
+      : null;
   },
 };

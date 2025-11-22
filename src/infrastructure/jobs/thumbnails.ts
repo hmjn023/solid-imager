@@ -2,11 +2,15 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import { getConfig } from "~/infrastructure/api-clients/config";
-import { selectMediaBySourceId } from "~/infrastructure/db/queries/media";
+import {
+  selectMediaById,
+  selectMediaBySourceId,
+} from "~/infrastructure/db/queries/media";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import type { Media } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,
+  type Job,
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 
@@ -82,9 +86,30 @@ export async function deleteThumbnail(
     await fs.unlink(thumbnailPath);
   } catch (error: unknown) {
     // ファイルが存在しない場合、このコンテキストではエラーではありません。
-    if (error.code !== "ENOENT") {
+    if ((error as { code?: string }).code !== "ENOENT") {
       throw error;
     }
+  }
+}
+
+/**
+ * Processes a single media job (thumbnail generation, metadata extraction).
+ * @param {Job} job - The job to process.
+ * @param {string} mediaSourceId - The ID of the media source.
+ */
+export async function processMediaJob(
+  job: Job,
+  mediaSourceId: string
+): Promise<void> {
+  if (job.type !== "thumbnail") {
+    return;
+  }
+
+  const media = await selectMediaById(job.mediaId);
+  if (media) {
+    await generateThumbnail(media, job.sourcePath, mediaSourceId);
+    const mediaPath = path.join(job.sourcePath, media.filePath);
+    await ImageProcessor.extractMetadata(mediaPath, media.id);
   }
 }
 
@@ -109,22 +134,12 @@ export async function generateThumbnailsForSource(
 
   const jobs = mediaItems.map((media) => ({
     mediaId: media.id,
-    sourcePath: source.connectionInfo?.path,
+    sourcePath: (source.connectionInfo as { path: string }).path,
     type: "thumbnail" as const,
   }));
 
   addJobsToQueue(mediaSourceId, jobs);
-  startJobQueue(mediaSourceId, async (job) => {
-    if (job.type !== "thumbnail") {
-      return;
-    }
-    const media = mediaItems.find((m) => m.id === job.mediaId);
-    if (media) {
-      await generateThumbnail(media, job.sourcePath, mediaSourceId);
-      const mediaPath = path.join(job.sourcePath, media.filePath);
-      await ImageProcessor.extractMetadata(mediaPath, media.id);
-    }
-  });
+  startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
 
   return jobs.length;
 }

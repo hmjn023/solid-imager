@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { getMediaTags } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 import { NotFoundError } from "~/infrastructure/db/errors";
 
 // パスパラメータのスキーマ
@@ -54,7 +54,7 @@ export async function GET({ params }: APIEvent) {
     const parsedParams = MediaParamsSchema.parse(params);
     const { mediaSourceId, mediaId } = parsedParams;
 
-    const tags = await getMediaTags(mediaSourceId, mediaId);
+    const tags = await MediaService.getMediaTags(mediaSourceId, mediaId);
     return new Response(JSON.stringify(tags), {
       status: 200,
       headers: { "Content-Type": "application/json" },

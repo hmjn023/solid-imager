@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
+import { MediaService } from "~/application/services/media-service";
 import type { UUID } from "~/domain/shared/schemas";
-import { searchMedia } from "~/infrastructure/api-clients/media";
 
 /**
  * @swagger
@@ -87,5 +87,24 @@ export async function GET({ params, request }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
   const url = new URL(request.url);
   const queryParams = Object.fromEntries(url.searchParams.entries());
-  return await searchMedia(mediaSourceId, queryParams);
+
+  try {
+    const result = await MediaService.searchMedia(mediaSourceId, queryParams);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    // Basic error handling, could be improved with a middleware or shared error handler
+    if (error instanceof Error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400, // Or 500 depending on error
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

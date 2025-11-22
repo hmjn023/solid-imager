@@ -1,13 +1,10 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import {
-  addMedia,
-  getMedia,
-  updateMedia,
-} from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
@@ -19,7 +16,7 @@ describe("updateMedia Integration", () => {
     mediaSourceId: testSourceId,
     filePath: `/test/path/initial_image-${Date.now()}.png`,
     fileName: "initial_image.png",
-    size: 1024,
+    fileSize: 1024,
     mediaType: "image" as const,
     width: 800,
     height: 600,
@@ -42,7 +39,7 @@ describe("updateMedia Integration", () => {
       })
       .onConflictDoNothing();
     // データベースに初期メディアエントリを追加します。
-    const addedMedia = await addMedia(initialMediaData);
+    const addedMedia = await MediaRepository.create(initialMediaData);
     testMediaId = addedMedia.id;
   });
 
@@ -60,7 +57,11 @@ describe("updateMedia Integration", () => {
       width: 1200,
     };
 
-    const updatedMedia = await updateMedia(testSourceId, testMediaId, updates);
+    const updatedMedia = await MediaService.updateMedia(
+      testSourceId,
+      testMediaId,
+      updates
+    );
 
     expect(updatedMedia).toBeDefined();
     expect(updatedMedia.id).toBe(testMediaId);
@@ -70,7 +71,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia.modifiedAt).toBeInstanceOf(Date);
 
     // 変更がデータベースに永続化されていることを確認します。
-    const mediaInDb = await getMedia(testSourceId, testMediaId);
+    const mediaInDb = await MediaService.getMedia(testSourceId, testMediaId);
     expect(mediaInDb.fileName).toBe(updates.fileName);
     expect(mediaInDb.description).toBe(updates.description);
     expect(mediaInDb.width).toBe(updates.width);
@@ -80,7 +81,7 @@ describe("updateMedia Integration", () => {
     const nonExistentId = "a0000000-0000-4000-8000-000000000000";
     const updates = { fileName: "non_existent.png" };
     await expect(
-      updateMedia(testSourceId, nonExistentId, updates)
+      MediaService.updateMedia(testSourceId, nonExistentId, updates)
     ).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
   });
 
@@ -88,7 +89,7 @@ describe("updateMedia Integration", () => {
     const invalidId = "invalid-uuid";
     const updates = { fileName: "test.png" };
     await expect(
-      updateMedia(testSourceId, invalidId, updates)
+      MediaService.updateMedia(testSourceId, invalidId, updates)
     ).rejects.toBeInstanceOf(ZodError);
   });
 
@@ -96,14 +97,14 @@ describe("updateMedia Integration", () => {
     const invalidSourceId = "invalid-uuid";
     const updates = { fileName: "test.png" };
     await expect(
-      updateMedia(invalidSourceId, testMediaId, updates)
+      MediaService.updateMedia(invalidSourceId, testMediaId, updates)
     ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for invalid update data", async () => {
     const invalidUpdates = { width: -100 }; // 無効なフィールド
     await expect(
-      updateMedia(testSourceId, testMediaId, invalidUpdates as any)
+      MediaService.updateMedia(testSourceId, testMediaId, invalidUpdates as any)
     ).rejects.toBeInstanceOf(ZodError);
   });
 });

@@ -182,9 +182,10 @@ export default function Search() {
                 )}
                 onChange={(value) => {
                   // The Select component passes the entire object, not just the id
-                  const id = typeof value === "object" && value !== null && "id" in value 
-                    ? (value as MediaSource).id 
-                    : "";
+                  const id =
+                    typeof value === "object" && value !== null && "id" in value
+                      ? (value as MediaSource).id
+                      : "";
                   setSelectedSource(id);
                 }}
                 options={sources() || []}
@@ -196,7 +197,9 @@ export default function Search() {
                 <SelectTrigger>
                   <SelectValue<MediaSource>>
                     {(state) => {
-                      const source = state.selectedOption() as MediaSource | undefined;
+                      const source = state.selectedOption() as
+                        | MediaSource
+                        | undefined;
                       return source?.name || "ソースを選択";
                     }}
                   </SelectValue>

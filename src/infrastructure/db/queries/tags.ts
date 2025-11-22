@@ -216,9 +216,12 @@ export const selectMediaTagsByMediaId = async (
       .select({
         id: tags.id,
         name: tags.name,
+        description: tags.description,
         attribute: tags.attribute,
         color: tags.color,
         source: tags.source,
+        createdAt: tags.createdAt,
+        updatedAt: tags.updatedAt,
         type: mediaTags.tagType,
       })
       .from(mediaTags)

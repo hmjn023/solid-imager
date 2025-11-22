@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { addMedia, getMedia } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
@@ -14,7 +15,7 @@ describe("getMedia Integration", () => {
     mediaSourceId,
     filePath: `/test/path/image-${Date.now()}.png`,
     fileName: "test_image.png",
-    size: 1024,
+    fileSize: 1024,
     mediaType: "image",
     width: 800,
     height: 600,
@@ -36,7 +37,7 @@ describe("getMedia Integration", () => {
       })
       .onConflictDoNothing();
     // getMediaをテストするために、データベースにメディアエントリを追加します。
-    const addedMedia = await addMedia(newMediaData);
+    const addedMedia = await MediaRepository.create(newMediaData);
     testMediaId = addedMedia.id;
   });
 
@@ -45,7 +46,7 @@ describe("getMedia Integration", () => {
   });
 
   it("should successfully retrieve media from the database", async () => {
-    const result = await getMedia(mediaSourceId, testMediaId);
+    const result = await MediaService.getMedia(mediaSourceId, testMediaId);
     expect(result).toBeDefined();
     expect(result.id).toBe(testMediaId);
     expect(result.fileName).toBe(newMediaData.fileName);
@@ -53,22 +54,22 @@ describe("getMedia Integration", () => {
 
   it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {
     const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
-    await expect(getMedia(mediaSourceId, nonExistentMediaId)).rejects.toThrow(
-      MEDIA_NOT_FOUND_PATTERN
-    );
+    await expect(
+      MediaService.getMedia(mediaSourceId, nonExistentMediaId)
+    ).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
   });
 
   it("should throw a ZodError for an invalid mediaId format", async () => {
     const invalidMediaId = "invalid-uuid";
     await expect(
-      getMedia(mediaSourceId, invalidMediaId)
+      MediaService.getMedia(mediaSourceId, invalidMediaId)
     ).rejects.toBeInstanceOf(ZodError);
   });
 
   it("should throw a ZodError for an invalid mediaSourceId format", async () => {
     const invalidSourceId = "invalid-uuid";
-    await expect(getMedia(invalidSourceId, testMediaId)).rejects.toBeInstanceOf(
-      ZodError
-    );
+    await expect(
+      MediaService.getMedia(invalidSourceId, testMediaId)
+    ).rejects.toBeInstanceOf(ZodError);
   });
 });

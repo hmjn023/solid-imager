@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import type { UUID } from "~/domain/shared/schemas";
-import { getMediaDetails } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
@@ -58,10 +57,7 @@ export async function GET({ params }: APIEvent) {
   const { mediaSourceId, mediaId } = parsedParams.data;
 
   try {
-    const details = await getMediaDetails(
-      mediaSourceId as UUID,
-      mediaId as UUID
-    );
+    const details = await MediaService.getMediaDetails(mediaSourceId, mediaId);
     return new Response(JSON.stringify(details), {
       status: 200,
       headers: { "Content-Type": "application/json" },

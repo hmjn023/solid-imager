@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
-import { uploadMedia } from "~/infrastructure/api-clients/media";
+import { MediaService } from "~/application/services/media-service";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
@@ -57,7 +57,16 @@ export async function POST({ params, request }: APIEvent) {
 
   try {
     const formData = await request.formData();
-    const result = await uploadMedia(mediaSourceId, formData);
+    const file = formData.get("file");
+    if (!(file && file instanceof File)) {
+      throw new Error("No file provided");
+    }
+
+    const result = await MediaService.uploadMedia(
+      mediaSourceId,
+      file,
+      formData
+    );
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
