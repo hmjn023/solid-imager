@@ -22,7 +22,11 @@
 │
 ├── infrastructure/      # 外部統合、I/O操作
 │   ├── storage/         # ストレージドライバー (ローカル、SFTP、S3)
-│   ├── api-clients/     # APIクライアント関数
+│   ├── api-clients/     # フロントエンド用APIクライアント層
+│   │   ├── shared/      # 共通ユーティリティ (base-client, types, endpoints)
+│   │   ├── sources-api.ts
+│   │   ├── media-api.ts
+│   │   └── ...
 │   ├── jobs/            # バックグラウンドジョブ処理
 │   └── db/              # データベースアクセスレイヤー
 │
@@ -139,7 +143,7 @@ export async function processMedia(sourceId: string, filePath: string) {
 
 **ファイル** (合計21):
 - `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
-- `api-clients/` - APIクライアント関数 (media.ts, sources.ts, categories.tsなど)
+- `api-clients/` - フロントエンド用APIクライアント (sources-api.ts, media-api.tsなど)
 - `jobs/` - バックグラウンドジョブ処理 (job-queue.ts, thumbnail-jobs.ts, thumbnails.ts)
 - `db/` - データベースアクセス (index.ts, schema.ts)
 
@@ -185,6 +189,17 @@ export class LocalDriver implements MediaSourceDriver {
   }
 }
 ```
+
+#### APIクライアント層 (`src/infrastructure/api-clients/`)
+
+フロントエンドからバックエンドAPIへの通信を担当します。
+
+- **型安全性**: Zodスキーマを使用してAPIレスポンスをバリデーションし、TypeScriptの型を保証します。
+- **統一されたエラーハンドリング**: `shared/base-client.ts` により、ネットワークエラーやAPIエラーを統一的に処理します。
+- **SSR対応**: サーバーサイドレンダリング時とクライアントサイドレンダリング時で適切なURL解決を行います。
+- **構成**:
+    - `shared/`: 共通ユーティリティ (`base-client.ts`, `types.ts`, `endpoints.ts`)
+    - `*_api.ts`: 各ドメインごとのAPIクライアント関数群
 
 ### 4. プレゼンテーションレイヤー (`src/presentation/`)
 
