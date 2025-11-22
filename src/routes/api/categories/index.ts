@@ -1,8 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
-import {
-  createCategory,
-  getCategories,
-} from "~/infrastructure/api-clients/categories";
+import { ZodError } from "zod";
+import { CategoryService } from "~/application/services/category-service";
+import { newCategorySchema } from "~/domain/categories/schemas";
 
 /**
  * @swagger
@@ -25,8 +24,18 @@ import {
  *         description: Internal server error.
  */
 export async function GET() {
-  const categories = await getCategories();
-  return categories;
+  try {
+    const categories = await CategoryService.getAllCategories();
+    return new Response(JSON.stringify(categories), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**
@@ -56,7 +65,24 @@ export async function GET() {
  *         description: Internal server error.
  */
 export async function POST({ request }: APIEvent) {
-  const data = await request.json();
-  const newCategory = await createCategory(data);
-  return newCategory;
+  try {
+    const data = await request.json();
+    const validatedData = newCategorySchema.parse(data);
+    const newCategory = await CategoryService.createCategory(validatedData);
+    return new Response(JSON.stringify(newCategory), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
