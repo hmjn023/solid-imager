@@ -6,7 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type { MediaSourceInfo } from "~/domain/sources/types";
+import type { MediaSourceInfo } from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceCard component.

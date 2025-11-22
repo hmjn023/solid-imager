@@ -3,7 +3,7 @@ import { Portal } from "solid-js/web";
 import type {
   MediaSourceInfo,
   MediaSourceTypeEnum,
-} from "~/domain/sources/types";
+} from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceFormModal component.

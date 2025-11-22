@@ -98,7 +98,7 @@ export async function POST({ request }: APIEvent) {
       );
     }
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify(createdSource), {
       status: 201,
       headers: {
         "Content-Type": "application/json",

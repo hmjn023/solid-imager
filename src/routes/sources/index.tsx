@@ -45,9 +45,8 @@ export default function Sources() {
       }
       await refetch();
       setShowFormModal(false);
-    } catch (_error) {
-      // You might want to show an error to the user here
-    }
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
+    } catch (_error) {}
   };
 
   const handleDeleteSource = (source: MediaSourceInfo) => {
@@ -61,9 +60,8 @@ export default function Sources() {
       await refetch();
       setShowDeleteModal(false);
       setDeletingSource(null);
-    } catch (_error) {
-      // You might want to show an error to the user here
-    }
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
+    } catch (_error) {}
   };
 
   return (
