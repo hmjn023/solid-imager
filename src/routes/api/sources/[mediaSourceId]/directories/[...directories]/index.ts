@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import type { UUID } from "~/domain/shared/schemas";
-import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
+import { DirectoryService } from "~/application/services/directory-service";
 
 /**
  * @swagger
@@ -43,7 +43,7 @@ import { getDirectoryListing } from "~/infrastructure/api-clients/directories";
  */
 export async function GET({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const directoriesPath = params.directories.join("/"); // パスを再構築します。
-  const listing = await getDirectoryListing(mediaSourceId, directoriesPath);
+  const directoriesPath = params.directories as string || "";
+  const listing = await DirectoryService.listMediaInSubdirectory(mediaSourceId, directoriesPath);
   return listing;
 }
