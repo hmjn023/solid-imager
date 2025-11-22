@@ -1,24 +1,13 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { z } from "zod";
-import {
-  deleteCharacter,
-  getCharacterById,
-  updateCharacter,
-} from "~/infrastructure/api-clients/characters";
+import { ZodError, z } from "zod";
+import { CharacterService } from "~/application/services/character-service";
+import { updateCharacterSchema } from "~/domain/characters/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
   id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
 export type IdParam = z.infer<typeof IdParamSchema>;
-
-// PUTリクエストボディのスキーマ
-const UpdateCharacterBodySchema = z.object({
-  name: z.string().optional(),
-  ipId: z.number().optional(),
-  description: z.string().optional(),
-});
-export type UpdateCharacterBody = z.infer<typeof UpdateCharacterBodySchema>;
 
 /**
  * @swagger
@@ -50,16 +39,26 @@ export type UpdateCharacterBody = z.infer<typeof UpdateCharacterBodySchema>;
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+    const character = await CharacterService.getCharacterDetails(id);
+    return new Response(JSON.stringify(character), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const character = await getCharacterById(id);
-  return character;
 }
 
 /**
@@ -98,31 +97,33 @@ export async function GET({ params }: APIEvent) {
  *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+
+    const body = await request.json();
+    const validatedBody = updateCharacterSchema.parse(body);
+
+    const updatedCharacter = await CharacterService.updateCharacter(
+      id,
+      validatedBody
+    );
+    return new Response(JSON.stringify(updatedCharacter), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-
-  const body = await request.json();
-  const parsedBody = UpdateCharacterBodySchema.safeParse(body);
-  if (!parsedBody.success) {
-    return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  const { name, ipId, description } = parsedBody.data;
-
-  const updatedCharacter = await updateCharacter(id, {
-    name,
-    ipId,
-    description,
-  });
-  return updatedCharacter;
 }
 
 /**
@@ -151,14 +152,24 @@ export async function PUT({ params, request }: APIEvent) {
  *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+    const result = await CharacterService.deleteCharacter(id);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const result = await deleteCharacter(id);
-  return result;
 }

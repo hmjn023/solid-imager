@@ -7,9 +7,13 @@
 
 import { z } from "zod";
 
-export const characterDataSchema = z.object({
-  name: z.string(),
+export const newCharacterSchema = z.object({
+  name: z.string().min(1),
   ipId: z.number().int().optional(),
   description: z.string().optional(),
 });
-export type CharacterData = z.infer<typeof characterDataSchema>;
+
+export const updateCharacterSchema = newCharacterSchema.partial();
+
+export type NewCharacter = z.infer<typeof newCharacterSchema>;
+export type UpdateCharacter = z.infer<typeof updateCharacterSchema>;

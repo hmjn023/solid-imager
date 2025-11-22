@@ -1,8 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
-import {
-  createCharacter,
-  getCharacters,
-} from "~/infrastructure/api-clients/characters";
+import { ZodError } from "zod";
+import { CharacterService } from "~/application/services/character-service";
+import { newCharacterSchema } from "~/domain/characters/schemas";
 
 /**
  * @swagger
@@ -25,8 +24,18 @@ import {
  *         description: Internal server error.
  */
 export async function GET() {
-  const characters = await getCharacters();
-  return characters;
+  try {
+    const characters = await CharacterService.getAllCharacters();
+    return new Response(JSON.stringify(characters), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**
@@ -56,7 +65,24 @@ export async function GET() {
  *         description: Internal server error.
  */
 export async function POST({ request }: APIEvent) {
-  const data = await request.json();
-  const newCharacter = await createCharacter(data);
-  return newCharacter;
+  try {
+    const data = await request.json();
+    const validatedData = newCharacterSchema.parse(data);
+    const newCharacter = await CharacterService.createCharacter(validatedData);
+    return new Response(JSON.stringify(newCharacter), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
