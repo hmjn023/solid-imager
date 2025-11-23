@@ -1,64 +1,69 @@
-import { describe, expect, it } from "vitest";
-import type { Ip } from "~/infrastructure/db/schema";
+import { describe, expect, it, vi } from "vitest";
+import { IpService } from "~/application/services/ip-service";
+import { GET, POST } from "~/routes/api/ips/index";
+
+// Mock the IpService
+vi.mock("~/application/services/ip-service", () => ({
+  IpService: {
+    getAllIps: vi.fn(),
+    createIp: vi.fn(),
+    deleteIp: vi.fn(),
+  },
+}));
 
 describe("GET /api/ips", () => {
-  it("should return an array of IPs", () => {
-    // TODO: Implement after getIps is available
-    // const result = await GET();
+  it("should return an array of IPs", async () => {
+    (IpService.getAllIps as any).mockResolvedValue([]);
 
-    // Mock response for contract testing
-    const result: Ip[] = [];
-
-    expect(result).toBeInstanceOf(Array);
-  });
-
-  it("should return empty array when no IPs exist", () => {
-    // TODO: Test empty state
-    const result: Ip[] = [];
-    expect(result).toEqual([]);
-  });
-
-  it("should handle query parameters correctly", () => {
-    // TODO: Test filtering, pagination, sorting if supported
-    // const result = await GET({ limit: 10 });
-    // expect(result.length).toBeLessThanOrEqual(10);
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toBeInstanceOf(Array);
   });
 });
 
 describe("POST /api/ips", () => {
-  it("should create and return new IP", () => {
+  it("should create and return new IP", async () => {
     const newData = {
-      // TODO: Fill with valid data matching schema
       name: "Test IP",
       description: "Test description",
     };
 
-    // TODO: Implement after POST function is available
-    // const result = await POST({ request: new Request('', { method: 'POST', body: JSON.stringify(newData) }) });
-    const result: Ip = {
+    const mockCreatedIp = {
       id: 1,
       ...newData,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    expect(result).toBeDefined();
-    expect(result.id).toBeTypeOf("number");
-    expect(result.name).toBe(newData.name);
+    (IpService.createIp as any).mockResolvedValue(mockCreatedIp);
+
+    const request = new Request("http://localhost/api/ips", {
+      method: "POST",
+      body: JSON.stringify(newData),
+    });
+
+    const response = await POST({ request } as any);
+    expect(response.status).toBe(201);
+
+    const data = await response.json();
+    expect(data).toBeDefined();
+    expect(data.name).toBe(newData.name);
+    expect(data.id).toBeDefined();
   });
 
-  it("should throw error for invalid data", () => {
-    // TODO: Test validation
-    const _invalidData = {
-      // Missing required fields
+  it("should return 400 for invalid data", async () => {
+    const invalidData = {
+      // Missing name
+      description: "Invalid IP",
     };
 
-    // expect(() => validateIpData(invalidData)).toThrow();
-  });
+    const request = new Request("http://localhost/api/ips", {
+      method: "POST",
+      body: JSON.stringify(invalidData),
+    });
 
-  it("should reject duplicate IP names", () => {
-    // TODO: Test unique constraint
-    // const data = { name: "Duplicate Name" };
-    // await expect(POST(...)).rejects.toThrow('already exists');
+    const response = await POST({ request } as any);
+    expect(response.status).toBe(400);
   });
 });

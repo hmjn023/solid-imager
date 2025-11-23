@@ -1,64 +1,69 @@
-import { describe, expect, it } from "vitest";
-import type { Character } from "~/infrastructure/db/schema";
+import { describe, expect, it, vi } from "vitest";
+import { CharacterService } from "~/application/services/character-service";
+import { GET, POST } from "~/routes/api/charactors/index";
+
+// Mock the CharacterService
+vi.mock("~/application/services/character-service", () => ({
+  CharacterService: {
+    getAllCharacters: vi.fn(),
+    createCharacter: vi.fn(),
+    deleteCharacter: vi.fn(),
+  },
+}));
 
 describe("GET /api/charactors", () => {
-  it("should return an array of characters", () => {
-    // TODO: Implement after getCharacters is available
-    // const result = await GET();
+  it("should return an array of characters", async () => {
+    (CharacterService.getAllCharacters as any).mockResolvedValue([]);
 
-    // Mock response for contract testing
-    const result: Character[] = [];
-
-    expect(result).toBeInstanceOf(Array);
-  });
-
-  it("should return empty array when no characters exist", () => {
-    // TODO: Test empty state
-    const result: Character[] = [];
-    expect(result).toEqual([]);
-  });
-
-  it("should handle query parameters correctly", () => {
-    // TODO: Test filtering, pagination, sorting if supported
-    // const result = await GET({ limit: 10 });
-    // expect(result.length).toBeLessThanOrEqual(10);
+    const response = await GET();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toBeInstanceOf(Array);
   });
 });
 
 describe("POST /api/charactors", () => {
-  it("should create and return new character", () => {
+  it("should create and return new character", async () => {
     const newData = {
-      // TODO: Fill with valid data matching schema
       name: "Test Character",
       description: "Test description",
     };
 
-    // TODO: Implement after POST function is available
-    // const result = await POST({ request: new Request('', { method: 'POST', body: JSON.stringify(newData) }) });
-    const result: Character = {
+    const mockCreatedCharacter = {
       id: 1,
       ...newData,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
-    expect(result).toBeDefined();
-    expect(result.id).toBeTypeOf("number");
-    expect(result.name).toBe(newData.name);
+    (CharacterService.createCharacter as any).mockResolvedValue(mockCreatedCharacter);
+
+    const request = new Request("http://localhost/api/charactors", {
+      method: "POST",
+      body: JSON.stringify(newData),
+    });
+
+    const response = await POST({ request } as any);
+    expect(response.status).toBe(201);
+
+    const data = await response.json();
+    expect(data).toBeDefined();
+    expect(data.name).toBe(newData.name);
+    expect(data.id).toBeDefined();
   });
 
-  it("should throw error for invalid data", () => {
-    // TODO: Test validation
-    const _invalidData = {
-      // Missing required fields
+  it("should return 400 for invalid data", async () => {
+    const invalidData = {
+      // Missing name
+      description: "Invalid character",
     };
 
-    // expect(() => validateCharacterData(invalidData)).toThrow();
-  });
+    const request = new Request("http://localhost/api/charactors", {
+      method: "POST",
+      body: JSON.stringify(invalidData),
+    });
 
-  it("should reject duplicate character names", () => {
-    // TODO: Test unique constraint
-    // const data = { name: "Duplicate Name" };
-    // await expect(POST(...)).rejects.toThrow('already exists');
+    const response = await POST({ request } as any);
+    expect(response.status).toBe(400);
   });
 });
