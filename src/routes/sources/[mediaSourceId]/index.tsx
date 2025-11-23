@@ -139,15 +139,30 @@ export default function MediaListPage() {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
 
-      // SSE Subscription
+      // SSE Subscription for real-time updates
       const eventSource = new EventSource(`/api/sse/${params.mediaSourceId}`);
 
-      eventSource.onopen = () => {
-        // SSE Connected
-      };
-
+      // Listen for thumbnail generation completion
+      // This is the main event that triggers UI updates for new media
       eventSource.addEventListener("thumbnail-generated", (_event) => {
         refetch();
+      });
+
+      // Listen for new media files added to the directory
+      // Note: We don't refetch here because thumbnails aren't ready yet
+      // The thumbnail-generated event will trigger the refetch
+      eventSource.addEventListener("media-added", (_event) => {
+        // Thumbnail generation is queued, will refetch when thumbnail-generated fires
+      });
+
+      // Listen for media files deleted from the directory
+      eventSource.addEventListener("media-deleted", (_event) => {
+        refetch();
+      });
+
+      // Listen for media files changed in the directory
+      eventSource.addEventListener("media-changed", (_event) => {
+        // Thumbnail regeneration is queued, will refetch when thumbnail-generated fires
       });
 
       eventSource.onerror = (_err) => {
@@ -192,7 +207,7 @@ export default function MediaListPage() {
                   class="h-full w-full object-cover"
                   height={item.height}
                   loading="lazy"
-                  src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail`}
+                  src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
                   width={item.width}
                 />
               </div>
