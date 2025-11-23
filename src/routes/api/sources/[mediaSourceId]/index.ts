@@ -211,6 +211,19 @@ export async function DELETE({ params }: APIEvent) {
     // deleteSource returns an array, we want the first item
     const deletedSource = result[0];
 
+    // Stop file system monitoring
+    import("~/infrastructure/jobs/file-watcher-service")
+      .then((module) => {
+        module.FileWatcherService.stopMonitoring(mediaSourceId).catch(
+          (_error) => {
+            // Error already logged in stopMonitoring
+          }
+        );
+      })
+      .catch((_error) => {
+        // Error already logged in then block
+      });
+
     return new Response(
       JSON.stringify({ success: true, result: deletedSource }),
       {

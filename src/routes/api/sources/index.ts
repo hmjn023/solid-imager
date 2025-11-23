@@ -96,6 +96,19 @@ export async function POST({ request }: APIEvent) {
         createdSource.id,
         (createdSource.connectionInfo as { path: string }).path
       );
+
+      // Start file system monitoring
+      import("~/infrastructure/jobs/file-watcher-service")
+        .then((module) => {
+          module.FileWatcherService.startMonitoring(createdSource.id).catch(
+            (_error) => {
+              // Error already logged in startMonitoring
+            }
+          );
+        })
+        .catch((_error) => {
+          // Error already logged in then block
+        });
     }
 
     return new Response(JSON.stringify(createdSource), {
