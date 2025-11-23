@@ -1,8 +1,11 @@
 import {
   deleteIp,
+  deleteMediaIp,
   insertIp,
+  insertMediaIp,
   selectIpById,
   selectIps,
+  selectIpsByMediaId,
   updateIp,
 } from "~/infrastructure/db/queries/ips";
 
@@ -66,5 +69,34 @@ export const IpService = {
    */
   async deleteIp(ipId: number) {
     return await deleteIp(ipId);
+  },
+
+  /**
+   * Retrieves IPs associated with a specific media.
+   * @param {string} mediaId - The ID of the media.
+   * @returns {Promise<any>} A list of IPs associated with the media.
+   */
+  async getIpsForMedia(mediaId: string) {
+    return await selectIpsByMediaId(mediaId);
+  },
+
+  /**
+   * Adds an IP to a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} ipId - The ID of the IP to add.
+   * @returns {Promise<any>} The created association.
+   */
+  async addIpToMedia(mediaId: string, ipId: number) {
+    return await insertMediaIp(mediaId, ipId);
+  },
+
+  /**
+   * Removes an IP from a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} ipId - The ID of the IP to remove.
+   * @returns {Promise<any>} Confirmation of removal.
+   */
+  async removeIpFromMedia(mediaId: string, ipId: number) {
+    return await deleteMediaIp(mediaId, ipId);
   },
 };

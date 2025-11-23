@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { characters } from "~/infrastructure/db/schema";
+import { characters, mediaCharacters } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 /**
@@ -164,3 +164,73 @@ export const deleteCharacter = async (characterId: number) => {
     });
   }
 };
+
+export async function selectCharactersByMediaId(mediaId: string) {
+  try {
+    const result = await db
+      .select({
+        id: characters.id,
+        name: characters.name,
+        ipId: characters.ipId,
+        description: characters.description,
+        source: characters.source,
+        aliases: characters.aliases,
+        createdAt: characters.createdAt,
+        updatedAt: characters.updatedAt,
+      })
+      .from(characters)
+      .innerJoin(
+        mediaCharacters,
+        eq(characters.id, mediaCharacters.characterId)
+      )
+      .where(eq(mediaCharacters.mediaId, mediaId));
+    return result;
+  } catch (_error) {
+    throw new UnknownDbError({
+      message: "Failed to select characters by media id",
+    });
+  }
+}
+
+export async function insertMediaCharacter(
+  mediaId: string,
+  characterId: number
+) {
+  try {
+    const result = await db
+      .insert(mediaCharacters)
+      .values({ mediaId, characterId })
+      .returning();
+    return result[0];
+  } catch (_error) {
+    throw new UnknownDbError({ message: "Failed to insert media character" });
+  }
+}
+
+export async function deleteMediaCharacter(
+  mediaId: string,
+  characterId: number
+) {
+  try {
+    const result = await db
+      .delete(mediaCharacters)
+      .where(
+        and(
+          eq(mediaCharacters.mediaId, mediaId),
+          eq(mediaCharacters.characterId, characterId)
+        )
+      )
+      .returning();
+    if (result.length === 0) {
+      throw new NotFoundError({
+        message: `MediaCharacter with mediaId ${mediaId} and characterId ${characterId} not found`,
+      });
+    }
+    return result[0];
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({ message: "Failed to delete media character" });
+  }
+}

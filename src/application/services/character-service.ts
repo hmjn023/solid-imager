@@ -1,8 +1,11 @@
 import {
   deleteCharacter,
+  deleteMediaCharacter,
   insertCharacter,
+  insertMediaCharacter,
   selectCharacterById,
   selectCharacters,
+  selectCharactersByMediaId,
   updateCharacter,
 } from "~/infrastructure/db/queries/characters";
 
@@ -76,5 +79,34 @@ export const CharacterService = {
    */
   async deleteCharacter(characterId: number) {
     return await deleteCharacter(characterId);
+  },
+
+  /**
+   * Retrieves characters associated with a specific media.
+   * @param {string} mediaId - The ID of the media.
+   * @returns {Promise<any>} A list of characters associated with the media.
+   */
+  async getCharactersForMedia(mediaId: string) {
+    return await selectCharactersByMediaId(mediaId);
+  },
+
+  /**
+   * Adds a character to a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} characterId - The ID of the character to add.
+   * @returns {Promise<any>} The created association.
+   */
+  async addCharacterToMedia(mediaId: string, characterId: number) {
+    return await insertMediaCharacter(mediaId, characterId);
+  },
+
+  /**
+   * Removes a character from a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} characterId - The ID of the character to remove.
+   * @returns {Promise<any>} Confirmation of removal.
+   */
+  async removeCharacterFromMedia(mediaId: string, characterId: number) {
+    return await deleteMediaCharacter(mediaId, characterId);
   },
 };

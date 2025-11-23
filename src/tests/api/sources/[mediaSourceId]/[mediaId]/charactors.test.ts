@@ -1,104 +1,100 @@
-import { describe, expect, it } from "vitest";
-import type { UUID } from "~/domain/shared/schemas";
+import { describe, expect, it, vi } from "vitest";
+import { CharacterService } from "~/application/services/character-service";
+import {
+  DELETE,
+  GET,
+  POST,
+} from "~/routes/api/sources/[mediaSourceId]/[mediaId]/charactors";
 
-describe("GET /api/sources/:mediaSourceId/:mediaId/charactors", () => {
-  it("should return array of characters for media", () => {
-    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
-    const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const HTTP_BAD_REQUEST = 400;
 
-    // TODO: Implement after GET function is available
-    // const result = await GET({ params: { mediaSourceId, mediaId } });
-    const result: number[] = [];
+// Mock the CharacterService
+vi.mock("~/application/services/character-service", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking a PascalCase export
+  CharacterService: {
+    getCharactersForMedia: vi.fn(),
+    addCharacterToMedia: vi.fn(),
+    removeCharacterFromMedia: vi.fn(),
+  },
+}));
 
-    expect(result).toBeInstanceOf(Array);
+const mockParams = {
+  mediaSourceId: "123e4567-e89b-12d3-a456-426614174000",
+  mediaId: "123e4567-e89b-12d3-a456-426614174001",
+};
+
+describe("GET /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+  it("should return an array of characters", async () => {
+    (CharacterService.getCharactersForMedia as any).mockResolvedValue([]);
+
+    const response = await GET({ params: mockParams } as any);
+    expect(response.status).toBe(HTTP_OK);
+    const data = await response.json();
+    expect(data).toBeInstanceOf(Array);
   });
 
-  it("should return empty array when media has no characters", () => {
-    // TODO: Test empty state
-    const result: number[] = [];
-    expect(result).toEqual([]);
-  });
-
-  it("should throw error for invalid UUID format", () => {
-    // TODO: Test validation
-    const _invalidId = "invalid-uuid";
-
-    // await expect(GET({ params: { mediaSourceId: invalidId, mediaId: invalidId } })).rejects.toThrow();
-  });
-});
-
-describe("POST /api/sources/:mediaSourceId/:mediaId/charactors", () => {
-  it("should add character to media", () => {
-    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
-    const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
-    const _characterId = 1;
-
-    // TODO: Implement after POST function is available
-    // const result = await POST({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'POST', body: JSON.stringify({ characterId }) }) });
-
-    // expect(result.success).toBe(true);
-  });
-
-  it("should throw error for invalid data", () => {
-    // TODO: Test validation
-    const _invalidData = {
-      // Missing required fields
-    };
-
-    // expect(() => validateData(invalidData)).toThrow();
-  });
-
-  it("should reject duplicate character assignment", () => {
-    // TODO: Test unique constraint
-    // const data = { characterId: 1 };
-    // await expect(POST(...)).rejects.toThrow('already assigned');
+  it("should return 400 for invalid params", async () => {
+    const response = await GET({ params: {} } as any);
+    expect(response.status).toBe(HTTP_BAD_REQUEST);
   });
 });
 
-describe("PUT /api/sources/:mediaSourceId/:mediaId/charactors", () => {
-  it("should update character assignment", () => {
-    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
-    const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
+describe("POST /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+  it("should add character to media", async () => {
+    const mockCharacter = { id: 1, name: "Test Character" };
+    (CharacterService.addCharacterToMedia as any).mockResolvedValue(
+      mockCharacter
+    );
 
-    // TODO: Implement after PUT function is available
-    // const result = await PUT({ params: { mediaSourceId, mediaId }, request: ... });
+    const request = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({ characterId: 1 }),
+    });
 
-    // expect(result).toBeDefined();
+    const response = await POST({ params: mockParams, request } as any);
+    expect(response.status).toBe(HTTP_CREATED);
+    const data = await response.json();
+    expect(data).toEqual(mockCharacter);
   });
 
-  it("should throw error for non-existent character", () => {
-    // TODO: Test not found scenario
-    const _fakeCharacterId = 99_999;
+  it("should return 400 for invalid body", async () => {
+    const request = new Request("http://localhost", {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
 
-    // await expect(PUT(...)).rejects.toThrow('not found');
-  });
-
-  it("should throw error for invalid update data", () => {
-    // TODO: Test validation
-    // expect(() => validateUpdateData(invalidData)).toThrow();
+    const response = await POST({ params: mockParams, request } as any);
+    expect(response.status).toBe(HTTP_BAD_REQUEST);
   });
 });
 
-describe("DELETE /api/sources/:mediaSourceId/:mediaId/charactors", () => {
-  it("should remove character from media", () => {
-    const _mediaSourceId = "a0000000-0000-0000-0000-000000000000" as UUID;
-    const _mediaId = "b0000000-0000-0000-0000-000000000000" as UUID;
-    const _characterId = 1;
+describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+  it("should remove character from media", async () => {
+    const mockCharacter = { id: 1, name: "Test Character" };
+    (CharacterService.removeCharacterFromMedia as any).mockResolvedValue(
+      mockCharacter
+    );
 
-    // TODO: Implement after DELETE function is available
-    // const result = await DELETE({ params: { mediaSourceId, mediaId }, request: new Request('', { method: 'DELETE', body: JSON.stringify({ characterId }) }) });
+    const request = new Request("http://localhost", {
+      method: "DELETE",
+      body: JSON.stringify({ characterId: 1 }),
+    });
 
-    // expect(result.success).toBe(true);
+    const response = await DELETE({ params: mockParams, request } as any);
+    expect(response.status).toBe(HTTP_OK);
+    const data = await response.json();
+    expect(data).toEqual(mockCharacter);
   });
 
-  it("should throw error for non-existent assignment", () => {
-    // TODO: Test not found scenario
-    const _fakeCharacterId = 99_999;
+  it("should return 400 for invalid body", async () => {
+    const request = new Request("http://localhost", {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
 
-    // await expect(DELETE(...)).rejects.toThrow('not found');
-  });
-
-  it("should handle cascading deletes correctly", () => {
-    // TODO: Test related data cleanup
+    const response = await DELETE({ params: mockParams, request } as any);
+    expect(response.status).toBe(HTTP_BAD_REQUEST);
   });
 });

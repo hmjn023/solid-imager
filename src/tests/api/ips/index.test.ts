@@ -2,8 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { IpService } from "~/application/services/ip-service";
 import { GET, POST } from "~/routes/api/ips/index";
 
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const HTTP_BAD_REQUEST = 400;
+
 // Mock the IpService
 vi.mock("~/application/services/ip-service", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking a PascalCase export
   IpService: {
     getAllIps: vi.fn(),
     createIp: vi.fn(),
@@ -16,7 +21,7 @@ describe("GET /api/ips", () => {
     (IpService.getAllIps as any).mockResolvedValue([]);
 
     const response = await GET();
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(HTTP_OK);
     const data = await response.json();
     expect(data).toBeInstanceOf(Array);
   });
@@ -44,7 +49,7 @@ describe("POST /api/ips", () => {
     });
 
     const response = await POST({ request } as any);
-    expect(response.status).toBe(201);
+    expect(response.status).toBe(HTTP_CREATED);
 
     const data = await response.json();
     expect(data).toBeDefined();
@@ -64,6 +69,6 @@ describe("POST /api/ips", () => {
     });
 
     const response = await POST({ request } as any);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(HTTP_BAD_REQUEST);
   });
 });

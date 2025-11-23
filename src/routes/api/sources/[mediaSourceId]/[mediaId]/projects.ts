@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { CharacterService } from "~/application/services/character-service";
+import { ProjectService } from "~/application/services/project-service";
 import { NotFoundError } from "~/infrastructure/db/errors";
 
 const MediaParamsSchema = z.object({
@@ -8,19 +8,19 @@ const MediaParamsSchema = z.object({
   mediaId: z.string().uuid(),
 });
 
-const CharacterBodySchema = z.object({
-  characterId: z.number(),
+const ProjectBodySchema = z.object({
+  projectId: z.number(),
 });
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/projects:
  *   get:
- *     summary: Retrieve characters associated with a media
- *     description: Fetches a list of characters linked to a specific media file.
+ *     summary: Retrieve projects associated with a media
+ *     description: Fetches a list of projects linked to a specific media file.
  *     tags:
  *       - Media
- *       - Characters
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: mediaSourceId
@@ -38,7 +38,7 @@ const CharacterBodySchema = z.object({
  *         description: UUID of the media file.
  *     responses:
  *       200:
- *         description: A list of characters associated with the media.
+ *         description: A list of projects associated with the media.
  *       400:
  *         description: Invalid source ID or media ID supplied.
  *       404:
@@ -49,8 +49,8 @@ const CharacterBodySchema = z.object({
 export async function GET({ params }: APIEvent) {
   try {
     const { mediaId } = MediaParamsSchema.parse(params);
-    const characters = await CharacterService.getCharactersForMedia(mediaId);
-    return new Response(JSON.stringify(characters), {
+    const projects = await ProjectService.getProjectsForMedia(mediaId);
+    return new Response(JSON.stringify(projects), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -70,13 +70,13 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/projects:
  *   post:
- *     summary: Add a character to a media
- *     description: Associates a character with a specific media file.
+ *     summary: Add a project to a media
+ *     description: Associates a project with a specific media file.
  *     tags:
  *       - Media
- *       - Characters
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: mediaSourceId
@@ -99,11 +99,11 @@ export async function GET({ params }: APIEvent) {
  *           schema:
  *             type: object
  *             properties:
- *               characterId:
+ *               projectId:
  *                 type: integer
  *     responses:
  *       201:
- *         description: Character added to media.
+ *         description: Project added to media.
  *       400:
  *         description: Invalid data supplied.
  *       500:
@@ -113,12 +113,9 @@ export async function POST({ params, request }: APIEvent) {
   try {
     const { mediaId } = MediaParamsSchema.parse(params);
     const body = await request.json();
-    const { characterId } = CharacterBodySchema.parse(body);
+    const { projectId } = ProjectBodySchema.parse(body);
 
-    const result = await CharacterService.addCharacterToMedia(
-      mediaId,
-      characterId
-    );
+    const result = await ProjectService.addProjectToMedia(mediaId, projectId);
     return new Response(JSON.stringify(result), {
       status: 201,
       headers: { "Content-Type": "application/json" },
@@ -139,13 +136,13 @@ export async function POST({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/projects:
  *   delete:
- *     summary: Remove a character from a media
- *     description: Removes the association between a character and a specific media file.
+ *     summary: Remove a project from a media
+ *     description: Removes the association between a project and a specific media file.
  *     tags:
  *       - Media
- *       - Characters
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: mediaSourceId
@@ -168,11 +165,11 @@ export async function POST({ params, request }: APIEvent) {
  *           schema:
  *             type: object
  *             properties:
- *               characterId:
+ *               projectId:
  *                 type: integer
  *     responses:
  *       200:
- *         description: Character removed from media.
+ *         description: Project removed from media.
  *       400:
  *         description: Invalid data supplied.
  *       404:
@@ -184,11 +181,11 @@ export async function DELETE({ params, request }: APIEvent) {
   try {
     const { mediaId } = MediaParamsSchema.parse(params);
     const body = await request.json();
-    const { characterId } = CharacterBodySchema.parse(body);
+    const { projectId } = ProjectBodySchema.parse(body);
 
-    const result = await CharacterService.removeCharacterFromMedia(
+    const result = await ProjectService.removeProjectFromMedia(
       mediaId,
-      characterId
+      projectId
     );
     return new Response(JSON.stringify(result), {
       status: 200,

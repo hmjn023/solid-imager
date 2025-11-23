@@ -1,22 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
-import { IpService } from "~/application/services/ip-service";
+import { ProjectService } from "~/application/services/project-service";
 import {
   DELETE,
   GET,
   POST,
-} from "~/routes/api/sources/[mediaSourceId]/[mediaId]/ips";
+} from "~/routes/api/sources/[mediaSourceId]/[mediaId]/projects";
 
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
 const HTTP_BAD_REQUEST = 400;
 
-// Mock the IpService
-vi.mock("~/application/services/ip-service", () => ({
+// Mock the ProjectService
+vi.mock("~/application/services/project-service", () => ({
   // biome-ignore lint/style/useNamingConvention: Mocking a PascalCase export
-  IpService: {
-    getIpsForMedia: vi.fn(),
-    addIpToMedia: vi.fn(),
-    removeIpFromMedia: vi.fn(),
+  ProjectService: {
+    getProjectsForMedia: vi.fn(),
+    addProjectToMedia: vi.fn(),
+    removeProjectFromMedia: vi.fn(),
   },
 }));
 
@@ -25,9 +25,9 @@ const mockParams = {
   mediaId: "123e4567-e89b-12d3-a456-426614174001",
 };
 
-describe("GET /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
-  it("should return an array of IPs", async () => {
-    (IpService.getIpsForMedia as any).mockResolvedValue([]);
+describe("GET /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
+  it("should return an array of projects", async () => {
+    (ProjectService.getProjectsForMedia as any).mockResolvedValue([]);
 
     const response = await GET({ params: mockParams } as any);
     expect(response.status).toBe(HTTP_OK);
@@ -41,20 +41,20 @@ describe("GET /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
   });
 });
 
-describe("POST /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
-  it("should add IP to media", async () => {
-    const mockIp = { id: 1, name: "Test IP" };
-    (IpService.addIpToMedia as any).mockResolvedValue(mockIp);
+describe("POST /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
+  it("should add project to media", async () => {
+    const mockProject = { id: 1, name: "Test Project" };
+    (ProjectService.addProjectToMedia as any).mockResolvedValue(mockProject);
 
     const request = new Request("http://localhost", {
       method: "POST",
-      body: JSON.stringify({ ipId: 1 }),
+      body: JSON.stringify({ projectId: 1 }),
     });
 
     const response = await POST({ params: mockParams, request } as any);
     expect(response.status).toBe(HTTP_CREATED);
     const data = await response.json();
-    expect(data).toEqual(mockIp);
+    expect(data).toEqual(mockProject);
   });
 
   it("should return 400 for invalid body", async () => {
@@ -68,20 +68,22 @@ describe("POST /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
   });
 });
 
-describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
-  it("should remove IP from media", async () => {
-    const mockIp = { id: 1, name: "Test IP" };
-    (IpService.removeIpFromMedia as any).mockResolvedValue(mockIp);
+describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
+  it("should remove project from media", async () => {
+    const mockProject = { id: 1, name: "Test Project" };
+    (ProjectService.removeProjectFromMedia as any).mockResolvedValue(
+      mockProject
+    );
 
     const request = new Request("http://localhost", {
       method: "DELETE",
-      body: JSON.stringify({ ipId: 1 }),
+      body: JSON.stringify({ projectId: 1 }),
     });
 
     const response = await DELETE({ params: mockParams, request } as any);
     expect(response.status).toBe(HTTP_OK);
     const data = await response.json();
-    expect(data).toEqual(mockIp);
+    expect(data).toEqual(mockProject);
   });
 
   it("should return 400 for invalid body", async () => {
