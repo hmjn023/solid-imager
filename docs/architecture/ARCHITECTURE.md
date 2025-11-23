@@ -148,7 +148,8 @@ export async function processMedia(sourceId: string, filePath: string) {
   - `job-manager.ts` - ジョブキュー管理
   - `thumbnails.ts` - サムネイル生成ジョブ
   - `tag-extraction.ts` - タグ抽出ジョブ
-  - `sse-manager.ts` - Server-Sent Events (SSE) クライアント管理とイベント配信
+  - `sse-manager.ts` - Server-Sent Events (SSE) クライアント管理とイベント配信、ファイルシステム監視
+  - `file-watcher-service.ts` - ファイルシステム監視のコールバック処理
 - `db/` - データベースアクセス (index.ts, schema.ts)
 
 #### Server-Sent Events (SSE) インフラストラクチャ
@@ -160,13 +161,24 @@ export async function processMedia(sourceId: string, filePath: string) {
   - クライアント接続の管理 (`addClient`, `removeClient`)
   - メディアソースごとのイベント配信 (`sendEvent`)
   - `ReadableStreamDefaultController`を使用したストリーミング
+  - **ファイルシステム監視** (`startFileSystemMonitoring`, `stopFileSystemMonitoring`):
+    - `chokidar`を使用してローカルメディアソースディレクトリを監視
+    - ファイルの追加、削除、変更を検知
+    - コールバック関数を実行してメディア登録・削除・更新を自動化
 - **APIエンドポイント**: `/api/sse/[mediaSourceId]`
   - GET リクエストでSSE接続を確立
   - クライアント切断時の自動クリーンアップ
 - **イベントタイプ**:
   - `thumbnail-generated`: サムネイル生成完了時に送信
-  - 将来的に他のイベントタイプを追加可能
+  - `media-added`: ファイルシステムに新しいメディアファイルが追加された時に送信
+  - `media-deleted`: ファイルシステムからメディアファイルが削除された時に送信
+  - `media-changed`: ファイルシステムのメディアファイルが変更された時に送信
+  - `watcher-error`: ファイルシステム監視でエラーが発生した時に送信
 - **フロントエンド統合**: `EventSource` APIを使用してSSE接続を確立し、イベント受信時にデータを再取得
+- **自動監視**:
+  - アプリケーション起動時に既存のローカルメディアソースの監視を自動開始 (`entry-server.tsx`)
+  - メディアソース作成時に監視を自動開始
+  - メディアソース削除時に監視を自動停止
 
 
 **ガイドライン**:

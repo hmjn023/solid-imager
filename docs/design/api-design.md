@@ -137,25 +137,59 @@
 
 `/api/sse/{mediaSourceId}` エンドポイントは以下のイベントタイプを送信します:
 
-- `connected`: 接続確立時に送信される初期イベント
 - `thumbnail-generated`: サムネイル生成完了時に送信
   - データ: `{ mediaId: string }`
   - フロントエンドはこのイベントを受信してメディアリストを再取得
+- `media-added`: ファイルシステムに新しいメディアファイルが追加された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+  - ファイル追加を検知し、メディア登録とサムネイル生成をキューに追加
+- `media-deleted`: ファイルシステムからメディアファイルが削除された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+  - フロントエンドは即座にメディアリストを再取得してUIから削除
+- `media-changed`: ファイルシステムのメディアファイルが変更された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+  - メタデータ更新とサムネイル再生成をキューに追加
+- `watcher-error`: ファイルシステム監視でエラーが発生した時に送信
+  - データ: `{ error: string, timestamp: string }`
+
+#### ファイルシステム監視
+
+ローカルメディアソース (`type: 'local'`) に対して、`chokidar`を使用してファイルシステムを監視します:
+
+- **監視対象**: 画像ファイル (`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`)
+- **監視範囲**: サブディレクトリも再帰的に監視
+- **自動処理**:
+  - ファイル追加時: メディアをDBに登録し、サムネイル生成をキューに追加
+  - ファイル削除時: DBとサムネイルキャッシュから削除
+  - ファイル変更時: メタデータを更新し、サムネイルを再生成
+- **自動監視開始**:
+  - アプリケーション起動時に既存のローカルメディアソースの監視を自動開始
+  - メディアソース作成時に監視を自動開始
+  - メディアソース削除時に監視を自動停止
 
 **使用例 (フロントエンド)**:
 ```typescript
 const eventSource = new EventSource(`/api/sse/${mediaSourceId}`);
 
+// サムネイル生成完了時にメディアリストを再取得
 eventSource.addEventListener('thumbnail-generated', (event) => {
   const data = JSON.parse(event.data);
   console.log('Thumbnail ready for media:', data.mediaId);
-  // メディアリストを再取得
+  refetch();
+});
+
+// ファイル削除時にメディアリストを再取得
+eventSource.addEventListener('media-deleted', (event) => {
+  const data = JSON.parse(event.data);
+  console.log('Media deleted:', data.filePath);
   refetch();
 });
 
 // クリーンアップ
 onCleanup(() => eventSource.close());
 ```
+
+**注意**: `media-added`と`media-changed`イベントでは即座にrefetchせず、`thumbnail-generated`イベントが来た時にrefetchすることで、サムネイルが表示された状態でUIが更新されます。
 
 ### 設定 (Configuration)
 
