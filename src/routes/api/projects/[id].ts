@@ -1,40 +1,40 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { IpService } from "~/application/services/ip-service";
-import { updateIpSchema } from "~/domain/ips/schemas";
+import { ProjectService } from "~/application/services/project-service";
+import { updateProjectSchema } from "~/domain/projects/schemas";
+import { NotFoundError } from "~/infrastructure/db/errors";
 
-// パスパラメータ 'id' のスキーマ
+// Schema for 'id' path parameter
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
+  id: z.string().transform(Number),
 });
-export type IdParam = z.infer<typeof IdParamSchema>;
 
 /**
  * @swagger
- * /api/ips/{id}:
+ * /api/projects/{id}:
  *   get:
- *     summary: Retrieve a specific IP (Intellectual Property)
- *     description: Fetches details of an Intellectual Property by its ID.
+ *     summary: Retrieve a specific Project
+ *     description: Fetches details of a Project by its ID.
  *     tags:
- *       - IPs
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Numeric ID of the IP to retrieve.
+ *         description: Numeric ID of the Project to retrieve.
  *     responses:
  *       200:
- *         description: Details of the IP.
+ *         description: Details of the Project.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/IP'
+ *               $ref: '#/components/schemas/Project'
  *       400:
  *         description: Invalid ID supplied.
  *       404:
- *         description: IP not found.
+ *         description: Project not found.
  *       500:
  *         description: Internal server error.
  */
@@ -42,8 +42,14 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const ip = await IpService.getIpDetails(id);
-    return new Response(JSON.stringify(ip), {
+    const project = await ProjectService.getProjectDetails(id);
+    if (!project) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify(project), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -63,36 +69,36 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/ips/{id}:
+ * /api/projects/{id}:
  *   patch:
- *     summary: Update a specific IP (Intellectual Property)
- *     description: Updates an existing Intellectual Property with the provided data.
+ *     summary: Update a specific Project
+ *     description: Updates an existing Project with the provided data.
  *     tags:
- *       - IPs
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Numeric ID of the IP to update.
+ *         description: Numeric ID of the Project to update.
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/UpdateIP'
+ *             $ref: '#/components/schemas/UpdateProject'
  *     responses:
  *       200:
- *         description: The updated IP.
+ *         description: The updated Project.
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/IP'
+ *               $ref: '#/components/schemas/Project'
  *       400:
  *         description: Invalid ID or invalid input.
  *       404:
- *         description: IP not found.
+ *         description: Project not found.
  *       500:
  *         description: Internal server error.
  */
@@ -102,10 +108,13 @@ export async function PATCH({ params, request }: APIEvent) {
     const { id } = parsedParams;
 
     const body = await request.json();
-    const validatedBody = updateIpSchema.parse(body);
+    const validatedBody = updateProjectSchema.parse(body);
 
-    const updatedIp = await IpService.updateIp(id, validatedBody);
-    return new Response(JSON.stringify(updatedIp), {
+    const updatedProject = await ProjectService.updateProject(
+      id,
+      validatedBody
+    );
+    return new Response(JSON.stringify(updatedProject), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -116,6 +125,13 @@ export async function PATCH({ params, request }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
+    if (error instanceof NotFoundError) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -125,26 +141,26 @@ export async function PATCH({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/ips/{id}:
+ * /api/projects/{id}:
  *   delete:
- *     summary: Delete a specific IP (Intellectual Property)
- *     description: Deletes an Intellectual Property by its ID.
+ *     summary: Delete a specific Project
+ *     description: Deletes a Project by its ID.
  *     tags:
- *       - IPs
+ *       - Projects
  *     parameters:
  *       - in: path
  *         name: id
  *         required: true
  *         schema:
  *           type: integer
- *         description: Numeric ID of the IP to delete.
+ *         description: Numeric ID of the Project to delete.
  *     responses:
  *       200:
- *         description: IP successfully deleted.
+ *         description: Project successfully deleted.
  *       400:
  *         description: Invalid ID supplied.
  *       404:
- *         description: IP not found.
+ *         description: Project not found.
  *       500:
  *         description: Internal server error.
  */
@@ -152,7 +168,7 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const result = await IpService.deleteIp(id);
+    const result = await ProjectService.deleteProject(id);
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -161,6 +177,12 @@ export async function DELETE({ params }: APIEvent) {
     if (error instanceof ZodError) {
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (error instanceof NotFoundError) {
+      return new Response(JSON.stringify({ error: "Project not found" }), {
+        status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }

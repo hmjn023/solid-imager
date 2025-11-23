@@ -1,7 +1,29 @@
 import { Collapsible } from "@kobalte/core";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, createResource, For, Show } from "solid-js";
+import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
 import type { MediaDetails } from "~/domain/media/schemas";
+import {
+  addCharacterToMedia,
+  createCharacter,
+  fetchAllCharacters,
+  fetchCharactersForMedia,
+  removeCharacterFromMedia,
+} from "~/infrastructure/api-clients/characters-api";
+import {
+  addIpToMedia,
+  createIp,
+  fetchAllIps,
+  fetchIpsForMedia,
+  removeIpFromMedia,
+} from "~/infrastructure/api-clients/ips-api";
+import {
+  addProjectToMedia,
+  createProject,
+  fetchAllProjects,
+  fetchProjectsForMedia,
+  removeProjectFromMedia,
+} from "~/infrastructure/api-clients/projects-api";
 
 type MediaSidebarProps = {
   media: MediaDetails;
@@ -24,7 +46,7 @@ const CodeBlock = (props: { content: string }) => (
   </pre>
 );
 
-const CollapsibleSection = (props: {
+const _CollapsibleSection = (props: {
   title: string;
   content: string | object;
 }) => {
@@ -58,6 +80,93 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
   const genInfo = createMemo(() => props.media.generationInfo);
 
+  // Projects
+  const [projects, { refetch: refetchProjects }] = createResource(
+    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
+    ({ sourceId, mediaId }) => fetchProjectsForMedia(sourceId, mediaId)
+  );
+  const [allProjects, { refetch: refetchAllProjects }] =
+    createResource(fetchAllProjects);
+
+  const handleAddProject = async (projectId: number) => {
+    await addProjectToMedia(
+      props.media.mediaSourceId,
+      props.media.id,
+      projectId
+    );
+    refetchProjects();
+  };
+
+  const handleRemoveProject = async (projectId: number) => {
+    await removeProjectFromMedia(
+      props.media.mediaSourceId,
+      props.media.id,
+      projectId
+    );
+    refetchProjects();
+  };
+
+  const handleCreateProject = async (name: string) => {
+    const newProject = await createProject({ name });
+    await handleAddProject(newProject.id);
+    refetchAllProjects();
+  };
+
+  // IPs
+  const [ips, { refetch: refetchIps }] = createResource(
+    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
+    ({ sourceId, mediaId }) => fetchIpsForMedia(sourceId, mediaId)
+  );
+  const [allIps, { refetch: refetchAllIps }] = createResource(fetchAllIps);
+
+  const handleAddIp = async (ipId: number) => {
+    await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
+    refetchIps();
+  };
+
+  const handleRemoveIp = async (ipId: number) => {
+    await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
+    refetchIps();
+  };
+
+  const handleCreateIp = async (name: string) => {
+    const newIp = await createIp({ name });
+    await handleAddIp(newIp.id);
+    refetchAllIps();
+  };
+
+  // Characters
+  const [characters, { refetch: refetchCharacters }] = createResource(
+    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
+    ({ sourceId, mediaId }) => fetchCharactersForMedia(sourceId, mediaId)
+  );
+  const [allCharacters, { refetch: refetchAllCharacters }] =
+    createResource(fetchAllCharacters);
+
+  const handleAddCharacter = async (characterId: number) => {
+    await addCharacterToMedia(
+      props.media.mediaSourceId,
+      props.media.id,
+      characterId
+    );
+    refetchCharacters();
+  };
+
+  const handleRemoveCharacter = async (characterId: number) => {
+    await removeCharacterFromMedia(
+      props.media.mediaSourceId,
+      props.media.id,
+      characterId
+    );
+    refetchCharacters();
+  };
+
+  const handleCreateCharacter = async (name: string) => {
+    const newCharacter = await createCharacter({ name });
+    await handleAddCharacter(newCharacter.id);
+    refetchAllCharacters();
+  };
+
   return (
     <aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
       <div>
@@ -77,6 +186,38 @@ export default function MediaSidebar(props: MediaSidebarProps) {
             {props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
           </dd>
         </dl>
+      </div>
+
+      <div class="space-y-4">
+        <AssociationManager
+          availableItems={allProjects() || []}
+          isLoading={projects.loading}
+          items={projects() || []}
+          onAdd={handleAddProject}
+          onCreate={handleCreateProject}
+          onRemove={handleRemoveProject}
+          title="Projects"
+        />
+
+        <AssociationManager
+          availableItems={allIps() || []}
+          isLoading={ips.loading}
+          items={ips() || []}
+          onAdd={handleAddIp}
+          onCreate={handleCreateIp}
+          onRemove={handleRemoveIp}
+          title="IPs"
+        />
+
+        <AssociationManager
+          availableItems={allCharacters() || []}
+          isLoading={characters.loading}
+          items={characters() || []}
+          onAdd={handleAddCharacter}
+          onCreate={handleCreateCharacter}
+          onRemove={handleRemoveCharacter}
+          title="Characters"
+        />
       </div>
 
       <Show when={positiveTags().length > 0}>
@@ -102,23 +243,42 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       </Show>
 
       <Show when={genInfo()}>
-        {(info) => (
-          <div class="space-y-2">
-            <h2 class="font-semibold text-lg">Generation Info</h2>
-            <Show when={info.prompt}>
-              <CollapsibleSection content={info.prompt} title="Prompt" />
-            </Show>
-            <Show when={info.negativePrompt}>
-              <CollapsibleSection
-                content={info.negativePrompt}
-                title="Negative Prompt"
-              />
-            </Show>
-            <Show when={info.workflow}>
-              <CollapsibleSection content={info.workflow} title="Workflow" />
-            </Show>
-          </div>
-        )}
+        <div class="space-y-2">
+          <Collapsible.Root>
+            <Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-lg">
+              Generation Info
+              <span class="i-lucide-chevron-down ui-expanded:rotate-180 transition-transform" />
+            </Collapsible.Trigger>
+            <Collapsible.Content class="space-y-2 text-sm">
+              <Show when={genInfo()?.prompt}>
+                <div>
+                  <span class="font-medium text-gray-600">Prompt:</span>
+                  <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
+                    {genInfo()?.prompt}
+                  </p>
+                </div>
+              </Show>
+              <Show when={genInfo()?.negativePrompt}>
+                <div>
+                  <span class="font-medium text-gray-600">
+                    Negative Prompt:
+                  </span>
+                  <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
+                    {genInfo()?.negativePrompt}
+                  </p>
+                </div>
+              </Show>
+              <Show when={genInfo()?.workflow}>
+                <div>
+                  <span class="font-medium text-gray-600">Workflow:</span>
+                  <pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
+                    {JSON.stringify(genInfo()?.workflow, null, 2)}
+                  </pre>
+                </div>
+              </Show>
+            </Collapsible.Content>
+          </Collapsible.Root>
+        </div>
       </Show>
     </aside>
   );

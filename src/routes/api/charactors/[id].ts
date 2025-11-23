@@ -64,7 +64,7 @@ export async function GET({ params }: APIEvent) {
 /**
  * @swagger
  * /api/charactors/{id}:
- *   put:
+ *   patch:
  *     summary: Update a specific character
  *     description: Updates an existing character with the provided data.
  *     tags:
@@ -96,7 +96,7 @@ export async function GET({ params }: APIEvent) {
  *       500:
  *         description: Internal server error.
  */
-export async function PUT({ params, request }: APIEvent) {
+export async function PATCH({ params, request }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;

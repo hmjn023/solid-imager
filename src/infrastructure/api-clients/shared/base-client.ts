@@ -50,7 +50,10 @@ export async function apiRequest<T>(
   const url = buildUrl(path);
 
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+    });
 
     if (!response.ok) {
       // Try to parse error response
@@ -93,7 +96,10 @@ export async function apiBlobRequest(
   const url = buildUrl(path);
 
   try {
-    const response = await fetch(url, options);
+    const response = await fetch(url, {
+      cache: "no-store",
+      ...options,
+    });
 
     if (!response.ok) {
       throw new ApiError(

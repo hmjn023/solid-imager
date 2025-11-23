@@ -16,3 +16,13 @@ export const updateIpSchema = newIpSchema.partial();
 
 export type NewIp = z.infer<typeof newIpSchema>;
 export type UpdateIp = z.infer<typeof updateIpSchema>;
+
+export const ipSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type Ip = z.infer<typeof ipSchema>;

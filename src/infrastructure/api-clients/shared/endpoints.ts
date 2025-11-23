@@ -24,4 +24,19 @@ export const API_ENDPOINTS = {
 
   // Utilities
   fetchUrl: "/api/fetch-url",
+
+  // Projects
+  projects: "/api/projects",
+  mediaProjects: (sourceId: string, mediaId: string) =>
+    `/api/sources/${sourceId}/${mediaId}/projects`,
+
+  // IPs
+  ips: "/api/ips",
+  mediaIps: (sourceId: string, mediaId: string) =>
+    `/api/sources/${sourceId}/${mediaId}/ips`,
+
+  // Characters
+  characters: "/api/charactors", // Typo in backend
+  mediaCharacters: (sourceId: string, mediaId: string) =>
+    `/api/sources/${sourceId}/${mediaId}/charactors`, // Typo in backend
 } as const;

@@ -34,7 +34,7 @@ export const ProjectService = {
    */
   async createProject(projectData: { name: string; description?: string }) {
     const result = await insertProject(projectData);
-    return result[0];
+    return result;
   },
 
   /**

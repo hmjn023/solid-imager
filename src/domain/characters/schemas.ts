@@ -17,3 +17,14 @@ export const updateCharacterSchema = newCharacterSchema.partial();
 
 export type NewCharacter = z.infer<typeof newCharacterSchema>;
 export type UpdateCharacter = z.infer<typeof updateCharacterSchema>;
+
+export const characterSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  ipId: z.number().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type Character = z.infer<typeof characterSchema>;
