@@ -271,6 +271,21 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         </Show>
       </div>
 
+      {/* Source URL Section */}
+      <Show when={props.media.sourceUrl}>
+        <div class="space-y-2">
+          <h2 class="font-semibold text-lg">Source URL</h2>
+          <a
+            class="block break-all text-blue-600 text-sm hover:underline"
+            href={props.media.sourceUrl || ""}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {props.media.sourceUrl}
+          </a>
+        </div>
+      </Show>
+
       <div class="space-y-4">
         <AssociationManager
           availableItems={allProjects() || []}
