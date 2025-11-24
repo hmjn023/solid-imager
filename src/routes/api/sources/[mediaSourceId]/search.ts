@@ -55,7 +55,22 @@ import type { UUID } from "~/domain/shared/schemas";
  *           type: integer
  *           default: 50
  *         description: Number of items per page for pagination.
- *     responses:
+ *       - in: query
+ *         name: projects
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of project IDs to filter by.
+ *       - in: query
+ *         name: ips
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of IP IDs to filter by.
+ *       - in: query
+ *         name: characters
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of character IDs to filter by.
+    responses:
  *       200:
  *         description: A list of matching media files and pagination information.
  *         content:

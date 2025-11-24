@@ -26,6 +26,15 @@ export function searchMedia(sourceId: string, params: MediaSearchRequest) {
   if (params.excludeTags) {
     searchParams.set("excludeTags", params.excludeTags);
   }
+  if (params.projects) {
+    searchParams.set("projects", params.projects);
+  }
+  if (params.ips) {
+    searchParams.set("ips", params.ips);
+  }
+  if (params.characters) {
+    searchParams.set("characters", params.characters);
+  }
   searchParams.set("tagMode", params.tagMode);
   if (params.sort) {
     searchParams.set("sort", params.sort);
