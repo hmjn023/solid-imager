@@ -22,6 +22,9 @@ import {
 } from "~/components/ui/select";
 import type { MediaSourceInfo } from "~/domain/sources/schemas";
 import type { TagResponse } from "~/domain/tags/schemas";
+import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
+import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
+import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
@@ -37,6 +40,11 @@ export default function Search() {
   const [sortBy, setSortBy] = createSignal<"date" | "name" | "size">("date");
   const [sortOrder, setSortOrder] = createSignal<"asc" | "desc">("desc");
   const [selectedSource, setSelectedSource] = createSignal<string>("");
+  const [selectedProjects, setSelectedProjects] = createSignal<number[]>([]);
+  const [selectedIps, setSelectedIps] = createSignal<number[]>([]);
+  const [selectedCharacters, setSelectedCharacters] = createSignal<number[]>(
+    []
+  );
   const DefaultLimit = 20;
   const [limit, _setLimit] = createSignal(DefaultLimit);
   const [offset, setOffset] = createSignal(0);
@@ -48,6 +56,11 @@ export default function Search() {
 
   // Fetch media sources
   const [sources] = createResource<Source[]>(fetchMediaSources);
+
+  // Fetch all projects, IPs, and characters
+  const [allProjects] = createResource(fetchAllProjects);
+  const [allIps] = createResource(fetchAllIps);
+  const [allCharacters] = createResource(fetchAllCharacters);
 
   // Search function
   const [searchResults, { refetch }] = createResource(async () => {
@@ -62,6 +75,15 @@ export default function Search() {
       excludeTags:
         excludeTags().length > 0 ? excludeTags().join(",") : undefined,
       tagMode: tagMode(),
+      projects:
+        selectedProjects().length > 0
+          ? selectedProjects().join(",")
+          : undefined,
+      ips: selectedIps().length > 0 ? selectedIps().join(",") : undefined,
+      characters:
+        selectedCharacters().length > 0
+          ? selectedCharacters().join(",")
+          : undefined,
       sort: sortBy(),
       order: sortOrder(),
       limit: limit(),
@@ -267,6 +289,191 @@ export default function Search() {
                           onSelect={() => addExcludeTag(tag.name)}
                         >
                           {tag.name}
+                        </CommandItem>
+                      )}
+                    </For>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </div>
+
+            {/* Project Filter */}
+            <div class="space-y-2">
+              <Label>プロジェクト</Label>
+              <div class="mb-2 flex flex-wrap gap-2">
+                <For each={selectedProjects()}>
+                  {(projectId) => {
+                    const project = allProjects()?.find(
+                      (p) => p.id === projectId
+                    );
+                    return (
+                      <Badge class="cursor-pointer" variant="secondary">
+                        {project?.name || projectId}
+                        <button
+                          class="ml-1 hover:text-red-500"
+                          onClick={() =>
+                            setSelectedProjects(
+                              selectedProjects().filter(
+                                (id) => id !== projectId
+                              )
+                            )
+                          }
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  }}
+                </For>
+              </div>
+              <Command class="rounded-md border">
+                <CommandInput placeholder="プロジェクトを検索..." />
+                <CommandList>
+                  <CommandEmpty>プロジェクトが見つかりません</CommandEmpty>
+                  <CommandGroup>
+                    <For each={allProjects()}>
+                      {(project) => (
+                        <CommandItem
+                          class="cursor-pointer"
+                          onSelect={() => {
+                            if (!selectedProjects().includes(project.id)) {
+                              setSelectedProjects([
+                                ...selectedProjects(),
+                                project.id,
+                              ]);
+                            }
+                          }}
+                        >
+                          <div class="flex flex-col">
+                            <span>{project.name}</span>
+                            <Show when={project.description}>
+                              <span class="text-muted-foreground text-xs">
+                                {project.description}
+                              </span>
+                            </Show>
+                          </div>
+                        </CommandItem>
+                      )}
+                    </For>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </div>
+
+            {/* IP Filter */}
+            <div class="space-y-2">
+              <Label>IP</Label>
+              <div class="mb-2 flex flex-wrap gap-2">
+                <For each={selectedIps()}>
+                  {(ipId) => {
+                    const ip = allIps()?.find((i) => i.id === ipId);
+                    return (
+                      <Badge class="cursor-pointer" variant="secondary">
+                        {ip?.name || ipId}
+                        <button
+                          class="ml-1 hover:text-red-500"
+                          onClick={() =>
+                            setSelectedIps(
+                              selectedIps().filter((id) => id !== ipId)
+                            )
+                          }
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  }}
+                </For>
+              </div>
+              <Command class="rounded-md border">
+                <CommandInput placeholder="IPを検索..." />
+                <CommandList>
+                  <CommandEmpty>IPが見つかりません</CommandEmpty>
+                  <CommandGroup>
+                    <For each={allIps()}>
+                      {(ip) => (
+                        <CommandItem
+                          class="cursor-pointer"
+                          onSelect={() => {
+                            if (!selectedIps().includes(ip.id)) {
+                              setSelectedIps([...selectedIps(), ip.id]);
+                            }
+                          }}
+                        >
+                          <div class="flex flex-col">
+                            <span>{ip.name}</span>
+                            <Show when={ip.description}>
+                              <span class="text-muted-foreground text-xs">
+                                {ip.description}
+                              </span>
+                            </Show>
+                          </div>
+                        </CommandItem>
+                      )}
+                    </For>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </div>
+
+            {/* Character Filter */}
+            <div class="space-y-2">
+              <Label>キャラクター</Label>
+              <div class="mb-2 flex flex-wrap gap-2">
+                <For each={selectedCharacters()}>
+                  {(characterId) => {
+                    const character = allCharacters()?.find(
+                      (c) => c.id === characterId
+                    );
+                    return (
+                      <Badge class="cursor-pointer" variant="secondary">
+                        {character?.name || characterId}
+                        <button
+                          class="ml-1 hover:text-red-500"
+                          onClick={() =>
+                            setSelectedCharacters(
+                              selectedCharacters().filter(
+                                (id) => id !== characterId
+                              )
+                            )
+                          }
+                          type="button"
+                        >
+                          ×
+                        </button>
+                      </Badge>
+                    );
+                  }}
+                </For>
+              </div>
+              <Command class="rounded-md border">
+                <CommandInput placeholder="キャラクターを検索..." />
+                <CommandList>
+                  <CommandEmpty>キャラクターが見つかりません</CommandEmpty>
+                  <CommandGroup>
+                    <For each={allCharacters()}>
+                      {(character) => (
+                        <CommandItem
+                          class="cursor-pointer"
+                          onSelect={() => {
+                            if (!selectedCharacters().includes(character.id)) {
+                              setSelectedCharacters([
+                                ...selectedCharacters(),
+                                character.id,
+                              ]);
+                            }
+                          }}
+                        >
+                          <div class="flex flex-col">
+                            <span>{character.name}</span>
+                            <Show when={character.description}>
+                              <span class="text-muted-foreground text-xs">
+                                {character.description}
+                              </span>
+                            </Show>
+                          </div>
                         </CommandItem>
                       )}
                     </For>
