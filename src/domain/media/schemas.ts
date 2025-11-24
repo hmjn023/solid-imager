@@ -183,6 +183,33 @@ export const mediaDetailsSchema = mediaSchema.extend({
 
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
 
+// Download schemas for bulk image download from JSON
+export const downloadItemSchema = z.object({
+  imageUrl: z.string().url("Invalid image URL"),
+  tweetUrl: z.string().url("Invalid tweet URL").optional(),
+  tweetText: z.string().optional(),
+  timestamp: z.string().datetime().optional(),
+  authorName: z.string().optional(),
+  authorId: z.string().optional(),
+});
+
+export type DownloadItem = z.infer<typeof downloadItemSchema>;
+
+export const bulkDownloadRequestSchema = z.object({
+  mediaSourceId: z.string().uuid("Invalid media source ID"),
+  items: z.array(downloadItemSchema).min(1, "At least one item is required"),
+});
+
+export type BulkDownloadRequest = z.infer<typeof bulkDownloadRequestSchema>;
+
+export const bulkDownloadResponseSchema = z.object({
+  success: z.boolean(),
+  jobCount: z.number(),
+  message: z.string(),
+});
+
+export type BulkDownloadResponse = z.infer<typeof bulkDownloadResponseSchema>;
+
 // biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
 export {
   type Conflict,

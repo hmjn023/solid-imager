@@ -220,3 +220,47 @@ onCleanup(() => eventSource.close());
 | Method | Path | 説明 |
 |---|---|---|
 | `POST` | `/api/fetch-url` | 指定されたURLからコンテンツを取得します。 |
+
+### ダウンロード (Downloads)
+
+| Method | Path | 説明 |
+|---|---|---|
+| `POST` | `/api/downloads` | JSONファイルから複数の画像を一括ダウンロードして登録します。 |
+
+**`POST /api/downloads`**
+
+JSONファイルに記載された画像URLから画像を一括ダウンロードし、メディアとして登録します。各画像のメタデータ（ツイート情報、タイムスタンプ、作者情報など）はMarkdown形式でdescriptionフィールドに保存されます。
+
+**リクエストボディ**:
+```json
+{
+  "mediaSourceId": "uuid-here",
+  "items": [
+    {
+      "imageUrl": "https://example.com/image.jpg",
+      "tweetUrl": "https://x.com/user/status/123",
+      "tweetText": "Sample tweet text",
+      "timestamp": "2025-11-24T04:05:10.000Z",
+      "authorName": "Author Name",
+      "authorId": "@author"
+    }
+  ]
+}
+```
+
+**レスポンス**:
+```json
+{
+  "success": true,
+  "jobCount": 1,
+  "message": "Queued 1 download jobs"
+}
+```
+
+**処理フロー**:
+1. JSONファイルをパースして各画像のダウンロードジョブを作成
+2. 各画像をURLからダウンロードしてメディアソースに保存
+3. メタデータをMarkdown形式でdescriptionに記録
+4. サムネイル生成ジョブをキューに追加
+5. SSEイベント(`media-added`, `thumbnail-generated`)を通じてフロントエンドに通知
+

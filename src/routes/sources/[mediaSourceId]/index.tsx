@@ -29,6 +29,8 @@ export default function MediaListPage() {
   const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
   const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 
+  let fileInputRef: HTMLInputElement | undefined;
+
   type UploadOptions = {
     file: File;
     filename: string;
@@ -51,6 +53,56 @@ export default function MediaListPage() {
 
     await uploadMedia(params.mediaSourceId, formData);
     refetch(); // Re-fetch media list after successful upload
+  };
+
+  const handleFileSelect = async (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (target.files && target.files.length > 0) {
+      const file = target.files[0];
+
+      // Check if it's a JSON file
+      if (file.type === "application/json" || file.name.endsWith(".json")) {
+        await handleJsonFileUpload(file);
+      } else {
+        // Normal image file upload
+        setFileToUpload(file);
+        setShowUploadModal(true);
+      }
+
+      // Reset file input
+      target.value = "";
+    }
+  };
+
+  const handleJsonFileUpload = async (file: File) => {
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      // Send to downloads API
+      const response = await fetch("/api/downloads", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mediaSourceId: params.mediaSourceId,
+          items: json,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to start download jobs");
+      }
+
+      // Refetch will happen via SSE events
+    } catch (_error) {
+      // TODO: Replace with proper UI notification
+    }
+  };
+
+  const handleAddButtonClick = () => {
+    fileInputRef?.click();
   };
 
   const handleDrop = (e: DragEvent) => {
@@ -215,6 +267,27 @@ export default function MediaListPage() {
           )}
         </For>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        accept="image/*,.json"
+        class="hidden"
+        onChange={handleFileSelect}
+        ref={(el) => {
+          fileInputRef = el;
+        }}
+        type="file"
+      />
+
+      {/* Floating add button */}
+      <button
+        aria-label="Add media"
+        class="fixed right-8 bottom-8 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
+        onClick={handleAddButtonClick}
+        type="button"
+      >
+        <span class="text-3xl leading-none">＋</span>
+      </button>
 
       <UploadMediaModal
         initialFile={fileToUpload()}
