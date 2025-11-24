@@ -148,6 +148,7 @@ export async function processMedia(sourceId: string, filePath: string) {
   - `job-manager.ts` - ジョブキュー管理
   - `thumbnails.ts` - サムネイル生成ジョブ
   - `tag-extraction.ts` - タグ抽出ジョブ
+  - `download-jobs.ts` - 画像ダウンロードジョブ
   - `sse-manager.ts` - Server-Sent Events (SSE) クライアント管理とイベント配信、ファイルシステム監視
   - `file-watcher-service.ts` - ファイルシステム監視のコールバック処理
 - `db/` - データベースアクセス (index.ts, schema.ts)
