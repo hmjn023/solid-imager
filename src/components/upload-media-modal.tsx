@@ -58,6 +58,26 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
     }
   });
 
+  // Create preview for initialFile (file selection or image paste)
+  createEffect(
+    on(
+      () => props.initialFile,
+      (file) => {
+        const currentPreview = previewUrl();
+        if (currentPreview) {
+          URL.revokeObjectURL(currentPreview);
+          setPreviewUrl(null);
+        }
+
+        if (file) {
+          const objectUrl = URL.createObjectURL(file);
+          setPreviewUrl(objectUrl);
+          setFilename(file.name);
+        }
+      }
+    )
+  );
+
   createEffect(
     on(sourceUrl, async (url) => {
       const currentPreview = previewUrl();
