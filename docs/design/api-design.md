@@ -59,6 +59,9 @@
 | `order` | `string` | 昇順・降順。`asc` または `desc`。 | `desc` |
 | `limit` | `integer` | 取得件数。デフォルトは無制限（全件取得）。パフォーマンスに注意。 | `50` |
 | `offset` | `integer` | ページネーション用オフセット。 | `0` |
+| `projects` | `string` | プロジェクトIDフィルタ。カンマ区切りで複数指定可能。 | `1,2` |
+| `ips` | `string` | IP IDフィルタ。カンマ区切りで複数指定可能。 | `1,2` |
+| `characters` | `string` | キャラクターIDフィルタ。カンマ区切りで複数指定可能。 | `1,2` |
 
 
 ### ディレクトリ (Directories)
@@ -71,6 +74,19 @@
 | `PUT` | `/api/sources/{mediaSourceId}/directories/rename` | ディレクトリ名を変更します。 |
 | `GET` | `/api/sources/{mediaSourceId}/directories/{...directories}` | 特定ディレクトリ内のメディアとサブディレクトリを取得します。 |
 | `GET` | `/api/sources/{mediaSourceId}/directories/{...directories}/search` | 特定ディレクトリ内でメディアを検索します。 |
+
+### プロジェクト (Projects)
+
+| Method | Path | 説明 |
+|---|---|---|
+| `GET` | `/api/projects` | 全てのプロジェクトを取得します。 |
+| `POST` | `/api/projects` | 新しいプロジェクトを作成します。 |
+| `GET` | `/api/projects/{id}` | 特定のプロジェクトを取得します。 |
+| `PATCH` | `/api/projects/{id}` | 特定のプロジェクトを更新します。 |
+| `DELETE` | `/api/projects/{id}` | 特定のプロジェクトを削除します。 |
+| `GET` | `/api/sources/{mediaSourceId}/{mediaId}/projects` | 特定メディアに関連付けられたプロジェクトを取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/{mediaId}/projects` | 特定メディアにプロジェクトを追加します。 |
+| `DELETE` | `/api/sources/{mediaSourceId}/{mediaId}/projects/{projectId}` | 特定メディアからプロジェクトを削除します。 |
 
 ### タグ (Tags)
 
@@ -104,7 +120,7 @@
 | `GET` | `/api/charactors` | 全てのキャラクターを取得します。 |
 | `POST` | `/api/charactors` | 新しいキャラクターを作成します。 |
 | `GET` | `/api/charactors/{id}` | 特定のキャラクターを取得します。 |
-| `PUT` | `/api/charactors/{id}` | 特定のキャラクターを更新します。 |
+| `PATCH` | `/api/charactors/{id}` | 特定のキャラクターを更新します。 |
 | `DELETE` | `/api/charactors/{id}` | 特定のキャラクターを削除します。 |
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/charactors` | 特定メディアに関連付けられたキャラクターを取得します。 |
 
@@ -115,7 +131,7 @@
 | `GET` | `/api/ips` | 全てのIPを取得します。 |
 | `POST` | `/api/ips` | 新しいIPを作成します。 |
 | `GET` | `/api/ips/{id}` | 特定のIPを取得します。 |
-| `PUT` | `/api/ips/{id}` | 特定のIPを更新します。 |
+| `PATCH` | `/api/ips/{id}` | 特定のIPを更新します。 |
 | `DELETE` | `/api/ips/{id}` | 特定のIPを削除します。 |
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/ips` | 特定メディアに関連付けられたIPを取得します。 |
 

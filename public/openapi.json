@@ -236,7 +236,7 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "summary": "Update a specific character",
         "description": "Updates an existing character with the provided data.",
         "tags": [
@@ -555,7 +555,7 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "summary": "Update a specific IP (Intellectual Property)",
         "description": "Updates an existing Intellectual Property with the provided data.",
         "tags": [
@@ -699,6 +699,128 @@
         }
       }
     },
+    "/api/projects/{id}": {
+      "get": {
+        "summary": "Retrieve a specific Project",
+        "description": "Fetches details of a Project by its ID.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the Project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a specific Project",
+        "description": "Updates an existing Project with the provided data.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific Project",
+        "description": "Deletes a Project by its ID.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
     "/api/projects": {
       "get": {
         "summary": "Get all projects",
@@ -768,23 +890,128 @@
         ],
         "responses": {
           "200": {
-            "description": "A list of characters associated with the media.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Character"
-                  }
-                }
-              }
-            }
+            "description": "A list of characters associated with the media."
           },
           "400": {
             "description": "Invalid source ID or media ID supplied."
           },
           "404": {
-            "description": "Media or characters not found."
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a character to a media",
+        "description": "Associates a character with a specific media file.",
+        "tags": [
+          "Media",
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "characterId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Character added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a character from a media",
+        "description": "Removes the association between a character and a specific media file.",
+        "tags": [
+          "Media",
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "characterId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Character removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
           },
           "500": {
             "description": "Internal server error."
@@ -989,23 +1216,128 @@
         ],
         "responses": {
           "200": {
-            "description": "A list of IPs associated with the media.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IP"
-                  }
-                }
-              }
-            }
+            "description": "A list of IPs associated with the media."
           },
           "400": {
             "description": "Invalid source ID or media ID supplied."
           },
           "404": {
-            "description": "Media or IPs not found."
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add an IP to a media",
+        "description": "Associates an IP with a specific media file.",
+        "tags": [
+          "Media",
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ipId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "IP added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove an IP from a media",
+        "description": "Removes the association between an IP and a specific media file.",
+        "tags": [
+          "Media",
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ipId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "IP removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
           },
           "500": {
             "description": "Internal server error."
@@ -1058,6 +1390,167 @@
           },
           "404": {
             "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/{mediaId}/projects": {
+      "get": {
+        "summary": "Retrieve projects associated with a media",
+        "description": "Fetches a list of projects linked to a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of projects associated with the media."
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a project to a media",
+        "description": "Associates a project with a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a project from a media",
+        "description": "Removes the association between a project and a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
           },
           "500": {
             "description": "Internal server error."
@@ -1855,51 +2348,32 @@
               "default": 50
             },
             "description": "Number of items per page for pagination."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A list of matching media files and pagination information.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "media": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Media"
-                      }
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "properties": {
-                        "totalItems": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
-                          "type": "integer"
-                        },
-                        "currentPage": {
-                          "type": "integer"
-                        },
-                        "itemsPerPage": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           },
-          "400": {
-            "description": "Invalid source ID or search parameters."
+          {
+            "in": "query",
+            "name": "projects",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of project IDs to filter by."
           },
-          "500": {
-            "description": "Internal server error."
+          {
+            "in": "query",
+            "name": "ips",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of IP IDs to filter by."
+          },
+          {
+            "in": "query",
+            "name": "characters",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of character IDs to filter by."
           }
-        }
+        ]
       }
     },
     "/api/sources/{mediaSourceId}/status": {
@@ -2298,6 +2772,49 @@
           }
         }
       }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "A list of matching media files and pagination information.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "media": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Media"
+                }
+              },
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "totalItems": {
+                    "type": "integer"
+                  },
+                  "totalPages": {
+                    "type": "integer"
+                  },
+                  "currentPage": {
+                    "type": "integer"
+                  },
+                  "itemsPerPage": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid source ID or search parameters."
+    },
+    "500": {
+      "description": "Internal server error."
     }
   },
   "components": {
