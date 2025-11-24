@@ -51,3 +51,24 @@ export function uploadMedia(sourceId: string, formData: FormData) {
     body: formData,
   });
 }
+
+/**
+ * Updates media metadata
+ * @param sourceId - Media source ID
+ * @param mediaId - Media ID
+ * @param updates - Partial media updates (e.g., description, sourceUrl)
+ * @returns Updated media details
+ */
+export function updateMedia(
+  sourceId: string,
+  mediaId: string,
+  updates: { description?: string; sourceUrl?: string }
+) {
+  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), mediaSchema, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(updates),
+  });
+}

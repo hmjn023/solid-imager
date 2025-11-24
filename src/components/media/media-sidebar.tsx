@@ -1,5 +1,5 @@
 import { Collapsible } from "@kobalte/core";
-import { createMemo, createResource, For, Show } from "solid-js";
+import { createMemo, createResource, createSignal, For, Show } from "solid-js";
 import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
 import type { MediaDetails } from "~/domain/media/schemas";
@@ -17,6 +17,7 @@ import {
   fetchIpsForMedia,
   removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
+import { updateMedia } from "~/infrastructure/api-clients/media-api";
 import {
   addProjectToMedia,
   createProject,
@@ -27,6 +28,7 @@ import {
 
 type MediaSidebarProps = {
   media: MediaDetails;
+  onUpdate?: () => void;
 };
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -69,6 +71,30 @@ const _CollapsibleSection = (props: {
 
 export default function MediaSidebar(props: MediaSidebarProps) {
   const tags = createMemo(() => props.media.tags || []);
+
+  // Description editing state
+  const [isEditingDescription, setIsEditingDescription] = createSignal(false);
+  const [descriptionValue, setDescriptionValue] = createSignal(
+    props.media.description || ""
+  );
+
+  const handleSaveDescription = async () => {
+    try {
+      await updateMedia(props.media.mediaSourceId, props.media.id, {
+        description: descriptionValue(),
+      });
+      setIsEditingDescription(false);
+      // Trigger refetch to update the UI
+      props.onUpdate?.();
+    } catch (_error) {
+      // TODO: Show error notification to user
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setDescriptionValue(props.media.description || "");
+    setIsEditingDescription(false);
+  };
 
   const positiveTags = createMemo(() =>
     tags().filter((tag) => tag.type === "positive")
@@ -186,6 +212,63 @@ export default function MediaSidebar(props: MediaSidebarProps) {
             {props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
           </dd>
         </dl>
+      </div>
+
+      {/* Description Section */}
+      <div class="space-y-2">
+        <div class="flex items-center justify-between">
+          <h2 class="font-semibold text-lg">Description</h2>
+          <Show when={!isEditingDescription()}>
+            <button
+              class="text-blue-600 text-sm hover:underline"
+              onClick={() => setIsEditingDescription(true)}
+              type="button"
+            >
+              Edit
+            </button>
+          </Show>
+        </div>
+        <Show
+          fallback={
+            <div class="rounded-md bg-gray-100 p-3 text-gray-500 text-sm italic">
+              No description
+            </div>
+          }
+          when={isEditingDescription() || props.media.description}
+        >
+          <Show
+            fallback={
+              <div class="whitespace-pre-wrap rounded-md bg-gray-100 p-3 text-sm">
+                {props.media.description}
+              </div>
+            }
+            when={isEditingDescription()}
+          >
+            <textarea
+              class="w-full rounded-md border border-gray-300 p-2 text-sm"
+              onInput={(e) => setDescriptionValue(e.currentTarget.value)}
+              placeholder="Enter description..."
+              rows={6}
+              value={descriptionValue()}
+            />
+            <div class="flex gap-2">
+              <button
+                class="rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
+                onClick={handleSaveDescription}
+                type="button"
+              >
+                Save
+              </button>
+              <button
+                class="rounded-md bg-gray-300 px-3 py-1 text-gray-700 text-sm hover:bg-gray-400"
+                onClick={handleCancelEdit}
+                type="button"
+              >
+                Cancel
+              </button>
+            </div>
+          </Show>
+        </Show>
       </div>
 
       <div class="space-y-4">

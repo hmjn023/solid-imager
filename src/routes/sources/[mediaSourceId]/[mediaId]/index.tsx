@@ -10,7 +10,7 @@ export default function Media() {
   const mediaSourceId = params.mediaSourceId as UUID;
   const mediaId = params.mediaId as UUID;
 
-  const [mediaDetails] = createResource(() =>
+  const [mediaDetails, { refetch }] = createResource(() =>
     fetchMediaDetails(mediaSourceId, mediaId)
   );
 
@@ -30,7 +30,7 @@ export default function Media() {
                 <MediaViewer media={details()} />
               </div>
               <div class="w-full shrink-0 lg:w-96">
-                <MediaSidebar media={details()} />
+                <MediaSidebar media={details()} onUpdate={refetch} />
               </div>
             </div>
           )}
