@@ -79,12 +79,28 @@ export const MediaRepository = {
     const excludeTagsArray = params.excludeTags
       ? params.excludeTags.split(",").map((t: string) => t.trim())
       : undefined;
+    const projectsArray = params.projects
+      ? params.projects
+          .split(",")
+          .map((p: string) => Number.parseInt(p.trim(), 10))
+      : undefined;
+    const ipsArray = params.ips
+      ? params.ips.split(",").map((i: string) => Number.parseInt(i.trim(), 10))
+      : undefined;
+    const charactersArray = params.characters
+      ? params.characters
+          .split(",")
+          .map((c: string) => Number.parseInt(c.trim(), 10))
+      : undefined;
 
     const result = await searchMediaQuery(mediaSourceId, {
       query: params.q,
       tags: tagsArray,
       tagMode: params.tagMode,
       excludeTags: excludeTagsArray,
+      projects: projectsArray,
+      ips: ipsArray,
+      characters: charactersArray,
       sort: params.sort,
       order: params.order,
       limit: params.limit,

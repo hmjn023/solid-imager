@@ -157,6 +157,9 @@ export const mediaSearchRequestSchema = z.object({
   tags: z.string().optional(), // comma-separated tag names
   tagMode: z.enum(["and", "or"]).default("and"),
   excludeTags: z.string().optional(), // comma-separated tag names
+  projects: z.string().optional(), // comma-separated project IDs
+  ips: z.string().optional(), // comma-separated IP IDs
+  characters: z.string().optional(), // comma-separated character IDs
   sort: z.enum(["date", "name", "size"]).optional(),
   order: z.enum(["asc", "desc"]).default("desc"),
   limit: z.coerce.number().int().positive().optional(),

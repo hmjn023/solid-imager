@@ -2,6 +2,9 @@ import { and, eq, inArray, like, or, sql } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
   type Media,
+  mediaCharacters,
+  mediaIps,
+  mediaProjects,
   medias,
   mediaTags,
   tags,
@@ -41,6 +44,9 @@ function sortMediaItems(
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
  * @param {string} [searchOptions.tagMode] - Tag matching mode: "and" (all tags) or "or" (any tag). Default: "and".
  * @param {string[]} [searchOptions.excludeTags] - An array of tag names to exclude from results.
+ * @param {number[]} [searchOptions.projects] - An array of project IDs to filter by.
+ * @param {number[]} [searchOptions.ips] - An array of IP IDs to filter by.
+ * @param {number[]} [searchOptions.characters] - An array of character IDs to filter by.
  * @param {string} [searchOptions.sort] - Sort field: "date", "name", or "size".
  * @param {string} [searchOptions.order] - Sort order: "asc" or "desc". Default: "desc".
  * @param {number} [searchOptions.limit] - Maximum number of results to return.
@@ -55,11 +61,15 @@ export const searchMedia = async (
     tags?: string[];
     tagMode?: "and" | "or";
     excludeTags?: string[];
+    projects?: number[];
+    ips?: number[];
+    characters?: number[];
     sort?: "date" | "name" | "size";
     order?: "asc" | "desc";
     limit?: number;
     offset?: number;
   }
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Search function requires multiple filter conditions
 ) => {
   try {
     const {
@@ -67,6 +77,9 @@ export const searchMedia = async (
       tags: includeTags,
       tagMode = "and",
       excludeTags,
+      projects,
+      ips,
+      characters,
       sort,
       order = "desc",
       limit,
@@ -117,6 +130,45 @@ export const searchMedia = async (
           )
         );
       }
+    }
+
+    // Project filter
+    if (projects && projects.length > 0) {
+      queryBuilder = queryBuilder.where(
+        inArray(
+          medias.id,
+          db
+            .select({ mediaId: mediaProjects.mediaId })
+            .from(mediaProjects)
+            .where(inArray(mediaProjects.projectId, projects))
+        )
+      );
+    }
+
+    // IP filter
+    if (ips && ips.length > 0) {
+      queryBuilder = queryBuilder.where(
+        inArray(
+          medias.id,
+          db
+            .select({ mediaId: mediaIps.mediaId })
+            .from(mediaIps)
+            .where(inArray(mediaIps.ipId, ips))
+        )
+      );
+    }
+
+    // Character filter
+    if (characters && characters.length > 0) {
+      queryBuilder = queryBuilder.where(
+        inArray(
+          medias.id,
+          db
+            .select({ mediaId: mediaCharacters.mediaId })
+            .from(mediaCharacters)
+            .where(inArray(mediaCharacters.characterId, characters))
+        )
+      );
     }
 
     // Exclude tags filter
