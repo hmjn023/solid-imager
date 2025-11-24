@@ -1,5 +1,12 @@
 import { A } from "@solidjs/router";
-import { createResource, createSignal, For, Show } from "solid-js";
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  For,
+  onCleanup,
+  Show,
+} from "solid-js";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -20,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { searchState, setSearchState } from "~/domain/search/store";
 import type { MediaSourceInfo } from "~/domain/sources/schemas";
 import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
@@ -33,23 +41,22 @@ import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 type Source = MediaSourceInfo;
 
 export default function Search() {
-  const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
-  const [excludeTags, setExcludeTags] = createSignal<string[]>([]);
-  const [tagMode, setTagMode] = createSignal<"and" | "or">("and");
-  const [searchQuery, setSearchQuery] = createSignal("");
-  const [sortBy, setSortBy] = createSignal<"date" | "name" | "size">("date");
-  const [sortOrder, setSortOrder] = createSignal<"asc" | "desc">("desc");
-  const [selectedSource, setSelectedSource] = createSignal<string>("");
-  const [selectedProjects, setSelectedProjects] = createSignal<number[]>([]);
-  const [selectedIps, setSelectedIps] = createSignal<number[]>([]);
-  const [selectedCharacters, setSelectedCharacters] = createSignal<number[]>(
-    []
-  );
-  const DefaultLimit = 20;
-  const [limit, _setLimit] = createSignal(DefaultLimit);
-  const [offset, setOffset] = createSignal(0);
   const [_commandOpen, setCommandOpen] = createSignal(false);
   const [_excludeCommandOpen, setExcludeCommandOpen] = createSignal(false);
+  const [isRestored, setIsRestored] = createSignal(false);
+
+  createEffect(() => {
+    if (!(searchResults.loading || isRestored())) {
+      if (searchState.scrollY > 0) {
+        window.scrollTo(0, searchState.scrollY);
+      }
+      setIsRestored(true);
+    }
+  });
+
+  onCleanup(() => {
+    setSearchState("scrollY", window.scrollY);
+  });
 
   // Fetch all tags for autocomplete
   const [tags] = createResource<TagResponse[]>(fetchTags);
@@ -63,69 +70,90 @@ export default function Search() {
   const [allCharacters] = createResource(fetchAllCharacters);
 
   // Search function
-  const [searchResults, { refetch }] = createResource(async () => {
-    const source = selectedSource();
-    if (!source) {
-      return { media: [], total: 0 };
-    }
+  const [searchResults] = createResource(
+    () => ({ ...searchState }),
+    async (state) => {
+      const source = state.selectedSource;
+      if (!source) {
+        return { media: [], total: 0 };
+      }
 
-    return await searchMedia(source, {
-      q: searchQuery(),
-      tags: selectedTags().length > 0 ? selectedTags().join(",") : undefined,
-      excludeTags:
-        excludeTags().length > 0 ? excludeTags().join(",") : undefined,
-      tagMode: tagMode(),
-      projects:
-        selectedProjects().length > 0
-          ? selectedProjects().join(",")
-          : undefined,
-      ips: selectedIps().length > 0 ? selectedIps().join(",") : undefined,
-      characters:
-        selectedCharacters().length > 0
-          ? selectedCharacters().join(",")
-          : undefined,
-      sort: sortBy(),
-      order: sortOrder(),
-      limit: limit(),
-      offset: offset(),
-    });
-  });
+      return await searchMedia(source, {
+        q: state.searchQuery,
+        tags:
+          state.selectedTags.length > 0
+            ? state.selectedTags.join(",")
+            : undefined,
+        excludeTags:
+          state.excludeTags.length > 0
+            ? state.excludeTags.join(",")
+            : undefined,
+        tagMode: state.tagMode,
+        projects:
+          state.selectedProjects.length > 0
+            ? state.selectedProjects.join(",")
+            : undefined,
+        ips:
+          state.selectedIps.length > 0
+            ? state.selectedIps.join(",")
+            : undefined,
+        characters:
+          state.selectedCharacters.length > 0
+            ? state.selectedCharacters.join(",")
+            : undefined,
+        sort: state.sortBy,
+        order: state.sortOrder,
+        limit: state.limit,
+        offset: state.offset,
+      });
+    }
+  );
 
   const handleSearch = () => {
-    setOffset(0);
-    refetch();
+    setSearchState("offset", 0);
+    setSearchState("scrollY", 0);
+    window.scrollTo(0, 0);
+    // refetch is automatic due to resource dependency
   };
 
   const handleNextPage = () => {
-    setOffset((prev) => prev + limit());
-    refetch();
+    setSearchState("offset", (prev) => prev + searchState.limit);
+    setSearchState("scrollY", 0);
+    window.scrollTo(0, 0);
   };
 
   const handlePrevPage = () => {
-    setOffset((prev) => Math.max(0, prev - limit()));
-    refetch();
+    setSearchState("offset", (prev) => Math.max(0, prev - searchState.limit));
+    setSearchState("scrollY", 0);
+    window.scrollTo(0, 0);
   };
 
   const addTag = (tagName: string) => {
-    if (!selectedTags().includes(tagName)) {
-      setSelectedTags([...selectedTags(), tagName]);
+    if (!searchState.selectedTags.includes(tagName)) {
+      setSearchState("selectedTags", [...searchState.selectedTags, tagName]);
     }
     setCommandOpen(false);
   };
 
   const removeTag = (tagName: string) => {
-    setSelectedTags(selectedTags().filter((t) => t !== tagName));
+    setSearchState(
+      "selectedTags",
+      searchState.selectedTags.filter((t) => t !== tagName)
+    );
   };
 
   const addExcludeTag = (tagName: string) => {
-    if (!excludeTags().includes(tagName)) {
-      setExcludeTags([...excludeTags(), tagName]);
+    if (!searchState.excludeTags.includes(tagName)) {
+      setSearchState("excludeTags", [...searchState.excludeTags, tagName]);
     }
     setExcludeCommandOpen(false);
   };
 
   const removeExcludeTag = (tagName: string) => {
-    setExcludeTags(excludeTags().filter((t) => t !== tagName));
+    setSearchState(
+      "excludeTags",
+      searchState.excludeTags.filter((t) => t !== tagName)
+    );
   };
 
   return (
@@ -157,13 +185,15 @@ export default function Search() {
                     typeof value === "object" && value !== null && "id" in value
                       ? (value as Source).id
                       : "";
-                  setSelectedSource(id || "");
+                  setSearchState("selectedSource", id || "");
                 }}
                 options={sources() || []}
                 optionTextValue="name"
                 optionValue="name"
                 placeholder="ソースを選択"
-                value={sources()?.find((s) => s.id === selectedSource())}
+                value={sources()?.find(
+                  (s) => s.id === searchState.selectedSource
+                )}
               >
                 <SelectTrigger>
                   <SelectValue<Source>>
@@ -183,10 +213,12 @@ export default function Search() {
             <div class="space-y-2">
               <Label>ファイル名検索</Label>
               <Input
-                onInput={(e) => setSearchQuery(e.currentTarget.value)}
+                onInput={(e) =>
+                  setSearchState("searchQuery", e.currentTarget.value)
+                }
                 placeholder="ファイル名を入力..."
                 type="text"
-                value={searchQuery()}
+                value={searchState.searchQuery}
               />
             </div>
 
@@ -194,7 +226,7 @@ export default function Search() {
             <div class="space-y-2">
               <Label>タグ (含む)</Label>
               <div class="mb-2 flex flex-wrap gap-2">
-                <For each={selectedTags()}>
+                <For each={searchState.selectedTags}>
                   {(tag) => (
                     <Badge class="cursor-pointer" variant="default">
                       {tag}
@@ -240,10 +272,10 @@ export default function Search() {
                       : "いずれかを含む (OR)"}
                   </SelectItem>
                 )}
-                onChange={setTagMode}
+                onChange={(value) => setSearchState("tagMode", value || "and")}
                 options={["and", "or"]}
                 placeholder="モードを選択"
-                value={tagMode()}
+                value={searchState.tagMode}
               >
                 <SelectTrigger>
                   <SelectValue<string>>
@@ -262,7 +294,7 @@ export default function Search() {
             <div class="space-y-2">
               <Label>除外タグ</Label>
               <div class="mb-2 flex flex-wrap gap-2">
-                <For each={excludeTags()}>
+                <For each={searchState.excludeTags}>
                   {(tag) => (
                     <Badge class="cursor-pointer" variant="destructive">
                       {tag}
@@ -301,7 +333,7 @@ export default function Search() {
             <div class="space-y-2">
               <Label>プロジェクト</Label>
               <div class="mb-2 flex flex-wrap gap-2">
-                <For each={selectedProjects()}>
+                <For each={searchState.selectedProjects}>
                   {(projectId) => {
                     const project = allProjects()?.find(
                       (p) => p.id === projectId
@@ -312,8 +344,9 @@ export default function Search() {
                         <button
                           class="ml-1 hover:text-red-500"
                           onClick={() =>
-                            setSelectedProjects(
-                              selectedProjects().filter(
+                            setSearchState(
+                              "selectedProjects",
+                              searchState.selectedProjects.filter(
                                 (id) => id !== projectId
                               )
                             )
@@ -337,9 +370,11 @@ export default function Search() {
                         <CommandItem
                           class="cursor-pointer"
                           onSelect={() => {
-                            if (!selectedProjects().includes(project.id)) {
-                              setSelectedProjects([
-                                ...selectedProjects(),
+                            if (
+                              !searchState.selectedProjects.includes(project.id)
+                            ) {
+                              setSearchState("selectedProjects", [
+                                ...searchState.selectedProjects,
                                 project.id,
                               ]);
                             }
@@ -365,7 +400,7 @@ export default function Search() {
             <div class="space-y-2">
               <Label>IP</Label>
               <div class="mb-2 flex flex-wrap gap-2">
-                <For each={selectedIps()}>
+                <For each={searchState.selectedIps}>
                   {(ipId) => {
                     const ip = allIps()?.find((i) => i.id === ipId);
                     return (
@@ -374,8 +409,11 @@ export default function Search() {
                         <button
                           class="ml-1 hover:text-red-500"
                           onClick={() =>
-                            setSelectedIps(
-                              selectedIps().filter((id) => id !== ipId)
+                            setSearchState(
+                              "selectedIps",
+                              searchState.selectedIps.filter(
+                                (id) => id !== ipId
+                              )
                             )
                           }
                           type="button"
@@ -397,8 +435,11 @@ export default function Search() {
                         <CommandItem
                           class="cursor-pointer"
                           onSelect={() => {
-                            if (!selectedIps().includes(ip.id)) {
-                              setSelectedIps([...selectedIps(), ip.id]);
+                            if (!searchState.selectedIps.includes(ip.id)) {
+                              setSearchState("selectedIps", [
+                                ...searchState.selectedIps,
+                                ip.id,
+                              ]);
                             }
                           }}
                         >
@@ -422,7 +463,7 @@ export default function Search() {
             <div class="space-y-2">
               <Label>キャラクター</Label>
               <div class="mb-2 flex flex-wrap gap-2">
-                <For each={selectedCharacters()}>
+                <For each={searchState.selectedCharacters}>
                   {(characterId) => {
                     const character = allCharacters()?.find(
                       (c) => c.id === characterId
@@ -433,8 +474,9 @@ export default function Search() {
                         <button
                           class="ml-1 hover:text-red-500"
                           onClick={() =>
-                            setSelectedCharacters(
-                              selectedCharacters().filter(
+                            setSearchState(
+                              "selectedCharacters",
+                              searchState.selectedCharacters.filter(
                                 (id) => id !== characterId
                               )
                             )
@@ -458,9 +500,13 @@ export default function Search() {
                         <CommandItem
                           class="cursor-pointer"
                           onSelect={() => {
-                            if (!selectedCharacters().includes(character.id)) {
-                              setSelectedCharacters([
-                                ...selectedCharacters(),
+                            if (
+                              !searchState.selectedCharacters.includes(
+                                character.id
+                              )
+                            ) {
+                              setSearchState("selectedCharacters", [
+                                ...searchState.selectedCharacters,
                                 character.id,
                               ]);
                             }
@@ -503,10 +549,12 @@ export default function Search() {
                       </SelectItem>
                     );
                   }}
-                  onChange={setSortBy}
+                  onChange={(value) =>
+                    setSearchState("sortBy", value || "date")
+                  }
                   options={["date", "name", "size"]}
                   placeholder="項目"
-                  value={sortBy()}
+                  value={searchState.sortBy}
                 >
                   <SelectTrigger>
                     <SelectValue<string>>
@@ -530,10 +578,12 @@ export default function Search() {
                       {props.item.rawValue === "asc" ? "昇順" : "降順"}
                     </SelectItem>
                   )}
-                  onChange={setSortOrder}
+                  onChange={(value) =>
+                    setSearchState("sortOrder", value || "desc")
+                  }
                   options={["asc", "desc"]}
                   placeholder="順序"
-                  value={sortOrder()}
+                  value={searchState.sortOrder}
                 >
                   <SelectTrigger>
                     <SelectValue<string>>
@@ -573,7 +623,7 @@ export default function Search() {
                 </p>
                 <div class="flex gap-2">
                   <Button
-                    disabled={offset() === 0}
+                    disabled={searchState.offset === 0}
                     onClick={handlePrevPage}
                     size="sm"
                     variant="outline"
@@ -582,7 +632,8 @@ export default function Search() {
                   </Button>
                   <Button
                     disabled={
-                      offset() + limit() >= (searchResults()?.total || 0)
+                      searchState.offset + searchState.limit >=
+                      (searchResults()?.total || 0)
                     }
                     onClick={handleNextPage}
                     size="sm"
@@ -610,7 +661,7 @@ export default function Search() {
                             <img
                               alt={media.fileName}
                               class="h-full w-full object-cover"
-                              src={`/api/sources/${selectedSource()}/${media.id}/thumbnail`}
+                              src={`/api/sources/${searchState.selectedSource}/${media.id}/thumbnail`}
                             />
                           </Show>
                         </div>
@@ -640,7 +691,7 @@ export default function Search() {
                         </div>
                         <A
                           class="mt-2 block text-center text-blue-600 text-sm hover:underline"
-                          href={`/sources/${selectedSource()}/${media.id}`}
+                          href={`/sources/${searchState.selectedSource}/${media.id}`}
                         >
                           詳細を見る
                         </A>

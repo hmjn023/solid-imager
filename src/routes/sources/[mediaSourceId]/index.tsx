@@ -1,5 +1,6 @@
 import { useParams } from "@solidjs/router";
 import {
+  createEffect,
   createResource,
   createSignal,
   For,
@@ -10,6 +11,7 @@ import {
 import { isServer } from "solid-js/web";
 import { z } from "zod";
 import { UploadMediaModal } from "~/components/upload-media-modal";
+import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import {
   fetchMediaList,
   uploadMedia,
@@ -24,6 +26,22 @@ export default function MediaListPage() {
     () => params.mediaSourceId,
     fetchMediaList
   );
+
+  const [isRestored, setIsRestored] = createSignal(false);
+
+  createEffect(() => {
+    if (!(media.loading || isRestored())) {
+      const scrollY = getScrollPosition(params.mediaSourceId);
+      if (scrollY > 0) {
+        window.scrollTo(0, scrollY);
+      }
+      setIsRestored(true);
+    }
+  });
+
+  onCleanup(() => {
+    setScrollPosition(params.mediaSourceId, window.scrollY);
+  });
 
   const [showUploadModal, setShowUploadModal] = createSignal(false);
   const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
