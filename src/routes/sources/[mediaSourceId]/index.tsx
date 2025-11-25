@@ -26,14 +26,17 @@ export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
 
+  const mediaSourceId = () => params.mediaSourceId;
+
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", params.mediaSourceId],
-    queryFn: ({ pageParam }) =>
-      fetchMediaListInfinite(
-        params.mediaSourceId,
-        pageParam,
-        MEDIA_ITEMS_PER_PAGE
-      ),
+    queryKey: ["media", mediaSourceId()],
+    queryFn: ({ pageParam }) => {
+      const id = mediaSourceId();
+      if (!id) {
+        throw new Error("Media source ID is required");
+      }
+      return fetchMediaListInfinite(id, pageParam, MEDIA_ITEMS_PER_PAGE);
+    },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
       const loadedCount = allPages.reduce(
@@ -47,23 +50,34 @@ export default function MediaListPage() {
     },
   }));
 
-  const [isRestored, setIsRestored] = createSignal(false);
-
   // Scroll restoration logic
-  createEffect(() => {
+  onMount(() => {
     if (isServer) {
       return;
     }
 
-    if (!(mediaQuery.isLoading || isRestored()) && mediaQuery.data) {
-      const scrollY = getScrollPosition(params.mediaSourceId);
-      if (scrollY > 0) {
-        // Wait for DOM update
-        requestAnimationFrame(() => {
-          window.scrollTo(0, scrollY);
-        });
-      }
-      setIsRestored(true);
+    // Disable browser's default scroll restoration to handle it manually
+    if ("scrollRestoration" in history) {
+      history.scrollRestoration = "manual";
+    }
+
+    // Restore scroll position after data loads
+    const id = mediaSourceId();
+    if (!id) {
+      return;
+    }
+
+    const scrollY = getScrollPosition(id);
+    if (scrollY > 0) {
+      // Wait for the query to finish loading
+      createEffect(() => {
+        if (!mediaQuery.isLoading && mediaQuery.data) {
+          // Use setTimeout to ensure DOM has updated
+          setTimeout(() => {
+            window.scrollTo(0, scrollY);
+          }, 0);
+        }
+      });
     }
   });
 
@@ -71,7 +85,10 @@ export default function MediaListPage() {
     if (isServer) {
       return;
     }
-    setScrollPosition(params.mediaSourceId, window.scrollY);
+    const id = mediaSourceId();
+    if (id) {
+      setScrollPosition(id, window.scrollY);
+    }
   });
 
   // Infinite scroll trigger
@@ -124,10 +141,10 @@ export default function MediaListPage() {
     formData.append("overwrite", String(options.overwrite));
     formData.append("autoIncrement", String(options.autoIncrement));
 
-    await uploadMedia(params.mediaSourceId, formData);
+    await uploadMedia(mediaSourceId() || "", formData);
     // Invalidate query to refetch list
     queryClient.invalidateQueries({
-      queryKey: ["media", params.mediaSourceId],
+      queryKey: ["media", mediaSourceId()],
     });
   };
 
@@ -162,7 +179,7 @@ export default function MediaListPage() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          mediaSourceId: params.mediaSourceId,
+          mediaSourceId: mediaSourceId() || "",
           items: json,
         }),
       });
@@ -268,11 +285,11 @@ export default function MediaListPage() {
       document.addEventListener("paste", handlePaste);
 
       // SSE Subscription for real-time updates
-      const eventSource = new EventSource(`/api/sse/${params.mediaSourceId}`);
+      const eventSource = new EventSource(`/api/sse/${mediaSourceId()}`);
 
       const invalidateMedia = () => {
         queryClient.invalidateQueries({
-          queryKey: ["media", params.mediaSourceId],
+          queryKey: ["media", mediaSourceId()],
         });
       };
 
@@ -313,7 +330,7 @@ export default function MediaListPage() {
       onDrop={handleDrop}
     >
       <h1 class="mb-4 font-bold text-2xl">
-        Media in Source: {params.mediaSourceId}
+        Media in Source: {mediaSourceId()}
       </h1>
 
       <Show when={mediaQuery.isLoading}>
@@ -329,7 +346,7 @@ export default function MediaListPage() {
           {(page) => (
             <For each={page.media}>
               {(item) => (
-                <a href={`${params.mediaSourceId}/${item.id}`}>
+                <a href={`${mediaSourceId()}/${item.id}`}>
                   <div class="aspect-square overflow-hidden rounded-lg border">
                     {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
                     <img
@@ -337,7 +354,7 @@ export default function MediaListPage() {
                       class="h-full w-full object-cover"
                       height={item.height}
                       loading="lazy"
-                      src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
+                      src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
                       width={item.width}
                     />
                   </div>

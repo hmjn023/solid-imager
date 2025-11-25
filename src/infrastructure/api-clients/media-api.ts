@@ -26,6 +26,8 @@ export function fetchMediaList(sourceId: string) {
   return apiRequest(API_ENDPOINTS.mediaList(sourceId), mediaListSchema);
 }
 
+import { searchMedia } from "./search-api";
+
 /**
  * Fetches media list with pagination for infinite scroll
  * @param sourceId - Media source ID
@@ -41,15 +43,13 @@ export function fetchMediaListInfinite(
   // Use search API for pagination support
   // Default sort by date desc is handled by backend if not specified,
   // but we can be explicit if needed.
-  return import("./search-api").then(({ searchMedia }) =>
-    searchMedia(sourceId, {
-      offset: pageParam,
-      limit,
-      sort: "date",
-      order: "desc",
-      tagMode: "and", // Default
-    })
-  );
+  return searchMedia(sourceId, {
+    offset: pageParam,
+    limit,
+    sort: "date",
+    order: "desc",
+    tagMode: "and", // Default
+  });
 }
 
 /**
