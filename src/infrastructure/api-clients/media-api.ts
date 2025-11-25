@@ -27,6 +27,32 @@ export function fetchMediaList(sourceId: string) {
 }
 
 /**
+ * Fetches media list with pagination for infinite scroll
+ * @param sourceId - Media source ID
+ * @param pageParam - Offset for pagination
+ * @param limit - Number of items per page
+ * @returns Search results with media array and total count
+ */
+export function fetchMediaListInfinite(
+  sourceId: string,
+  pageParam = 0,
+  limit = 50
+) {
+  // Use search API for pagination support
+  // Default sort by date desc is handled by backend if not specified,
+  // but we can be explicit if needed.
+  return import("./search-api").then(({ searchMedia }) =>
+    searchMedia(sourceId, {
+      offset: pageParam,
+      limit,
+      sort: "date",
+      order: "desc",
+      tagMode: "and", // Default
+    })
+  );
+}
+
+/**
  * Fetches detailed information for a specific media item
  * @param sourceId - Media source ID
  * @param mediaId - Media ID

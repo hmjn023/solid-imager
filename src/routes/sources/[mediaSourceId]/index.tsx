@@ -1,7 +1,7 @@
 import { useParams } from "@solidjs/router";
+import { createInfiniteQuery, useQueryClient } from "@tanstack/solid-query";
 import {
   createEffect,
-  createResource,
   createSignal,
   For,
   onCleanup,
@@ -13,34 +13,89 @@ import { z } from "zod";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import {
-  fetchMediaList,
+  fetchMediaListInfinite,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
+
+const MEDIA_ITEMS_PER_PAGE = 50;
 
 /**
  * 特定のメディアソース内のメディアをグリッド表示するページコンポーネントです。
  */
 export default function MediaListPage() {
   const params = useParams();
-  const [media, { refetch }] = createResource(
-    () => params.mediaSourceId,
-    fetchMediaList
-  );
+  const queryClient = useQueryClient();
+
+  const mediaQuery = createInfiniteQuery(() => ({
+    queryKey: ["media", params.mediaSourceId],
+    queryFn: ({ pageParam }) =>
+      fetchMediaListInfinite(
+        params.mediaSourceId,
+        pageParam,
+        MEDIA_ITEMS_PER_PAGE
+      ),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce(
+        (sum, page) => sum + page.media.length,
+        0
+      );
+      if (loadedCount < lastPage.total) {
+        return loadedCount;
+      }
+      return;
+    },
+  }));
 
   const [isRestored, setIsRestored] = createSignal(false);
 
+  // Scroll restoration logic
   createEffect(() => {
-    if (!(media.loading || isRestored())) {
+    if (isServer) {
+      return;
+    }
+
+    if (!(mediaQuery.isLoading || isRestored()) && mediaQuery.data) {
       const scrollY = getScrollPosition(params.mediaSourceId);
       if (scrollY > 0) {
-        window.scrollTo(0, scrollY);
+        // Wait for DOM update
+        requestAnimationFrame(() => {
+          window.scrollTo(0, scrollY);
+        });
       }
       setIsRestored(true);
     }
   });
 
   onCleanup(() => {
+    if (isServer) {
+      return;
+    }
     setScrollPosition(params.mediaSourceId, window.scrollY);
+  });
+
+  // Infinite scroll trigger
+  let loadMoreRef: HTMLDivElement | undefined;
+
+  onMount(() => {
+    if (isServer) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
+          mediaQuery.fetchNextPage();
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    if (loadMoreRef) {
+      observer.observe(loadMoreRef);
+    }
+
+    onCleanup(() => observer.disconnect());
   });
 
   const [showUploadModal, setShowUploadModal] = createSignal(false);
@@ -70,7 +125,10 @@ export default function MediaListPage() {
     formData.append("autoIncrement", String(options.autoIncrement));
 
     await uploadMedia(params.mediaSourceId, formData);
-    refetch(); // Re-fetch media list after successful upload
+    // Invalidate query to refetch list
+    queryClient.invalidateQueries({
+      queryKey: ["media", params.mediaSourceId],
+    });
   };
 
   const handleFileSelect = async (e: Event) => {
@@ -212,27 +270,27 @@ export default function MediaListPage() {
       // SSE Subscription for real-time updates
       const eventSource = new EventSource(`/api/sse/${params.mediaSourceId}`);
 
-      // Listen for thumbnail generation completion
-      // This is the main event that triggers UI updates for new media
-      eventSource.addEventListener("thumbnail-generated", (_event) => {
-        refetch();
-      });
+      const invalidateMedia = () => {
+        queryClient.invalidateQueries({
+          queryKey: ["media", params.mediaSourceId],
+        });
+      };
 
-      // Listen for new media files added to the directory
-      // Note: We don't refetch here because thumbnails aren't ready yet
-      // The thumbnail-generated event will trigger the refetch
-      eventSource.addEventListener("media-added", (_event) => {
-        // Thumbnail generation is queued, will refetch when thumbnail-generated fires
+      // Listen for thumbnail generation completion
+      eventSource.addEventListener("thumbnail-generated", (_event) => {
+        invalidateMedia();
       });
 
       // Listen for media files deleted from the directory
       eventSource.addEventListener("media-deleted", (_event) => {
-        refetch();
+        invalidateMedia();
       });
 
       // Listen for media files changed in the directory
       eventSource.addEventListener("media-changed", (_event) => {
-        // Thumbnail regeneration is queued, will refetch when thumbnail-generated fires
+        // Ideally we might want to update specific item in cache,
+        // but invalidating is safer for now
+        invalidateMedia();
       });
 
       eventSource.onerror = (_err) => {
@@ -258,32 +316,48 @@ export default function MediaListPage() {
         Media in Source: {params.mediaSourceId}
       </h1>
 
-      <Show when={media.loading}>
+      <Show when={mediaQuery.isLoading}>
         <div>Loading media...</div>
       </Show>
 
-      <Show when={media.error}>
-        <div class="text-red-500">Error: {media.error.message}</div>
+      <Show when={mediaQuery.isError}>
+        <div class="text-red-500">Error: {mediaQuery.error?.message}</div>
       </Show>
 
       <div class="grid grid-cols-2 gap-4 md:grid-cols-4 lg:grid-cols-6">
-        <For each={media()}>
-          {(item) => (
-            <a href={`${params.mediaSourceId}/${item.id}`}>
-              <div class="aspect-square overflow-hidden rounded-lg border">
-                {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
-                <img
-                  alt={item.fileName}
-                  class="h-full w-full object-cover"
-                  height={item.height}
-                  loading="lazy"
-                  src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
-                  width={item.width}
-                />
-              </div>
-            </a>
+        <For each={mediaQuery.data?.pages}>
+          {(page) => (
+            <For each={page.media}>
+              {(item) => (
+                <a href={`${params.mediaSourceId}/${item.id}`}>
+                  <div class="aspect-square overflow-hidden rounded-lg border">
+                    {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
+                    <img
+                      alt={item.fileName}
+                      class="h-full w-full object-cover"
+                      height={item.height}
+                      loading="lazy"
+                      src={`/api/sources/${params.mediaSourceId}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
+                      width={item.width}
+                    />
+                  </div>
+                </a>
+              )}
+            </For>
           )}
         </For>
+      </div>
+
+      {/* Infinite scroll trigger */}
+      <div
+        class="h-10 w-full"
+        ref={(el) => {
+          loadMoreRef = el;
+        }}
+      >
+        <Show when={mediaQuery.isFetchingNextPage}>
+          <div class="text-center text-gray-500">Loading more...</div>
+        </Show>
       </div>
 
       {/* Hidden file input */}
