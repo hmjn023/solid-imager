@@ -1,4 +1,3 @@
-import { createEffect } from "solid-js";
 import { createStore } from "solid-js/store";
 import { isServer } from "solid-js/web";
 
@@ -11,13 +10,15 @@ const defaultState: SourcesState = {
   scrollPositions: {},
 };
 
+const STORAGE_KEY = "solid-imager-scroll-positions";
+
 // Initialize state from sessionStorage if available
 const getInitialState = (): SourcesState => {
   if (isServer) {
     return defaultState;
   }
   try {
-    const stored = sessionStorage.getItem("solid-imager-scroll-positions");
+    const stored = sessionStorage.getItem(STORAGE_KEY);
     return stored ? JSON.parse(stored) : defaultState;
   } catch {
     return defaultState;
@@ -28,20 +29,22 @@ export const [sourcesState, setSourcesState] = createStore<SourcesState>(
   getInitialState()
 );
 
-// Persist state to sessionStorage whenever it changes
-createEffect(() => {
+// Helper to persist to sessionStorage
+const persistToStorage = () => {
   if (isServer) {
     return;
   }
-  sessionStorage.setItem(
-    "solid-imager-scroll-positions",
-    JSON.stringify(sourcesState)
-  );
-});
+  const data = JSON.stringify(sourcesState);
+  sessionStorage.setItem(STORAGE_KEY, data);
+};
 
-export const getScrollPosition = (mediaSourceId: string) =>
-  sourcesState.scrollPositions[mediaSourceId] || 0;
+export const getScrollPosition = (mediaSourceId: string) => {
+  const position = sourcesState.scrollPositions[mediaSourceId] || 0;
+  return position;
+};
 
 export const setScrollPosition = (mediaSourceId: string, scrollY: number) => {
   setSourcesState("scrollPositions", mediaSourceId, scrollY);
+  // Persist immediately after updating
+  persistToStorage();
 };

@@ -17,7 +17,8 @@ import {
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
 
-const MEDIA_ITEMS_PER_PAGE = 50;
+const MEDIA_ITEMS_PER_PAGE = 200;
+const SCROLL_RESTORE_DELAY = 100;
 
 /**
  * 特定のメディアソース内のメディアをグリッド表示するページコンポーネントです。
@@ -50,34 +51,39 @@ export default function MediaListPage() {
     },
   }));
 
-  // Scroll restoration logic
+  // Disable browser's default scroll restoration
   onMount(() => {
-    if (isServer) {
-      return;
-    }
-
-    // Disable browser's default scroll restoration to handle it manually
+    if (isServer) return;
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
     }
+  });
 
-    // Restore scroll position after data loads
+  // Scroll restoration logic - runs only once when data is first loaded
+  const [isScrollRestored, setIsScrollRestored] = createSignal(false);
+
+  createEffect(() => {
+    if (isServer) return;
+    if (isScrollRestored()) return;
+
     const id = mediaSourceId();
-    if (!id) {
-      return;
-    }
+    if (!id) return;
 
-    const scrollY = getScrollPosition(id);
-    if (scrollY > 0) {
-      // Wait for the query to finish loading
-      createEffect(() => {
-        if (!mediaQuery.isLoading && mediaQuery.data) {
-          // Use setTimeout to ensure DOM has updated
-          setTimeout(() => {
-            window.scrollTo(0, scrollY);
-          }, 0);
-        }
-      });
+    // Only restore scroll if we have data and it's not loading
+    if (mediaQuery.data && !mediaQuery.isLoading) {
+      const targetScrollY = getScrollPosition(id);
+
+      if (targetScrollY > 0) {
+        // Simple restoration attempt
+        setTimeout(() => {
+          requestAnimationFrame(() => {
+            window.scrollTo(0, targetScrollY);
+            setIsScrollRestored(true);
+          });
+        }, SCROLL_RESTORE_DELAY);
+      } else {
+        setIsScrollRestored(true);
+      }
     }
   });
 
