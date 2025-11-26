@@ -1,5 +1,6 @@
 import { Collapsible } from "@kobalte/core";
-import { createMemo, createResource, createSignal, For, Show } from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
 import type { MediaDetails } from "~/domain/media/schemas";
@@ -70,6 +71,7 @@ const _CollapsibleSection = (props: {
 };
 
 export default function MediaSidebar(props: MediaSidebarProps) {
+  const queryClient = useQueryClient();
   const tags = createMemo(() => props.media.tags || []);
 
   // Description editing state
@@ -106,13 +108,33 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
   const genInfo = createMemo(() => props.media.generationInfo);
 
-  // Projects
-  const [projects, { refetch: refetchProjects }] = createResource(
-    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
-    ({ sourceId, mediaId }) => fetchProjectsForMedia(sourceId, mediaId)
-  );
-  const [allProjects, { refetch: refetchAllProjects }] =
-    createResource(fetchAllProjects);
+  // Queries for associations
+  const projects = createQuery(() => ({
+    queryKey: ["projectsForMedia", props.media.id],
+    queryFn: () =>
+      fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
+  }));
+  const allProjects = createQuery(() => ({
+    queryKey: ["allProjects"],
+    queryFn: fetchAllProjects,
+  }));
+  const ips = createQuery(() => ({
+    queryKey: ["ipsForMedia", props.media.id],
+    queryFn: () => fetchIpsForMedia(props.media.mediaSourceId, props.media.id),
+  }));
+  const allIps = createQuery(() => ({
+    queryKey: ["allIps"],
+    queryFn: fetchAllIps,
+  }));
+  const characters = createQuery(() => ({
+    queryKey: ["charactersForMedia", props.media.id],
+    queryFn: () =>
+      fetchCharactersForMedia(props.media.mediaSourceId, props.media.id),
+  }));
+  const allCharacters = createQuery(() => ({
+    queryKey: ["allCharacters"],
+    queryFn: fetchAllCharacters,
+  }));
 
   const handleAddProject = async (projectId: number) => {
     await addProjectToMedia(
@@ -120,7 +142,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       projectId
     );
-    refetchProjects();
+    queryClient.invalidateQueries({
+      queryKey: ["projectsForMedia", props.media.id],
+    });
   };
 
   const handleRemoveProject = async (projectId: number) => {
@@ -129,45 +153,32 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       projectId
     );
-    refetchProjects();
+    queryClient.invalidateQueries({
+      queryKey: ["projectsForMedia", props.media.id],
+    });
   };
 
   const handleCreateProject = async (name: string) => {
     const newProject = await createProject({ name });
     await handleAddProject(newProject.id);
-    refetchAllProjects();
+    queryClient.invalidateQueries({ queryKey: ["allProjects"] });
   };
-
-  // IPs
-  const [ips, { refetch: refetchIps }] = createResource(
-    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
-    ({ sourceId, mediaId }) => fetchIpsForMedia(sourceId, mediaId)
-  );
-  const [allIps, { refetch: refetchAllIps }] = createResource(fetchAllIps);
 
   const handleAddIp = async (ipId: number) => {
     await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
-    refetchIps();
+    queryClient.invalidateQueries({ queryKey: ["ipsForMedia", props.media.id] });
   };
 
   const handleRemoveIp = async (ipId: number) => {
     await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
-    refetchIps();
+    queryClient.invalidateQueries({ queryKey: ["ipsForMedia", props.media.id] });
   };
 
   const handleCreateIp = async (name: string) => {
     const newIp = await createIp({ name });
     await handleAddIp(newIp.id);
-    refetchAllIps();
+    queryClient.invalidateQueries({ queryKey: ["allIps"] });
   };
-
-  // Characters
-  const [characters, { refetch: refetchCharacters }] = createResource(
-    () => ({ sourceId: props.media.mediaSourceId, mediaId: props.media.id }),
-    ({ sourceId, mediaId }) => fetchCharactersForMedia(sourceId, mediaId)
-  );
-  const [allCharacters, { refetch: refetchAllCharacters }] =
-    createResource(fetchAllCharacters);
 
   const handleAddCharacter = async (characterId: number) => {
     await addCharacterToMedia(
@@ -175,7 +186,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       characterId
     );
-    refetchCharacters();
+    queryClient.invalidateQueries({
+      queryKey: ["charactersForMedia", props.media.id],
+    });
   };
 
   const handleRemoveCharacter = async (characterId: number) => {
@@ -184,13 +197,15 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       characterId
     );
-    refetchCharacters();
+    queryClient.invalidateQueries({
+      queryKey: ["charactersForMedia", props.media.id],
+    });
   };
 
   const handleCreateCharacter = async (name: string) => {
     const newCharacter = await createCharacter({ name });
     await handleAddCharacter(newCharacter.id);
-    refetchAllCharacters();
+    queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
   };
 
   return (
@@ -288,9 +303,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
       <div class="space-y-4">
         <AssociationManager
-          availableItems={allProjects() || []}
-          isLoading={projects.loading}
-          items={projects() || []}
+          availableItems={allProjects.data || []}
+          isLoading={projects.isLoading}
+          items={projects.data || []}
           onAdd={handleAddProject}
           onCreate={handleCreateProject}
           onRemove={handleRemoveProject}
@@ -298,9 +313,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         />
 
         <AssociationManager
-          availableItems={allIps() || []}
-          isLoading={ips.loading}
-          items={ips() || []}
+          availableItems={allIps.data || []}
+          isLoading={ips.isLoading}
+          items={ips.data || []}
           onAdd={handleAddIp}
           onCreate={handleCreateIp}
           onRemove={handleRemoveIp}
@@ -308,9 +323,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         />
 
         <AssociationManager
-          availableItems={allCharacters() || []}
-          isLoading={characters.loading}
-          items={characters() || []}
+          availableItems={allCharacters.data || []}
+          isLoading={characters.isLoading}
+          items={characters.data || []}
           onAdd={handleAddCharacter}
           onCreate={handleCreateCharacter}
           onRemove={handleRemoveCharacter}

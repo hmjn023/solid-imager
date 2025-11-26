@@ -1,4 +1,5 @@
-import { createResource, createSignal, For } from "solid-js";
+import { createSignal, For } from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
@@ -23,7 +24,11 @@ export default function Sources() {
   const [deletingSource, setDeletingSource] =
     createSignal<MediaSourceInfo | null>(null);
 
-  const [mediaSources, { refetch }] = createResource(fetchMediaSources);
+  const queryClient = useQueryClient();
+  const mediaSources = createQuery(() => ({
+    queryKey: ["mediaSources"],
+    queryFn: fetchMediaSources,
+  }));
 
   const handleAddSource = () => {
     setEditingSource(null);
@@ -43,7 +48,7 @@ export default function Sources() {
       } else {
         await createMediaSource(sourceData);
       }
-      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowFormModal(false);
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
     } catch (_error) {}
@@ -57,7 +62,7 @@ export default function Sources() {
   const handleDeleteConfirm = async (mediaSourceId: string) => {
     try {
       await deleteMediaSource(mediaSourceId);
-      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowDeleteModal(false);
       setDeletingSource(null);
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
@@ -78,7 +83,7 @@ export default function Sources() {
       </div>
 
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <For each={mediaSources()}>
+        <For each={mediaSources.data}>
           {(source) => (
             <SourceCard
               mediaSource={source}
@@ -89,16 +94,16 @@ export default function Sources() {
         </For>
       </div>
 
-      {mediaSources.loading && (
+      {mediaSources.isLoading && (
         <div class="mt-8 text-center">
           <p class="text-muted-foreground">Loading sources...</p>
         </div>
       )}
 
-      {mediaSources.error && (
+      {mediaSources.isError && (
         <div class="mt-8 text-center">
           <p class="text-red-500">
-            Error loading sources: {mediaSources.error.message}
+            Error loading sources: {mediaSources.error?.message}
           </p>
         </div>
       )}
