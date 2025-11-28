@@ -1,19 +1,17 @@
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { isServer } from "solid-js/web";
-import { Badge } from "~/components/ui/badge";
+import { isServer, Portal } from "solid-js/web";
+import { SearchFilters } from "~/components/media/search-filters";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "~/components/ui/command";
-import { Input } from "~/components/ui/input";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
 import { Label } from "~/components/ui/label";
 import {
   Select,
@@ -57,9 +55,48 @@ const buildSearchParams = (state: typeof searchState) => ({
   offset: state.offset,
 });
 
+type SourceSelectorProps = {
+  sources: Source[] | undefined;
+  selectedSource: string;
+  onSelect: (id: string) => void;
+};
+
+const SourceSelector = (props: SourceSelectorProps) => (
+  <div class="space-y-2">
+    <Label>メディアソース</Label>
+    <Select
+      itemComponent={(itemProps) => (
+        <SelectItem item={itemProps.item}>
+          {itemProps.item.rawValue.name}
+        </SelectItem>
+      )}
+      onChange={(value) => {
+        const id =
+          typeof value === "object" && value !== null && "id" in value
+            ? (value as Source).id
+            : "";
+        props.onSelect(id || "");
+      }}
+      options={props.sources || []}
+      optionTextValue="name"
+      optionValue="name"
+      placeholder="ソースを選択"
+      value={props.sources?.find((s) => s.id === props.selectedSource)}
+    >
+      <SelectTrigger>
+        <SelectValue<Source>>
+          {(state) => {
+            const source = state.selectedOption() as Source | undefined;
+            return source?.name || "ソースを選択";
+          }}
+        </SelectValue>
+      </SelectTrigger>
+      <SelectContent />
+    </Select>
+  </div>
+);
+
 export default function Search() {
-  const [_commandOpen, setCommandOpen] = createSignal(false);
-  const [_excludeCommandOpen, setExcludeCommandOpen] = createSignal(false);
   const [isRestored, setIsRestored] = createSignal(false);
 
   createEffect(() => {
@@ -136,478 +173,88 @@ export default function Search() {
     window.scrollTo(0, 0);
   };
 
-  const addTag = (tagName: string) => {
-    if (!searchState.selectedTags.includes(tagName)) {
-      setSearchState("selectedTags", [...searchState.selectedTags, tagName]);
-    }
-    setCommandOpen(false);
-  };
-
-  const removeTag = (tagName: string) => {
-    setSearchState(
-      "selectedTags",
-      searchState.selectedTags.filter((t) => t !== tagName)
-    );
-  };
-
-  const addExcludeTag = (tagName: string) => {
-    if (!searchState.excludeTags.includes(tagName)) {
-      setSearchState("excludeTags", [...searchState.excludeTags, tagName]);
-    }
-    setExcludeCommandOpen(false);
-  };
-
-  const removeExcludeTag = (tagName: string) => {
-    setSearchState(
-      "excludeTags",
-      searchState.excludeTags.filter((t) => t !== tagName)
-    );
-  };
-
   return (
     <main class="container mx-auto p-4">
-      <div class="mb-8">
-        <h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
-        <p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
+      <Show when={!isServer}>
+        {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
+        <Portal mount={document.getElementById("nav-actions")!}>
+          <Dialog>
+            <DialogTrigger
+              as={Button}
+              class="border-white text-white hover:bg-sky-700 md:hidden"
+              size="icon"
+              variant="outline"
+            >
+              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
+              <svg
+                class="lucide lucide-filter"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </DialogTrigger>
+            <DialogContent class="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>検索フィルター</DialogTitle>
+              </DialogHeader>
+              <div class="space-y-4">
+                <SourceSelector
+                  onSelect={(id) => setSearchState("selectedSource", id)}
+                  selectedSource={searchState.selectedSource}
+                  sources={sources.data}
+                />
+                <SearchFilters
+                  characters={allCharacters.data}
+                  ips={allIps.data}
+                  onSearch={handleSearch}
+                  projects={allProjects.data}
+                  setState={setSearchState}
+                  state={searchState}
+                  tags={tags.data}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </Portal>
+      </Show>
+
+      <div class="mb-8 flex items-center justify-between">
+        <div>
+          <h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
+          <p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
+        </div>
       </div>
 
       <div class="grid gap-6 md:grid-cols-[300px_1fr]">
-        {/* Search Filters */}
-        <Card>
+        {/* Search Filters (Desktop only) */}
+        <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
           <CardHeader>
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            {/* Media Source Selector */}
-            <div class="space-y-2">
-              <Label>メディアソース</Label>
-              <Select
-                itemComponent={(props) => (
-                  <SelectItem item={props.item}>
-                    {props.item.rawValue.name}
-                  </SelectItem>
-                )}
-                onChange={(value) => {
-                  // The Select component passes the entire object, not just the id
-                  const id =
-                    typeof value === "object" && value !== null && "id" in value
-                      ? (value as Source).id
-                      : "";
-                  setSearchState("selectedSource", id || "");
-                }}
-                options={sources.data || []}
-                optionTextValue="name"
-                optionValue="name"
-                placeholder="ソースを選択"
-                value={sources.data?.find(
-                  (s) => s.id === searchState.selectedSource
-                )}
-              >
-                <SelectTrigger>
-                  <SelectValue<Source>>
-                    {(state) => {
-                      const source = state.selectedOption() as
-                        | Source
-                        | undefined;
-                      return source?.name || "ソースを選択";
-                    }}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            </div>
-
-            {/* Filename Search */}
-            <div class="space-y-2">
-              <Label>ファイル名検索</Label>
-              <Input
-                onInput={(e) =>
-                  setSearchState("searchQuery", e.currentTarget.value)
-                }
-                placeholder="ファイル名を入力..."
-                type="text"
-                value={searchState.searchQuery}
-              />
-            </div>
-
-            {/* Tag Selection with Command */}
-            <div class="space-y-2">
-              <Label>タグ (含む)</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={searchState.selectedTags}>
-                  {(tag) => (
-                    <Badge class="cursor-pointer" variant="default">
-                      {tag}
-                      <button
-                        class="ml-1 hover:text-red-500"
-                        onClick={() => removeTag(tag)}
-                        type="button"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  )}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="タグを検索..." />
-                <CommandList>
-                  <CommandEmpty>タグが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={tags.data}>
-                      {(tag) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => addTag(tag.name)}
-                        >
-                          {tag.name}
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Tag Mode */}
-            <div class="space-y-2">
-              <Label>タグマッチモード</Label>
-              <Select
-                itemComponent={(props) => (
-                  <SelectItem item={props.item}>
-                    {props.item.rawValue === "and"
-                      ? "すべて含む (AND)"
-                      : "いずれかを含む (OR)"}
-                  </SelectItem>
-                )}
-                onChange={(value) => setSearchState("tagMode", value || "and")}
-                options={["and", "or"]}
-                placeholder="モードを選択"
-                value={searchState.tagMode}
-              >
-                <SelectTrigger>
-                  <SelectValue<string>>
-                    {(state) =>
-                      state.selectedOption() === "and"
-                        ? "すべて含む (AND)"
-                        : "いずれかを含む (OR)"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            </div>
-
-            {/* Exclude Tags */}
-            <div class="space-y-2">
-              <Label>除外タグ</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={searchState.excludeTags}>
-                  {(tag) => (
-                    <Badge class="cursor-pointer" variant="destructive">
-                      {tag}
-                      <button
-                        class="ml-1 hover:text-white"
-                        onClick={() => removeExcludeTag(tag)}
-                        type="button"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  )}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="除外タグを検索..." />
-                <CommandList>
-                  <CommandEmpty>タグが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={tags.data}>
-                      {(tag) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => addExcludeTag(tag.name)}
-                        >
-                          {tag.name}
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Project Filter */}
-            <div class="space-y-2">
-              <Label>プロジェクト</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={searchState.selectedProjects}>
-                  {(projectId) => {
-                    const project = allProjects.data?.find(
-                      (p) => p.id === projectId
-                    );
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {project?.name || projectId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setSearchState(
-                              "selectedProjects",
-                              searchState.selectedProjects.filter(
-                                (id) => id !== projectId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="プロジェクトを検索..." />
-                <CommandList>
-                  <CommandEmpty>プロジェクトが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allProjects.data}>
-                      {(project) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (
-                              !searchState.selectedProjects.includes(project.id)
-                            ) {
-                              setSearchState("selectedProjects", [
-                                ...searchState.selectedProjects,
-                                project.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{project.name}</span>
-                            <Show when={project.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {project.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* IP Filter */}
-            <div class="space-y-2">
-              <Label>IP</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={searchState.selectedIps}>
-                  {(ipId) => {
-                    const ip = allIps.data?.find((i) => i.id === ipId);
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {ip?.name || ipId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setSearchState(
-                              "selectedIps",
-                              searchState.selectedIps.filter(
-                                (id) => id !== ipId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="IPを検索..." />
-                <CommandList>
-                  <CommandEmpty>IPが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allIps.data}>
-                      {(ip) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (!searchState.selectedIps.includes(ip.id)) {
-                              setSearchState("selectedIps", [
-                                ...searchState.selectedIps,
-                                ip.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{ip.name}</span>
-                            <Show when={ip.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {ip.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Character Filter */}
-            <div class="space-y-2">
-              <Label>キャラクター</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={searchState.selectedCharacters}>
-                  {(characterId) => {
-                    const character = allCharacters.data?.find(
-                      (c) => c.id === characterId
-                    );
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {character?.name || characterId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setSearchState(
-                              "selectedCharacters",
-                              searchState.selectedCharacters.filter(
-                                (id) => id !== characterId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="キャラクターを検索..." />
-                <CommandList>
-                  <CommandEmpty>キャラクターが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allCharacters.data}>
-                      {(character) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (
-                              !searchState.selectedCharacters.includes(
-                                character.id
-                              )
-                            ) {
-                              setSearchState("selectedCharacters", [
-                                ...searchState.selectedCharacters,
-                                character.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{character.name}</span>
-                            <Show when={character.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {character.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Sort Options */}
-            <div class="space-y-2">
-              <Label>ソート</Label>
-              <div class="grid grid-cols-2 gap-2">
-                <Select
-                  itemComponent={(props) => {
-                    const getSortLabel = (value: string) => {
-                      if (value === "date") {
-                        return "作成日";
-                      }
-                      if (value === "name") {
-                        return "ファイル名";
-                      }
-                      return "サイズ";
-                    };
-                    return (
-                      <SelectItem item={props.item}>
-                        {getSortLabel(props.item.rawValue)}
-                      </SelectItem>
-                    );
-                  }}
-                  onChange={(value) =>
-                    setSearchState("sortBy", value || "date")
-                  }
-                  options={["date", "name", "size"]}
-                  placeholder="項目"
-                  value={searchState.sortBy}
-                >
-                  <SelectTrigger>
-                    <SelectValue<string>>
-                      {(state) => {
-                        const value = state.selectedOption();
-                        if (value === "date") {
-                          return "作成日";
-                        }
-                        if (value === "name") {
-                          return "ファイル名";
-                        }
-                        return "サイズ";
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-                <Select
-                  itemComponent={(props) => (
-                    <SelectItem item={props.item}>
-                      {props.item.rawValue === "asc" ? "昇順" : "降順"}
-                    </SelectItem>
-                  )}
-                  onChange={(value) =>
-                    setSearchState("sortOrder", value || "desc")
-                  }
-                  options={["asc", "desc"]}
-                  placeholder="順序"
-                  value={searchState.sortOrder}
-                >
-                  <SelectTrigger>
-                    <SelectValue<string>>
-                      {(state) =>
-                        state.selectedOption() === "asc" ? "昇順" : "降順"
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-              </div>
-            </div>
-
-            <Button class="w-full" onClick={handleSearch}>
-              検索
-            </Button>
+            <SourceSelector
+              onSelect={(id) => setSearchState("selectedSource", id)}
+              selectedSource={searchState.selectedSource}
+              sources={sources.data}
+            />
+            <SearchFilters
+              characters={allCharacters.data}
+              ips={allIps.data}
+              onSearch={handleSearch}
+              projects={allProjects.data}
+              setState={setSearchState}
+              state={searchState}
+              tags={tags.data}
+              usePopover={false}
+            />
           </CardContent>
         </Card>
 

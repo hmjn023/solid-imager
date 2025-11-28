@@ -13,27 +13,21 @@ import {
   Show,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { isServer } from "solid-js/web";
+import { isServer, Portal } from "solid-js/web";
 import { z } from "zod";
-import { Badge } from "~/components/ui/badge";
+import {
+  type SearchFilterState,
+  SearchFilters,
+} from "~/components/media/search-filters";
+import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "~/components/ui/command";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
@@ -47,19 +41,7 @@ import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 
-type LocalSearchState = {
-  searchQuery: string;
-  selectedTags: string[];
-  excludeTags: string[];
-  tagMode: "and" | "or";
-  selectedProjects: number[];
-  selectedIps: number[];
-  selectedCharacters: number[];
-  sortBy: "date" | "name" | "size";
-  sortOrder: "asc" | "desc";
-};
-
-const buildSearchParams = (state: LocalSearchState, pageParam: number) => ({
+const buildSearchParams = (state: SearchFilterState, pageParam: number) => ({
   q: state.searchQuery,
   tags:
     state.selectedTags.length > 0 ? state.selectedTags.join(",") : undefined,
@@ -87,8 +69,8 @@ export default function MediaListPage() {
 
   const mediaSourceId = () => params.mediaSourceId;
 
-  const [localSearchState, setLocalSearchState] = createStore<LocalSearchState>(
-    {
+  const [localSearchState, setLocalSearchState] =
+    createStore<SearchFilterState>({
       searchQuery: "",
       selectedTags: [],
       excludeTags: [],
@@ -98,11 +80,7 @@ export default function MediaListPage() {
       selectedCharacters: [],
       sortBy: "date",
       sortOrder: "desc",
-    }
-  );
-
-  const [_commandOpen, setCommandOpen] = createSignal(false);
-  const [_excludeCommandOpen, setExcludeCommandOpen] = createSignal(false);
+    });
 
   // Fetch filter data
   const tags = createQuery<TagResponse[]>(() => ({
@@ -146,41 +124,6 @@ export default function MediaListPage() {
       return;
     },
   }));
-
-  // Helper functions for filters
-  const addTag = (tagName: string) => {
-    if (!localSearchState.selectedTags.includes(tagName)) {
-      setLocalSearchState("selectedTags", [
-        ...localSearchState.selectedTags,
-        tagName,
-      ]);
-    }
-    setCommandOpen(false);
-  };
-
-  const removeTag = (tagName: string) => {
-    setLocalSearchState(
-      "selectedTags",
-      localSearchState.selectedTags.filter((t) => t !== tagName)
-    );
-  };
-
-  const addExcludeTag = (tagName: string) => {
-    if (!localSearchState.excludeTags.includes(tagName)) {
-      setLocalSearchState("excludeTags", [
-        ...localSearchState.excludeTags,
-        tagName,
-      ]);
-    }
-    setExcludeCommandOpen(false);
-  };
-
-  const removeExcludeTag = (tagName: string) => {
-    setLocalSearchState(
-      "excludeTags",
-      localSearchState.excludeTags.filter((t) => t !== tagName)
-    );
-  };
 
   // Disable browser's default scroll restoration
   onMount(() => {
@@ -474,408 +417,69 @@ export default function MediaListPage() {
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <h1 class="mb-4 font-bold text-2xl">
-        Media in Source: {mediaSourceId()}
-      </h1>
+      <Show when={!isServer}>
+        {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
+        <Portal mount={document.getElementById("nav-actions")!}>
+          <Dialog>
+            <DialogTrigger
+              as={Button}
+              class="border-white text-white hover:bg-sky-700 md:hidden"
+              size="icon"
+              variant="outline"
+            >
+              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
+              <svg
+                class="lucide lucide-filter"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </DialogTrigger>
+            <DialogContent class="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>検索フィルター</DialogTitle>
+              </DialogHeader>
+              <SearchFilters
+                characters={allCharacters.data}
+                ips={allIps.data}
+                projects={allProjects.data}
+                setState={setLocalSearchState}
+                state={localSearchState}
+                tags={tags.data}
+              />
+            </DialogContent>
+          </Dialog>
+        </Portal>
+      </Show>
+
+      <div class="mb-4 flex items-center justify-between">
+        <h1 class="font-bold text-2xl">Media in Source: {mediaSourceId()}</h1>
+      </div>
 
       <div class="grid gap-6 md:grid-cols-[300px_1fr]">
-        {/* Sidebar Filters */}
-        <Card>
+        {/* Sidebar Filters (Desktop only) */}
+        <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
           <CardHeader>
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            {/* Filename Search */}
-            <div class="space-y-2">
-              <Label>ファイル名検索</Label>
-              <Input
-                onInput={(e) =>
-                  setLocalSearchState("searchQuery", e.currentTarget.value)
-                }
-                placeholder="ファイル名を入力..."
-                type="text"
-                value={localSearchState.searchQuery}
-              />
-            </div>
-
-            {/* Tag Selection with Command */}
-            <div class="space-y-2">
-              <Label>タグ (含む)</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={localSearchState.selectedTags}>
-                  {(tag) => (
-                    <Badge class="cursor-pointer" variant="default">
-                      {tag}
-                      <button
-                        class="ml-1 hover:text-red-500"
-                        onClick={() => removeTag(tag)}
-                        type="button"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  )}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="タグを検索..." />
-                <CommandList>
-                  <CommandEmpty>タグが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={tags.data}>
-                      {(tag) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => addTag(tag.name)}
-                        >
-                          {tag.name}
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Tag Mode */}
-            <div class="space-y-2">
-              <Label>タグマッチモード</Label>
-              <Select
-                itemComponent={(props) => (
-                  <SelectItem item={props.item}>
-                    {props.item.rawValue === "and"
-                      ? "すべて含む (AND)"
-                      : "いずれかを含む (OR)"}
-                  </SelectItem>
-                )}
-                onChange={(value) =>
-                  setLocalSearchState("tagMode", value || "and")
-                }
-                options={["and", "or"]}
-                placeholder="モードを選択"
-                value={localSearchState.tagMode}
-              >
-                <SelectTrigger>
-                  <SelectValue<string>>
-                    {(state) =>
-                      state.selectedOption() === "and"
-                        ? "すべて含む (AND)"
-                        : "いずれかを含む (OR)"
-                    }
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent />
-              </Select>
-            </div>
-
-            {/* Exclude Tags */}
-            <div class="space-y-2">
-              <Label>除外タグ</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={localSearchState.excludeTags}>
-                  {(tag) => (
-                    <Badge class="cursor-pointer" variant="destructive">
-                      {tag}
-                      <button
-                        class="ml-1 hover:text-white"
-                        onClick={() => removeExcludeTag(tag)}
-                        type="button"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  )}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="除外タグを検索..." />
-                <CommandList>
-                  <CommandEmpty>タグが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={tags.data}>
-                      {(tag) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => addExcludeTag(tag.name)}
-                        >
-                          {tag.name}
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Project Filter */}
-            <div class="space-y-2">
-              <Label>プロジェクト</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={localSearchState.selectedProjects}>
-                  {(projectId) => {
-                    const project = allProjects.data?.find(
-                      (p) => p.id === projectId
-                    );
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {project?.name || projectId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setLocalSearchState(
-                              "selectedProjects",
-                              localSearchState.selectedProjects.filter(
-                                (id) => id !== projectId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="プロジェクトを検索..." />
-                <CommandList>
-                  <CommandEmpty>プロジェクトが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allProjects.data}>
-                      {(project) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (
-                              !localSearchState.selectedProjects.includes(
-                                project.id
-                              )
-                            ) {
-                              setLocalSearchState("selectedProjects", [
-                                ...localSearchState.selectedProjects,
-                                project.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{project.name}</span>
-                            <Show when={project.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {project.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* IP Filter */}
-            <div class="space-y-2">
-              <Label>IP</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={localSearchState.selectedIps}>
-                  {(ipId) => {
-                    const ip = allIps.data?.find((i) => i.id === ipId);
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {ip?.name || ipId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setLocalSearchState(
-                              "selectedIps",
-                              localSearchState.selectedIps.filter(
-                                (id) => id !== ipId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="IPを検索..." />
-                <CommandList>
-                  <CommandEmpty>IPが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allIps.data}>
-                      {(ip) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (!localSearchState.selectedIps.includes(ip.id)) {
-                              setLocalSearchState("selectedIps", [
-                                ...localSearchState.selectedIps,
-                                ip.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{ip.name}</span>
-                            <Show when={ip.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {ip.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Character Filter */}
-            <div class="space-y-2">
-              <Label>キャラクター</Label>
-              <div class="mb-2 flex flex-wrap gap-2">
-                <For each={localSearchState.selectedCharacters}>
-                  {(characterId) => {
-                    const character = allCharacters.data?.find(
-                      (c) => c.id === characterId
-                    );
-                    return (
-                      <Badge class="cursor-pointer" variant="secondary">
-                        {character?.name || characterId}
-                        <button
-                          class="ml-1 hover:text-red-500"
-                          onClick={() =>
-                            setLocalSearchState(
-                              "selectedCharacters",
-                              localSearchState.selectedCharacters.filter(
-                                (id) => id !== characterId
-                              )
-                            )
-                          }
-                          type="button"
-                        >
-                          ×
-                        </button>
-                      </Badge>
-                    );
-                  }}
-                </For>
-              </div>
-              <Command class="rounded-md border">
-                <CommandInput placeholder="キャラクターを検索..." />
-                <CommandList>
-                  <CommandEmpty>キャラクターが見つかりません</CommandEmpty>
-                  <CommandGroup>
-                    <For each={allCharacters.data}>
-                      {(character) => (
-                        <CommandItem
-                          class="cursor-pointer"
-                          onSelect={() => {
-                            if (
-                              !localSearchState.selectedCharacters.includes(
-                                character.id
-                              )
-                            ) {
-                              setLocalSearchState("selectedCharacters", [
-                                ...localSearchState.selectedCharacters,
-                                character.id,
-                              ]);
-                            }
-                          }}
-                        >
-                          <div class="flex flex-col">
-                            <span>{character.name}</span>
-                            <Show when={character.description}>
-                              <span class="text-muted-foreground text-xs">
-                                {character.description}
-                              </span>
-                            </Show>
-                          </div>
-                        </CommandItem>
-                      )}
-                    </For>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </div>
-
-            {/* Sort Options */}
-            <div class="space-y-2">
-              <Label>ソート</Label>
-              <div class="grid grid-cols-2 gap-2">
-                <Select
-                  itemComponent={(props) => {
-                    const getSortLabel = (value: string) => {
-                      if (value === "date") {
-                        return "作成日";
-                      }
-                      if (value === "name") {
-                        return "ファイル名";
-                      }
-                      return "サイズ";
-                    };
-                    return (
-                      <SelectItem item={props.item}>
-                        {getSortLabel(props.item.rawValue)}
-                      </SelectItem>
-                    );
-                  }}
-                  onChange={(value) =>
-                    setLocalSearchState("sortBy", value || "date")
-                  }
-                  options={["date", "name", "size"]}
-                  placeholder="項目"
-                  value={localSearchState.sortBy}
-                >
-                  <SelectTrigger>
-                    <SelectValue<string>>
-                      {(state) => {
-                        const value = state.selectedOption();
-                        if (value === "date") {
-                          return "作成日";
-                        }
-                        if (value === "name") {
-                          return "ファイル名";
-                        }
-                        return "サイズ";
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-                <Select
-                  itemComponent={(props) => (
-                    <SelectItem item={props.item}>
-                      {props.item.rawValue === "asc" ? "昇順" : "降順"}
-                    </SelectItem>
-                  )}
-                  onChange={(value) =>
-                    setLocalSearchState("sortOrder", value || "desc")
-                  }
-                  options={["asc", "desc"]}
-                  placeholder="順序"
-                  value={localSearchState.sortOrder}
-                >
-                  <SelectTrigger>
-                    <SelectValue<string>>
-                      {(state) =>
-                        state.selectedOption() === "asc" ? "昇順" : "降順"
-                      }
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-              </div>
-            </div>
+            <SearchFilters
+              characters={allCharacters.data}
+              ips={allIps.data}
+              projects={allProjects.data}
+              setState={setLocalSearchState}
+              state={localSearchState}
+              tags={tags.data}
+              usePopover={false}
+            />
           </CardContent>
         </Card>
 
