@@ -1,4 +1,5 @@
-import { createResource, createSignal, For, Show } from "solid-js";
+import { createSignal, For, Show } from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -48,24 +49,41 @@ export default function ManagerPage() {
   const [editingItem, setEditingItem] = createSignal<Entity | null>(null);
   const [formData, setFormData] = createSignal({ name: "", description: "" });
 
-  const [projects, { refetch: refetchProjects }] =
-    createResource(fetchAllProjects);
-  const [ips, { refetch: refetchIps }] = createResource(fetchAllIps);
-  const [characters, { refetch: refetchCharacters }] =
-    createResource(fetchAllCharacters);
+  const queryClient = useQueryClient();
+
+  const projects = createQuery(() => ({
+    queryKey: ["allProjects"],
+    queryFn: fetchAllProjects,
+  }));
+  const ips = createQuery(() => ({
+    queryKey: ["allIps"],
+    queryFn: fetchAllIps,
+  }));
+  const characters = createQuery(() => ({
+    queryKey: ["allCharacters"],
+    queryFn: fetchAllCharacters,
+  }));
+
+  const invalidateQueries = () => {
+    if (activeTab() === "projects") {
+      queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+    } else if (activeTab() === "ips") {
+      queryClient.invalidateQueries({ queryKey: ["allIps"] });
+    } else if (activeTab() === "characters") {
+      queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
+    }
+  };
 
   const handleCreate = async () => {
     const data = formData();
     if (activeTab() === "projects") {
       await createProject(data);
-      refetchProjects();
     } else if (activeTab() === "ips") {
       await createIp(data);
-      refetchIps();
     } else if (activeTab() === "characters") {
       await createCharacter(data);
-      refetchCharacters();
     }
+    invalidateQueries();
     setIsDialogOpen(false);
     setFormData({ name: "", description: "" });
   };
@@ -79,14 +97,12 @@ export default function ManagerPage() {
 
     if (activeTab() === "projects") {
       await updateProject(id, data);
-      refetchProjects();
     } else if (activeTab() === "ips") {
       await updateIp(id, data);
-      refetchIps();
     } else if (activeTab() === "characters") {
       await updateCharacter(id, data);
-      refetchCharacters();
     }
+    invalidateQueries();
     setIsDialogOpen(false);
     setEditingItem(null);
     setFormData({ name: "", description: "" });
@@ -99,14 +115,12 @@ export default function ManagerPage() {
     }
     if (activeTab() === "projects") {
       await deleteProject(id);
-      refetchProjects();
     } else if (activeTab() === "ips") {
       await deleteIp(id);
-      refetchIps();
     } else if (activeTab() === "characters") {
       await deleteCharacter(id);
-      refetchCharacters();
     }
+    invalidateQueries();
   };
 
   const openCreateDialog = () => {
@@ -127,11 +141,11 @@ export default function ManagerPage() {
   const getActiveItems = () => {
     switch (activeTab()) {
       case "projects":
-        return projects() || [];
+        return projects.data || [];
       case "ips":
-        return ips() || [];
+        return ips.data || [];
       case "characters":
-        return characters() || [];
+        return characters.data || [];
       default:
         return [];
     }
