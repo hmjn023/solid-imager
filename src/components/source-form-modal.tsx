@@ -1,8 +1,10 @@
-import { createEffect, createSignal } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { Portal } from "solid-js/web";
-import type {
-  MediaSourceInfo,
-  MediaSourceTypeEnum,
+import type { z } from "zod";
+import {
+  type MediaSourceInfo,
+  type MediaSourceTypeEnum,
+  mediaSourceInfoSchema,
 } from "~/domain/sources/schemas";
 
 /**
@@ -16,16 +18,14 @@ type SourceFormModalProps = {
   isOpen: boolean;
   editingSource?: MediaSourceInfo | null;
   onClose: () => void;
-  onSubmit: (sourceData: {
-    name: string;
-    description: string | null;
-    type: MediaSourceTypeEnum;
-    connectionInfo: { path: string };
-  }) => Promise<void>;
+  onSubmit: (
+    sourceData: Omit<MediaSourceInfo, "id"> & { id?: string }
+  ) => Promise<void>;
 };
 /**
  * A modal component for adding or editing media sources.
  * It provides a form to input source details like name, description, type, and connection path.
+ * Uses Zod for validation consistent with the backend.
  * @param {SourceFormModalProps} props - The properties for the SourceFormModal component.
  * @returns {JSX.Element} The rendered media source form modal.
  */
@@ -35,10 +35,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
   const [formDescription, setFormDescription] = createSignal("");
   const [formType, setFormType] = createSignal<MediaSourceTypeEnum>("local");
   const [isSubmitting, setIsSubmitting] = createSignal(false);
+  const [errors, setErrors] = createSignal<z.ZodIssue[]>([]);
 
   // 編集時にフォームを事前入力します。
   const initializeForm = () => {
     const editing = props.editingSource;
+    setErrors([]);
     if (editing) {
       setFormName(editing.name);
       setFormDescription(editing.description || "");
@@ -47,7 +49,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
         typeof editing.connectionInfo === "object" &&
           editing.connectionInfo !== null &&
           "path" in editing.connectionInfo
-          ? String(editing.connectionInfo.path)
+          ? String((editing.connectionInfo as { path: string }).path)
           : ""
       );
     } else {
@@ -67,20 +69,31 @@ export default function SourceFormModal(props: SourceFormModalProps) {
   });
 
   const handleSubmit = async () => {
-    if (!(formName().trim() && formPath().trim())) {
+    setErrors([]);
+    setIsSubmitting(true);
+
+    // Prepare data for validation
+    const sourceData = {
+      // If editing, preserve ID (though schema.optional() allows it to be undefined)
+      id: props.editingSource?.id,
+      name: formName(),
+      description: formDescription() || null,
+      type: formType(),
+      connectionInfo: { path: formPath() },
+    };
+
+    // Validate using the shared domain schema
+    const result = mediaSourceInfoSchema.safeParse(sourceData);
+
+    if (!result.success) {
+      setErrors(result.error.issues);
+      setIsSubmitting(false);
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      const sourceData = {
-        name: formName(),
-        description: formDescription() || null,
-        type: formType(),
-        connectionInfo: { path: formPath() },
-      };
-
-      await props.onSubmit(sourceData);
+      // Pass validated data
+      await props.onSubmit(result.data);
       props.onClose();
     } catch (_error) {
       // エラー処理 - 本番環境ではトースト通知を表示できます。
@@ -91,7 +104,19 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 
   const handleClose = () => {
     setIsSubmitting(false);
+    setErrors([]);
     props.onClose();
+  };
+
+  // Helper to find error by path
+  const getError = (path: string) => {
+    // For nested paths like "connectionInfo.path", we need to handle array or partial matching if needed.
+    // But Zod path is array of strings/numbers.
+    return errors().find((e) => {
+      // Join path array to match dot notation
+      const errorPath = e.path.join(".");
+      return errorPath === path;
+    });
   };
 
   return (
@@ -115,6 +140,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                   type="text"
                   value={formName()}
                 />
+                <Show when={getError("name")}>
+                  {(err) => <p class="text-red-500 text-sm">{err().message}</p>}
+                </Show>
               </div>
               <div>
                 <label
@@ -131,6 +159,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                   type="text"
                   value={formDescription()}
                 />
+                <Show when={getError("description")}>
+                  {(err) => <p class="text-red-500 text-sm">{err().message}</p>}
+                </Show>
               </div>
               <div>
                 <label class="mb-1 block font-medium text-sm" for="source-type">
@@ -148,6 +179,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                   <option value="sftp">SFTP</option>
                   <option value="s3">S3</option>
                 </select>
+                <Show when={getError("type")}>
+                  {(err) => <p class="text-red-500 text-sm">{err().message}</p>}
+                </Show>
               </div>
               <div>
                 <label class="mb-1 block font-medium text-sm" for="source-path">
@@ -161,14 +195,15 @@ export default function SourceFormModal(props: SourceFormModalProps) {
                   type="text"
                   value={formPath()}
                 />
+                <Show when={getError("connectionInfo.path")}>
+                  {(err) => <p class="text-red-500 text-sm">{err().message}</p>}
+                </Show>
               </div>
             </div>
             <div class="flex gap-2">
               <button
                 class="rounded bg-blue-500 px-4 py-2 text-white disabled:opacity-50"
-                disabled={
-                  !(formName().trim() && formPath().trim()) || isSubmitting()
-                }
+                disabled={isSubmitting()}
                 onClick={() => handleSubmit()}
                 type="button"
               >

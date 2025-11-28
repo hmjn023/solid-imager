@@ -11,6 +11,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { uploadMediaFormSchema } from "~/domain/media/upload-schemas";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type UploadMediaModalProps = {
@@ -28,18 +29,6 @@ type UploadMediaModalProps = {
   onUrlFetch: (file: File) => void;
   pastedUrl: string | null;
 };
-
-const formSchema = z.object({
-  filename: z.string().min(1, "ファイル名は必須です。").optional(),
-  description: z.string().optional(),
-  sourceUrl: z
-    .string()
-    .url("有効なURLを入力してください。")
-    .or(z.literal(""))
-    .optional(),
-  overwrite: z.boolean().default(false),
-  autoIncrement: z.boolean().default(false),
-});
 
 export function UploadMediaModal(props: UploadMediaModalProps) {
   const [filename, setFilename] = createSignal(props.initialFile?.name || "");
@@ -122,7 +111,7 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 
   const handleUpload = async () => {
     setErrors([]);
-    const parsed = formSchema.safeParse({
+    const parsed = uploadMediaFormSchema.safeParse({
       filename: filename(),
       description: description(),
       sourceUrl: sourceUrl(),
