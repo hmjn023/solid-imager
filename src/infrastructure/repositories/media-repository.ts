@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
 import type { z } from "zod";
-import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import {
   type MediaSearchRequest,
   type MediaSearchResponse,
@@ -25,6 +24,7 @@ import {
 } from "~/infrastructure/db/queries/search";
 import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
 import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { NotFoundError } from "../db/errors";
 
 export const MediaRepository = {
@@ -251,24 +251,35 @@ export const MediaRepository = {
 
   /**
    * Scans a directory for media files.
+   * Uses an iterative approach to avoid stack overflow.
    */
   async scanDirectory(basePath: string): Promise<string[]> {
-    const getFiles = async (dir: string): Promise<string[]> => {
-      const dirents = await fs.readdir(dir, { withFileTypes: true });
-      const files = await Promise.all(
-        dirents.map((dirent) => {
-          const res = path.resolve(dir, dirent.name);
-          return dirent.isDirectory() ? getFiles(res) : res;
-        })
-      );
-      return Array.prototype.concat(...files);
-    };
+    const files: string[] = [];
+    const queue: string[] = [basePath];
 
-    try {
-      return await getFiles(basePath);
-    } catch (_error) {
-      return [];
+    while (queue.length > 0) {
+      const dir = queue.shift();
+      if (!dir) {
+        continue;
+      }
+
+      try {
+        const dirents = await fs.readdir(dir, { withFileTypes: true });
+        for (const dirent of dirents) {
+          const res = path.resolve(dir, dirent.name);
+          if (dirent.isDirectory()) {
+            queue.push(res);
+          } else {
+            files.push(res);
+          }
+        }
+      } catch (_error) {
+        // Ignore errors for individual directories to allow partial scanning
+        // In the future, this should be logged
+      }
     }
+
+    return files;
   },
 
   /**

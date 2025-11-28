@@ -33,16 +33,6 @@ export const MediaService = {
    */
   async searchMedia(mediaSourceId: string, params: unknown) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-
-    // Parse and validate search parameters
-    // We need to handle the case where params might be raw query params (strings)
-    // The schema expects specific types, so we might need some preprocessing if coming directly from URL
-    // But for now, let's assume the caller handles basic type conversion or we use the schema's coerce
-
-    // If params is already an object with correct types (from a previous parse), we can just cast or re-parse.
-    // Since we are in Service layer, we should expect typed input or validate it.
-    // Let's assume `params` is the raw query object from the URL.
-
     const searchRequest = mediaSearchRequestSchema.parse(params);
     return await MediaRepository.search(validatedSourceId, searchRequest);
   },
@@ -56,7 +46,6 @@ export const MediaService = {
     params: { query?: string; tags?: string[] }
   ) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-    // directoryPath validation?
     return await MediaRepository.searchInDirectory(
       validatedSourceId,
       directoryPath,
@@ -167,16 +156,14 @@ export const MediaService = {
         const fullPath = path.join(connectionInfo.path, media.filePath);
 
         try {
-          // We use Repository to extract metadata, which calls Domain/ImageProcessor
+          // We use Repository to extract metadata, which calls Infra/ImageProcessor
           await MediaRepository.extractMetadataFromFile(
             fullPath,
             validatedMediaId
           );
           finalGenerationInfo =
             await MediaRepository.getGenerationInfo(validatedMediaId);
-        } catch (_error) {
-          // Ignore error if extraction fails, just return what we have
-        }
+        } catch (e) { console.warn(e); }
       }
     }
 
@@ -235,12 +222,9 @@ export const MediaService = {
     await MediaRepository.delete(validatedMediaId);
 
     // Trigger thumbnail deletion (fire and forget or await?)
-    // The original implementation awaited it but swallowed errors.
     try {
       await deleteThumbnail(validatedSourceId, validatedMediaId);
-    } catch (_error) {
-      // Ignore
-    }
+    } catch (e) { console.warn(e); }
   },
 
   /**
@@ -286,13 +270,9 @@ export const MediaService = {
               indexedAt: new Date(),
             });
             newMediaItems.push({ id: newMedia.id, filePath: relativePath });
-          } catch (_err) {
-            // Ignore error if file already exists or other registration issues
-          }
+          } catch (e) { console.warn(e); }
         }
-      } catch (_error) {
-        // Ignore error if file processing fails
-      }
+      } catch (e) { console.warn(e); }
     }
 
     if (newMediaItems.length > 0) {

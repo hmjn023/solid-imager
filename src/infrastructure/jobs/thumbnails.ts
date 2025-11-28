@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import {
   selectMediaById,
   selectMediaBySourceId,
@@ -13,6 +12,7 @@ import {
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;

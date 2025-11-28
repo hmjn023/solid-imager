@@ -1,5 +1,5 @@
-import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import { insertMediaTags } from "~/infrastructure/db/queries/tags";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 
 /**
  * Extracts tags from a media file and saves them to the database.
