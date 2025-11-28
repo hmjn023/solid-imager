@@ -1,12 +1,13 @@
 import { A } from "@solidjs/router";
+import { createQuery } from "@tanstack/solid-query";
 import {
   createEffect,
-  createResource,
   createSignal,
   For,
   onCleanup,
   Show,
 } from "solid-js";
+import { isServer } from "solid-js/web";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -46,7 +47,8 @@ export default function Search() {
   const [isRestored, setIsRestored] = createSignal(false);
 
   createEffect(() => {
-    if (!(searchResults.loading || isRestored())) {
+    if (isServer) return;
+    if (!(searchResults.isLoading || isRestored())) {
       if (searchState.scrollY > 0) {
         window.scrollTo(0, searchState.scrollY);
       }
@@ -55,24 +57,37 @@ export default function Search() {
   });
 
   onCleanup(() => {
+    if (isServer) return;
     setSearchState("scrollY", window.scrollY);
   });
 
-  // Fetch all tags for autocomplete
-  const [tags] = createResource<TagResponse[]>(fetchTags);
-
-  // Fetch media sources
-  const [sources] = createResource<Source[]>(fetchMediaSources);
-
-  // Fetch all projects, IPs, and characters
-  const [allProjects] = createResource(fetchAllProjects);
-  const [allIps] = createResource(fetchAllIps);
-  const [allCharacters] = createResource(fetchAllCharacters);
+  // Fetch filter data
+  const tags = createQuery<TagResponse[]>(() => ({
+    queryKey: ["tags"],
+    queryFn: fetchTags,
+  }));
+  const sources = createQuery<Source[]>(() => ({
+    queryKey: ["mediaSources"],
+    queryFn: fetchMediaSources,
+  }));
+  const allProjects = createQuery(() => ({
+    queryKey: ["allProjects"],
+    queryFn: fetchAllProjects,
+  }));
+  const allIps = createQuery(() => ({
+    queryKey: ["allIps"],
+    queryFn: fetchAllIps,
+  }));
+  const allCharacters = createQuery(() => ({
+    queryKey: ["allCharacters"],
+    queryFn: fetchAllCharacters,
+  }));
 
   // Search function
-  const [searchResults] = createResource(
-    () => ({ ...searchState }),
-    async (state) => {
+  const searchResults = createQuery(() => ({
+    queryKey: ["searchResults", { ...searchState }],
+    queryFn: async () => {
+      const state = searchState;
       const source = state.selectedSource;
       if (!source) {
         return { media: [], total: 0 };
@@ -106,8 +121,9 @@ export default function Search() {
         limit: state.limit,
         offset: state.offset,
       });
-    }
-  );
+    },
+    enabled: !!searchState.selectedSource,
+  }));
 
   const handleSearch = () => {
     setSearchState("offset", 0);
@@ -187,11 +203,11 @@ export default function Search() {
                       : "";
                   setSearchState("selectedSource", id || "");
                 }}
-                options={sources() || []}
+                options={sources.data || []}
                 optionTextValue="name"
                 optionValue="name"
                 placeholder="ソースを選択"
-                value={sources()?.find(
+                value={sources.data?.find(
                   (s) => s.id === searchState.selectedSource
                 )}
               >
@@ -246,7 +262,7 @@ export default function Search() {
                 <CommandList>
                   <CommandEmpty>タグが見つかりません</CommandEmpty>
                   <CommandGroup>
-                    <For each={tags()}>
+                    <For each={tags.data}>
                       {(tag) => (
                         <CommandItem
                           class="cursor-pointer"
@@ -314,7 +330,7 @@ export default function Search() {
                 <CommandList>
                   <CommandEmpty>タグが見つかりません</CommandEmpty>
                   <CommandGroup>
-                    <For each={tags()}>
+                    <For each={tags.data}>
                       {(tag) => (
                         <CommandItem
                           class="cursor-pointer"
@@ -335,7 +351,7 @@ export default function Search() {
               <div class="mb-2 flex flex-wrap gap-2">
                 <For each={searchState.selectedProjects}>
                   {(projectId) => {
-                    const project = allProjects()?.find(
+                    const project = allProjects.data?.find(
                       (p) => p.id === projectId
                     );
                     return (
@@ -365,7 +381,7 @@ export default function Search() {
                 <CommandList>
                   <CommandEmpty>プロジェクトが見つかりません</CommandEmpty>
                   <CommandGroup>
-                    <For each={allProjects()}>
+                    <For each={allProjects.data}>
                       {(project) => (
                         <CommandItem
                           class="cursor-pointer"
@@ -402,7 +418,7 @@ export default function Search() {
               <div class="mb-2 flex flex-wrap gap-2">
                 <For each={searchState.selectedIps}>
                   {(ipId) => {
-                    const ip = allIps()?.find((i) => i.id === ipId);
+                    const ip = allIps.data?.find((i) => i.id === ipId);
                     return (
                       <Badge class="cursor-pointer" variant="secondary">
                         {ip?.name || ipId}
@@ -430,7 +446,7 @@ export default function Search() {
                 <CommandList>
                   <CommandEmpty>IPが見つかりません</CommandEmpty>
                   <CommandGroup>
-                    <For each={allIps()}>
+                    <For each={allIps.data}>
                       {(ip) => (
                         <CommandItem
                           class="cursor-pointer"
@@ -465,7 +481,7 @@ export default function Search() {
               <div class="mb-2 flex flex-wrap gap-2">
                 <For each={searchState.selectedCharacters}>
                   {(characterId) => {
-                    const character = allCharacters()?.find(
+                    const character = allCharacters.data?.find(
                       (c) => c.id === characterId
                     );
                     return (
@@ -495,7 +511,7 @@ export default function Search() {
                 <CommandList>
                   <CommandEmpty>キャラクターが見つかりません</CommandEmpty>
                   <CommandGroup>
-                    <For each={allCharacters()}>
+                    <For each={allCharacters.data}>
                       {(character) => (
                         <CommandItem
                           class="cursor-pointer"
@@ -607,7 +623,7 @@ export default function Search() {
         <div class="space-y-4">
           <Show
             fallback={<div class="py-8 text-center">読み込み中...</div>}
-            when={!searchResults.loading}
+            when={!searchResults.isLoading}
           >
             <Show
               fallback={
@@ -615,11 +631,11 @@ export default function Search() {
                   メディアソースを選択して検索してください
                 </div>
               }
-              when={searchResults()}
+              when={searchResults.data}
             >
               <div class="mb-4 flex items-center justify-between">
                 <p class="text-gray-600 text-sm">
-                  {searchResults()?.total || 0} 件の結果
+                  {searchResults.data?.total || 0} 件の結果
                 </p>
                 <div class="flex gap-2">
                   <Button
@@ -633,7 +649,7 @@ export default function Search() {
                   <Button
                     disabled={
                       searchState.offset + searchState.limit >=
-                      (searchResults()?.total || 0)
+                      (searchResults.data?.total || 0)
                     }
                     onClick={handleNextPage}
                     size="sm"
@@ -645,7 +661,7 @@ export default function Search() {
               </div>
 
               <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <For each={searchResults()?.media || []}>
+                <For each={searchResults.data?.media || []}>
                   {(media) => (
                     <Card class="overflow-hidden transition-shadow hover:shadow-lg">
                       <CardContent class="p-4">
@@ -701,7 +717,7 @@ export default function Search() {
                 </For>
               </div>
 
-              <Show when={(searchResults()?.media || []).length === 0}>
+              <Show when={(searchResults.data?.media || []).length === 0}>
                 <div class="py-12 text-center text-gray-500">
                   検索結果が見つかりませんでした
                 </div>
