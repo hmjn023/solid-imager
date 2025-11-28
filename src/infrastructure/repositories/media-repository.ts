@@ -273,7 +273,8 @@ export const MediaRepository = {
             files.push(res);
           }
         }
-      } catch (_error) {
+      } catch (e) {
+        console.error(`[MediaRepository] Error scanning directory ${dir}:`, e);
         // Ignore errors for individual directories to allow partial scanning
         // In the future, this should be logged
       }

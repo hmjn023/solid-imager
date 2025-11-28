@@ -154,7 +154,7 @@ describe("GET /api/sources/:mediaSourceId/:mediaId/tags", () => {
   });
 
   it("should return 404 if media is not found", async () => {
-    const nonExistentMediaId = "00000000-0000-0000-0000-000000000000";
+    const nonExistentMediaId = "00000000-0000-4000-8000-000000000000"; // Valid v4 structure
     const request = new Request(
       `http://localhost/api/sources/${mediaSource.id}/${nonExistentMediaId}/tags`
     );

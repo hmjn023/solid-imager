@@ -21,8 +21,8 @@ vi.mock("~/application/services/character-service", () => ({
 }));
 
 const mockParams = {
-  mediaSourceId: "123e4567-e89b-12d3-a456-426614174000",
-  mediaId: "123e4567-e89b-12d3-a456-426614174001",
+  mediaSourceId: "123e4567-e89b-42d3-a456-426614174000",
+  mediaId: "123e4567-e89b-42d3-a456-426614174001",
 };
 
 describe("GET /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
