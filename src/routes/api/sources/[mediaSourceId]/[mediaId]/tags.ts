@@ -5,8 +5,8 @@ import { NotFoundError } from "~/infrastructure/db/errors";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  mediaSourceId: z.string().uuid(),
-  mediaId: z.string().uuid(),
+  mediaSourceId: z.uuid({ version: "v4" }),
+  mediaId: z.uuid({ version: "v4" }),
 });
 
 /**

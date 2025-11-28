@@ -4,8 +4,8 @@ import { CharacterService } from "~/application/services/character-service";
 import { NotFoundError } from "~/infrastructure/db/errors";
 
 const MediaParamsSchema = z.object({
-  mediaSourceId: z.string().uuid(),
-  mediaId: z.string().uuid(),
+  mediaSourceId: z.uuid({ version: "v4" }),
+  mediaId: z.uuid({ version: "v4" }),
 });
 
 const CharacterBodySchema = z.object({

@@ -163,7 +163,9 @@ export const MediaService = {
           );
           finalGenerationInfo =
             await MediaRepository.getGenerationInfo(validatedMediaId);
-        } catch (e) { console.warn(e); }
+        } catch (_e) {
+          // Ignore extraction errors
+        }
       }
     }
 
@@ -224,7 +226,9 @@ export const MediaService = {
     // Trigger thumbnail deletion (fire and forget or await?)
     try {
       await deleteThumbnail(validatedSourceId, validatedMediaId);
-    } catch (e) { console.warn(e); }
+    } catch (_e) {
+      // Ignore thumbnail deletion errors
+    }
   },
 
   /**
@@ -270,9 +274,13 @@ export const MediaService = {
               indexedAt: new Date(),
             });
             newMediaItems.push({ id: newMedia.id, filePath: relativePath });
-          } catch (e) { console.warn(e); }
+          } catch (_e) {
+            // Ignore creation errors
+          }
         }
-      } catch (e) { console.warn(e); }
+      } catch (_e) {
+        // Ignore finding errors
+      }
     }
 
     if (newMediaItems.length > 0) {

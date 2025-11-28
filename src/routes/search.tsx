@@ -1,12 +1,6 @@
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
-import {
-  createEffect,
-  createSignal,
-  For,
-  onCleanup,
-  Show,
-} from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
@@ -41,13 +35,37 @@ import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 // Type alias to avoid conflict with DOM MediaSource API
 type Source = MediaSourceInfo;
 
+const buildSearchParams = (state: typeof searchState) => ({
+  q: state.searchQuery,
+  tags:
+    state.selectedTags.length > 0 ? state.selectedTags.join(",") : undefined,
+  excludeTags:
+    state.excludeTags.length > 0 ? state.excludeTags.join(",") : undefined,
+  tagMode: state.tagMode,
+  projects:
+    state.selectedProjects.length > 0
+      ? state.selectedProjects.join(",")
+      : undefined,
+  ips: state.selectedIps.length > 0 ? state.selectedIps.join(",") : undefined,
+  characters:
+    state.selectedCharacters.length > 0
+      ? state.selectedCharacters.join(",")
+      : undefined,
+  sort: state.sortBy,
+  order: state.sortOrder,
+  limit: state.limit,
+  offset: state.offset,
+});
+
 export default function Search() {
   const [_commandOpen, setCommandOpen] = createSignal(false);
   const [_excludeCommandOpen, setExcludeCommandOpen] = createSignal(false);
   const [isRestored, setIsRestored] = createSignal(false);
 
   createEffect(() => {
-    if (isServer) return;
+    if (isServer) {
+      return;
+    }
     if (!(searchResults.isLoading || isRestored())) {
       if (searchState.scrollY > 0) {
         window.scrollTo(0, searchState.scrollY);
@@ -57,7 +75,9 @@ export default function Search() {
   });
 
   onCleanup(() => {
-    if (isServer) return;
+    if (isServer) {
+      return;
+    }
     setSearchState("scrollY", window.scrollY);
   });
 
@@ -87,40 +107,12 @@ export default function Search() {
   const searchResults = createQuery(() => ({
     queryKey: ["searchResults", { ...searchState }],
     queryFn: async () => {
-      const state = searchState;
-      const source = state.selectedSource;
+      const source = searchState.selectedSource;
       if (!source) {
         return { media: [], total: 0 };
       }
 
-      return await searchMedia(source, {
-        q: state.searchQuery,
-        tags:
-          state.selectedTags.length > 0
-            ? state.selectedTags.join(",")
-            : undefined,
-        excludeTags:
-          state.excludeTags.length > 0
-            ? state.excludeTags.join(",")
-            : undefined,
-        tagMode: state.tagMode,
-        projects:
-          state.selectedProjects.length > 0
-            ? state.selectedProjects.join(",")
-            : undefined,
-        ips:
-          state.selectedIps.length > 0
-            ? state.selectedIps.join(",")
-            : undefined,
-        characters:
-          state.selectedCharacters.length > 0
-            ? state.selectedCharacters.join(",")
-            : undefined,
-        sort: state.sortBy,
-        order: state.sortOrder,
-        limit: state.limit,
-        offset: state.offset,
-      });
+      return await searchMedia(source, buildSearchParams(searchState));
     },
     enabled: !!searchState.selectedSource,
   }));

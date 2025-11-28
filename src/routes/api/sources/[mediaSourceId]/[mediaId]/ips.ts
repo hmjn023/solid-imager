@@ -4,8 +4,8 @@ import { IpService } from "~/application/services/ip-service";
 import { NotFoundError } from "~/infrastructure/db/errors";
 
 const MediaParamsSchema = z.object({
-  mediaSourceId: z.string().uuid(),
-  mediaId: z.string().uuid(),
+  mediaSourceId: z.uuid({ version: "v4" }),
+  mediaId: z.uuid({ version: "v4" }),
 });
 
 const IpBodySchema = z.object({

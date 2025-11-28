@@ -166,12 +166,16 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
   const handleAddIp = async (ipId: number) => {
     await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
-    queryClient.invalidateQueries({ queryKey: ["ipsForMedia", props.media.id] });
+    queryClient.invalidateQueries({
+      queryKey: ["ipsForMedia", props.media.id],
+    });
   };
 
   const handleRemoveIp = async (ipId: number) => {
     await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
-    queryClient.invalidateQueries({ queryKey: ["ipsForMedia", props.media.id] });
+    queryClient.invalidateQueries({
+      queryKey: ["ipsForMedia", props.media.id],
+    });
   };
 
   const handleCreateIp = async (name: string) => {

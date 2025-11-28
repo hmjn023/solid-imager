@@ -6,7 +6,7 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
 
 const SourceParamsSchema = z.object({
-  mediaSourceId: z.string().uuid(),
+  mediaSourceId: z.uuid({ version: "v4" }),
 });
 export type SourceParams = z.infer<typeof SourceParamsSchema>;
 

@@ -4,8 +4,8 @@ import { MediaService } from "~/application/services/media-service";
 
 // パスパラメータのスキーマ
 const MediaParamsSchema = z.object({
-  mediaSourceId: z.string().uuid(),
-  mediaId: z.string().uuid(),
+  mediaSourceId: z.uuid({ version: "v4" }),
+  mediaId: z.uuid({ version: "v4" }),
 });
 export type MediaParams = z.infer<typeof MediaParamsSchema>;
 

@@ -17,7 +17,7 @@ export type MediaType = z.infer<typeof mediaTypeSchema>;
  * Ensures all required fields for new media are present and correctly formatted.
  */
 export const addMediaRequestSchema = z.object({
-  mediaSourceId: z.string().uuid("Invalid source ID format"),
+  mediaSourceId: z.uuid({ version: "v4", message: "Invalid source ID format" }),
   filePath: z.string().min(1, "File path is required"),
   fileName: z.string().min(1, "File name is required"),
   size: z.number().int().positive("File size must be a positive integer"),
@@ -72,14 +72,20 @@ export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
  * Zod schema for validating a media ID.
  * Ensures the ID is a valid UUID format.
  */
-export const mediaIdSchema = z.string().uuid("Invalid media ID format");
+export const mediaIdSchema = z.uuid({
+  version: "v4",
+  message: "Invalid media ID format",
+});
 export type MediaId = z.infer<typeof mediaIdSchema>;
 
 /**
  * Zod schema for validating a source ID.
  * Ensures the ID is a valid UUID format.
  */
-export const mediaSourceIdSchema = z.string().uuid("Invalid source ID format");
+export const mediaSourceIdSchema = z.uuid({
+  version: "v4",
+  message: "Invalid source ID format",
+});
 export type SourceId = z.infer<typeof mediaSourceIdSchema>;
 
 /**
@@ -106,8 +112,8 @@ export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
 export const mediaSchema = z.object({
-  id: z.string().uuid(),
-  mediaSourceId: z.string().uuid(),
+  id: z.uuid({ version: "v4" }),
+  mediaSourceId: z.uuid({ version: "v4" }),
   filePath: z.string(),
   fileName: z.string(),
   mediaType: mediaTypeSchema,
@@ -135,7 +141,7 @@ export const tagSchema = z.object({
 });
 
 export const mediaGenerationInfoSchema = z.object({
-  mediaId: z.string().uuid(),
+  mediaId: z.uuid({ version: "v4" }),
   metadata: z.any().nullable(),
   prompt: z.string().nullable(),
   negativePrompt: z.string().nullable(),
@@ -196,7 +202,7 @@ export const downloadItemSchema = z.object({
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
 export const bulkDownloadRequestSchema = z.object({
-  mediaSourceId: z.string().uuid("Invalid media source ID"),
+  mediaSourceId: z.uuid({ version: "v4", message: "Invalid media source ID" }),
   items: z.array(downloadItemSchema).min(1, "At least one item is required"),
 });
 
