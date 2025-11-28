@@ -237,7 +237,6 @@ export const MediaService = {
   async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const files = await MediaRepository.scanDirectory(directoryPath);
-    console.log(`[MediaService] Found ${files.length} files in ${directoryPath}`);
     const newMediaItems: { id: string; filePath: string }[] = [];
 
     for (const file of files) {
@@ -275,21 +274,16 @@ export const MediaService = {
               indexedAt: new Date(),
             });
             newMediaItems.push({ id: newMedia.id, filePath: relativePath });
-          } catch (e) {
-            console.error(`[MediaService] Failed to register media: ${file}`, e);
+          } catch (_e) {
             // Ignore creation errors
           }
         }
-      } catch (e) {
-        console.error(`[MediaService] Error processing file: ${file}`, e);
+      } catch (_e) {
         // Ignore finding errors
       }
     }
 
     if (newMediaItems.length > 0) {
-      console.log(
-        `[MediaService] Registered ${newMediaItems.length} new media items.`
-      );
       const jobs = newMediaItems.map((item) => ({
         mediaId: item.id,
         sourcePath: directoryPath,
