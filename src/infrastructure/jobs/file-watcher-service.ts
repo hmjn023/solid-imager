@@ -3,7 +3,6 @@
  */
 
 import path from "node:path";
-import { ImageProcessor } from "~/domain/media/processing/image-processor";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import {
   addJobsToQueue,
@@ -11,6 +10,7 @@ import {
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { processMediaJob } from "~/infrastructure/jobs/thumbnails";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 /**

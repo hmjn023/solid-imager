@@ -29,7 +29,8 @@ export class ApiError extends Error {
 export function buildUrl(path: string): string {
   // In SSR context, we need to use full URL with localhost
   if (isServer) {
-    return `http://localhost:3000${path}`;
+    const baseUrl = process.env.API_BASE_URL || "http://localhost:3000";
+    return `${baseUrl}${path}`;
   }
   // In browser context, use relative path
   return path;

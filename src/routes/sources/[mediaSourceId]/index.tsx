@@ -53,7 +53,9 @@ export default function MediaListPage() {
 
   // Disable browser's default scroll restoration
   onMount(() => {
-    if (isServer) return;
+    if (isServer) {
+      return;
+    }
     if ("scrollRestoration" in history) {
       history.scrollRestoration = "manual";
     }
@@ -63,11 +65,17 @@ export default function MediaListPage() {
   const [isScrollRestored, setIsScrollRestored] = createSignal(false);
 
   createEffect(() => {
-    if (isServer) return;
-    if (isScrollRestored()) return;
+    if (isServer) {
+      return;
+    }
+    if (isScrollRestored()) {
+      return;
+    }
 
     const id = mediaSourceId();
-    if (!id) return;
+    if (!id) {
+      return;
+    }
 
     // Only restore scroll if we have data and it's not loading
     if (mediaQuery.data && !mediaQuery.isLoading) {
