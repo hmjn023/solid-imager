@@ -5,7 +5,7 @@ import { newCharacterSchema } from "~/domain/characters/schemas";
 
 /**
  * @swagger
- * /api/charactors:
+ * /api/characters:
  *   get:
  *     summary: Retrieve all characters
  *     description: Fetches a list of all configured characters.
@@ -40,7 +40,7 @@ export async function GET() {
 
 /**
  * @swagger
- * /api/charactors:
+ * /api/characters:
  *   post:
  *     summary: Create a new character
  *     description: Creates a new character with the provided data.

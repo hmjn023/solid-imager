@@ -38,7 +38,7 @@ export const API_ENDPOINTS = {
     `/api/sources/${sourceId}/${mediaId}/ips`,
 
   // Characters
-  characters: "/api/charactors", // Typo in backend
+  characters: "/api/characters",
   mediaCharacters: (sourceId: string, mediaId: string) =>
-    `/api/sources/${sourceId}/${mediaId}/charactors`, // Typo in backend
+    `/api/sources/${sourceId}/${mediaId}/characters`,
 } as const;

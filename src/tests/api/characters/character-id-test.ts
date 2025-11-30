@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Character } from "~/infrastructure/db/schema";
 
-describe("GET /api/charactors/:id", () => {
+describe("GET /api/characters/:id", () => {
   it("should return character by id", () => {
     const id = 1;
 
@@ -11,6 +11,9 @@ describe("GET /api/charactors/:id", () => {
       id,
       name: "Test Character",
       description: "Test description",
+      source: "manual",
+      ipId: null,
+      aliases: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -35,7 +38,7 @@ describe("GET /api/charactors/:id", () => {
   });
 });
 
-describe("PUT /api/charactors/:id", () => {
+describe("PUT /api/characters/:id", () => {
   it("should update and return character", () => {
     const id = 1;
     const updateData = {
@@ -48,6 +51,9 @@ describe("PUT /api/charactors/:id", () => {
     const result: Character = {
       id,
       ...updateData,
+      source: "manual",
+      ipId: null,
+      aliases: [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -71,7 +77,7 @@ describe("PUT /api/charactors/:id", () => {
   });
 });
 
-describe("DELETE /api/charactors/:id", () => {
+describe("DELETE /api/characters/:id", () => {
   it("should delete character and return success", () => {
     const _id = 1;
 

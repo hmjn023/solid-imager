@@ -11,7 +11,7 @@ export type IdParam = z.infer<typeof IdParamSchema>;
 
 /**
  * @swagger
- * /api/charactors/{id}:
+ * /api/characters/{id}:
  *   get:
  *     summary: Retrieve a specific character
  *     description: Fetches details of a character by its ID.
@@ -63,7 +63,7 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/charactors/{id}:
+ * /api/characters/{id}:
  *   patch:
  *     summary: Update a specific character
  *     description: Updates an existing character with the provided data.
@@ -128,7 +128,7 @@ export async function PATCH({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/charactors/{id}:
+ * /api/characters/{id}:
  *   delete:
  *     summary: Delete a specific character
  *     description: Deletes a character by its ID.

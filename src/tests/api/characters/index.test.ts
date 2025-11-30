@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { CharacterService } from "~/application/services/character-service";
-import { GET, POST } from "~/routes/api/charactors/index";
+import { GET, POST } from "~/routes/api/characters/index";
 
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
@@ -16,7 +16,7 @@ vi.mock("~/application/services/character-service", () => ({
   },
 }));
 
-describe("GET /api/charactors", () => {
+describe("GET /api/characters", () => {
   it("should return an array of characters", async () => {
     (CharacterService.getAllCharacters as any).mockResolvedValue([]);
 
@@ -27,7 +27,7 @@ describe("GET /api/charactors", () => {
   });
 });
 
-describe("POST /api/charactors", () => {
+describe("POST /api/characters", () => {
   it("should create and return new character", async () => {
     const newData = {
       name: "Test Character",
@@ -45,7 +45,7 @@ describe("POST /api/charactors", () => {
       mockCreatedCharacter
     );
 
-    const request = new Request("http://localhost/api/charactors", {
+    const request = new Request("http://localhost/api/characters", {
       method: "POST",
       body: JSON.stringify(newData),
     });
@@ -65,7 +65,7 @@ describe("POST /api/charactors", () => {
       description: "Invalid character",
     };
 
-    const request = new Request("http://localhost/api/charactors", {
+    const request = new Request("http://localhost/api/characters", {
       method: "POST",
       body: JSON.stringify(invalidData),
     });

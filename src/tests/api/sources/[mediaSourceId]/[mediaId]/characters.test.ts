@@ -4,7 +4,7 @@ import {
   DELETE,
   GET,
   POST,
-} from "~/routes/api/sources/[mediaSourceId]/[mediaId]/charactors";
+} from "~/routes/api/sources/[mediaSourceId]/[mediaId]/characters";
 
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
@@ -25,7 +25,7 @@ const mockParams = {
   mediaId: "123e4567-e89b-42d3-a456-426614174001",
 };
 
-describe("GET /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+describe("GET /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
   it("should return an array of characters", async () => {
     (CharacterService.getCharactersForMedia as any).mockResolvedValue([]);
 
@@ -41,7 +41,7 @@ describe("GET /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
   });
 });
 
-describe("POST /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+describe("POST /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
   it("should add character to media", async () => {
     const mockCharacter = { id: 1, name: "Test Character" };
     (CharacterService.addCharacterToMedia as any).mockResolvedValue(
@@ -70,7 +70,7 @@ describe("POST /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
   });
 });
 
-describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/charactors", () => {
+describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
   it("should remove character from media", async () => {
     const mockCharacter = { id: 1, name: "Test Character" };
     (CharacterService.removeCharacterFromMedia as any).mockResolvedValue(

@@ -14,7 +14,7 @@ const CharacterBodySchema = z.object({
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/characters:
  *   get:
  *     summary: Retrieve characters associated with a media
  *     description: Fetches a list of characters linked to a specific media file.
@@ -70,7 +70,7 @@ export async function GET({ params }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/characters:
  *   post:
  *     summary: Add a character to a media
  *     description: Associates a character with a specific media file.
@@ -139,7 +139,7 @@ export async function POST({ params, request }: APIEvent) {
 
 /**
  * @swagger
- * /api/sources/{mediaSourceId}/{mediaId}/charactors:
+ * /api/sources/{mediaSourceId}/{mediaId}/characters:
  *   delete:
  *     summary: Remove a character from a media
  *     description: Removes the association between a character and a specific media file.
