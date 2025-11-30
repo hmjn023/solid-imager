@@ -2,6 +2,7 @@ import { Collapsible } from "@kobalte/core";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import AssociationManager from "~/components/media/association-manager";
+import AITaggingModal from "~/components/media/ai-tagging-modal";
 import { Badge } from "~/components/ui/badge";
 import type { MediaDetails } from "~/domain/media/schemas";
 import {
@@ -73,6 +74,7 @@ const _CollapsibleSection = (props: {
 export default function MediaSidebar(props: MediaSidebarProps) {
   const queryClient = useQueryClient();
   const tags = createMemo(() => props.media.tags || []);
+  const [isAITaggingModalOpen, setIsAITaggingModalOpen] = createSignal(false);
 
   // Description editing state
   const [isEditingDescription, setIsEditingDescription] = createSignal(false);
@@ -218,6 +220,24 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         <h1 class="font-bold text-xl">{props.media.fileName}</h1>
         <p class="text-gray-500 text-sm">{props.media.filePath}</p>
       </div>
+
+      <div class="flex gap-2">
+        <button
+          class="w-full rounded-md bg-purple-600 px-3 py-2 text-white text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+          onClick={() => setIsAITaggingModalOpen(true)}
+          type="button"
+        >
+          <span class="i-lucide-sparkles" />
+          Extract Tags (AI)
+        </button>
+      </div>
+
+      <AITaggingModal
+        isOpen={isAITaggingModalOpen()}
+        onClose={() => setIsAITaggingModalOpen(false)}
+        mediaSourceId={props.media.mediaSourceId}
+        mediaId={props.media.id}
+      />
 
       <div class="space-y-2">
         <h2 class="font-semibold text-lg">Details</h2>

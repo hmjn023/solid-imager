@@ -43,3 +43,7 @@ test-results/
 
 # PGlite
 .data/
+
+# Python
+__pycache__/
+*.pyc
