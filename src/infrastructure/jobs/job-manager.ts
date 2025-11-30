@@ -1,8 +1,4 @@
-/**
- * Job Queue Manager
- * Extracted from src/services/thumbnail-jobs.ts
- * Simple in-memory job queue and state manager for background jobs
- */
+import { SseManager } from "./sse-manager";
 
 /**
  * Represents a single background job.
@@ -167,6 +163,13 @@ async function processQueue(
 
   const stats = getJobStats(mediaSourceId);
   jobStatsMap.set(mediaSourceId, { ...stats, status: "completed" });
+
+  SseManager.sendEvent(mediaSourceId, "all-jobs-completed", {
+    total: stats.total,
+    processed: stats.processed,
+    errors: stats.errors.length,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 /**

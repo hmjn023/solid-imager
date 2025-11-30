@@ -14,6 +14,7 @@ import {
 } from "solid-js";
 import { createStore } from "solid-js/store";
 import { isServer, Portal } from "solid-js/web";
+import { toast } from "solid-toast";
 import { z } from "zod";
 import {
   type SearchFilterState,
@@ -230,6 +231,7 @@ export default function MediaListPage() {
     formData.append("autoIncrement", String(options.autoIncrement));
 
     await uploadMedia(mediaSourceId() || "", formData);
+    toast.success("Media uploaded successfully");
     // Invalidate query to refetch list
     queryClient.invalidateQueries({
       queryKey: ["media", mediaSourceId()],
@@ -276,9 +278,10 @@ export default function MediaListPage() {
         throw new Error("Failed to start download jobs");
       }
 
+      toast.success("Bulk download started");
       // Refetch will happen via SSE events
-    } catch (_error) {
-      // TODO: Replace with proper UI notification
+    } catch (error) {
+      toast.error(`Failed to start download: ${(error as Error).message}`);
     }
   };
 
@@ -383,12 +386,19 @@ export default function MediaListPage() {
 
       // Listen for thumbnail generation completion
       eventSource.addEventListener("thumbnail-generated", (_event) => {
+        toast.success("Thumbnail generated");
         invalidateMedia();
       });
 
       // Listen for media files deleted from the directory
       eventSource.addEventListener("media-deleted", (_event) => {
+        toast.success("Media deleted");
         invalidateMedia();
+      });
+
+      // Listen for media files added to the directory
+      eventSource.addEventListener("media-added", (_event) => {
+        toast.success("New media detected");
       });
 
       // Listen for media files changed in the directory
@@ -396,6 +406,28 @@ export default function MediaListPage() {
         // Ideally we might want to update specific item in cache,
         // but invalidating is safer for now
         invalidateMedia();
+      });
+
+      // Listen for all jobs completion
+      eventSource.addEventListener("all-jobs-completed", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.success(`All jobs completed! Processed: ${data.processed}`);
+          invalidateMedia();
+        } catch (_e) {
+          toast.success("All jobs completed!");
+          invalidateMedia();
+        }
+      });
+
+      // Listen for watcher errors
+      eventSource.addEventListener("watcher-error", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
+        } catch (_e) {
+          toast.error("Watcher Error: Unknown error");
+        }
       });
 
       eventSource.onerror = (_err) => {

@@ -3,6 +3,7 @@ import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { Suspense } from "solid-js";
+import { Toaster } from "solid-toast";
 import Nav from "./components/nav";
 import "./app.css";
 
@@ -41,6 +42,7 @@ export default function App() {
           root={(props) => (
             <>
               <Nav />
+              <Toaster />
               <Suspense>{props.children}</Suspense>
             </>
           )}

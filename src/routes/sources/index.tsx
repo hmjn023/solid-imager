@@ -1,5 +1,7 @@
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, For } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
+import { isServer } from "solid-js/web";
+import toast from "solid-toast";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
@@ -10,6 +12,8 @@ import {
   fetchMediaSources,
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+
+const UUID_PREFIX_LENGTH = 4;
 
 /**
  * The main component for managing media sources.
@@ -68,6 +72,74 @@ export default function Sources() {
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
     } catch (_error) {}
   };
+
+  // SSE setup
+  onMount(() => {
+    if (isServer) {
+      return;
+    }
+
+    const eventSources: EventSource[] = [];
+
+    const setupSseForSource = (mediaSourceId: string) => {
+      const eventSource = new EventSource(`/api/sse/${mediaSourceId}`);
+
+      eventSource.addEventListener("all-jobs-completed", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.success(
+            `Jobs for source ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}... completed! Processed: ${data.processed}`
+          );
+          queryClient.invalidateQueries({ queryKey: ["mediaSources"] }); // Refresh source status if needed
+        } catch (_e) {
+          toast.success(
+            `Jobs for source ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}... completed!`
+          );
+        }
+      });
+
+      eventSource.addEventListener("watcher-error", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.error(
+            `Watcher Error for ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}...: ${data.error || "Unknown error"}`
+          );
+        } catch (_e) {
+          toast.error(
+            `Watcher Error for ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}...: Unknown error`
+          );
+        }
+      });
+
+      eventSource.onerror = (_err) => {
+        eventSource.close();
+      };
+
+      eventSources.push(eventSource);
+    };
+
+    // Watch for changes in mediaSources data and setup SSE
+    createEffect(() => {
+      const sources = mediaSources.data;
+      if (sources) {
+        // Close old event sources if any
+        for (const es of eventSources) {
+          es.close();
+        }
+        eventSources.length = 0; // Clear the array
+
+        for (const source of sources) {
+          setupSseForSource(source.id);
+        }
+      }
+    });
+
+    onCleanup(() => {
+      for (const es of eventSources) {
+        es.close();
+      }
+    });
+  });
 
   return (
     <div class="container mx-auto p-6">
