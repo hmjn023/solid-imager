@@ -1,4 +1,4 @@
-import { useParams } from "@solidjs/router";
+import { useParams, useSearchParams } from "@solidjs/router";
 import {
   createInfiniteQuery,
   createQuery,
@@ -12,7 +12,6 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { createStore } from "solid-js/store";
 import { isServer, Portal } from "solid-js/web";
 import { toast } from "solid-toast";
 import { z } from "zod";
@@ -70,18 +69,63 @@ export default function MediaListPage() {
 
   const mediaSourceId = () => params.mediaSourceId;
 
-  const [localSearchState, setLocalSearchState] =
-    createStore<SearchFilterState>({
-      searchQuery: "",
-      selectedTags: [],
-      excludeTags: [],
-      tagMode: "and",
-      selectedProjects: [],
-      selectedIps: [],
-      selectedCharacters: [],
-      sortBy: "date",
-      sortOrder: "desc",
-    });
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const searchState = () => {
+    const getList = (key: string) => {
+      const val = searchParams[key];
+      if (!val) return [];
+      const str = Array.isArray(val) ? val.join(",") : val;
+      return str.split(",");
+    };
+
+    return {
+      searchQuery: Array.isArray(searchParams.q)
+        ? searchParams.q.join(" ")
+        : searchParams.q || "",
+      selectedTags: getList("tags"),
+      excludeTags: getList("excludeTags"),
+      tagMode: (searchParams.tagMode as "and" | "or") || "and",
+      selectedProjects: getList("projects")
+        .map(Number)
+        .filter((n) => !Number.isNaN(n)),
+      selectedIps: getList("ips")
+        .map(Number)
+        .filter((n) => !Number.isNaN(n)),
+      selectedCharacters: getList("characters")
+        .map(Number)
+        .filter((n) => !Number.isNaN(n)),
+      sortBy: (searchParams.sort as "date" | "name" | "size") || "date",
+      sortOrder: (searchParams.order as "asc" | "desc") || "desc",
+    } satisfies SearchFilterState;
+  };
+
+  const setSearchState = (key: keyof SearchFilterState, value: any) => {
+    const paramMap: Record<keyof SearchFilterState, string> = {
+      searchQuery: "q",
+      selectedTags: "tags",
+      excludeTags: "excludeTags",
+      tagMode: "tagMode",
+      selectedProjects: "projects",
+      selectedIps: "ips",
+      selectedCharacters: "characters",
+      sortBy: "sort",
+      sortOrder: "order",
+    };
+
+    const paramName = paramMap[key];
+    if (!paramName) return;
+
+    let paramValue: string | undefined;
+
+    if (Array.isArray(value)) {
+      paramValue = value.length > 0 ? value.join(",") : undefined;
+    } else {
+      paramValue = value ? String(value) : undefined;
+    }
+
+    setSearchParams({ [paramName]: paramValue });
+  };
 
   // Fetch filter data
   const tags = createQuery<TagResponse[]>(() => ({
@@ -102,7 +146,7 @@ export default function MediaListPage() {
   }));
 
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", mediaSourceId(), { ...localSearchState }],
+    queryKey: ["media", mediaSourceId(), { ...searchState() }],
     queryFn: ({ pageParam }) => {
       const id = mediaSourceId();
       if (!id) {
@@ -110,7 +154,7 @@ export default function MediaListPage() {
       }
       return searchMedia(
         id,
-        buildSearchParams(localSearchState, pageParam as number)
+        buildSearchParams(searchState(), pageParam as number)
       );
     },
     initialPageParam: 0,
@@ -483,8 +527,8 @@ export default function MediaListPage() {
                 characters={allCharacters.data}
                 ips={allIps.data}
                 projects={allProjects.data}
-                setState={setLocalSearchState}
-                state={localSearchState}
+                setState={setSearchState as any}
+                state={searchState()}
                 tags={tags.data}
               />
             </DialogContent>
@@ -507,8 +551,8 @@ export default function MediaListPage() {
               characters={allCharacters.data}
               ips={allIps.data}
               projects={allProjects.data}
-              setState={setLocalSearchState}
-              state={localSearchState}
+              setState={setSearchState as any}
+              state={searchState()}
               tags={tags.data}
               usePopover={false}
             />
