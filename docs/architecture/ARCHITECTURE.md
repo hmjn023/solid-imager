@@ -18,7 +18,8 @@
 5.  **柔軟性**: インフラストラクチャはビジネスロジックに影響を与えることなく交換できますts
 │       ├── media-source-service.ts
 │       ├── thumbnail-service.ts
-│       └── ... (合計19サービス)
+│       ├── tagging-service.ts
+│       └── ... (合計20サービス)
 │
 ├── infrastructure/      # 外部統合、I/O操作
 │   ├── storage/         # ストレージドライバー (ローカル、SFTP、S3)
@@ -27,6 +28,8 @@
 │   │   ├── sources-api.ts
 │   │   ├── media-api.ts
 │   │   └── ...
+│   ├── ai/              # AIサービス統合
+│   │   └── python-client.ts # Pythonマイクロサービス用クライアント
 │   ├── jobs/            # バックグラウンドジョブ処理
 │   └── db/              # データベースアクセスレイヤー
 │
@@ -38,6 +41,9 @@
 └── shared/              # クロスカッティングの関心事 (将来の使用)
     ├── types/
     └── constants/
+
+├── python-src/          # Pythonマイクロサービス (AI機能)
+│   └── main.py          # FastAPIアプリケーション
 ```
 
 ## レイヤーの責任

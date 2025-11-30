@@ -227,6 +227,14 @@ onCleanup(() => eventSource.close());
 |---|---|---|
 | `POST` | `/api/downloads` | JSONファイルから複数の画像を一括ダウンロードして登録します。 |
 
+### AI (Artificial Intelligence)
+
+| Method | Path | 説明 |
+|---|---|---|
+| `POST` | `/api/ai/tag` | 画像のタグ付けを行います（一般タグ、キャラクター、IP）。ファイルアップロードまたはメディアID指定に対応。 |
+| `POST` | `/api/ai/ccip/feature` | 画像からCCIP特徴量を抽出します。ファイルアップロードまたはメディアID指定に対応。 |
+| `POST` | `/api/ai/ccip/difference` | 2つのCCIP特徴量間の差分を計算します。 |
+
 **`POST /api/downloads`**
 
 JSONファイルに記載された画像URLから画像を一括ダウンロードし、メディアとして登録します。各画像のメタデータ（ツイート情報、タイムスタンプ、作者情報など）はMarkdown形式でdescriptionフィールドに保存されます。

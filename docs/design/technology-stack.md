@@ -3,8 +3,8 @@
 
 ### 確定技術構成
 ```
-Runtime: Bun
-Framework: SolidStart
+Runtime: Bun, Python 3.13+
+Framework: SolidStart, FastAPI (Python Microservice)
 UI Components: Kobalte (@kobalte/core) + Tailwind CSS
 Linter/Formatter: Biome
 Data Fetching/State Management: TanStack Query (@tanstack/solid-query)
@@ -19,6 +19,8 @@ Video Processing: fluent-ffmpeg
 Validation: zod
 File Watching: chokidar
 API Documentation: Swagger (swagger-jsdoc, swagger-ui-dist)
+AI/ML: dghs-imgutils, onnxruntime, uvicorn
+Dependency Management (Python): uv
 ```
 
 ### 依存関係 (`package.json`)
