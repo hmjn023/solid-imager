@@ -82,6 +82,15 @@ export default function Nav() {
             <li class={`border-b-2 ${active("/manager")} mx-1.5 sm:mx-6`}>
               <a href="/manager">Manager</a>
             </li>
+            <li class={`border-b-2 ${active("/docs")} mx-1.5 sm:mx-6`}>
+              <a
+                href="/docs/index.html"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                Docs
+              </a>
+            </li>
           </ul>
           <div class="ml-auto flex items-center gap-2" id="nav-actions" />
         </div>
