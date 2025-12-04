@@ -43,7 +43,7 @@ export async function POST({ request }: APIEvent) {
       const formData = await request.formData();
       const file = formData.get("file");
 
-      if (!file || !(file instanceof File)) {
+      if (!(file && file instanceof File)) {
         return new Response(JSON.stringify({ error: "File is required" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -51,16 +51,15 @@ export async function POST({ request }: APIEvent) {
       }
 
       const buffer = await file.arrayBuffer();
-      const feature = await taggingService.getCCIPFeature(buffer);
+      const feature = await taggingService.getCcipFeature(buffer);
 
-      return new Response(JSON.stringify(feature), {
-        headers: { "Content-Type": "application/json" },
-      });
-    } else if (contentType.includes("application/json")) {
+      return Response.json(feature);
+    }
+    if (contentType.includes("application/json")) {
       const body = await request.json();
       const { mediaSourceId, mediaId } = ccipFeatureRequestSchema.parse(body);
 
-      if (!mediaSourceId || !mediaId) {
+      if (!(mediaSourceId && mediaId)) {
         return new Response(
           JSON.stringify({ error: "mediaSourceId and mediaId are required" }),
           {
@@ -70,22 +69,18 @@ export async function POST({ request }: APIEvent) {
         );
       }
 
-      const feature = await taggingService.getCCIPFeatureForMedia(
+      const feature = await taggingService.getCcipFeatureForMedia(
         mediaSourceId,
         mediaId
       );
 
-      return new Response(JSON.stringify(feature), {
-        headers: { "Content-Type": "application/json" },
-      });
-    } else {
-      return new Response(JSON.stringify({ error: "Unsupported content type" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
+      return Response.json(feature);
     }
+    return new Response(JSON.stringify({ error: "Unsupported content type" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
   } catch (error) {
-    console.error("Error in /api/ai/ccip/feature:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",

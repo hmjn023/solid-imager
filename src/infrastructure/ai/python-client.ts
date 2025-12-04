@@ -1,14 +1,14 @@
 import {
-  type TaggingResponse,
-  type CCIPFeatureResponse,
-  type CCIPDifferenceResponse,
-  taggingResponseSchema,
-  ccipFeatureResponseSchema,
+  type CcipDifferenceResponse,
+  type CcipFeatureResponse,
   ccipDifferenceResponseSchema,
+  ccipFeatureResponseSchema,
+  type TaggingResponse,
+  taggingResponseSchema,
 } from "~/domain/tagging/schemas";
 
 export class PythonClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl = "http://localhost:8000") {
     this.baseUrl = baseUrl;
@@ -57,7 +57,9 @@ export class PythonClient {
     return taggingResponseSchema.parse(data);
   }
 
-  async extractCCIPFeature(imageBuffer: ArrayBuffer): Promise<CCIPFeatureResponse> {
+  async extractCcipFeature(
+    imageBuffer: ArrayBuffer
+  ): Promise<CcipFeatureResponse> {
     const formData = new FormData();
     formData.append("file", new Blob([imageBuffer]), "image.jpg");
 
@@ -74,7 +76,7 @@ export class PythonClient {
     return ccipFeatureResponseSchema.parse(data);
   }
 
-  async extractCCIPFeatureByPath(path: string): Promise<CCIPFeatureResponse> {
+  async extractCcipFeatureByPath(path: string): Promise<CcipFeatureResponse> {
     const formData = new FormData();
     formData.append("path", path);
 
@@ -84,17 +86,19 @@ export class PythonClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to extract CCIP feature by path: ${response.statusText}`);
+      throw new Error(
+        `Failed to extract CCIP feature by path: ${response.statusText}`
+      );
     }
 
     const data = await response.json();
     return ccipFeatureResponseSchema.parse(data);
   }
 
-  async calculateCCIPDifference(
+  async calculateCcipDifference(
     feature1: number[],
     feature2: number[]
-  ): Promise<CCIPDifferenceResponse> {
+  ): Promise<CcipDifferenceResponse> {
     const response = await fetch(`${this.baseUrl}/ccip/difference`, {
       method: "POST",
       headers: {
@@ -104,7 +108,9 @@ export class PythonClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to calculate CCIP difference: ${response.statusText}`);
+      throw new Error(
+        `Failed to calculate CCIP difference: ${response.statusText}`
+      );
     }
 
     const data = await response.json();

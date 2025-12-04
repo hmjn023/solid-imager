@@ -18,6 +18,13 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "~/components/ui/select";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { Project } from "~/domain/projects/schemas";
@@ -47,7 +54,11 @@ export default function ManagerPage() {
   const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [editingItem, setEditingItem] = createSignal<Entity | null>(null);
-  const [formData, setFormData] = createSignal({ name: "", description: "" });
+  const [formData, setFormData] = createSignal<{
+    name: string;
+    description: string;
+    ipId?: number;
+  }>({ name: "", description: "" });
 
   const queryClient = useQueryClient();
 
@@ -131,10 +142,19 @@ export default function ManagerPage() {
 
   const openEditDialog = (item: Entity) => {
     setEditingItem(item);
-    setFormData({
+    const initialData: { name: string; description: string; ipId?: number } = {
       name: item.name,
       description: item.description || "",
-    });
+    };
+
+    if (activeTab() === "characters") {
+      const char = item as Character;
+      if (char.ipId) {
+        initialData.ipId = char.ipId;
+      }
+    }
+
+    setFormData(initialData);
     setIsDialogOpen(true);
   };
 
@@ -203,6 +223,17 @@ export default function ManagerPage() {
                 <Show when={item.description}>
                   <CardDescription>{item.description}</CardDescription>
                 </Show>
+                <Show
+                  when={
+                    activeTab() === "characters" && (item as Character).ipId
+                  }
+                >
+                  <CardDescription>
+                    IP:{" "}
+                    {ips.data?.find((ip) => ip.id === (item as Character).ipId)
+                      ?.name || "Unknown"}
+                  </CardDescription>
+                </Show>
               </CardHeader>
               <CardContent>
                 <div class="flex justify-end space-x-2">
@@ -264,6 +295,39 @@ export default function ManagerPage() {
                 value={formData().description}
               />
             </div>
+            <Show when={activeTab() === "characters"}>
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right">IP</Label>
+                <div class="col-span-3">
+                  <Select
+                    itemComponent={(props) => (
+                      <SelectItem item={props.item}>
+                        {props.item.rawValue.name}
+                      </SelectItem>
+                    )}
+                    onChange={(value) =>
+                      setFormData({ ...formData(), ipId: value?.id })
+                    }
+                    options={ips.data || []}
+                    optionTextValue="name"
+                    optionValue="id"
+                    placeholder="Select an IP"
+                    value={
+                      formData().ipId
+                        ? ips.data?.find((ip) => ip.id === formData().ipId)
+                        : undefined
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue<Ip>>
+                        {(state) => state.selectedOption()?.name}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent />
+                  </Select>
+                </div>
+              </div>
+            </Show>
           </div>
           <DialogFooter>
             <Button onClick={editingItem() ? handleUpdate : handleCreate}>
