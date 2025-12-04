@@ -1,4 +1,4 @@
-import { and, eq, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
   type Author,
@@ -8,7 +8,7 @@ import {
 import { UnknownDbError } from "../errors";
 
 /**
- * Inserts a new author or returns an existing one based on accountId or name.
+ * Inserts a new author or returns an existing one based on accountId.
  */
 export const upsertAuthor = async (
   authorData: NewAuthor
@@ -26,11 +26,7 @@ export const upsertAuthor = async (
       }
     }
 
-    // Try to find by name if accountId is not present or not found (and we want to fallback)
-    // For now, let's assume if accountId is different, it's a different author even if name is same?
-    // Or should we unique by name? The schema doesn't enforce unique name.
-    // Let's rely on accountId for uniqueness if provided.
-
+    // Insert new author
     const result = await db
       .insert(authors)
       .values(authorData)
@@ -53,13 +49,4 @@ export const selectAuthorByAccountId = async (
     .where(eq(authors.accountId, accountId))
     .limit(1);
   return result[0];
-};
-
-export const selectAuthorsByMediaId = async (
-  mediaId: string
-): Promise<Author[]> => {
-    // This requires a join with media_authors which I should put in media-authors.ts or here.
-    // I'll put it here for convenience or use media-authors.ts query.
-    // Let's implement basic select first.
-    return [];
 };

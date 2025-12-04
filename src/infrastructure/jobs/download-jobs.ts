@@ -7,8 +7,8 @@ import path from "node:path";
 import type { DownloadItem } from "~/domain/media/schemas";
 import { upsertAuthor } from "~/infrastructure/db/queries/authors";
 import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
-import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import {

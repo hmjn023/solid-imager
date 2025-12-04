@@ -8,8 +8,6 @@ import {
   mediaSearchResponseSchema,
 } from "~/domain/media/schemas";
 import type { conflictSchema } from "~/domain/media/upload-schemas";
-import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
-import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
@@ -19,7 +17,9 @@ import {
   selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
+import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
 import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
+import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,

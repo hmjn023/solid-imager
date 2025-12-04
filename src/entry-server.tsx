@@ -25,7 +25,6 @@ export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
       <html lang="en">
-        {/* biome-ignore lint/style/noHeadElement: SolidStart uses <head> */}
         <head>
           <meta charset="utf-8" />
           <meta content="width=device-width, initial-scale=1" name="viewport" />

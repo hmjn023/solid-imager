@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { authors, mediaAuthors, type Author } from "~/infrastructure/db/schema";
+import { type Author, authors, mediaAuthors } from "~/infrastructure/db/schema";
 import { UnknownDbError } from "../errors";
 
 export const insertMediaAuthor = async (

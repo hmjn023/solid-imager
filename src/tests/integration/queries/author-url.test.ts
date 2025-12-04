@@ -1,15 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
-import { insertMediaAuthor, selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
-import { insertMediaUrls, selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import { upsertAuthor } from "~/infrastructure/db/queries/authors";
 import {
+  insertMediaAuthor,
+  selectAuthorsByMediaId,
+} from "~/infrastructure/db/queries/media-authors";
+import {
+  insertMediaUrls,
+  selectMediaUrlsByMediaId,
+} from "~/infrastructure/db/queries/media-urls";
+import {
+  authors,
+  mediaAuthors,
   mediaSources,
   medias,
-  authors,
   mediaUrls,
-  mediaAuthors,
-  type NewMedia,
 } from "~/infrastructure/db/schema";
 
 describe("Author and URL Integration", () => {
@@ -33,14 +38,17 @@ describe("Author and URL Integration", () => {
     });
 
     // Setup media
-    const inserted = await db.insert(medias).values({
-      mediaSourceId: testSourceId,
-      filePath: "/media/test/author-test.jpg",
-      fileName: "author-test.jpg",
-      mediaType: "image",
-      width: 100,
-      height: 100,
-    }).returning();
+    const inserted = await db
+      .insert(medias)
+      .values({
+        mediaSourceId: testSourceId,
+        filePath: "/media/test/author-test.jpg",
+        fileName: "author-test.jpg",
+        mediaType: "image",
+        width: 100,
+        height: 100,
+      })
+      .returning();
     testMediaId = inserted[0].id;
   });
 
@@ -82,12 +90,15 @@ describe("Author and URL Integration", () => {
   });
 
   it("should insert and retrieve media URLs", async () => {
-    const urls = ["https://example.com/img1.jpg", "https://twitter.com/status/123"];
+    const urls = [
+      "https://example.com/img1.jpg",
+      "https://twitter.com/status/123",
+    ];
     await insertMediaUrls(testMediaId, urls);
 
     const retrievedUrls = await selectMediaUrlsByMediaId(testMediaId);
     expect(retrievedUrls).toHaveLength(2);
-    const urlStrings = retrievedUrls.map(u => u.url).sort();
+    const urlStrings = retrievedUrls.map((u) => u.url).sort();
     expect(urlStrings).toEqual(urls.sort());
   });
 });

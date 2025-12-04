@@ -110,7 +110,9 @@ export const MediaService = {
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
-      const { insertMediaUrls } = await import("~/infrastructure/db/queries/media-urls");
+      const { insertMediaUrls } = await import(
+        "~/infrastructure/db/queries/media-urls"
+      );
       await insertMediaUrls(insertedMedia.id, [uploadRequest.sourceUrl]);
     }
 

@@ -1,16 +1,15 @@
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import {
-  type MediaUrl,
-  mediaUrls,
-} from "~/infrastructure/db/schema";
+import { type MediaUrl, mediaUrls } from "~/infrastructure/db/schema";
 import { UnknownDbError } from "../errors";
 
 export const insertMediaUrls = async (
   mediaId: string,
   urls: string[]
 ): Promise<MediaUrl[]> => {
-  if (urls.length === 0) return [];
+  if (urls.length === 0) {
+    return [];
+  }
   try {
     const values = urls.map((url) => ({
       mediaId,
