@@ -260,7 +260,55 @@ export default function MediaListPage() {
   const handleJsonFileUpload = async (file: File) => {
     try {
       const text = await file.text();
-      const json = JSON.parse(text);
+      const jsonContent = JSON.parse(text);
+      let items: DownloadItem[] = [];
+
+      // Case 1: JSON is a direct array of DownloadItem
+      if (Array.isArray(jsonContent)) {
+        items = jsonContent;
+      }
+      // Case 2: JSON is an object with an 'items' key (previous handling)
+      else if (jsonContent.items && Array.isArray(jsonContent.items)) {
+        items = jsonContent.items;
+      }
+      // Case 3: JSON is an object with an 'images' key (new handling for user's provided structure)
+      else if (jsonContent.images && Array.isArray(jsonContent.images)) {
+        items = jsonContent.images
+          .map(
+            // biome-ignore lint/suspicious/noExplicitAny: Dynamic JSON structure, any is acceptable here.
+            (image: any) => {
+              const imageUrl = image.originalUrl || image.displayUrl;
+              if (!imageUrl) {
+                return null; // Skip if no valid URL is found
+              }
+
+              let tweetUrl: string | undefined;
+              if (image.source === "twitter" && image.metadata?.postId) {
+                tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
+              }
+
+              return {
+                imageUrl,
+                tweetUrl,
+                tweetText: image.metadata?.title,
+                authorName: image.metadata?.author,
+                timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
+                // Add other fields as needed from the provided JSON structure to match DownloadItem
+              };
+            }
+          )
+          .filter(Boolean) as DownloadItem[]; // Filter out nulls
+      } else {
+        throw new Error(
+          "JSONファイルはアイテムの配列であるか、'items'または'images'キーを含むオブジェクトである必要があります。"
+        );
+      }
+
+      if (items.length === 0) {
+        throw new Error(
+          "JSONファイルにはダウンロードするアイテムが含まれていません。"
+        );
+      }
 
       // Send to downloads API
       const response = await fetch("/api/downloads", {
@@ -270,12 +318,13 @@ export default function MediaListPage() {
         },
         body: JSON.stringify({
           mediaSourceId: mediaSourceId() || "",
-          items: json,
+          items,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to start download jobs");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || "Failed to start download jobs");
       }
 
       toast.success("Bulk download started");
