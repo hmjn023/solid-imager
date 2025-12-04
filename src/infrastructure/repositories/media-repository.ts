@@ -8,6 +8,8 @@ import {
   mediaSearchResponseSchema,
 } from "~/domain/media/schemas";
 import type { conflictSchema } from "~/domain/media/upload-schemas";
+import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
+import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
@@ -160,6 +162,20 @@ export const MediaRepository = {
       }
       throw error;
     });
+  },
+
+  /**
+   * Retrieves authors for a media item.
+   */
+  async getAuthors(mediaId: string) {
+    return await selectAuthorsByMediaId(mediaId);
+  },
+
+  /**
+   * Retrieves source URLs for a media item.
+   */
+  async getUrls(mediaId: string) {
+    return await selectMediaUrlsByMediaId(mediaId);
   },
 
   /**

@@ -5,6 +5,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { DownloadItem } from "~/domain/media/schemas";
+import { upsertAuthor } from "~/infrastructure/db/queries/authors";
+import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
+import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import type { Job } from "~/infrastructure/jobs/job-manager";
@@ -98,7 +101,6 @@ export async function processDownloadJob(
     fileName: filename,
     mediaType: "image",
     description: formatMetadataAsMarkdown(item),
-    sourceUrl: item.imageUrl,
     width: metadata.width,
     height: metadata.height,
     fileSize: metadata.size,
@@ -107,6 +109,22 @@ export async function processDownloadJob(
   };
 
   const insertedMedia = await MediaRepository.create(newMedia);
+
+  // Register URLs
+  const urlsToRegister = [item.imageUrl];
+  if (item.tweetUrl) {
+    urlsToRegister.push(item.tweetUrl);
+  }
+  await insertMediaUrls(insertedMedia.id, urlsToRegister);
+
+  // Register Author
+  if (item.authorName) {
+    const author = await upsertAuthor({
+      name: item.authorName,
+      accountId: item.authorId,
+    });
+    await insertMediaAuthor(insertedMedia.id, author.id);
+  }
 
   // Queue thumbnail generation
   addJobsToQueue(mediaSourceId, [

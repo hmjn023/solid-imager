@@ -127,8 +127,6 @@ export const medias = pgTable(
     fileSize: bigint("file_size", { mode: "number" }),
     /** メディアの説明(ユーザー入力) */
     description: text("description"),
-    /** 取得元リンク(ユーザー入力) */
-    sourceUrl: text("source_url"),
     /** ファイル作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
     /** ファイル更新日時 */
@@ -168,6 +166,10 @@ export const tags = pgTable(
     color: text("color"),
     /** タグの起源 (manual, comfyui_workflow, tagger_program_Aなど) */
     source: text("source").notNull().default("manual"),
+    /** 関連するAuthor ID */
+    authorId: uuid("author_id").references(() => authors.id, {
+      onDelete: "set null",
+    }),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
     /** 更新日時 */
@@ -644,6 +646,67 @@ export const mediaRelationsTable = pgTable(
 );
 
 /**
+ * Schema for the authors table.
+ * Stores information about authors/artists.
+ */
+export const authors = pgTable(
+  "authors",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    /** 表示名 */
+    name: text("name").notNull(),
+    /** 外部ID (例: Twitter ID, Pixiv ID) */
+    accountId: text("account_id"),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    accountIdIndex: index("idx_authors_account_id").on(table.accountId),
+  })
+);
+
+/**
+ * Schema for the media_authors join table.
+ * Many-to-many relationship between media and authors.
+ */
+export const mediaAuthors = pgTable(
+  "media_authors",
+  {
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    authorId: uuid("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.mediaId, table.authorId] }),
+  })
+);
+
+/**
+ * Schema for the media_urls table.
+ * Stores multiple source URLs for a media item.
+ */
+export const mediaUrls = pgTable(
+  "media_urls",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    mediaId: uuid("media_id")
+      .notNull()
+      .references(() => medias.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
+  })
+);
+
+/**
  * Schema for the users table.
  * Stores user account information.
  */
@@ -840,14 +903,25 @@ export const mediaRelations = relations(medias, ({ one, many }) => ({
   /** このメディアを子とする関連メディア */
 
   parentRelations: many(mediaRelationsTable, { relationName: "child" }),
+  /** メディアのSource URLリスト */
+
+  urls: many(mediaUrls),
+  /** メディアのAuthorリスト */
+
+  authors: many(mediaAuthors),
 }));
 
 /**
  * Defines the relations for the tags table.
  */
-export const tagsRelations = relations(tags, ({ many }) => ({
+export const tagsRelations = relations(tags, ({ one, many }) => ({
   /** タグが付与されたメディア */
   media: many(mediaTags),
+  /** タグに関連するAuthor */
+  author: one(authors, {
+    fields: [tags.authorId],
+    references: [authors.id],
+  }),
 }));
 
 /**
@@ -1082,6 +1156,43 @@ export const mediaCollectionsRelations = relations(
 );
 
 /**
+ * Defines the relations for the authors table.
+ */
+export const authorsRelations = relations(authors, ({ many }) => ({
+  /** Authorに関連するメディア */
+  media: many(mediaAuthors),
+  /** Authorに関連するタグ */
+  tags: many(tags),
+}));
+
+/**
+ * Defines the relations for the media_authors join table.
+ */
+export const mediaAuthorsRelations = relations(mediaAuthors, ({ one }) => ({
+  /** 中間テーブルが参照するメディア */
+  media: one(medias, {
+    fields: [mediaAuthors.mediaId],
+    references: [medias.id],
+  }),
+  /** 中間テーブルが参照するAuthor */
+  author: one(authors, {
+    fields: [mediaAuthors.authorId],
+    references: [authors.id],
+  }),
+}));
+
+/**
+ * Defines the relations for the media_urls table.
+ */
+export const mediaUrlsRelations = relations(mediaUrls, ({ one }) => ({
+  /** URLが属するメディア */
+  media: one(medias, {
+    fields: [mediaUrls.mediaId],
+    references: [medias.id],
+  }),
+}));
+
+/**
  * Defines the relations for the users table.
  */
 export const usersRelations = relations(users, ({ many }) => ({
@@ -1307,3 +1418,30 @@ export type MediaRelation = InferSelectModel<typeof mediaRelationsTable>;
  * Type definition for inserting a new media relation into the database.
  */
 export type NewMediaRelation = InferInsertModel<typeof mediaRelationsTable>;
+
+/**
+ * Type definition for selecting an author from the database.
+ */
+export type Author = InferSelectModel<typeof authors>;
+/**
+ * Type definition for inserting a new author into the database.
+ */
+export type NewAuthor = InferInsertModel<typeof authors>;
+
+/**
+ * Type definition for selecting a media author relationship from the database.
+ */
+export type MediaAuthor = InferSelectModel<typeof mediaAuthors>;
+/**
+ * Type definition for inserting a new media author relationship into the database.
+ */
+export type NewMediaAuthor = InferInsertModel<typeof mediaAuthors>;
+
+/**
+ * Type definition for selecting a media url from the database.
+ */
+export type MediaUrl = InferSelectModel<typeof mediaUrls>;
+/**
+ * Type definition for inserting a new media url into the database.
+ */
+export type NewMediaUrl = InferInsertModel<typeof mediaUrls>;

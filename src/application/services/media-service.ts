@@ -99,7 +99,6 @@ export const MediaService = {
       fileName: fileInfo.fileName,
       mediaType: "image", // TODO: Determine based on file type
       description: uploadRequest.description || "",
-      sourceUrl: uploadRequest.sourceUrl || "",
       width: fileInfo.width,
       height: fileInfo.height,
       fileSize: fileInfo.size,
@@ -108,6 +107,12 @@ export const MediaService = {
     };
 
     const insertedMedia = await MediaRepository.create(newMedia);
+
+    // Register URL if present (legacy support for sourceUrl in upload)
+    if (uploadRequest.sourceUrl) {
+      const { insertMediaUrls } = await import("~/infrastructure/db/queries/media-urls");
+      await insertMediaUrls(insertedMedia.id, [uploadRequest.sourceUrl]);
+    }
 
     // 3. Trigger Jobs
     addJobsToQueue(validatedSourceId, [
@@ -141,9 +146,11 @@ export const MediaService = {
       throw new Error("Media not found");
     }
 
-    const [tags, generationInfo] = await Promise.all([
+    const [tags, generationInfo, authors, urls] = await Promise.all([
       MediaRepository.getTags(validatedMediaId),
       MediaRepository.getGenerationInfo(validatedMediaId),
+      MediaRepository.getAuthors(validatedMediaId),
+      MediaRepository.getUrls(validatedMediaId),
     ]);
 
     let finalGenerationInfo = generationInfo;
@@ -182,6 +189,8 @@ export const MediaService = {
             steps: finalGenerationInfo.steps ?? 0,
           }
         : null,
+      authors,
+      urls,
     };
   },
 

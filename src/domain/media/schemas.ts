@@ -25,7 +25,7 @@ export const addMediaRequestSchema = z.object({
   updatedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema,
   description: z.string().nullable(),
-  sourceUrl: z.string().nullable(),
+  sourceUrls: z.array(z.string().url()).optional(),
   width: z.number().int().positive("Width must be a positive integer"),
   height: z.number().int().positive("Height must be a positive integer"),
 });
@@ -64,7 +64,7 @@ export const updateMediaRequestSchema = z.object({
     .positive("Height must be a positive integer")
     .optional(),
   description: z.string().nullable().optional(),
-  sourceUrl: z.string().url("Invalid URL format").nullable().optional(),
+  sourceUrls: z.array(z.string().url("Invalid URL format")).optional(),
 });
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
@@ -121,12 +121,31 @@ export const mediaSchema = z.object({
   height: z.number(),
   fileSize: z.number().nullable(),
   description: z.string().nullable(),
-  sourceUrl: z.string().nullable(),
   createdAt: z.coerce.date(),
   modifiedAt: z.coerce.date(),
   indexedAt: z.coerce.date(),
   status: z.enum(["active", "archived", "deleted"]),
 });
+
+export const authorSchema = z.object({
+  id: z.uuid({ version: "v4" }),
+  name: z.string(),
+  accountId: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type Author = z.infer<typeof authorSchema>;
+
+export const mediaUrlSchema = z.object({
+  id: z.uuid({ version: "v4" }),
+  mediaId: z.uuid({ version: "v4" }),
+  url: z.string().url(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type MediaUrl = z.infer<typeof mediaUrlSchema>;
 
 export const tagSchema = z.object({
   id: z.number(),
@@ -135,6 +154,7 @@ export const tagSchema = z.object({
   attribute: z.string().nullable(),
   color: z.string().nullable(),
   source: z.string(),
+  authorId: z.string().uuid().nullable().optional(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   type: z.enum(["positive", "negative"]), // from mediaTags
@@ -185,6 +205,8 @@ export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
 export const mediaDetailsSchema = mediaSchema.extend({
   tags: z.array(tagSchema),
   generationInfo: mediaGenerationInfoSchema.nullable(),
+  authors: z.array(authorSchema),
+  urls: z.array(mediaUrlSchema),
 });
 
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;

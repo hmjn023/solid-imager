@@ -331,18 +331,49 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         </Show>
       </div>
 
-      {/* Source URL Section */}
-      <Show when={props.media.sourceUrl}>
+      {/* Source URLs Section */}
+      <Show when={props.media.urls?.length > 0}>
         <div class="space-y-2">
-          <h2 class="font-semibold text-lg">Source URL</h2>
-          <a
-            class="block break-all text-blue-600 text-sm hover:underline"
-            href={props.media.sourceUrl || ""}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            {props.media.sourceUrl}
-          </a>
+          <h2 class="font-semibold text-lg">Source URLs</h2>
+          <ul class="space-y-1">
+            <For each={props.media.urls}>
+              {(url) => (
+                <li>
+                  <a
+                    class="block break-all text-blue-600 text-sm hover:underline"
+                    href={url.url}
+                    rel="noopener noreferrer"
+                    target="_blank"
+                  >
+                    {url.url}
+                  </a>
+                </li>
+              )}
+            </For>
+          </ul>
+        </div>
+      </Show>
+
+      {/* Authors Section */}
+      <Show when={props.media.authors?.length > 0}>
+        <div class="space-y-2">
+          <h2 class="font-semibold text-lg">Authors</h2>
+          <ul class="space-y-1">
+            <For each={props.media.authors}>
+              {(author) => (
+                <li>
+                  <div class="flex items-center gap-2">
+                    <span class="font-medium">{author.name}</span>
+                    <Show when={author.accountId}>
+                      <span class="text-gray-500 text-xs">
+                        ({author.accountId})
+                      </span>
+                    </Show>
+                  </div>
+                </li>
+              )}
+            </For>
+          </ul>
         </div>
       </Show>
 
