@@ -44,7 +44,6 @@ export const selectMediaBySourceIdAndFilePath = async (
         height: medias.height,
         fileSize: medias.fileSize,
         description: medias.description,
-        sourceUrl: medias.sourceUrl,
         createdAt: medias.createdAt,
         modifiedAt: medias.modifiedAt,
         indexedAt: medias.indexedAt,
