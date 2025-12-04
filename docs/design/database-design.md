@@ -27,11 +27,31 @@ erDiagram
         INTEGER height
         BIGINT file_size
         TEXT description
-        TEXT source_url
         TIMESTAMP created_at
         TIMESTAMP modified_at
         TIMESTAMP indexed_at
         media_organization_status status
+    }
+
+    media_urls {
+        UUID id PK
+        UUID media_id FK
+        TEXT url
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    authors {
+        UUID id PK
+        TEXT name
+        TEXT account_id
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    media_authors {
+        UUID media_id PK, FK
+        UUID author_id PK, FK
     }
 
     tags {
@@ -41,6 +61,7 @@ erDiagram
         TEXT attribute
         TEXT color
         TEXT source
+        UUID author_id FK
         TIMESTAMP created_at
         TIMESTAMP updated_at
     }
@@ -259,6 +280,10 @@ erDiagram
     collections ||--o{ media_collections : "has"
     users ||--o{ collections : "has"
     media_sources ||--o{ jobs : "related to"
+    medias ||--o{ media_urls : "has"
+    medias ||--o{ media_authors : "has"
+    authors ||--o{ media_authors : "has"
+    authors ||--o{ tags : "linked to"
 ```
 
 ## 列挙型 (Enums)
@@ -304,7 +329,6 @@ erDiagram
 | `height` | `integer`| NOT NULL | メディアの高さ |
 | `file_size` | `bigint` | | ファイルサイズ(バイト) |
 | `description` | `text` | | メディアの説明(ユーザー入力) |
-| `source_url`| `text` | | 取得元リンク(ユーザー入力) |
 | `created_at`| `timestamp`| NOT NULL, DEFAULT NOW() | ファイル作成日時 |
 | `modified_at`| `timestamp`| NOT NULL, DEFAULT NOW() | ファイル更新日時 |
 | `indexed_at`| `timestamp`| NOT NULL, DEFAULT NOW() | DB登録日時 |
@@ -321,6 +345,7 @@ erDiagram
 | `attribute` | `text` | | タグの属性や分類 |
 | `color` | `text` | | UIで表示する際の色 |
 | `source` | `text` | NOT NULL, DEFAULT 'manual' | タグの起源 |
+| `author_id` | `uuid` | FK to `authors` | 関連するAuthor ID |
 | `created_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 作成日時 |
 | `updated_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 更新日時 |
 
@@ -549,6 +574,36 @@ AI生成コンテンツなど、メディアの生成に関する情報を格納
 | `collection_id`| `uuid` | PK, FK to `collections` | コレクションID |
 | `media_id` | `uuid` | PK, FK to `medias` | メディアID |
 | `display_order`| `integer`| | コレクション内での表示順序 |
+
+### `authors`
+作者（アーティスト）の情報を格納します。
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---|---|---|---|
+| `id` | `uuid` | PK | 一意なID |
+| `name` | `text` | NOT NULL | 表示名 |
+| `account_id` | `text` | | 外部ID (例: Twitter ID) |
+| `created_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 作成日時 |
+| `updated_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 更新日時 |
+
+### `media_authors` (中間テーブル)
+メディアと作者の多対多関係を表現します。
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---|---|---|---|
+| `media_id` | `uuid` | PK, FK to `medias` | メディアID |
+| `author_id` | `uuid` | PK, FK to `authors` | 作者ID |
+
+### `media_urls`
+メディアの複数の参照元URLを格納します。
+
+| カラム名 | データ型 | 制約 | 説明 |
+|---|---|---|---|
+| `id` | `uuid` | PK | 一意なID |
+| `media_id` | `uuid` | NOT NULL, FK to `medias` | メディアID |
+| `url` | `text` | NOT NULL | URL |
+| `created_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 作成日時 |
+| `updated_at` | `timestamp`| NOT NULL, DEFAULT NOW() | 更新日時 |
 
 ### `jobs`
 サムネイル生成などのバックグラウンドジョブを管理します。
