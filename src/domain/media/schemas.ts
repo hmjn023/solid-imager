@@ -255,3 +255,16 @@ export {
   uploadMediaRequestSchema,
   uploadResponseSchema,
 } from "./upload-schemas";
+
+export const copyMediaRequestSchema = z.object({
+  targetSourceId: z.uuid({
+    version: "v4",
+    message: "Invalid target source ID",
+  }),
+});
+
+export type CopyMediaRequest = z.infer<typeof copyMediaRequestSchema>;
+
+export const moveMediaRequestSchema = copyMediaRequestSchema;
+
+export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;

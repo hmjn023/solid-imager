@@ -21,6 +21,7 @@ import {
   addJobsToQueue,
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import {
   deleteThumbnail,
   processMediaJob,
@@ -415,6 +416,132 @@ export const MediaService = {
   },
 
   /**
+   * Copies a media item to another source.
+   */
+  async copyMedia(
+    sourceMediaId: string,
+    targetSourceId: string
+  ): Promise<{ success: boolean; media: any }> {
+    // Using any for minimal friction, ideally typed
+    const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
+    const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
+
+    // 1. Get Source Media and Source Info
+    const sourceMedia = await MediaRepository.findById(validatedSourceMediaId);
+    if (!sourceMedia) {
+      throw new Error("Source media not found.");
+    }
+
+    const sourceSource = await selectMediaSourceById(sourceMedia.mediaSourceId);
+    const targetSource = await selectMediaSourceById(validatedTargetSourceId);
+
+    if (!(sourceSource && targetSource)) {
+      throw new Error("Source or target media source not found.");
+    }
+
+    // 2. Validate Local-to-Local (Phase 1 Limitation)
+    if (sourceSource.type !== "local" || targetSource.type !== "local") {
+      throw new Error("Only local-to-local copy is supported in this version.");
+    }
+
+    const sourceConnection = sourceSource.connectionInfo as { path: string };
+    const targetConnection = targetSource.connectionInfo as { path: string };
+    const fullSourcePath = path.join(
+      sourceConnection.path,
+      sourceMedia.filePath
+    );
+
+    // 3. Perform Physical Copy
+    const fileInfo = await MediaRepository.copyFile(
+      fullSourcePath,
+      targetConnection.path,
+      {
+        filename: sourceMedia.fileName, // Try to keep same name
+        autoIncrement: true, // Handle conflicts automatically
+      }
+    );
+
+    // 4. Create New Media Entry in DB
+    const newMedia: NewMedia = {
+      mediaSourceId: validatedTargetSourceId,
+      filePath: fileInfo.filePath,
+      fileName: fileInfo.fileName,
+      mediaType: sourceMedia.mediaType, // Preserve type
+      width: fileInfo.width,
+      height: fileInfo.height,
+      fileSize: fileInfo.size,
+      description: sourceMedia.description, // Preserve description
+      status: "active",
+      createdAt: fileInfo.createdAt, // Preserve original creation time if possible, or use stats
+      modifiedAt: fileInfo.modifiedAt,
+      indexedAt: new Date(),
+    };
+
+    const newMediaEntry = await MediaRepository.create(newMedia);
+
+    // 5. Start Thumbnail Generation for New Media
+    const sourcePath = targetConnection.path;
+    await addJobsToQueue(validatedTargetSourceId, [
+      {
+        mediaId: newMediaEntry.id,
+        sourcePath,
+        type: "thumbnail",
+      },
+    ]);
+    startJobQueue(validatedTargetSourceId, (job) =>
+      processMediaJob(job, validatedTargetSourceId)
+    );
+
+    // Notify via SSE
+    SseManager.notifyMediaCopied(
+      sourceMediaId,
+      validatedTargetSourceId,
+      newMediaEntry
+    );
+
+    return {
+      success: true,
+      media: newMediaEntry,
+    };
+  },
+
+  /**
+   * Moves a media item to another source (Copy + Delete).
+   */
+  async moveMedia(
+    sourceMediaId: string,
+    targetSourceId: string
+  ): Promise<{ success: boolean; media: any }> {
+    // 1. Copy
+    // We don't call this.copyMedia to avoid double notification if we want custom move notification
+    // But copyMedia logic is complex, so better reuse it.
+    // However, copyMedia emits "media-copied".
+    // If we want "media-moved", we might get both.
+    // Let's rely on copyMedia for copy part.
+    const result = await this.copyMedia(sourceMediaId, targetSourceId);
+
+    // 2. Delete Original if Copy Successful
+    if (result.success) {
+      const sourceMedia = await MediaRepository.findById(sourceMediaId);
+      await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId);
+
+      // Notify via SSE (override or supplement?)
+      // deleteMedia emits "media-deleted".
+      // copyMedia emits "media-copied".
+      // "media-moved" is a composite.
+      // Providing explicit "media-moved" might be useful for UI to show "Moved" instead of "Deleted".
+      SseManager.notifyMediaMoved(
+        sourceMedia.mediaSourceId,
+        targetSourceId,
+        sourceMediaId,
+        result.media
+      );
+    }
+
+    return result;
+  },
+
+  /**
    * Deletes a media item.
    */
   async deleteMedia(mediaSourceId: string, mediaId: string): Promise<void> {
@@ -433,35 +560,26 @@ export const MediaService = {
     await deleteThumbnail(validatedSourceId, validatedMediaId);
 
     // 2. Delete from database
-    // This should ideally happen before file deletion to avoid "ghost" entries if file delete fails,
-    // OR we can do file delete first.
-    // Given the previous plan said "Delete from DB" then "Delete file from FS", let's follow that.
-    // But wait, if we delete from DB first, we lose the file path if we need it for FS deletion?
-    // MediaRepository.delete returns void in current implementation, relying on findById before.
-    // So we already fetched `media` which contains the path.
     await MediaRepository.delete(validatedMediaId);
 
     // 3. Delete file from filesystem
     if (media.mediaSourceId) {
       const mediaSource = await selectMediaSourceById(media.mediaSourceId);
       if (mediaSource && mediaSource.type === "local") {
-        // Construct full path
-        // media.filePath is relative to the source?
-        // Let's check how filePath is stored.
-        // In repository: const relativeFilePath = path.relative(config.connectionInfo.path, fullPath);
-        // So media.filePath is relative.
-        const fullPath = path.join(
-          mediaSource.connectionInfo.path,
-          media.filePath
-        );
+        const connectionInfo = mediaSource.connectionInfo as { path: string };
+        const fullPath = path.join(connectionInfo.path, media.filePath);
         try {
           await fs.unlink(fullPath);
         } catch (_e) {
-          // We don't rethrow here to ensure the DB deletion stands?
-          // Or we might want to warn the user.
-          // For now, let's log and proceed as the DB entry is gone.
+          // Log error
         }
       }
     }
+
+    // Notify via SSE
+    SseManager.sendEvent(validatedSourceId, "media-deleted", {
+      filePath: media.filePath,
+      timestamp: new Date().toISOString(),
+    });
   },
 };

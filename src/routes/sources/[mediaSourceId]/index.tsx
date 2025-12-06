@@ -16,6 +16,7 @@ import { createStore } from "solid-js/store";
 import { isServer, Portal } from "solid-js/web";
 import { toast } from "solid-toast";
 import { z } from "zod";
+import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import {
   type SearchFilterState,
   SearchFilters,
@@ -27,9 +28,6 @@ import {
   ContextMenuContent,
   ContextMenuItem,
   ContextMenuSeparator,
-  ContextMenuSub,
-  ContextMenuSubContent,
-  ContextMenuSubTrigger,
   ContextMenuTrigger,
 } from "~/components/ui/context-menu";
 import {
@@ -48,9 +46,12 @@ import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
 import {
+  copyMedia,
   deleteMedia,
+  moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
+
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
@@ -225,6 +226,13 @@ export default function MediaListPage() {
   const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
   const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
+    null
+  );
+
+  // Copy/Move Dialog State
+  const [moveCopyDialogOpen, setMoveCopyDialogOpen] = createSignal(false);
+  const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
+  const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
     null
   );
 
@@ -541,6 +549,34 @@ export default function MediaListPage() {
     }
   };
 
+  const handleCopyMove = (mediaId: string, mode: "copy" | "move") => {
+    setMediaIdToMoveCopy(mediaId);
+    setMoveCopyMode(mode);
+    setMoveCopyDialogOpen(true);
+  };
+
+  const handleConfirmCopyMove = async (targetSourceId: string) => {
+    const id = mediaIdToMoveCopy();
+    const sourceId = mediaSourceId();
+    if (!(id && sourceId)) {
+      return;
+    }
+
+    const mode = moveCopyMode();
+    const action = mode === "copy" ? copyMedia : moveMedia;
+    const actionName = mode === "copy" ? "copied" : "moved";
+
+    try {
+      await action(sourceId, id, targetSourceId);
+      toast.success(`Media ${actionName} successfully`);
+      await mediaQuery.refetch();
+    } catch (e) {
+      toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
+    } finally {
+      setMediaIdToMoveCopy(null);
+    }
+  };
+
   onMount(() => {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
@@ -569,6 +605,19 @@ export default function MediaListPage() {
       // Listen for media files added to the directory
       eventSource.addEventListener("media-added", (_event) => {
         toast.success("New media detected");
+        invalidateMedia();
+      });
+
+      // Listen for media-copied (Manual SSE)
+      eventSource.addEventListener("media-copied", (_event) => {
+        // toast.success("Media copied"); // Toast already handled by API response
+        invalidateMedia();
+      });
+
+      // Listen for media-moved (Manual SSE)
+      eventSource.addEventListener("media-moved", (_event) => {
+        // toast.success("Media moved"); // Toast already handled by API response
+        invalidateMedia();
       });
 
       // Listen for media files changed in the directory
@@ -794,18 +843,16 @@ export default function MediaListPage() {
                             Delete
                           </ContextMenuItem>
                           <ContextMenuSeparator />
-                          <ContextMenuSub>
-                            <ContextMenuSubTrigger disabled>
-                              Copy to Source
-                            </ContextMenuSubTrigger>
-                            <ContextMenuSubContent />
-                          </ContextMenuSub>
-                          <ContextMenuSub>
-                            <ContextMenuSubTrigger disabled>
-                              Move to Source
-                            </ContextMenuSubTrigger>
-                            <ContextMenuSubContent />
-                          </ContextMenuSub>
+                          <ContextMenuItem
+                            onSelect={() => handleCopyMove(item.id, "copy")}
+                          >
+                            Copy to Source
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            onSelect={() => handleCopyMove(item.id, "move")}
+                          >
+                            Move to Source
+                          </ContextMenuItem>
                         </ContextMenuContent>
                       </ContextMenu>
                     );
@@ -891,6 +938,14 @@ export default function MediaListPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <MoveCopyMediaDialog
+        currentSourceId={mediaSourceId() || ""}
+        mode={moveCopyMode()}
+        onConfirm={handleConfirmCopyMove}
+        onOpenChange={setMoveCopyDialogOpen}
+        open={moveCopyDialogOpen()}
+      />
     </section>
   );
 }

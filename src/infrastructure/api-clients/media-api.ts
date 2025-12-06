@@ -12,6 +12,15 @@ import {
 import { apiRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";
 
+// Define response schema for copy/move action (Success + Media object)
+// Since the backend returns { success: boolean, media: Media }, we can define a schema
+// Define response schema for copy/move action (Success + Media object)
+// Since the backend returns { success: boolean, media: Media }, we can define a schema
+const actionResponseSchema = z.object({
+  success: z.boolean(),
+  media: mediaSchema,
+});
+
 /**
  * Schema for media list response
  */
@@ -106,7 +115,53 @@ export function updateMedia(
  */
 export function deleteMedia(sourceId: string, mediaId: string) {
   // Use mediaUpdate endpoint structure (resource root) for DELETE
-  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), z.void(), {
-    method: "DELETE",
-  });
+  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), z.void(), {});
+}
+
+/**
+ * Copies a media item to another source
+ * @param sourceId - Current Media source ID
+ * @param mediaId - Media ID
+ * @param targetSourceId - Target Media source ID
+ */
+export function copyMedia(
+  sourceId: string,
+  mediaId: string,
+  targetSourceId: string
+) {
+  return apiRequest(
+    API_ENDPOINTS.mediaCopy(sourceId, mediaId),
+    actionResponseSchema,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetSourceId }),
+    }
+  );
+}
+
+/**
+ * Moves a media item to another source
+ * @param sourceId - Current Media source ID
+ * @param mediaId - Media ID
+ * @param targetSourceId - Target Media source ID
+ */
+export function moveMedia(
+  sourceId: string,
+  mediaId: string,
+  targetSourceId: string
+) {
+  return apiRequest(
+    API_ENDPOINTS.mediaMove(sourceId, mediaId),
+    actionResponseSchema,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ targetSourceId }),
+    }
+  );
 }

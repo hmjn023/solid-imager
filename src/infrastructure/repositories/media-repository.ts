@@ -327,4 +327,92 @@ export const MediaRepository = {
       modifiedAt: stats.mtime,
     };
   },
+
+  /**
+   * Copies a file from source path to target base path.
+   * Handles naming conflicts similar to saveFile.
+   */
+  async copyFile(
+    sourcePath: string,
+    targetBasePath: string,
+    options: {
+      filename?: string;
+      overwrite?: boolean;
+      autoIncrement?: boolean;
+    }
+  ): Promise<{
+    filePath: string;
+    fileName: string;
+    width: number;
+    height: number;
+    size: number;
+    createdAt: Date;
+    modifiedAt: Date;
+    conflict?: z.infer<typeof conflictSchema>;
+  }> {
+    const uploadRequest = options;
+    const sourceFileName = path.basename(sourcePath);
+    let targetFileName = uploadRequest.filename || sourceFileName;
+    let targetFilePath = path.join(targetBasePath, targetFileName);
+    let relativeFilePath = path.relative(targetBasePath, targetFilePath);
+    let conflict: z.infer<typeof conflictSchema> | undefined;
+
+    // Handle file name conflicts
+    let counter = 0;
+    while (
+      await fs
+        .stat(targetFilePath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      if (uploadRequest.overwrite) {
+        break; // Overwrite existing file
+      }
+
+      if (!uploadRequest.autoIncrement) {
+        conflict = {
+          existingFile: relativeFilePath,
+          suggestedName: "",
+        };
+        throw new Error("File already exists and overwrite is not allowed.");
+      }
+
+      counter++;
+      const ext = path.extname(sourceFileName);
+      const base = path.basename(sourceFileName, ext);
+      targetFileName = `${base}_${counter}${ext}`;
+      targetFilePath = path.join(targetBasePath, targetFileName);
+      relativeFilePath = path.relative(targetBasePath, targetFilePath);
+      conflict = {
+        existingFile: path.relative(
+          targetBasePath,
+          path.join(targetBasePath, uploadRequest.filename || sourceFileName)
+        ),
+        suggestedName: targetFileName,
+      };
+    }
+
+    // Copy the file
+    await fs.copyFile(sourcePath, targetFilePath);
+
+    // Extract metadata
+    const stats = await fs.stat(targetFilePath);
+    const metadata = await sharp(targetFilePath).metadata();
+
+    if (!(metadata.width && metadata.height)) {
+      await fs.unlink(targetFilePath); // Clean up if validation fails
+      throw new Error("Could not extract media dimensions from copied file.");
+    }
+
+    return {
+      filePath: relativeFilePath,
+      fileName: targetFileName,
+      width: metadata.width,
+      height: metadata.height,
+      size: stats.size,
+      createdAt: stats.birthtime,
+      modifiedAt: stats.mtime,
+      conflict,
+    };
+  },
 };
