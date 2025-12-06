@@ -230,4 +230,49 @@ export const SseManager = {
   isMonitoring(mediaSourceId: string): boolean {
     return watchersMap.has(mediaSourceId);
   },
+
+  /**
+   * Notifies clients that a media item has been copied.
+   * @param {string} sourceId - The source media source ID.
+   * @param {string} targetId - The target media source ID.
+   * @param {object} media - The copied media item.
+   */
+  notifyMediaCopied(sourceId: string, targetId: string, media: unknown): void {
+    // Notify target source about new item
+    this.sendEvent(targetId, "media-copied", {
+      sourceId,
+      media,
+      timestamp: new Date().toISOString(),
+    });
+  },
+
+  /**
+   * Notifies clients that a media item has been moved.
+   * @param {string} sourceId - The source media source ID.
+   * @param {string} targetId - The target media source ID.
+   * @param {string} mediaId - The ID of the moved media.
+   * @param {object} media - The moved media item (in new location).
+   */
+  notifyMediaMoved(
+    sourceId: string,
+    targetId: string,
+    mediaId: string,
+    media: unknown
+  ): void {
+    // Notify source about deletion
+    this.sendEvent(sourceId, "media-moved", {
+      type: "source",
+      mediaId,
+      targetId,
+      timestamp: new Date().toISOString(),
+    });
+
+    // Notify target about addition
+    this.sendEvent(targetId, "media-moved", {
+      type: "target",
+      media,
+      sourceId,
+      timestamp: new Date().toISOString(),
+    });
+  },
 };
