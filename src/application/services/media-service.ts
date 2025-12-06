@@ -355,7 +355,7 @@ export const MediaService = {
       // Fetch existing URLs to prevent duplicates
       const existingUrls = await selectMediaUrlsByMediaId(validatedMediaId);
       const existingUrlSet = new Set(existingUrls.map((u) => u.url));
-      
+
       const newUrls = parsedUpdates.sourceUrls.filter(
         (u) => !existingUrlSet.has(u)
       );

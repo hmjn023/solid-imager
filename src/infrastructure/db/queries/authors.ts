@@ -2,17 +2,15 @@ import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
   type Author,
-  type NewAuthor,
   authors,
+  type NewAuthor,
 } from "~/infrastructure/db/schema";
 import { UnknownDbError } from "../errors";
 
 /**
  * Inserts a new author or returns an existing one based on accountId.
  */
-export const upsertAuthor = async (
-  authorData: NewAuthor
-): Promise<Author> => {
+export const upsertAuthor = async (authorData: NewAuthor): Promise<Author> => {
   try {
     // Try to find by accountId if present
     if (authorData.accountId) {
@@ -27,10 +25,7 @@ export const upsertAuthor = async (
     }
 
     // Insert new author
-    const result = await db
-      .insert(authors)
-      .values(authorData)
-      .returning();
+    const result = await db.insert(authors).values(authorData).returning();
     return result[0];
   } catch (error) {
     throw new UnknownDbError({
