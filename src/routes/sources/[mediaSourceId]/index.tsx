@@ -334,6 +334,84 @@ export default function MediaListPage() {
     }
   };
 
+  const handleDumpDownload = async () => {
+    const id = mediaSourceId();
+    if (!id) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/sources/${id}/dump`);
+      if (!response.ok) {
+        throw new Error("Dump failed");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `source-${id}-dump.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success("Dump downloaded successfully");
+    } catch (_error) {
+      toast.error("Failed to download dump");
+    }
+  };
+
+  const handleRestoreSelect = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    if (!target.files || target.files.length === 0) {
+      return;
+    }
+
+    const file = target.files[0];
+    const id = mediaSourceId();
+    if (!id) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+
+        toast.loading("Restoring metadata...", { id: "restore-toast" });
+
+        const response = await fetch(`/api/sources/${id}/restore`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(json),
+        });
+
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error || "Restore failed");
+        }
+
+        const result = await response.json();
+        toast.success(
+          `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+          { id: "restore-toast" }
+        );
+
+        // Refresh view
+        queryClient.invalidateQueries({
+          queryKey: ["media", id],
+        });
+      } catch (error) {
+        toast.error(`Restore failed: ${(error as Error).message}`, {
+          id: "restore-toast",
+        });
+      } finally {
+        target.value = ""; // Reset input
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleAddButtonClick = () => {
     fileInputRef?.click();
   };
@@ -501,6 +579,56 @@ export default function MediaListPage() {
       <Show when={!isServer}>
         {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
         <Portal mount={document.getElementById("nav-actions")!}>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={handleDumpDownload}
+            size="icon"
+            title="Download Backup JSON"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
+            <svg
+              class="lucide lucide-download"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" x2="12" y1="15" y2="3" />
+            </svg>
+          </Button>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => document.getElementById("restore-input")?.click()}
+            size="icon"
+            title="Restore Metadata from Dump"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Upload Cloud icon */}
+            <svg
+              class="lucide lucide-upload-cloud"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+              <path d="M12 12v9" />
+              <path d="m16 16-4-4-4 4" />
+            </svg>
+          </Button>
           <Dialog>
             <DialogTrigger
               as={Button}
@@ -613,6 +741,13 @@ export default function MediaListPage() {
       </div>
 
       {/* Hidden file input */}
+      <input
+        accept=".json"
+        class="hidden"
+        id="restore-input"
+        onChange={handleRestoreSelect}
+        type="file"
+      />
       <input
         accept="image/*,.json"
         class="hidden"
