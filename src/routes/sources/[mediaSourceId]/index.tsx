@@ -23,6 +23,16 @@ import {
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+  ContextMenuSub,
+  ContextMenuSubContent,
+  ContextMenuSubTrigger,
+  ContextMenuTrigger,
+} from "~/components/ui/context-menu";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -30,11 +40,15 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
+import type { DownloadItem } from "~/domain/media/schemas";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
-import { uploadMedia } from "~/infrastructure/api-clients/media-api";
+import {
+  deleteMedia,
+  uploadMedia,
+} from "~/infrastructure/api-clients/media-api";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
@@ -498,6 +512,20 @@ export default function MediaListPage() {
     await processClipboardItems(e.clipboardData.items, e);
   };
 
+  const handleDelete = async (mediaId: string) => {
+    // biome-ignore lint/suspicious/noAlert: Simple confirmation for now
+    if (!confirm("Are you sure you want to delete this media?")) {
+      return;
+    }
+    try {
+      await deleteMedia(mediaSourceId() || "", mediaId);
+      toast.success("Media deleted successfully");
+      await mediaQuery.refetch();
+    } catch (_e) {
+      toast.error("Failed to delete media");
+    }
+  };
+
   onMount(() => {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
@@ -706,21 +734,67 @@ export default function MediaListPage() {
             <For each={mediaQuery.data?.pages}>
               {(page) => (
                 <For each={page.media}>
-                  {(item) => (
-                    <a href={`${mediaSourceId()}/${item.id}`}>
-                      <div class="aspect-square overflow-hidden rounded-lg border">
-                        {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
-                        <img
-                          alt={item.fileName}
-                          class="h-full w-full object-cover"
-                          height={item.height}
-                          loading="lazy"
-                          src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`}
-                          width={item.width}
-                        />
-                      </div>
-                    </a>
-                  )}
+                  {(item) => {
+                    if (!item) {
+                      return null;
+                    }
+
+                    return (
+                      <ContextMenu>
+                        <ContextMenuTrigger>
+                          <a
+                            class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
+                            href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
+                            style={{
+                              "view-transition-name": `media-${item.id}`,
+                            }}
+                          >
+                            <img
+                              alt={item.fileName}
+                              class="h-full w-full object-cover"
+                              height={item.height}
+                              loading="lazy"
+                              src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(
+                                item.modifiedAt
+                              ).getTime()}`}
+                              width={item.width}
+                            />
+                          </a>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent>
+                          <ContextMenuItem
+                            onSelect={() =>
+                              window.open(
+                                `/sources/${mediaSourceId()}/${item.id}`,
+                                "_blank"
+                              )
+                            }
+                          >
+                            Open in New Tab
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            class="text-red-600 focus:text-red-600"
+                            onSelect={() => handleDelete(item.id)}
+                          >
+                            Delete
+                          </ContextMenuItem>
+                          <ContextMenuSeparator />
+                          <ContextMenuSub>
+                            <ContextMenuSubTrigger disabled>
+                              Copy to Source
+                            </ContextMenuSubTrigger>
+                            <ContextMenuSubContent />
+                          </ContextMenuSub>
+                          <ContextMenuSub>
+                            <ContextMenuSubTrigger disabled>
+                              Move to Source
+                            </ContextMenuSubTrigger>
+                            <ContextMenuSubContent />
+                          </ContextMenuSub>
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    );
+                  }}
                 </For>
               )}
             </For>

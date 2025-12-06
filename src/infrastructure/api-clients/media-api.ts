@@ -98,3 +98,14 @@ export function updateMedia(
     body: JSON.stringify(updates),
   });
 }
+
+/**
+ * Deletes a media item
+ * @param sourceId - Media source ID
+ * @param mediaId - Media ID
+ */
+export function deleteMedia(sourceId: string, mediaId: string) {
+  return apiRequest(API_ENDPOINTS.mediaDetails(sourceId, mediaId), z.void(), {
+    method: "DELETE",
+  });
+}
