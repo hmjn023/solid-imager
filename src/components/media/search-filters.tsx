@@ -51,6 +51,7 @@ type SearchFiltersProps = {
   characters: Character[] | undefined;
   onSearch?: () => void;
   className?: string;
+  usePopover?: boolean;
 };
 
 // Separate component to avoid hydration issues when reusing JSX variable
@@ -149,11 +150,15 @@ function FilterSection<T>(props: {
           </div>
         ) : (
           // Default to Popover behavior
-          <Popover onOpenChange={setOpen} open={open()}>
+          <Popover
+            onOpenChange={setOpen}
+            open={open()}
+            placement="bottom-start"
+          >
             <PopoverTrigger as={Button} size="sm" variant="outline">
               + 追加
             </PopoverTrigger>
-            <PopoverContent align="start" class="p-0" side="bottom">
+            <PopoverContent class="p-0">
               <CommandContent
                 getItemDescription={props.getItemDescription}
                 getItemLabel={props.getItemLabel}
@@ -220,10 +225,11 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(tag) => tag.name}
         items={props.tags}
         label="タグ (含む)"
-        onRemove={(tag) => removeTag(tag)}
+        onRemove={(id) => removeTag(id as string)}
         onSelect={(tag) => addTag(tag.name)}
         placeholder="タグを検索..."
         selectedItems={props.state.selectedTags}
+        usePopover={props.usePopover}
       />
 
       {/* Tag Mode */}
@@ -262,10 +268,11 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(tag) => tag.name}
         items={props.tags}
         label="除外タグ"
-        onRemove={(tag) => removeExcludeTag(tag)}
+        onRemove={(id) => removeExcludeTag(id as string)}
         onSelect={(tag) => addExcludeTag(tag.name)}
         placeholder="除外タグを検索..."
         selectedItems={props.state.excludeTags}
+        usePopover={props.usePopover}
       />
 
       {/* Project Filter */}
@@ -292,6 +299,7 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="プロジェクトを検索..."
         selectedItems={props.state.selectedProjects}
+        usePopover={props.usePopover}
       />
 
       {/* IP Filter */}
@@ -315,6 +323,7 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="IPを検索..."
         selectedItems={props.state.selectedIps}
+        usePopover={props.usePopover}
       />
 
       {/* Character Filter */}
@@ -341,6 +350,7 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="キャラクターを検索..."
         selectedItems={props.state.selectedCharacters}
+        usePopover={props.usePopover}
       />
 
       {/* Sort Options */}
