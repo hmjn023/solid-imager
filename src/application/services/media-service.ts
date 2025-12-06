@@ -5,6 +5,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+  type Media,
   type MediaDetails,
   mediaIdSchema,
   mediaSearchRequestSchema,
@@ -421,7 +422,7 @@ export const MediaService = {
   async copyMedia(
     sourceMediaId: string,
     targetSourceId: string
-  ): Promise<{ success: boolean; media: any }> {
+  ): Promise<{ success: boolean; media: Media }> {
     // Using any for minimal friction, ideally typed
     const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
     const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
@@ -511,7 +512,7 @@ export const MediaService = {
   async moveMedia(
     sourceMediaId: string,
     targetSourceId: string
-  ): Promise<{ success: boolean; media: any }> {
+  ): Promise<{ success: boolean; media: Media }> {
     // 1. Copy
     // We don't call this.copyMedia to avoid double notification if we want custom move notification
     // But copyMedia logic is complex, so better reuse it.

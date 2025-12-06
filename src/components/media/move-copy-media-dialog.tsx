@@ -71,7 +71,7 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
             <Select
               itemComponent={(itemProps) => (
                 <SelectItem item={itemProps.item}>
-                  {(itemProps.item.rawValue as any).label}
+                  {(itemProps.item.rawValue as { label: string }).label}
                 </SelectItem>
               )}
               onChange={(val) => setTargetSourceId(val?.value ?? null)}

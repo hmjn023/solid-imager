@@ -135,6 +135,8 @@ export const mediaSchema = z.object({
   status: z.enum(["active", "archived", "deleted"]),
 });
 
+export type Media = z.infer<typeof mediaSchema>;
+
 export const authorSchema = z.object({
   id: z.uuid({ version: "v4" }),
   name: z.string(),

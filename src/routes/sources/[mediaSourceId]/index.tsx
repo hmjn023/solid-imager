@@ -813,6 +813,7 @@ export default function MediaListPage() {
                               "view-transition-name": `media-${item.id}`,
                             }}
                           >
+                            {/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
                             <img
                               alt={item.fileName}
                               class="h-full w-full object-cover"

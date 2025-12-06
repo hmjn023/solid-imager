@@ -7,11 +7,41 @@ import {
   authors,
   mediaAuthors,
   mediaGenerationInfo,
+  mediaSources,
   medias,
   mediaTags,
   mediaUrls,
   tags,
 } from "~/infrastructure/db/schema";
+
+type RestoreTag = {
+  name: string;
+  type?: "positive" | "negative";
+  confidence?: number;
+};
+
+type RestoreAuthor = {
+  name: string;
+  accountId?: string;
+};
+
+type RestoreGenerationInfo = typeof mediaGenerationInfo.$inferInsert;
+
+type RestoreItem = {
+  filePath: string;
+  fileName: string;
+  description?: string;
+  width?: number;
+  height?: number;
+  fileSize?: number;
+  mediaType?: "image" | "video";
+  createdAt?: string;
+  modifiedAt?: string;
+  generationInfo?: RestoreGenerationInfo;
+  tags?: RestoreTag[];
+  authors?: RestoreAuthor[];
+  sourceUrls?: string[];
+};
 
 /**
  * @swagger
@@ -67,7 +97,7 @@ export async function POST({ params, request }: APIEvent) {
       );
     }
 
-    const items = await request.json();
+    const items = (await request.json()) as RestoreItem[];
     if (!Array.isArray(items)) {
       return new Response(
         JSON.stringify({ error: "Invalid dump format. Expected an array." }),
@@ -75,9 +105,8 @@ export async function POST({ params, request }: APIEvent) {
       );
     }
 
-    // Fetch Media Source to get the root path
     const mediaSource = await db.query.mediaSources.findFirst({
-      where: (ms, { eq: dEq }) => dEq(ms.id, mediaSourceId),
+      where: eq(mediaSources.id, mediaSourceId),
     });
 
     if (!mediaSource) {
@@ -95,232 +124,19 @@ export async function POST({ params, request }: APIEvent) {
     let skippedCount = 0;
     const errorMessages: string[] = [];
 
-    // Process items in chunks or sequentially? Sequentially for now to avoid DB lock contention
     for (const item of items) {
       try {
-        // Validate minimal fields
-        if (!(item.filePath && item.fileName)) {
-          skippedCount++;
-          continue;
-        }
-
-        // Verify file existence (for local sources)
-        if (isLocal) {
-          const fullPath = path.join(basePath, item.filePath);
-          try {
-            await fs.access(fullPath);
-          } catch {
-            // File not found on disk, skip restoration for this item
-            // (We don't want to create ghost entries that point to nothing)
-            skippedCount++;
-            continue;
-          }
-        }
-
-        // 1. Upsert Media
-        // We use sourceId + filePath as unique key
-        // We do NOT use the ID from the dump to avoid PK collisions if the DB was partially populated differently.
-        // We let the DB handle IDs, or reuse existing ones.
-
-        // Check if exists
-        const existingMedia = await db.query.medias.findFirst({
-          where: and(
-            eq(medias.mediaSourceId, mediaSourceId),
-            eq(medias.filePath, item.filePath)
-          ),
-        });
-
-        let mediaId = existingMedia?.id;
-
-        const mediaValues = {
+        const result = await processRestoreItem(
           mediaSourceId,
-          filePath: item.filePath,
-          fileName: item.fileName,
-          description: item.description,
-          width: item.width,
-          height: item.height,
-          fileSize: item.fileSize,
-          mediaType: item.mediaType || "image",
-          createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
-          // Don't overwrite indexedAt if exists, else now
-        };
-
-        if (existingMedia) {
-          // Update
-          await db
-            .update(medias)
-            .set(mediaValues)
-            .where(eq(medias.id, existingMedia.id));
+          item,
+          isLocal,
+          basePath
+        );
+        if (result === "skipped") {
+          skippedCount++;
         } else {
-          // Insert
-          const inserted = await db
-            .insert(medias)
-            .values({
-              ...mediaValues,
-              indexedAt: new Date(),
-            })
-            .returning({ id: medias.id });
-          mediaId = inserted[0].id;
+          processedCount++;
         }
-
-        if (!mediaId) {
-          continue;
-        }
-
-        // 2. Restore Generation Info
-        if (item.generationInfo) {
-          await db
-            .insert(mediaGenerationInfo)
-            .values({
-              mediaId,
-              ...item.generationInfo,
-            })
-            .onConflictDoUpdate({
-              target: mediaGenerationInfo.mediaId,
-              set: { ...item.generationInfo },
-            });
-        }
-
-        // 3. Restore Tags
-        if (Array.isArray(item.tags)) {
-          // First, ensure all tags exist in `tags` table
-          const tagIds: {
-            id: number;
-            type: string;
-            confidence: number | null;
-          }[] = [];
-
-          for (const t of item.tags) {
-            if (!t.name) {
-              continue;
-            }
-
-            // Try to find existing tag
-            let tag = await db.query.tags.findFirst({
-              where: eq(tags.name, t.name),
-            });
-
-            if (!tag) {
-              // Create new tag
-              const insertedTag = await db
-                .insert(tags)
-                .values({ name: t.name, source: "restored" })
-                .onConflictDoNothing() // Handle concurrent inserts
-                .returning();
-
-              tag = insertedTag[0];
-
-              // If onConflictDoNothing triggered and returned nothing, fetch again
-              if (!tag) {
-                tag = await db.query.tags.findFirst({
-                  where: eq(tags.name, t.name),
-                });
-              }
-            }
-
-            if (tag) {
-              tagIds.push({
-                id: tag.id,
-                type: t.type || "positive",
-                confidence: t.confidence || null,
-              });
-            }
-          }
-
-          // Then, sync media_tags
-          // Easiest strategy: Delete all for this media and re-insert
-          await db.delete(mediaTags).where(eq(mediaTags.mediaId, mediaId));
-
-          if (tagIds.length > 0) {
-            // Bulk insert?
-            // mediaTags has composite PK (mediaId, tagId)
-            // Need to deduplicate (mediaId, tagId) pairs just in case dump has dups
-            const uniqueTagLinks = new Map();
-            for (const t of tagIds) {
-              uniqueTagLinks.set(t.id, t);
-            }
-
-            for (const t of uniqueTagLinks.values()) {
-              await db
-                .insert(mediaTags)
-                .values({
-                  mediaId,
-                  tagId: t.id,
-                  tagType: t.type as "positive" | "negative",
-                  confidence: t.confidence,
-                  source: "restored",
-                })
-                .onConflictDoNothing();
-            }
-          }
-        }
-
-        // 4. Restore Authors
-        if (Array.isArray(item.authors)) {
-          await db
-            .delete(mediaAuthors)
-            .where(eq(mediaAuthors.mediaId, mediaId));
-
-          for (const a of item.authors) {
-            if (!a.name) {
-              continue;
-            }
-
-            // Find or create author
-            // logic similar to tags, but we also check accountId if present
-            // For simplicity, match by name if accountId missing, or accountId if present
-            // But schema doesn't force unique name.
-            // Let's assume we create/find by name for now.
-
-            let author = await db.query.authors.findFirst({
-              where: eq(authors.name, a.name),
-            });
-
-            if (!author) {
-              const inserted = await db
-                .insert(authors)
-                .values({
-                  name: a.name,
-                  accountId: a.accountId,
-                })
-                .returning();
-              author = inserted[0];
-            }
-
-            if (author) {
-              await db
-                .insert(mediaAuthors)
-                .values({
-                  mediaId,
-                  authorId: author.id,
-                })
-                .onConflictDoNothing();
-            }
-          }
-        }
-
-        // 5. Restore URLs
-        if (Array.isArray(item.sourceUrls) && item.sourceUrls.length > 0) {
-          // Just append new ones? Or sync?
-          // Dump should probably be authoritative.
-          // Let's check existing URLs to avoid duplicates
-          const existingUrls = await db.query.mediaUrls.findMany({
-            where: eq(mediaUrls.mediaId, mediaId),
-          });
-          const existingSet = new Set(existingUrls.map((u) => u.url));
-
-          for (const url of item.sourceUrls) {
-            if (!existingSet.has(url)) {
-              await db.insert(mediaUrls).values({
-                mediaId,
-                url,
-              });
-            }
-          }
-        }
-
-        processedCount++;
       } catch (err) {
         errorMessages.push(
           `Failed to restore ${item.filePath}: ${err instanceof Error ? err.message : String(err)}`
@@ -344,5 +160,231 @@ export async function POST({ params, request }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       }
     );
+  }
+}
+
+async function processRestoreItem(
+  mediaSourceId: string,
+  item: RestoreItem,
+  isLocal: boolean,
+  basePath: string
+): Promise<"processed" | "skipped"> {
+  if (!(item.filePath && item.fileName)) {
+    return "skipped";
+  }
+
+  if (isLocal) {
+    const fullPath = path.join(basePath, item.filePath);
+    try {
+      await fs.access(fullPath);
+    } catch {
+      return "skipped";
+    }
+  }
+
+  const mediaId = await restoreMediaItem(mediaSourceId, item);
+
+  if (!mediaId) {
+    return "skipped";
+  }
+
+  if (item.generationInfo) {
+    await restoreGenerationInfo(mediaId, item.generationInfo);
+  }
+  if (item.tags) {
+    await restoreTags(mediaId, item.tags);
+  }
+  if (item.authors) {
+    await restoreAuthors(mediaId, item.authors);
+  }
+  if (item.sourceUrls) {
+    await restoreUrls(mediaId, item.sourceUrls);
+  }
+
+  return "processed";
+}
+
+async function restoreMediaItem(mediaSourceId: string, item: RestoreItem) {
+  const existingMedia = await db.query.medias.findFirst({
+    where: and(
+      eq(medias.mediaSourceId, mediaSourceId),
+      eq(medias.filePath, item.filePath)
+    ),
+  });
+
+  const mediaValues = {
+    mediaSourceId,
+    filePath: item.filePath,
+    fileName: item.fileName,
+    description: item.description,
+    width: item.width,
+    height: item.height,
+    fileSize: item.fileSize,
+    mediaType: item.mediaType || "image",
+    createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+    modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
+  };
+
+  if (existingMedia) {
+    await db
+      .update(medias)
+      .set(mediaValues)
+      .where(eq(medias.id, existingMedia.id));
+    return existingMedia.id;
+  }
+  const inserted = await db
+    .insert(medias)
+    .values({
+      ...mediaValues,
+      indexedAt: new Date(),
+    })
+    .returning({ id: medias.id });
+  return inserted[0].id;
+}
+
+async function restoreGenerationInfo(
+  mediaId: string,
+  generationInfo: RestoreGenerationInfo
+) {
+  if (generationInfo) {
+    const { mediaId: _, ...info } = generationInfo;
+    await db
+      .insert(mediaGenerationInfo)
+      .values({
+        mediaId,
+        ...info,
+      })
+      .onConflictDoUpdate({
+        target: mediaGenerationInfo.mediaId,
+        set: { ...info },
+      });
+  }
+}
+
+async function restoreTags(mediaId: string, tagsList: RestoreTag[]) {
+  if (Array.isArray(tagsList)) {
+    const tagIds: {
+      id: string;
+      type: "positive" | "negative";
+      confidence: number | null;
+    }[] = [];
+
+    for (const t of tagsList) {
+      const tagData = await restoreSingleTag(t);
+      if (tagData) {
+        tagIds.push(tagData);
+      }
+    }
+
+    await db.delete(mediaTags).where(eq(mediaTags.mediaId, mediaId));
+
+    // Deduplicate
+    const uniqueTagLinks = new Map();
+    for (const t of tagIds) {
+      uniqueTagLinks.set(t.id, t);
+    }
+
+    for (const t of uniqueTagLinks.values()) {
+      await db
+        .insert(mediaTags)
+        .values({
+          mediaId,
+          tagId: t.id,
+          tagType: t.type,
+          confidence: t.confidence,
+          source: "restored",
+        })
+        .onConflictDoNothing();
+    }
+  }
+}
+
+async function restoreSingleTag(t: RestoreTag) {
+  if (!t.name) {
+    return null;
+  }
+
+  let tag = await db.query.tags.findFirst({
+    where: eq(tags.name, t.name),
+  });
+
+  if (!tag) {
+    const insertedTag = await db
+      .insert(tags)
+      .values({ name: t.name, source: "restored" })
+      .onConflictDoNothing()
+      .returning();
+    tag = insertedTag[0];
+    if (!tag) {
+      tag = await db.query.tags.findFirst({
+        where: eq(tags.name, t.name),
+      });
+    }
+  }
+
+  if (tag) {
+    return {
+      id: tag.id,
+      type: t.type || "positive",
+      confidence: t.confidence || null,
+    };
+  }
+  return null;
+}
+
+async function restoreAuthors(mediaId: string, authorsList: RestoreAuthor[]) {
+  if (Array.isArray(authorsList)) {
+    await db.delete(mediaAuthors).where(eq(mediaAuthors.mediaId, mediaId));
+
+    for (const a of authorsList) {
+      if (!a.name) {
+        continue;
+      }
+
+      let author = await db.query.authors.findFirst({
+        where: eq(authors.name, a.name),
+      });
+
+      if (!author) {
+        const inserted = await db
+          .insert(authors)
+          .values({
+            name: a.name,
+            accountId: a.accountId,
+          })
+          .returning();
+        author = inserted[0];
+      }
+
+      if (author) {
+        await db
+          .insert(mediaAuthors)
+          .values({
+            mediaId,
+            authorId: author.id,
+          })
+          .onConflictDoNothing();
+      }
+    }
+  }
+}
+
+async function restoreUrls(mediaId: string, sourceUrls: string[]) {
+  if (Array.isArray(sourceUrls) && sourceUrls.length > 0) {
+    const existingUrls = await db.query.mediaUrls.findMany({
+      where: eq(mediaUrls.mediaId, mediaId),
+    });
+    const existingSet = new Set(
+      existingUrls.map((u: { url: string }) => u.url)
+    );
+
+    for (const url of sourceUrls) {
+      if (!existingSet.has(url)) {
+        await db.insert(mediaUrls).values({
+          mediaId,
+          url,
+        });
+      }
+    }
   }
 }
