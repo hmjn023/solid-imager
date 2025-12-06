@@ -35,6 +35,8 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -221,6 +223,10 @@ export default function MediaListPage() {
   const [showUploadModal, setShowUploadModal] = createSignal(false);
   const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
   const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
+  const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
+    null
+  );
 
   let fileInputRef: HTMLInputElement | undefined;
 
@@ -512,17 +518,26 @@ export default function MediaListPage() {
     await processClipboardItems(e.clipboardData.items, e);
   };
 
-  const handleDelete = async (mediaId: string) => {
-    // biome-ignore lint/suspicious/noAlert: Simple confirmation for now
-    if (!confirm("Are you sure you want to delete this media?")) {
+  const handleDelete = (mediaId: string) => {
+    setMediaIdToDelete(mediaId);
+    setDeleteDialogOpen(true);
+  };
+
+  const _confirmDelete = async () => {
+    const id = mediaIdToDelete();
+    if (!id) {
       return;
     }
+
     try {
-      await deleteMedia(mediaSourceId() || "", mediaId);
+      await deleteMedia(mediaSourceId() || "", id);
       toast.success("Media deleted successfully");
       await mediaQuery.refetch();
     } catch (_e) {
       toast.error("Failed to delete media");
+    } finally {
+      setDeleteDialogOpen(false);
+      setMediaIdToDelete(null);
     }
   };
 
@@ -854,6 +869,28 @@ export default function MediaListPage() {
         onUrlFetch={(file) => setFileToUpload(file)}
         pastedUrl={pastedUrl()}
       />
+      <Dialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Media</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this media? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button onClick={_confirmDelete} variant="destructive">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }
