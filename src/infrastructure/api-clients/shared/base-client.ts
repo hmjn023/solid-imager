@@ -72,7 +72,8 @@ export async function apiRequest<T>(
       );
     }
 
-    if (response.status === 204) {
+    const HttpStatusNoContent = 204;
+    if (response.status === HttpStatusNoContent) {
       return undefined as T;
     }
 
