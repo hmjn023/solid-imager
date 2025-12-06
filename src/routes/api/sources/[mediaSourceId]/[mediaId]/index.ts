@@ -143,3 +143,63 @@ export async function PUT({ params, request }: APIEvent) {
   const result = await MediaService.updateMedia(mediaSourceId, mediaId, data);
   return result;
 }
+
+/**
+ * @swagger
+ * /api/sources/{mediaSourceId}/{mediaId}:
+ *   delete:
+ *     summary: Delete a media file
+ *     description: Deletes a specific media file from the database and filesystem.
+ *     tags:
+ *       - Media
+ *     parameters:
+ *       - in: path
+ *         name: mediaSourceId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media source.
+ *       - in: path
+ *         name: mediaId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the media file to delete.
+ *     responses:
+ *       204:
+ *         description: Media deleted successfully.
+ *       400:
+ *         description: Invalid input or media ID.
+ *       404:
+ *         description: Media not found.
+ *       500:
+ *         description: Internal server error.
+ */
+export async function DELETE({ params }: APIEvent) {
+  const parsedParams = MediaParamsSchema.safeParse(params);
+  if (!parsedParams.success) {
+    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+  const { mediaSourceId, mediaId } = parsedParams.data;
+
+  try {
+    await MediaService.deleteMedia(mediaSourceId, mediaId);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "Media not found") {
+      return new Response(JSON.stringify({ error: "Media not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}

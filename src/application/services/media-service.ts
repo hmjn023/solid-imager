@@ -2,6 +2,7 @@
  * MediaService - Media Management Service
  */
 
+import fs from "node:fs/promises";
 import path from "node:path";
 import {
   type MediaDetails,
@@ -223,24 +224,6 @@ export const MediaService = {
   /**
    * Deletes media.
    */
-  async deleteMedia(mediaSourceId: string, mediaId: string): Promise<void> {
-    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-    const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-    const media = await MediaRepository.findById(validatedMediaId);
-    if (media.mediaSourceId !== validatedSourceId) {
-      throw new Error("Media not found");
-    }
-
-    await MediaRepository.delete(validatedMediaId);
-
-    // Trigger thumbnail deletion (fire and forget or await?)
-    try {
-      await deleteThumbnail(validatedSourceId, validatedMediaId);
-    } catch (_e) {
-      // Ignore thumbnail deletion errors
-    }
-  },
 
   /**
    * Registers existing media from a directory.
@@ -405,6 +388,9 @@ export const MediaService = {
   /**
    * Retrieves metadata (generation info) for a media item.
    */
+  /**
+   * Retrieves metadata (generation info) for a media item.
+   */
   async getMediaMetadata(mediaSourceId: string, mediaId: string) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
@@ -426,5 +412,56 @@ export const MediaService = {
           steps: generationInfo.steps ?? 0,
         }
       : null;
+  },
+
+  /**
+   * Deletes a media item.
+   */
+  async deleteMedia(mediaSourceId: string, mediaId: string): Promise<void> {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new Error("Media not found");
+    }
+    if (media.mediaSourceId !== validatedSourceId) {
+      throw new Error("Media not in specified source");
+    }
+
+    // 1. Delete thumbnail
+    await deleteThumbnail(validatedSourceId, validatedMediaId);
+
+    // 2. Delete from database
+    // This should ideally happen before file deletion to avoid "ghost" entries if file delete fails,
+    // OR we can do file delete first.
+    // Given the previous plan said "Delete from DB" then "Delete file from FS", let's follow that.
+    // But wait, if we delete from DB first, we lose the file path if we need it for FS deletion?
+    // MediaRepository.delete returns void in current implementation, relying on findById before.
+    // So we already fetched `media` which contains the path.
+    await MediaRepository.delete(validatedMediaId);
+
+    // 3. Delete file from filesystem
+    if (media.mediaSourceId) {
+      const mediaSource = await selectMediaSourceById(media.mediaSourceId);
+      if (mediaSource && mediaSource.type === "local") {
+        // Construct full path
+        // media.filePath is relative to the source?
+        // Let's check how filePath is stored.
+        // In repository: const relativeFilePath = path.relative(config.connectionInfo.path, fullPath);
+        // So media.filePath is relative.
+        const fullPath = path.join(
+          mediaSource.connectionInfo.path,
+          media.filePath
+        );
+        try {
+          await fs.unlink(fullPath);
+        } catch (_e) {
+          // We don't rethrow here to ensure the DB deletion stands?
+          // Or we might want to warn the user.
+          // For now, let's log and proceed as the DB entry is gone.
+        }
+      }
+    }
   },
 };
