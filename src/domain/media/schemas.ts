@@ -65,6 +65,14 @@ export const updateMediaRequestSchema = z.object({
     .optional(),
   description: z.string().nullable().optional(),
   sourceUrls: z.array(z.string().url("Invalid URL format")).optional(),
+  authors: z
+    .array(
+      z.object({
+        name: z.string(),
+        accountId: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
 });
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 

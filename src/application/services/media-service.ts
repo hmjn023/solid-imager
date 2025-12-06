@@ -342,7 +342,49 @@ export const MediaService = {
       throw new Error("Media not found");
     }
 
-    return await MediaRepository.update(validatedMediaId, parsedUpdates);
+    const updatedMedia = await MediaRepository.update(
+      validatedMediaId,
+      parsedUpdates
+    );
+
+    // Update URLs if provided
+    if (parsedUpdates.sourceUrls && parsedUpdates.sourceUrls.length > 0) {
+      const { insertMediaUrls, selectMediaUrlsByMediaId } = await import(
+        "~/infrastructure/db/queries/media-urls"
+      );
+      // Fetch existing URLs to prevent duplicates
+      const existingUrls = await selectMediaUrlsByMediaId(validatedMediaId);
+      const existingUrlSet = new Set(existingUrls.map((u) => u.url));
+      
+      const newUrls = parsedUpdates.sourceUrls.filter(
+        (u) => !existingUrlSet.has(u)
+      );
+
+      if (newUrls.length > 0) {
+        await insertMediaUrls(validatedMediaId, newUrls);
+      }
+    }
+
+    // Update Authors if provided
+    if (parsedUpdates.authors && parsedUpdates.authors.length > 0) {
+      const { upsertAuthor } = await import(
+        "~/infrastructure/db/queries/authors"
+      );
+      const { insertMediaAuthor } = await import(
+        "~/infrastructure/db/queries/media-authors"
+      );
+
+      for (const authorData of parsedUpdates.authors) {
+        const author = await upsertAuthor({
+          name: authorData.name,
+          accountId: authorData.accountId || null,
+        });
+        // insertMediaAuthor handles conflict by ignoring duplicates
+        await insertMediaAuthor(validatedMediaId, author.id);
+      }
+    }
+
+    return updatedMedia;
   },
 
   /**
