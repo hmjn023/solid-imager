@@ -43,27 +43,7 @@ async function downloadImage(
  * Formats download metadata as Markdown for the description field.
  */
 function formatMetadataAsMarkdown(item: DownloadItem): string {
-  const parts: string[] = [];
-
-  if (item.tweetUrl) {
-    parts.push(`**Tweet URL:** ${item.tweetUrl}`);
-  }
-
-  if (item.tweetText) {
-    parts.push(`**Tweet Text:**\n> ${item.tweetText}`);
-  }
-
-  if (item.timestamp) {
-    parts.push(`**Timestamp:** ${item.timestamp}`);
-  }
-
-  if (item.authorName) {
-    parts.push(
-      `**Author:** ${item.authorName}${item.authorId ? ` (${item.authorId})` : ""}`
-    );
-  }
-
-  return parts.join("\n\n");
+  return item.tweetText || "";
 }
 
 /**
