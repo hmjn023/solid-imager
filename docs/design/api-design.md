@@ -33,6 +33,7 @@
 | `PUT` | `/api/sources/{mediaSourceId}` | 特定のメディアソースを更新します。 |
 | `DELETE` | `/api/sources/{mediaSourceId}` | 特定のメディアソースを削除します。 |
 | `GET` | `/api/sources/{mediaSourceId}/status` | 特定のメディアソースの状態を取得します。 |
+| `POST` | `/api/sources/{mediaSourceId}/restore` | JSONダンプからメディアのメタデータを復元します。 |
 
 ### メディア (Media)
 
@@ -44,6 +45,9 @@
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/details` | タグやメタデータを含むメディアの詳細情報を取得します。 |
 | `GET` | `/api/sources/{mediaSourceId}/{mediaId}/metadata` | メディアの生成メタデータを取得します。 |
 | `POST` | `/api/sources/{mediaSourceId}/upload` | メディアファイルをアップロードします。 |
+| `POST` | `/api/sources/{mediaSourceId}/upload` | メディアファイルをアップロードします。 |
+| `POST` | `/api/sources/{mediaSourceId}/{mediaId}/copy` | メディアを指定されたソースにコピーします。 |
+| `POST` | `/api/sources/{mediaSourceId}/{mediaId}/move` | メディアを指定されたソースに移動します（元のファイルは削除されます）。 |
 
 #### 検索クエリパラメータ (Search Query Parameters)
 

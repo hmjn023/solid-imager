@@ -12,6 +12,149 @@
     }
   ],
   "paths": {
+    "/api/ai/ccip/difference": {
+      "post": {
+        "summary": "Calculate CCIP difference",
+        "description": "Calculate the difference between two CCIP feature vectors.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "feature1",
+                  "feature2"
+                ],
+                "properties": {
+                  "feature1": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "feature2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Difference calculated successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/ai/ccip/feature": {
+      "post": {
+        "summary": "Extract CCIP feature",
+        "description": "Extract CCIP feature vector from an image. Accepts either a file upload or a media ID.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string"
+                  },
+                  "mediaId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feature extracted successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/ai/tag": {
+      "post": {
+        "summary": "Tag an image",
+        "description": "Extract tags from an image using AI. Accepts either a file upload or a media ID.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string"
+                  },
+                  "mediaId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tags extracted successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/categories/{id}": {
       "get": {
         "summary": "Retrieve a specific category",
@@ -196,7 +339,7 @@
         }
       }
     },
-    "/api/charactors/{id}": {
+    "/api/characters/{id}": {
       "get": {
         "summary": "Retrieve a specific character",
         "description": "Fetches details of a character by its ID.",
@@ -318,7 +461,7 @@
         }
       }
     },
-    "/api/charactors": {
+    "/api/characters": {
       "get": {
         "summary": "Retrieve all characters",
         "description": "Fetches a list of all configured characters.",
@@ -858,7 +1001,7 @@
         }
       }
     },
-    "/api/sources/{mediaSourceId}/{mediaId}/charactors": {
+    "/api/sources/{mediaSourceId}/{mediaId}/characters": {
       "get": {
         "summary": "Retrieve characters associated with a media",
         "description": "Fetches a list of characters linked to a specific media file.",
@@ -1171,6 +1314,49 @@
                 }
               }
             }
+          },
+          "400": {
+            "description": "Invalid input or media ID."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a media file",
+        "description": "Deletes a specific media file from the database and filesystem.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file to delete."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Media deleted successfully."
           },
           "400": {
             "description": "Invalid input or media ID."
@@ -2064,6 +2250,56 @@
         }
       }
     },
+    "/api/sources/{mediaSourceId}/dump": {
+      "get": {
+        "summary": "Dump media data for a source",
+        "description": "Exports all media data including metadata, tags, and URLs for a specific media source as a JSON file.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The ID of the media source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON file download",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "sourceUrl": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/sources/{mediaSourceId}/events": {
       "get": {
         "summary": "Monitor real-time updates via Server-Sent Events (SSE)",
@@ -2271,6 +2507,70 @@
           },
           "500": {
             "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/restore": {
+      "post": {
+        "summary": "Restore media metadata from a JSON dump",
+        "description": "Restores media metadata (tags, generation info, authors, etc.) from a previously generated JSON dump. Only affects files that currently exist on the disk for local sources.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The ID of the media source."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Media item from dump"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Restoration summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "processed": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
           }
         }
       }
