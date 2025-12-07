@@ -115,7 +115,9 @@ export function updateMedia(
  */
 export function deleteMedia(sourceId: string, mediaId: string) {
   // Use mediaUpdate endpoint structure (resource root) for DELETE
-  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), z.void(), {});
+  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), z.void(), {
+    method: "DELETE",
+  });
 }
 
 /**
