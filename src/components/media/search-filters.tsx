@@ -109,6 +109,7 @@ function FilterSection<T>(props: {
   listMaxHeightClass?: string; // New prop
 }) {
   const [open, setOpen] = createSignal(false);
+  const [isExpanded, setIsExpanded] = createSignal(false);
 
   return (
     <div class="space-y-2">
@@ -138,15 +139,45 @@ function FilterSection<T>(props: {
         </For>
         {props.usePopover === false ? (
           // Render Command directly if usePopover is false
-          <div class="w-full">
-            <CommandContent
-              getItemDescription={props.getItemDescription}
-              getItemLabel={props.getItemLabel}
-              items={props.items}
-              listMaxHeightClass={props.listMaxHeightClass}
-              onSelect={props.onSelect}
-              placeholder={props.placeholder}
-            />
+          <div class="w-full rounded-md border">
+            <button
+              type="button"
+              class="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
+              onClick={() => setIsExpanded(!isExpanded())}
+            >
+              <span class="text-muted-foreground">
+                {isExpanded() ? "閉じる" : "検索パネルを開く"}
+              </span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                class={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                  isExpanded() && "rotate-180"
+                )}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+            <Show when={isExpanded()}>
+              <div class="border-t p-2">
+                <CommandContent
+                  getItemDescription={props.getItemDescription}
+                  getItemLabel={props.getItemLabel}
+                  items={props.items}
+                  listMaxHeightClass={props.listMaxHeightClass}
+                  onSelect={props.onSelect}
+                  placeholder={props.placeholder}
+                />
+              </div>
+            </Show>
           </div>
         ) : (
           // Default to Popover behavior

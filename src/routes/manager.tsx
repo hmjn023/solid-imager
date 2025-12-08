@@ -65,14 +65,17 @@ export default function ManagerPage() {
   const projects = createQuery(() => ({
     queryKey: ["allProjects"],
     queryFn: fetchAllProjects,
+    enabled: activeTab() === "projects",
   }));
   const ips = createQuery(() => ({
     queryKey: ["allIps"],
     queryFn: fetchAllIps,
+    enabled: activeTab() === "ips" || activeTab() === "characters",
   }));
   const characters = createQuery(() => ({
     queryKey: ["allCharacters"],
     queryFn: fetchAllCharacters,
+    enabled: activeTab() === "characters",
   }));
 
   const invalidateQueries = () => {
