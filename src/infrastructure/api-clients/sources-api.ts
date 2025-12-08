@@ -5,13 +5,21 @@
 
 import { z } from "zod";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
-import { apiRequest } from "./shared/base-client";
+import { apiBlobRequest, apiRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";
 
 /**
  * Schema for media source list response
  */
 const mediaSourceListSchema = z.array(mediaSourceInfoSchema);
+
+/**
+ * Schema for restore response
+ */
+const restoreResponseSchema = z.object({
+  processed: z.number(),
+  skipped: z.number(),
+});
 
 /**
  * Fetches all media sources
@@ -57,5 +65,30 @@ export async function deleteMediaSource(id: string): Promise<void> {
   const voidSchema = z.unknown();
   await apiRequest(API_ENDPOINTS.sourceDetail(id), voidSchema, {
     method: "DELETE",
+  });
+}
+
+/**
+ * Fetches a dump of the media source
+ * @param id - Media source ID
+ * @returns Blob containing the dump
+ */
+export function fetchSourceDump(id: string): Promise<Blob> {
+  return apiBlobRequest(API_ENDPOINTS.sourceDump(id), {
+    method: "GET",
+  });
+}
+
+/**
+ * Restores a media source from a dump
+ * @param id - Media source ID
+ * @param data - The dump data to restore (JSON object)
+ * @returns Restore result
+ */
+export function restoreSource(id: string, data: unknown) {
+  return apiRequest(API_ENDPOINTS.sourceRestore(id), restoreResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
   });
 }

@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog";
 import type { TaggingResponse } from "~/domain/tagging/schemas";
+import { fetchAiTags } from "~/infrastructure/api-clients/ai-api";
 
 type AiTaggingModalProps = {
   isOpen: boolean;
@@ -38,22 +39,10 @@ export default function AiTaggingModal(props: AiTaggingModalProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch("/api/ai/tag", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mediaSourceId: props.mediaSourceId,
-          mediaId: props.mediaId,
-        }),
+      const data = await fetchAiTags({
+        mediaSourceId: props.mediaSourceId,
+        mediaId: props.mediaId,
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch tags: ${response.statusText}`);
-      }
-
-      const data = await response.json();
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error occurred");
