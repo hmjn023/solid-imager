@@ -1,14 +1,14 @@
 import {
-  type TaggingResponse,
-  type CCIPFeatureResponse,
   type CCIPDifferenceResponse,
-  taggingResponseSchema,
-  ccipFeatureResponseSchema,
+  type CCIPFeatureResponse,
   ccipDifferenceResponseSchema,
+  ccipFeatureResponseSchema,
+  type TaggingResponse,
+  taggingResponseSchema,
 } from "~/domain/tagging/schemas";
 
 export class PythonClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(baseUrl = "http://localhost:8000") {
     this.baseUrl = baseUrl;
@@ -57,7 +57,9 @@ export class PythonClient {
     return taggingResponseSchema.parse(data);
   }
 
-  async extractCCIPFeature(imageBuffer: ArrayBuffer): Promise<CCIPFeatureResponse> {
+  async extractCCIPFeature(
+    imageBuffer: ArrayBuffer
+  ): Promise<CCIPFeatureResponse> {
     const formData = new FormData();
     formData.append("file", new Blob([imageBuffer]), "image.jpg");
 
@@ -84,7 +86,9 @@ export class PythonClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to extract CCIP feature by path: ${response.statusText}`);
+      throw new Error(
+        `Failed to extract CCIP feature by path: ${response.statusText}`
+      );
     }
 
     const data = await response.json();
@@ -104,7 +108,9 @@ export class PythonClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to calculate CCIP difference: ${response.statusText}`);
+      throw new Error(
+        `Failed to calculate CCIP difference: ${response.statusText}`
+      );
     }
 
     const data = await response.json();

@@ -40,13 +40,13 @@ export async function POST({ request }: APIEvent) {
     const body = await request.json();
     const { feature1, feature2 } = ccipDifferenceRequestSchema.parse(body);
 
-    const difference = await taggingService.getCCIPDifference(feature1, feature2);
+    const difference = await taggingService.getCCIPDifference(
+      feature1,
+      feature2
+    );
 
-    return new Response(JSON.stringify({ difference }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    return Response.json({ difference });
   } catch (error) {
-    console.error("Error in /api/ai/ccip/difference:", error);
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",

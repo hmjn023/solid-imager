@@ -74,7 +74,9 @@ export default function MediaListPage() {
   const searchState = () => {
     const getList = (key: string) => {
       const val = searchParams[key];
-      if (!val) return [];
+      if (!val) {
+        return [];
+      }
       const str = Array.isArray(val) ? val.join(",") : val;
       return str.split(",");
     };
@@ -100,7 +102,9 @@ export default function MediaListPage() {
     } satisfies SearchFilterState;
   };
 
-  const setSearchState = (key: keyof SearchFilterState, value: any) => {
+  const mapStateToUrlParams = (
+    newState: Partial<SearchFilterState>
+  ): Record<string, string | undefined> => {
     const paramMap: Record<keyof SearchFilterState, string> = {
       searchQuery: "q",
       selectedTags: "tags",
@@ -113,18 +117,43 @@ export default function MediaListPage() {
       sortOrder: "order",
     };
 
-    const paramName = paramMap[key];
-    if (!paramName) return;
+    const newParams: Record<string, string | undefined> = {};
 
-    let paramValue: string | undefined;
+    const formatValue = (v: unknown): string | undefined => {
+      if (Array.isArray(v)) {
+        return v.length > 0 ? v.join(",") : undefined;
+      }
+      return v ? String(v) : undefined;
+    };
 
-    if (Array.isArray(value)) {
-      paramValue = value.length > 0 ? value.join(",") : undefined;
-    } else {
-      paramValue = value ? String(value) : undefined;
+    for (const [k, v] of Object.entries(newState)) {
+      const paramName = paramMap[k as keyof SearchFilterState];
+      if (paramName) {
+        newParams[paramName] = formatValue(v);
+      }
     }
 
-    setSearchParams({ [paramName]: paramValue });
+    return newParams;
+  };
+
+  const setSearchState = (
+    keyOrObj:
+      | keyof SearchFilterState
+      | Partial<SearchFilterState>
+      | ((prev: SearchFilterState) => SearchFilterState),
+    value?: unknown
+  ) => {
+    let newState: Partial<SearchFilterState> = {};
+
+    if (typeof keyOrObj === "function") {
+      newState = keyOrObj(searchState());
+    } else if (typeof keyOrObj === "object") {
+      newState = keyOrObj;
+    } else {
+      newState = { [keyOrObj]: value };
+    }
+
+    setSearchParams(mapStateToUrlParams(newState));
   };
 
   // Fetch filter data
@@ -527,6 +556,7 @@ export default function MediaListPage() {
                 characters={allCharacters.data}
                 ips={allIps.data}
                 projects={allProjects.data}
+                // biome-ignore lint/suspicious/noExplicitAny: setState interface match
                 setState={setSearchState as any}
                 state={searchState()}
                 tags={tags.data}
@@ -551,6 +581,7 @@ export default function MediaListPage() {
               characters={allCharacters.data}
               ips={allIps.data}
               projects={allProjects.data}
+              // biome-ignore lint/suspicious/noExplicitAny: setState interface match
               setState={setSearchState as any}
               state={searchState()}
               tags={tags.data}

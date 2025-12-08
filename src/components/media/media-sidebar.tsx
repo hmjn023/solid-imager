@@ -1,8 +1,8 @@
 import { Collapsible } from "@kobalte/core";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
-import AITaggingModal from "~/components/media/ai-tagging-modal";
 import { Badge } from "~/components/ui/badge";
 import type { MediaDetails } from "~/domain/media/schemas";
 import {
@@ -74,7 +74,7 @@ const _CollapsibleSection = (props: {
 export default function MediaSidebar(props: MediaSidebarProps) {
   const queryClient = useQueryClient();
   const tags = createMemo(() => props.media.tags || []);
-  const [isAITaggingModalOpen, setIsAITaggingModalOpen] = createSignal(false);
+  const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 
   // Description editing state
   const [isEditingDescription, setIsEditingDescription] = createSignal(false);
@@ -223,8 +223,8 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
       <div class="flex gap-2">
         <button
-          class="w-full rounded-md bg-purple-600 px-3 py-2 text-white text-sm font-medium hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-          onClick={() => setIsAITaggingModalOpen(true)}
+          class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
+          onClick={() => setIsAiTaggingModalOpen(true)}
           type="button"
         >
           <span class="i-lucide-sparkles" />
@@ -232,11 +232,11 @@ export default function MediaSidebar(props: MediaSidebarProps) {
         </button>
       </div>
 
-      <AITaggingModal
-        isOpen={isAITaggingModalOpen()}
-        onClose={() => setIsAITaggingModalOpen(false)}
-        mediaSourceId={props.media.mediaSourceId}
+      <AiTaggingModal
+        isOpen={isAiTaggingModalOpen()}
         mediaId={props.media.id}
+        mediaSourceId={props.media.mediaSourceId}
+        onClose={() => setIsAiTaggingModalOpen(false)}
       />
 
       <div class="space-y-2">
