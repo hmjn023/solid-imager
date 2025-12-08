@@ -236,6 +236,11 @@ export default function MediaListPage() {
     null
   );
 
+  // Singleton Context Menu State
+  const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
+    string | null
+  >(null);
+
   let fileInputRef: HTMLInputElement | undefined;
 
   type UploadOptions = {
@@ -794,24 +799,25 @@ export default function MediaListPage() {
             <div class="text-red-500">Error: {mediaQuery.error?.message}</div>
           </Show>
 
-          <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-            <For each={mediaQuery.data?.pages}>
-              {(page) => (
-                <For each={page.media}>
-                  {(item) => {
-                    if (!item) {
-                      return null;
-                    }
+          {/* Global Context Menu for the Grid */}
+          {/* Global Context Menu for the Grid */}
+          <ContextMenu>
+            <ContextMenuTrigger class="h-full w-full">
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                <For each={mediaQuery.data?.pages}>
+                  {(page) => (
+                    <For each={page.media}>
+                      {(item) => {
+                        if (!item) {
+                          return null;
+                        }
 
-                    return (
-                      <ContextMenu>
-                        <ContextMenuTrigger>
+                        return (
                           <a
                             class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
+                            data-media-id={item.id}
                             href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
-                            style={{
-                              "view-transition-name": `media-${item.id}`,
-                            }}
+                            onContextMenu={() => setContextMenuMediaId(item.id)}
                           >
                             {/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
                             <img
@@ -825,43 +831,68 @@ export default function MediaListPage() {
                               width={item.width}
                             />
                           </a>
-                        </ContextMenuTrigger>
-                        <ContextMenuContent>
-                          <ContextMenuItem
-                            onSelect={() =>
-                              window.open(
-                                `/sources/${mediaSourceId()}/${item.id}`,
-                                "_blank"
-                              )
-                            }
-                          >
-                            Open in New Tab
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            class="text-red-600 focus:text-red-600"
-                            onSelect={() => handleDelete(item.id)}
-                          >
-                            Delete
-                          </ContextMenuItem>
-                          <ContextMenuSeparator />
-                          <ContextMenuItem
-                            onSelect={() => handleCopyMove(item.id, "copy")}
-                          >
-                            Copy to Source
-                          </ContextMenuItem>
-                          <ContextMenuItem
-                            onSelect={() => handleCopyMove(item.id, "move")}
-                          >
-                            Move to Source
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    );
-                  }}
+                        );
+                      }}
+                    </For>
+                  )}
                 </For>
-              )}
-            </For>
-          </div>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <Show
+                fallback={
+                  <ContextMenuItem disabled>No media selected</ContextMenuItem>
+                }
+                when={contextMenuMediaId()}
+              >
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      window.open(
+                        `/sources/${mediaSourceId()}/${id}`,
+                        "_blank"
+                      );
+                    }
+                  }}
+                >
+                  Open in New Tab
+                </ContextMenuItem>
+                <ContextMenuItem
+                  class="text-red-600 focus:text-red-600"
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleDelete(id);
+                    }
+                  }}
+                >
+                  Delete
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleCopyMove(id, "copy");
+                    }
+                  }}
+                >
+                  Copy to Source
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleCopyMove(id, "move");
+                    }
+                  }}
+                >
+                  Move to Source
+                </ContextMenuItem>
+              </Show>
+            </ContextMenuContent>
+          </ContextMenu>
 
           {/* Infinite scroll trigger */}
           <div
