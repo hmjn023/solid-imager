@@ -141,28 +141,29 @@ function FilterSection<T>(props: {
           // Render Command directly if usePopover is false
           <div class="w-full rounded-md border">
             <button
-              type="button"
-              class="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
+              class="flex w-full items-center justify-between px-3 py-2 font-medium text-sm hover:bg-muted/50"
               onClick={() => setIsExpanded(!isExpanded())}
+              type="button"
             >
               <span class="text-muted-foreground">
                 {isExpanded() ? "閉じる" : "検索パネルを開く"}
               </span>
               <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
                 class={cn(
                   "h-4 w-4 text-muted-foreground transition-transform duration-200",
                   isExpanded() && "rotate-180"
                 )}
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
               >
+                <title>Expand/Collapse</title>
                 <path d="m6 9 6 6 6-6" />
               </svg>
             </button>
