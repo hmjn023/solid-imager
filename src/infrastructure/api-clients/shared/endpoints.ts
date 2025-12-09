@@ -7,6 +7,8 @@ export const API_ENDPOINTS = {
   // Sources
   sources: "/api/sources",
   sourceDetail: (sourceId: string) => `/api/sources/${sourceId}`,
+  sourceDump: (sourceId: string) => `/api/sources/${sourceId}/dump`,
+  sourceRestore: (sourceId: string) => `/api/sources/${sourceId}/restore`,
 
   // Media
   mediaList: (sourceId: string) => `/api/sources/${sourceId}`,
@@ -30,6 +32,7 @@ export const API_ENDPOINTS = {
 
   // Utilities
   fetchUrl: "/api/fetch-url",
+  downloads: "/api/downloads",
 
   // Projects
   projects: "/api/projects",
@@ -45,4 +48,7 @@ export const API_ENDPOINTS = {
   characters: "/api/characters",
   mediaCharacters: (sourceId: string, mediaId: string) =>
     `/api/sources/${sourceId}/${mediaId}/characters`,
+
+  // AI
+  aiTag: "/api/ai/tag",
 } as const;

@@ -51,10 +51,12 @@ import {
   moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
+import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
+import { fetchSourceDump, restoreSource } from "~/infrastructure/api-clients/sources-api";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
@@ -344,21 +346,7 @@ export default function MediaListPage() {
       }
 
       // Send to downloads API
-      const response = await fetch("/api/downloads", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mediaSourceId: mediaSourceId() || "",
-          items,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Failed to start download jobs");
-      }
+      await startDownloadJobs(mediaSourceId() || "", items);
 
       toast.success("Bulk download started");
       // Refetch will happen via SSE events
@@ -374,12 +362,7 @@ export default function MediaListPage() {
     }
 
     try {
-      const response = await fetch(`/api/sources/${id}/dump`);
-      if (!response.ok) {
-        throw new Error("Dump failed");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchSourceDump(id);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -413,18 +396,8 @@ export default function MediaListPage() {
 
         toast.loading("Restoring metadata...", { id: "restore-toast" });
 
-        const response = await fetch(`/api/sources/${id}/restore`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(json),
-        });
+        const result = await restoreSource(id, json);
 
-        if (!response.ok) {
-          const err = await response.json();
-          throw new Error(err.error || "Restore failed");
-        }
-
-        const result = await response.json();
         toast.success(
           `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
           { id: "restore-toast" }
