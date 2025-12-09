@@ -7,13 +7,13 @@ import type { MediaSourceInfo } from "~/domain/sources/types";
  * @property {boolean} isOpen - Controls the visibility of the modal.
  * @property {MediaSourceInfo | null} [sourceToDelete] - The media source object to be deleted.
  * @property {() => void} onClose - Callback function to close the modal.
- * @property {(sourceId: string) => Promise<void>} onConfirm - Callback function to confirm and perform the deletion.
+ * @property {(mediaSourceId: string) => Promise<void>} onConfirm - Callback function to confirm and perform the deletion.
  */
 type SourceDeleteModalProps = {
   isOpen: boolean;
   sourceToDelete?: MediaSourceInfo | null;
   onClose: () => void;
-  onConfirm: (sourceId: string) => Promise<void>;
+  onConfirm: (mediaSourceId: string) => Promise<void>;
 };
 /**
  * A modal component for confirming the deletion of a media source.

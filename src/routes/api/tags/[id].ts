@@ -1,23 +1,13 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { z } from "zod";
-import {
-  deleteTag,
-  getTagById,
-  updateTag,
-} from "~/infrastructure/api-clients/tags";
+import { ZodError, z } from "zod";
+import { TagService } from "~/application/services/tag-service";
+import { updateTagSchema } from "~/domain/tags/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
   id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
-
-// PUTリクエストボディのスキーマ
-const UpdateTagBodySchema = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(),
-  attribute: z.string().optional(),
-  color: z.string().optional(),
-});
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 /**
  * @swagger
@@ -49,16 +39,34 @@ const UpdateTagBodySchema = z.object({
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+    const tag = await TagService.getTagById(id);
+
+    if (!tag) {
+      return new Response(JSON.stringify({ error: "Tag not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify(tag), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const tag = await getTagById(id);
-  return tag;
 }
 
 /**
@@ -97,32 +105,44 @@ export async function GET({ params }: APIEvent) {
  *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+
+    const body = await request.json();
+    const validatedBody = updateTagSchema.parse(body);
+
+    const updatedTag = await TagService.updateTag(id, validatedBody);
+
+    if (!updatedTag) {
+      return new Response(JSON.stringify({ error: "Tag not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify(updatedTag), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (error instanceof Error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-
-  const body = await request.json();
-  const parsedBody = UpdateTagBodySchema.safeParse(body);
-  if (!parsedBody.success) {
-    return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  const { name, description, attribute, color } = parsedBody.data;
-
-  const updatedTag = await updateTag(id, {
-    name,
-    description,
-    attribute,
-    color,
-  });
-  return updatedTag;
 }
 
 /**
@@ -141,24 +161,46 @@ export async function PUT({ params, request }: APIEvent) {
  *           type: integer
  *         description: Numeric ID of the tag to delete.
  *     responses:
- *       200:
+ *       204:
  *         description: Tag successfully deleted.
  *       400:
- *         description: Invalid ID supplied.
+ *         description: Invalid ID supplied or tag is in use.
  *       404:
  *         description: Tag not found.
  *       500:
  *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+
+    const tag = await TagService.getTagById(id);
+    if (!tag) {
+      return new Response(JSON.stringify({ error: "Tag not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    await TagService.deleteTag(id);
+    return new Response(null, { status: 204 });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (error instanceof Error) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const result = await deleteTag(id);
-  return result;
 }

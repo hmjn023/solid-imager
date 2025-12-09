@@ -21,15 +21,15 @@ type ImportData = {
 };
 /**
  * Selects all data related to a specific media source, including its associated media, tags, details, etc.
- * @param {string} sourceId - The ID of the media source to select data for.
+ * @param {string} mediaSourceId - The ID of the media source to select data for.
  * @returns {Promise<any>} A promise that resolves with the comprehensive media source data.
  * @throws {NotFoundError} If the media source data for the given ID is not found.
  * @throws {UnknownDbError} If a database error occurs during the selection process.
  */
-export const selectMediaSourceData = async (sourceId: string) => {
+export const selectMediaSourceData = async (mediaSourceId: string) => {
   try {
     const mediaSource = await db.query.mediaSources.findFirst({
-      where: eq(mediaSources.id, sourceId),
+      where: eq(mediaSources.id, mediaSourceId),
       with: {
         media: {
           with: {
@@ -49,7 +49,7 @@ export const selectMediaSourceData = async (sourceId: string) => {
 
     if (!mediaSource) {
       throw new NotFoundError({
-        message: `Media source data for ID ${sourceId} not found`,
+        message: `Media source data for ID ${mediaSourceId} not found`,
       });
     }
 
@@ -59,7 +59,7 @@ export const selectMediaSourceData = async (sourceId: string) => {
       throw error;
     }
     throw new UnknownDbError({
-      message: `Failed to select media source data for source ID: ${sourceId}`,
+      message: `Failed to select media source data for source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -67,13 +67,13 @@ export const selectMediaSourceData = async (sourceId: string) => {
 
 /**
  * Inserts or updates media source data, including the media source itself and its associated media items.
- * @param {string} _sourceId - The ID of the media source to upsert data for.
+ * @param {string} _mediaSourceId - The ID of the media source to upsert data for.
  * @param {ImportData} importData - The data to upsert.
  * @returns {Promise<void>} A promise that resolves when the upsert operation is complete.
  * @throws {UnknownDbError} If a database error occurs during the upsert process.
  */
 export const upsertMediaSourceData = async (
-  _sourceId: string,
+  _mediaSourceId: string,
   importData: ImportData
 ) => {
   try {
@@ -97,7 +97,7 @@ export const upsertMediaSourceData = async (
     });
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to upsert media source data for source ID: ${_sourceId}`,
+      message: `Failed to upsert media source data for source ID: ${_mediaSourceId}`,
       details: error,
     });
   }
@@ -106,7 +106,7 @@ export const upsertMediaSourceData = async (
 /**
  * Reconciles the media source data in the database with changes detected in the file system.
  * Handles adding new files and deleting removed files.
- * @param {string} sourceId - The ID of the media source to reconcile.
+ * @param {string} mediaSourceId - The ID of the media source to reconcile.
  * @param {object} fileSystemChanges - An object containing added and deleted file information.
  * @param {NewMedia[]} fileSystemChanges.added - An array of new media items to add.
  * @param {string[]} fileSystemChanges.deleted - An array of file paths for media items to delete.
@@ -114,7 +114,7 @@ export const upsertMediaSourceData = async (
  * @throws {UnknownDbError} If a database error occurs during the reconciliation process.
  */
 export const reconcileMediaSource = async (
-  sourceId: string,
+  mediaSourceId: string,
   fileSystemChanges: { added: NewMedia[]; deleted: string[] }
 ) => {
   try {
@@ -133,7 +133,7 @@ export const reconcileMediaSource = async (
           .delete(medias)
           .where(
             and(
-              eq(medias.sourceId, sourceId),
+              eq(medias.mediaSourceId, mediaSourceId),
               inArray(medias.filePath, fileSystemChanges.deleted)
             )
           );
@@ -141,7 +141,7 @@ export const reconcileMediaSource = async (
     });
   } catch (error) {
     throw new UnknownDbError({
-      message: `Failed to reconcile media source for source ID: ${sourceId}`,
+      message: `Failed to reconcile media source for source ID: ${mediaSourceId}`,
       details: error,
     });
   }
@@ -163,12 +163,12 @@ export const cloneMediaData = async (
       const allMedia = await tx
         .select()
         .from(medias)
-        .where(eq(medias.sourceId, originalSourceId));
+        .where(eq(medias.mediaSourceId, originalSourceId));
 
       if (allMedia.length > 0) {
         const newMedias: NewMedia[] = allMedia.map((media) => {
-          const { id: _id, sourceId: _sourceId, ...rest } = media;
-          return { ...rest, sourceId: newSourceId };
+          const { id: _id, mediaSourceId: _mediaSourceId, ...rest } = media;
+          return { ...rest, mediaSourceId: newSourceId };
         });
         await tx.insert(medias).values(newMedias);
       }

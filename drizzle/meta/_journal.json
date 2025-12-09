@@ -5,29 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1760849607703,
-      "tag": "0000_abandoned_thundra",
+      "when": 1764857293352,
+      "tag": "0000_yielding_lifeguard",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1760971356610,
-      "tag": "0001_parallel_nova",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1760971356615,
-      "tag": "0002_unique_wendell_rand",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1761976110695,
-      "tag": "0003_watery_tenebrous",
+      "when": 1764860831093,
+      "tag": "0001_useful_zaladane",
       "breakpoints": true
     }
   ]

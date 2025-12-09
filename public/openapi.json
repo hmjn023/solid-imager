@@ -12,6 +12,149 @@
     }
   ],
   "paths": {
+    "/api/ai/ccip/difference": {
+      "post": {
+        "summary": "Calculate CCIP difference",
+        "description": "Calculate the difference between two CCIP feature vectors.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "feature1",
+                  "feature2"
+                ],
+                "properties": {
+                  "feature1": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  },
+                  "feature2": {
+                    "type": "array",
+                    "items": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Difference calculated successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/ai/ccip/feature": {
+      "post": {
+        "summary": "Extract CCIP feature",
+        "description": "Extract CCIP feature vector from an image. Accepts either a file upload or a media ID.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string"
+                  },
+                  "mediaId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Feature extracted successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/ai/tag": {
+      "post": {
+        "summary": "Tag an image",
+        "description": "Extract tags from an image using AI. Accepts either a file upload or a media ID.",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            },
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string"
+                  },
+                  "mediaId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tags extracted successfully"
+          },
+          "400": {
+            "description": "Invalid request"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
     "/api/categories/{id}": {
       "get": {
         "summary": "Retrieve a specific category",
@@ -196,7 +339,7 @@
         }
       }
     },
-    "/api/charactors/{id}": {
+    "/api/characters/{id}": {
       "get": {
         "summary": "Retrieve a specific character",
         "description": "Fetches details of a character by its ID.",
@@ -236,7 +379,7 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "summary": "Update a specific character",
         "description": "Updates an existing character with the provided data.",
         "tags": [
@@ -318,7 +461,7 @@
         }
       }
     },
-    "/api/charactors": {
+    "/api/characters": {
       "get": {
         "summary": "Retrieve all characters",
         "description": "Fetches a list of all configured characters.",
@@ -555,7 +698,7 @@
           }
         }
       },
-      "put": {
+      "patch": {
         "summary": "Update a specific IP (Intellectual Property)",
         "description": "Updates an existing Intellectual Property with the provided data.",
         "tags": [
@@ -699,7 +842,166 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/charactors": {
+    "/api/projects/{id}": {
+      "get": {
+        "summary": "Retrieve a specific Project",
+        "description": "Fetches details of a Project by its ID.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to retrieve."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Details of the Project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update a specific Project",
+        "description": "Updates an existing Project with the provided data.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to update."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The updated Project.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid ID or invalid input."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a specific Project",
+        "description": "Deletes a Project by its ID.",
+        "tags": [
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Numeric ID of the Project to delete."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project successfully deleted."
+          },
+          "400": {
+            "description": "Invalid ID supplied."
+          },
+          "404": {
+            "description": "Project not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/projects": {
+      "get": {
+        "summary": "Get all projects",
+        "tags": [
+          "Projects"
+        ],
+        "responses": {
+          "200": {
+            "description": "List of projects"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create a new project",
+        "tags": [
+          "Projects"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewProject"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project created"
+          },
+          "400": {
+            "description": "Invalid input"
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/{mediaId}/characters": {
       "get": {
         "summary": "Retrieve characters associated with a media",
         "description": "Fetches a list of characters linked to a specific media file.",
@@ -710,7 +1012,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -731,23 +1033,128 @@
         ],
         "responses": {
           "200": {
-            "description": "A list of characters associated with the media.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Character"
-                  }
-                }
-              }
-            }
+            "description": "A list of characters associated with the media."
           },
           "400": {
             "description": "Invalid source ID or media ID supplied."
           },
           "404": {
-            "description": "Media or characters not found."
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a character to a media",
+        "description": "Associates a character with a specific media file.",
+        "tags": [
+          "Media",
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "characterId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Character added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a character from a media",
+        "description": "Removes the association between a character and a specific media file.",
+        "tags": [
+          "Media",
+          "Characters"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "characterId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Character removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
           },
           "500": {
             "description": "Internal server error."
@@ -755,7 +1162,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/details": {
+    "/api/sources/{mediaSourceId}/{mediaId}/details": {
       "get": {
         "summary": "Retrieve media details",
         "description": "Fetches detailed information for a specific media file, including tags, metadata, category, IP, and character information.",
@@ -765,7 +1172,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -807,7 +1214,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}": {
+    "/api/sources/{mediaSourceId}/{mediaId}": {
       "get": {
         "summary": "Retrieve a specific media file",
         "description": "Fetches a specific media file by its source ID and media ID.",
@@ -817,7 +1224,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -868,7 +1275,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -918,9 +1325,52 @@
             "description": "Internal server error."
           }
         }
+      },
+      "delete": {
+        "summary": "Delete a media file",
+        "description": "Deletes a specific media file from the database and filesystem.",
+        "tags": [
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file to delete."
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Media deleted successfully."
+          },
+          "400": {
+            "description": "Invalid input or media ID."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/ips": {
+    "/api/sources/{mediaSourceId}/{mediaId}/ips": {
       "get": {
         "summary": "Retrieve IPs associated with a media",
         "description": "Fetches a list of Intellectual Properties linked to a specific media file.",
@@ -931,7 +1381,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -952,23 +1402,128 @@
         ],
         "responses": {
           "200": {
-            "description": "A list of IPs associated with the media.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/IP"
-                  }
-                }
-              }
-            }
+            "description": "A list of IPs associated with the media."
           },
           "400": {
             "description": "Invalid source ID or media ID supplied."
           },
           "404": {
-            "description": "Media or IPs not found."
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add an IP to a media",
+        "description": "Associates an IP with a specific media file.",
+        "tags": [
+          "Media",
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ipId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "IP added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove an IP from a media",
+        "description": "Removes the association between an IP and a specific media file.",
+        "tags": [
+          "Media",
+          "IPs"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ipId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "IP removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
           },
           "500": {
             "description": "Internal server error."
@@ -976,7 +1531,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/metadata": {
+    "/api/sources/{mediaSourceId}/{mediaId}/metadata": {
       "get": {
         "summary": "Retrieve media metadata",
         "description": "Fetches the generation metadata (e.g., prompt, workflow) for a specific media file.",
@@ -986,7 +1541,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1028,7 +1583,168 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/tags": {
+    "/api/sources/{mediaSourceId}/{mediaId}/projects": {
+      "get": {
+        "summary": "Retrieve projects associated with a media",
+        "description": "Fetches a list of projects linked to a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of projects associated with the media."
+          },
+          "400": {
+            "description": "Invalid source ID or media ID supplied."
+          },
+          "404": {
+            "description": "Media not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a project to a media",
+        "description": "Associates a project with a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Project added to media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a project from a media",
+        "description": "Removes the association between a project and a specific media file.",
+        "tags": [
+          "Media",
+          "Projects"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source."
+          },
+          {
+            "in": "path",
+            "name": "mediaId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media file."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectId": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Project removed from media."
+          },
+          "400": {
+            "description": "Invalid data supplied."
+          },
+          "404": {
+            "description": "Association not found."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/{mediaId}/tags": {
       "get": {
         "summary": "Retrieve tags for a specific media",
         "description": "Fetches a list of tags associated with a specific media file.",
@@ -1039,7 +1755,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1084,7 +1800,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/{mediaId}/thumbnail": {
+    "/api/sources/{mediaSourceId}/{mediaId}/thumbnail": {
       "get": {
         "summary": "Retrieve a thumbnail for a specific media",
         "description": "Delivers a generated thumbnail image for a given media file.",
@@ -1095,7 +1811,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1146,7 +1862,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/{directories}": {
+    "/api/sources/{mediaSourceId}/directories/{directories}": {
       "get": {
         "summary": "Retrieve all media and directories under a specific directory",
         "description": "Fetches a list of all media files and subdirectories within a specified path under a media source.",
@@ -1157,7 +1873,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1201,7 +1917,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/{directories}/search": {
+    "/api/sources/{mediaSourceId}/directories/{directories}/search": {
       "get": {
         "summary": "Search for media within a specific subdirectory",
         "description": "Searches for media files within a specified subdirectory of a media source, based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
@@ -1213,7 +1929,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1334,7 +2050,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/create": {
+    "/api/sources/{mediaSourceId}/directories/create": {
       "post": {
         "summary": "Create a new directory",
         "description": "Creates a new directory within a specified media source.",
@@ -1344,7 +2060,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1383,7 +2099,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/delete": {
+    "/api/sources/{mediaSourceId}/directories/delete": {
       "delete": {
         "summary": "Delete a directory",
         "description": "Deletes a directory within a specified media source.",
@@ -1393,7 +2109,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1432,7 +2148,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories": {
+    "/api/sources/{mediaSourceId}/directories": {
       "get": {
         "summary": "Retrieve a list of directories within a media source",
         "description": "Fetches a hierarchical listing of directories and their contents for a given media source. Can be filtered by a parent path.",
@@ -1442,7 +2158,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1485,7 +2201,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/directories/rename": {
+    "/api/sources/{mediaSourceId}/directories/rename": {
       "put": {
         "summary": "Rename a directory",
         "description": "Renames an existing directory within a specified media source.",
@@ -1495,7 +2211,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1534,7 +2250,57 @@
         }
       }
     },
-    "/api/sources/{sourceId}/events": {
+    "/api/sources/{mediaSourceId}/dump": {
+      "get": {
+        "summary": "Dump media data for a source",
+        "description": "Exports all media data including metadata, tags, and URLs for a specific media source as a JSON file.",
+        "tags": [
+          "Media Sources"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "The ID of the media source."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JSON file download",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "fileName": {
+                        "type": "string"
+                      },
+                      "sourceUrl": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/events": {
       "get": {
         "summary": "Monitor real-time updates via Server-Sent Events (SSE)",
         "description": "Establishes an SSE connection to receive real-time updates on file changes and other events for a specific media source. Only supported for local media sources.",
@@ -1544,7 +2310,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1576,7 +2342,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/events/thumbnail-progress": {
+    "/api/sources/{mediaSourceId}/events/thumbnail-progress": {
       "get": {
         "summary": "Monitor thumbnail generation progress via Server-Sent Events (SSE)",
         "description": "Establishes an SSE connection to receive real-time updates on the progress of thumbnail generation for a specific media source.",
@@ -1587,7 +2353,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1616,7 +2382,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}": {
+    "/api/sources/{mediaSourceId}": {
       "get": {
         "summary": "Retrieve all media within a specific media source",
         "description": "Fetches a list of all media files associated with a given media source ID.",
@@ -1627,7 +2393,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1670,7 +2436,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1720,7 +2486,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1743,57 +2509,73 @@
             "description": "Internal server error."
           }
         }
-      },
+      }
+    },
+    "/api/sources/{mediaSourceId}/restore": {
       "post": {
-        "summary": "Upload media to a specific media source",
-        "description": "Uploads a new media file to the specified media source.",
+        "summary": "Restore media metadata from a JSON dump",
+        "description": "Restores media metadata (tags, generation info, authors, etc.) from a previously generated JSON dump. Only affects files that currently exist on the disk for local sources.",
         "tags": [
-          "Media Sources",
-          "Media"
+          "Media Sources"
         ],
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
               "format": "uuid"
             },
-            "description": "UUID of the media source to upload to."
+            "description": "The ID of the media source."
           }
         ],
         "requestBody": {
           "required": true,
           "content": {
-            "multipart/form-data": {
+            "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/UploadRequest"
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "description": "Media item from dump"
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Media uploaded successfully.",
+            "description": "Restoration summary",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/UploadResponse"
+                  "type": "object",
+                  "properties": {
+                    "processed": {
+                      "type": "integer"
+                    },
+                    "skipped": {
+                      "type": "integer"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
                 }
               }
             }
           },
-          "400": {
-            "description": "Invalid input or file conflict."
-          },
           "500": {
-            "description": "Internal server error."
+            "description": "Internal server error"
           }
         }
       }
     },
-    "/api/sources/{sourceId}/search": {
+    "/api/sources/{mediaSourceId}/search": {
       "get": {
         "summary": "Search for media within a specific media source",
         "description": "Searches for media files within a given media source based on various criteria like tags, metadata, categories, IPs, and characters. Supports pagination.",
@@ -1804,7 +2586,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1866,54 +2648,35 @@
               "default": 50
             },
             "description": "Number of items per page for pagination."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "A list of matching media files and pagination information.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "media": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Media"
-                      }
-                    },
-                    "pagination": {
-                      "type": "object",
-                      "properties": {
-                        "totalItems": {
-                          "type": "integer"
-                        },
-                        "totalPages": {
-                          "type": "integer"
-                        },
-                        "currentPage": {
-                          "type": "integer"
-                        },
-                        "itemsPerPage": {
-                          "type": "integer"
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
           },
-          "400": {
-            "description": "Invalid source ID or search parameters."
+          {
+            "in": "query",
+            "name": "projects",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of project IDs to filter by."
           },
-          "500": {
-            "description": "Internal server error."
+          {
+            "in": "query",
+            "name": "ips",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of IP IDs to filter by."
+          },
+          {
+            "in": "query",
+            "name": "characters",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Comma-separated list of character IDs to filter by."
           }
-        }
+        ]
       }
     },
-    "/api/sources/{sourceId}/status": {
+    "/api/sources/{mediaSourceId}/status": {
       "get": {
         "summary": "Retrieve the status of a specific media source",
         "description": "Fetches the current operational status of a media source, including details like last sync time, number of indexed files, and any ongoing tasks.",
@@ -1923,7 +2686,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1955,7 +2718,7 @@
         }
       }
     },
-    "/api/sources/{sourceId}/thumbnails": {
+    "/api/sources/{mediaSourceId}/thumbnails": {
       "post": {
         "summary": "Start manual thumbnail generation",
         "description": "Initiates the process of generating thumbnails for all media within a specified source.",
@@ -1965,7 +2728,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -1995,7 +2758,7 @@
         "parameters": [
           {
             "in": "path",
-            "name": "sourceId",
+            "name": "mediaSourceId",
             "required": true,
             "schema": {
               "type": "string",
@@ -2010,6 +2773,56 @@
           },
           "400": {
             "description": "Invalid source ID supplied."
+          },
+          "500": {
+            "description": "Internal server error."
+          }
+        }
+      }
+    },
+    "/api/sources/{mediaSourceId}/upload": {
+      "post": {
+        "summary": "Upload media to a specific media source",
+        "description": "Uploads a new media file to the specified media source.",
+        "tags": [
+          "Media Sources",
+          "Media"
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "mediaSourceId",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID of the media source to upload to."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/UploadRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Media uploaded successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input or file conflict."
           },
           "500": {
             "description": "Internal server error."
@@ -2183,11 +2996,11 @@
           }
         ],
         "responses": {
-          "200": {
+          "204": {
             "description": "Tag successfully deleted."
           },
           "400": {
-            "description": "Invalid ID supplied."
+            "description": "Invalid ID supplied or tag is in use."
           },
           "404": {
             "description": "Tag not found."
@@ -2259,6 +3072,49 @@
           }
         }
       }
+    }
+  },
+  "responses": {
+    "200": {
+      "description": "A list of matching media files and pagination information.",
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "media": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Media"
+                }
+              },
+              "pagination": {
+                "type": "object",
+                "properties": {
+                  "totalItems": {
+                    "type": "integer"
+                  },
+                  "totalPages": {
+                    "type": "integer"
+                  },
+                  "currentPage": {
+                    "type": "integer"
+                  },
+                  "itemsPerPage": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "400": {
+      "description": "Invalid source ID or search parameters."
+    },
+    "500": {
+      "description": "Internal server error."
     }
   },
   "components": {
@@ -2342,7 +3198,7 @@
             "type": "string",
             "format": "uuid"
           },
-          "sourceId": {
+          "mediaSourceId": {
             "type": "string",
             "format": "uuid"
           },
@@ -2653,7 +3509,7 @@
       "MediaSourceStatus": {
         "type": "object",
         "properties": {
-          "sourceId": {
+          "mediaSourceId": {
             "type": "string",
             "format": "uuid",
             "description": "The ID of the media source."

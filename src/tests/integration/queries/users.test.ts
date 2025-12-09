@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
@@ -15,7 +14,7 @@ describe("users queries Integration", () => {
   let testUserId: string;
 
   beforeAll(async () => {
-    await db.delete(users).where(sql`true`);
+    await db.delete(users);
 
     const initialUser: NewUser = {
       name: "Initial User",
@@ -27,7 +26,7 @@ describe("users queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(users).where(sql`true`);
+    await db.delete(users);
   });
 
   it("should select all users", async () => {

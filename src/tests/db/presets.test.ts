@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
+import { db } from "~/infrastructure/db/index"; // Import the mocked db
 import {
   insertPreset,
   selectPresets,
 } from "~/infrastructure/db/queries/presets";
-import { db } from "~/tests/setup"; // Import the mocked db
 
 describe("Preset Database Operations", () => {
   beforeEach(() => {

@@ -1,17 +1,18 @@
 import path from "node:path";
+import { PGlite } from "@electric-sql/pglite";
 import { config } from "dotenv";
+import { drizzle } from "drizzle-orm/pglite";
+import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeEach, vi } from "vitest";
+// biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
+import * as schema from "~/infrastructure/db/schema";
 
 // .envファイルのパスを指定して読み込む
 config({ path: path.resolve(process.cwd(), ".env") });
 
 // 統合テスト用のDB接続情報を設定
 if (!process.env.DB_HOST) {
-  process.env.DB_HOST = "localhost";
-  process.env.DB_PORT = "5432";
-  process.env.DB_DATABASE = "solid_imager_test";
-  process.env.DB_USER = "test";
-  process.env.DB_PASSWORD = "test";
+  process.env.DB_HOST = "pglite"; // Use pglite for tests
 }
 
 // モックされたdbオブジェクトを作成
@@ -21,7 +22,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-1",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -40,7 +41,7 @@ const mockDb = {
       where: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -60,7 +61,7 @@ const mockDb = {
         returning: vi.fn(() => [
           {
             id: "mock-uuid-123",
-            sourceId: "b0000000-0000-4000-8000-000000000000",
+            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
             filePath: "/mock/path/image.png",
             fileName: "updated_image.png",
             mediaType: "image",
@@ -80,7 +81,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -102,39 +103,25 @@ const mockDb = {
   transaction: vi.fn((fn) => fn(mockDb)),
 };
 
-// dbをエクスポート (テストから直接インポートできるように)
-export const db = mockDb;
-
-export const pool = {
-  end: vi.fn(),
-  connect: vi.fn(() => ({
-    query: vi.fn(),
-    release: vi.fn(),
-  })),
-};
-
-// モックを設定 - 統合テスト以外でのみ適用
-vi.mock("~/infrastructure/db/__mocks__", () => ({
-  addMediaToMockDb: vi.fn(),
-  resetMockDbState: vi.fn(),
-}));
-
 // 統合テストファイルのパターンを判定
 const isIntegrationTest = (filePath: string) =>
   filePath.includes("/integration/");
 
 // ~/infrastructure/db/index のモックを条件付きで設定
-vi.mock("~/infrastructure/db/index", (importOriginal) => {
+vi.mock("~/infrastructure/db/index", async (_importOriginal) => {
   // テストファイルのパスを取得（グローバル変数から）
   // @ts-expect-error - accessing internal test state
   const testPath = globalThis.__vitest_worker__?.filepath || "";
 
   if (isIntegrationTest(testPath)) {
-    // 統合テストの場合は実際のdbを使用
-    return importOriginal();
+    // 統合テストの場合は新しいPGLiteインスタンスを使用
+    const client = new PGlite();
+    const testDb = drizzle(client, { schema });
+    await migrate(testDb, { migrationsFolder: "./drizzle" });
+    return { db: testDb };
   }
 
-  // ユニット/DBテストの場合はモックを使用
+  // ユニットテストの場合はモックを使用
   return { db: mockDb };
 });
 

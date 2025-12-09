@@ -1,0 +1,170 @@
+/**
+ * Download Jobs - Handles downloading images from URLs
+ */
+
+import fs from "node:fs/promises";
+import path from "node:path";
+import type { DownloadItem } from "~/domain/media/schemas";
+import { upsertAuthor } from "~/infrastructure/db/queries/authors";
+import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
+import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
+import type { NewMedia } from "~/infrastructure/db/schema";
+import type { Job } from "~/infrastructure/jobs/job-manager";
+import {
+  addJobsToQueue,
+  startJobQueue,
+} from "~/infrastructure/jobs/job-manager";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+
+/**
+ * Downloads an image from a URL and saves it to the specified path.
+ * @param imageUrl - The URL of the image to download
+ * @param outputPath - The path where the image should be saved
+ */
+async function downloadImage(
+  imageUrl: string,
+  outputPath: string
+): Promise<void> {
+  const response = await fetch(imageUrl);
+  if (!response.ok) {
+    throw new Error(`Failed to download image: ${response.statusText}`);
+  }
+
+  const arrayBuffer = await response.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+
+  await fs.mkdir(path.dirname(outputPath), { recursive: true });
+  await fs.writeFile(outputPath, buffer);
+}
+
+/**
+ * Formats download metadata as Markdown for the description field.
+ */
+function formatMetadataAsMarkdown(item: DownloadItem): string {
+  return item.tweetText || "";
+}
+
+/**
+ * Processes a download job by fetching the image from URL and registering it as media.
+ */
+export async function processDownloadJob(
+  _job: Job,
+  mediaSourceId: string,
+  item: DownloadItem
+): Promise<void> {
+  const mediaSource = await selectMediaSourceById(mediaSourceId);
+  if (!mediaSource || mediaSource.type !== "local") {
+    throw new Error("Media source not found or not a local source");
+  }
+
+  const connectionInfo = mediaSource.connectionInfo as { path: string };
+  const basePath = connectionInfo.path;
+
+  // Generate filename from URL
+  const urlPath = new URL(item.imageUrl).pathname;
+  const originalFilename = path.basename(urlPath);
+  const filename = `download-${Date.now()}-${originalFilename}`;
+  const filePath = filename;
+  const fullPath = path.join(basePath, filePath);
+  // Download the image
+  await downloadImage(item.imageUrl, fullPath);
+
+  // Get file metadata
+  const metadata = await MediaRepository.getFileMetadata(fullPath);
+
+  // Create media entry
+  const newMedia: NewMedia = {
+    mediaSourceId,
+    filePath,
+    fileName: filename,
+    mediaType: "image",
+    description: formatMetadataAsMarkdown(item),
+    width: metadata.width,
+    height: metadata.height,
+    fileSize: metadata.size,
+    createdAt: item.timestamp ? new Date(item.timestamp) : metadata.createdAt,
+    modifiedAt: metadata.modifiedAt,
+  };
+
+  const insertedMedia = await MediaRepository.create(newMedia);
+
+  // Register URLs
+  const urlsToRegister = [item.imageUrl];
+  if (item.tweetUrl) {
+    urlsToRegister.push(item.tweetUrl);
+  }
+  await insertMediaUrls(insertedMedia.id, urlsToRegister);
+
+  // Register Author
+  if (item.authorName) {
+    const author = await upsertAuthor({
+      name: item.authorName,
+      accountId: item.authorId,
+    });
+    await insertMediaAuthor(insertedMedia.id, author.id);
+  }
+
+  // Queue thumbnail generation
+  addJobsToQueue(mediaSourceId, [
+    {
+      mediaId: insertedMedia.id,
+      sourcePath: basePath,
+      type: "thumbnail",
+    },
+  ]);
+
+  startJobQueue(mediaSourceId, async (thumbnailJob) => {
+    const { processMediaJob } = await import(
+      "~/infrastructure/jobs/thumbnails"
+    );
+    await processMediaJob(thumbnailJob, mediaSourceId);
+  });
+
+  // Notify success
+  SseManager.sendEvent(mediaSourceId, "media-added", {
+    mediaId: insertedMedia.id,
+  });
+}
+
+/**
+ * Queues multiple download jobs from a list of download items.
+ */
+export async function queueDownloadJobs(
+  mediaSourceId: string,
+  items: DownloadItem[]
+): Promise<number> {
+  const mediaSource = await selectMediaSourceById(mediaSourceId);
+  if (!mediaSource || mediaSource.type !== "local") {
+    throw new Error("Media source not found or not a local source");
+  }
+
+  const connectionInfo = mediaSource.connectionInfo as { path: string };
+  const basePath = connectionInfo.path;
+
+  // Process downloads sequentially to avoid overwhelming the system
+  for (const item of items) {
+    try {
+      await processDownloadJob(
+        {
+          mediaId: "", // Will be set after download
+          sourcePath: basePath,
+          type: "downloadImage",
+          payload: {
+            imageUrl: item.imageUrl,
+            sourceUrl: item.imageUrl,
+            description: formatMetadataAsMarkdown(item),
+            createdAt: item.timestamp ? new Date(item.timestamp) : new Date(),
+          },
+        },
+        mediaSourceId,
+        item
+      );
+    } catch (_error) {
+      // Continue with next item even if one fails
+    }
+  }
+
+  return items.length;
+}

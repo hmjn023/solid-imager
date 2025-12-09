@@ -1,59 +1,50 @@
 import { useParams } from "@solidjs/router";
-import { createMemo, createResource, Show } from "solid-js";
-import { getRequestEvent } from "solid-js/web";
-import type { UUID } from "~/domain/shared/types";
-import type { Media as MediaType } from "~/infrastructure/db/schema";
-
-async function fetchMedia(
-  sourceId: UUID,
-  mediaId: UUID,
-  origin: string
-): Promise<MediaType> {
-  const response = await fetch(
-    `${origin}/api/sources/${sourceId}/${mediaId}/details`
-  );
-  if (!response.ok) {
-    throw new Error("Failed to fetch media details");
-  }
-  return response.json();
-}
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { Match, Switch } from "solid-js";
+import MediaSidebar from "~/components/media/media-sidebar";
+import MediaViewer from "~/components/media/media-viewer";
+import type { UUID } from "~/domain/shared/schemas";
+import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
 
 export default function Media() {
   const params = useParams();
-  const mediaParams = createMemo(() => ({
-    sourceId: params.mediaSourceId as UUID,
-    mediaId: params.mediaId as UUID,
+  const queryClient = useQueryClient();
+  const mediaSourceId = params.mediaSourceId as UUID;
+  const mediaId = params.mediaId as UUID;
+
+  const mediaDetails = createQuery(() => ({
+    queryKey: ["mediaDetails", mediaSourceId, mediaId],
+    queryFn: () => fetchMediaDetails(mediaSourceId, mediaId),
   }));
 
-  const [media] = createResource(mediaParams, ({ sourceId, mediaId }) => {
-    const event = getRequestEvent();
-    const origin = event?.request.url
-      ? new URL(event.request.url).origin
-      : "http://localhost:3000";
-    return fetchMedia(sourceId, mediaId, origin);
-  });
+  const handleUpdate = async () => {
+    await queryClient.invalidateQueries({
+      queryKey: ["mediaDetails", mediaSourceId, mediaId],
+    });
+  };
 
   return (
     <div class="container mx-auto p-4">
-      <Show when={media.loading}>
-        <div>Loading media...</div>
-      </Show>
-      <Show when={media.error}>
-        <div class="text-red-500">Error: {media.error.message}</div>
-      </Show>
-      <Show when={media()}>
-        {(item) => (
-          <div class="flex justify-center">
-            {/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
-            <img
-              alt={item.fileName}
-              height={item.height}
-              src={`/api/sources/${params.mediaSourceId}/${params.mediaId}`}
-              width={item.width}
-            />
-          </div>
-        )}
-      </Show>
+      <Switch>
+        {/* <Match when={mediaDetails.isLoading}>
+          <div>Loading media...</div>
+        </Match> */}
+        <Match when={mediaDetails.isError}>
+          <div class="text-red-500">Error: {mediaDetails.error?.message}</div>
+        </Match>
+        <Match when={mediaDetails.data}>
+          {(details) => (
+            <div class="flex h-[calc(100vh-80px)] flex-col gap-4 lg:flex-row">
+              <div class="flex-grow">
+                <MediaViewer media={details()} />
+              </div>
+              <div class="w-full shrink-0 lg:w-96">
+                <MediaSidebar media={details()} onUpdate={handleUpdate} />
+              </div>
+            </div>
+          )}
+        </Match>
+      </Switch>
     </div>
   );
 }

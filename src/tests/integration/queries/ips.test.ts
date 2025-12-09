@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
@@ -15,10 +14,7 @@ describe("ips queries Integration", () => {
   let testIpId: number;
 
   beforeAll(async () => {
-    // Clean up previous test data
-    await db.delete(ips).where(sql`true`);
-
-    // Seed initial data
+    await db.delete(ips);
     const initialIp: NewIp = {
       name: "Initial IP",
       description: "An IP for testing",
@@ -29,7 +25,7 @@ describe("ips queries Integration", () => {
 
   afterAll(async () => {
     // Clean up all data
-    await db.delete(ips).where(sql`true`);
+    await db.delete(ips);
   });
 
   it("should select all ips", async () => {

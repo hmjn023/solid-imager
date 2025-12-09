@@ -696,21 +696,40 @@ interface MediaMetadata {
 - `type: 'local'` のメディアソースのみ対応
 - SFTP/S3は非対応
 
-#### データ構造
-```typescript
-interface FileSystemEvent {
-  type: 'added' | 'deleted' | 'modified';
-  sourceId: string;
-  filePath: string;    // 相対パス
-  timestamp: Date;
-}
-```
+#### SSEイベントタイプ
+
+`/api/sse/{mediaSourceId}` エンドポイントは以下のイベントタイプを送信します:
+
+- `thumbnail-generated`: サムネイル生成完了時に送信
+  - データ: `{ mediaId: string }`
+- `media-added`: ファイルシステムに新しいメディアファイルが追加された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+- `media-deleted`: ファイルシステムからメディアファイルが削除された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+- `media-changed`: ファイルシステムのメディアファイルが変更された時に送信
+  - データ: `{ filePath: string, timestamp: string }`
+- `watcher-error`: ファイルシステム監視でエラーが発生した時に送信
+  - データ: `{ error: string, timestamp: string }`
 
 #### 監視仕様
-- ライブラリ: chokidar でファイルシステム監視
-- 対象: メディアファイル（.png, .jpg, .jpeg, .webp等）
-- 範囲: サブディレクトリも再帰的に監視
-- エラー: 非localソースは "ローカルファイルソースのみ対応" エラー
+- **ライブラリ**: chokidar でファイルシステム監視
+- **対象**: 画像ファイル（`.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.bmp`）
+- **範囲**: サブディレクトリも再帰的に監視
+- **自動処理**:
+  - ファイル追加時: メディアをDBに登録し、サムネイル生成をキューに追加
+  - ファイル削除時: DBとサムネイルキャッシュから削除
+  - ファイル変更時: メタデータを更新し、サムネイルを再生成
+- **自動監視開始**:
+  - アプリケーション起動時に既存のローカルメディアソースの監視を自動開始
+  - メディアソース作成時に監視を自動開始
+  - メディアソース削除時に監視を自動停止
+- **キャッシュバスティング**: サムネイルURLに`modifiedAt`タイムスタンプを追加して、ファイル変更時にブラウザキャッシュを回避
+
+#### 実装状況
+- ✅ ファイルシステム監視機能
+- ✅ 自動メディア登録・削除・更新
+- ✅ SSEイベント送信
+- ✅ フロントエンドのリアルタイム更新
 
 ### 5. メディアアップロード機能
 

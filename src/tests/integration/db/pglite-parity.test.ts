@@ -1,3 +1,5 @@
+import { mkdirSync, rmSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DatabaseConfig } from "~/config/database";
 import {
@@ -5,8 +7,6 @@ import {
   createConnection,
   type DbConnection,
 } from "~/infrastructure/db/connection";
-import { mkdirSync, rmSync } from "fs";
-import { join } from "path";
 
 // Assuming Drizzle ORM setup for schema and migrations
 // import { db, schema } from '~/infrastructure/db/schema'; // Placeholder for actual Drizzle setup
@@ -15,13 +15,13 @@ describe("PGlite Data Persistence and Feature Parity", () => {
   let pgliteConnection: DbConnection;
   let _postgresConnection: DbConnection;
 
-  const PGLITE_DATA_PATH = join(process.cwd(), "data/test_pglite_parity");
+  const PgliteDataPath = join(process.cwd(), "data/test_pglite_parity");
 
   // Configuration for pglite (file-based for persistence)
   const pgliteConfig: DatabaseConfig = {
     databaseType: "pglite",
     pglite: {
-      path: PGLITE_DATA_PATH,
+      path: PgliteDataPath,
       inMemory: false,
     },
   };
@@ -39,7 +39,7 @@ describe("PGlite Data Persistence and Feature Parity", () => {
   };
 
   beforeEach(async () => {
-    mkdirSync(PGLITE_DATA_PATH, { recursive: true });
+    mkdirSync(PgliteDataPath, { recursive: true });
     // Initialize connections
     pgliteConnection = await createConnection(pgliteConfig);
     // For a real integration test, you'd need a running PostgreSQL instance
@@ -58,7 +58,7 @@ describe("PGlite Data Persistence and Feature Parity", () => {
     await closeConnection(pgliteConnection);
     // await closeConnection(postgresConnection);
     // Clean up pglite data file if necessary
-    rmSync(PGLITE_DATA_PATH, { recursive: true, force: true });
+    rmSync(PgliteDataPath, { recursive: true, force: true });
   });
 
   it("should ensure basic data persistence with pglite", () => {

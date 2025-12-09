@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
@@ -22,8 +22,8 @@ describe("media queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up previous test data
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     // Seed a media source for the media to belong to
     await db.insert(mediaSources).values({
@@ -35,7 +35,7 @@ describe("media queries Integration", () => {
 
     // Seed initial media data
     const initialMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/initial.jpg",
       fileName: "initial.jpg",
       mediaType: "image",
@@ -48,8 +48,8 @@ describe("media queries Integration", () => {
 
   afterAll(async () => {
     // Clean up all data
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select media by its ID", async () => {
@@ -66,7 +66,7 @@ describe("media queries Integration", () => {
 
   it("should insert new media", async () => {
     const newMedia: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/new.png",
       fileName: "new.png",
       mediaType: "image",
@@ -98,16 +98,16 @@ describe("media queries Integration", () => {
     expect(selected.fileName).toBe(updatedFileName);
   });
 
-  it("should select all media for a given sourceId", async () => {
+  it("should select all media for a given mediaSourceId", async () => {
     const mediaList = await selectMediaBySourceId(testSourceId);
     expect(mediaList).toBeInstanceOf(Array);
     expect(mediaList.length).toBeGreaterThanOrEqual(1);
-    expect(mediaList.every((m) => m.sourceId === testSourceId)).toBe(true);
+    expect(mediaList.every((m) => m.mediaSourceId === testSourceId)).toBe(true);
   });
 
   it("should delete media by path", async () => {
     const mediaToDelete: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/to-delete-by-path/image.png",
       fileName: "image.png",
       mediaType: "image",
@@ -131,7 +131,7 @@ describe("media queries Integration", () => {
 
   it("should delete media by ID", async () => {
     const mediaToDelete: NewMedia = {
-      sourceId: testSourceId,
+      mediaSourceId: testSourceId,
       filePath: "/media/test/to-delete.jpg",
       fileName: "to-delete.jpg",
       mediaType: "image",

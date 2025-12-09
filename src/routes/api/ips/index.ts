@@ -1,5 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { createIp, getIps } from "~/infrastructure/api-clients/ips";
+import { ZodError } from "zod";
+import { IpService } from "~/application/services/ip-service";
+import { newIpSchema } from "~/domain/ips/schemas";
 
 /**
  * @swagger
@@ -22,8 +24,18 @@ import { createIp, getIps } from "~/infrastructure/api-clients/ips";
  *         description: Internal server error.
  */
 export async function GET() {
-  const ips = await getIps();
-  return ips;
+  try {
+    const ips = await IpService.getAllIps();
+    return new Response(JSON.stringify(ips), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (_error) {
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**
@@ -53,7 +65,24 @@ export async function GET() {
  *         description: Internal server error.
  */
 export async function POST({ request }: APIEvent) {
-  const { name, description } = await request.json();
-  const newIp = await createIp(name, description);
-  return newIp;
+  try {
+    const data = await request.json();
+    const validatedData = newIpSchema.parse(data);
+    const newIp = await IpService.createIp(validatedData);
+    return new Response(JSON.stringify(newIp), {
+      status: 201,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }

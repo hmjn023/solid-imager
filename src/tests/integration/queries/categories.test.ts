@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
@@ -16,7 +15,7 @@ describe("categories queries Integration", () => {
 
   beforeAll(async () => {
     // Clean up previous test data
-    await db.delete(categories).where(sql`true`);
+    await db.delete(categories);
 
     // Seed initial data
     const initialCategory: NewCategory = {
@@ -32,7 +31,7 @@ describe("categories queries Integration", () => {
 
   afterAll(async () => {
     // Clean up all data
-    await db.delete(categories).where(sql`true`);
+    await db.delete(categories);
   });
 
   it("should select all categories", async () => {

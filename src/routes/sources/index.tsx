@@ -1,18 +1,19 @@
-import { createResource, createSignal, For } from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
+import toast from "solid-toast";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
+import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import {
+  createMediaSource,
+  deleteMediaSource,
+  fetchMediaSources,
+  updateMediaSource,
+} from "~/infrastructure/api-clients/sources-api";
 
-async function fetchSources() {
-  const url = "/api/sources";
-  const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-  const res = await fetch(fullUrl);
-  if (!res.ok) {
-    throw new Error("Failed to fetch sources");
-  }
-  return res.json();
-}
+const UUID_PREFIX_LENGTH = 4;
 
 /**
  * The main component for managing media sources.
@@ -22,70 +23,123 @@ async function fetchSources() {
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-  const [editingSource, setEditingSource] = createSignal(null);
-  const [deletingSource, setDeletingSource] = createSignal(null);
+  const [editingSource, setEditingSource] =
+    createSignal<MediaSourceInfo | null>(null);
+  const [deletingSource, setDeletingSource] =
+    createSignal<MediaSourceInfo | null>(null);
 
-  const [mediaSources, { refetch }] = createResource(fetchSources);
+  const queryClient = useQueryClient();
+  const mediaSources = createQuery(() => ({
+    queryKey: ["mediaSources"],
+    queryFn: fetchMediaSources,
+  }));
 
   const handleAddSource = () => {
     setEditingSource(null);
     setShowFormModal(true);
   };
 
-  const handleEditSource = (source) => {
+  const handleEditSource = (source: MediaSourceInfo) => {
     setEditingSource(source);
     setShowFormModal(true);
   };
 
-  const handleFormSubmit = async (sourceData) => {
+  const handleFormSubmit = async (sourceData: unknown) => {
     const editing = editingSource();
     try {
-      if (editing) {
-        const res = await fetch(`/api/sources/${editing.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sourceData),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to update source");
-        }
+      if (editing?.id) {
+        await updateMediaSource(editing.id, sourceData);
       } else {
-        const res = await fetch("/api/sources", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(sourceData),
-        });
-        if (!res.ok) {
-          throw new Error("Failed to create source");
-        }
+        await createMediaSource(sourceData);
       }
-      await refetch();
+      await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowFormModal(false);
-    } catch (_error) {
-      // You might want to show an error to the user here
-    }
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
+    } catch (_error) {}
   };
 
-  const handleDeleteSource = (source) => {
+  const handleDeleteSource = (source: MediaSourceInfo) => {
     setDeletingSource(source);
     setShowDeleteModal(true);
   };
 
-  const handleDeleteConfirm = async (sourceId) => {
+  const handleDeleteConfirm = async (mediaSourceId: string) => {
     try {
-      const res = await fetch(`/api/sources/${sourceId}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) {
-        throw new Error("Failed to delete source");
-      }
-      await refetch();
+      await deleteMediaSource(mediaSourceId);
+      await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowDeleteModal(false);
       setDeletingSource(null);
-    } catch (_error) {
-      // You might want to show an error to the user here
-    }
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
+    } catch (_error) {}
   };
+
+  // SSE setup
+  onMount(() => {
+    if (isServer) {
+      return;
+    }
+
+    const eventSources: EventSource[] = [];
+
+    const setupSseForSource = (mediaSourceId: string) => {
+      const eventSource = new EventSource(`/api/sse/${mediaSourceId}`);
+
+      eventSource.addEventListener("all-jobs-completed", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.success(
+            `Jobs for source ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}... completed! Processed: ${data.processed}`
+          );
+          queryClient.invalidateQueries({ queryKey: ["mediaSources"] }); // Refresh source status if needed
+        } catch (_e) {
+          toast.success(
+            `Jobs for source ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}... completed!`
+          );
+        }
+      });
+
+      eventSource.addEventListener("watcher-error", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          toast.error(
+            `Watcher Error for ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}...: ${data.error || "Unknown error"}`
+          );
+        } catch (_e) {
+          toast.error(
+            `Watcher Error for ${mediaSourceId.substring(0, UUID_PREFIX_LENGTH)}...: Unknown error`
+          );
+        }
+      });
+
+      eventSource.onerror = (_err) => {
+        eventSource.close();
+      };
+
+      eventSources.push(eventSource);
+    };
+
+    // Watch for changes in mediaSources data and setup SSE
+    createEffect(() => {
+      const sources = mediaSources.data;
+      if (sources) {
+        // Close old event sources if any
+        for (const es of eventSources) {
+          es.close();
+        }
+        eventSources.length = 0; // Clear the array
+
+        for (const source of sources) {
+          setupSseForSource(source.id);
+        }
+      }
+    });
+
+    onCleanup(() => {
+      for (const es of eventSources) {
+        es.close();
+      }
+    });
+  });
 
   return (
     <div class="container mx-auto p-6">
@@ -101,7 +155,7 @@ export default function Sources() {
       </div>
 
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <For each={mediaSources()}>
+        <For each={mediaSources.data}>
           {(source) => (
             <SourceCard
               mediaSource={source}
@@ -112,16 +166,16 @@ export default function Sources() {
         </For>
       </div>
 
-      {mediaSources.loading && (
+      {mediaSources.isLoading && (
         <div class="mt-8 text-center">
           <p class="text-muted-foreground">Loading sources...</p>
         </div>
       )}
 
-      {mediaSources.error && (
+      {mediaSources.isError && (
         <div class="mt-8 text-center">
           <p class="text-red-500">
-            Error loading sources: {mediaSources.error.message}
+            Error loading sources: {mediaSources.error?.message}
           </p>
         </div>
       )}

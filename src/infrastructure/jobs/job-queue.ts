@@ -11,9 +11,9 @@ export const JobQueue = {
   /**
    * Adds a thumbnail generation job to the queue.
    * @param {string} _mediaId - The ID of the media item for which to generate a thumbnail.
-   * @param {string} _sourceId - The ID of the media source the item belongs to.
+   * @param {string} _mediaSourceId - The ID of the media source the item belongs to.
    */
-  addThumbnailJob(_mediaId: string, _sourceId: string): void {
+  addThumbnailJob(_mediaId: string, _mediaSourceId: string): void {
     // TODO: Add thumbnail generation job to queue
     throw new Error("Not implemented");
   },

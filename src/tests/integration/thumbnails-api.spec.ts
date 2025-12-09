@@ -5,7 +5,7 @@ import { expect, test } from "@playwright/test";
 const SOURCE_ID = "... pre-existing-source-id ...";
 
 test.describe("Thumbnail API", () => {
-  test("POST /api/sources/:sourceId/thumbnails should trigger bulk generation", async ({
+  test("POST /api/sources/:mediaSourceId/thumbnails should trigger bulk generation", async ({
     request,
   }) => {
     const response = await request.post(`/api/sources/${SOURCE_ID}/thumbnails`);
@@ -15,7 +15,7 @@ test.describe("Thumbnail API", () => {
     expect(data.message).toContain("Thumbnail generation job started");
   });
 
-  test("POST /api/sources/:sourceId/thumbnails should return 404 for non-existent source", async ({
+  test("POST /api/sources/:mediaSourceId/thumbnails should return 404 for non-existent source", async ({
     request,
   }) => {
     const fakeSourceId = "00000000-0000-0000-0000-000000000000";

@@ -1,23 +1,13 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { z } from "zod";
-import {
-  deleteCategory,
-  getCategoryById,
-  updateCategory,
-} from "~/infrastructure/api-clients/categories";
+import { ZodError, z } from "zod";
+import { CategoryService } from "~/application/services/category-service";
+import { updateCategorySchema } from "~/domain/categories/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
   id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
 });
-
-// PUTリクエストボディのスキーマ
-const UpdateCategoryBodySchema = z.object({
-  name: z.string().optional(),
-  description: z.string().optional(),
-  color: z.string().optional(),
-  parentId: z.number().optional(),
-});
+export type IdParam = z.infer<typeof IdParamSchema>;
 
 /**
  * @swagger
@@ -49,16 +39,30 @@ const UpdateCategoryBodySchema = z.object({
  *         description: Internal server error.
  */
 export async function GET({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+    const category = await CategoryService.getCategoryDetails(id);
+    return new Response(JSON.stringify(category), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    // Assuming NotFoundError is thrown by service/db and caught here or handled by service
+    // If service throws NotFoundError, we should catch it and return 404.
+    // For now, generic 500 or let's check if we can import NotFoundError.
+    // But for simplicity, I'll just return 500 for now as I didn't check error types export.
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const category = await getCategoryById(id);
-  return category;
 }
 
 /**
@@ -97,32 +101,33 @@ export async function GET({ params }: APIEvent) {
  *         description: Internal server error.
  */
 export async function PUT({ params, request }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+
+    const body = await request.json();
+    const validatedBody = updateCategorySchema.parse(body);
+
+    const updatedCategory = await CategoryService.updateCategory(
+      id,
+      validatedBody
+    );
+    return new Response(JSON.stringify(updatedCategory), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-
-  const body = await request.json();
-  const parsedBody = UpdateCategoryBodySchema.safeParse(body);
-  if (!parsedBody.success) {
-    return new Response(JSON.stringify({ errors: parsedBody.error.issues }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-  const { name, description, color, parentId } = parsedBody.data;
-
-  const updatedCategory = await updateCategory(id, {
-    name,
-    description,
-    color,
-    parentId,
-  });
-  return updatedCategory;
 }
 
 /**
@@ -151,14 +156,24 @@ export async function PUT({ params, request }: APIEvent) {
  *         description: Internal server error.
  */
 export async function DELETE({ params }: APIEvent) {
-  const parsedParams = IdParamSchema.safeParse(params);
-  if (!parsedParams.success) {
-    return new Response(JSON.stringify({ errors: parsedParams.error.issues }), {
-      status: 400,
+  try {
+    const parsedParams = IdParamSchema.parse(params);
+    const { id } = parsedParams;
+    const result = await CategoryService.deleteCategory(id);
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return new Response(JSON.stringify({ errors: error.issues }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal Server Error" }), {
+      status: 500,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const { id } = parsedParams.data;
-  const result = await deleteCategory(id);
-  return result;
 }

@@ -1,5 +1,9 @@
 import { z } from "zod";
 
+export const UuidSchema = z.uuid({ version: "v4" });
+// biome-ignore lint/style/useNamingConvention: UUID
+export type UUID = z.infer<typeof UuidSchema>;
+
 export const appConfigSchema = z
   .object({
     server: z
@@ -56,7 +60,7 @@ export const userDataSchema = z.object({
 export type UserData = z.infer<typeof userDataSchema>;
 
 export const collectionDataSchema = z.object({
-  userId: z.string().uuid(), // Assuming UUID for userId
+  userId: z.uuid({ version: "v4" }), // Assuming UUID for userId
   name: z.string(),
   description: z.string().optional(),
 });

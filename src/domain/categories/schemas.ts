@@ -7,10 +7,14 @@
 
 import { z } from "zod";
 
-export const categoryDataSchema = z.object({
-  name: z.string(),
+export const newCategorySchema = z.object({
+  name: z.string().min(1),
   description: z.string().optional(),
   color: z.string().optional(),
   parentId: z.number().int().optional(),
 });
-export type CategoryData = z.infer<typeof categoryDataSchema>;
+
+export const updateCategorySchema = newCategorySchema.partial();
+
+export type NewCategory = z.infer<typeof newCategorySchema>;
+export type UpdateCategory = z.infer<typeof updateCategorySchema>;

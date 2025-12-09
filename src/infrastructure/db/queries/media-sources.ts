@@ -97,7 +97,7 @@ export const insertMediaSource = async (
  */
 export const updateMediaSource = async (
   mediaSourceId: string,
-  mediaSource: MediaSource
+  mediaSource: Partial<MediaSource>
 ): Promise<MediaSource> => {
   try {
     const result = await db

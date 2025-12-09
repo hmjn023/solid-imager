@@ -69,3 +69,46 @@ export const updateMediaGenerationInfo = async (
     });
   }
 };
+
+/**
+ * Inserts or updates media generation information for a specific media item in the database.
+ * If a record for the given media ID exists, it updates the prompt and workflow. Otherwise, it inserts a new record.
+ * @param {string} mediaId - The ID of the media item.
+ * @param {string | null} prompt - The prompt string.
+ * @param {object | null} workflow - The workflow JSON object.
+ * @returns {Promise<typeof mediaGenerationInfo.$inferSelect>} A promise that resolves with the upserted media generation information object.
+ * @throws {UnknownDbError} If a database error occurs during the upsert operation.
+ */
+export const upsertMediaGenerationInfo = async (
+  mediaId: string,
+  prompt: string | null,
+  workflow: object | null
+): Promise<typeof mediaGenerationInfo.$inferSelect> => {
+  try {
+    const existingInfo = await db
+      .select()
+      .from(mediaGenerationInfo)
+      .where(eq(mediaGenerationInfo.mediaId, mediaId));
+
+    if (existingInfo.length > 0) {
+      // Update existing record
+      const result = await db
+        .update(mediaGenerationInfo)
+        .set({ prompt, workflow })
+        .where(eq(mediaGenerationInfo.mediaId, mediaId))
+        .returning();
+      return result[0];
+    }
+    // Insert new record
+    const result = await db
+      .insert(mediaGenerationInfo)
+      .values({ mediaId, prompt, workflow })
+      .returning();
+    return result[0];
+  } catch (error) {
+    throw new UnknownDbError({
+      message: `Failed to upsert media generation info for media ID: ${mediaId}`,
+      details: error,
+    });
+  }
+};

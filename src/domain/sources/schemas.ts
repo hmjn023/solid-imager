@@ -5,8 +5,11 @@
 
 import { z } from "zod";
 
-export const sourceIdSchema = z.string().uuid("Invalid source ID format");
-export type SourceId = z.infer<typeof sourceIdSchema>;
+export const mediaSourceIdSchema = z.uuid({
+  version: "v4",
+  message: "Invalid source ID format",
+});
+export type MedioaSourceId = z.infer<typeof mediaSourceIdSchema>;
 
 export const localConnectionSchema = z.object({
   path: z.string().min(1, "Path is required"),
@@ -43,7 +46,7 @@ export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
 export const mediaSourceInfoSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.uuid({ version: "v4" }).optional(),
   name: z.string(),
   description: z.string().nullable(),
   type: mediaSourceTypeEnumSchema,
@@ -53,9 +56,9 @@ export type MediaSourceInfo = z.infer<typeof mediaSourceInfoSchema>;
 
 export const fileSystemEventSchema = z.object({
   type: z.enum(["added", "deleted", "modified"]),
-  sourceId: z.string(),
+  mediaSourceId: z.string(),
   filePath: z.string(),
-  timestamp: z.date(),
+  timestamp: z.coerce.date(),
 });
 export type FileSystemEvent = z.infer<typeof fileSystemEventSchema>;
 

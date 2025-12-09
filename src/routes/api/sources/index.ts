@@ -1,11 +1,10 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { registerExistingMedia } from "~/infrastructure/api-clients/media";
-import {
-  createMediaSource,
-  getMediaSources,
-} from "~/infrastructure/api-clients/sources";
+import { MediaService } from "~/application/services/media-service";
+import { MediaSourceService } from "~/application/services/media-source-service";
+import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+const HTTP_STATUS_BAD_REQUEST = 400;
 
 /**
  * @swagger
@@ -27,9 +26,14 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
  *       500:
  *         description: Internal server error.
  */
+/**
+ * Handles GET requests to retrieve all media sources.
+ * It fetches the media sources from the database and returns them as a JSON response.
+ * @returns {Promise<Response>} A Response object containing the list of media sources or an error message.
+ */
 export async function GET() {
   try {
-    const result = await getMediaSources();
+    const result = await MediaSourceService.fetchSources();
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
@@ -71,29 +75,60 @@ export async function GET() {
  *       500:
  *         description: Internal server error.
  */
+/**
+ * Handles POST requests to create a new media source.
+ * It creates a new media source in the database and, if it's a local source,
+ * triggers a background job to register existing media.
+ * @param {APIEvent} event - The API event object, containing the request.
+ * @returns {Promise<Response>} A Response object containing the newly created media source or an error message.
+ */
 export async function POST({ request }: APIEvent) {
-  const { name, description, type, connectionInfo } = await request.json();
-
   try {
-    const result = await createMediaSource({
-      name,
-      description,
-      type,
-      connectionInfo,
-    });
+    const body = await request.json();
+    const validatedData = mediaSourceInfoSchema.parse(body);
 
-    if (result && result.type === "local") {
+    const result = await MediaSourceService.createSource(validatedData);
+
+    const createdSource = result[0];
+    if (createdSource && createdSource.type === "local") {
       // Run in background
-      registerExistingMedia(result.id, result.connectionInfo.path);
+      MediaService.registerExistingMedia(
+        createdSource.id,
+        (createdSource.connectionInfo as { path: string }).path
+      );
+
+      // Start file system monitoring
+      import("~/infrastructure/jobs/file-watcher-service")
+        .then((module) => {
+          module.FileWatcherService.startMonitoring(createdSource.id).catch(
+            (_error) => {
+              // Error already logged in startMonitoring
+            }
+          );
+        })
+        .catch((_error) => {
+          // Error already logged in then block
+        });
     }
 
-    return new Response(JSON.stringify(result), {
+    return new Response(JSON.stringify(createdSource), {
       status: 201,
       headers: {
         "Content-Type": "application/json",
       },
     });
   } catch (error: unknown) {
+    if (error instanceof Error && error.name === "ZodError") {
+      return new Response(
+        JSON.stringify({ error: JSON.parse(error.message) }),
+        {
+          status: HTTP_STATUS_BAD_REQUEST,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+    }
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,

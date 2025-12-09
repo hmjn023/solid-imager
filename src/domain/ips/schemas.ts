@@ -7,8 +7,22 @@
 
 import { z } from "zod";
 
-export const ipDataSchema = z.object({
-  name: z.string(),
+export const newIpSchema = z.object({
+  name: z.string().min(1),
   description: z.string().optional(),
 });
-export type IpData = z.infer<typeof ipDataSchema>;
+
+export const updateIpSchema = newIpSchema.partial();
+
+export type NewIp = z.infer<typeof newIpSchema>;
+export type UpdateIp = z.infer<typeof updateIpSchema>;
+
+export const ipSchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().nullable(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
+
+export type Ip = z.infer<typeof ipSchema>;

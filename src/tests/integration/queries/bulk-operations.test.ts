@@ -18,18 +18,18 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("bulk-operations queries Integration", () => {
-  const sourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19";
+  const mediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19";
   let mediaIds: string[];
   let tagIds: number[];
 
   beforeAll(async () => {
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
-      id: sourceId,
+      id: mediaSourceId,
       name: "bulk-test",
       type: "local",
       connectionInfo: { path: "/" },
@@ -37,7 +37,7 @@ describe("bulk-operations queries Integration", () => {
 
     const mediaToInsert: NewMedia[] = [
       {
-        sourceId,
+        mediaSourceId,
         filePath: "bulk1.jpg",
         fileName: "bulk1.jpg",
         description: "desc1",
@@ -46,7 +46,7 @@ describe("bulk-operations queries Integration", () => {
         height: 1,
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "bulk2.jpg",
         fileName: "bulk2.jpg",
         description: "desc2",
@@ -55,7 +55,7 @@ describe("bulk-operations queries Integration", () => {
         height: 1,
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "bulk3.jpg",
         fileName: "bulk3.jpg",
         description: "desc3",
@@ -79,14 +79,14 @@ describe("bulk-operations queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(mediaTags).where(sql`true`);
-    await db.delete(tags).where(sql`true`);
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(mediaTags);
+    await db.delete(tags);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should bulk update media descriptions", async () => {
-    const results = await bulkUpdateMedia(sourceId, mediaIds, {
+    const results = await bulkUpdateMedia(mediaSourceId, mediaIds, {
       description: "bulk updated",
     });
     expect(results.length).toBe(mediaIds.length);
@@ -96,17 +96,17 @@ describe("bulk-operations queries Integration", () => {
   });
 
   it("should bulk add and remove tags", async () => {
-    await bulkAddMediaTags(sourceId, mediaIds, tagIds);
+    await bulkAddMediaTags(mediaSourceId, mediaIds, tagIds);
     let associations = await db.select().from(mediaTags);
     expect(associations.length).toBe(mediaIds.length * tagIds.length);
 
-    await bulkRemoveMediaTags(sourceId, [mediaIds[0]], [tagIds[0]]);
+    await bulkRemoveMediaTags(mediaSourceId, [mediaIds[0]], [tagIds[0]]);
     associations = await db.select().from(mediaTags);
     expect(associations.length).toBe(mediaIds.length * tagIds.length - 1);
   });
 
   it("should bulk update media paths", async () => {
-    await bulkUpdateMediaPaths(sourceId, mediaIds, "new/path");
+    await bulkUpdateMediaPaths(mediaSourceId, mediaIds, "new/path");
     const updatedMedia = await db
       .select()
       .from(medias)
@@ -119,7 +119,7 @@ describe("bulk-operations queries Integration", () => {
   it("should bulk delete media", async () => {
     const mediaToDelete: NewMedia[] = [
       {
-        sourceId,
+        mediaSourceId,
         filePath: "del1.jpg",
         fileName: "del1.jpg",
         mediaType: "image",
@@ -127,7 +127,7 @@ describe("bulk-operations queries Integration", () => {
         height: 1,
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "del2.jpg",
         fileName: "del2.jpg",
         mediaType: "image",
@@ -138,7 +138,7 @@ describe("bulk-operations queries Integration", () => {
     const inserted = await db.insert(medias).values(mediaToDelete).returning();
     const idsToDelete = inserted.map((m) => m.id);
 
-    const results = await bulkDeleteMedia(sourceId, idsToDelete);
+    const results = await bulkDeleteMedia(mediaSourceId, idsToDelete);
     expect(results.length).toBe(idsToDelete.length);
 
     const remaining = await db

@@ -1,7 +1,7 @@
 # アーキテクチャドキュメント
 
 **プロジェクト**: solid-imager  
-**最終更新日**: 2025-10-11  
+**最終更新日**: 2025-11-23  
 **アーキテクチャスタイル**: クリーンアーキテクチャ / ヘキサゴナルアーキテクチャ
 
 ## 概要
@@ -18,11 +18,18 @@
 5.  **柔軟性**: インフラストラクチャはビジネスロジックに影響を与えることなく交換できますts
 │       ├── media-source-service.ts
 │       ├── thumbnail-service.ts
-│       └── ... (合計19サービス)
+│       ├── tagging-service.ts
+│       └── ... (合計20サービス)
 │
 ├── infrastructure/      # 外部統合、I/O操作
 │   ├── storage/         # ストレージドライバー (ローカル、SFTP、S3)
-│   ├── api-clients/     # APIクライアント関数
+│   ├── api-clients/     # フロントエンド用APIクライアント層
+│   │   ├── shared/      # 共通ユーティリティ (base-client, types, endpoints)
+│   │   ├── sources-api.ts
+│   │   ├── media-api.ts
+│   │   └── ...
+│   ├── ai/              # AIサービス統合
+│   │   └── python-client.ts # Pythonマイクロサービス用クライアント
 │   ├── jobs/            # バックグラウンドジョブ処理
 │   └── db/              # データベースアクセスレイヤー
 │
@@ -34,6 +41,9 @@
 └── shared/              # クロスカッティングの関心事 (将来の使用)
     ├── types/
     └── constants/
+
+├── python-src/          # Pythonマイクロサービス (AI機能)
+│   └── main.py          # FastAPIアプリケーション
 ```
 
 ## レイヤーの責任
@@ -91,8 +101,6 @@ export const getMediaFromDatabase = async (id: string) => {
 - 複雑なワークフローを調整
 - トランザクション境界
 
- Effect-TSを使用して、非同期操作、エラーハンドリング、および依存関係の管理を型安全かつ宣言的に行います。
-
 **ファイル** (合計19):
 - ビジネス操作をオーケストレーションするサービスファイル:
   - `media-service.ts` - メディア管理操作
@@ -139,13 +147,46 @@ export async function processMedia(sourceId: string, filePath: string) {
 - 外部システム (DB、ファイルシステム、API) を処理
 - アダプターとドライバーを含む
 
- Effect-TSを使用して、外部システムとのI/O操作やエラー発生の可能性のある処理を型安全に表現し、アプリケーションレイヤーに伝播します。
-
 **ファイル** (合計21):
 - `storage/` - ストレージドライバー (local.ts, sftp.ts, s3.ts, factory.ts, types.ts)
-- `api-clients/` - APIクライアント関数 (media.ts, sources.ts, categories.tsなど)
-- `jobs/` - バックグラウンドジョブ処理 (job-queue.ts, thumbnail-jobs.ts, thumbnails.ts)
+- `api-clients/` - フロントエンド用APIクライアント (sources-api.ts, media-api.tsなど)
+- `jobs/` - バックグラウンドジョブ処理とSSE管理
+  - `job-manager.ts` - ジョブキュー管理
+  - `thumbnails.ts` - サムネイル生成ジョブ
+  - `tag-extraction.ts` - タグ抽出ジョブ
+  - `download-jobs.ts` - 画像ダウンロードジョブ
+  - `sse-manager.ts` - Server-Sent Events (SSE) クライアント管理とイベント配信、ファイルシステム監視
+  - `file-watcher-service.ts` - ファイルシステム監視のコールバック処理
 - `db/` - データベースアクセス (index.ts, schema.ts)
+
+#### Server-Sent Events (SSE) インフラストラクチャ
+
+リアルタイム更新のためのSSE実装:
+
+- **目的**: サムネイル生成完了などのバックグラウンドジョブの進捗をフロントエンドにリアルタイムで通知
+- **実装**: `src/infrastructure/jobs/sse-manager.ts`
+  - クライアント接続の管理 (`addClient`, `removeClient`)
+  - メディアソースごとのイベント配信 (`sendEvent`)
+  - `ReadableStreamDefaultController`を使用したストリーミング
+  - **ファイルシステム監視** (`startFileSystemMonitoring`, `stopFileSystemMonitoring`):
+    - `chokidar`を使用してローカルメディアソースディレクトリを監視
+    - ファイルの追加、削除、変更を検知
+    - コールバック関数を実行してメディア登録・削除・更新を自動化
+- **APIエンドポイント**: `/api/sse/[mediaSourceId]`
+  - GET リクエストでSSE接続を確立
+  - クライアント切断時の自動クリーンアップ
+- **イベントタイプ**:
+  - `thumbnail-generated`: サムネイル生成完了時に送信
+  - `media-added`: ファイルシステムに新しいメディアファイルが追加された時に送信
+  - `media-deleted`: ファイルシステムからメディアファイルが削除された時に送信
+  - `media-changed`: ファイルシステムのメディアファイルが変更された時に送信
+  - `watcher-error`: ファイルシステム監視でエラーが発生した時に送信
+- **フロントエンド統合**: `EventSource` APIを使用してSSE接続を確立し、イベント受信時にデータを再取得
+- **自動監視**:
+  - アプリケーション起動時に既存のローカルメディアソースの監視を自動開始 (`entry-server.tsx`)
+  - メディアソース作成時に監視を自動開始
+  - メディアソース削除時に監視を自動停止
+
 
 **ガイドライン**:
 - ✅ DO: 技術的機能を実装する
@@ -189,6 +230,17 @@ export class LocalDriver implements MediaSourceDriver {
   }
 }
 ```
+
+#### APIクライアント層 (`src/infrastructure/api-clients/`)
+
+フロントエンドからバックエンドAPIへの通信を担当します。
+
+- **型安全性**: Zodスキーマを使用してAPIレスポンスをバリデーションし、TypeScriptの型を保証します。
+- **統一されたエラーハンドリング**: `shared/base-client.ts` により、ネットワークエラーやAPIエラーを統一的に処理します。
+- **SSR対応**: サーバーサイドレンダリング時とクライアントサイドレンダリング時で適切なURL解決を行います。
+- **構成**:
+    - `shared/`: 共通ユーティリティ (`base-client.ts`, `types.ts`, `endpoints.ts`)
+    - `*_api.ts`: 各ドメインごとのAPIクライアント関数群
 
 ### 4. プレゼンテーションレイヤー (`src/presentation/`)
 

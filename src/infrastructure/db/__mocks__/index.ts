@@ -51,10 +51,10 @@ export const deleteMediaSource = vi.fn((id: string) => {
 });
 
 export const selectMediaBySourceIdAndFilePath = vi.fn(
-  (sourceId: string, filePath: string) =>
+  (mediaSourceId: string, filePath: string) =>
     Promise.resolve(
       mockDbState.medias.filter(
-        (m) => m.sourceId === sourceId && m.filePath === filePath
+        (m) => m.mediaSourceId === mediaSourceId && m.filePath === filePath
       )
     )
 );
@@ -98,10 +98,12 @@ export const deleteMedia = vi.fn((id: string) => {
 });
 
 export const selectMediaBySourceIdAndDirectoryPath = vi.fn(
-  (sourceId: string, directoryPath: string) =>
+  (mediaSourceId: string, directoryPath: string) =>
     Promise.resolve(
       mockDbState.medias.filter(
-        (m) => m.sourceId === sourceId && m.filePath.startsWith(directoryPath)
+        (m) =>
+          m.mediaSourceId === mediaSourceId &&
+          m.filePath.startsWith(directoryPath)
       )
     )
 );

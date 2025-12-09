@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
@@ -9,7 +8,7 @@ import { type NewPreset, presets } from "~/infrastructure/db/schema";
 
 describe("presets queries Integration", () => {
   beforeAll(async () => {
-    await db.delete(presets).where(sql`true`);
+    await db.delete(presets);
     const initialPreset: NewPreset = {
       name: "Initial Preset",
       value: { a: 1 },
@@ -18,7 +17,7 @@ describe("presets queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(presets).where(sql`true`);
+    await db.delete(presets);
   });
 
   it("should select all presets", async () => {

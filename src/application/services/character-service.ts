@@ -1,3 +1,14 @@
+import {
+  deleteCharacter,
+  deleteMediaCharacter,
+  insertCharacter,
+  insertMediaCharacter,
+  selectCharacterById,
+  selectCharacters,
+  selectCharactersByMediaId,
+  updateCharacter,
+} from "~/infrastructure/db/queries/characters";
+
 /**
  * CharacterService - キャラクター管理機能
  * Feature 11: キャラクター管理機能
@@ -9,68 +20,93 @@
 export const CharacterService = {
   /**
    * Retrieves all characters.
-   * @returns {any} A list of all characters.
+   * @returns {Promise<any>} A list of all characters.
    */
-  getAllCharacters() {
-    // TODO: Get all characters
-    throw new Error("Not implemented");
+  async getAllCharacters() {
+    return await selectCharacters();
   },
 
   /**
    * Creates a new character.
-   * @param {object} _characterData - The data for the new character.
-   * @param {string} _characterData.name - The name of the character.
-   * @param {number} [_characterData.ipId] - The ID of the intellectual property (IP) the character belongs to.
-   * @param {string} [_characterData.description] - An optional description for the character.
-   * @returns {any} The newly created character.
+   * @param {object} characterData - The data for the new character.
+   * @param {string} characterData.name - The name of the character.
+   * @param {number} [characterData.ipId] - The ID of the intellectual property (IP) the character belongs to.
+   * @param {string} [characterData.description] - An optional description for the character.
+   * @returns {Promise<any>} The newly created character.
    */
-  createCharacter(_characterData: {
+  async createCharacter(characterData: {
     name: string;
     ipId?: number;
     description?: string;
   }) {
-    // TODO: Create new character
-    throw new Error("Not implemented");
+    const result = await insertCharacter(characterData);
+    return result[0];
   },
 
   /**
    * Retrieves details of a specific character by its ID.
-   * @param {number} _characterId - The ID of the character.
-   * @returns {any} The details of the specified character.
+   * @param {number} characterId - The ID of the character.
+   * @returns {Promise<any>} The details of the specified character.
    */
-  getCharacterDetails(_characterId: number) {
-    // TODO: Get character details by ID
-    throw new Error("Not implemented");
+  async getCharacterDetails(characterId: number) {
+    return await selectCharacterById(characterId);
   },
 
   /**
    * Updates an existing character.
-   * @param {number} _characterId - The ID of the character to update.
-   * @param {object} _characterData - The updated data for the character.
-   * @param {string} [_characterData.name] - The new name of the character.
-   * @param {number} [_characterData.ipId] - The new IP ID the character belongs to.
-   * @param {string} [_characterData.description] - The new description for the character.
-   * @returns {any} The updated character.
+   * @param {number} characterId - The ID of the character to update.
+   * @param {object} characterData - The updated data for the character.
+   * @param {string} [characterData.name] - The new name of the character.
+   * @param {number} [characterData.ipId] - The new IP ID the character belongs to.
+   * @param {string} [characterData.description] - The new description for the character.
+   * @returns {Promise<any>} The updated character.
    */
-  updateCharacter(
-    _characterId: number,
-    _characterData: {
+  async updateCharacter(
+    characterId: number,
+    characterData: {
       name?: string;
       ipId?: number;
       description?: string;
     }
   ) {
-    // TODO: Update character
-    throw new Error("Not implemented");
+    return await updateCharacter(characterId, characterData);
   },
 
   /**
    * Deletes a character by its ID.
-   * @param {number} _characterId - The ID of the character to delete.
-   * @returns {any} Confirmation of deletion.
+   * @param {number} characterId - The ID of the character to delete.
+   * @returns {Promise<any>} Confirmation of deletion.
    */
-  deleteCharacter(_characterId: number) {
-    // TODO: Delete character
-    throw new Error("Not implemented");
+  async deleteCharacter(characterId: number) {
+    return await deleteCharacter(characterId);
+  },
+
+  /**
+   * Retrieves characters associated with a specific media.
+   * @param {string} mediaId - The ID of the media.
+   * @returns {Promise<any>} A list of characters associated with the media.
+   */
+  async getCharactersForMedia(mediaId: string) {
+    return await selectCharactersByMediaId(mediaId);
+  },
+
+  /**
+   * Adds a character to a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} characterId - The ID of the character to add.
+   * @returns {Promise<any>} The created association.
+   */
+  async addCharacterToMedia(mediaId: string, characterId: number) {
+    return await insertMediaCharacter(mediaId, characterId);
+  },
+
+  /**
+   * Removes a character from a media.
+   * @param {string} mediaId - The ID of the media.
+   * @param {number} characterId - The ID of the character to remove.
+   * @returns {Promise<any>} Confirmation of removal.
+   */
+  async removeCharacterFromMedia(mediaId: string, characterId: number) {
+    return await deleteMediaCharacter(mediaId, characterId);
   },
 };

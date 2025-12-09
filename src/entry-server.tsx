@@ -1,6 +1,20 @@
 // @refresh reload
 import { createHandler, StartServer } from "@solidjs/start/server";
 
+// Initialize file system monitoring on server startup
+if (typeof window === "undefined") {
+  // Server-side only
+  import("~/infrastructure/jobs/file-watcher-service")
+    .then((module) => {
+      module.FileWatcherService.startMonitoringAll().catch((_error) => {
+        // Error already logged in startMonitoringAll
+      });
+    })
+    .catch((_error) => {
+      // Error already logged in then block
+    });
+}
+
 /**
  * Creates and exports the SolidStart server handler.
  * This function defines the server-side rendering structure of the application,
@@ -11,7 +25,7 @@ export default createHandler(() => (
   <StartServer
     document={({ assets, children, scripts }) => (
       <html lang="en">
-        {/** biome-ignore lint/style/noHeadElement: SolidStart requires this for server-side rendering. */}
+        {/* biome-ignore lint/style/noHeadElement: SolidStart uses standard HTML structure */}
         <head>
           <meta charset="utf-8" />
           <meta content="width=device-width, initial-scale=1" name="viewport" />

@@ -1,10 +1,24 @@
 import type { APIEvent } from "@solidjs/start/server";
-import type { AppConfig } from "~/domain/shared/types";
-import {
-  getConfig,
-  resetConfig,
-  updateConfig,
-} from "~/infrastructure/api-clients/config";
+import type { AppConfig } from "~/domain/shared/schemas";
+
+/**
+ * Stub implementation for config API
+ * This file is kept as a placeholder to avoid breaking build dependencies
+ * until the configuration system is properly refactored.
+ */
+
+// biome-ignore lint/style/noMagicNumbers: Default thumbnail sizes
+const DEFAULT_THUMBNAIL_SIZES = [256, 512];
+
+const defaultConfig: AppConfig = {
+  server: { port: 3000, host: "localhost" },
+  media: {
+    supportedFormats: ["jpg", "png", "webp"],
+    thumbnailSizes: DEFAULT_THUMBNAIL_SIZES,
+    autoGenerate: true,
+  },
+  upload: { maxFileSize: 10_485_760, allowOverwrite: false },
+};
 
 /**
  * @swagger
@@ -25,15 +39,7 @@ import {
  *         description: Internal server error.
  */
 export function GET() {
-  try {
-    const config = getConfig();
-    return config;
-  } catch (error: unknown) {
-    return {
-      error: error.message,
-      status: 500,
-    };
-  }
+  return defaultConfig;
 }
 
 /**
@@ -65,11 +71,11 @@ export function GET() {
 export async function PUT({ request }: APIEvent) {
   try {
     const newConfig = (await request.json()) as AppConfig;
-    const result = updateConfig(newConfig);
-    return result;
+    // Stub: just return the received config without saving
+    return newConfig;
   } catch (error: unknown) {
     return {
-      error: error.message,
+      error: (error as Error).message,
       status: 400,
     };
   }
@@ -94,10 +100,5 @@ export async function PUT({ request }: APIEvent) {
  *         description: Internal server error.
  */
 export function POST() {
-  try {
-    const result = resetConfig();
-    return result;
-  } catch (error: unknown) {
-    return { error: error.message, status: 500 };
-  }
+  return defaultConfig;
 }

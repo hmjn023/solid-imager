@@ -12,7 +12,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-1",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -31,7 +31,7 @@ const mockDb = {
       where: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",
@@ -51,7 +51,7 @@ const mockDb = {
         returning: vi.fn(() => [
           {
             id: "mock-uuid-123",
-            sourceId: "b0000000-0000-4000-8000-000000000000",
+            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
             filePath: "/mock/path/image.png",
             fileName: "updated_image.png",
             mediaType: "image",
@@ -71,7 +71,7 @@ const mockDb = {
       returning: vi.fn(() => [
         {
           id: "mock-uuid-123",
-          sourceId: "b0000000-0000-4000-8000-000000000000",
+          mediaSourceId: "b0000000-0000-4000-8000-000000000000",
           filePath: "/mock/path/image.png",
           fileName: "image.png",
           mediaType: "image",

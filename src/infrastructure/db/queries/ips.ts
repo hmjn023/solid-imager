@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { ips, type NewIp } from "~/infrastructure/db/schema";
+import { ips, mediaIps, type NewIp } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 /**
@@ -139,3 +139,55 @@ export const deleteIp = async (ipId: number) => {
     });
   }
 };
+
+export async function selectIpsByMediaId(mediaId: string) {
+  try {
+    const result = await db
+      .select({
+        id: ips.id,
+        name: ips.name,
+        description: ips.description,
+        source: ips.source,
+        createdAt: ips.createdAt,
+        updatedAt: ips.updatedAt,
+      })
+      .from(ips)
+      .innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
+      .where(eq(mediaIps.mediaId, mediaId));
+    return result;
+  } catch (_error) {
+    throw new UnknownDbError({ message: "Failed to select ips by media id" });
+  }
+}
+
+export async function insertMediaIp(mediaId: string, ipId: number) {
+  try {
+    const result = await db
+      .insert(mediaIps)
+      .values({ mediaId, ipId })
+      .returning();
+    return result[0];
+  } catch (_error) {
+    throw new UnknownDbError({ message: "Failed to insert media ip" });
+  }
+}
+
+export async function deleteMediaIp(mediaId: string, ipId: number) {
+  try {
+    const result = await db
+      .delete(mediaIps)
+      .where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.ipId, ipId)))
+      .returning();
+    if (result.length === 0) {
+      throw new NotFoundError({
+        message: `MediaIp with mediaId ${mediaId} and ipId ${ipId} not found`,
+      });
+    }
+    return result[0];
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      throw error;
+    }
+    throw new UnknownDbError({ message: "Failed to delete media ip" });
+  }
+}

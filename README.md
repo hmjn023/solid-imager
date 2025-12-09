@@ -1,47 +1,92 @@
 # solid-imager
 
-A media management application built with SolidStart, following Clean Architecture principles.
+**solid-imager** は、[SolidStart](https://start.solidjs.com/) で構築された、クリーンアーキテクチャの原則に従うメディア管理アプリケーションです。ローカルやリモートにある大量のメディアファイル（特にAIによって生成された画像）を効率的に整理、検索、管理することを目的としています。
 
-## Architecture
+## 🌟 主な機能
 
-This project uses a layered architecture with clear separation of concerns:
+- **複数メディアソース対応:** ローカルディレクトリ、SFTP、S3など、複数の場所にあるメディアを一元管理できます。
+- **豊富なメタデータ管理:** AI生成情報（プロンプト、モデル、LoRAなど）、タグ、カテゴリ、キャラクター、IP（作品）など、多角的なメタデータをメディアに付与して管理できます。
+- **柔軟な検索機能:** ファイル名、タグ、日付、その他のメタデータに基づいた強力な検索機能を提供します。
+- **サムネイル生成:** メディアファイルのサムネイルを自動で生成し、高速なブラウジングを実現します。
+- **リアルタイム更新:** ローカルのメディアソースに対して、ファイルの変更をリアルタイムで検知し、UIに反映します (SSEを利用)。
+- **クリーンアーキテクチャ:** ドメイン、アプリケーション、インフラストラクチャ、プレゼンテーションの4層に分離された、メンテナンス性とテスト容易性の高い設計を採用しています。
 
-- **Domain Layer**: Business logic and domain models
-- **Application Layer**: Use case orchestration and services
-- **Infrastructure Layer**: External integrations and I/O operations
-- **Presentation Layer**: UI components and utilities
+## 🛠️ 技術スタック
 
-📖 **[Read the Architecture Documentation](./docs/architecture/ARCHITECTURE.md)**
+- **フレームワーク:** [SolidStart](https://start.solidjs.com/)
+- **言語:** [TypeScript](https://www.typescriptlang.org/)
+- **ランタイム:** [Bun](https://bun.sh/)
+- **データベース:** [PostgreSQL](https://www.postgresql.org/) または [PGlite](https://github.com/electric-sql/pglite) (SQLiteベース)
+- **ORM:** [Drizzle ORM](https://orm.drizzle.team/)
+- **UI:** [Kobalte](https://kobalte.dev/) (ヘッドレスUI) + [Tailwind CSS](https://tailwindcss.com/)
+- **状態管理:** [TanStack Query](https://tanstack.com/query/latest)
+- **フォーム管理:** [TanStack Form](https://tanstack.com/form/latest)
+- **テスト:** [Vitest](https://vitest.dev/) (ユニット/インテグレーション), [Playwright](https://playwright.dev/) (E2E)
+- **リンター/フォーマッター:** [Biome](https://biomejs.dev/)
+- **APIドキュментация:** [Swagger / OpenAPI](https://swagger.io/)
 
-## SolidStart
+📖 **詳細なアーキテクチャについては [こちら](./docs/architecture/ARCHITECTURE.md) を参照してください。**
 
-Everything you need to build a Solid project, powered by [`solid-start`](https://start.solidjs.com);
+## 🚀 セットアップ手順
 
-## Creating a project
+### 1. 依存関係のインストール
+
+プロジェクトの依存関係をインストールします。
 
 ```bash
-# create a new project in the current directory
-npm init solid@latest
-
-# create a new project in my-app
-npm init solid@latest my-app
+bun install
 ```
 
-## Developing
+### 2. 環境変数の設定
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+`.env.example` ファイルをコピーして `.env` ファイルを作成します。
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+cp .env.example .env
 ```
 
-## Building
+`.env` ファイルを開き、ご自身の環境に合わせてデータベースの接続情報などを設定してください。`DB_HOST` に `pglite` を指定すると、PostgreSQLの代わりに組み込みのPGliteデータベースが使用されます（Dockerは不要です）。
 
-Solid apps are built with _presets_, which optimise your project for deployment to different environments.
+### 3. データベースの起動 (PostgreSQLの場合)
 
-By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
+PostgreSQLを使用する場合は、Docker Composeでデータベースコンテナを起動します。
 
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+```bash
+# -E オプションは環境変数をsudoに引き継ぐために必要です
+sudo -E docker compose --project-directory . up -d
+```
+
+### 4. データベースマイグレーション
+
+データベースのテーブル構造をセットアップするために、マイグレーションを実行します。
+
+**PostgreSQLの場合:**
+```bash
+bun run db:migrate
+```
+
+**PGliteの場合:**
+```bash
+bun run db:migrate:pglite
+```
+
+### 5. 開発サーバーの起動
+
+開発サーバーを起動します。
+
+```bash
+bun run dev
+```
+
+サーバーが起動したら、ブラウザで `http://localhost:3000` を開いてください。
+
+## 📜 主要なスクリプト
+
+- **`bun run dev`**: 開発サーバーを起動します。
+- **`bun run test`**: Vitestによるユニットテストとインテグレーションテストを実行します。
+- **`bun run test:e2e`**: PlaywrightによるE2Eテストを実行します。
+- **`bun run lint`**: Biomeでリントチェックを実行します。
+- **`bun run format`**: Biomeでコードのフォーマットを実行します。
+- **`bun run gen:spec`**: ソースコード内のJSDocから `public/openapi.json` を生成します。
+- **`bun run db:generate`**: Drizzle Kitで新しいマイグレーションファイルを生成します。
+- **`bun run db:studio`**: Drizzle Studioを起動し、GUIでデータベースを操作します。

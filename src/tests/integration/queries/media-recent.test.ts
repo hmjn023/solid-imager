@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { selectRecentMedia } from "~/infrastructure/db/queries/media-recent";
@@ -9,17 +8,17 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("media-recent queries Integration", () => {
-  const sourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17";
+  const mediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a17";
   const TenSecondsAgo = 10_000;
   const FiveSecondsAgo = 5000;
   const ExpectedMediaCount = 3; // Defined at top level
 
   beforeAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
 
     await db.insert(mediaSources).values({
-      id: sourceId,
+      id: mediaSourceId,
       name: "recent-test",
       type: "local",
       connectionInfo: { path: "/" },
@@ -27,7 +26,7 @@ describe("media-recent queries Integration", () => {
 
     const mediaToInsert: NewMedia[] = [
       {
-        sourceId,
+        mediaSourceId,
         filePath: "1.jpg",
         fileName: "1.jpg",
         mediaType: "image",
@@ -36,7 +35,7 @@ describe("media-recent queries Integration", () => {
         createdAt: new Date(Date.now() - TenSecondsAgo),
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "2.jpg",
         fileName: "2.jpg",
         mediaType: "image",
@@ -45,7 +44,7 @@ describe("media-recent queries Integration", () => {
         createdAt: new Date(Date.now() - FiveSecondsAgo),
       },
       {
-        sourceId,
+        mediaSourceId,
         filePath: "3.jpg",
         fileName: "3.jpg",
         mediaType: "image",
@@ -58,12 +57,12 @@ describe("media-recent queries Integration", () => {
   });
 
   afterAll(async () => {
-    await db.delete(medias).where(sql`true`);
-    await db.delete(mediaSources).where(sql`true`);
+    await db.delete(medias);
+    await db.delete(mediaSources);
   });
 
   it("should select the most recent media from the source", async () => {
-    const recentMedia = await selectRecentMedia(sourceId);
+    const recentMedia = await selectRecentMedia(mediaSourceId);
     expect(recentMedia).toBeInstanceOf(Array);
     expect(recentMedia.length).toBe(ExpectedMediaCount);
     expect(recentMedia[0].fileName).toBe("3.jpg");
