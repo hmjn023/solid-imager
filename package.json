@@ -18,6 +18,7 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
+    "docs:generate": "typedoc",
     "unsafe-fix": "biome check --fix --unsafe ./src"
   },
   "dependencies": {
@@ -64,6 +65,7 @@
     "playwright": "^1.57.0",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.20.6",
+    "typedoc": "^0.28.15",
     "ultracite": "5.4.4",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
