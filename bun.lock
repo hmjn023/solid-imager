@@ -13,6 +13,7 @@
         "@tanstack/solid-db": "^0.1.48",
         "@tanstack/solid-form": "^1.26.0",
         "@tanstack/solid-query": "^5.90.13",
+        "@tanstack/solid-virtual": "^3.13.13",
         "@tanstack/zod-form-adapter": "^0.42.1",
         "chokidar": "^4.0.3",
         "class-variance-authority": "^0.7.1",
@@ -532,7 +533,11 @@
 
     "@tanstack/solid-store": ["@tanstack/solid-store@0.7.7", "", { "dependencies": { "@tanstack/store": "0.7.7" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-DnEZbqQ+pg68BguHz17VFukfp+6JaTk8nE2MhdVliU8bhsOFlTMsmVHp/4gMoQ1AkmAOMFiBsSliROCaaeJzvg=="],
 
+    "@tanstack/solid-virtual": ["@tanstack/solid-virtual@3.13.13", "", { "dependencies": { "@tanstack/virtual-core": "3.13.13" }, "peerDependencies": { "solid-js": "^1.3.0" } }, "sha512-ym4LhX2CygATku2gvs6StE16J6BwzB+5PoMXH5gUcNRwfTJLTB47ZBt3lAJru6uFjFoRdHN/8emfiQXm9Armuw=="],
+
     "@tanstack/store": ["@tanstack/store@0.7.7", "", {}, "sha512-xa6pTan1bcaqYDS9BDpSiS63qa6EoDkPN9RsRaxHuDdVDNntzq3xNwR5YKTU/V3SkSyC9T4YVOPh2zRQN0nhIQ=="],
+
+    "@tanstack/virtual-core": ["@tanstack/virtual-core@3.13.13", "", {}, "sha512-uQFoSdKKf5S8k51W5t7b2qpfkyIbdHMzAn+AMQvHPxKUPeo1SsGaA4JRISQT87jm28b7z8OEqPcg1IOZagQHcA=="],
 
     "@tanstack/zod-form-adapter": ["@tanstack/zod-form-adapter@0.42.1", "", { "dependencies": { "@tanstack/form-core": "0.42.1" }, "peerDependencies": { "zod": "^3.x" } }, "sha512-hPRM0lawVKP64yurW4c6KHZH6altMo2MQN14hfi+GMBTKjO9S7bW1x5LPZ5cayoJE3mBvdlahpSGT5rYZtSbXQ=="],
 

@@ -1,15 +1,8 @@
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import { createSignal, For, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "~/components/ui/command";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -54,42 +47,119 @@ type SearchFiltersProps = {
   usePopover?: boolean;
 };
 
-// Separate component to avoid hydration issues when reusing JSX variable
-function CommandContent<T>(props: {
+// Virtualized Command List Component
+function VirtualizedCommandContent<T>(props: {
   items: T[] | undefined;
   placeholder?: string;
   onSelect: (item: T) => void;
   getItemLabel: (item: T) => string;
   getItemDescription?: (item: T) => string | undefined | null;
-  listMaxHeightClass?: string; // New prop
+  listMaxHeightClass?: string;
 }) {
+  const [query, setQuery] = createSignal("");
+  let parentRef: HTMLDivElement | undefined;
+
+  // Filter items locally based on query
+  const filteredItems = () => {
+    const items = props.items || [];
+    const q = query().toLowerCase();
+    if (!q) {
+      return items;
+    }
+    return items.filter((item) =>
+      props.getItemLabel(item).toLowerCase().includes(q)
+    );
+  };
+
+  const virtualizer = createVirtualizer({
+    count: filteredItems().length,
+    getScrollElement: () => parentRef || null,
+    estimateSize: () => 36, // Approximate height of CommandItem
+    overscan: 5,
+  });
+
   return (
-    <Command>
-      <CommandInput placeholder={props.placeholder || "検索..."} />
-      <CommandList class={props.listMaxHeightClass || "max-h-[150px]"}>
-        <CommandEmpty>見つかりません</CommandEmpty>
-        <CommandGroup>
-          <For each={props.items}>
-            {(item) => (
-              <CommandItem
-                onSelect={() => {
-                  props.onSelect(item);
-                }}
-              >
-                <div class="flex flex-col">
-                  <span>{props.getItemLabel(item)}</span>
-                  <Show when={props.getItemDescription?.(item)}>
-                    <span class="text-muted-foreground text-xs">
-                      {props.getItemDescription?.(item)}
-                    </span>
-                  </Show>
+    <div class="flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground">
+      <div class="flex items-center border-b px-3">
+        {/* biome-ignore lint/a11y/noSvgWithoutTitle: Search icon */}
+        <svg
+          class="mr-2 size-4 shrink-0 opacity-50"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.3-4.3" />
+        </svg>
+        <input
+          class="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          onInput={(e) => setQuery(e.currentTarget.value)}
+          placeholder={props.placeholder || "検索..."}
+          value={query()}
+        />
+      </div>
+      <div
+        class={cn(
+          "overflow-y-auto overflow-x-hidden",
+          props.listMaxHeightClass || "max-h-[150px]"
+        )}
+        ref={(el) => {
+          parentRef = el;
+        }}
+        style={{
+          contain: "strict",
+        }}
+      >
+        <div
+          style={{
+            height: `${virtualizer.getTotalSize()}px`,
+            width: "100%",
+            position: "relative",
+          }}
+        >
+          <Show when={filteredItems().length === 0}>
+            <div class="py-6 text-center text-sm">見つかりません</div>
+          </Show>
+          <For each={virtualizer.getVirtualItems()}>
+            {(virtualItem) => {
+              const item = filteredItems()[virtualItem.index];
+              return (
+                <div
+                  aria-selected={false}
+                  class={cn(
+                    "absolute top-0 left-0 w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+                  )}
+                  onClick={() => props.onSelect(item)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      props.onSelect(item);
+                    }
+                  }}
+                  role="option" // Ideally this should be dynamic, but for now we just satisfy A11y
+                  style={{
+                    transform: `translateY(${virtualItem.start}px)`,
+                  }}
+                  tabIndex={0}
+                >
+                  <div class="flex flex-col">
+                    <span>{props.getItemLabel(item)}</span>
+                    <Show when={props.getItemDescription?.(item)}>
+                      <span class="text-muted-foreground text-xs">
+                        {props.getItemDescription?.(item)}
+                      </span>
+                    </Show>
+                  </div>
                 </div>
-              </CommandItem>
-            )}
+              );
+            }}
           </For>
-        </CommandGroup>
-      </CommandList>
-    </Command>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -137,9 +207,9 @@ function FilterSection<T>(props: {
           }}
         </For>
         {props.usePopover === false ? (
-          // Render Command directly if usePopover is false
+          // Render Virtual List directly if usePopover is false
           <div class="w-full">
-            <CommandContent
+            <VirtualizedCommandContent
               getItemDescription={props.getItemDescription}
               getItemLabel={props.getItemLabel}
               items={props.items}
@@ -159,7 +229,7 @@ function FilterSection<T>(props: {
               + 追加
             </PopoverTrigger>
             <PopoverContent class="p-0">
-              <CommandContent
+              <VirtualizedCommandContent
                 getItemDescription={props.getItemDescription}
                 getItemLabel={props.getItemLabel}
                 items={props.items}

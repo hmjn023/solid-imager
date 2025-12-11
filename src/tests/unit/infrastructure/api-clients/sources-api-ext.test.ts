@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { fetchSourceDump, restoreSource } from "~/infrastructure/api-clients/sources-api";
 import { API_ENDPOINTS } from "~/infrastructure/api-clients/shared/endpoints";
+import {
+  fetchSourceDump,
+  restoreSource,
+} from "~/infrastructure/api-clients/sources-api";
 
 // Mock the base-client
 vi.mock("~/infrastructure/api-clients/shared/base-client", () => ({
@@ -8,7 +11,10 @@ vi.mock("~/infrastructure/api-clients/shared/base-client", () => ({
   apiBlobRequest: vi.fn(),
 }));
 
-import { apiRequest, apiBlobRequest } from "~/infrastructure/api-clients/shared/base-client";
+import {
+  apiBlobRequest,
+  apiRequest,
+} from "~/infrastructure/api-clients/shared/base-client";
 
 describe("Sources API Client Extensions", () => {
   it("should call apiBlobRequest with correct parameters for fetchSourceDump", async () => {
@@ -19,12 +25,9 @@ describe("Sources API Client Extensions", () => {
 
     const result = await fetchSourceDump(id);
 
-    expect(apiBlobRequest).toHaveBeenCalledWith(
-      API_ENDPOINTS.sourceDump(id),
-      {
-        method: "GET",
-      }
-    );
+    expect(apiBlobRequest).toHaveBeenCalledWith(API_ENDPOINTS.sourceDump(id), {
+      method: "GET",
+    });
     expect(result).toBe(mockBlob);
   });
 

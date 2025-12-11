@@ -44,6 +44,7 @@ import type { DownloadItem } from "~/domain/media/schemas";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
+import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
 import {
   copyMedia,
@@ -51,12 +52,14 @@ import {
   moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+  fetchSourceDump,
+  restoreSource,
+} from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
-import { fetchSourceDump, restoreSource } from "~/infrastructure/api-clients/sources-api";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;

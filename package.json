@@ -30,6 +30,7 @@
     "@tanstack/solid-db": "^0.1.48",
     "@tanstack/solid-form": "^1.26.0",
     "@tanstack/solid-query": "^5.90.13",
+    "@tanstack/solid-virtual": "^3.13.13",
     "@tanstack/zod-form-adapter": "^0.42.1",
     "chokidar": "^4.0.3",
     "class-variance-authority": "^0.7.1",
