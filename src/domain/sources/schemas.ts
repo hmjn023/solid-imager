@@ -35,14 +35,27 @@ export const s3ConnectionSchema = z.object({
 });
 export type S3Connection = z.infer<typeof s3ConnectionSchema>;
 
+export const nextcloudConnectionSchema = z.object({
+  url: z.string().url(),
+  username: z.string().min(1),
+  password: z.string().min(1), // Or app password
+});
+export type NextcloudConnection = z.infer<typeof nextcloudConnectionSchema>;
+
 export const connectionInfoSchema = z.union([
   localConnectionSchema,
   sftpConnectionSchema,
   s3ConnectionSchema,
+  nextcloudConnectionSchema,
 ]);
 export type ConnectionInfo = z.infer<typeof connectionInfoSchema>;
 
-export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
+export const mediaSourceTypeEnumSchema = z.enum([
+  "local",
+  "sftp",
+  "s3",
+  "nextcloud",
+]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
 export const mediaSourceInfoSchema = z.object({

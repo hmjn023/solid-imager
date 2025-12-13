@@ -3,9 +3,13 @@
  * Extracted from src/lib/drivers/factory.ts
  */
 
-import { localConnectionSchema } from "~/domain/sources/schemas";
+import {
+  localConnectionSchema,
+  nextcloudConnectionSchema,
+} from "~/domain/sources/schemas";
 import type { MediaSource } from "~/infrastructure/db/schema";
 import { LocalDriver } from "./local";
+import { NextcloudDriver } from "./nextcloud";
 import type { MediaSourceDriver } from "./types";
 
 /**
@@ -20,8 +24,13 @@ export function getDriver(source: MediaSource): MediaSourceDriver {
       const connectionInfo = localConnectionSchema.parse(source.connectionInfo);
       return new LocalDriver(connectionInfo);
     }
+    case "nextcloud": {
+      const connectionInfo = nextcloudConnectionSchema.parse(
+        source.connectionInfo
+      );
+      return new NextcloudDriver(connectionInfo);
+    }
     default:
-      // ここで`source.type`は`never`であり、すべてのケースが処理されることを保証します。
       throw new Error(`メディアソースタイプが不明です: ${source.type}`);
   }
 }

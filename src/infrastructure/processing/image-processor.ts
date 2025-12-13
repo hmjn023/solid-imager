@@ -16,18 +16,18 @@ import { insertMediaTags } from "~/infrastructure/db/queries/tags";
 export const ImageProcessor = {
   /**
    * Generates a thumbnail for a given image.
-   * @param {string} mediaPath - The path to the source image file.
+   * @param {string | Buffer} input - The path or buffer of the source image.
    * @param {string} outputPath - The path where the thumbnail will be saved.
    * @param {number} size - The desired size for the thumbnail (e.g., width or height, depending on implementation).
    * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
    */
   async generateThumbnail(
-    mediaPath: string,
+    input: string | Buffer,
     outputPath: string,
     size: number,
     quality: number
   ): Promise<void> {
-    await sharp(mediaPath)
+    await sharp(input)
       .resize(size, size, { fit: "inside", withoutEnlargement: true })
       .webp({ quality })
       .toFile(outputPath);
@@ -35,24 +35,24 @@ export const ImageProcessor = {
 
   /**
    * Extracts metadata from an image file.
-   * @param {string} mediaPath - The path to the source image file.
+   * @param {string | Buffer} input - The path or buffer of the source image.
    * @param {string} mediaId - The ID of the media item.
    * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
    */
   async extractMetadata(
-    mediaPath: string,
+    input: string | Buffer,
     mediaId: string
   ): Promise<{
     tags: { name: string; type: "positive" | "negative" }[];
     prompt: unknown;
     workflow: unknown;
   }> {
-    if (!mediaPath) {
-      throw new Error("Image path is required");
+    if (!input) {
+      throw new Error("Image input is required");
     }
 
     try {
-      const metadata = await sharp(mediaPath).metadata();
+      const metadata = await sharp(input).metadata();
 
       const comments: ImageMetadataComment[] = [];
       if (metadata.comments) {

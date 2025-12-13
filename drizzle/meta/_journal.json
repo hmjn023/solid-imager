@@ -15,6 +15,13 @@
       "when": 1764860831093,
       "tag": "0001_useful_zaladane",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1765643520741,
+      "tag": "0002_great_black_bolt",
+      "breakpoints": true
     }
   ]
 }

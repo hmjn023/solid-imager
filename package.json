@@ -47,6 +47,7 @@
     "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "vinxi": "^0.5.8",
+    "webdav": "^5.8.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {

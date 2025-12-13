@@ -24,20 +24,61 @@ function SourceFormContent(props: SourceFormModalProps) {
       name: props.editingSource?.name || "",
       description: props.editingSource?.description || "",
       type: props.editingSource?.type || ("local" as MediaSourceTypeEnum),
-      connectionInfo: {
-        path:
-          (props.editingSource?.connectionInfo as { path?: string })?.path ||
-          "",
+      connectionInfo: props.editingSource?.connectionInfo || {
+        // Default based on type, but for initial load simple defaults
+        path: "",
+        url: "",
+        username: "",
+        password: "",
+        // S3 defaults
+        region: "",
+        bucket: "",
+        accessKeyId: "",
+        secretAccessKey: "",
+        // SFTP defaults
+        host: "",
+        port: 22,
+        remotePath: "",
       },
     },
     onSubmit: async ({ value }) => {
-      // Transform empty string description to null to match schema
+      // Clean up connectionInfo based on type to match schema
+      let connectionInfo = {};
+      if (value.type === "local") {
+        connectionInfo = { path: (value.connectionInfo as any).path };
+      } else if (value.type === "nextcloud") {
+        connectionInfo = {
+          url: (value.connectionInfo as any).url,
+          username: (value.connectionInfo as any).username,
+          password: (value.connectionInfo as any).password,
+        };
+      } else if (value.type === "s3") {
+        connectionInfo = {
+            region: (value.connectionInfo as any).region,
+            bucket: (value.connectionInfo as any).bucket,
+            accessKeyId: (value.connectionInfo as any).accessKeyId,
+            secretAccessKey: (value.connectionInfo as any).secretAccessKey,
+            prefix: (value.connectionInfo as any).prefix,
+        };
+      } else if (value.type === "sftp") {
+        connectionInfo = {
+            host: (value.connectionInfo as any).host,
+            port: Number((value.connectionInfo as any).port),
+            username: (value.connectionInfo as any).username,
+            password: (value.connectionInfo as any).password,
+            privateKey: (value.connectionInfo as any).privateKey,
+            remotePath: (value.connectionInfo as any).remotePath,
+        };
+      }
+
       const submissionData = {
         ...value,
+        connectionInfo,
         id: props.editingSource?.id,
         description: value.description || null,
       };
-      await props.onSubmit(submissionData as MediaSourceInfo);
+
+      await props.onSubmit(submissionData as unknown as MediaSourceInfo);
       props.onClose();
     },
     validatorAdapter: zodValidator(),
@@ -47,7 +88,7 @@ function SourceFormContent(props: SourceFormModalProps) {
   }));
 
   return (
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 overflow-y-auto py-10">
       <div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
         <h2 class="mb-4 font-bold text-xl">
           {props.editingSource ? "Edit Media Source" : "Add Media Source"}
@@ -135,6 +176,7 @@ function SourceFormContent(props: SourceFormModalProps) {
                       value={field().state.value}
                     >
                       <option value="local">Local</option>
+                      <option value="nextcloud">Nextcloud (WebDAV)</option>
                       <option value="sftp">SFTP</option>
                       <option value="s3">S3</option>
                     </select>
@@ -147,33 +189,116 @@ function SourceFormContent(props: SourceFormModalProps) {
                 )}
               </form.Field>
             </div>
-            <div>
-              <form.Field name="connectionInfo.path">
-                {(field) => (
-                  <>
-                    <label
-                      class="mb-1 block font-medium text-sm"
-                      for="source-path"
-                    >
-                      Path
-                    </label>
-                    <input
-                      class="w-full rounded-md border border-gray-300 px-3 py-2"
-                      id="source-path"
-                      onInput={(e) => field().handleChange(e.target.value)}
-                      placeholder="Enter file path"
-                      type="text"
-                      value={field().state.value}
-                    />
-                    <Show when={field().state.meta.errors.length > 0}>
-                      <p class="text-red-500 text-sm">
-                        {field().state.meta.errors[0]}
-                      </p>
-                    </Show>
-                  </>
+
+            <form.Subscribe
+                selector={(state) => state.values.type}
+            >
+                {(type) => (
+                    <>
+                        <Show when={type() === "local"}>
+                             <div>
+                                <form.Field name="connectionInfo.path">
+                                    {(field) => (
+                                    <>
+                                        <label
+                                        class="mb-1 block font-medium text-sm"
+                                        for="source-path"
+                                        >
+                                        Path
+                                        </label>
+                                        <input
+                                        class="w-full rounded-md border border-gray-300 px-3 py-2"
+                                        id="source-path"
+                                        onInput={(e) => field().handleChange(e.target.value)}
+                                        placeholder="Enter directory path"
+                                        type="text"
+                                        value={field().state.value as string || ""}
+                                        />
+                                        <Show when={field().state.meta.errors.length > 0}>
+                                        <p class="text-red-500 text-sm">
+                                            {field().state.meta.errors[0]}
+                                        </p>
+                                        </Show>
+                                    </>
+                                    )}
+                                </form.Field>
+                            </div>
+                        </Show>
+
+                        <Show when={type() === "nextcloud"}>
+                             <div class="space-y-4">
+                                <div>
+                                    <form.Field name="connectionInfo.url">
+                                        {(field) => (
+                                        <>
+                                            <label
+                                            class="mb-1 block font-medium text-sm"
+                                            for="source-url"
+                                            >
+                                            WebDAV URL
+                                            </label>
+                                            <input
+                                            class="w-full rounded-md border border-gray-300 px-3 py-2"
+                                            id="source-url"
+                                            onInput={(e) => field().handleChange(e.target.value)}
+                                            placeholder="https://nextcloud.example.com/remote.php/dav/files/user/"
+                                            type="text"
+                                            value={field().state.value as string || ""}
+                                            />
+                                        </>
+                                        )}
+                                    </form.Field>
+                                </div>
+                                <div>
+                                    <form.Field name="connectionInfo.username">
+                                        {(field) => (
+                                        <>
+                                            <label
+                                            class="mb-1 block font-medium text-sm"
+                                            for="source-username"
+                                            >
+                                            Username
+                                            </label>
+                                            <input
+                                            class="w-full rounded-md border border-gray-300 px-3 py-2"
+                                            id="source-username"
+                                            onInput={(e) => field().handleChange(e.target.value)}
+                                            placeholder="Username"
+                                            type="text"
+                                            value={field().state.value as string || ""}
+                                            />
+                                        </>
+                                        )}
+                                    </form.Field>
+                                </div>
+                                <div>
+                                    <form.Field name="connectionInfo.password">
+                                        {(field) => (
+                                        <>
+                                            <label
+                                            class="mb-1 block font-medium text-sm"
+                                            for="source-password"
+                                            >
+                                            Password / App Password
+                                            </label>
+                                            <input
+                                            class="w-full rounded-md border border-gray-300 px-3 py-2"
+                                            id="source-password"
+                                            onInput={(e) => field().handleChange(e.target.value)}
+                                            placeholder="Password"
+                                            type="password"
+                                            value={field().state.value as string || ""}
+                                            />
+                                        </>
+                                        )}
+                                    </form.Field>
+                                </div>
+                            </div>
+                        </Show>
+                    </>
                 )}
-              </form.Field>
-            </div>
+            </form.Subscribe>
+
           </div>
           <div class="flex gap-2">
             <form.Subscribe

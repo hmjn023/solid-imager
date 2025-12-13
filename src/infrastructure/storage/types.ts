@@ -7,19 +7,21 @@
 // Import from domain instead of defining here
 import type {
   LocalConnectionInfo,
+  NextcloudConnection,
   S3Connection,
   SftpConnection,
-} from "~/domain/sources/types";
+} from "~/domain/sources/schemas";
 
 // すべての接続情報の方をまとめたUnion型
 /**
  * A union type representing the connection information for any supported media source type.
- * It can be either LocalConnectionInfo, SftpConnection, or S3Connection.
+ * It can be either LocalConnectionInfo, SftpConnection, S3Connection, or NextcloudConnection.
  */
 export type ConnectionInfo =
   | LocalConnectionInfo
   | SftpConnection
-  | S3Connection;
+  | S3Connection
+  | NextcloudConnection;
 
 // ファイルやディレクトリの基本的な情報
 /**

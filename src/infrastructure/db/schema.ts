@@ -27,6 +27,7 @@ export const mediaSourceTypeEnum = pgEnum("media_source_type", [
   "local",
   "sftp",
   "s3",
+  "nextcloud",
 ]);
 /**
  * Enum for media organization status.
