@@ -2,6 +2,7 @@ import { useParams } from "@solidjs/router";
 import {
   createInfiniteQuery,
   createQuery,
+  keepPreviousData,
   useQueryClient,
 } from "@tanstack/solid-query";
 import {
@@ -146,6 +147,7 @@ export default function MediaListPage() {
       }
       return;
     },
+    placeholderData: keepPreviousData,
   }));
 
   // Disable browser's default scroll restoration

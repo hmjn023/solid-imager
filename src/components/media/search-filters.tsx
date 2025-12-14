@@ -100,7 +100,7 @@ function FilterSection<T>(props: {
         onChange={(val) => {
           if (val) {
             props.onSelect(val);
-            setValue(null); // Clear selection to allow adding more
+            // setValue(null); // Keep the selection visible
           }
         }}
         optionLabel={props.getItemLabel}
