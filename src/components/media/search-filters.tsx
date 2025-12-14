@@ -108,6 +108,7 @@ function FilterSection<T>(props: {
         optionTextValue={props.getItemLabel}
         optionValue={(item) => String(props.getItemKey(item))}
         placeholder={props.placeholder}
+        triggerMode="focus"
         value={value()}
       >
         <ComboboxControl>
