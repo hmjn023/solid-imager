@@ -1,15 +1,17 @@
-import { createVirtualizer } from "@tanstack/solid-virtual";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxControl,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemLabel,
+} from "~/components/ui/combobox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -47,122 +49,6 @@ type SearchFiltersProps = {
   usePopover?: boolean;
 };
 
-// Virtualized Command List Component
-function VirtualizedCommandContent<T>(props: {
-  items: T[] | undefined;
-  placeholder?: string;
-  onSelect: (item: T) => void;
-  getItemLabel: (item: T) => string;
-  getItemDescription?: (item: T) => string | undefined | null;
-  listMaxHeightClass?: string;
-}) {
-  const [query, setQuery] = createSignal("");
-  let parentRef: HTMLDivElement | undefined;
-
-  // Filter items locally based on query
-  const filteredItems = () => {
-    const items = props.items || [];
-    const q = query().toLowerCase();
-    if (!q) {
-      return items;
-    }
-    return items.filter((item) =>
-      props.getItemLabel(item).toLowerCase().includes(q)
-    );
-  };
-
-  const virtualizer = createVirtualizer({
-    count: filteredItems().length,
-    getScrollElement: () => parentRef || null,
-    estimateSize: () => 36, // Approximate height of CommandItem
-    overscan: 5,
-  });
-
-  return (
-    <div class="flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground">
-      <div class="flex items-center border-b px-3">
-        {/* biome-ignore lint/a11y/noSvgWithoutTitle: Search icon */}
-        <svg
-          class="mr-2 size-4 shrink-0 opacity-50"
-          fill="none"
-          stroke="currentColor"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <circle cx="11" cy="11" r="8" />
-          <path d="m21 21-4.3-4.3" />
-        </svg>
-        <input
-          class="flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-          onInput={(e) => setQuery(e.currentTarget.value)}
-          placeholder={props.placeholder || "検索..."}
-          value={query()}
-        />
-      </div>
-      <div
-        class={cn(
-          "overflow-y-auto overflow-x-hidden",
-          props.listMaxHeightClass || "max-h-[150px]"
-        )}
-        ref={(el) => {
-          parentRef = el;
-        }}
-        style={{
-          contain: "strict",
-        }}
-      >
-        <div
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: "100%",
-            position: "relative",
-          }}
-        >
-          <Show when={filteredItems().length === 0}>
-            <div class="py-6 text-center text-sm">見つかりません</div>
-          </Show>
-          <For each={virtualizer.getVirtualItems()}>
-            {(virtualItem) => {
-              const item = filteredItems()[virtualItem.index];
-              return (
-                <div
-                  aria-selected={false}
-                  class={cn(
-                    "absolute top-0 left-0 w-full cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
-                  )}
-                  onClick={() => props.onSelect(item)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      props.onSelect(item);
-                    }
-                  }}
-                  role="option" // Ideally this should be dynamic, but for now we just satisfy A11y
-                  style={{
-                    transform: `translateY(${virtualItem.start}px)`,
-                  }}
-                  tabIndex={0}
-                >
-                  <div class="flex flex-col">
-                    <span>{props.getItemLabel(item)}</span>
-                    <Show when={props.getItemDescription?.(item)}>
-                      <span class="text-muted-foreground text-xs">
-                        {props.getItemDescription?.(item)}
-                      </span>
-                    </Show>
-                  </div>
-                </div>
-              );
-            }}
-          </For>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Generic Filter Section Component
 function FilterSection<T>(props: {
   label: string;
@@ -175,15 +61,13 @@ function FilterSection<T>(props: {
   getItemDescription?: (item: T) => string | undefined | null;
   placeholder?: string;
   badgeVariant?: "default" | "destructive" | "secondary" | "outline";
-  usePopover?: boolean; // New prop to control Popover usage
-  listMaxHeightClass?: string; // New prop
 }) {
-  const [open, setOpen] = createSignal(false);
+  const [value, setValue] = createSignal<T | null>(null);
 
   return (
     <div class="space-y-2">
       <Label>{props.label}</Label>
-      <div class="flex flex-wrap gap-2">
+      <div class="mb-2 flex flex-wrap gap-2">
         <For each={props.selectedItems}>
           {(id) => {
             const item = props.items?.find(
@@ -206,44 +90,31 @@ function FilterSection<T>(props: {
             );
           }}
         </For>
-        {props.usePopover === false ? (
-          // Render Virtual List directly if usePopover is false
-          <div class="w-full">
-            <VirtualizedCommandContent
-              getItemDescription={props.getItemDescription}
-              getItemLabel={props.getItemLabel}
-              items={props.items}
-              listMaxHeightClass={props.listMaxHeightClass}
-              onSelect={props.onSelect}
-              placeholder={props.placeholder}
-            />
-          </div>
-        ) : (
-          // Default to Popover behavior
-          <Popover
-            onOpenChange={setOpen}
-            open={open()}
-            placement="bottom-start"
-          >
-            <PopoverTrigger as={Button} size="sm" variant="outline">
-              + 追加
-            </PopoverTrigger>
-            <PopoverContent class="p-0">
-              <VirtualizedCommandContent
-                getItemDescription={props.getItemDescription}
-                getItemLabel={props.getItemLabel}
-                items={props.items}
-                listMaxHeightClass={props.listMaxHeightClass || "max-h-[150px]"}
-                onSelect={(item) => {
-                  props.onSelect(item);
-                  setOpen(false); // Close popover after selection
-                }}
-                placeholder={props.placeholder}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
       </div>
+      <Combobox<T>
+        itemComponent={(itemProps) => (
+          <ComboboxItem item={itemProps.item}>
+            <ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
+          </ComboboxItem>
+        )}
+        onChange={(val) => {
+          if (val) {
+            props.onSelect(val);
+            setValue(null); // Clear selection to allow adding more
+          }
+        }}
+        optionLabel={props.getItemLabel}
+        options={props.items || []}
+        optionTextValue={props.getItemLabel}
+        optionValue={(item) => String(props.getItemKey(item))}
+        placeholder={props.placeholder}
+        value={value()}
+      >
+        <ComboboxControl>
+          <ComboboxInput />
+        </ComboboxControl>
+        <ComboboxContent class="max-h-[300px]" />
+      </Combobox>
     </div>
   );
 }
@@ -299,7 +170,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         onSelect={(tag) => addTag(tag.name)}
         placeholder="タグを検索..."
         selectedItems={props.state.selectedTags}
-        usePopover={props.usePopover}
       />
 
       {/* Tag Mode */}
@@ -342,7 +212,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         onSelect={(tag) => addExcludeTag(tag.name)}
         placeholder="除外タグを検索..."
         selectedItems={props.state.excludeTags}
-        usePopover={props.usePopover}
       />
 
       {/* Project Filter */}
@@ -369,7 +238,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="プロジェクトを検索..."
         selectedItems={props.state.selectedProjects}
-        usePopover={props.usePopover}
       />
 
       {/* IP Filter */}
@@ -393,7 +261,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="IPを検索..."
         selectedItems={props.state.selectedIps}
-        usePopover={props.usePopover}
       />
 
       {/* Character Filter */}
@@ -420,7 +287,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="キャラクターを検索..."
         selectedItems={props.state.selectedCharacters}
-        usePopover={props.usePopover}
       />
 
       {/* Sort Options */}
