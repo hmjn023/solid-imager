@@ -11,6 +11,7 @@ import {
   vi,
 } from "vitest";
 import { MediaService } from "~/application/services/media-service";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 // We need to dynamically import these to work around Vitest's hoisting
 let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
@@ -89,6 +90,7 @@ describe("registerExistingMedia Integration", () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await db.delete(schema.mediaSources);
     await db.delete(schema.medias);
 
@@ -102,9 +104,23 @@ describe("registerExistingMedia Integration", () => {
   });
 
   it("should register existing media files from the directory", async () => {
+    // Setup spy to wait for job completion
+    let resolveJobComplete: () => void;
+    const jobCompletePromise = new Promise<void>((resolve) => {
+      resolveJobComplete = resolve;
+    });
+
+    vi.spyOn(SseManager, "sendEvent").mockImplementation(
+      (sourceId, event, _data) => {
+        if (event === "all-jobs-completed" && sourceId === mediaSource.id) {
+          resolveJobComplete();
+        }
+      }
+    );
+
     await MediaService.registerExistingMedia(mediaSource.id, tempSourceDir);
 
-    // Verify media was added to DB
+    // Verify media was added to DB immediately (synchronous part)
     const ExpectedWidth = 100;
     const ExpectedHeight = 100;
     const mediaList = await MediaService.getAllMedia(mediaSource.id);
@@ -113,30 +129,25 @@ describe("registerExistingMedia Integration", () => {
     expect(mediaList[0].width).toBe(ExpectedWidth);
     expect(mediaList[0].height).toBe(ExpectedHeight);
 
-    // Verify thumbnail generation (wait for background job)
+    // Wait for background job to complete (async part)
+    await jobCompletePromise;
+
+    // Verify thumbnail generation
     const thumbnailPath = path.join(
       ".cache/thumbnails",
       mediaSource.id,
       `${mediaList[0].id}.webp`
     );
 
-    // Poll for thumbnail existence
-    let thumbnailExists = false;
-    const MaxRetries = 20;
-    const RetryIntervalMs = 100;
-    for (let i = 0; i < MaxRetries; i++) {
-      try {
-        await fs.access(thumbnailPath);
-        thumbnailExists = true;
-        break;
-      } catch {
-        await new Promise((resolve) => setTimeout(resolve, RetryIntervalMs));
-      }
-    }
+    const thumbnailExists = await fs
+      .access(thumbnailPath)
+      .then(() => true)
+      .catch(() => false);
     expect(thumbnailExists).toBe(true);
   });
 
   it("should not register duplicate media files", async () => {
+    // Note: We don't need to wait for jobs here as we only test registration logic
     // First registration
     await MediaService.registerExistingMedia(mediaSource.id, tempSourceDir);
 

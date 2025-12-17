@@ -194,12 +194,14 @@ export async function selectCharactersByMediaId(mediaId: string) {
 
 export async function insertMediaCharacter(
   mediaId: string,
-  characterId: number
+  characterId: number,
+  source = "manual",
+  confidence?: number
 ) {
   try {
     const result = await db
       .insert(mediaCharacters)
-      .values({ mediaId, characterId })
+      .values({ mediaId, characterId, source, confidence })
       .returning();
     return result[0];
   } catch (_error) {

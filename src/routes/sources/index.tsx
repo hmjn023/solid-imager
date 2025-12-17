@@ -10,6 +10,7 @@ import {
   createMediaSource,
   deleteMediaSource,
   fetchMediaSources,
+  triggerAiTagging,
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
 
@@ -56,6 +57,16 @@ export default function Sources() {
       setShowFormModal(false);
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
     } catch (_error) {}
+  };
+
+  const handleAiTag = async (source: MediaSourceInfo) => {
+    try {
+      const res = await triggerAiTagging(source.id);
+      toast.success(`${res.message} (${res.jobCount} jobs queued)`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to start AI tagging: ${message}`);
+    }
   };
 
   const handleDeleteSource = (source: MediaSourceInfo) => {
@@ -159,6 +170,7 @@ export default function Sources() {
           {(source) => (
             <SourceCard
               mediaSource={source}
+              onAiTag={handleAiTag}
               onDelete={handleDeleteSource}
               onEdit={handleEditSource}
             />

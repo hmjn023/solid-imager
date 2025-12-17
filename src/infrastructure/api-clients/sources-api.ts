@@ -22,6 +22,14 @@ const restoreResponseSchema = z.object({
 });
 
 /**
+ * Schema for AI Tagging response
+ */
+const aiTaggingResponseSchema = z.object({
+  message: z.string(),
+  jobCount: z.number(),
+});
+
+/**
  * Fetches all media sources
  * @returns Array of media sources
  */
@@ -40,6 +48,21 @@ export function createMediaSource(data: unknown) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
+}
+
+/**
+ * Triggers AI tagging for a media source
+ * @param id - Media source ID
+ * @returns Response message
+ */
+export function triggerAiTagging(id: string) {
+  return apiRequest(
+    API_ENDPOINTS.sourceAiTagging(id),
+    aiTaggingResponseSchema,
+    {
+      method: "POST",
+    }
+  );
 }
 
 /**

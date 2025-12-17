@@ -12,7 +12,7 @@ import { ConstraintError, UnknownDbError } from "../errors";
  * Inserts new tags for a specific media item into the database.
  * It handles creating new tags if they don't exist and associating them with the media.
  * @param {string} mediaId - The ID of the media item to tag.
- * @param {{ name: string; type: 'positive' | 'negative' }[]} tagsToInsert - An array of tag objects to insert and associate with the media.
+ * @param {{ name: string; type: 'positive' | 'negative'; confidence?: number }[]} tagsToInsert - An array of tag objects to insert and associate with the media.
  * @param {string} source - The source of the tag assignment (e.g., "manual", "comfyui_workflow").
  * @returns {Promise<void>} A promise that resolves when the tags have been inserted.
  * @throws {ConstraintError} If one or more media tags already exist for the media item.
@@ -20,7 +20,11 @@ import { ConstraintError, UnknownDbError } from "../errors";
  */
 export const insertMediaTags = async (
   mediaId: string,
-  tagsToInsert: { name: string; type: "positive" | "negative" }[],
+  tagsToInsert: {
+    name: string;
+    type: "positive" | "negative";
+    confidence?: number;
+  }[],
   source = "manual"
 ): Promise<void> => {
   try {
@@ -54,6 +58,7 @@ export const insertMediaTags = async (
           tagId: foundTag.id,
           tagType: tagToInsert.type,
           source,
+          confidence: tagToInsert.confidence,
         };
       });
 

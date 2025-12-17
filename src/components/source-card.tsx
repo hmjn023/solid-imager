@@ -18,6 +18,7 @@ type SourceCardProps = {
   mediaSource: MediaSourceInfo;
   onEdit?: (source: MediaSourceInfo) => void;
   onDelete?: (source: MediaSourceInfo) => void;
+  onAiTag?: (source: MediaSourceInfo) => void;
 };
 /**
  * A card component to display information about a single media source.
@@ -36,6 +37,12 @@ export default function SourceCard(props: SourceCardProps) {
     e.stopPropagation();
     e.preventDefault();
     props.onDelete?.(props.mediaSource);
+  };
+
+  const handleAiTagClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    props.onAiTag?.(props.mediaSource);
   };
 
   return (
@@ -82,6 +89,17 @@ export default function SourceCard(props: SourceCardProps) {
               type="button"
             >
               Delete
+            </button>
+          )}
+          {props.onAiTag && (
+            <button
+              class="rounded bg-purple-500 px-2 py-1 text-white text-xs shadow hover:bg-purple-600"
+              data-testid="ai-tag-source-btn"
+              onClick={handleAiTagClick}
+              title="Auto-tag with AI"
+              type="button"
+            >
+              AI Tag
             </button>
           )}
         </div>

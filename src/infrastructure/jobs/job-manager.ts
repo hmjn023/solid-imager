@@ -10,12 +10,14 @@ import { SseManager } from "./sse-manager";
 export type Job = {
   mediaId: string;
   sourcePath: string;
-  type: "thumbnail" | "extractTags" | "downloadImage";
+  type: "thumbnail" | "extractTags" | "downloadImage" | "aiTagging";
   payload?: {
     imageUrl?: string;
     sourceUrl?: string;
     description?: string;
     createdAt?: Date;
+    // AI tagging options
+    force?: boolean; // Re-tag even if already tagged
   };
 };
 

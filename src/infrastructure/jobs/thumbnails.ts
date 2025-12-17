@@ -119,6 +119,9 @@ export async function processMediaJob(
       "~/infrastructure/jobs/tag-extraction"
     );
     await extractTags(mediaPath, media.id);
+  } else if (job.type === "aiTagging") {
+    const { runAiTagging } = await import("~/infrastructure/jobs/ai-tagging");
+    await runAiTagging(job, mediaSourceId);
   }
 }
 

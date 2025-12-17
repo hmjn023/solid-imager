@@ -160,11 +160,15 @@ export async function selectIpsByMediaId(mediaId: string) {
   }
 }
 
-export async function insertMediaIp(mediaId: string, ipId: number) {
+export async function insertMediaIp(
+  mediaId: string,
+  ipId: number,
+  source = "manual"
+) {
   try {
     const result = await db
       .insert(mediaIps)
-      .values({ mediaId, ipId })
+      .values({ mediaId, ipId, source })
       .returning();
     return result[0];
   } catch (_error) {
