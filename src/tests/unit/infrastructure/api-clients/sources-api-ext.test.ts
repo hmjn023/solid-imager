@@ -23,12 +23,25 @@ describe("Sources API Client Extensions", () => {
 
     vi.mocked(apiBlobRequest).mockResolvedValue(mockBlob);
 
+    // Test default mode
     const result = await fetchSourceDump(id);
 
-    expect(apiBlobRequest).toHaveBeenCalledWith(API_ENDPOINTS.sourceDump(id), {
-      method: "GET",
-    });
+    expect(apiBlobRequest).toHaveBeenCalledWith(
+      `${API_ENDPOINTS.sourceDump(id)}?mode=json`,
+      {
+        method: "GET",
+      }
+    );
     expect(result).toBe(mockBlob);
+
+    // Test zip mode
+    await fetchSourceDump(id, "zip");
+    expect(apiBlobRequest).toHaveBeenCalledWith(
+      `${API_ENDPOINTS.sourceDump(id)}?mode=zip`,
+      {
+        method: "GET",
+      }
+    );
   });
 
   it("should call apiRequest with correct parameters for restoreSource", async () => {

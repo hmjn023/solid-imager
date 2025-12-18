@@ -71,10 +71,15 @@ export async function deleteMediaSource(id: string): Promise<void> {
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
+ * @param mode - The dump mode (json or zip)
  * @returns Blob containing the dump
  */
-export function fetchSourceDump(id: string): Promise<Blob> {
-  return apiBlobRequest(API_ENDPOINTS.sourceDump(id), {
+export function fetchSourceDump(
+  id: string,
+  mode: "json" | "zip" = "json"
+): Promise<Blob> {
+  const url = `${API_ENDPOINTS.sourceDump(id)}?mode=${mode}`;
+  return apiBlobRequest(url, {
     method: "GET",
   });
 }
