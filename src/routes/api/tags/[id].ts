@@ -5,7 +5,7 @@ import { updateTagSchema } from "~/domain/tags/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
+  id: z.string().uuid(), // UUID v4 を想定します。
 });
 export type IdParam = z.infer<typeof IdParamSchema>;
 
@@ -22,8 +22,9 @@ export type IdParam = z.infer<typeof IdParamSchema>;
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the tag to retrieve.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the tag to retrieve.
  *     responses:
  *       200:
  *         description: Details of the tag.
@@ -82,8 +83,9 @@ export async function GET({ params }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the tag to update.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the tag to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -158,8 +160,9 @@ export async function PUT({ params, request }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the tag to delete.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the tag to delete.
  *     responses:
  *       204:
  *         description: Tag successfully deleted.

@@ -24,15 +24,17 @@ export const insertMediaTags = async (
   source = "manual"
 ): Promise<void> => {
   try {
-    await db.transaction(async (tx) => {
+    await db.transaction(async (tx: typeof db) => {
       const tagNames = tagsToInsert.map((t) => t.name);
       const existingTags = await tx
         .select()
         .from(tags)
         .where(inArray(tags.name, tagNames));
-      const existingTagNames = existingTags.map((t) => t.name);
+      const existingTagNames = existingTags.map(
+        (t: typeof tags.$inferSelect) => t.name
+      );
       const newTagNames = tagNames.filter(
-        (name) => !existingTagNames.includes(name)
+        (name: string) => !existingTagNames.includes(name)
       );
 
       let newTags: (typeof tags.$inferSelect)[] = [];
@@ -131,11 +133,11 @@ export const createTag = async (data: NewTag): Promise<Tag> => {
 
 /**
  * Retrieves a single tag by its ID from the database.
- * @param {number} id - The ID of the tag to fetch.
+ * @param {string} id - The ID of the tag to fetch.
  * @returns {Promise<Tag | undefined>} A promise that resolves to the tag object matching the ID, or undefined if not found.
  * @throws {UnknownDbError} If a database error occurs during the retrieval.
  */
-export const getTagById = async (id: number): Promise<Tag | undefined> => {
+export const getTagById = async (id: string): Promise<Tag | undefined> => {
   try {
     const [tag] = await db.select().from(tags).where(eq(tags.id, id));
     return tag;
@@ -149,14 +151,14 @@ export const getTagById = async (id: number): Promise<Tag | undefined> => {
 
 /**
  * Updates an existing tag in the database.
- * @param {number} id - The ID of the tag to update.
+ * @param {string} id - The ID of the tag to update.
  * @param {Partial<NewTag>} data - The updated data for the tag.
  * @returns {Promise<Tag>} A promise that resolves to the updated tag object.
  * @throws {ConstraintError} If a tag with the same name already exists.
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
 export const updateTag = async (
-  id: number,
+  id: string,
   data: Partial<NewTag>
 ): Promise<Tag> => {
   try {
@@ -187,11 +189,11 @@ export const updateTag = async (
 
 /**
  * Deletes a tag by its ID from the database.
- * @param {number} id - The ID of the tag to delete.
+ * @param {string} id - The ID of the tag to delete.
  * @returns {Promise<void>} A promise that resolves when the tag has been deleted.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
-export const deleteTag = async (id: number): Promise<void> => {
+export const deleteTag = async (id: string): Promise<void> => {
   try {
     await db.delete(tags).where(eq(tags.id, id));
   } catch (dbError) {

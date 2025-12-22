@@ -5,12 +5,20 @@ CREATE TYPE "public"."media_source_type" AS ENUM('local', 'sftp', 's3');--> stat
 CREATE TYPE "public"."media_sync_status" AS ENUM('synced', 'pending', 'failed');--> statement-breakpoint
 CREATE TYPE "public"."media_type" AS ENUM('image', 'video', 'audio');--> statement-breakpoint
 CREATE TYPE "public"."tag_type" AS ENUM('positive', 'negative');--> statement-breakpoint
+CREATE TABLE "authors" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"account_id" text,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "categories" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"description" text DEFAULT '',
 	"color" text DEFAULT '#808080',
-	"parent_id" integer,
+	"parent_id" uuid,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"source" text DEFAULT 'manual' NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
@@ -18,9 +26,9 @@ CREATE TABLE "categories" (
 );
 --> statement-breakpoint
 CREATE TABLE "characters" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
-	"ip_id" integer,
+	"ip_id" uuid,
 	"description" text DEFAULT '',
 	"source" text DEFAULT 'manual' NOT NULL,
 	"aliases" jsonb,
@@ -39,7 +47,7 @@ CREATE TABLE "collections" (
 );
 --> statement-breakpoint
 CREATE TABLE "ips" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"description" text DEFAULT '',
 	"source" text DEFAULT 'manual' NOT NULL,
@@ -60,15 +68,21 @@ CREATE TABLE "jobs" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
+CREATE TABLE "media_authors" (
+	"media_id" uuid NOT NULL,
+	"author_id" uuid NOT NULL,
+	CONSTRAINT "media_authors_media_id_author_id_pk" PRIMARY KEY("media_id","author_id")
+);
+--> statement-breakpoint
 CREATE TABLE "media_categories" (
 	"media_id" uuid NOT NULL,
-	"category_id" integer NOT NULL,
+	"category_id" uuid NOT NULL,
 	CONSTRAINT "media_categories_media_id_category_id_pk" PRIMARY KEY("media_id","category_id")
 );
 --> statement-breakpoint
 CREATE TABLE "media_characters" (
 	"media_id" uuid NOT NULL,
-	"character_id" integer NOT NULL,
+	"character_id" uuid NOT NULL,
 	"confidence" real,
 	"source" text DEFAULT 'manual' NOT NULL,
 	CONSTRAINT "media_characters_media_id_character_id_pk" PRIMARY KEY("media_id","character_id")
@@ -108,19 +122,19 @@ CREATE TABLE "media_generation_info" (
 --> statement-breakpoint
 CREATE TABLE "media_ips" (
 	"media_id" uuid NOT NULL,
-	"ip_id" integer NOT NULL,
+	"ip_id" uuid NOT NULL,
 	"source" text DEFAULT 'manual' NOT NULL,
 	CONSTRAINT "media_ips_media_id_ip_id_pk" PRIMARY KEY("media_id","ip_id")
 );
 --> statement-breakpoint
 CREATE TABLE "media_projects" (
 	"media_id" uuid NOT NULL,
-	"project_id" integer NOT NULL,
+	"project_id" uuid NOT NULL,
 	CONSTRAINT "media_projects_media_id_project_id_pk" PRIMARY KEY("media_id","project_id")
 );
 --> statement-breakpoint
 CREATE TABLE "media_relations" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"parent_media_id" uuid NOT NULL,
 	"child_media_id" uuid NOT NULL,
 	"relation_type" "media_relation_type" NOT NULL,
@@ -151,7 +165,7 @@ CREATE TABLE "media_sync" (
 --> statement-breakpoint
 CREATE TABLE "media_tags" (
 	"media_id" uuid NOT NULL,
-	"tag_id" integer NOT NULL,
+	"tag_id" uuid NOT NULL,
 	"tag_type" "tag_type" DEFAULT 'positive' NOT NULL,
 	"confidence" real,
 	"source" text DEFAULT 'manual' NOT NULL,
@@ -171,6 +185,14 @@ CREATE TABLE "media_technical_info" (
 	"audio_codec" text
 );
 --> statement-breakpoint
+CREATE TABLE "media_urls" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"media_id" uuid NOT NULL,
+	"url" text NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
 CREATE TABLE "media" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"source_id" uuid NOT NULL,
@@ -181,7 +203,6 @@ CREATE TABLE "media" (
 	"height" integer NOT NULL,
 	"file_size" bigint,
 	"description" text,
-	"source_url" text,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"modified_at" timestamp DEFAULT now() NOT NULL,
 	"indexed_at" timestamp DEFAULT now() NOT NULL,
@@ -198,7 +219,7 @@ CREATE TABLE "presets" (
 );
 --> statement-breakpoint
 CREATE TABLE "projects" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"description" text DEFAULT '',
 	"created_at" timestamp DEFAULT now(),
@@ -207,7 +228,7 @@ CREATE TABLE "projects" (
 );
 --> statement-breakpoint
 CREATE TABLE "similar_media" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"media1_id" uuid NOT NULL,
 	"media2_id" uuid NOT NULL,
 	"similarity_score" real DEFAULT 0,
@@ -217,12 +238,13 @@ CREATE TABLE "similar_media" (
 );
 --> statement-breakpoint
 CREATE TABLE "tags" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" text NOT NULL,
 	"description" text,
 	"attribute" text,
 	"color" text,
 	"source" text DEFAULT 'manual' NOT NULL,
+	"author_id" uuid,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "tags_name_unique" UNIQUE("name")
@@ -239,7 +261,7 @@ CREATE TABLE "users" (
 );
 --> statement-breakpoint
 CREATE TABLE "view_history" (
-	"id" serial PRIMARY KEY NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"media_id" uuid NOT NULL,
 	"viewed_at" timestamp DEFAULT now(),
 	"ip_address" text,
@@ -250,6 +272,8 @@ ALTER TABLE "categories" ADD CONSTRAINT "categories_parent_id_categories_id_fk" 
 ALTER TABLE "characters" ADD CONSTRAINT "characters_ip_id_ips_id_fk" FOREIGN KEY ("ip_id") REFERENCES "public"."ips"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "collections" ADD CONSTRAINT "collections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "jobs" ADD CONSTRAINT "jobs_source_id_media_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."media_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media_authors" ADD CONSTRAINT "media_authors_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media_authors" ADD CONSTRAINT "media_authors_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_categories" ADD CONSTRAINT "media_categories_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_categories" ADD CONSTRAINT "media_categories_category_id_categories_id_fk" FOREIGN KEY ("category_id") REFERENCES "public"."categories"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_characters" ADD CONSTRAINT "media_characters_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -268,10 +292,13 @@ ALTER TABLE "media_sync" ADD CONSTRAINT "media_sync_media_id_media_id_fk" FOREIG
 ALTER TABLE "media_tags" ADD CONSTRAINT "media_tags_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_tags" ADD CONSTRAINT "media_tags_tag_id_tags_id_fk" FOREIGN KEY ("tag_id") REFERENCES "public"."tags"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media_technical_info" ADD CONSTRAINT "media_technical_info_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media_urls" ADD CONSTRAINT "media_urls_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "media" ADD CONSTRAINT "media_source_id_media_sources_id_fk" FOREIGN KEY ("source_id") REFERENCES "public"."media_sources"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "similar_media" ADD CONSTRAINT "similar_media_media1_id_media_id_fk" FOREIGN KEY ("media1_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "similar_media" ADD CONSTRAINT "similar_media_media2_id_media_id_fk" FOREIGN KEY ("media2_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "tags" ADD CONSTRAINT "tags_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "view_history" ADD CONSTRAINT "view_history_media_id_media_id_fk" FOREIGN KEY ("media_id") REFERENCES "public"."media"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_authors_account_id" ON "authors" USING btree ("account_id");--> statement-breakpoint
 CREATE INDEX "idx_media_categories_category_id" ON "media_categories" USING btree ("category_id");--> statement-breakpoint
 CREATE INDEX "idx_media_details_rating" ON "media_details" USING btree ("rating");--> statement-breakpoint
 CREATE INDEX "idx_media_details_favorite" ON "media_details" USING btree ("favorite");--> statement-breakpoint
@@ -285,6 +312,7 @@ CREATE INDEX "idx_media_relations_parent" ON "media_relations" USING btree ("par
 CREATE INDEX "idx_media_relations_child" ON "media_relations" USING btree ("child_media_id");--> statement-breakpoint
 CREATE INDEX "idx_media_relations_type" ON "media_relations" USING btree ("relation_type");--> statement-breakpoint
 CREATE INDEX "idx_media_technical_info_hash_md5" ON "media_technical_info" USING btree ("hash_md5");--> statement-breakpoint
+CREATE INDEX "idx_media_urls_media_id" ON "media_urls" USING btree ("media_id");--> statement-breakpoint
 CREATE INDEX "idx_media_source_id" ON "media" USING btree ("source_id");--> statement-breakpoint
 CREATE INDEX "idx_media_file_name" ON "media" USING btree ("file_name");--> statement-breakpoint
 CREATE INDEX "idx_media_created_at" ON "media" USING btree ("created_at");--> statement-breakpoint

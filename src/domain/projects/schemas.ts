@@ -15,7 +15,7 @@ export type NewProject = z.infer<typeof newProjectSchema>;
 export type UpdateProject = z.infer<typeof updateProjectSchema>;
 
 export const projectSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
   createdAt: z.coerce.date(),

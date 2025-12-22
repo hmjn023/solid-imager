@@ -168,9 +168,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the category to retrieve."
+            "description": "UUID of the category to retrieve."
           }
         ],
         "responses": {
@@ -207,9 +208,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the category to update."
+            "description": "UUID of the category to update."
           }
         ],
         "requestBody": {
@@ -256,9 +258,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the category to delete."
+            "description": "UUID of the category to delete."
           }
         ],
         "responses": {
@@ -352,9 +355,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the character to retrieve."
+            "description": "UUID of the character to retrieve."
           }
         ],
         "responses": {
@@ -391,9 +395,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the character to update."
+            "description": "UUID of the character to update."
           }
         ],
         "requestBody": {
@@ -440,9 +445,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the character to delete."
+            "description": "UUID of the character to delete."
           }
         ],
         "responses": {
@@ -671,9 +677,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the IP to retrieve."
+            "description": "UUID of the IP to retrieve."
           }
         ],
         "responses": {
@@ -710,9 +717,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the IP to update."
+            "description": "UUID of the IP to update."
           }
         ],
         "requestBody": {
@@ -759,9 +767,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the IP to delete."
+            "description": "UUID of the IP to delete."
           }
         ],
         "responses": {
@@ -855,9 +864,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the Project to retrieve."
+            "description": "UUID of the Project to retrieve."
           }
         ],
         "responses": {
@@ -894,9 +904,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the Project to update."
+            "description": "UUID of the Project to update."
           }
         ],
         "requestBody": {
@@ -943,9 +954,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the Project to delete."
+            "description": "UUID of the Project to delete."
           }
         ],
         "responses": {
@@ -2902,9 +2914,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the tag to retrieve."
+            "description": "UUID of the tag to retrieve."
           }
         ],
         "responses": {
@@ -2941,9 +2954,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the tag to update."
+            "description": "UUID of the tag to update."
           }
         ],
         "requestBody": {
@@ -2990,9 +3004,10 @@
             "name": "id",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Numeric ID of the tag to delete."
+            "description": "UUID of the tag to delete."
           }
         ],
         "responses": {

@@ -36,9 +36,9 @@ type SearchOptions = {
   tags?: string[];
   tagMode?: "and" | "or";
   excludeTags?: string[];
-  projects?: number[];
-  ips?: number[];
-  characters?: number[];
+  projects?: string[];
+  ips?: string[];
+  characters?: string[];
   sort?: "date" | "name" | "size";
   order?: "asc" | "desc";
   limit?: number;
@@ -52,7 +52,9 @@ function buildWhereClause(
   mediaSourceId: string,
   options: SearchOptions
 ): SQL | undefined {
-  const conditions: SQL[] = [eq(medias.mediaSourceId, mediaSourceId)];
+  const conditions: (SQL | undefined)[] = [
+    eq(medias.mediaSourceId, mediaSourceId),
+  ];
 
   // Filename/description search with escape
   if (options.query) {
@@ -220,7 +222,7 @@ export const searchMediaInDirectory = async (
   searchOptions: { query?: string; tags?: string[] }
 ) => {
   try {
-    const conditions: SQL[] = [
+    const conditions: (SQL | undefined)[] = [
       eq(medias.mediaSourceId, mediaSourceId),
       like(medias.filePath, `${escapeLikeString(directoryPath)}%`),
     ];
@@ -269,7 +271,7 @@ export const globalSearchMedia = async (searchOptions: {
   tags?: string[];
 }) => {
   try {
-    const conditions: SQL[] = [];
+    const conditions: (SQL | undefined)[] = [];
 
     if (searchOptions.query) {
       const escapedQuery = escapeLikeString(searchOptions.query);

@@ -6,7 +6,7 @@ import { NotFoundError } from "~/infrastructure/db/errors";
 
 // Schema for 'id' path parameter
 const IdParamSchema = z.object({
-  id: z.string().transform(Number),
+  id: z.string().uuid(),
 });
 
 /**
@@ -22,8 +22,9 @@ const IdParamSchema = z.object({
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the Project to retrieve.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the Project to retrieve.
  *     responses:
  *       200:
  *         description: Details of the Project.
@@ -80,8 +81,9 @@ export async function GET({ params }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the Project to update.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the Project to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -152,8 +154,9 @@ export async function PATCH({ params, request }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the Project to delete.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the Project to delete.
  *     responses:
  *       200:
  *         description: Project successfully deleted.

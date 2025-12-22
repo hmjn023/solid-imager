@@ -31,29 +31,29 @@ export const TagService = {
 
   /**
    * Fetches a single tag by its ID.
-   * @param {number} id - The ID of the tag to fetch.
+   * @param {string} id - The ID of the tag to fetch.
    * @returns {Promise<Tag | undefined>} The tag object matching the ID.
    */
-  async getTagById(id: number): Promise<Tag | undefined> {
+  async getTagById(id: string): Promise<Tag | undefined> {
     return await dbGetTagById(id);
   },
 
   /**
    * Updates an existing tag.
-   * @param {number} id - The ID of the tag to update.
+   * @param {string} id - The ID of the tag to update.
    * @param {Partial<NewTag>} data - The updated data for the tag.
    * @returns {Promise<Tag>} The updated tag object.
    */
-  async updateTag(id: number, data: Partial<NewTag>): Promise<Tag> {
+  async updateTag(id: string, data: Partial<NewTag>): Promise<Tag> {
     return await dbUpdateTag(id, data);
   },
 
   /**
    * Deletes a tag by its ID.
-   * @param {number} id - The ID of the tag to delete.
+   * @param {string} id - The ID of the tag to delete.
    * @returns {Promise<{ success: true }>} An object indicating the success of the deletion.
    */
-  async deleteTag(id: number): Promise<{ success: true }> {
+  async deleteTag(id: string): Promise<{ success: true }> {
     await dbDeleteTag(id);
     return { success: true };
   },

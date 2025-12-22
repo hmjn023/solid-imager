@@ -9,7 +9,7 @@ import { z } from "zod";
 
 export const newCharacterSchema = z.object({
   name: z.string().min(1),
-  ipId: z.number().int().optional(),
+  ipId: z.string().uuid().optional(),
   description: z.string().optional(),
 });
 
@@ -19,10 +19,10 @@ export type NewCharacter = z.infer<typeof newCharacterSchema>;
 export type UpdateCharacter = z.infer<typeof updateCharacterSchema>;
 
 export const characterSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
-  ipId: z.number().nullable(),
+  ipId: z.string().uuid().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

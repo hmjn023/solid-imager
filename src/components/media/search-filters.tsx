@@ -62,7 +62,7 @@ function FilterSection<T>(props: {
   placeholder?: string;
   badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
-  const [value, setValue] = createSignal<T | null>(null);
+  const [value, _setValue] = createSignal<T | null>(null);
 
   return (
     <div class="space-y-2">

@@ -39,23 +39,23 @@ export const ProjectService = {
 
   /**
    * Retrieves details of a specific project by its ID.
-   * @param {number} projectId - The ID of the project.
+   * @param {string} projectId - The ID of the project.
    * @returns {Promise<any>} The details of the specified project.
    */
-  async getProjectDetails(projectId: number) {
+  async getProjectDetails(projectId: string) {
     return await selectProjectById(projectId);
   },
 
   /**
    * Updates an existing project.
-   * @param {number} projectId - The ID of the project to update.
+   * @param {string} projectId - The ID of the project to update.
    * @param {object} projectData - The updated data for the project.
    * @param {string} [projectData.name] - The new name of the project.
    * @param {string} [projectData.description] - The new description for the project.
    * @returns {Promise<any>} The updated project.
    */
   async updateProject(
-    projectId: number,
+    projectId: string,
     projectData: { name?: string; description?: string }
   ) {
     return await updateProject(projectId, projectData);
@@ -63,10 +63,10 @@ export const ProjectService = {
 
   /**
    * Deletes a project by its ID.
-   * @param {number} projectId - The ID of the project to delete.
+   * @param {string} projectId - The ID of the project to delete.
    * @returns {Promise<any>} Confirmation of deletion.
    */
-  async deleteProject(projectId: number) {
+  async deleteProject(projectId: string) {
     return await deleteProject(projectId);
   },
 
@@ -82,20 +82,20 @@ export const ProjectService = {
   /**
    * Adds a project to a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} projectId - The ID of the project to add.
+   * @param {string} projectId - The ID of the project to add.
    * @returns {Promise<any>} The created association.
    */
-  async addProjectToMedia(mediaId: string, projectId: number) {
+  async addProjectToMedia(mediaId: string, projectId: string) {
     return await insertMediaProject(mediaId, projectId);
   },
 
   /**
    * Removes a project from a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} projectId - The ID of the project to remove.
+   * @param {string} projectId - The ID of the project to remove.
    * @returns {Promise<any>} Confirmation of removal.
    */
-  async removeProjectFromMedia(mediaId: string, projectId: number) {
+  async removeProjectFromMedia(mediaId: string, projectId: string) {
     return await deleteMediaProject(mediaId, projectId);
   },
 };

@@ -11,7 +11,7 @@ export const newCategorySchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
   color: z.string().optional(),
-  parentId: z.number().int().optional(),
+  parentId: z.string().uuid().optional(),
 });
 
 export const updateCategorySchema = newCategorySchema.partial();
