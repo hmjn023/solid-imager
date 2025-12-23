@@ -1,9 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
-  type NewCharacter,
   characters,
   mediaCharacters,
+  type NewCharacter,
 } from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 

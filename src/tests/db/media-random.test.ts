@@ -1,4 +1,4 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index"; // Import the mocked db
 import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";

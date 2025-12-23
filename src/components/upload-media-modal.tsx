@@ -67,7 +67,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
     },
     validatorAdapter: zodValidator(),
     validators: {
-      // @ts-ignore
+      // @ts-expect-error
       onChange: uploadMediaFormSchema,
     },
   }));

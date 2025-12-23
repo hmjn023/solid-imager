@@ -1,4 +1,4 @@
-import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index"; // Import the mocked db
 import {
@@ -17,7 +17,12 @@ describe("Preset Database Operations", () => {
   });
 
   it("selectPresets should return a list of presets on success", async () => {
-    const preset1 = { id: 1, name: "Preset 1", value: {}, createdAt: new Date() };
+    const preset1 = {
+      id: 1,
+      name: "Preset 1",
+      value: {},
+      createdAt: new Date(),
+    };
     (db.select as Mock).mockReturnValue({
       from: vi.fn().mockResolvedValueOnce([preset1]),
     });
@@ -27,7 +32,12 @@ describe("Preset Database Operations", () => {
   });
 
   it("insertPreset should insert a new preset on success", async () => {
-    const newPreset = { id: 2, name: "Preset 2", value: {}, createdAt: new Date() };
+    const newPreset = {
+      id: 2,
+      name: "Preset 2",
+      value: {},
+      createdAt: new Date(),
+    };
     (db.insert as Mock).mockReturnValue({
       values: vi.fn().mockReturnThis(),
       returning: vi.fn().mockResolvedValueOnce([newPreset]),
