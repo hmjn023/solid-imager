@@ -3,7 +3,7 @@ import type { Tag } from "~/infrastructure/db/schema";
 
 describe("GET /api/tags/:id", () => {
   it("should return tag by id", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after GET function is available
     // const result = await GET({ params: { id: '1' } });
@@ -12,6 +12,9 @@ describe("GET /api/tags/:id", () => {
       name: "Test Tag",
       description: "Test description",
       color: "#00FF00",
+      attribute: "attribute",
+      source: "manual",
+      authorId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -23,7 +26,7 @@ describe("GET /api/tags/:id", () => {
 
   it("should throw error for non-existent tag", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
@@ -38,7 +41,7 @@ describe("GET /api/tags/:id", () => {
 
 describe("PUT /api/tags/:id", () => {
   it("should update and return tag", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
     const updateData = {
       name: "Updated Name",
       description: "Updated description",
@@ -50,6 +53,9 @@ describe("PUT /api/tags/:id", () => {
       id,
       ...updateData,
       color: "#00FF00",
+      attribute: "attribute",
+      source: "manual",
+      authorId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -60,7 +66,7 @@ describe("PUT /api/tags/:id", () => {
 
   it("should throw error for non-existent tag", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
@@ -75,7 +81,7 @@ describe("PUT /api/tags/:id", () => {
 
 describe("DELETE /api/tags/:id", () => {
   it("should delete tag and return success", () => {
-    const _id = 1;
+    const _id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after DELETE function is available
     // const result = await DELETE({ params: { id: '1' } });
@@ -84,7 +90,7 @@ describe("DELETE /api/tags/:id", () => {
 
   it("should throw error for non-existent tag", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

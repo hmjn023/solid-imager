@@ -21,7 +21,6 @@ describe("listMedia Integration", () => {
       width: 800,
       height: 600,
       description: "",
-      sourceUrl: "",
     },
     {
       mediaSourceId,
@@ -32,7 +31,6 @@ describe("listMedia Integration", () => {
       width: 1024,
       height: 768,
       description: "",
-      sourceUrl: "",
     },
     {
       mediaSourceId: "a0000000-0000-4000-8000-000000000000", // 別のmediaSourceId
@@ -43,7 +41,6 @@ describe("listMedia Integration", () => {
       width: 800,
       height: 600,
       description: "",
-      sourceUrl: "",
     },
   ];
 

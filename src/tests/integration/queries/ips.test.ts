@@ -11,7 +11,7 @@ import {
 import { ips, type NewIp } from "~/infrastructure/db/schema";
 
 describe("ips queries Integration", () => {
-  let testIpId: number;
+  let testIpId: string;
 
   beforeAll(async () => {
     await db.delete(ips);
@@ -42,7 +42,7 @@ describe("ips queries Integration", () => {
   });
 
   it("should throw NotFoundError when selecting a non-existent ip", async () => {
-    const nonExistentId = 999_999;
+    const nonExistentId = "00000000-0000-0000-0000-000000000000";
     await expect(selectIpById(nonExistentId)).rejects.toThrow(NotFoundError);
   });
 

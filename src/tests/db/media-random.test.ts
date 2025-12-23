@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
 import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index"; // Import the mocked db
 import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";
@@ -6,12 +6,12 @@ import { selectRandomMedia } from "~/infrastructure/db/queries/media-random";
 describe("selectRandomMedia", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (db.select as vi.Mock).mockClear();
-    (db.insert as vi.Mock).mockClear();
-    (db.update as vi.Mock).mockClear();
-    (db.delete as vi.Mock).mockClear();
-    (db.query.mediaSources.findFirst as vi.Mock).mockClear();
-    (db.transaction as vi.Mock).mockClear();
+    (db.select as Mock).mockClear();
+    (db.insert as Mock).mockClear();
+    (db.update as Mock).mockClear();
+    (db.delete as Mock).mockClear();
+    (db.query.mediaSources.findFirst as Mock).mockClear();
+    (db.transaction as Mock).mockClear();
   });
 
   it("should return a random media item on success", async () => {
@@ -21,7 +21,7 @@ describe("selectRandomMedia", () => {
       createdAt: new Date(),
     };
 
-    (db.select as vi.Mock).mockReturnValue({
+    (db.select as Mock).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
@@ -37,7 +37,7 @@ describe("selectRandomMedia", () => {
   });
 
   it("should return NotFoundError if no random media found", async () => {
-    (db.select as vi.Mock).mockReturnValue({
+    (db.select as Mock).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({
@@ -54,7 +54,7 @@ describe("selectRandomMedia", () => {
   });
 
   it("should return UnknownDbError on failure", async () => {
-    (db.select as vi.Mock).mockReturnValue({
+    (db.select as Mock).mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           orderBy: vi.fn().mockReturnValue({

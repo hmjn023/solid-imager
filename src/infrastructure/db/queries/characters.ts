@@ -1,6 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { characters, mediaCharacters } from "~/infrastructure/db/schema";
+import {
+  type NewCharacter,
+  characters,
+  mediaCharacters,
+} from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 /**
@@ -21,12 +25,12 @@ export const selectCharacters = async () => {
 
 /**
  * Inserts a new character into the database.
- * @param {unknown} characterData - The data for the new character.
+ * @param {NewCharacter} characterData - The data for the new character.
  * @returns {Promise<Character[]>} A promise that resolves with an array containing the newly inserted character.
  * @throws {ConstraintError} If a character with the same name and IP already exists.
  * @throws {UnknownDbError} If a database error occurs during the insertion.
  */
-export const insertCharacter = async (characterData: unknown) => {
+export const insertCharacter = async (characterData: NewCharacter) => {
   try {
     return await db.insert(characters).values(characterData).returning();
   } catch (error: unknown) {
@@ -81,7 +85,7 @@ export const selectCharacterById = async (characterId: string) => {
 /**
  * Updates an existing character in the database.
  * @param {string} characterId - The ID of the character to update.
- * @param {unknown} characterData - The partial data to update the character with.
+ * @param {Partial<NewCharacter>} characterData - The partial data to update the character with.
  * @returns {Promise<typeof characters.$inferSelect>} A promise that resolves with the updated character object.
  * @throws {NotFoundError} If no character with the given ID is found.
  * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name and IP).
@@ -89,7 +93,7 @@ export const selectCharacterById = async (characterId: string) => {
  */
 export const updateCharacter = async (
   characterId: string,
-  characterData: unknown
+  characterData: Partial<NewCharacter>
 ) => {
   try {
     const result = await db

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { type Mock, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConstraintError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index"; // Import the mocked db
 import {
@@ -9,16 +9,16 @@ import {
 describe("Preset Database Operations", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    (db.select as vi.Mock).mockClear();
-    (db.insert as vi.Mock).mockClear();
-    (db.update as vi.Mock).mockClear();
-    (db.query.mediaSources.findFirst as vi.Mock).mockClear();
-    (db.transaction as vi.Mock).mockClear();
+    (db.select as Mock).mockClear();
+    (db.insert as Mock).mockClear();
+    (db.update as Mock).mockClear();
+    (db.query.mediaSources.findFirst as Mock).mockClear();
+    (db.transaction as Mock).mockClear();
   });
 
   it("selectPresets should return a list of presets on success", async () => {
-    const preset1 = { id: "preset1", name: "Preset 1" };
-    (db.select as vi.Mock).mockReturnValue({
+    const preset1 = { id: 1, name: "Preset 1", value: {}, createdAt: new Date() };
+    (db.select as Mock).mockReturnValue({
       from: vi.fn().mockResolvedValueOnce([preset1]),
     });
     const result = await selectPresets();
@@ -27,38 +27,38 @@ describe("Preset Database Operations", () => {
   });
 
   it("insertPreset should insert a new preset on success", async () => {
-    const newPreset = { id: "preset2", name: "Preset 2" };
-    (db.insert as vi.Mock).mockReturnValue({
+    const newPreset = { id: 2, name: "Preset 2", value: {}, createdAt: new Date() };
+    (db.insert as Mock).mockReturnValue({
       values: vi.fn().mockReturnThis(),
       returning: vi.fn().mockResolvedValueOnce([newPreset]),
     });
-    const result = await insertPreset(newPreset);
+    const result = await insertPreset({ name: "Preset 2", value: {} });
     expect(result).toEqual([newPreset]);
     expect(db.insert).toHaveBeenCalled();
   });
 
   it("insertPreset should return ConstraintError on duplicate entry", async () => {
-    (db.insert as vi.Mock).mockReturnValue({
+    (db.insert as Mock).mockReturnValue({
       values: vi.fn().mockReturnThis(),
       returning: vi
         .fn()
         .mockRejectedValueOnce({ code: "23505", message: "duplicate key" }),
     });
     await expect(
-      insertPreset({ id: "preset2", name: "Preset 2" })
+      insertPreset({ name: "Preset 2", value: {} })
     ).rejects.toBeInstanceOf(ConstraintError);
     expect(db.insert).toHaveBeenCalled();
   });
 
   it("insertPreset should return UnknownDbError on failure", async () => {
-    (db.insert as vi.Mock).mockReturnValue({
+    (db.insert as Mock).mockReturnValue({
       values: vi.fn().mockReturnThis(),
       returning: vi
         .fn()
         .mockRejectedValueOnce(new UnknownDbError({ message: "DB error" })),
     });
     await expect(
-      insertPreset({ id: "preset2", name: "Preset 2" })
+      insertPreset({ name: "Preset 2", value: {} })
     ).rejects.toBeInstanceOf(UnknownDbError);
     expect(db.insert).toHaveBeenCalled();
   });

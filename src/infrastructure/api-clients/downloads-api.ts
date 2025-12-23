@@ -3,6 +3,7 @@
  * Handles download-related operations
  */
 
+import { z } from "zod";
 import type { DownloadItem } from "~/domain/media/schemas";
 import { apiRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";
@@ -17,7 +18,7 @@ export function startDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ) {
-  return apiRequest(API_ENDPOINTS.downloads, null, {
+  return apiRequest(API_ENDPOINTS.downloads, z.any(), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

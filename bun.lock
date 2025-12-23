@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "example-with-tailwindcss",
@@ -50,6 +49,7 @@
         "tailwindcss": "^4.1.17",
         "tsx": "^4.20.6",
         "typedoc": "^0.28.15",
+        "typescript": "^5.9.3",
         "ultracite": "5.4.4",
         "vite-tsconfig-paths": "^5.1.4",
         "vitest": "^3.2.4",

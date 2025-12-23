@@ -24,7 +24,7 @@ vi.mock("~/infrastructure/db/index", async () => {
   const dbInstance = drizzleFunc(pg, { schema: schemaModule });
 
   // Expose the testDb instance to the global scope for the test file
-  global.vitestTestDb = pg;
+  (global as any).vitestTestDb = pg;
 
   return { db: dbInstance };
 });
@@ -47,7 +47,7 @@ describe("GET /api/sources/:mediaSourceId/search", () => {
     migrate = migratorModule.migrate;
     schema = await import("~/infrastructure/db/schema");
 
-    testDb = global.vitestTestDb;
+    testDb = (global as any).vitestTestDb;
     db = drizzle(testDb, { schema });
 
     await migrate(db, {

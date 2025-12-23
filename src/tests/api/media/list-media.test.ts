@@ -28,6 +28,8 @@ describe("listMedia Contract", () => {
         height: 600,
         mediaSourceId,
         indexedAt: new Date(),
+        description: null,
+        status: "active",
       },
       {
         id: "mock-uuid-2",
@@ -41,6 +43,8 @@ describe("listMedia Contract", () => {
         height: 720,
         mediaSourceId,
         indexedAt: new Date(),
+        description: null,
+        status: "active",
       },
     ];
 

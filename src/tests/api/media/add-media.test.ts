@@ -18,7 +18,6 @@ describe("addMedia Contract", () => {
       width: 800,
       height: 600,
       description: null,
-      sourceUrl: null,
     };
 
     // Validate with Zod schema
@@ -38,6 +37,8 @@ describe("addMedia Contract", () => {
       createdAt: newMediaData.createdAt,
       modifiedAt: newMediaData.updatedAt,
       indexedAt: newMediaData.updatedAt,
+      description: null,
+      status: "active",
     };
 
     expect(result).toBeDefined();
@@ -75,7 +76,6 @@ describe("addMedia Contract", () => {
       width: 800,
       height: 600,
       description: null,
-      sourceUrl: null,
     };
 
     // Simulate existing media
