@@ -360,23 +360,23 @@ export default function MediaListPage() {
     }
   };
 
-  const handleDumpDownload = async () => {
+  const handleDumpDownload = async (mode: "json" | "zip" = "json") => {
     const id = mediaSourceId();
     if (!id) {
       return;
     }
 
     try {
-      const blob = await fetchSourceDump(id);
+      const blob = await fetchSourceDump(id, mode);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `source-${id}-dump.json`;
+      a.download = `source-${id}-dump.${mode}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success("Dump downloaded successfully");
+      toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
     } catch (_error) {
       toast.error("Failed to download dump");
     }
@@ -656,14 +656,14 @@ export default function MediaListPage() {
         <Portal mount={document.getElementById("nav-actions")!}>
           <Button
             class="mr-2 border-white text-white hover:bg-sky-700"
-            onClick={handleDumpDownload}
+            onClick={() => handleDumpDownload("json")}
             size="icon"
             title="Download Backup JSON"
             variant="outline"
           >
             {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
             <svg
-              class="lucide lucide-download"
+              class="lucide lucide-file-json"
               fill="none"
               height="20"
               stroke="currentColor"
@@ -674,9 +674,35 @@ export default function MediaListPage() {
               width="20"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" x2="12" y1="15" y2="3" />
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
+              <path d="M10 18a1 1 0 0 0-1-1v-1a1 1 0 0 0 1-1" />
+            </svg>
+          </Button>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => handleDumpDownload("zip")}
+            size="icon"
+            title="Download Backup ZIP (with Images)"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
+            <svg
+              class="lucide lucide-archive"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect height="5" rx="1" width="20" x="2" y="3" />
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+              <path d="M10 12h4" />
             </svg>
           </Button>
           <Button
