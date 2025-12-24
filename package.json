@@ -20,7 +20,8 @@
     "typecheck": "tsc --noEmit",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
     "docs:generate": "typedoc",
-    "unsafe-fix": "biome check --fix --unsafe ./src"
+    "unsafe-fix": "biome check --fix --unsafe ./src",
+    "prepare": "husky"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
@@ -68,6 +69,8 @@
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.7",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "playwright": "^1.57.0",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.20.6",
@@ -79,5 +82,11 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx,js,jsx,json}": [
+      "biome check --fix --unsafe",
+      "git add"
+    ]
   }
 }
