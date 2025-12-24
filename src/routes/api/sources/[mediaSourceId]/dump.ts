@@ -213,6 +213,7 @@ export async function GET({ params, request }: APIEvent) {
       // Usually `Readable.toWeb` is safer for compatibility.
       const webStream = Readable.toWeb(passThrough);
 
+      // biome-ignore lint/suspicious/noExplicitAny: compatibility with web stream
       return new Response(webStream as any, {
         status: 200,
         headers: {
