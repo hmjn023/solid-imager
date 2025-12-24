@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   sourceDetail: (sourceId: string) => `/api/sources/${sourceId}`,
   sourceDump: (sourceId: string) => `/api/sources/${sourceId}/dump`,
   sourceRestore: (sourceId: string) => `/api/sources/${sourceId}/restore`,
+  sourceImport: (sourceId: string) => `/api/sources/${sourceId}/import`,
 
   // Media
   mediaList: (sourceId: string) => `/api/sources/${sourceId}`,

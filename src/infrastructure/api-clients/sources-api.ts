@@ -22,6 +22,15 @@ const restoreResponseSchema = z.object({
 });
 
 /**
+ * Schema for import response
+ */
+const importResponseSchema = z.object({
+  success: z.boolean(),
+  importedCount: z.number(),
+  message: z.string().optional(),
+});
+
+/**
  * Fetches all media sources
  * @returns Array of media sources
  */
@@ -95,5 +104,21 @@ export function restoreSource(id: string, data: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Imports a media source from a ZIP file
+ * @param id - Media source ID
+ * @param file - The ZIP file to import
+ * @returns Import result
+ */
+export function importSourceZip(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiRequest(API_ENDPOINTS.sourceImport(id), importResponseSchema, {
+    method: "POST",
+    body: formData,
   });
 }

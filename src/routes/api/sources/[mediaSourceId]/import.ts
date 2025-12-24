@@ -138,7 +138,8 @@ export async function POST({ params, request }: APIEvent) {
         // Continue even if file is missing? Maybe it's metadata only update.
       }
 
-      await db.transaction(async (tx) => {
+      // biome-ignore lint/suspicious/noExplicitAny: tx type inference issue
+      await db.transaction(async (tx: any) => {
         await processImportItem(tx, mediaSourceId, item);
       });
 

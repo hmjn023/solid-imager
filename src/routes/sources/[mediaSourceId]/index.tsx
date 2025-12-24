@@ -58,6 +58,7 @@ import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
   fetchSourceDump,
+  importSourceZip,
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
@@ -382,7 +383,7 @@ export default function MediaListPage() {
     }
   };
 
-  const handleRestoreSelect = (e: Event) => {
+  const handleRestoreSelect = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (!target.files || target.files.length === 0) {
       return;
@@ -394,33 +395,60 @@ export default function MediaListPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-
-        toast.loading("Restoring metadata...", { id: "restore-toast" });
-
-        const result = await restoreSource(id, json);
-
+    try {
+      // Check for ZIP file
+      if (
+        file.name.endsWith(".zip") ||
+        file.type === "application/zip" ||
+        file.type === "application/x-zip-compressed"
+      ) {
+        toast.loading("Importing ZIP dump...", { id: "restore-toast" });
+        const result = await importSourceZip(id, file);
         toast.success(
-          `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+          `Import complete: ${result.importedCount} items imported.`,
           { id: "restore-toast" }
         );
-
-        // Refresh view
         queryClient.invalidateQueries({
           queryKey: ["media", id],
         });
-      } catch (error) {
-        toast.error(`Restore failed: ${(error as Error).message}`, {
-          id: "restore-toast",
-        });
-      } finally {
         target.value = ""; // Reset input
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      // Default to JSON handling
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+
+          toast.loading("Restoring metadata...", { id: "restore-toast" });
+
+          const result = await restoreSource(id, json);
+
+          toast.success(
+            `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+            { id: "restore-toast" }
+          );
+
+          // Refresh view
+          queryClient.invalidateQueries({
+            queryKey: ["media", id],
+          });
+        } catch (error) {
+          toast.error(`Restore failed: ${(error as Error).message}`, {
+            id: "restore-toast",
+          });
+        } finally {
+          target.value = ""; // Reset input
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      toast.error(`Import failed: ${(error as Error).message}`, {
+        id: "restore-toast",
+      });
+      target.value = "";
+    }
   };
 
   const handleAddButtonClick = () => {
@@ -914,7 +942,7 @@ export default function MediaListPage() {
 
       {/* Hidden file input */}
       <input
-        accept=".json"
+        accept=".json,.zip"
         class="hidden"
         id="restore-input"
         onChange={handleRestoreSelect}

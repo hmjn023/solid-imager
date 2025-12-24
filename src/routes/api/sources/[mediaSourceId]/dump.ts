@@ -105,22 +105,26 @@ export async function GET({ params, request }: APIEvent) {
     });
 
     // 3. Transform to "restoration-ready" format
-    const dumpData = mediaList.map((media) => {
+    // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+    const dumpData = mediaList.map((media: any) => {
       // Extract tags into a simple list of names/types
-      const simpleTags = media.tags.map((mt) => ({
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const simpleTags = media.tags.map((mt: any) => ({
         name: mt.tag.name,
         type: mt.tagType,
         confidence: mt.confidence,
       }));
 
       // Extract authors
-      const simpleAuthors = media.authors.map((ma) => ({
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const simpleAuthors = media.authors.map((ma: any) => ({
         name: ma.author.name,
         accountId: ma.author.accountId,
       }));
 
       // Extract source URLs (flattened)
-      const sourceUrls = media.urls.map((u) => u.url);
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const sourceUrls = media.urls.map((u: any) => u.url);
 
       return {
         id: media.id,
