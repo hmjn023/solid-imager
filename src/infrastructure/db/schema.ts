@@ -2,6 +2,7 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   bigint,
   boolean,
   index,
@@ -155,7 +156,7 @@ export const medias = pgTable(
 export const tags = pgTable(
   "tags",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** タグの名前 (例: "blue eyes") */
     name: text("name").notNull(),
     /** タグの詳細な説明 */
@@ -193,7 +194,7 @@ export const mediaTags = pgTable(
       .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** タグID */
-    tagId: integer("tag_id")
+    tagId: uuid("tag_id")
       .notNull()
       .references(() => tags.id, { onDelete: "cascade" }),
     /** タグのタイプ (positive/negative) */
@@ -295,7 +296,7 @@ export const mediaGenerationInfo = pgTable(
 export const categories = pgTable(
   "categories",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** カテゴリ名 */
     name: text("name").notNull(),
     /** カテゴリの説明 */
@@ -303,7 +304,7 @@ export const categories = pgTable(
     /** UIで表示する際の色 */
     color: text("color").default("#808080"),
     /** 親カテゴリID */
-    parentId: integer("parent_id").references(() => categories.id),
+    parentId: uuid("parent_id").references((): AnyPgColumn => categories.id),
     /** 作成日時 */
     createdAt: timestamp("created_at").notNull().defaultNow(),
     /** カテゴリの起源 (manual) */
@@ -321,7 +322,7 @@ export const categories = pgTable(
  * Stores information about projects that media items can be associated with.
  */
 export const projects = pgTable("projects", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   /** プロジェクト名 */
   name: text("name").notNull(),
   /** プロジェクトの説明 */
@@ -341,7 +342,7 @@ export const projects = pgTable("projects", {
 export const ips = pgTable(
   "ips",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** IP(作品)名 */
     name: text("name").notNull(),
     /** IP(作品)の説明 */
@@ -365,11 +366,11 @@ export const ips = pgTable(
 export const characters = pgTable(
   "characters",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** キャラクター名 */
     name: text("name").notNull(),
     /** どのIP(作品)に属しているか */
-    ipId: integer("ip_id").references(() => ips.id, {
+    ipId: uuid("ip_id").references(() => ips.id, {
       onDelete: "set null",
     }),
     /** キャラクターの説明 */
@@ -400,7 +401,7 @@ export const mediaCharacters = pgTable(
       .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** キャラクターID */
-    characterId: integer("character_id")
+    characterId: uuid("character_id")
       .notNull()
       .references(() => characters.id, { onDelete: "cascade" }),
     /** AIがキャラクターを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
@@ -425,7 +426,7 @@ export const mediaCategories = pgTable(
       .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** カテゴリID */
-    categoryId: integer("category_id")
+    categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),
   },
@@ -449,7 +450,7 @@ export const mediaProjects = pgTable(
       .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** プロジェクトID */
-    projectId: integer("project_id")
+    projectId: uuid("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
   },
@@ -471,7 +472,7 @@ export const mediaIps = pgTable(
       .notNull()
       .references(() => medias.id, { onDelete: "cascade" }),
     /** IP(作品)ID */
-    ipId: integer("ip_id")
+    ipId: uuid("ip_id")
       .notNull()
       .references(() => ips.id, { onDelete: "cascade" }),
     /** メディアへのIP付与の起源 (manual, ai_generatedなど) */
@@ -546,7 +547,7 @@ export const mediaSync = pgTable("media_sync", {
  * Records user views of media items for analytics and personalized recommendations.
  */
 export const viewHistory = pgTable("view_history", {
-  id: serial("id").primaryKey(),
+  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
   /** メディアID */
   mediaId: uuid("media_id")
     .notNull()
@@ -566,7 +567,7 @@ export const viewHistory = pgTable("view_history", {
 export const similarMedia = pgTable(
   "similar_media",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** メディア1のID */
     media1Id: uuid("media1_id")
       .notNull()
@@ -611,7 +612,7 @@ export const similarMedia = pgTable(
 export const mediaRelationsTable = pgTable(
   "media_relations",
   {
-    id: serial("id").primaryKey(),
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** 親メディアID */
     parentMediaId: uuid("parent_media_id")
       .notNull()

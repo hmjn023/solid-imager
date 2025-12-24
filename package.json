@@ -17,9 +17,11 @@
     "check": "biome check --fix --unsafe ./src",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "typecheck": "tsc --noEmit",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
     "docs:generate": "typedoc",
-    "unsafe-fix": "biome check --fix --unsafe ./src"
+    "unsafe-fix": "biome check --fix --unsafe ./src",
+    "prepare": "husky"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.14",
@@ -30,7 +32,9 @@
     "@tanstack/solid-db": "^0.1.48",
     "@tanstack/solid-form": "^1.26.0",
     "@tanstack/solid-query": "^5.90.13",
+    "@tanstack/solid-virtual": "^3.13.13",
     "@tanstack/zod-form-adapter": "^0.42.1",
+    "archiver": "^7.0.1",
     "chokidar": "^4.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -45,6 +49,7 @@
     "swagger-ui-dist": "^5.30.3",
     "tailwind-merge": "^3.4.0",
     "tailwindcss-animate": "^1.0.7",
+    "unzipper": "^0.12.3",
     "uuid": "^13.0.0",
     "vinxi": "^0.5.8",
     "zod": "^4.1.13"
@@ -53,24 +58,38 @@
     "@biomejs/biome": "2.2.4",
     "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.17",
+    "@types/archiver": "^7.0.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^24.10.1",
     "@types/pg": "^8.15.6",
     "@types/ssh2-sftp-client": "^9.0.5",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-dist": "^3.30.6",
+    "@types/unzipper": "^0.10.11",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^17.2.3",
     "drizzle-kit": "^0.31.7",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "playwright": "^1.57.0",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.20.6",
     "typedoc": "^0.28.15",
+    "typescript": "^5.9.3",
     "ultracite": "5.4.4",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=22"
+  },
+  "lint-staged": {
+    "src/**/*.{ts,tsx,js,jsx,json}": [
+      "biome check --fix --unsafe"
+    ],
+    "src/**/*.{ts,tsx}": [
+      "vitest related --run",
+      "vinxi build"
+    ]
   }
 }

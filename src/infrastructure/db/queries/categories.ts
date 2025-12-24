@@ -50,12 +50,12 @@ export const insertCategory = async (categoryData: NewCategory) => {
 
 /**
  * Selects a category by its ID from the database.
- * @param {number} categoryId - The ID of the category to select.
- * @returns {Promise<Category>} A promise that resolves with the category object.
+ * @param {string} categoryId - The ID of the category to select.
+ * @returns {Promise<typeof categories.$inferSelect>} A promise that resolves with the category object.
  * @throws {NotFoundError} If no category with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
-export const selectCategoryById = async (categoryId: number) => {
+export const selectCategoryById = async (categoryId: string) => {
   try {
     const result = await db
       .select()
@@ -80,15 +80,15 @@ export const selectCategoryById = async (categoryId: number) => {
 
 /**
  * Updates an existing category in the database.
- * @param {number} categoryId - The ID of the category to update.
+ * @param {string} categoryId - The ID of the category to update.
  * @param {Partial<NewCategory>} categoryData - The partial data to update the category with.
- * @returns {Promise<Category>} A promise that resolves with the updated category object.
+ * @returns {Promise<typeof categories.$inferSelect>} A promise that resolves with the updated category object.
  * @throws {NotFoundError} If no category with the given ID is found.
  * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name).
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
 export const updateCategory = async (
-  categoryId: number,
+  categoryId: string,
   categoryData: Partial<NewCategory>
 ) => {
   try {
@@ -133,13 +133,13 @@ export const updateCategory = async (
 
 /**
  * Deletes a category from the database.
- * @param {number} categoryId - The ID of the category to delete.
- * @returns {Promise<Category>} A promise that resolves with the deleted category object.
+ * @param {string} categoryId - The ID of the category to delete.
+ * @returns {Promise<typeof categories.$inferSelect>} A promise that resolves with the deleted category object.
  * @throws {NotFoundError} If no category with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
 export const deleteCategory = async (
-  categoryId: number
+  categoryId: string
 ): Promise<typeof categories.$inferSelect> => {
   try {
     const result = await db

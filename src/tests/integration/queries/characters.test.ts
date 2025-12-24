@@ -16,8 +16,8 @@ import {
 } from "~/infrastructure/db/schema";
 
 describe("characters queries Integration", () => {
-  let testIpId: number;
-  let testCharacterId: number;
+  let testIpId: string;
+  let testCharacterId: string;
 
   beforeAll(async () => {
     // Clean up
@@ -62,7 +62,7 @@ describe("characters queries Integration", () => {
   });
 
   it("should throw NotFoundError when selecting a non-existent character", async () => {
-    const nonExistentId = 999_999;
+    const nonExistentId = "00000000-0000-0000-0000-000000000000";
     await expect(selectCharacterById(nonExistentId)).rejects.toThrow(
       NotFoundError
     );

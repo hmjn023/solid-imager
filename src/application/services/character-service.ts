@@ -36,7 +36,7 @@ export const CharacterService = {
    */
   async createCharacter(characterData: {
     name: string;
-    ipId?: number;
+    ipId?: string;
     description?: string;
   }) {
     const result = await insertCharacter(characterData);
@@ -45,10 +45,10 @@ export const CharacterService = {
 
   /**
    * Retrieves details of a specific character by its ID.
-   * @param {number} characterId - The ID of the character.
+   * @param {string} characterId - The ID of the character.
    * @returns {Promise<any>} The details of the specified character.
    */
-  async getCharacterDetails(characterId: number) {
+  async getCharacterDetails(characterId: string) {
     return await selectCharacterById(characterId);
   },
 
@@ -62,10 +62,10 @@ export const CharacterService = {
    * @returns {Promise<any>} The updated character.
    */
   async updateCharacter(
-    characterId: number,
+    characterId: string,
     characterData: {
       name?: string;
-      ipId?: number;
+      ipId?: string;
       description?: string;
     }
   ) {
@@ -74,10 +74,10 @@ export const CharacterService = {
 
   /**
    * Deletes a character by its ID.
-   * @param {number} characterId - The ID of the character to delete.
+   * @param {string} characterId - The ID of the character to delete.
    * @returns {Promise<any>} Confirmation of deletion.
    */
-  async deleteCharacter(characterId: number) {
+  async deleteCharacter(characterId: string) {
     return await deleteCharacter(characterId);
   },
 
@@ -93,20 +93,20 @@ export const CharacterService = {
   /**
    * Adds a character to a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} characterId - The ID of the character to add.
+   * @param {string} characterId - The ID of the character to add.
    * @returns {Promise<any>} The created association.
    */
-  async addCharacterToMedia(mediaId: string, characterId: number) {
+  async addCharacterToMedia(mediaId: string, characterId: string) {
     return await insertMediaCharacter(mediaId, characterId);
   },
 
   /**
    * Removes a character from a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} characterId - The ID of the character to remove.
+   * @param {string} characterId - The ID of the character to remove.
    * @returns {Promise<any>} Confirmation of removal.
    */
-  async removeCharacterFromMedia(mediaId: string, characterId: number) {
+  async removeCharacterFromMedia(mediaId: string, characterId: string) {
     return await deleteMediaCharacter(mediaId, characterId);
   },
 };

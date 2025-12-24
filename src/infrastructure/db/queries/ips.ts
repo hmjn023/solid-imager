@@ -50,12 +50,12 @@ export const insertIp = async (ipData: NewIp) => {
 
 /**
  * Selects an Intellectual Property (IP) by its ID from the database.
- * @param {number} ipId - The ID of the IP to select.
- * @returns {Promise<Ip>} A promise that resolves with the IP object.
+ * @param {string} ipId - The ID of the IP to select.
+ * @returns {Promise<typeof ips.$inferSelect>} A promise that resolves with the IP object.
  * @throws {NotFoundError} If no IP with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
-export const selectIpById = async (ipId: number) => {
+export const selectIpById = async (ipId: string) => {
   try {
     const result = await db.select().from(ips).where(eq(ips.id, ipId));
     if (result.length === 0) {
@@ -75,14 +75,14 @@ export const selectIpById = async (ipId: number) => {
 
 /**
  * Updates an existing Intellectual Property (IP) in the database.
- * @param {number} ipId - The ID of the IP to update.
+ * @param {string} ipId - The ID of the IP to update.
  * @param {Partial<NewIp>} ipData - The partial data to update the IP with.
- * @returns {Promise<Ip>} A promise that resolves with the updated IP object.
+ * @returns {Promise<typeof ips.$inferSelect>} A promise that resolves with the updated IP object.
  * @throws {NotFoundError} If no IP with the given ID is found.
  * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name).
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
-export const updateIp = async (ipId: number, ipData: Partial<NewIp>) => {
+export const updateIp = async (ipId: string, ipData: Partial<NewIp>) => {
   try {
     const result = await db
       .update(ips)
@@ -117,12 +117,12 @@ export const updateIp = async (ipId: number, ipData: Partial<NewIp>) => {
 
 /**
  * Deletes an Intellectual Property (IP) from the database.
- * @param {number} ipId - The ID of the IP to delete.
- * @returns {Promise<Ip>} A promise that resolves with the deleted IP object.
+ * @param {string} ipId - The ID of the IP to delete.
+ * @returns {Promise<typeof ips.$inferSelect>} A promise that resolves with the deleted IP object.
  * @throws {NotFoundError} If no IP with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
-export const deleteIp = async (ipId: number) => {
+export const deleteIp = async (ipId: string) => {
   try {
     const result = await db.delete(ips).where(eq(ips.id, ipId)).returning();
     if (result.length === 0) {
@@ -160,7 +160,7 @@ export async function selectIpsByMediaId(mediaId: string) {
   }
 }
 
-export async function insertMediaIp(mediaId: string, ipId: number) {
+export async function insertMediaIp(mediaId: string, ipId: string) {
   try {
     const result = await db
       .insert(mediaIps)
@@ -172,7 +172,7 @@ export async function insertMediaIp(mediaId: string, ipId: number) {
   }
 }
 
-export async function deleteMediaIp(mediaId: string, ipId: number) {
+export async function deleteMediaIp(mediaId: string, ipId: string) {
   try {
     const result = await db
       .delete(mediaIps)

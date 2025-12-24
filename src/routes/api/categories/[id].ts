@@ -5,7 +5,7 @@ import { updateCategorySchema } from "~/domain/categories/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
+  id: z.string().uuid(), // UUID v4 を想定します。
 });
 export type IdParam = z.infer<typeof IdParamSchema>;
 
@@ -22,8 +22,9 @@ export type IdParam = z.infer<typeof IdParamSchema>;
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the category to retrieve.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the category to retrieve.
  *     responses:
  *       200:
  *         description: Details of the category.
@@ -78,8 +79,9 @@ export async function GET({ params }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the category to update.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the category to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -143,8 +145,9 @@ export async function PUT({ params, request }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the category to delete.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the category to delete.
  *     responses:
  *       200:
  *         description: Category successfully deleted.

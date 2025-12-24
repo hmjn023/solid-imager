@@ -3,7 +3,7 @@ import type { Category } from "~/infrastructure/db/schema";
 
 describe("GET /api/categories/:id", () => {
   it("should return category by id", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after GET function is available
     // const result = await GET({ params: { id: '1' } });
@@ -12,6 +12,7 @@ describe("GET /api/categories/:id", () => {
       name: "Test Category",
       description: "Test description",
       color: "#FF0000",
+      source: "manual",
       createdAt: new Date(),
       updatedAt: new Date(),
       parentId: null,
@@ -24,7 +25,7 @@ describe("GET /api/categories/:id", () => {
 
   it("should throw error for non-existent category", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
@@ -39,7 +40,7 @@ describe("GET /api/categories/:id", () => {
 
 describe("PUT /api/categories/:id", () => {
   it("should update and return category", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
     const updateData = {
       name: "Updated Name",
       description: "Updated description",
@@ -51,6 +52,7 @@ describe("PUT /api/categories/:id", () => {
       id,
       ...updateData,
       color: "#FF0000",
+      source: "manual",
       createdAt: new Date(),
       updatedAt: new Date(),
       parentId: null,
@@ -62,7 +64,7 @@ describe("PUT /api/categories/:id", () => {
 
   it("should throw error for non-existent category", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
@@ -77,7 +79,7 @@ describe("PUT /api/categories/:id", () => {
 
 describe("DELETE /api/categories/:id", () => {
   it("should delete category and return success", () => {
-    const _id = 1;
+    const _id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after DELETE function is available
     // const result = await DELETE({ params: { id: '1' } });
@@ -86,7 +88,7 @@ describe("DELETE /api/categories/:id", () => {
 
   it("should throw error for non-existent category", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

@@ -1,22 +1,17 @@
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "~/components/ui/command";
+  Combobox,
+  ComboboxContent,
+  ComboboxControl,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemLabel,
+} from "~/components/ui/combobox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "~/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -54,45 +49,6 @@ type SearchFiltersProps = {
   usePopover?: boolean;
 };
 
-// Separate component to avoid hydration issues when reusing JSX variable
-function CommandContent<T>(props: {
-  items: T[] | undefined;
-  placeholder?: string;
-  onSelect: (item: T) => void;
-  getItemLabel: (item: T) => string;
-  getItemDescription?: (item: T) => string | undefined | null;
-  listMaxHeightClass?: string; // New prop
-}) {
-  return (
-    <Command>
-      <CommandInput placeholder={props.placeholder || "検索..."} />
-      <CommandList class={props.listMaxHeightClass || "max-h-[150px]"}>
-        <CommandEmpty>見つかりません</CommandEmpty>
-        <CommandGroup>
-          <For each={props.items}>
-            {(item) => (
-              <CommandItem
-                onSelect={() => {
-                  props.onSelect(item);
-                }}
-              >
-                <div class="flex flex-col">
-                  <span>{props.getItemLabel(item)}</span>
-                  <Show when={props.getItemDescription?.(item)}>
-                    <span class="text-muted-foreground text-xs">
-                      {props.getItemDescription?.(item)}
-                    </span>
-                  </Show>
-                </div>
-              </CommandItem>
-            )}
-          </For>
-        </CommandGroup>
-      </CommandList>
-    </Command>
-  );
-}
-
 // Generic Filter Section Component
 function FilterSection<T>(props: {
   label: string;
@@ -105,15 +61,13 @@ function FilterSection<T>(props: {
   getItemDescription?: (item: T) => string | undefined | null;
   placeholder?: string;
   badgeVariant?: "default" | "destructive" | "secondary" | "outline";
-  usePopover?: boolean; // New prop to control Popover usage
-  listMaxHeightClass?: string; // New prop
 }) {
-  const [open, setOpen] = createSignal(false);
+  const [value, _setValue] = createSignal<T | null>(null);
 
   return (
     <div class="space-y-2">
       <Label>{props.label}</Label>
-      <div class="flex flex-wrap gap-2">
+      <div class="mb-2 flex flex-wrap gap-2">
         <For each={props.selectedItems}>
           {(id) => {
             const item = props.items?.find(
@@ -136,44 +90,32 @@ function FilterSection<T>(props: {
             );
           }}
         </For>
-        {props.usePopover === false ? (
-          // Render Command directly if usePopover is false
-          <div class="w-full">
-            <CommandContent
-              getItemDescription={props.getItemDescription}
-              getItemLabel={props.getItemLabel}
-              items={props.items}
-              listMaxHeightClass={props.listMaxHeightClass}
-              onSelect={props.onSelect}
-              placeholder={props.placeholder}
-            />
-          </div>
-        ) : (
-          // Default to Popover behavior
-          <Popover
-            onOpenChange={setOpen}
-            open={open()}
-            placement="bottom-start"
-          >
-            <PopoverTrigger as={Button} size="sm" variant="outline">
-              + 追加
-            </PopoverTrigger>
-            <PopoverContent class="p-0">
-              <CommandContent
-                getItemDescription={props.getItemDescription}
-                getItemLabel={props.getItemLabel}
-                items={props.items}
-                listMaxHeightClass={props.listMaxHeightClass || "max-h-[150px]"}
-                onSelect={(item) => {
-                  props.onSelect(item);
-                  setOpen(false); // Close popover after selection
-                }}
-                placeholder={props.placeholder}
-              />
-            </PopoverContent>
-          </Popover>
-        )}
       </div>
+      <Combobox<T>
+        itemComponent={(itemProps) => (
+          <ComboboxItem item={itemProps.item}>
+            <ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
+          </ComboboxItem>
+        )}
+        onChange={(val) => {
+          if (val) {
+            props.onSelect(val);
+            // setValue(null); // Keep the selection visible
+          }
+        }}
+        optionLabel={props.getItemLabel}
+        options={props.items || []}
+        optionTextValue={props.getItemLabel}
+        optionValue={(item) => String(props.getItemKey(item))}
+        placeholder={props.placeholder}
+        triggerMode="focus"
+        value={value()}
+      >
+        <ComboboxControl>
+          <ComboboxInput />
+        </ComboboxControl>
+        <ComboboxContent class="max-h-[300px]" />
+      </Combobox>
     </div>
   );
 }
@@ -229,7 +171,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         onSelect={(tag) => addTag(tag.name)}
         placeholder="タグを検索..."
         selectedItems={props.state.selectedTags}
-        usePopover={props.usePopover}
       />
 
       {/* Tag Mode */}
@@ -272,7 +213,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         onSelect={(tag) => addExcludeTag(tag.name)}
         placeholder="除外タグを検索..."
         selectedItems={props.state.excludeTags}
-        usePopover={props.usePopover}
       />
 
       {/* Project Filter */}
@@ -299,7 +239,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="プロジェクトを検索..."
         selectedItems={props.state.selectedProjects}
-        usePopover={props.usePopover}
       />
 
       {/* IP Filter */}
@@ -323,7 +262,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="IPを検索..."
         selectedItems={props.state.selectedIps}
-        usePopover={props.usePopover}
       />
 
       {/* Character Filter */}
@@ -350,7 +288,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="キャラクターを検索..."
         selectedItems={props.state.selectedCharacters}
-        usePopover={props.usePopover}
       />
 
       {/* Sort Options */}

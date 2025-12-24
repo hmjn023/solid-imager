@@ -47,7 +47,7 @@ export const updateTagSchema = tagDataSchema.partial();
  * Used for validating tag data returned from the API
  */
 export const tagResponseSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
   attribute: z.string().nullable(),

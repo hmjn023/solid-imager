@@ -37,15 +37,16 @@ describe("POST /api/categories", () => {
     // TODO: Implement after POST function is available
     // const result = await POST({ request: new Request('', { method: 'POST', body: JSON.stringify(newData) }) });
     const result: Category = {
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000000",
       ...newData,
+      source: "manual",
       createdAt: new Date(),
       updatedAt: new Date(),
       parentId: null,
     };
 
     expect(result).toBeDefined();
-    expect(result.id).toBeTypeOf("number");
+    expect(result.id).toBeTypeOf("string");
     expect(result.name).toBe(newData.name);
   });
 

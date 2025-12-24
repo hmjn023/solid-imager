@@ -20,7 +20,7 @@ import {
 describe("bulk-operations queries Integration", () => {
   const mediaSourceId = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a19";
   let mediaIds: string[];
-  let tagIds: number[];
+  let tagIds: string[];
 
   beforeAll(async () => {
     await db.delete(mediaTags);
@@ -68,14 +68,14 @@ describe("bulk-operations queries Integration", () => {
       .insert(medias)
       .values(mediaToInsert)
       .returning();
-    mediaIds = insertedMedia.map((m) => m.id);
+    mediaIds = insertedMedia.map((m: { id: string }) => m.id);
 
     const tagsToInsert: NewTag[] = [
       { name: "bulk-tag1" },
       { name: "bulk-tag2" },
     ];
     const insertedTags = await db.insert(tags).values(tagsToInsert).returning();
-    tagIds = insertedTags.map((t) => t.id);
+    tagIds = insertedTags.map((t: { id: string }) => t.id);
   });
 
   afterAll(async () => {
@@ -136,7 +136,7 @@ describe("bulk-operations queries Integration", () => {
       },
     ];
     const inserted = await db.insert(medias).values(mediaToDelete).returning();
-    const idsToDelete = inserted.map((m) => m.id);
+    const idsToDelete = inserted.map((m: { id: string }) => m.id);
 
     const results = await bulkDeleteMedia(mediaSourceId, idsToDelete);
     expect(results.length).toBe(idsToDelete.length);

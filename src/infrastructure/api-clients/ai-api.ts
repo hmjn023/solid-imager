@@ -5,8 +5,8 @@
 
 import type { z } from "zod";
 import {
-  type tagImageRequestSchema,
   taggingResponseSchema,
+  type tagImageRequestSchema,
 } from "~/domain/tagging/schemas";
 import { apiRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";

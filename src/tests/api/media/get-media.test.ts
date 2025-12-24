@@ -27,6 +27,8 @@ describe("getMedia Contract", () => {
       height: 600,
       mediaSourceId,
       indexedAt: new Date(),
+      description: null,
+      status: "active",
     };
 
     expect(result).toBeDefined();

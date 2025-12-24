@@ -43,7 +43,6 @@ describe("addMedia Integration", () => {
       width: 800,
       height: 600,
       description: null,
-      sourceUrl: null,
     };
 
     const result = await MediaRepository.create(newMediaData);
@@ -83,7 +82,6 @@ describe("addMedia Integration", () => {
       width: 800,
       height: 600,
       description: null,
-      sourceUrl: null,
     };
 
     await MediaRepository.create(newMediaData); // 最初のメディアを追加します。

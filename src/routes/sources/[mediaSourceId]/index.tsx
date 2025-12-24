@@ -2,6 +2,7 @@ import { useParams } from "@solidjs/router";
 import {
   createInfiniteQuery,
   createQuery,
+  keepPreviousData,
   useQueryClient,
 } from "@tanstack/solid-query";
 import {
@@ -44,6 +45,7 @@ import type { DownloadItem } from "~/domain/media/schemas";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
+import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
 import {
   copyMedia,
@@ -51,12 +53,15 @@ import {
   moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+  fetchSourceDump,
+  importSourceZip,
+  restoreSource,
+} from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
-import { fetchSourceDump, restoreSource } from "~/infrastructure/api-clients/sources-api";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
@@ -143,6 +148,7 @@ export default function MediaListPage() {
       }
       return;
     },
+    placeholderData: keepPreviousData,
   }));
 
   // Disable browser's default scroll restoration
@@ -355,29 +361,29 @@ export default function MediaListPage() {
     }
   };
 
-  const handleDumpDownload = async () => {
+  const handleDumpDownload = async (mode: "json" | "zip" = "json") => {
     const id = mediaSourceId();
     if (!id) {
       return;
     }
 
     try {
-      const blob = await fetchSourceDump(id);
+      const blob = await fetchSourceDump(id, mode);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `source-${id}-dump.json`;
+      a.download = `source-${id}-dump.${mode}`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      toast.success("Dump downloaded successfully");
+      toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
     } catch (_error) {
       toast.error("Failed to download dump");
     }
   };
 
-  const handleRestoreSelect = (e: Event) => {
+  const handleRestoreSelect = async (e: Event) => {
     const target = e.target as HTMLInputElement;
     if (!target.files || target.files.length === 0) {
       return;
@@ -389,33 +395,60 @@ export default function MediaListPage() {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        const json = JSON.parse(event.target?.result as string);
-
-        toast.loading("Restoring metadata...", { id: "restore-toast" });
-
-        const result = await restoreSource(id, json);
-
+    try {
+      // Check for ZIP file
+      if (
+        file.name.endsWith(".zip") ||
+        file.type === "application/zip" ||
+        file.type === "application/x-zip-compressed"
+      ) {
+        toast.loading("Importing ZIP dump...", { id: "restore-toast" });
+        const result = await importSourceZip(id, file);
         toast.success(
-          `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+          `Import complete: ${result.importedCount} items imported.`,
           { id: "restore-toast" }
         );
-
-        // Refresh view
         queryClient.invalidateQueries({
           queryKey: ["media", id],
         });
-      } catch (error) {
-        toast.error(`Restore failed: ${(error as Error).message}`, {
-          id: "restore-toast",
-        });
-      } finally {
         target.value = ""; // Reset input
+        return;
       }
-    };
-    reader.readAsText(file);
+
+      // Default to JSON handling
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const json = JSON.parse(event.target?.result as string);
+
+          toast.loading("Restoring metadata...", { id: "restore-toast" });
+
+          const result = await restoreSource(id, json);
+
+          toast.success(
+            `Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+            { id: "restore-toast" }
+          );
+
+          // Refresh view
+          queryClient.invalidateQueries({
+            queryKey: ["media", id],
+          });
+        } catch (error) {
+          toast.error(`Restore failed: ${(error as Error).message}`, {
+            id: "restore-toast",
+          });
+        } finally {
+          target.value = ""; // Reset input
+        }
+      };
+      reader.readAsText(file);
+    } catch (error) {
+      toast.error(`Import failed: ${(error as Error).message}`, {
+        id: "restore-toast",
+      });
+      target.value = "";
+    }
   };
 
   const handleAddButtonClick = () => {
@@ -651,14 +684,14 @@ export default function MediaListPage() {
         <Portal mount={document.getElementById("nav-actions")!}>
           <Button
             class="mr-2 border-white text-white hover:bg-sky-700"
-            onClick={handleDumpDownload}
+            onClick={() => handleDumpDownload("json")}
             size="icon"
             title="Download Backup JSON"
             variant="outline"
           >
             {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
             <svg
-              class="lucide lucide-download"
+              class="lucide lucide-file-json"
               fill="none"
               height="20"
               stroke="currentColor"
@@ -669,9 +702,35 @@ export default function MediaListPage() {
               width="20"
               xmlns="http://www.w3.org/2000/svg"
             >
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" x2="12" y1="15" y2="3" />
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
+              <path d="M10 18a1 1 0 0 0-1-1v-1a1 1 0 0 0 1-1" />
+            </svg>
+          </Button>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => handleDumpDownload("zip")}
+            size="icon"
+            title="Download Backup ZIP (with Images)"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
+            <svg
+              class="lucide lucide-archive"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect height="5" rx="1" width="20" x="2" y="3" />
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+              <path d="M10 12h4" />
             </svg>
           </Button>
           <Button
@@ -883,7 +942,7 @@ export default function MediaListPage() {
 
       {/* Hidden file input */}
       <input
-        accept=".json"
+        accept=".json,.zip"
         class="hidden"
         id="restore-input"
         onChange={handleRestoreSelect}

@@ -44,18 +44,13 @@ export const CategoryService = {
     name: string;
     description?: string;
     color?: string;
-    parentId?: number;
+    parentId?: string;
   }) {
     const result = await insertCategory(categoryData);
     return result[0];
   },
 
-  /**
-   * Retrieves details of a specific category by its ID.
-   * @param {number} categoryId - The ID of the category.
-   * @returns {Promise<any>} The details of the specified category.
-   */
-  async getCategoryDetails(categoryId: number) {
+  async getCategoryDetails(categoryId: string) {
     return await selectCategoryById(categoryId);
   },
 
@@ -70,23 +65,18 @@ export const CategoryService = {
    * @returns {Promise<any>} The updated category.
    */
   async updateCategory(
-    categoryId: number,
+    categoryId: string,
     categoryData: {
       name?: string;
       description?: string;
       color?: string;
-      parentId?: number;
+      parentId?: string;
     }
   ) {
     return await updateCategory(categoryId, categoryData);
   },
 
-  /**
-   * Deletes a category by its ID.
-   * @param {number} categoryId - The ID of the category to delete.
-   * @returns {Promise<any>} Confirmation of deletion.
-   */
-  async deleteCategory(categoryId: number) {
+  async deleteCategory(categoryId: string) {
     return await deleteCategory(categoryId);
   },
 };

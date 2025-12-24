@@ -3,7 +3,7 @@ import type { Character } from "~/infrastructure/db/schema";
 
 describe("GET /api/characters/:id", () => {
   it("should return character by id", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after GET function is available
     // const result = await GET({ params: { id: '1' } });
@@ -25,7 +25,7 @@ describe("GET /api/characters/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
@@ -40,7 +40,7 @@ describe("GET /api/characters/:id", () => {
 
 describe("PUT /api/characters/:id", () => {
   it("should update and return character", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
     const updateData = {
       name: "Updated Name",
       description: "Updated description",
@@ -64,7 +64,7 @@ describe("PUT /api/characters/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
@@ -79,7 +79,7 @@ describe("PUT /api/characters/:id", () => {
 
 describe("DELETE /api/characters/:id", () => {
   it("should delete character and return success", () => {
-    const _id = 1;
+    const _id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after DELETE function is available
     // const result = await DELETE({ params: { id: '1' } });
@@ -88,7 +88,7 @@ describe("DELETE /api/characters/:id", () => {
 
   it("should throw error for non-existent character", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

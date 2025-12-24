@@ -36,6 +36,7 @@ describe("updateMedia Contract", () => {
       mediaSourceId,
       indexedAt: new Date(),
       description: updates.description,
+      status: "active",
     };
 
     expect(result).toBeDefined();

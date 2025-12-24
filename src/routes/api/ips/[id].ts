@@ -5,7 +5,7 @@ import { updateIpSchema } from "~/domain/ips/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
+  id: z.string().uuid(), // UUID v4 を想定します。
 });
 export type IdParam = z.infer<typeof IdParamSchema>;
 
@@ -22,8 +22,9 @@ export type IdParam = z.infer<typeof IdParamSchema>;
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the IP to retrieve.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the IP to retrieve.
  *     responses:
  *       200:
  *         description: Details of the IP.
@@ -74,8 +75,9 @@ export async function GET({ params }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the IP to update.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the IP to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -136,8 +138,9 @@ export async function PATCH({ params, request }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the IP to delete.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the IP to delete.
  *     responses:
  *       200:
  *         description: IP successfully deleted.

@@ -20,7 +20,7 @@ export async function insertProject(project: typeof projects.$inferInsert) {
   }
 }
 
-export async function selectProjectById(id: number) {
+export async function selectProjectById(id: string) {
   try {
     const result = await db.select().from(projects).where(eq(projects.id, id));
     if (result.length === 0) {
@@ -33,7 +33,7 @@ export async function selectProjectById(id: number) {
 }
 
 export async function updateProject(
-  id: number,
+  id: string,
   project: Partial<typeof projects.$inferInsert>
 ) {
   try {
@@ -54,7 +54,7 @@ export async function updateProject(
   }
 }
 
-export async function deleteProject(id: number) {
+export async function deleteProject(id: string) {
   try {
     const result = await db
       .delete(projects)
@@ -94,7 +94,7 @@ export async function selectProjectsByMediaId(mediaId: string) {
   }
 }
 
-export async function insertMediaProject(mediaId: string, projectId: number) {
+export async function insertMediaProject(mediaId: string, projectId: string) {
   try {
     const result = await db
       .insert(mediaProjects)
@@ -106,7 +106,7 @@ export async function insertMediaProject(mediaId: string, projectId: number) {
   }
 }
 
-export async function deleteMediaProject(mediaId: string, projectId: number) {
+export async function deleteMediaProject(mediaId: string, projectId: string) {
   try {
     const result = await db
       .delete(mediaProjects)

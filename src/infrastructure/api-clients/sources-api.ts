@@ -22,6 +22,15 @@ const restoreResponseSchema = z.object({
 });
 
 /**
+ * Schema for import response
+ */
+const importResponseSchema = z.object({
+  success: z.boolean(),
+  importedCount: z.number(),
+  message: z.string().optional(),
+});
+
+/**
  * Fetches all media sources
  * @returns Array of media sources
  */
@@ -71,10 +80,15 @@ export async function deleteMediaSource(id: string): Promise<void> {
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
+ * @param mode - The dump mode (json or zip)
  * @returns Blob containing the dump
  */
-export function fetchSourceDump(id: string): Promise<Blob> {
-  return apiBlobRequest(API_ENDPOINTS.sourceDump(id), {
+export function fetchSourceDump(
+  id: string,
+  mode: "json" | "zip" = "json"
+): Promise<Blob> {
+  const url = `${API_ENDPOINTS.sourceDump(id)}?mode=${mode}`;
+  return apiBlobRequest(url, {
     method: "GET",
   });
 }
@@ -90,5 +104,21 @@ export function restoreSource(id: string, data: unknown) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Imports a media source from a ZIP file
+ * @param id - Media source ID
+ * @param file - The ZIP file to import
+ * @returns Import result
+ */
+export function importSourceZip(id: string, file: File) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return apiRequest(API_ENDPOINTS.sourceImport(id), importResponseSchema, {
+    method: "POST",
+    body: formData,
   });
 }

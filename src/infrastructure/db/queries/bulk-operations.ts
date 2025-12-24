@@ -84,7 +84,7 @@ export const bulkUpdateMediaPaths = async (
   pathUpdates: string
 ) => {
   try {
-    return await db.transaction(async (tx) => {
+    return await db.transaction(async (tx: typeof db) => {
       const mediaToUpdate = await tx
         .select({ id: medias.id, fileName: medias.fileName })
         .from(medias)
@@ -95,13 +95,15 @@ export const bulkUpdateMediaPaths = async (
           )
         );
 
-      const updates = mediaToUpdate.map((media) => {
-        const newFilePath = `${pathUpdates}/${media.fileName}`;
-        return tx
-          .update(medias)
-          .set({ filePath: newFilePath })
-          .where(eq(medias.id, media.id));
-      });
+      const updates = mediaToUpdate.map(
+        (media: { id: string; fileName: string }) => {
+          const newFilePath = `${pathUpdates}/${media.fileName}`;
+          return tx
+            .update(medias)
+            .set({ filePath: newFilePath })
+            .where(eq(medias.id, media.id));
+        }
+      );
 
       return Promise.all(updates);
     });
@@ -125,7 +127,7 @@ export const bulkUpdateMediaPaths = async (
 export const bulkAddMediaTags = async (
   _mediaSourceId: string,
   mediaIds: string[],
-  tagsToAdd: number[]
+  tagsToAdd: string[]
 ) => {
   const values: NewMediaTag[] = [];
   for (const mediaId of mediaIds) {
@@ -170,7 +172,7 @@ export const bulkAddMediaTags = async (
 export const bulkRemoveMediaTags = async (
   _mediaSourceId: string,
   mediaIds: string[],
-  tagsToRemove: number[]
+  tagsToRemove: string[]
 ) => {
   if (mediaIds.length === 0 || tagsToRemove.length === 0) {
     return [];

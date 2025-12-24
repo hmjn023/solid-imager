@@ -40,10 +40,10 @@ export const IpService = {
 
   /**
    * Retrieves details of a specific Intellectual Property (IP) by its ID.
-   * @param {number} ipId - The ID of the IP.
+   * @param {string} ipId - The ID of the IP.
    * @returns {Promise<any>} The details of the specified IP.
    */
-  async getIpDetails(ipId: number) {
+  async getIpDetails(ipId: string) {
     return await selectIpById(ipId);
   },
 
@@ -56,7 +56,7 @@ export const IpService = {
    * @returns {Promise<any>} The updated IP.
    */
   async updateIp(
-    ipId: number,
+    ipId: string,
     ipData: { name?: string; description?: string }
   ) {
     return await updateIp(ipId, ipData);
@@ -64,10 +64,10 @@ export const IpService = {
 
   /**
    * Deletes an Intellectual Property (IP) by its ID.
-   * @param {number} ipId - The ID of the IP to delete.
+   * @param {string} ipId - The ID of the IP to delete.
    * @returns {Promise<any>} Confirmation of deletion.
    */
-  async deleteIp(ipId: number) {
+  async deleteIp(ipId: string) {
     return await deleteIp(ipId);
   },
 
@@ -83,20 +83,20 @@ export const IpService = {
   /**
    * Adds an IP to a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} ipId - The ID of the IP to add.
+   * @param {string} ipId - The ID of the IP to add.
    * @returns {Promise<any>} The created association.
    */
-  async addIpToMedia(mediaId: string, ipId: number) {
+  async addIpToMedia(mediaId: string, ipId: string) {
     return await insertMediaIp(mediaId, ipId);
   },
 
   /**
    * Removes an IP from a media.
    * @param {string} mediaId - The ID of the media.
-   * @param {number} ipId - The ID of the IP to remove.
+   * @param {string} ipId - The ID of the IP to remove.
    * @returns {Promise<any>} Confirmation of removal.
    */
-  async removeIpFromMedia(mediaId: string, ipId: number) {
+  async removeIpFromMedia(mediaId: string, ipId: string) {
     return await deleteMediaIp(mediaId, ipId);
   },
 };

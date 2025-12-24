@@ -11,7 +11,7 @@ import {
 import { categories, type NewCategory } from "~/infrastructure/db/schema";
 
 describe("categories queries Integration", () => {
-  let testCategoryId: number;
+  let testCategoryId: string;
 
   beforeAll(async () => {
     // Clean up previous test data
@@ -48,7 +48,7 @@ describe("categories queries Integration", () => {
   });
 
   it("should throw NotFoundError when selecting a non-existent category", async () => {
-    const nonExistentId = 999_999;
+    const nonExistentId = "00000000-0000-0000-0000-000000000000";
     await expect(selectCategoryById(nonExistentId)).rejects.toThrow(
       NotFoundError
     );

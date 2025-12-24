@@ -5,7 +5,7 @@ import { updateCharacterSchema } from "~/domain/characters/schemas";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
-  id: z.string().transform(Number), // URLからの文字列IDを数値に変換します。
+  id: z.string().uuid(), // UUID v4 を想定します。
 });
 export type IdParam = z.infer<typeof IdParamSchema>;
 
@@ -22,8 +22,9 @@ export type IdParam = z.infer<typeof IdParamSchema>;
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the character to retrieve.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the character to retrieve.
  *     responses:
  *       200:
  *         description: Details of the character.
@@ -74,8 +75,9 @@ export async function GET({ params }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the character to update.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the character to update.
  *     requestBody:
  *       required: true
  *       content:
@@ -139,8 +141,9 @@ export async function PATCH({ params, request }: APIEvent) {
  *         name: id
  *         required: true
  *         schema:
- *           type: integer
- *         description: Numeric ID of the character to delete.
+ *           type: string
+ *           format: uuid
+ *         description: UUID of the character to delete.
  *     responses:
  *       200:
  *         description: Character successfully deleted.

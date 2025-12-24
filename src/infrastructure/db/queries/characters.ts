@@ -1,6 +1,10 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { characters, mediaCharacters } from "~/infrastructure/db/schema";
+import {
+  characters,
+  mediaCharacters,
+  type NewCharacter,
+} from "~/infrastructure/db/schema";
 import { ConstraintError, NotFoundError, UnknownDbError } from "../errors";
 
 /**
@@ -21,12 +25,12 @@ export const selectCharacters = async () => {
 
 /**
  * Inserts a new character into the database.
- * @param {unknown} characterData - The data for the new character.
+ * @param {NewCharacter} characterData - The data for the new character.
  * @returns {Promise<Character[]>} A promise that resolves with an array containing the newly inserted character.
  * @throws {ConstraintError} If a character with the same name and IP already exists.
  * @throws {UnknownDbError} If a database error occurs during the insertion.
  */
-export const insertCharacter = async (characterData: unknown) => {
+export const insertCharacter = async (characterData: NewCharacter) => {
   try {
     return await db.insert(characters).values(characterData).returning();
   } catch (error: unknown) {
@@ -50,12 +54,12 @@ export const insertCharacter = async (characterData: unknown) => {
 
 /**
  * Selects a character by its ID from the database.
- * @param {number} characterId - The ID of the character to select.
- * @returns {Promise<Character>} A promise that resolves with the character object.
+ * @param {string} characterId - The ID of the character to select.
+ * @returns {Promise<typeof characters.$inferSelect>} A promise that resolves with the character object.
  * @throws {NotFoundError} If no character with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the selection.
  */
-export const selectCharacterById = async (characterId: number) => {
+export const selectCharacterById = async (characterId: string) => {
   try {
     const result = await db
       .select()
@@ -80,16 +84,16 @@ export const selectCharacterById = async (characterId: number) => {
 
 /**
  * Updates an existing character in the database.
- * @param {number} characterId - The ID of the character to update.
- * @param {unknown} characterData - The partial data to update the character with.
- * @returns {Promise<Character>} A promise that resolves with the updated character object.
+ * @param {string} characterId - The ID of the character to update.
+ * @param {Partial<NewCharacter>} characterData - The partial data to update the character with.
+ * @returns {Promise<typeof characters.$inferSelect>} A promise that resolves with the updated character object.
  * @throws {NotFoundError} If no character with the given ID is found.
  * @throws {ConstraintError} If the update causes a unique constraint violation (e.g., duplicate name and IP).
  * @throws {UnknownDbError} If a database error occurs during the update.
  */
 export const updateCharacter = async (
-  characterId: number,
-  characterData: unknown
+  characterId: string,
+  characterData: Partial<NewCharacter>
 ) => {
   try {
     const result = await db
@@ -137,12 +141,12 @@ export const updateCharacter = async (
 
 /**
  * Deletes a character from the database.
- * @param {number} characterId - The ID of the character to delete.
- * @returns {Promise<Character>} A promise that resolves with the deleted character object.
+ * @param {string} characterId - The ID of the character to delete.
+ * @returns {Promise<typeof characters.$inferSelect>} A promise that resolves with the deleted character object.
  * @throws {NotFoundError} If no character with the given ID is found.
  * @throws {UnknownDbError} If a database error occurs during the deletion.
  */
-export const deleteCharacter = async (characterId: number) => {
+export const deleteCharacter = async (characterId: string) => {
   try {
     const result = await db
       .delete(characters)
@@ -194,7 +198,7 @@ export async function selectCharactersByMediaId(mediaId: string) {
 
 export async function insertMediaCharacter(
   mediaId: string,
-  characterId: number
+  characterId: string
 ) {
   try {
     const result = await db
@@ -209,7 +213,7 @@ export async function insertMediaCharacter(
 
 export async function deleteMediaCharacter(
   mediaId: string,
-  characterId: number
+  characterId: string
 ) {
   try {
     const result = await db
