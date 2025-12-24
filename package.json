@@ -85,8 +85,10 @@
   },
   "lint-staged": {
     "src/**/*.{ts,tsx,js,jsx,json}": [
-      "biome check --fix --unsafe",
-      "git add"
+      "biome check --fix --unsafe"
+    ],
+    "src/**/*.{ts,tsx}": [
+      "vitest related --run"
     ]
   }
 }
