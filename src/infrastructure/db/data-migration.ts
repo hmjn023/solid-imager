@@ -36,9 +36,9 @@ export const selectMediaSourceData = async (mediaSourceId: string) => {
             tags: { with: { tag: true } },
             details: true,
             generationInfo: true,
-            organization: {
-              with: { category: true, project: true, ip: true },
-            },
+            categories: { with: { category: true } },
+            projects: { with: { project: true } },
+            ips: { with: { ip: true } },
             technicalInfo: true,
             sync: true,
             characters: { with: { character: true } },

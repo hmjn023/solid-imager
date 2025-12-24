@@ -20,7 +20,6 @@ describe("getMedia Integration", () => {
     width: 800,
     height: 600,
     description: "",
-    sourceUrl: "",
   };
 
   beforeAll(async () => {

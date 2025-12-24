@@ -28,10 +28,12 @@ describe("loadDatabaseConfig", () => {
 
     const config = loadDatabaseConfig(TEST_CONFIG_DIR);
     expect(config.databaseType).toBe("pglite");
-    expect(config.pglite).toEqual({
-      path: "./data/test_pglite",
-      inMemory: false,
-    });
+    if (config.databaseType === "pglite") {
+      expect(config.pglite).toEqual({
+        path: "./data/test_pglite",
+        inMemory: false,
+      });
+    }
   });
 
   it("should load docker-compose-postgres configuration correctly", () => {
@@ -49,13 +51,15 @@ describe("loadDatabaseConfig", () => {
 
     const config = loadDatabaseConfig(TEST_CONFIG_DIR);
     expect(config.databaseType).toBe("docker-compose-postgres");
-    expect(config.dockerComposePostgres).toEqual({
-      host: "localhost",
-      port: 5432,
-      user: "testuser",
-      password: "testpassword",
-      database: "testdb",
-    });
+    if (config.databaseType === "docker-compose-postgres") {
+      expect(config.dockerComposePostgres).toEqual({
+        host: "localhost",
+        port: 5432,
+        user: "testuser",
+        password: "testpassword",
+        database: "testdb",
+      });
+    }
   });
 
   it("should throw error if config file is not found", () => {
@@ -101,6 +105,8 @@ describe("loadDatabaseConfig", () => {
     writeFileSync(TEST_CONFIG_PATH, configContent);
 
     const config = loadDatabaseConfig(TEST_CONFIG_DIR);
-    expect(config.pglite.inMemory).toBe(false); // Default value
+    if (config.databaseType === "pglite") {
+      expect(config.pglite.inMemory).toBe(false); // Default value
+    }
   });
 });

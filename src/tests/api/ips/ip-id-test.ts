@@ -3,7 +3,7 @@ import type { Ip } from "~/infrastructure/db/schema";
 
 describe("GET /api/ips/:id", () => {
   it("should return IP by id", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after GET function is available
     // const result = await GET({ params: { id: '1' } });
@@ -11,6 +11,7 @@ describe("GET /api/ips/:id", () => {
       id,
       name: "Test IP",
       description: "Test description",
+      source: "manual",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -22,7 +23,7 @@ describe("GET /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });
@@ -37,7 +38,7 @@ describe("GET /api/ips/:id", () => {
 
 describe("PUT /api/ips/:id", () => {
   it("should update and return IP", () => {
-    const id = 1;
+    const id = "00000000-0000-0000-0000-000000000000";
     const updateData = {
       name: "Updated Name",
       description: "Updated description",
@@ -48,6 +49,7 @@ describe("PUT /api/ips/:id", () => {
     const result: Ip = {
       id,
       ...updateData,
+      source: "manual",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -58,7 +60,7 @@ describe("PUT /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
   });
@@ -73,7 +75,7 @@ describe("PUT /api/ips/:id", () => {
 
 describe("DELETE /api/ips/:id", () => {
   it("should delete IP and return success", () => {
-    const _id = 1;
+    const _id = "00000000-0000-0000-0000-000000000000";
 
     // TODO: Implement after DELETE function is available
     // const result = await DELETE({ params: { id: '1' } });
@@ -82,7 +84,7 @@ describe("DELETE /api/ips/:id", () => {
 
   it("should throw error for non-existent IP", () => {
     // TODO: Test not found scenario
-    const _fakeId = 99_999;
+    const _fakeId = "00000000-0000-0000-0000-000000000000";
 
     // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
   });

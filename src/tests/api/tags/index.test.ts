@@ -37,14 +37,17 @@ describe("POST /api/tags", () => {
     // TODO: Implement after POST function is available
     // const result = await POST({ request: new Request('', { method: 'POST', body: JSON.stringify(newData) }) });
     const result: Tag = {
-      id: 1,
+      id: "00000000-0000-0000-0000-000000000000",
       ...newData,
+      attribute: "attribute",
+      source: "manual",
+      authorId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
 
     expect(result).toBeDefined();
-    expect(result.id).toBeTypeOf("number");
+    expect(result.id).toBeTypeOf("string");
     expect(result.name).toBe(newData.name);
   });
 
