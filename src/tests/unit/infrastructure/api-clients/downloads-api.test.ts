@@ -23,15 +23,19 @@ describe("Downloads API Client", () => {
 
     await startDownloadJobs(mediaSourceId, items);
 
-    expect(apiRequest).toHaveBeenCalledWith(API_ENDPOINTS.downloads, expect.anything(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        mediaSourceId,
-        items,
-      }),
-    });
+    expect(apiRequest).toHaveBeenCalledWith(
+      API_ENDPOINTS.downloads,
+      expect.anything(),
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mediaSourceId,
+          items,
+        }),
+      }
+    );
   });
 });
