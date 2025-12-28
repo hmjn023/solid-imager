@@ -16,6 +16,8 @@
     "format": "biome format --fix ./src",
     "check": "biome check --fix --unsafe ./src",
     "test": "vitest run",
+    "test:unit": "vitest run src/tests/unit",
+    "test:integration": "vitest run src/tests/integration",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
