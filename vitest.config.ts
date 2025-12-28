@@ -22,5 +22,9 @@ export default defineConfig({
         singleFork: true,
       },
     },
+    // テスト環境では必ずPGliteを使用
+    env: {
+      DB_HOST: 'pglite',
+    },
   },
 });
