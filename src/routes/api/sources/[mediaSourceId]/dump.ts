@@ -4,6 +4,7 @@ import archiver from "archiver";
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
+import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 /**
@@ -234,7 +235,8 @@ export async function GET({ params, request }: APIEvent) {
         "Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.json"`,
       },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.error({ err: error }, "Request failed");
     return new Response(JSON.stringify({ error: "Failed to generate dump" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { CharacterService } from "~/application/services/character-service";
 import { updateCharacterSchema } from "~/domain/characters/schemas";
+import { logger } from "~/infrastructure/logger";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -50,11 +51,19 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, characterId: params.id },
+        "Invalid character ID parameter"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, characterId: params.id },
+      "Failed to fetch character"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -116,11 +125,19 @@ export async function PATCH({ params, request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, characterId: params.id },
+        "Invalid character update request"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, characterId: params.id },
+      "Failed to update character"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -165,11 +182,19 @@ export async function DELETE({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, characterId: params.id },
+        "Invalid character ID for deletion"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, characterId: params.id },
+      "Failed to delete character"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

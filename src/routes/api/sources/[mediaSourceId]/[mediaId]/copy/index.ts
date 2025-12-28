@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
 import { copyMediaRequestSchema } from "~/domain/media/schemas";
+import { logger } from "~/infrastructure/logger";
 
 const MediaParamsSchema = z.object({
   mediaSourceId: z.uuid({ version: "v4" }),
@@ -41,6 +42,7 @@ export async function POST({ params, request }: APIEvent) {
   } catch (error) {
     const errorMessage =
       error instanceof Error ? error.message : "Internal Server Error";
+    logger.error({ err: error }, "Request failed");
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

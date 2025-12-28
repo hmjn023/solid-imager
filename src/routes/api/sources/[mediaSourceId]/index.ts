@@ -3,6 +3,7 @@ import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
+import { logger } from "~/infrastructure/logger";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_NOT_FOUND = 404;
@@ -74,6 +75,10 @@ export async function GET({ params }: APIEvent) {
       },
     });
   } catch (error: unknown) {
+    logger.error(
+      { err: error, mediaSourceId },
+      "Failed to get media from source"
+    );
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -150,6 +155,10 @@ export async function PUT({ params, request }: APIEvent) {
     });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
+      logger.warn(
+        { err: error, mediaSourceId },
+        "Invalid source update request"
+      );
       return new Response(
         JSON.stringify({ error: JSON.parse(error.message) }),
         {
@@ -160,6 +169,10 @@ export async function PUT({ params, request }: APIEvent) {
         }
       );
     }
+    logger.error(
+      { err: error, mediaSourceId },
+      "Failed to update media source"
+    );
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -215,13 +228,19 @@ export async function DELETE({ params }: APIEvent) {
     import("~/infrastructure/jobs/file-watcher-service")
       .then((module) => {
         module.FileWatcherService.stopMonitoring(mediaSourceId).catch(
-          (_error) => {
-            // Error already logged in stopMonitoring
+          (error) => {
+            logger.error(
+              { err: error, mediaSourceId },
+              "Failed to stop file watcher"
+            );
           }
         );
       })
-      .catch((_error) => {
-        // Error already logged in then block
+      .catch((error) => {
+        logger.error(
+          { err: error, mediaSourceId },
+          "Failed to load file watcher service"
+        );
       });
 
     return new Response(
@@ -234,6 +253,10 @@ export async function DELETE({ params }: APIEvent) {
       }
     );
   } catch (error: unknown) {
+    logger.error(
+      { err: error, mediaSourceId },
+      "Failed to delete media source"
+    );
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,

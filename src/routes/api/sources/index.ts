@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
+import { logger } from "~/infrastructure/logger";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
@@ -41,6 +42,7 @@ export async function GET() {
       },
     });
   } catch (error: unknown) {
+    logger.error({ err: error }, "Failed to fetch media sources");
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
@@ -101,13 +103,19 @@ export async function POST({ request }: APIEvent) {
       import("~/infrastructure/jobs/file-watcher-service")
         .then((module) => {
           module.FileWatcherService.startMonitoring(createdSource.id).catch(
-            (_error) => {
-              // Error already logged in startMonitoring
+            (error) => {
+              logger.error(
+                { err: error, sourceId: createdSource.id },
+                "Failed to start file watcher"
+              );
             }
           );
         })
-        .catch((_error) => {
-          // Error already logged in then block
+        .catch((error) => {
+          logger.error(
+            { err: error, sourceId: createdSource.id },
+            "Failed to load file watcher service"
+          );
         });
     }
 
@@ -119,6 +127,7 @@ export async function POST({ request }: APIEvent) {
     });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
+      logger.warn({ err: error }, "Invalid source creation request");
       return new Response(
         JSON.stringify({ error: JSON.parse(error.message) }),
         {
@@ -129,6 +138,7 @@ export async function POST({ request }: APIEvent) {
         }
       );
     }
+    logger.error({ err: error }, "Failed to create media source");
     const errorMessage = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,

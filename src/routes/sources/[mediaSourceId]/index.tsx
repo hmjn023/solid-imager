@@ -62,6 +62,7 @@ import {
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
+import { logger } from "~/infrastructure/logger";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
@@ -357,6 +358,7 @@ export default function MediaListPage() {
       toast.success("Bulk download started");
       // Refetch will happen via SSE events
     } catch (error) {
+      logger.error({ err: error }, "Failed to process JSON upload");
       toast.error(`Failed to start download: ${(error as Error).message}`);
     }
   };
@@ -378,7 +380,11 @@ export default function MediaListPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
-    } catch (_error) {
+    } catch (error) {
+      logger.error(
+        { err: error, mediaSourceId: id, mode },
+        "Failed to download dump"
+      );
       toast.error("Failed to download dump");
     }
   };
@@ -435,6 +441,7 @@ export default function MediaListPage() {
             queryKey: ["media", id],
           });
         } catch (error) {
+          logger.error({ err: error }, "Restore from JSON failed");
           toast.error(`Restore failed: ${(error as Error).message}`, {
             id: "restore-toast",
           });
@@ -444,6 +451,7 @@ export default function MediaListPage() {
       };
       reader.readAsText(file);
     } catch (error) {
+      logger.error({ err: error }, "Import failed");
       toast.error(`Import failed: ${(error as Error).message}`, {
         id: "restore-toast",
       });
@@ -552,7 +560,8 @@ export default function MediaListPage() {
       await deleteMedia(mediaSourceId() || "", id);
       toast.success("Media deleted successfully");
       await mediaQuery.refetch();
-    } catch (_e) {
+    } catch (e) {
+      logger.error({ err: e, mediaId: id }, "Failed to delete media");
       toast.error("Failed to delete media");
     } finally {
       setDeleteDialogOpen(false);
@@ -582,6 +591,10 @@ export default function MediaListPage() {
       toast.success(`Media ${actionName} successfully`);
       await mediaQuery.refetch();
     } catch (e) {
+      logger.error(
+        { err: e, mediaId: id, targetSourceId, mode },
+        `Failed to ${mode} media`
+      );
       toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
     } finally {
       setMediaIdToMoveCopy(null);
@@ -644,7 +657,11 @@ export default function MediaListPage() {
           const data = JSON.parse(event.data);
           toast.success(`All jobs completed! Processed: ${data.processed}`);
           invalidateMedia();
-        } catch (_e) {
+        } catch (e) {
+          logger.error(
+            { err: e, data: event.data },
+            "Failed to parse all-jobs-completed event"
+          );
           toast.success("All jobs completed!");
           invalidateMedia();
         }
@@ -655,7 +672,11 @@ export default function MediaListPage() {
         try {
           const data = JSON.parse(event.data);
           toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
-        } catch (_e) {
+        } catch (e) {
+          logger.error(
+            { err: e, data: event.data },
+            "Failed to parse watcher-error event"
+          );
           toast.error("Watcher Error: Unknown error");
         }
       });

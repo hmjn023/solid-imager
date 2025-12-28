@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
 import { IpService } from "~/application/services/ip-service";
 import { newIpSchema } from "~/domain/ips/schemas";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * @swagger
@@ -30,7 +31,8 @@ export async function GET() {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.error({ err: error }, "Failed to fetch IPs");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -75,11 +77,13 @@ export async function POST({ request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn({ err: error }, "Invalid IP creation request");
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error }, "Failed to create IP");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

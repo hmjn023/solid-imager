@@ -22,12 +22,18 @@ import {
 /**
  * Provides services for managing categories.
  */
+import { logger } from "~/infrastructure/logger";
+
+/**
+ * Provides services for managing categories.
+ */
 export const CategoryService = {
   /**
    * Retrieves all categories.
    * @returns {Promise<any>} A list of all categories.
    */
   async getAllCategories() {
+    logger.debug("Fetching all categories");
     return await selectCategories();
   },
 
@@ -46,11 +52,14 @@ export const CategoryService = {
     color?: string;
     parentId?: string;
   }) {
+    logger.info({ categoryData }, "Creating new category");
     const result = await insertCategory(categoryData);
+    logger.debug({ result }, "Category created successfully");
     return result[0];
   },
 
   async getCategoryDetails(categoryId: string) {
+    logger.debug({ categoryId }, "Fetching category details");
     return await selectCategoryById(categoryId);
   },
 
@@ -73,10 +82,12 @@ export const CategoryService = {
       parentId?: string;
     }
   ) {
+    logger.info({ categoryId, categoryData }, "Updating category");
     return await updateCategory(categoryId, categoryData);
   },
 
   async deleteCategory(categoryId: string) {
+    logger.info({ categoryId }, "Deleting category");
     return await deleteCategory(categoryId);
   },
 };

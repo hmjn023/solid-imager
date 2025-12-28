@@ -12,6 +12,7 @@ import {
   fetchMediaSources,
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { logger } from "~/infrastructure/logger";
 
 const UUID_PREFIX_LENGTH = 4;
 
@@ -54,8 +55,9 @@ export default function Sources() {
       }
       await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowFormModal(false);
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
-    } catch (_error) {}
+    } catch (error) {
+      logger.error({ err: error }, "Failed to submit source form");
+    }
   };
 
   const handleDeleteSource = (source: MediaSourceInfo) => {
@@ -69,8 +71,12 @@ export default function Sources() {
       await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
       setShowDeleteModal(false);
       setDeletingSource(null);
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Error already logged by API client
-    } catch (_error) {}
+    } catch (error) {
+      logger.error(
+        { err: error, mediaSourceId },
+        "Failed to delete media source"
+      );
+    }
   };
 
   // SSE setup
@@ -118,26 +124,34 @@ export default function Sources() {
       eventSources.push(eventSource);
     };
 
-    // Watch for changes in mediaSources data and setup SSE
-    createEffect(() => {
-      const sources = mediaSources.data;
-      if (sources) {
-        // Close old event sources if any
-        for (const es of eventSources) {
-          es.close();
-        }
-        eventSources.length = 0; // Clear the array
-
-        for (const source of sources) {
-          setupSseForSource(source.id);
-        }
-      }
-    });
-
-    onCleanup(() => {
+    const closeAllEventSources = () => {
       for (const es of eventSources) {
         es.close();
       }
+      eventSources.length = 0;
+    };
+
+    const setupEventSourcesForSources = (sources: typeof mediaSources.data) => {
+      if (!sources) {
+        return;
+      }
+
+      closeAllEventSources();
+
+      for (const source of sources) {
+        if (source.id) {
+          setupSseForSource(source.id);
+        }
+      }
+    };
+
+    // Watch for changes in mediaSources data and setup SSE
+    createEffect(() => {
+      setupEventSourcesForSources(mediaSources.data);
+    });
+
+    onCleanup(() => {
+      closeAllEventSources();
     });
   });
 

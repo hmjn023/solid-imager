@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { TagService } from "~/application/services/tag-service";
 import { updateTagSchema } from "~/domain/tags/schemas";
+import { logger } from "~/infrastructure/logger";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -58,11 +59,13 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn({ err: error, tagId: params.id }, "Invalid tag ID parameter");
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, tagId: params.id }, "Failed to fetch tag");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -129,17 +132,23 @@ export async function PUT({ params, request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, tagId: params.id },
+        "Invalid tag update request"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (error instanceof Error) {
+      logger.error({ err: error, tagId: params.id }, "Failed to update tag");
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, tagId: params.id }, "Failed to update tag");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -190,17 +199,23 @@ export async function DELETE({ params }: APIEvent) {
     return new Response(null, { status: 204 });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, tagId: params.id },
+        "Invalid tag ID parameter for deletion"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (error instanceof Error) {
+      logger.error({ err: error, tagId: params.id }, "Failed to delete tag");
       return new Response(JSON.stringify({ error: error.message }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, tagId: params.id }, "Failed to delete tag");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
