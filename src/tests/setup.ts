@@ -15,6 +15,7 @@ config({ path: path.resolve(process.cwd(), ".env") });
 process.env.DB_HOST = "pglite";
 
 // PostgreSQL接続情報が設定されていても無視する
+// テスト実行時は常にPGliteを使用し、外部DBへの依存を排除
 if (process.env.NODE_ENV !== "production") {
   // テスト環境であることを明示
   process.env.NODE_ENV = "test";

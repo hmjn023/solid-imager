@@ -91,7 +91,10 @@
     "src/**/*.{ts,tsx,js,jsx,json}": [
       "biome check --fix --unsafe"
     ],
-    "src/**/*.{ts,tsx}": [
+    "src/tests/**/*.{ts,tsx}": [
+      "vitest related --run"
+    ],
+    "src/!(tests)/**/*.{ts,tsx}": [
       "vitest related --run",
       "vinxi build"
     ]
