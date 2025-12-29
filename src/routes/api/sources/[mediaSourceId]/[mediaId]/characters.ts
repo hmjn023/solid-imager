@@ -3,13 +3,19 @@ import { ZodError, z } from "zod";
 import { CharacterService } from "~/application/services/character-service";
 import { NotFoundError } from "~/infrastructure/db/errors";
 
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_NOT_FOUND = 404;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 const MediaParamsSchema = z.object({
   mediaSourceId: z.uuid({ version: "v4" }),
   mediaId: z.uuid({ version: "v4" }),
 });
 
 const CharacterBodySchema = z.object({
-  characterId: z.number(),
+  characterId: z.string().uuid(),
 });
 
 /**
@@ -49,9 +55,11 @@ const CharacterBodySchema = z.object({
 export async function GET({ params }: APIEvent) {
   try {
     const { mediaId } = MediaParamsSchema.parse(params);
+
     const characters = await CharacterService.getCharactersForMedia(mediaId);
+
     return new Response(JSON.stringify(characters), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -119,8 +127,9 @@ export async function POST({ params, request }: APIEvent) {
       mediaId,
       characterId
     );
+
     return new Response(JSON.stringify(result), {
-      status: 201,
+      status: HTTP_CREATED,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -190,8 +199,9 @@ export async function DELETE({ params, request }: APIEvent) {
       mediaId,
       characterId
     );
+
     return new Response(JSON.stringify(result), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

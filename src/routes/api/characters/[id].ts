@@ -4,6 +4,10 @@ import { CharacterService } from "~/application/services/character-service";
 import { updateCharacterSchema } from "~/domain/characters/schemas";
 import { logger } from "~/infrastructure/logger";
 
+const HTTP_OK = 200;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
   id: z.string().uuid(), // UUID v4 を想定します。
@@ -44,9 +48,11 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
+
     const character = await CharacterService.getCharacterDetails(id);
+
     return new Response(JSON.stringify(character), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -119,8 +125,9 @@ export async function PATCH({ params, request }: APIEvent) {
       id,
       validatedBody
     );
+
     return new Response(JSON.stringify(updatedCharacter), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -175,9 +182,11 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
+
     const result = await CharacterService.deleteCharacter(id);
+
     return new Response(JSON.stringify(result), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

@@ -4,6 +4,11 @@ import { CharacterService } from "~/application/services/character-service";
 import { newCharacterSchema } from "~/domain/characters/schemas";
 import { logger } from "~/infrastructure/logger";
 
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 /**
  * @swagger
  * /api/characters:
@@ -27,8 +32,9 @@ import { logger } from "~/infrastructure/logger";
 export async function GET() {
   try {
     const characters = await CharacterService.getAllCharacters();
+
     return new Response(JSON.stringify(characters), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -70,9 +76,11 @@ export async function POST({ request }: APIEvent) {
   try {
     const data = await request.json();
     const validatedData = newCharacterSchema.parse(data);
+
     const newCharacter = await CharacterService.createCharacter(validatedData);
+
     return new Response(JSON.stringify(newCharacter), {
-      status: 201,
+      status: HTTP_CREATED,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
