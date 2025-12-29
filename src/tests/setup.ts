@@ -10,9 +10,15 @@ import * as schema from "~/infrastructure/db/schema";
 // .envファイルのパスを指定して読み込む
 config({ path: path.resolve(process.cwd(), ".env") });
 
-// 統合テスト用のDB接続情報を設定
-if (!process.env.DB_HOST) {
-  process.env.DB_HOST = "pglite"; // Use pglite for tests
+// テスト環境では必ずPGliteを使用
+// vitest.config.tsで設定されるが、念のため再度設定
+process.env.DB_HOST = "pglite";
+
+// PostgreSQL接続情報が設定されていても無視する
+// テスト実行時は常にPGliteを使用し、外部DBへの依存を排除
+if (process.env.NODE_ENV !== "production") {
+  // テスト環境であることを明示
+  process.env.NODE_ENV = "test";
 }
 
 // モックされたdbオブジェクトを作成

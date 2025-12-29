@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { CategoryService } from "~/application/services/category-service";
 import { updateCategorySchema } from "~/domain/categories/schemas";
+import { logger } from "~/infrastructure/logger";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -50,15 +51,19 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, categoryId: params.id },
+        "Invalid category ID parameter"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
-    // Assuming NotFoundError is thrown by service/db and caught here or handled by service
-    // If service throws NotFoundError, we should catch it and return 404.
-    // For now, generic 500 or let's check if we can import NotFoundError.
-    // But for simplicity, I'll just return 500 for now as I didn't check error types export.
+    logger.error(
+      { err: error, categoryId: params.id },
+      "Failed to fetch category"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -120,11 +125,19 @@ export async function PUT({ params, request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, categoryId: params.id },
+        "Invalid category update request"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, categoryId: params.id },
+      "Failed to update category"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -169,11 +182,19 @@ export async function DELETE({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, categoryId: params.id },
+        "Invalid category ID for deletion"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, categoryId: params.id },
+      "Failed to delete category"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

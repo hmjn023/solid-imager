@@ -1,5 +1,6 @@
 import { ProjectService } from "~/application/services/project-service";
 import { newProjectSchema } from "~/domain/projects/schemas";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * @swagger
@@ -18,7 +19,8 @@ export async function GET() {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.error({ err: error }, "Failed to fetch projects");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -50,6 +52,7 @@ export async function POST({ request }: { request: Request }) {
     const result = newProjectSchema.safeParse(body);
 
     if (!result.success) {
+      logger.warn({ err: result.error }, "Invalid project creation request");
       return new Response(JSON.stringify({ error: result.error }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
@@ -61,7 +64,8 @@ export async function POST({ request }: { request: Request }) {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });
-  } catch (_error) {
+  } catch (error) {
+    logger.error({ err: error }, "Failed to create project");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

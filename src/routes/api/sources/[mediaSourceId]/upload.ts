@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
+import { logger } from "~/infrastructure/logger";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
@@ -75,6 +76,7 @@ export async function POST({ params, request }: APIEvent) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ err: error }, "Request failed");
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: HTTP_STATUS_INTERNAL_SERVER_ERROR,
       headers: {

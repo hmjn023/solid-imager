@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { IpService } from "~/application/services/ip-service";
 import { updateIpSchema } from "~/domain/ips/schemas";
+import { logger } from "~/infrastructure/logger";
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -50,11 +51,13 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn({ err: error, ipId: params.id }, "Invalid IP ID parameter");
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, ipId: params.id }, "Failed to fetch IP");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -113,11 +116,13 @@ export async function PATCH({ params, request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn({ err: error, ipId: params.id }, "Invalid IP update request");
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, ipId: params.id }, "Failed to update IP");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -162,11 +167,16 @@ export async function DELETE({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, ipId: params.id },
+        "Invalid IP ID for deletion"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error({ err: error, ipId: params.id }, "Failed to delete IP");
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

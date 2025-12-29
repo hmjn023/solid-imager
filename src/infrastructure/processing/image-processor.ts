@@ -13,6 +13,11 @@ import { insertMediaTags } from "~/infrastructure/db/queries/tags";
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
+import { logger } from "~/infrastructure/logger";
+
+/**
+ * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
+ */
 export const ImageProcessor = {
   /**
    * Generates a thumbnail for a given image.
@@ -93,8 +98,11 @@ export const ImageProcessor = {
       }
 
       return { tags, prompt, workflow };
-    } catch (_error) {
-      // console.error(`[ImageProcessor] Failed to extract metadata for ${mediaId}:`, error);
+    } catch (error) {
+      logger.error(
+        { err: error, mediaId },
+        "[ImageProcessor] Failed to extract metadata"
+      );
       return { tags: [], prompt: null, workflow: null };
     }
   },

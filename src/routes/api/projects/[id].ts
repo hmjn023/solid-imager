@@ -3,6 +3,7 @@ import { ZodError, z } from "zod";
 import { ProjectService } from "~/application/services/project-service";
 import { updateProjectSchema } from "~/domain/projects/schemas";
 import { NotFoundError } from "~/infrastructure/db/errors";
+import { logger } from "~/infrastructure/logger";
 
 // Schema for 'id' path parameter
 const IdParamSchema = z.object({
@@ -56,11 +57,19 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, projectId: params.id },
+        "Invalid project ID parameter"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, projectId: params.id },
+      "Failed to fetch project"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -122,18 +131,30 @@ export async function PATCH({ params, request }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, projectId: params.id },
+        "Invalid project update request"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (error instanceof NotFoundError) {
+      logger.warn(
+        { err: error, projectId: params.id },
+        "Project not found for update"
+      );
       return new Response(JSON.stringify({ error: "Project not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }
 
+    logger.error(
+      { err: error, projectId: params.id },
+      "Failed to update project"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
@@ -178,17 +199,29 @@ export async function DELETE({ params }: APIEvent) {
     });
   } catch (error) {
     if (error instanceof ZodError) {
+      logger.warn(
+        { err: error, projectId: params.id },
+        "Invalid project ID for deletion"
+      );
       return new Response(JSON.stringify({ errors: error.issues }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
     if (error instanceof NotFoundError) {
+      logger.warn(
+        { err: error, projectId: params.id },
+        "Project not found for deletion"
+      );
       return new Response(JSON.stringify({ error: "Project not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
     }
+    logger.error(
+      { err: error, projectId: params.id },
+      "Failed to delete project"
+    );
     return new Response(JSON.stringify({ error: "Internal Server Error" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

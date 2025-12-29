@@ -7,6 +7,7 @@ import { json } from "@solidjs/router";
 import type { APIEvent } from "@solidjs/start/server";
 import { bulkDownloadRequestSchema } from "~/domain/media/schemas";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * Handles bulk image download requests.
@@ -52,6 +53,7 @@ export async function POST(event: APIEvent) {
     );
   } catch (error) {
     if (error instanceof Error) {
+      logger.error({ err: error }, "Failed to queue download jobs");
       return json(
         {
           success: false,
@@ -62,6 +64,7 @@ export async function POST(event: APIEvent) {
       );
     }
 
+    logger.error({ err: error }, "Unknown error in download jobs");
     return json(
       {
         success: false,

@@ -24,8 +24,11 @@ function initializeDb() {
   }
 
   const dbHost = process.env.DB_HOST;
+  const isTestEnv =
+    process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-  if (dbHost === "pglite") {
+  // テスト環境では必ずPGliteを使用
+  if (isTestEnv || dbHost === "pglite") {
     _queryClient = new PGlite("./.data/pglite");
     _db = drizzlePglite(_queryClient, { schema });
     return _db;
@@ -52,7 +55,7 @@ function initializeDb() {
  * A proxy object for the Drizzle ORM database instance.
  * It ensures that the database is initialized lazily upon first access.
  */
-export const db = new Proxy({} as NodePostgresDb | PGliteDb, {
+export const db = new Proxy({} as NodePostgresDb | PgLiteDb, {
   get(_target, prop) {
     const instance = initializeDb();
     const value = instance[prop as keyof typeof instance];

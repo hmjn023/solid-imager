@@ -1,5 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { MediaService } from "~/application/services/media-service";
+import { logger } from "~/infrastructure/logger";
 
 export async function GET({ params }: APIEvent) {
   try {
@@ -27,6 +28,7 @@ export async function GET({ params }: APIEvent) {
     });
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error({ err: error }, "Request failed");
     return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
