@@ -1,6 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { MediaSourceService } from "~/application/services/media-source-service";
-import { MediaSourceServiceV2 } from "~/application/services/media-source-service-v2";
+import { MediaSourceServiceV2 as MediaSourceService } from "~/application/services/media-source-service-v2";
 import type { UUID } from "~/domain/shared/schemas";
 
 /**
@@ -35,8 +34,6 @@ import type { UUID } from "~/domain/shared/schemas";
  */
 export async function GET({ params }: APIEvent) {
   const mediaSourceId = params.mediaSourceId as UUID;
-  const useV2 = process.env.USE_REPO_V2 === "true";
-  const service = useV2 ? MediaSourceServiceV2 : MediaSourceService;
-  const status = await service.getStatus(mediaSourceId);
+  const status = await MediaSourceService.getStatus(mediaSourceId);
   return status;
 }

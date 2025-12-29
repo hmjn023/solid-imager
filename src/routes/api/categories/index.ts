@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
-import { CategoryService } from "~/application/services/category-service";
-import { CategoryServiceV2 } from "~/application/services/category-service-v2";
+import { CategoryServiceV2 as CategoryService } from "~/application/services/category-service-v2";
 import { newCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 
@@ -32,9 +31,7 @@ const _HTTP_INTERNAL_SERVER_ERROR = 500;
  */
 export async function GET() {
   try {
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? CategoryServiceV2 : CategoryService;
-    const categories = await service.getAllCategories();
+    const categories = await CategoryService.getAllCategories();
     return new Response(JSON.stringify(categories), {
       status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
@@ -79,9 +76,7 @@ export async function POST({ request }: APIEvent) {
     const data = await request.json();
     const validatedData = newCategorySchema.parse(data);
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? CategoryServiceV2 : CategoryService;
-    const newCategory = await service.createCategory(validatedData);
+    const newCategory = await CategoryService.createCategory(validatedData);
 
     return new Response(JSON.stringify(newCategory), {
       status: HTTP_CREATED,

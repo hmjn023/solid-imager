@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { CategoryService } from "~/application/services/category-service";
-import { CategoryServiceV2 } from "~/application/services/category-service-v2";
+import { CategoryServiceV2 as CategoryService } from "~/application/services/category-service-v2";
 import { updateCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 
@@ -51,9 +50,7 @@ export async function GET({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? CategoryServiceV2 : CategoryService;
-    const category = await service.getCategoryDetails(id);
+    const category = await CategoryService.getCategoryDetails(id);
 
     return new Response(JSON.stringify(category), {
       status: HTTP_OK,
@@ -125,9 +122,10 @@ export async function PUT({ params, request }: APIEvent) {
     const body = await request.json();
     const validatedBody = updateCategorySchema.parse(body);
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? CategoryServiceV2 : CategoryService;
-    const updatedCategory = await service.updateCategory(id, validatedBody);
+    const updatedCategory = await CategoryService.updateCategory(
+      id,
+      validatedBody
+    );
 
     return new Response(JSON.stringify(updatedCategory), {
       status: HTTP_OK,
@@ -186,9 +184,7 @@ export async function DELETE({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? CategoryServiceV2 : CategoryService;
-    const result = await service.deleteCategory(id);
+    const result = await CategoryService.deleteCategory(id);
 
     return new Response(JSON.stringify(result), {
       status: HTTP_OK,

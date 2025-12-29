@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { TagService } from "~/application/services/tag-service";
-import { TagServiceV2 } from "~/application/services/tag-service-v2";
+import { TagServiceV2 as TagService } from "~/application/services/tag-service-v2";
 import { updateTagSchema } from "~/domain/tags/schemas";
 import { logger } from "~/infrastructure/logger";
 
@@ -52,9 +51,7 @@ export async function GET({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? TagServiceV2 : TagService;
-    const tag = await service.getTagById(id);
+    const tag = await TagService.getTagById(id);
 
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
@@ -127,9 +124,7 @@ export async function PUT({ params, request }: APIEvent) {
     const body = await request.json();
     const validatedBody = updateTagSchema.parse(body);
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? TagServiceV2 : TagService;
-    const updatedTag = await service.updateTag(id, validatedBody);
+    const updatedTag = await TagService.updateTag(id, validatedBody);
 
     if (!updatedTag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
@@ -199,10 +194,7 @@ export async function DELETE({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? TagServiceV2 : TagService;
-
-    const tag = await service.getTagById(id);
+    const tag = await TagService.getTagById(id);
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
         status: HTTP_NOT_FOUND,
@@ -210,7 +202,7 @@ export async function DELETE({ params }: APIEvent) {
       });
     }
 
-    await service.deleteTag(id);
+    await TagService.deleteTag(id);
     return new Response(null, { status: HTTP_NO_CONTENT });
   } catch (error) {
     if (error instanceof ZodError) {

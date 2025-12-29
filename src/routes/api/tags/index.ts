@@ -1,7 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
-import { TagService } from "~/application/services/tag-service";
-import { TagServiceV2 } from "~/application/services/tag-service-v2";
+import { TagServiceV2 as TagService } from "~/application/services/tag-service-v2";
 import { newTagSchema } from "~/domain/tags/schemas";
 import { logger } from "~/infrastructure/logger";
 
@@ -32,9 +31,7 @@ const _HTTP_INTERNAL_SERVER_ERROR = 500;
  */
 export async function GET() {
   try {
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? TagServiceV2 : TagService;
-    const tags = await service.getAllTags();
+    const tags = await TagService.getAllTags();
     return new Response(JSON.stringify(tags), {
       status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
@@ -79,9 +76,7 @@ export async function POST({ request }: APIEvent) {
     const data = await request.json();
     const validatedData = newTagSchema.parse(data);
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? TagServiceV2 : TagService;
-    const newTag = await service.createTag(validatedData);
+    const newTag = await TagService.createTag(validatedData);
 
     return new Response(JSON.stringify(newTag), {
       status: HTTP_CREATED,

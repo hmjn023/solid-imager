@@ -1,6 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { MediaService } from "~/application/services/media-service";
-import { MediaSourceService } from "~/application/services/media-source-service";
 import { MediaSourceServiceV2 } from "~/application/services/media-source-service-v2";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 import { logger } from "~/infrastructure/logger";
@@ -35,10 +34,7 @@ const HTTP_STATUS_BAD_REQUEST = 400;
  */
 export async function GET() {
   try {
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? MediaSourceServiceV2 : MediaSourceService;
-
-    const result = await service.fetchSources();
+    const result = await MediaSourceServiceV2.fetchSources();
     return new Response(JSON.stringify(result), {
       status: 200,
       headers: {
@@ -93,10 +89,7 @@ export async function POST({ request }: APIEvent) {
     const body = await request.json();
     const validatedData = mediaSourceInfoSchema.parse(body);
 
-    const useV2 = process.env.USE_REPO_V2 === "true";
-    const service = useV2 ? MediaSourceServiceV2 : MediaSourceService;
-
-    const result = await service.createSource(validatedData);
+    const result = await MediaSourceServiceV2.createSource(validatedData);
 
     const createdSource = result[0];
     if (createdSource && createdSource.type === "local") {
