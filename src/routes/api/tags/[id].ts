@@ -1,8 +1,15 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { TagService } from "~/application/services/tag-service";
+import { TagServiceV2 } from "~/application/services/tag-service-v2";
 import { updateTagSchema } from "~/domain/tags/schemas";
 import { logger } from "~/infrastructure/logger";
+
+const HTTP_OK = 200;
+const HTTP_NO_CONTENT = 204;
+const _HTTP_BAD_REQUEST = 400;
+const HTTP_NOT_FOUND = 404;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -44,17 +51,20 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const tag = await TagService.getTagById(id);
+
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? TagServiceV2 : TagService;
+    const tag = await service.getTagById(id);
 
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
-        status: 404,
+        status: HTTP_NOT_FOUND,
         headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify(tag), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -117,17 +127,19 @@ export async function PUT({ params, request }: APIEvent) {
     const body = await request.json();
     const validatedBody = updateTagSchema.parse(body);
 
-    const updatedTag = await TagService.updateTag(id, validatedBody);
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? TagServiceV2 : TagService;
+    const updatedTag = await service.updateTag(id, validatedBody);
 
     if (!updatedTag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
-        status: 404,
+        status: HTTP_NOT_FOUND,
         headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(JSON.stringify(updatedTag), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -187,16 +199,19 @@ export async function DELETE({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const tag = await TagService.getTagById(id);
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? TagServiceV2 : TagService;
+
+    const tag = await service.getTagById(id);
     if (!tag) {
       return new Response(JSON.stringify({ error: "Tag not found" }), {
-        status: 404,
+        status: HTTP_NOT_FOUND,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    await TagService.deleteTag(id);
-    return new Response(null, { status: 204 });
+    await service.deleteTag(id);
+    return new Response(null, { status: HTTP_NO_CONTENT });
   } catch (error) {
     if (error instanceof ZodError) {
       logger.warn(
