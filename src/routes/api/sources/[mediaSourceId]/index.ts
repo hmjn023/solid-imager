@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
-import { MediaSourceServiceV2 as MediaSourceService } from "~/application/services/media-source-service-v2";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 import { logger } from "~/infrastructure/logger";
 

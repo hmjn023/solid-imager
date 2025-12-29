@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
-import { CategoryServiceV2 as CategoryService } from "~/application/services/category-service-v2";
+import { CategoryService } from "~/application/services/category-service";
 import { newCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 

@@ -1,6 +1,6 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
-import { TagServiceV2 as TagService } from "~/application/services/tag-service-v2";
+import { TagService } from "~/application/services/tag-service";
 import { updateTagSchema } from "~/domain/tags/schemas";
 import { logger } from "~/infrastructure/logger";
 

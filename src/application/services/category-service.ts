@@ -1,93 +1,51 @@
-/**
- * CategoryService - カテゴリ管理機能
- * Feature 10: カテゴリ管理機能
- */
+import { cache } from "@solidjs/router";
+import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
+import type {
+  Category,
+  CategoryRepository,
+} from "~/domain/repositories/category.repository";
+import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
 
-/**
- * Provides services for managing categories.
- */
-import {
-  deleteCategory,
-  insertCategory,
-  selectCategories,
-  selectCategoryById,
-  updateCategory,
-} from "~/infrastructure/db/queries/categories";
+// Initialize repository
+const categoryRepo: CategoryRepository = new DrizzleCategoryRepository();
 
-/**
- * CategoryService - カテゴリ管理機能
- * Feature 10: カテゴリ管理機能
- */
+const getAllCategoriesServer = cache(async (): Promise<Category[]> => {
+  "use server";
+  return await categoryRepo.findAll();
+}, "getAllCategories");
 
-/**
- * Provides services for managing categories.
- */
-import { logger } from "~/infrastructure/logger";
+const createCategoryServer = async (data: NewCategory): Promise<Category> => {
+  "use server";
+  return await categoryRepo.create(data);
+};
 
-/**
- * Provides services for managing categories.
- */
+const getCategoryByIdServer = cache(
+  async (id: string): Promise<Category | undefined> => {
+    "use server";
+    const result = await categoryRepo.findById(id);
+    return result ?? undefined;
+  },
+  "getCategoryById"
+);
+
+const updateCategoryServer = async (
+  id: string,
+  data: UpdateCategory
+): Promise<Category> => {
+  "use server";
+  return await categoryRepo.update(id, data);
+};
+
+const deleteCategoryServer = async (id: string): Promise<{ success: true }> => {
+  "use server";
+  await categoryRepo.delete(id);
+  return { success: true };
+};
+
 export const CategoryService = {
-  /**
-   * Retrieves all categories.
-   * @returns {Promise<any>} A list of all categories.
-   */
-  async getAllCategories() {
-    logger.debug("Fetching all categories");
-    return await selectCategories();
-  },
-
-  /**
-   * Creates a new category.
-   * @param {object} categoryData - The data for the new category.
-   * @param {string} categoryData.name - The name of the category.
-   * @param {string} [categoryData.description] - An optional description for the category.
-   * @param {string} [categoryData.color] - An optional color for the category.
-   * @param {number} [categoryData.parentId] - An optional parent category ID.
-   * @returns {Promise<any>} The newly created category.
-   */
-  async createCategory(categoryData: {
-    name: string;
-    description?: string;
-    color?: string;
-    parentId?: string;
-  }) {
-    logger.info({ categoryData }, "Creating new category");
-    const result = await insertCategory(categoryData);
-    logger.debug({ result }, "Category created successfully");
-    return result[0];
-  },
-
-  async getCategoryDetails(categoryId: string) {
-    logger.debug({ categoryId }, "Fetching category details");
-    return await selectCategoryById(categoryId);
-  },
-
-  /**
-   * Updates an existing category.
-   * @param {number} categoryId - The ID of the category to update.
-   * @param {object} categoryData - The updated data for the category.
-   * @param {string} [categoryData.name] - The new name of the category.
-   * @param {string} [categoryData.description] - The new description for the category.
-   * @param {string} [categoryData.color] - The new color for the category.
-   * @param {number} [categoryData.parentId] - The new parent category ID.
-   * @returns {Promise<any>} The updated category.
-   */
-  async updateCategory(
-    categoryId: string,
-    categoryData: {
-      name?: string;
-      description?: string;
-      color?: string;
-      parentId?: string;
-    }
-  ) {
-    logger.info({ categoryId, categoryData }, "Updating category");
-    return await updateCategory(categoryId, categoryData);
-  },
-
-  async deleteCategory(categoryId: string) {
-    logger.info({ categoryId }, "Deleting category");
-    return await deleteCategory(categoryId);
-  },
+  getAllCategories: getAllCategoriesServer,
+  createCategory: createCategoryServer,
+  getCategoryDetails: getCategoryByIdServer,
+  updateCategory: updateCategoryServer,
+  deleteCategory: deleteCategoryServer,
 };

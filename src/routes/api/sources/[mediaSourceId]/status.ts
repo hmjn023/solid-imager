@@ -1,5 +1,5 @@
 import type { APIEvent } from "@solidjs/start/server";
-import { MediaSourceServiceV2 as MediaSourceService } from "~/application/services/media-source-service-v2";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import type { UUID } from "~/domain/shared/schemas";
 
 /**
