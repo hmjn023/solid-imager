@@ -2,6 +2,7 @@ import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
+import { MediaSourceServiceV2 } from "~/application/services/media-source-service-v2";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 import { logger } from "~/infrastructure/logger";
 
@@ -140,10 +141,10 @@ export async function PUT({ params, request }: APIEvent) {
     // Use partial schema for updates
     const validatedData = mediaSourceInfoSchema.partial().parse(body);
 
-    const result = await MediaSourceService.updateSource(
-      mediaSourceId,
-      validatedData
-    );
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? MediaSourceServiceV2 : MediaSourceService;
+
+    const result = await service.updateSource(mediaSourceId, validatedData);
     // updateSource returns an array, we want the first item
     const updatedSource = result[0];
 
@@ -220,7 +221,10 @@ export async function DELETE({ params }: APIEvent) {
   const { mediaSourceId } = parsedParams.data;
 
   try {
-    const result = await MediaSourceService.deleteSource(mediaSourceId);
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? MediaSourceServiceV2 : MediaSourceService;
+
+    const result = await service.deleteSource(mediaSourceId);
     // deleteSource returns an array, we want the first item
     const deletedSource = result[0];
 

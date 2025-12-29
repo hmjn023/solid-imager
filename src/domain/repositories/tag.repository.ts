@@ -1,5 +1,8 @@
 import type { NewTag, TagResponse, UpdateTag } from "~/domain/tags/schemas";
 
+// Re-export types for usage in implementations
+export type { NewTag, UpdateTag } from "~/domain/tags/schemas";
+
 // TagResponse maps to the Tag entity in this context
 export type Tag = TagResponse;
 
