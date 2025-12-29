@@ -1,8 +1,14 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { CategoryService } from "~/application/services/category-service";
+import { CategoryServiceV2 } from "~/application/services/category-service-v2";
 import { updateCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
+
+const HTTP_OK = 200;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_NOT_FOUND = 404;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
 
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
@@ -44,9 +50,13 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const category = await CategoryService.getCategoryDetails(id);
+
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? CategoryServiceV2 : CategoryService;
+    const category = await service.getCategoryDetails(id);
+
     return new Response(JSON.stringify(category), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -115,12 +125,12 @@ export async function PUT({ params, request }: APIEvent) {
     const body = await request.json();
     const validatedBody = updateCategorySchema.parse(body);
 
-    const updatedCategory = await CategoryService.updateCategory(
-      id,
-      validatedBody
-    );
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? CategoryServiceV2 : CategoryService;
+    const updatedCategory = await service.updateCategory(id, validatedBody);
+
     return new Response(JSON.stringify(updatedCategory), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -175,9 +185,13 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const result = await CategoryService.deleteCategory(id);
+
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? CategoryServiceV2 : CategoryService;
+    const result = await service.deleteCategory(id);
+
     return new Response(JSON.stringify(result), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

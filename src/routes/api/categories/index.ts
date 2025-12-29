@@ -1,8 +1,14 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError } from "zod";
 import { CategoryService } from "~/application/services/category-service";
+import { CategoryServiceV2 } from "~/application/services/category-service-v2";
 import { newCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
+
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
 
 /**
  * @swagger
@@ -26,9 +32,11 @@ import { logger } from "~/infrastructure/logger";
  */
 export async function GET() {
   try {
-    const categories = await CategoryService.getAllCategories();
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? CategoryServiceV2 : CategoryService;
+    const categories = await service.getAllCategories();
     return new Response(JSON.stringify(categories), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -70,9 +78,13 @@ export async function POST({ request }: APIEvent) {
   try {
     const data = await request.json();
     const validatedData = newCategorySchema.parse(data);
-    const newCategory = await CategoryService.createCategory(validatedData);
+
+    const useV2 = process.env.USE_REPO_V2 === "true";
+    const service = useV2 ? CategoryServiceV2 : CategoryService;
+    const newCategory = await service.createCategory(validatedData);
+
     return new Response(JSON.stringify(newCategory), {
-      status: 201,
+      status: HTTP_CREATED,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
