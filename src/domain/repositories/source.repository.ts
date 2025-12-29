@@ -1,8 +1,12 @@
 import type { MediaSourceInfo } from "~/domain/sources/schemas";
 
-// Using MediaSourceInfo as the main entity for now as it maps closely,
-// though we might want a stricter MediaSource entity later.
-export type MediaSource = MediaSourceInfo;
+// Using MediaSourceInfo as the base, but ensuring it matches the DB entity structure
+// which is required for existing infrastructure utilities like getDriver.
+export type MediaSource = MediaSourceInfo & {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 export type NewMediaSource = Omit<MediaSourceInfo, "id">;
 
 export type SourceRepository = {
