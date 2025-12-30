@@ -7,9 +7,9 @@ export type SearchState = {
   excludeTags: string[];
   tagMode: "and" | "or";
   selectedSource: string;
-  selectedProjects: number[];
-  selectedIps: number[];
-  selectedCharacters: number[];
+  selectedProjects: string[];
+  selectedIps: string[];
+  selectedCharacters: string[];
 
   // Pagination
   limit: number;

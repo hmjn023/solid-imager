@@ -8,6 +8,7 @@ vi.mock("@solidjs/router", () => ({
 // HTTP Status Constants
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
+const HTTP_NO_CONTENT = 204;
 
 // Helper Types
 type ApiHandlers = {
@@ -147,7 +148,7 @@ describe("Category API (Direct Handler)", () => {
     const response = await handlers.deleteCategory(
       createDeleteEvent(createdCategoryId)
     );
-    expect(response.status).toBe(HTTP_OK);
+    expect(response.status).toBe(HTTP_NO_CONTENT);
 
     // Verify it's gone from list
     const listResponse = await handlers.getCategories();

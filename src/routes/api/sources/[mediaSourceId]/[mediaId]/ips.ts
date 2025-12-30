@@ -9,7 +9,7 @@ const MediaParamsSchema = z.object({
 });
 
 const IpBodySchema = z.object({
-  ipId: z.number(),
+  ipId: z.string().uuid(),
 });
 
 /**

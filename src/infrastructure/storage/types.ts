@@ -6,20 +6,17 @@
 // Note: Connection types are now in domain layer
 // Import from domain instead of defining here
 import type {
-  LocalConnectionInfo,
+  LocalConnection,
   S3Connection,
   SftpConnection,
-} from "~/domain/sources/types";
+} from "~/domain/sources/schemas";
 
 // すべての接続情報の方をまとめたUnion型
 /**
  * A union type representing the connection information for any supported media source type.
  * It can be either LocalConnectionInfo, SftpConnection, or S3Connection.
  */
-export type ConnectionInfo =
-  | LocalConnectionInfo
-  | SftpConnection
-  | S3Connection;
+export type ConnectionInfo = LocalConnection | SftpConnection | S3Connection;
 
 // ファイルやディレクトリの基本的な情報
 /**

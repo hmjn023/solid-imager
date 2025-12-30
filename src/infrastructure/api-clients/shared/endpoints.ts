@@ -25,6 +25,12 @@ export const API_ENDPOINTS = {
   mediaMove: (sourceId: string, mediaId: string) =>
     `/api/sources/${sourceId}/${mediaId}/move`,
 
+  // Thumbnails
+  thumbnailGenerate: (sourceId: string) =>
+    `/api/sources/${sourceId}/thumbnails/generate`,
+  thumbnailClear: (sourceId: string) =>
+    `/api/sources/${sourceId}/thumbnails/clear`,
+
   // Tags
   tags: "/api/tags",
 

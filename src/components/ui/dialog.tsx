@@ -17,7 +17,7 @@ import { cn } from "~/presentation/utils/cn";
 const Dialog = DialogPrimitiveRoot;
 const DialogTrigger = DialogPrimitiveTrigger;
 
-const DialogPortal: Component<DialogPrimitivePortal.DialogPortalProps> = (
+const DialogPortal: Component<ComponentProps<typeof DialogPrimitivePortal>> = (
   props
 ) => {
   const [, rest] = splitProps(props, ["children"]);
@@ -30,8 +30,9 @@ const DialogPortal: Component<DialogPrimitivePortal.DialogPortalProps> = (
   );
 };
 
-type DialogOverlayProps<T extends ValidComponent = "div"> =
-  DialogPrimitiveOverlay.DialogOverlayProps<T> & { class?: string | undefined };
+type DialogOverlayProps<_T extends ValidComponent = "div"> = ComponentProps<
+  typeof DialogPrimitiveOverlay
+> & { class?: string | undefined };
 
 const DialogOverlay = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DialogOverlayProps<T>>
@@ -48,11 +49,12 @@ const DialogOverlay = <T extends ValidComponent = "div">(
   );
 };
 
-type DialogContentProps<T extends ValidComponent = "div"> =
-  DialogPrimitiveContent.DialogContentProps<T> & {
-    class?: string | undefined;
-    children?: JSX.Element;
-  };
+type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
+  typeof DialogPrimitiveContent
+> & {
+  class?: string | undefined;
+  children?: JSX.Element;
+};
 
 const DialogContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, DialogContentProps<T>>
@@ -120,10 +122,11 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
   );
 };
 
-type DialogTitleProps<T extends ValidComponent = "h2"> =
-  DialogPrimitiveTitle.DialogTitleProps<T> & {
-    class?: string | undefined;
-  };
+type DialogTitleProps<_T extends ValidComponent = "h2"> = ComponentProps<
+  typeof DialogPrimitiveTitle
+> & {
+  class?: string | undefined;
+};
 
 const DialogTitle = <T extends ValidComponent = "h2">(
   props: PolymorphicProps<T, DialogTitleProps<T>>
@@ -140,10 +143,11 @@ const DialogTitle = <T extends ValidComponent = "h2">(
   );
 };
 
-type DialogDescriptionProps<T extends ValidComponent = "p"> =
-  DialogPrimitiveDescription.DialogDescriptionProps<T> & {
-    class?: string | undefined;
-  };
+type DialogDescriptionProps<_T extends ValidComponent = "p"> = ComponentProps<
+  typeof DialogPrimitiveDescription
+> & {
+  class?: string | undefined;
+};
 
 const DialogDescription = <T extends ValidComponent = "p">(
   props: PolymorphicProps<T, DialogDescriptionProps<T>>

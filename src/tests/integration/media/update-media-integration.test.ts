@@ -6,6 +6,14 @@ import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
+// biome-ignore lint/style/noMagicNumbers: test constants
+const TEST_FILE_SIZE = 1024 * 1024;
+// biome-ignore lint/style/noMagicNumbers: test constants
+const TEST_UPDATED_SIZE = 2048 * 1024;
+const TEST_WIDTH = 800;
+// biome-ignore lint/style/noMagicNumbers: test constants
+const TEST_UPDATED_WIDTH = 1200;
+
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
 describe("updateMedia Integration", () => {
@@ -14,11 +22,11 @@ describe("updateMedia Integration", () => {
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
   const initialMediaData = {
     mediaSourceId: testSourceId,
-    filePath: `/test/path/initial_image-${Date.now()}.png`,
+    filePath: `/ test / path / initial_image - ${Date.now()}.png`,
     fileName: "initial_image.png",
-    fileSize: 1024,
+    fileSize: TEST_FILE_SIZE,
     mediaType: "image" as const,
-    width: 800,
+    width: TEST_WIDTH,
     height: 600,
     description: null,
     sourceUrl: null,
@@ -54,7 +62,8 @@ describe("updateMedia Integration", () => {
     const updates = {
       fileName: "updated_image.png",
       description: "This is an updated description",
-      width: 1200,
+      width: TEST_UPDATED_WIDTH,
+      fileSize: TEST_UPDATED_SIZE,
     };
 
     const updatedMedia = await MediaService.updateMedia(
@@ -66,6 +75,7 @@ describe("updateMedia Integration", () => {
     expect(updatedMedia).toBeDefined();
     expect(updatedMedia.id).toBe(testMediaId);
     expect(updatedMedia.fileName).toBe(updates.fileName);
+    expect(updatedMedia.fileSize).toBe(updates.fileSize);
     expect(updatedMedia.description).toBe(updates.description);
     expect(updatedMedia.width).toBe(updates.width);
     expect(updatedMedia.modifiedAt).toBeInstanceOf(Date);

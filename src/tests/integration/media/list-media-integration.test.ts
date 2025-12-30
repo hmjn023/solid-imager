@@ -66,7 +66,7 @@ describe("listMedia Integration", () => {
       ])
       .onConflictDoNothing();
     for (const data of mediaEntries) {
-      const added = await MediaRepository.create(data);
+      const added = await MediaRepository.create(data as any);
       addedMediaIds.push(added.id);
     }
   });

@@ -96,7 +96,7 @@ export async function processDownloadJob(
     description: formatMetadataAsMarkdown(item),
     width: metadata.width,
     height: metadata.height,
-    size: metadata.size,
+    fileSize: metadata.size,
     createdAt: item.timestamp ? new Date(item.timestamp) : metadata.createdAt,
     modifiedAt: metadata.modifiedAt,
   };

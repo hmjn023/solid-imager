@@ -111,7 +111,7 @@ export const MediaService = {
       description: uploadRequest.description || null,
       width: fileInfo.width,
       height: fileInfo.height,
-      size: fileInfo.size,
+      fileSize: fileInfo.size,
       createdAt: fileInfo.createdAt,
       modifiedAt: fileInfo.modifiedAt,
     };
@@ -286,7 +286,7 @@ export const MediaService = {
               mediaType,
               width: metadata.width,
               height: metadata.height,
-              size: metadata.size,
+              fileSize: metadata.size,
               createdAt: metadata.createdAt,
               modifiedAt: metadata.modifiedAt,
               description: null,
@@ -504,7 +504,7 @@ export const MediaService = {
       mediaType: sourceMedia.mediaType, // Preserve type
       width: fileInfo.width,
       height: fileInfo.height,
-      size: fileInfo.size,
+      fileSize: fileInfo.size,
       description: sourceMedia.description, // Preserve description
       createdAt: fileInfo.createdAt,
       modifiedAt: fileInfo.modifiedAt,

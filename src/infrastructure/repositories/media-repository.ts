@@ -109,7 +109,6 @@ export const MediaRepository: IMediaRepository = {
         db;
       const newMedia: NewMedia = {
         ...media,
-        fileSize: media.size,
         status: "active",
         indexedAt: new Date(),
       };
@@ -143,8 +142,8 @@ export const MediaRepository: IMediaRepository = {
       if (updates.fileName !== undefined) {
         dbUpdates.fileName = updates.fileName;
       }
-      if (updates.size !== undefined) {
-        dbUpdates.fileSize = updates.size;
+      if (updates.fileSize !== undefined) {
+        dbUpdates.fileSize = updates.fileSize;
       }
       if (updates.mediaType !== undefined) {
         dbUpdates.mediaType = updates.mediaType;

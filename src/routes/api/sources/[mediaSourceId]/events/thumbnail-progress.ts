@@ -1,5 +1,5 @@
+import type { APIEvent } from "@solidjs/start/server";
 import { createEffect } from "solid-js";
-import type { APIEvent } from "solid-start/api";
 import { getJobStats } from "~/infrastructure/jobs/job-manager";
 
 /**

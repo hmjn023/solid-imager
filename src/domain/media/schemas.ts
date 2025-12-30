@@ -20,7 +20,7 @@ export const addMediaRequestSchema = z.object({
   mediaSourceId: z.uuid({ version: "v4", message: "Invalid source ID format" }),
   filePath: z.string().min(1, "File path is required"),
   fileName: z.string().min(1, "File name is required"),
-  size: z.number().int().positive("File size must be a positive integer"),
+  fileSize: z.number().int().positive("File size must be a positive integer"),
   createdAt: z.coerce.date().optional(),
   modifiedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema,
@@ -45,7 +45,7 @@ export type ImageMetadataComment = z.infer<typeof imageMetadataCommentSchema>;
 export const updateMediaRequestSchema = z.object({
   filePath: z.string().min(1, "File path cannot be empty").optional(),
   fileName: z.string().min(1, "File name cannot be empty").optional(),
-  size: z
+  fileSize: z
     .number()
     .int()
     .positive("File size must be a positive integer")

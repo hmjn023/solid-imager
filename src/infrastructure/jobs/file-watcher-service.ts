@@ -76,7 +76,7 @@ async function handleFileAdded(
       mediaType,
       width: metadata.width,
       height: metadata.height,
-      size: metadata.size,
+      fileSize: metadata.size,
       description: null,
       createdAt: metadata.createdAt,
       modifiedAt: metadata.modifiedAt,
@@ -180,7 +180,7 @@ async function handleFileChanged(
     await MediaRepository.update(media.id, {
       width: metadata.width,
       height: metadata.height,
-      size: metadata.size,
+      fileSize: metadata.size,
       modifiedAt: metadata.modifiedAt,
     });
 

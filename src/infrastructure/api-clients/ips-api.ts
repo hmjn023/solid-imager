@@ -22,7 +22,7 @@ export function createIp(data: { name: string; description?: string }) {
 }
 
 export function updateIp(
-  id: number,
+  id: string,
   data: { name?: string; description?: string }
 ) {
   return apiRequest(`${API_ENDPOINTS.ips}/${id}`, ipSchema, {
@@ -32,7 +32,7 @@ export function updateIp(
   });
 }
 
-export function deleteIp(id: number) {
+export function deleteIp(id: string) {
   return apiRequest(`${API_ENDPOINTS.ips}/${id}`, ipSchema, {
     method: "DELETE",
   });
@@ -42,7 +42,7 @@ export function fetchIpsForMedia(sourceId: string, mediaId: string) {
   return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), ipListSchema);
 }
 
-export function addIpToMedia(sourceId: string, mediaId: string, ipId: number) {
+export function addIpToMedia(sourceId: string, mediaId: string, ipId: string) {
   return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), z.any(), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,7 +53,7 @@ export function addIpToMedia(sourceId: string, mediaId: string, ipId: number) {
 export function removeIpFromMedia(
   sourceId: string,
   mediaId: string,
-  ipId: number
+  ipId: string
 ) {
   return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), z.any(), {
     method: "DELETE",

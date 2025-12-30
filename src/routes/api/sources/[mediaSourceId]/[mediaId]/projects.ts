@@ -9,7 +9,7 @@ const MediaParamsSchema = z.object({
 });
 
 const ProjectBodySchema = z.object({
-  projectId: z.number(),
+  projectId: z.string().uuid(),
 });
 
 /**

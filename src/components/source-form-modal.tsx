@@ -42,7 +42,8 @@ function SourceFormContent(props: SourceFormModalProps) {
     },
     validatorAdapter: zodValidator(),
     validators: {
-      onChange: mediaSourceInfoSchema,
+      // biome-ignore lint/suspicious/noExplicitAny: type casting for form validaton
+      onChange: mediaSourceInfoSchema as any,
     },
   }));
 

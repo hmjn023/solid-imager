@@ -22,7 +22,7 @@ export function createProject(data: { name: string; description?: string }) {
 }
 
 export function updateProject(
-  id: number,
+  id: string,
   data: { name?: string; description?: string }
 ) {
   return apiRequest(`${API_ENDPOINTS.projects}/${id}`, projectSchema, {
@@ -32,7 +32,7 @@ export function updateProject(
   });
 }
 
-export function deleteProject(id: number) {
+export function deleteProject(id: string) {
   return apiRequest(`${API_ENDPOINTS.projects}/${id}`, projectSchema, {
     method: "DELETE",
   });
@@ -48,7 +48,7 @@ export function fetchProjectsForMedia(sourceId: string, mediaId: string) {
 export function addProjectToMedia(
   sourceId: string,
   mediaId: string,
-  projectId: number
+  projectId: string
 ) {
   return apiRequest(API_ENDPOINTS.mediaProjects(sourceId, mediaId), z.any(), {
     method: "POST",
@@ -60,7 +60,7 @@ export function addProjectToMedia(
 export function removeProjectFromMedia(
   sourceId: string,
   mediaId: string,
-  projectId: number
+  projectId: string
 ) {
   return apiRequest(API_ENDPOINTS.mediaProjects(sourceId, mediaId), z.any(), {
     method: "DELETE",

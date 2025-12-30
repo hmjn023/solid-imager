@@ -5,6 +5,10 @@ import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
+// biome-ignore lint/style/noMagicNumbers: test constants
+const TEST_FILE_SIZE = 1024 * 1024;
+const TEST_WIDTH = 800;
+
 describe("addMedia Integration", () => {
   let addedMediaId: string | undefined;
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
@@ -36,11 +40,11 @@ describe("addMedia Integration", () => {
   it("should successfully add media to the database", async () => {
     const newMediaData = {
       mediaSourceId: "dce7b2a1-93ba-4c49-b1eb-f25dafb12949",
-      filePath: `/test/path/image-${Date.now()}.png`,
+      filePath: `/ test / path / image - ${Date.now()}.png`,
       fileName: "test_image.png",
-      size: 1024,
+      fileSize: TEST_FILE_SIZE,
       mediaType: "image" as const,
-      width: 800,
+      width: TEST_WIDTH,
       height: 600,
       description: null,
     };
@@ -48,7 +52,7 @@ describe("addMedia Integration", () => {
     const result = await MediaRepository.create(newMediaData);
     addedMediaId = result.id;
 
-    expect(result).toBeDefined();
+    expect(result.fileSize).toBe(newMediaData.fileSize);
     expect(result.id).toBeTypeOf("string");
     expect(result.filePath).toBe(newMediaData.filePath);
 
@@ -75,7 +79,7 @@ describe("addMedia Integration", () => {
   it("should throw an error if media with same mediaSourceId and filePath already exists", async () => {
     const newMediaData = {
       mediaSourceId: testSourceId,
-      filePath: `/test/path/duplicate-${Date.now()}.png`,
+      filePath: `/ test / path / duplicate - ${Date.now()}.png`,
       fileName: "duplicate.png",
       fileSize: 1024,
       mediaType: "image" as const,

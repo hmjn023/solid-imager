@@ -4,6 +4,7 @@ import {
   useQuery,
 } from "@tanstack/solid-query";
 import { ErrorBoundary, Suspense } from "solid-js";
+import { render } from "solid-js/web";
 
 function App() {
   const repositoryQuery = useQuery(() => ({

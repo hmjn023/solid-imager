@@ -67,7 +67,6 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
     },
     validatorAdapter: zodValidator(),
     validators: {
-      // @ts-expect-error
       onChange: uploadMediaFormSchema,
     },
   }));
@@ -189,7 +188,9 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
                     />
                     <Show when={field().state.meta.errors.length > 0}>
                       <p class="text-red-500 text-sm">
-                        {field().state.meta.errors[0]}
+                        {/* biome-ignore lint/suspicious/noExplicitAny: error object structure */}
+                        {(field().state.meta.errors[0] as any)?.message ??
+                          field().state.meta.errors[0]}
                       </p>
                     </Show>
                   </div>
@@ -229,7 +230,9 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
                         />
                         <Show when={field().state.meta.errors.length > 0}>
                           <p class="text-red-500 text-sm">
-                            {field().state.meta.errors[0]}
+                            {/* biome-ignore lint/suspicious/noExplicitAny: error object structure */}
+                            {(field().state.meta.errors[0] as any)?.message ??
+                              field().state.meta.errors[0]}
                           </p>
                         </Show>
                       </>

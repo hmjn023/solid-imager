@@ -88,7 +88,17 @@ const testConnectionServer = async (mediaSourceId: string) => {
         HTTP_STATUS_NOT_FOUND
       );
     }
-    const driver = getDriver(source as unknown as DbMediaSource);
+    const toDbMediaSource = (s: MediaSource): DbMediaSource =>
+      ({
+        id: s.id,
+        name: s.name,
+        description: s.description || null,
+        type: s.type,
+        connectionInfo: s.connectionInfo,
+        createdAt: s.createdAt,
+        updatedAt: s.updatedAt,
+      }) as DbMediaSource;
+    const driver = getDriver(toDbMediaSource(source));
     const connectionTest = await driver.testConnection();
     if (!connectionTest.success) {
       throw new FetchError(

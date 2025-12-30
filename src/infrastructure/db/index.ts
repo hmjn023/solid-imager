@@ -5,10 +5,11 @@ import { Pool } from "pg";
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
-type NodePostgresDb = ReturnType<typeof drizzleNodePostgres>;
-type PgLiteDb = ReturnType<typeof drizzlePglite>;
+type NodePostgresDb = ReturnType<typeof drizzleNodePostgres<typeof schema>>;
+type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
 
-let _db: NodePostgresDb | PgLiteDb | null = null;
+// biome-ignore lint/suspicious/noExplicitAny: initialized dynamically
+let _db: any = null;
 let _queryClient: Pool | PGlite | null = null;
 
 /**

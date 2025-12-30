@@ -5,6 +5,7 @@ import { updateCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 
 const HTTP_OK = 200;
+const HTTP_NO_CONTENT = 204;
 const _HTTP_BAD_REQUEST = 400;
 const _HTTP_NOT_FOUND = 404;
 const _HTTP_INTERNAL_SERVER_ERROR = 500;
@@ -184,11 +185,10 @@ export async function DELETE({ params }: APIEvent) {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
 
-    const result = await CategoryService.deleteCategory(id);
+    await CategoryService.deleteCategory(id);
 
-    return new Response(JSON.stringify(result), {
-      status: HTTP_OK,
-      headers: { "Content-Type": "application/json" },
+    return new Response(null, {
+      status: HTTP_NO_CONTENT,
     });
   } catch (error) {
     if (error instanceof ZodError) {

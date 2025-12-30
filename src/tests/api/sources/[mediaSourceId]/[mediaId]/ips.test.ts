@@ -43,12 +43,15 @@ describe("GET /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
 
 describe("POST /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
   it("should add IP to media", async () => {
-    const mockIp = { id: 1, name: "Test IP" };
+    const mockIp = {
+      id: "123e4567-e89b-42d3-a456-426614174003",
+      name: "Test IP",
+    };
     (IpService.addIpToMedia as any).mockResolvedValue(mockIp);
 
     const request = new Request("http://localhost", {
       method: "POST",
-      body: JSON.stringify({ ipId: 1 }),
+      body: JSON.stringify({ ipId: "123e4567-e89b-42d3-a456-426614174003" }),
     });
 
     const response = await POST({ params: mockParams, request } as any);
@@ -70,12 +73,15 @@ describe("POST /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
 
 describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/ips", () => {
   it("should remove IP from media", async () => {
-    const mockIp = { id: 1, name: "Test IP" };
+    const mockIp = {
+      id: "123e4567-e89b-42d3-a456-426614174003",
+      name: "Test IP",
+    };
     (IpService.removeIpFromMedia as any).mockResolvedValue(mockIp);
 
     const request = new Request("http://localhost", {
       method: "DELETE",
-      body: JSON.stringify({ ipId: 1 }),
+      body: JSON.stringify({ ipId: "123e4567-e89b-42d3-a456-426614174003" }),
     });
 
     const response = await DELETE({ params: mockParams, request } as any);
