@@ -1,9 +1,10 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { IAuthorRepository } from "~/domain/repositories/author.repository";
 import { db } from "~/infrastructure/db/index";
 import {
   type Author,
   authors,
+  mediaAuthors,
   type NewAuthor,
 } from "~/infrastructure/db/schema";
 
@@ -61,5 +62,41 @@ export const AuthorRepository: IAuthorRepository = {
 
   async delete(id: string): Promise<void> {
     await db.delete(authors).where(eq(authors.id, id));
+  },
+
+  async findByMediaId(mediaId: string): Promise<Author[]> {
+    const result = await db
+      .select({
+        id: authors.id,
+        name: authors.name,
+        accountId: authors.accountId,
+        createdAt: authors.createdAt,
+        updatedAt: authors.updatedAt,
+      })
+      .from(mediaAuthors)
+      .innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
+      .where(eq(mediaAuthors.mediaId, mediaId));
+    return result;
+  },
+
+  async addMedia(mediaId: string, authorId: string): Promise<void> {
+    await db
+      .insert(mediaAuthors)
+      .values({
+        mediaId,
+        authorId,
+      })
+      .onConflictDoNothing();
+  },
+
+  async removeMedia(mediaId: string, authorId: string): Promise<void> {
+    await db
+      .delete(mediaAuthors)
+      .where(
+        and(
+          eq(mediaAuthors.mediaId, mediaId),
+          eq(mediaAuthors.authorId, authorId)
+        )
+      );
   },
 };

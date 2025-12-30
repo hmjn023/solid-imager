@@ -376,13 +376,8 @@ export const MediaService = {
     // Update Authors if provided
     // Update Project authors
     if (parsedUpdates.authors && parsedUpdates.authors.length > 0) {
-      // We can import AuthorRepository directly or use AuthorService.
-      // For consistency in this refactor, let's use AuthorRepository directly as per plan step 4 "Inject Repositories"
       const { AuthorRepository } = await import(
         "~/infrastructure/repositories/author-repository"
-      );
-      const { insertMediaAuthor } = await import(
-        "~/infrastructure/db/queries/media-authors"
       );
 
       for (const authorData of parsedUpdates.authors) {
@@ -390,8 +385,8 @@ export const MediaService = {
           name: authorData.name,
           accountId: authorData.accountId || null,
         });
-        // insertMediaAuthor handles conflict by ignoring duplicates
-        await insertMediaAuthor(validatedMediaId, author.id);
+
+        await AuthorRepository.addMedia(validatedMediaId, author.id);
       }
     }
 

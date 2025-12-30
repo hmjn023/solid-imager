@@ -14,7 +14,6 @@ import {
   selectMediaBySourceId,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
-import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
 import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
 import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import {
@@ -30,6 +29,7 @@ import type {
   NewMedia,
   Tag,
 } from "~/infrastructure/db/schema";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { NotFoundError } from "../db/errors";
 
 export const MediaRepository: IMediaRepository = {
@@ -174,7 +174,7 @@ export const MediaRepository: IMediaRepository = {
   },
 
   async getAuthors(mediaId: string): Promise<Author[]> {
-    return await selectAuthorsByMediaId(mediaId);
+    return await AuthorRepository.findByMediaId(mediaId);
   },
 
   async getUrls(mediaId: string): Promise<MediaUrl[]> {

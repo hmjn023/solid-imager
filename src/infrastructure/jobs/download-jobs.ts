@@ -10,7 +10,7 @@ import type {
   Media,
   NewAuthor,
 } from "~/domain/media/schemas";
-import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
+
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
 import type { Job } from "~/infrastructure/jobs/job-manager";
@@ -131,7 +131,7 @@ export async function processDownloadJob(
       accountId: item.authorId,
     };
     const author = await AuthorRepository.create(newAuthor);
-    await insertMediaAuthor(insertedMedia.id, author.id);
+    await AuthorRepository.addMedia(insertedMedia.id, author.id);
   }
 
   // Queue thumbnail generation

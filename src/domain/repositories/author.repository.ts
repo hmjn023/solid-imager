@@ -16,4 +16,9 @@ export type IAuthorRepository = {
   create(author: NewAuthor): Promise<Author>;
   update(id: string, author: Partial<NewAuthor>): Promise<Author>;
   delete(id: string): Promise<void>;
+
+  // Associations
+  findByMediaId(mediaId: string): Promise<Author[]>;
+  addMedia(mediaId: string, authorId: string): Promise<void>;
+  removeMedia(mediaId: string, authorId: string): Promise<void>;
 };
