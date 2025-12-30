@@ -47,7 +47,7 @@ This plan outlines the steps to further decouple the Domain and Application laye
 
 ### Phase 1: Error Handling & Registry
 - [x] Define Domain Errors.
-- [ ] Implement a basic `ServiceRegistry` to hold implementation instances.
+- [x] Implement a basic `ServiceRegistry` to hold implementation instances.
 - [x] Update Repositories to throw Domain Errors.
 
 ### Phase 2: Service Refactoring
