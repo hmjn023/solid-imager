@@ -4,8 +4,11 @@ import type {
   TaggingResponse,
 } from "~/domain/tagging/schemas";
 import { pythonClient } from "~/infrastructure/ai/python-client";
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+// import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { MediaService } from "./media-service";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 export class TaggingService {
   async isServiceAvailable(): Promise<boolean> {
@@ -21,7 +24,7 @@ export class TaggingService {
     mediaId: string
   ): Promise<TaggingResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
-    const mediaSource = await selectMediaSourceById(mediaSourceId);
+    const mediaSource = await sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
       throw new Error("Media source not found");
@@ -47,7 +50,7 @@ export class TaggingService {
     mediaId: string
   ): Promise<CcipFeatureResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
-    const mediaSource = await selectMediaSourceById(mediaSourceId);
+    const mediaSource = await sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
       throw new Error("Media source not found");

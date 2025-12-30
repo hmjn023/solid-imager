@@ -1,68 +1,31 @@
-/**
- * UserService - ユーザー管理機能
- * Feature 13: ユーザー管理機能
- */
+import { cache } from "@solidjs/router";
+import type { NewUser, UpdateUser } from "~/domain/users/schemas";
+import { UserRepository } from "~/infrastructure/repositories/user-repository";
 
-/**
- * Provides services for managing users.
- */
 export const UserService = {
-  /**
-   * Retrieves all users.
-   * @returns {any} A list of all users.
-   */
-  getAllUsers() {
-    // TODO: Get all users
-    throw new Error("Not implemented");
+  getAllUsers: cache(async () => {
+    "use server";
+    return await UserRepository.findAll();
+  }, "getAllUsers"),
+
+  createUser: async (userData: NewUser) => {
+    "use server";
+    return await UserRepository.create(userData);
   },
 
-  /**
-   * Creates a new user.
-   * @param {object} _userData - The data for the new user.
-   * @param {string} _userData.name - The name of the user.
-   * @param {string} _userData.email - The email of the user.
-   * @param {string} [_userData.password] - The password for the user.
-   * @returns {any} The newly created user.
-   */
-  createUser(_userData: { name: string; email: string; password?: string }) {
-    // TODO: Create new user
-    throw new Error("Not implemented");
+  getUserDetails: cache(async (userId: string) => {
+    "use server";
+    return await UserRepository.findById(userId);
+  }, "getUserDetails"),
+
+  updateUser: async (userId: string, userData: UpdateUser) => {
+    "use server";
+    return await UserRepository.update(userId, userData);
   },
 
-  /**
-   * Retrieves details of a specific user by their ID.
-   * @param {string} _userId - The ID (UUID) of the user.
-   * @returns {any} The details of the specified user.
-   */
-  getUserDetails(_userId: string) {
-    // TODO: Get user details by ID (UUID)
-    throw new Error("Not implemented");
-  },
-
-  /**
-   * Updates an existing user.
-   * @param {string} _userId - The ID of the user to update.
-   * @param {object} _userData - The updated data for the user.
-   * @param {string} [_userData.name] - The new name of the user.
-   * @param {string} [_userData.email] - The new email of the user.
-   * @param {string} [_userData.password] - The new password for the user.
-   * @returns {any} The updated user.
-   */
-  updateUser(
-    _userId: string,
-    _userData: { name?: string; email?: string; password?: string }
-  ) {
-    // TODO: Update user
-    throw new Error("Not implemented");
-  },
-
-  /**
-   * Deletes a user by their ID.
-   * @param {string} _userId - The ID of the user to delete.
-   * @returns {any} Confirmation of deletion.
-   */
-  deleteUser(_userId: string) {
-    // TODO: Delete user
-    throw new Error("Not implemented");
+  deleteUser: async (userId: string) => {
+    "use server";
+    await UserRepository.delete(userId);
+    return { success: true };
   },
 };

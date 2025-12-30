@@ -4,7 +4,6 @@ import {
   selectMediaById,
   selectMediaBySourceId,
 } from "~/infrastructure/db/queries/media";
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import type { Media } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,
@@ -13,6 +12,9 @@ import {
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
@@ -131,8 +133,8 @@ export async function processMediaJob(
 export async function generateThumbnailsForSource(
   mediaSourceId: string
 ): Promise<number> {
-  const source = await selectMediaSourceById(mediaSourceId);
-  if (!source || source.type !== "local") {
+  const mediaSource = await sourceRepo.findById(mediaSourceId);
+  if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Source not found or not a local source");
   }
 
@@ -143,7 +145,7 @@ export async function generateThumbnailsForSource(
 
   const jobs = mediaItems.map((media) => ({
     mediaId: media.id,
-    sourcePath: (source.connectionInfo as { path: string }).path,
+    sourcePath: (mediaSource.connectionInfo as { path: string }).path,
     type: "thumbnail" as const,
   }));
 

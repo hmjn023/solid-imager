@@ -13,4 +13,14 @@ export type TagRepository = {
   create(tag: NewTag): Promise<Tag>;
   update(id: string, tag: UpdateTag): Promise<Tag>;
   delete(id: string): Promise<void>;
+
+  // Associations
+  findByMediaId(
+    mediaId: string
+  ): Promise<(Tag & { type: "positive" | "negative" })[]>;
+  addTagsToMedia(
+    mediaId: string,
+    tags: { name: string; type: "positive" | "negative" }[],
+    source?: string
+  ): Promise<void>;
 };

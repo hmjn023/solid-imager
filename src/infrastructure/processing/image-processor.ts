@@ -8,12 +8,11 @@ import sharp from "sharp";
 import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info";
-import { insertMediaTags } from "~/infrastructure/db/queries/tags";
-
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
 import { logger } from "~/infrastructure/logger";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
@@ -94,7 +93,7 @@ export const ImageProcessor = {
 
       // Store tags
       if (tags.length > 0) {
-        await insertMediaTags(mediaId, tags, "comfyui_workflow");
+        await TagRepository.addTagsToMedia(mediaId, tags, "comfyui_workflow");
       }
 
       return { tags, prompt, workflow };

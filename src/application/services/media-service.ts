@@ -17,7 +17,7 @@ import {
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
 import { NotFoundError } from "~/infrastructure/db/errors";
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+// import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 import {
   addJobsToQueue,
   startJobQueue,
@@ -29,8 +29,11 @@ import {
 } from "~/infrastructure/jobs/thumbnails";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { getDriver } from "~/infrastructure/storage/factory";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 export const MediaService = {
   /**
@@ -67,7 +70,7 @@ export const MediaService = {
     formData: FormData
   ): Promise<UploadResponse> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-    const mediaSource = await selectMediaSourceById(validatedSourceId);
+    const mediaSource = await sourceRepo.findById(validatedSourceId);
 
     if (!mediaSource) {
       throw new Error("Media source not found.");
@@ -181,7 +184,7 @@ export const MediaService = {
 
     // If generation info is not found, try to extract it (Lazy Extraction)
     if (!finalGenerationInfo) {
-      const mediaSource = await selectMediaSourceById(validatedSourceId);
+      const mediaSource = await sourceRepo.findById(validatedSourceId);
       if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };
         const fullPath = path.join(connectionInfo.path, media.filePath);
@@ -225,7 +228,7 @@ export const MediaService = {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-    const mediaSource = await selectMediaSourceById(validatedSourceId);
+    const mediaSource = await sourceRepo.findById(validatedSourceId);
     if (!mediaSource) {
       throw new Error("Media source not found");
     }
@@ -457,8 +460,8 @@ export const MediaService = {
       throw new Error("Source media not found.");
     }
 
-    const sourceSource = await selectMediaSourceById(sourceMedia.mediaSourceId);
-    const targetSource = await selectMediaSourceById(validatedTargetSourceId);
+    const sourceSource = await sourceRepo.findById(sourceMedia.mediaSourceId);
+    const targetSource = await sourceRepo.findById(validatedTargetSourceId);
 
     if (!(sourceSource && targetSource)) {
       throw new Error("Source or target media source not found.");
@@ -580,7 +583,7 @@ export const MediaService = {
 
     // 3. Delete file from filesystem
     if (media.mediaSourceId) {
-      const mediaSource = await selectMediaSourceById(media.mediaSourceId);
+      const mediaSource = await sourceRepo.findById(media.mediaSourceId);
       if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };
         try {

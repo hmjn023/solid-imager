@@ -3,7 +3,6 @@
  */
 
 import path from "node:path";
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import {
   addJobsToQueue,
   startJobQueue,
@@ -13,7 +12,10 @@ import { processMediaJob } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 /**
  * Handles file addition events from the file system watcher.
@@ -24,7 +26,7 @@ async function handleFileAdded(
   relativePath: string
 ): Promise<void> {
   try {
-    const source = await selectMediaSourceById(mediaSourceId);
+    const source = await sourceRepo.findById(mediaSourceId);
     if (!source || source.type !== "local") {
       return;
     }
@@ -147,12 +149,16 @@ async function handleFileDeleted(
  * Handles file change events from the file system watcher.
  * Updates the media metadata and regenerates the thumbnail.
  */
+/**
+ * Handles file change events from the file system watcher.
+ * Updates the media metadata and regenerates the thumbnail.
+ */
 async function handleFileChanged(
   mediaSourceId: string,
   relativePath: string
 ): Promise<void> {
   try {
-    const source = await selectMediaSourceById(mediaSourceId);
+    const source = await sourceRepo.findById(mediaSourceId);
     if (!source || source.type !== "local") {
       return;
     }
@@ -214,7 +220,7 @@ async function handleFileChanged(
  */
 export async function startMonitoring(mediaSourceId: string): Promise<void> {
   try {
-    const source = await selectMediaSourceById(mediaSourceId);
+    const source = await sourceRepo.findById(mediaSourceId);
     if (!source) {
       return;
     }
@@ -246,10 +252,7 @@ export async function stopMonitoring(mediaSourceId: string): Promise<void> {
  * Starts monitoring for all local media sources.
  */
 export async function startMonitoringAll(): Promise<void> {
-  const { selectMediaSources } = await import(
-    "~/infrastructure/db/queries/media-sources"
-  );
-  const sources = await selectMediaSources();
+  const sources = await sourceRepo.findAll();
 
   for (const source of sources) {
     if (source.type === "local") {

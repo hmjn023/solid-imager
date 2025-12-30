@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import type {
   NewTag,
   Tag,
-  TagRepository,
+  TagRepository as TagRepositoryDef,
 } from "~/domain/repositories/tag.repository";
 import type { UpdateTag } from "~/domain/tags/schemas";
 import {
@@ -11,9 +11,9 @@ import {
   UnknownDbError,
 } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
-import { tags } from "~/infrastructure/db/schema";
+import { mediaTags, tags } from "~/infrastructure/db/schema";
 
-export class DrizzleTagRepository implements TagRepository {
+export class DrizzleTagRepository implements TagRepositoryDef {
   async findAll(): Promise<Tag[]> {
     try {
       const results = await db.select().from(tags);
@@ -136,4 +136,108 @@ export class DrizzleTagRepository implements TagRepository {
       });
     }
   }
+
+  async findByMediaId(
+    mediaId: string
+  ): Promise<(Tag & { type: "positive" | "negative" })[]> {
+    try {
+      const result = await db
+        .select({
+          id: tags.id,
+          name: tags.name,
+          description: tags.description,
+          attribute: tags.attribute,
+          color: tags.color,
+          source: tags.source,
+          authorId: tags.authorId,
+          createdAt: tags.createdAt,
+          updatedAt: tags.updatedAt,
+          type: mediaTags.tagType,
+        })
+        .from(mediaTags)
+        .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+        .where(eq(mediaTags.mediaId, mediaId));
+
+      return result as unknown as (Tag & { type: "positive" | "negative" })[];
+    } catch (error) {
+      throw new UnknownDbError({
+        message: `Failed to retrieve tags for media ID: ${mediaId}`,
+        details: error,
+      });
+    }
+  }
+
+  async addTagsToMedia(
+    mediaId: string,
+    tagsToInsert: { name: string; type: "positive" | "negative" }[],
+    source = "manual"
+  ): Promise<void> {
+    try {
+      await db.transaction(async (tx) => {
+        const tagNames = tagsToInsert.map((t) => t.name);
+        if (tagNames.length === 0) {
+          return;
+        }
+
+        const existingTags = await tx
+          .select()
+          .from(tags)
+          .where(inArray(tags.name, tagNames));
+
+        const existingTagNames = existingTags.map((t) => t.name);
+        const newTagNames = tagNames.filter(
+          (name) => !existingTagNames.includes(name)
+        );
+
+        let newTagsCreated: (typeof tags.$inferSelect)[] = [];
+        if (newTagNames.length > 0) {
+          newTagsCreated = await tx
+            .insert(tags)
+            .values(newTagNames.map((name) => ({ name, source })))
+            .returning();
+        }
+
+        const allTags = [...existingTags, ...newTagsCreated];
+        const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
+          const foundTag = allTags.find((t) => t.name === tagToInsert.name);
+          if (!foundTag) {
+            throw new Error(
+              `Tag ${tagToInsert.name} not found after insertion`
+            );
+          }
+          return {
+            mediaId,
+            tagId: foundTag.id,
+            tagType: tagToInsert.type,
+            source,
+          };
+        });
+
+        if (mediaTagsToInsert.length > 0) {
+          await tx
+            .insert(mediaTags)
+            .values(mediaTagsToInsert)
+            .onConflictDoNothing();
+        }
+      });
+    } catch (error) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as { code: string }).code === "23505"
+      ) {
+        throw new ConstraintError({
+          message: "One or more media tags already exist",
+          details: error,
+        });
+      }
+      throw new UnknownDbError({
+        message: `Failed to insert media tags for media ID: ${mediaId}`,
+        details: error,
+      });
+    }
+  }
 }
+
+export const TagRepository = new DrizzleTagRepository();

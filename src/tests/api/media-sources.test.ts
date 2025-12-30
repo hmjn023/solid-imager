@@ -17,7 +17,7 @@ vi.mock("~/infrastructure/jobs/file-watcher-service", () => ({
   // biome-ignore lint/style/useNamingConvention: Mocking exported class/object name
   FileWatcherService: {
     startMonitoring: vi.fn().mockResolvedValue(undefined),
-    stopMonitoring: vi.fn(),
+    stopMonitoring: vi.fn().mockResolvedValue(undefined),
   },
 }));
 

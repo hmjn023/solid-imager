@@ -11,7 +11,7 @@ import type {
   NewAuthor,
 } from "~/domain/media/schemas";
 
-import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
+// import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import {
@@ -21,7 +21,10 @@ import {
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 /**
  * Downloads an image from a URL and saves it to the specified path.
@@ -64,7 +67,7 @@ export async function processDownloadJob(
   mediaSourceId: string,
   item: DownloadItem
 ): Promise<void> {
-  const mediaSource = await selectMediaSourceById(mediaSourceId);
+  const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Media source not found or not a local source");
   }
@@ -163,7 +166,7 @@ export async function queueDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ): Promise<number> {
-  const mediaSource = await selectMediaSourceById(mediaSourceId);
+  const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Media source not found or not a local source");
   }

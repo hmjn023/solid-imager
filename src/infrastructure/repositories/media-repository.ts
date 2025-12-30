@@ -20,7 +20,6 @@ import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
 } from "~/infrastructure/db/queries/search";
-import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
 import type {
   Author,
   Media,
@@ -30,6 +29,7 @@ import type {
   Tag,
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { NotFoundError } from "../db/errors";
 
 export const MediaRepository: IMediaRepository = {
@@ -159,7 +159,7 @@ export const MediaRepository: IMediaRepository = {
   async getTags(
     mediaId: string
   ): Promise<(Tag & { type: "positive" | "negative" })[]> {
-    return await selectMediaTagsByMediaId(mediaId);
+    return await TagRepository.findByMediaId(mediaId);
   },
 
   async getGenerationInfo(
