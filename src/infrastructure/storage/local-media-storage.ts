@@ -3,7 +3,7 @@ import path from "node:path";
 import sharp from "sharp";
 import type { z } from "zod";
 import type { conflictSchema } from "~/domain/media/upload-schemas";
-import type { IStorageService } from "~/domain/services/storage.service";
+import type { IStorageService } from "~/domain/services/storage-service";
 
 export const LocalMediaStorage: IStorageService = {
   async saveFile(
