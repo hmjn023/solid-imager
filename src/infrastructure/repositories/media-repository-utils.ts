@@ -11,6 +11,7 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
+import { UnexpectedError } from "~/domain/errors";
 import { db } from "~/infrastructure/db/index";
 import {
   mediaCharacters,
@@ -20,11 +21,9 @@ import {
   mediaTags,
   tags,
 } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "../db/errors";
 
 /**
- * Escapes special characters in a string for use in a LIKE query.
- * Escapes % and _.
+ * Escapes special characters ...
  */
 function escapeLikeString(str: string): string {
   return str.replace(/[%_]/g, "\\$&");
@@ -160,7 +159,7 @@ function buildOrderByClause(
  * @param {string} mediaSourceId - The ID of the media source to search within.
  * @param {object} searchOptions - Options for the search.
  * @returns {Promise<{ media: unknown[]; total: number }>} A promise that resolves with matching media items and total count.
- * @throws {UnknownDbError} If a database error occurs during the search.
+ * @throws {UnexpectedError} If a database error occurs during the search.
  */
 export const searchMedia = async (
   mediaSourceId: string,
@@ -200,10 +199,10 @@ export const searchMedia = async (
 
     return { media: mediaList, total };
   } catch (error) {
-    throw new UnknownDbError({
-      message: `Failed to search media for source ID: ${mediaSourceId}`,
-      details: error,
-    });
+    throw new UnexpectedError(
+      `Failed to search media for source ID: ${mediaSourceId}`,
+      error
+    );
   }
 };
 
@@ -215,7 +214,7 @@ export const searchMedia = async (
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
  * @returns {Promise<unknown[]>} A promise that resolves with an array of matching media items within the directory.
- * @throws {UnknownDbError} If a database error occurs during the search.
+ * @throws {UnexpectedError} If a database error occurs during the search.
  */
 export const searchMediaInDirectory = async (
   mediaSourceId: string,
@@ -253,10 +252,10 @@ export const searchMediaInDirectory = async (
       .from(medias)
       .where(and(...conditions));
   } catch (error) {
-    throw new UnknownDbError({
-      message: `Failed to search media in directory ${directoryPath} for source ID: ${mediaSourceId}`,
-      details: error,
-    });
+    throw new UnexpectedError(
+      `Failed to search media in directory ${directoryPath} for source ID: ${mediaSourceId}`,
+      error
+    );
   }
 };
 
@@ -266,7 +265,7 @@ export const searchMediaInDirectory = async (
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
  * @returns {Promise<unknown[]>} A promise that resolves with an array of matching media items from all sources.
- * @throws {UnknownDbError} If a database error occurs during the search.
+ * @throws {UnexpectedError} If a database error occurs during the search.
  */
 export const globalSearchMedia = async (
   searchOptions: {
@@ -301,9 +300,6 @@ export const globalSearchMedia = async (
 
     return await client.select().from(medias).where(whereClause);
   } catch (error) {
-    throw new UnknownDbError({
-      message: "Failed to perform global media search",
-      details: error,
-    });
+    throw new UnexpectedError("Failed to perform global media search", error);
   }
 };

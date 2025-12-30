@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
   type AddMediaRequest,
@@ -22,7 +23,6 @@ import {
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { NotFoundError, UnknownDbError } from "../db/errors";
 // import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
 // import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
 import {
@@ -48,13 +48,10 @@ export const MediaRepository: IMediaRepository = {
       }
       return result[0];
     } catch (e) {
-      if (e instanceof NotFoundError) {
+      if (e instanceof ResourceNotFoundError) {
         return null;
       }
-      throw new UnknownDbError({
-        message: `Failed to select media by ID: ${mediaId}`,
-        details: e,
-      });
+      throw new UnexpectedError(`Failed to select media by ID: ${mediaId}`, e);
     }
   },
 
@@ -92,10 +89,10 @@ export const MediaRepository: IMediaRepository = {
         );
       return result[0] || null;
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select media by source ID and file path",
-        details: error,
-      });
+      throw new UnexpectedError(
+        "Failed to select media by source ID and file path",
+        error
+      );
     }
   },
 
@@ -115,10 +112,7 @@ export const MediaRepository: IMediaRepository = {
       const result = await client.insert(medias).values(newMedia).returning();
       return result[0];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to insert media",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert media", error);
     }
   },
 
@@ -170,19 +164,17 @@ export const MediaRepository: IMediaRepository = {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Media with ID ${mediaId} not found`,
-        });
+        throw new ResourceNotFoundError("Media", mediaId);
       }
       return result[0];
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to update media with ID: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to update media with ID: ${mediaId}`,
+        error
+      );
     }
   },
 
@@ -199,18 +191,16 @@ export const MediaRepository: IMediaRepository = {
         .where(eq(medias.id, mediaId))
         .returning();
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Media with ID ${mediaId} not found`,
-        });
+        throw new ResourceNotFoundError("Media", mediaId);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete media with ID: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to delete media with ID: ${mediaId}`,
+        error
+      );
     }
   },
 
@@ -296,10 +286,10 @@ export const MediaRepository: IMediaRepository = {
         steps: info.steps ?? 0,
       };
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select media generation info for mediaId: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select media generation info for mediaId: ${mediaId}`,
+        error
+      );
     }
   },
 
@@ -317,10 +307,10 @@ export const MediaRepository: IMediaRepository = {
         .from(mediaUrls)
         .where(eq(mediaUrls.mediaId, mediaId));
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select media URLs for mediaId: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select media URLs for mediaId: ${mediaId}`,
+        error
+      );
     }
   },
 
@@ -342,10 +332,7 @@ export const MediaRepository: IMediaRepository = {
       }));
       return await client.insert(mediaUrls).values(values).returning();
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to insert media URLs",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert media URLs", error);
     }
   },
 
@@ -384,10 +371,10 @@ export const MediaRepository: IMediaRepository = {
         steps: info.steps ?? 0,
       };
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to upsert media generation info for mediaId: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to upsert media generation info for mediaId: ${mediaId}`,
+        error
+      );
     }
   },
 
@@ -405,10 +392,10 @@ export const MediaRepository: IMediaRepository = {
         .from(medias)
         .where(eq(medias.mediaSourceId, mediaSourceId));
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select medias by source ID: ${mediaSourceId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select medias by source ID: ${mediaSourceId}`,
+        error
+      );
     }
   },
 

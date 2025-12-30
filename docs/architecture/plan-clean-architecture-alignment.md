@@ -46,9 +46,9 @@ This plan outlines the steps to further decouple the Domain and Application laye
 ## 3. Implementation Checklist
 
 ### Phase 1: Error Handling & Registry
-- [ ] Define Domain Errors.
+- [x] Define Domain Errors.
 - [ ] Implement a basic `ServiceRegistry` to hold implementation instances.
-- [ ] Update Repositories to throw Domain Errors.
+- [x] Update Repositories to throw Domain Errors.
 
 ### Phase 2: Service Refactoring
 - [ ] Refactor `MediaService` (highest priority).
