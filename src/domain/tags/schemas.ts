@@ -55,6 +55,7 @@ export const tagResponseSchema = z.object({
   attribute: z.string().nullable(),
   color: z.string().nullable(),
   source: z.string(),
+  authorId: z.string().uuid().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

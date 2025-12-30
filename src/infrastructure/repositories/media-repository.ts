@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import {
   type AddMediaRequest,
   type MediaSearchRequest,
@@ -6,31 +7,25 @@ import {
   type UpdateMediaRequest,
 } from "~/domain/media/schemas";
 import type { IMediaRepository } from "~/domain/repositories/media.repository";
-import {
-  deleteMedia as dbDeleteMedia,
-  updateMedia as dbUpdateMedia,
-  insertMedia,
-  selectMediaById,
-  selectMediaBySourceId,
-  selectMediaBySourceIdAndFilePath,
-} from "~/infrastructure/db/queries/media";
+import { db } from "~/infrastructure/db/index";
 import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
 import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
 import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
 } from "~/infrastructure/db/queries/search";
-import type {
-  Author,
-  Media,
-  MediaGenerationInfo,
-  MediaUrl,
-  NewMedia,
-  Tag,
+import {
+  type Author,
+  type Media,
+  type MediaGenerationInfo,
+  type MediaUrl,
+  medias,
+  type NewMedia,
+  type Tag,
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { NotFoundError } from "../db/errors";
+import { NotFoundError, UnknownDbError } from "../db/errors";
 
 export const MediaRepository: IMediaRepository = {
   /**
@@ -38,12 +33,22 @@ export const MediaRepository: IMediaRepository = {
    */
   async findById(mediaId: string): Promise<Media | null> {
     try {
-      return await selectMediaById(mediaId);
+      const result = await db
+        .select()
+        .from(medias)
+        .where(eq(medias.id, mediaId));
+      if (result.length === 0) {
+        return null;
+      }
+      return result[0];
     } catch (e) {
       if (e instanceof NotFoundError) {
         return null;
       }
-      throw e;
+      throw new UnknownDbError({
+        message: `Failed to select media by ID: ${mediaId}`,
+        details: e,
+      });
     }
   },
 
@@ -51,69 +56,137 @@ export const MediaRepository: IMediaRepository = {
    * Retrieves a specific media item by Source ID and File Path.
    */
   async findByPath(sourceId: string, filePath: string): Promise<Media | null> {
-    const results = await selectMediaBySourceIdAndFilePath(sourceId, filePath);
-    return results[0] || null;
+    try {
+      const result = await db
+        .select({
+          id: medias.id,
+          mediaSourceId: medias.mediaSourceId,
+          filePath: medias.filePath,
+          fileName: medias.fileName,
+          mediaType: medias.mediaType,
+          width: medias.width,
+          height: medias.height,
+          fileSize: medias.fileSize,
+          description: medias.description,
+          createdAt: medias.createdAt,
+          modifiedAt: medias.modifiedAt,
+          indexedAt: medias.indexedAt,
+          status: medias.status,
+        })
+        .from(medias)
+        .where(
+          and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath))
+        );
+      return result[0] || null;
+    } catch (error) {
+      throw new UnknownDbError({
+        message: "Failed to select media by source ID and file path",
+        details: error,
+      });
+    }
   },
 
   /**
    * Creates a new media entry in the database.
    */
   async create(media: AddMediaRequest): Promise<Media> {
-    const newMedia: NewMedia = {
-      ...media,
-      fileSize: media.size,
-      status: "active",
-      indexedAt: new Date(),
-    };
-    return await insertMedia(newMedia);
+    try {
+      const newMedia: NewMedia = {
+        ...media,
+        fileSize: media.size,
+        status: "active",
+        indexedAt: new Date(),
+      };
+      const result = await db.insert(medias).values(newMedia).returning();
+      return result[0];
+    } catch (error) {
+      throw new UnknownDbError({
+        message: "Failed to insert media",
+        details: error,
+      });
+    }
   },
 
   /**
    * Updates an existing media entry.
    */
   async update(mediaId: string, updates: UpdateMediaRequest): Promise<Media> {
-    // updates is validated by Zod at controller/service level.
-    // Map domain fields to DB fields
-    const dbUpdates: Partial<NewMedia> = {};
+    try {
+      const dbUpdates: Partial<NewMedia> = {};
 
-    if (updates.filePath !== undefined) {
-      dbUpdates.filePath = updates.filePath;
-    }
-    if (updates.fileName !== undefined) {
-      dbUpdates.fileName = updates.fileName;
-    }
-    if (updates.size !== undefined) {
-      dbUpdates.fileSize = updates.size;
-    }
-    if (updates.mediaType !== undefined) {
-      dbUpdates.mediaType = updates.mediaType;
-    }
-    if (updates.width !== undefined) {
-      dbUpdates.width = updates.width;
-    }
-    if (updates.height !== undefined) {
-      dbUpdates.height = updates.height;
-    }
-    if (updates.description !== undefined) {
-      dbUpdates.description = updates.description;
-    }
-    if (updates.createdAt !== undefined) {
-      dbUpdates.createdAt = updates.createdAt;
-    }
-    if (updates.modifiedAt !== undefined) {
-      dbUpdates.modifiedAt = updates.modifiedAt;
-    } else {
-      dbUpdates.modifiedAt = new Date(); // Always update modifiedAt
-    }
+      if (updates.filePath !== undefined) {
+        dbUpdates.filePath = updates.filePath;
+      }
+      if (updates.fileName !== undefined) {
+        dbUpdates.fileName = updates.fileName;
+      }
+      if (updates.size !== undefined) {
+        dbUpdates.fileSize = updates.size;
+      }
+      if (updates.mediaType !== undefined) {
+        dbUpdates.mediaType = updates.mediaType;
+      }
+      if (updates.width !== undefined) {
+        dbUpdates.width = updates.width;
+      }
+      if (updates.height !== undefined) {
+        dbUpdates.height = updates.height;
+      }
+      if (updates.description !== undefined) {
+        dbUpdates.description = updates.description;
+      }
+      if (updates.createdAt !== undefined) {
+        dbUpdates.createdAt = updates.createdAt;
+      }
 
-    return await dbUpdateMedia(mediaId, dbUpdates);
+      dbUpdates.modifiedAt = updates.modifiedAt || new Date();
+
+      const result = await db
+        .update(medias)
+        .set(dbUpdates)
+        .where(eq(medias.id, mediaId))
+        .returning();
+
+      if (result.length === 0) {
+        throw new NotFoundError({
+          message: `Media with ID ${mediaId} not found`,
+        });
+      }
+      return result[0];
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new UnknownDbError({
+        message: `Failed to update media with ID: ${mediaId}`,
+        details: error,
+      });
+    }
   },
 
   /**
    * Deletes a media entry from the database.
    */
   async delete(mediaId: string): Promise<void> {
-    await dbDeleteMedia(mediaId);
+    try {
+      const result = await db
+        .delete(medias)
+        .where(eq(medias.id, mediaId))
+        .returning();
+      if (result.length === 0) {
+        throw new NotFoundError({
+          message: `Media with ID ${mediaId} not found`,
+        });
+      }
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        throw error;
+      }
+      throw new UnknownDbError({
+        message: `Failed to delete media with ID: ${mediaId}`,
+        details: error,
+      });
+    }
   },
 
   /**
@@ -183,7 +256,17 @@ export const MediaRepository: IMediaRepository = {
 
   // Bulk
   async findAllBySourceId(mediaSourceId: string): Promise<Media[]> {
-    return await selectMediaBySourceId(mediaSourceId);
+    try {
+      return await db
+        .select()
+        .from(medias)
+        .where(eq(medias.mediaSourceId, mediaSourceId));
+    } catch (error) {
+      throw new UnknownDbError({
+        message: `Failed to select medias by source ID: ${mediaSourceId}`,
+        details: error,
+      });
+    }
   },
 
   async searchInDirectory(

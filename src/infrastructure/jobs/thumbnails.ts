@@ -1,9 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-  selectMediaById,
-  selectMediaBySourceId,
-} from "~/infrastructure/db/queries/media";
+// import {
+//   selectMediaById,
+//   selectMediaBySourceId,
+// } from "~/infrastructure/db/queries/media"; // Removed
 import type { Media } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,
@@ -12,6 +12,7 @@ import {
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
 const sourceRepo = new DrizzleSourceRepository();
@@ -100,7 +101,7 @@ export async function processMediaJob(
   job: Job,
   mediaSourceId: string
 ): Promise<void> {
-  const media = await selectMediaById(job.mediaId);
+  const media = await MediaRepository.findById(job.mediaId);
   if (!media) {
     return;
   }
@@ -138,7 +139,7 @@ export async function generateThumbnailsForSource(
     throw new Error("Source not found or not a local source");
   }
 
-  const mediaItems = await selectMediaBySourceId(mediaSourceId);
+  const mediaItems = await MediaRepository.findAllBySourceId(mediaSourceId);
   if (mediaItems.length === 0) {
     return 0;
   }
