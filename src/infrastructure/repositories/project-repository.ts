@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   NewProject,
   Project,
@@ -24,17 +25,33 @@ export const ProjectRepository: IProjectRepository = {
     return dbProjects.map(mapToDomain);
   },
 
-  async findById(id: string): Promise<Project | null> {
-    const result = await db.select().from(projects).where(eq(projects.id, id));
+  async findById(id: string, tx?: Transaction): Promise<Project | null> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
+      .select()
+      .from(projects)
+      .where(eq(projects.id, id));
     return result[0] ? mapToDomain(result[0]) : null;
   },
 
-  async create(project: NewProject): Promise<Project> {
-    const result = await db.insert(projects).values(project).returning();
+  async create(project: NewProject, tx?: Transaction): Promise<Project> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client.insert(projects).values(project).returning();
     return mapToDomain(result[0]);
   },
 
-  async update(id: string, project: UpdateProject): Promise<Project> {
+  async update(
+    id: string,
+    project: UpdateProject,
+    tx?: Transaction
+  ): Promise<Project> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
     const { archivedAt, ...rest } = project;
     const updateData: Partial<typeof projects.$inferInsert> = {
       ...rest,
@@ -46,7 +63,7 @@ export const ProjectRepository: IProjectRepository = {
       updateData.archivedAt = null;
     }
 
-    const result = await db
+    const result = await client
       .update(projects)
       .set(updateData)
       .where(eq(projects.id, id))
@@ -58,8 +75,11 @@ export const ProjectRepository: IProjectRepository = {
     return mapToDomain(result[0]);
   },
 
-  async delete(id: string): Promise<void> {
-    const result = await db
+  async delete(id: string, tx?: Transaction): Promise<void> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .delete(projects)
       .where(eq(projects.id, id))
       .returning();
@@ -69,8 +89,11 @@ export const ProjectRepository: IProjectRepository = {
     }
   },
 
-  async findByMediaId(mediaId: string): Promise<Project[]> {
-    const result = await db
+  async findByMediaId(mediaId: string, tx?: Transaction): Promise<Project[]> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .select({
         id: projects.id,
         name: projects.name,
@@ -83,19 +106,40 @@ export const ProjectRepository: IProjectRepository = {
       .innerJoin(mediaProjects, eq(projects.id, mediaProjects.projectId))
       .where(eq(mediaProjects.mediaId, mediaId));
 
-    return result.map((p) => ({
-      ...p,
-      createdAt: p.createdAt || new Date(),
-      updatedAt: p.updatedAt || new Date(),
-    }));
+    return result.map(
+      /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
+        p: any
+      ) => ({
+        ...p,
+        createdAt: p.createdAt || new Date(),
+        updatedAt: p.updatedAt || new Date(),
+      })
+    );
   },
 
-  async addMedia(mediaId: string, projectId: string): Promise<void> {
-    await db.insert(mediaProjects).values({ mediaId, projectId }).returning();
+  async addMedia(
+    mediaId: string,
+    projectId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    await client
+      .insert(mediaProjects)
+      .values({ mediaId, projectId })
+      .returning();
   },
 
-  async removeMedia(mediaId: string, projectId: string): Promise<void> {
-    const result = await db
+  async removeMedia(
+    mediaId: string,
+    projectId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .delete(mediaProjects)
       .where(
         and(

@@ -4,6 +4,7 @@ import type {
   NewCharacter,
   UpdateCharacter,
 } from "~/domain/characters/schemas";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "~/domain/repositories/character.repository";
 import {
   ConstraintError,
@@ -26,9 +27,12 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async findById(id: string): Promise<Character | null> {
+  async findById(id: string, tx?: Transaction): Promise<Character | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select()
         .from(characters)
         .where(eq(characters.id, id));
@@ -44,9 +48,12 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async create(character: NewCharacter): Promise<Character> {
+  async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .insert(characters)
         .values({
           ...character,
@@ -73,9 +80,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async update(id: string, character: UpdateCharacter): Promise<Character> {
+  async update(
+    id: string,
+    character: UpdateCharacter,
+    tx?: Transaction
+  ): Promise<Character> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .update(characters)
         .set({
           ...character,
@@ -112,9 +126,12 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .delete(characters)
         .where(eq(characters.id, id))
         .returning();
@@ -135,9 +152,12 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async findByMediaId(mediaId: string): Promise<Character[]> {
+  async findByMediaId(mediaId: string, tx?: Transaction): Promise<Character[]> {
     try {
-      const results = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const results = await client
         .select({
           id: characters.id,
           name: characters.name,
@@ -161,9 +181,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async addToMedia(mediaId: string, characterId: string): Promise<void> {
+  async addToMedia(
+    mediaId: string,
+    characterId: string,
+    tx?: Transaction
+  ): Promise<void> {
     try {
-      await db.insert(mediaCharacters).values({
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      await client.insert(mediaCharacters).values({
         mediaId,
         characterId,
       });
@@ -185,9 +212,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
-  async removeFromMedia(mediaId: string, characterId: string): Promise<void> {
+  async removeFromMedia(
+    mediaId: string,
+    characterId: string,
+    tx?: Transaction
+  ): Promise<void> {
     try {
-      await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      await client
         .delete(mediaCharacters)
         .where(
           and(

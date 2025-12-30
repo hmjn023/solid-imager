@@ -1,4 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { MediaTag } from "~/domain/media/schemas";
 import type {
   NewTag,
@@ -59,9 +60,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     }
   }
 
-  async create(tag: NewTag): Promise<Tag> {
+  async create(tag: NewTag, tx?: Transaction): Promise<Tag> {
     try {
-      const result = await db.insert(tags).values(tag).returning();
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client.insert(tags).values(tag).returning();
       return result[0] as unknown as Tag;
     } catch (error: unknown) {
       if (
@@ -82,9 +86,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     }
   }
 
-  async update(id: string, tag: UpdateTag): Promise<Tag> {
+  async update(id: string, tag: UpdateTag, tx?: Transaction): Promise<Tag> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .update(tags)
         .set(tag)
         .where(eq(tags.id, id))
@@ -118,9 +125,15 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const result = await db.delete(tags).where(eq(tags.id, id)).returning();
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
+        .delete(tags)
+        .where(eq(tags.id, id))
+        .returning();
 
       if (result.length === 0) {
         throw new NotFoundError({
@@ -138,9 +151,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     }
   }
 
-  async findByMediaId(mediaId: string): Promise<MediaTag[]> {
+  async findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select({
           id: tags.id,
           name: tags.name,
@@ -169,36 +185,50 @@ export class DrizzleTagRepository implements TagRepositoryDef {
   async addTagsToMedia(
     mediaId: string,
     tagsToInsert: { name: string; type: "positive" | "negative" }[],
-    source = "manual"
+    source = "manual",
+    tx?: Transaction
   ): Promise<void> {
     try {
-      await db.transaction(async (tx) => {
-        const tagNames = tagsToInsert.map((t) => t.name);
+      const _client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const execute = async (t: Transaction) => {
+        const tagNames = tagsToInsert.map((tag) => tag.name);
         if (tagNames.length === 0) {
           return;
         }
 
-        const existingTags = await tx
-          .select()
-          .from(tags)
-          .where(inArray(tags.name, tagNames));
+        const existingTags =
+          await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
+            t as any
+          )
+            .select()
+            .from(tags)
+            .where(inArray(tags.name, tagNames));
 
-        const existingTagNames = existingTags.map((t) => t.name);
+        const existingTagNames = existingTags.map(
+          /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
+            tag: any
+          ) => tag.name
+        );
         const newTagNames = tagNames.filter(
           (name) => !existingTagNames.includes(name)
         );
 
         let newTagsCreated: (typeof tags.$inferSelect)[] = [];
         if (newTagNames.length > 0) {
-          newTagsCreated = await tx
-            .insert(tags)
-            .values(newTagNames.map((name) => ({ name, source })))
-            .returning();
+          newTagsCreated =
+            await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
+              t as any
+            )
+              .insert(tags)
+              .values(newTagNames.map((name) => ({ name, source })))
+              .returning();
         }
 
         const allTags = [...existingTags, ...newTagsCreated];
         const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
-          const foundTag = allTags.find((t) => t.name === tagToInsert.name);
+          const foundTag = allTags.find((tag) => tag.name === tagToInsert.name);
           if (!foundTag) {
             throw new Error(
               `Tag ${tagToInsert.name} not found after insertion`
@@ -213,12 +243,20 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         });
 
         if (mediaTagsToInsert.length > 0) {
-          await tx
+          await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
+            t as any
+          )
             .insert(mediaTags)
             .values(mediaTagsToInsert)
             .onConflictDoNothing();
         }
-      });
+      };
+
+      if (tx) {
+        await execute(tx);
+      } else {
+        await db.transaction(execute);
+      }
     } catch (error) {
       if (
         error &&

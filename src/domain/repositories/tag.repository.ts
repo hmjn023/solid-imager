@@ -1,3 +1,4 @@
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { MediaTag } from "~/domain/media/schemas";
 import type { NewTag, TagResponse, UpdateTag } from "~/domain/tags/schemas";
 
@@ -11,15 +12,16 @@ export type TagRepository = {
   findAll(): Promise<Tag[]>;
   findById(id: string): Promise<Tag | null>;
   findByName(name: string): Promise<Tag | null>;
-  create(tag: NewTag): Promise<Tag>;
-  update(id: string, tag: UpdateTag): Promise<Tag>;
-  delete(id: string): Promise<void>;
+  create(tag: NewTag, tx?: Transaction): Promise<Tag>;
+  update(id: string, tag: UpdateTag, tx?: Transaction): Promise<Tag>;
+  delete(id: string, tx?: Transaction): Promise<void>;
 
   // Associations
-  findByMediaId(mediaId: string): Promise<MediaTag[]>;
+  findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;
   addTagsToMedia(
     mediaId: string,
     tags: { name: string; type: "positive" | "negative" }[],
-    source?: string
+    source?: string,
+    tx?: Transaction
   ): Promise<void>;
 };

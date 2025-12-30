@@ -3,6 +3,7 @@
  */
 
 import path from "node:path";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
   type AddMediaRequest,
   type Media,
@@ -17,6 +18,7 @@ import {
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
 import { NotFoundError } from "~/infrastructure/db/errors";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 import {
   addJobsToQueue,
@@ -342,57 +344,62 @@ export const MediaService = {
   /**
    * Updates a media item.
    */
-  async updateMedia(mediaSourceId: string, mediaId: string, updates: unknown) {
+  async updateMedia(
+    mediaSourceId: string,
+    mediaId: string,
+    updates: unknown,
+    tx?: Transaction
+  ) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
     const parsedUpdates = updateMediaRequestSchema.parse(updates);
 
-    const media = await MediaRepository.findById(validatedMediaId);
-    if (!media) {
-      throw new Error("Media not found");
-    }
-    if (media.mediaSourceId !== validatedSourceId) {
-      throw new Error("Media not found");
-    }
+    const execute = async (t: Transaction) => {
+      const media = await MediaRepository.findById(validatedMediaId, t);
+      if (!media || media.mediaSourceId !== validatedSourceId) {
+        throw new Error("Media not found");
+      }
 
-    const updatedMedia = await MediaRepository.update(
-      validatedMediaId,
-      parsedUpdates
-    );
-
-    // Update URLs if provided
-    if (parsedUpdates.sourceUrls && parsedUpdates.sourceUrls.length > 0) {
-      // Fetch existing URLs to prevent duplicates
-      const existingUrls = await MediaRepository.getUrls(validatedMediaId);
-      const existingUrlSet = new Set(existingUrls.map((u) => u.url));
-
-      const newUrls = parsedUpdates.sourceUrls.filter(
-        (u) => !existingUrlSet.has(u)
+      const updatedMedia = await MediaRepository.update(
+        validatedMediaId,
+        parsedUpdates,
+        t
       );
 
-      if (newUrls.length > 0) {
-        await MediaRepository.addUrls(validatedMediaId, newUrls);
+      if (parsedUpdates.sourceUrls?.length) {
+        const existingUrls = await MediaRepository.getUrls(validatedMediaId, t);
+        const existingUrlSet = new Set(existingUrls.map((u) => u.url));
+        const newUrls = parsedUpdates.sourceUrls.filter(
+          (u) => !existingUrlSet.has(u)
+        );
+        if (newUrls.length > 0) {
+          await MediaRepository.addUrls(validatedMediaId, newUrls, t);
+        }
       }
-    }
 
-    // Update Authors if provided
-    // Update Project authors
-    if (parsedUpdates.authors && parsedUpdates.authors.length > 0) {
-      const { AuthorRepository } = await import(
-        "~/infrastructure/repositories/author-repository"
-      );
-
-      for (const authorData of parsedUpdates.authors) {
-        const author = await AuthorRepository.create({
-          name: authorData.name,
-          accountId: authorData.accountId || null,
-        });
-
-        await AuthorRepository.addMedia(validatedMediaId, author.id);
+      if (parsedUpdates.authors?.length) {
+        const { AuthorRepository } = await import(
+          "~/infrastructure/repositories/author-repository"
+        );
+        for (const authorData of parsedUpdates.authors) {
+          const author = await AuthorRepository.create(
+            {
+              name: authorData.name,
+              accountId: authorData.accountId || null,
+            },
+            t
+          );
+          await AuthorRepository.addMedia(validatedMediaId, author.id, t);
+        }
       }
-    }
 
-    return updatedMedia;
+      return updatedMedia;
+    };
+
+    if (tx) {
+      return await execute(tx);
+    }
+    return await DrizzleTransactionManager.transaction(execute);
   },
 
   /**
@@ -447,7 +454,8 @@ export const MediaService = {
    */
   async copyMedia(
     sourceMediaId: string,
-    targetSourceId: string
+    targetSourceId: string,
+    tx?: Transaction
   ): Promise<{ success: boolean; media: Media }> {
     // Using any for minimal friction, ideally typed
     const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
@@ -502,7 +510,7 @@ export const MediaService = {
       modifiedAt: fileInfo.modifiedAt,
     };
 
-    const newMediaEntry = await MediaRepository.create(newMedia);
+    const newMediaEntry = await MediaRepository.create(newMedia, tx);
 
     // 5. Start Thumbnail Generation for New Media
     const sourcePath = targetConnection.path;
@@ -535,38 +543,49 @@ export const MediaService = {
    */
   async moveMedia(
     sourceMediaId: string,
-    targetSourceId: string
+    targetSourceId: string,
+    tx?: Transaction
   ): Promise<{ success: boolean; media: Media }> {
-    // 1. Copy
-    const result = await this.copyMedia(sourceMediaId, targetSourceId);
+    const execute = async (t: Transaction) => {
+      // 1. Copy
+      const result = await this.copyMedia(sourceMediaId, targetSourceId, t);
 
-    // 2. Delete Original if Copy Successful
-    if (result.success) {
-      const sourceMedia = await MediaRepository.findById(sourceMediaId);
-      if (sourceMedia) {
-        await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId);
+      // 2. Delete Original if Copy Successful
+      if (result.success) {
+        const sourceMedia = await MediaRepository.findById(sourceMediaId, t);
+        if (sourceMedia) {
+          await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId, t);
 
-        // Notify via SSE (override or supplement?)
-        SseManager.notifyMediaMoved(
-          sourceMedia.mediaSourceId,
-          targetSourceId,
-          sourceMediaId,
-          result.media
-        );
+          // Notify via SSE (override or supplement?)
+          SseManager.notifyMediaMoved(
+            sourceMedia.mediaSourceId,
+            targetSourceId,
+            sourceMediaId,
+            result.media
+          );
+        }
       }
-    }
+      return result;
+    };
 
-    return result;
+    if (tx) {
+      return await execute(tx);
+    }
+    return await DrizzleTransactionManager.transaction(execute);
   },
 
   /**
    * Deletes a media item.
    */
-  async deleteMedia(mediaSourceId: string, mediaId: string): Promise<void> {
+  async deleteMedia(
+    mediaSourceId: string,
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<void> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-    const media = await MediaRepository.findById(validatedMediaId);
+    const media = await MediaRepository.findById(validatedMediaId, tx);
     if (!media) {
       throw new Error("Media not found");
     }
@@ -578,7 +597,7 @@ export const MediaService = {
     await deleteThumbnail(validatedSourceId, validatedMediaId);
 
     // 2. Delete from database
-    await MediaRepository.delete(validatedMediaId);
+    await MediaRepository.delete(validatedMediaId, tx);
 
     // 3. Delete file from filesystem
     if (media.mediaSourceId) {

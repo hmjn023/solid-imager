@@ -1,3 +1,4 @@
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { Author, NewAuthor } from "~/domain/media/schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
@@ -13,12 +14,20 @@ export type IAuthorRepository = {
   // Let's keep findByAccountId as it was in the file I viewed.
   // But strictly speaking, findById(id) returns Author | null.
   findByAccountId?: (accountId: string) => Promise<Author | null>;
-  create(author: NewAuthor): Promise<Author>;
-  update(id: string, author: Partial<NewAuthor>): Promise<Author>;
-  delete(id: string): Promise<void>;
+  create(author: NewAuthor, tx?: Transaction): Promise<Author>;
+  update(
+    id: string,
+    author: Partial<NewAuthor>,
+    tx?: Transaction
+  ): Promise<Author>;
+  delete(id: string, tx?: Transaction): Promise<void>;
 
   // Associations
-  findByMediaId(mediaId: string): Promise<Author[]>;
-  addMedia(mediaId: string, authorId: string): Promise<void>;
-  removeMedia(mediaId: string, authorId: string): Promise<void>;
+  findByMediaId(mediaId: string, tx?: Transaction): Promise<Author[]>;
+  addMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void>;
+  removeMedia(
+    mediaId: string,
+    authorId: string,
+    tx?: Transaction
+  ): Promise<void>;
 };

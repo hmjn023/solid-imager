@@ -1,3 +1,4 @@
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { MediaSourceInfo } from "~/domain/sources/schemas";
 
 // Using MediaSourceInfo as the base, but ensuring it matches the DB entity structure
@@ -12,7 +13,11 @@ export type NewMediaSource = Omit<MediaSourceInfo, "id">;
 export type SourceRepository = {
   findAll(): Promise<MediaSource[]>;
   findById(id: string): Promise<MediaSource | null>;
-  create(source: NewMediaSource): Promise<MediaSource>;
-  update(id: string, source: Partial<MediaSource>): Promise<MediaSource>;
-  delete(id: string): Promise<void>;
+  create(source: NewMediaSource, tx?: Transaction): Promise<MediaSource>;
+  update(
+    id: string,
+    source: Partial<MediaSource>,
+    tx?: Transaction
+  ): Promise<MediaSource>;
+  delete(id: string, tx?: Transaction): Promise<void>;
 };

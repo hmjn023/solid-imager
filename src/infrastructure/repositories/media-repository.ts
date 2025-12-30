@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
   type AddMediaRequest,
   type Author,
@@ -33,9 +34,12 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by its ID.
    */
-  async findById(mediaId: string): Promise<Media | null> {
+  async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select()
         .from(medias)
         .where(eq(medias.id, mediaId));
@@ -57,9 +61,16 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by Source ID and File Path.
    */
-  async findByPath(sourceId: string, filePath: string): Promise<Media | null> {
+  async findByPath(
+    sourceId: string,
+    filePath: string,
+    tx?: Transaction
+  ): Promise<Media | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select({
           id: medias.id,
           mediaSourceId: medias.mediaSourceId,
@@ -91,15 +102,18 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Creates a new media entry in the database.
    */
-  async create(media: AddMediaRequest): Promise<Media> {
+  async create(media: AddMediaRequest, tx?: Transaction): Promise<Media> {
     try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
       const newMedia: NewMedia = {
         ...media,
         fileSize: media.size,
         status: "active",
         indexedAt: new Date(),
       };
-      const result = await db.insert(medias).values(newMedia).returning();
+      const result = await client.insert(medias).values(newMedia).returning();
       return result[0];
     } catch (error) {
       throw new UnknownDbError({
@@ -112,8 +126,15 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Updates an existing media entry.
    */
-  async update(mediaId: string, updates: UpdateMediaRequest): Promise<Media> {
+  async update(
+    mediaId: string,
+    updates: UpdateMediaRequest,
+    tx?: Transaction
+  ): Promise<Media> {
     try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
       const dbUpdates: Partial<NewMedia> = {};
 
       if (updates.filePath !== undefined) {
@@ -143,7 +164,7 @@ export const MediaRepository: IMediaRepository = {
 
       dbUpdates.modifiedAt = updates.modifiedAt || new Date();
 
-      const result = await db
+      const result = await client
         .update(medias)
         .set(dbUpdates)
         .where(eq(medias.id, mediaId))
@@ -169,9 +190,12 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Deletes a media entry from the database.
    */
-  async delete(mediaId: string): Promise<void> {
+  async delete(mediaId: string, tx?: Transaction): Promise<void> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .delete(medias)
         .where(eq(medias.id, mediaId))
         .returning();
@@ -196,8 +220,12 @@ export const MediaRepository: IMediaRepository = {
    */
   async search(
     mediaSourceId: string,
-    params: MediaSearchRequest
+    params: MediaSearchRequest,
+    tx?: Transaction
   ): Promise<MediaSearchResponse> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
     const tagsArray = params.tags
       ? params.tags.split(",").map((t: string) => t.trim())
       : undefined;
@@ -214,32 +242,45 @@ export const MediaRepository: IMediaRepository = {
       ? params.characters.split(",").map((c: string) => c.trim())
       : undefined;
 
-    const result = await searchMediaQuery(mediaSourceId, {
-      query: params.q,
-      tags: tagsArray,
-      tagMode: params.tagMode,
-      excludeTags: excludeTagsArray,
-      projects: projectsArray,
-      ips: ipsArray,
-      characters: charactersArray,
-      sort: params.sort,
-      order: params.order,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    // Note: searchMediaQuery currently doesn't accept tx.
+    // However, it builds a query object. In Drizzle we might need to pass the client.
+    // Let's assume for now search is read-only and doesn't strictly need to be in the same connection
+    // UNLESS we are in PGlite where we MUST be on the same connection if a transaction is open.
+    // I will update searchMediaQuery to accept client later if needed.
+    const result = await searchMediaQuery(
+      mediaSourceId,
+      {
+        query: params.q,
+        tags: tagsArray,
+        tagMode: params.tagMode,
+        excludeTags: excludeTagsArray,
+        projects: projectsArray,
+        ips: ipsArray,
+        characters: charactersArray,
+        sort: params.sort,
+        order: params.order,
+        limit: params.limit,
+        offset: params.offset,
+      },
+      client
+    );
 
     return mediaSearchResponseSchema.parse(result);
   },
 
-  async getTags(mediaId: string): Promise<MediaTag[]> {
-    return await TagRepository.findByMediaId(mediaId);
+  async getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
+    return await TagRepository.findByMediaId(mediaId, tx);
   },
 
   async getGenerationInfo(
-    mediaId: string
+    mediaId: string,
+    tx?: Transaction
   ): Promise<MediaGenerationInfo | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select()
         .from(mediaGenerationInfo)
         .where(eq(mediaGenerationInfo.mediaId, mediaId));
@@ -263,13 +304,16 @@ export const MediaRepository: IMediaRepository = {
     }
   },
 
-  async getAuthors(mediaId: string): Promise<Author[]> {
-    return await AuthorRepository.findByMediaId(mediaId);
+  async getAuthors(mediaId: string, tx?: Transaction): Promise<Author[]> {
+    return await AuthorRepository.findByMediaId(mediaId, tx);
   },
 
-  async getUrls(mediaId: string): Promise<MediaUrl[]> {
+  async getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]> {
     try {
-      return await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      return await client
         .select()
         .from(mediaUrls)
         .where(eq(mediaUrls.mediaId, mediaId));
@@ -281,16 +325,23 @@ export const MediaRepository: IMediaRepository = {
     }
   },
 
-  async addUrls(mediaId: string, urls: string[]): Promise<MediaUrl[]> {
+  async addUrls(
+    mediaId: string,
+    urls: string[],
+    tx?: Transaction
+  ): Promise<MediaUrl[]> {
     if (urls.length === 0) {
       return [];
     }
     try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
       const values = urls.map((url) => ({
         mediaId,
         url,
       }));
-      return await db.insert(mediaUrls).values(values).returning();
+      return await client.insert(mediaUrls).values(values).returning();
     } catch (error) {
       throw new UnknownDbError({
         message: "Failed to insert media URLs",
@@ -302,9 +353,13 @@ export const MediaRepository: IMediaRepository = {
   async upsertGenerationInfo(
     mediaId: string,
     prompt: string | null,
-    workflow: unknown
+    workflow: unknown,
+    tx?: Transaction
   ): Promise<MediaGenerationInfo> {
     try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
       const values = {
         mediaId,
         prompt,
@@ -312,7 +367,7 @@ export const MediaRepository: IMediaRepository = {
         metadata: { prompt }, // legacy compatibility or derived
       };
       // Simple upsert
-      const result = await db
+      const result = await client
         .insert(mediaGenerationInfo)
         .values(values)
         .onConflictDoUpdate({
@@ -338,9 +393,15 @@ export const MediaRepository: IMediaRepository = {
   },
 
   // Bulk
-  async findAllBySourceId(mediaSourceId: string): Promise<Media[]> {
+  async findAllBySourceId(
+    mediaSourceId: string,
+    tx?: Transaction
+  ): Promise<Media[]> {
     try {
-      return await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      return await client
         .select()
         .from(medias)
         .where(eq(medias.mediaSourceId, mediaSourceId));
@@ -355,8 +416,17 @@ export const MediaRepository: IMediaRepository = {
   async searchInDirectory(
     mediaSourceId: string,
     directoryPath: string,
-    params: { query?: string; tags?: string[] }
+    params: { query?: string; tags?: string[] },
+    tx?: Transaction
   ): Promise<Media[]> {
-    return await searchMediaInDirectory(mediaSourceId, directoryPath, params);
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    return await searchMediaInDirectory(
+      mediaSourceId,
+      directoryPath,
+      params,
+      client
+    );
   },
 };

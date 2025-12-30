@@ -49,7 +49,8 @@ type SearchOptions = {
  */
 function buildWhereClause(
   mediaSourceId: string,
-  options: SearchOptions
+  options: SearchOptions,
+  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
 ): SQL | undefined {
   const conditions: (SQL | undefined)[] = [
     eq(medias.mediaSourceId, mediaSourceId),
@@ -70,7 +71,7 @@ function buildWhereClause(
   if (options.tags && options.tags.length > 0) {
     if (options.tagMode === "and") {
       // AND mode: media must have ALL specified tags
-      const mediaIdsWithAllTags = db
+      const mediaIdsWithAllTags = client
         .select({ mediaId: mediaTags.mediaId })
         .from(mediaTags)
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
@@ -81,7 +82,7 @@ function buildWhereClause(
       conditions.push(inArray(medias.id, mediaIdsWithAllTags));
     } else {
       // OR mode: media must have ANY of the specified tags
-      const mediaIdsWithAnyTags = db
+      const mediaIdsWithAnyTags = client
         .select({ mediaId: mediaTags.mediaId })
         .from(mediaTags)
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
@@ -93,7 +94,7 @@ function buildWhereClause(
 
   // Exclude tags filter
   if (options.excludeTags && options.excludeTags.length > 0) {
-    const excludedMediaIds = db
+    const excludedMediaIds = client
       .select({ mediaId: mediaTags.mediaId })
       .from(mediaTags)
       .innerJoin(tags, eq(mediaTags.tagId, tags.id))
@@ -104,7 +105,7 @@ function buildWhereClause(
 
   // Project filter
   if (options.projects && options.projects.length > 0) {
-    const projectMediaIds = db
+    const projectMediaIds = client
       .select({ mediaId: mediaProjects.mediaId })
       .from(mediaProjects)
       .where(inArray(mediaProjects.projectId, options.projects));
@@ -113,7 +114,7 @@ function buildWhereClause(
 
   // IP filter
   if (options.ips && options.ips.length > 0) {
-    const ipMediaIds = db
+    const ipMediaIds = client
       .select({ mediaId: mediaIps.mediaId })
       .from(mediaIps)
       .where(inArray(mediaIps.ipId, options.ips));
@@ -122,7 +123,7 @@ function buildWhereClause(
 
   // Character filter
   if (options.characters && options.characters.length > 0) {
-    const characterMediaIds = db
+    const characterMediaIds = client
       .select({ mediaId: mediaCharacters.mediaId })
       .from(mediaCharacters)
       .where(inArray(mediaCharacters.characterId, options.characters));
@@ -163,23 +164,24 @@ function buildOrderByClause(
  */
 export const searchMedia = async (
   mediaSourceId: string,
-  searchOptions: SearchOptions
+  searchOptions: SearchOptions,
+  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
 ) => {
   try {
-    const whereClause = buildWhereClause(mediaSourceId, searchOptions);
+    const whereClause = buildWhereClause(mediaSourceId, searchOptions, client);
     const orderByClause = buildOrderByClause(
       searchOptions.sort,
       searchOptions.order
     );
 
     // Execute Count Query
-    const [{ total }] = await db
+    const [{ total }] = await client
       .select({ total: count() })
       .from(medias)
       .where(whereClause);
 
     // Execute Main Query
-    let query = db
+    let query = client
       .select()
       .from(medias)
       .where(whereClause)
@@ -218,7 +220,8 @@ export const searchMedia = async (
 export const searchMediaInDirectory = async (
   mediaSourceId: string,
   directoryPath: string,
-  searchOptions: { query?: string; tags?: string[] }
+  searchOptions: { query?: string; tags?: string[] },
+  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
 ) => {
   try {
     const conditions: (SQL | undefined)[] = [
@@ -237,7 +240,7 @@ export const searchMediaInDirectory = async (
     }
 
     if (searchOptions.tags && searchOptions.tags.length > 0) {
-      const mediaIdsWithTags = db
+      const mediaIdsWithTags = client
         .select({ mediaId: mediaTags.mediaId })
         .from(mediaTags)
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
@@ -245,7 +248,7 @@ export const searchMediaInDirectory = async (
       conditions.push(inArray(medias.id, mediaIdsWithTags));
     }
 
-    return await db
+    return await client
       .select()
       .from(medias)
       .where(and(...conditions));
@@ -265,10 +268,13 @@ export const searchMediaInDirectory = async (
  * @returns {Promise<unknown[]>} A promise that resolves with an array of matching media items from all sources.
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
-export const globalSearchMedia = async (searchOptions: {
-  query?: string;
-  tags?: string[];
-}) => {
+export const globalSearchMedia = async (
+  searchOptions: {
+    query?: string;
+    tags?: string[];
+  },
+  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
+) => {
   try {
     const conditions: (SQL | undefined)[] = [];
 
@@ -283,7 +289,7 @@ export const globalSearchMedia = async (searchOptions: {
     }
 
     if (searchOptions.tags && searchOptions.tags.length > 0) {
-      const mediaIdsWithTags = db
+      const mediaIdsWithTags = client
         .select({ mediaId: mediaTags.mediaId })
         .from(mediaTags)
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
@@ -293,7 +299,7 @@ export const globalSearchMedia = async (searchOptions: {
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
-    return await db.select().from(medias).where(whereClause);
+    return await client.select().from(medias).where(whereClause);
   } catch (error) {
     throw new UnknownDbError({
       message: "Failed to perform global media search",

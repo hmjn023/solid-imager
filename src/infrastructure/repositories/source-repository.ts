@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   MediaSource,
   NewMediaSource,
@@ -48,13 +49,16 @@ export class DrizzleSourceRepository implements SourceRepository {
     }
   }
 
-  async create(source: NewMediaSource): Promise<MediaSource> {
+  async create(source: NewMediaSource, tx?: Transaction): Promise<MediaSource> {
     try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
       // Drizzle insert expects values matching the schema.
       // We cast to proper logic or use mapping if needed.
       // For now, assume compatibility but avoid 'any' if possible or use 'unknown' then specific type.
       // Drizzle's values() accepts InferInsertModel.
-      const result = await db
+      const result = await client
         .insert(mediaSources)
         .values(source as typeof mediaSources.$inferInsert)
         .returning();
@@ -78,9 +82,16 @@ export class DrizzleSourceRepository implements SourceRepository {
     }
   }
 
-  async update(id: string, source: Partial<MediaSource>): Promise<MediaSource> {
+  async update(
+    id: string,
+    source: Partial<MediaSource>,
+    tx?: Transaction
+  ): Promise<MediaSource> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .update(mediaSources)
         .set(source as typeof mediaSources.$inferInsert)
         .where(eq(mediaSources.id, id))
@@ -117,9 +128,12 @@ export class DrizzleSourceRepository implements SourceRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .delete(mediaSources)
         .where(eq(mediaSources.id, id))
         .returning();

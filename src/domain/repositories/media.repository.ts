@@ -1,3 +1,4 @@
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   AddMediaRequest,
   Author,
@@ -12,33 +13,51 @@ import type {
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IMediaRepository = {
-  findById(id: string): Promise<Media | null>;
-  findByPath(sourceId: string, filePath: string): Promise<Media | null>;
-  create(media: AddMediaRequest): Promise<Media>;
-  update(id: string, media: UpdateMediaRequest): Promise<Media>;
-  delete(id: string): Promise<void>;
+  findById(id: string, tx?: Transaction): Promise<Media | null>;
+  findByPath(
+    sourceId: string,
+    filePath: string,
+    tx?: Transaction
+  ): Promise<Media | null>;
+  create(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
+  update(
+    id: string,
+    media: UpdateMediaRequest,
+    tx?: Transaction
+  ): Promise<Media>;
+  delete(id: string, tx?: Transaction): Promise<void>;
   search(
     sourceId: string,
-    criteria: MediaSearchRequest
+    criteria: MediaSearchRequest,
+    tx?: Transaction
   ): Promise<MediaSearchResponse>;
 
   // Ancillary data
-  getTags(mediaId: string): Promise<MediaTag[]>;
-  getGenerationInfo(mediaId: string): Promise<MediaGenerationInfo | null>;
-  getAuthors(mediaId: string): Promise<Author[]>;
-  getUrls(mediaId: string): Promise<MediaUrl[]>;
-  addUrls(mediaId: string, urls: string[]): Promise<MediaUrl[]>;
+  getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;
+  getGenerationInfo(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaGenerationInfo | null>;
+  getAuthors(mediaId: string, tx?: Transaction): Promise<Author[]>;
+  getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]>;
+  addUrls(
+    mediaId: string,
+    urls: string[],
+    tx?: Transaction
+  ): Promise<MediaUrl[]>;
   upsertGenerationInfo(
     mediaId: string,
     prompt: string | null,
-    workflow: unknown
+    workflow: unknown,
+    tx?: Transaction
   ): Promise<MediaGenerationInfo>;
 
   // Bulk/List
-  findAllBySourceId(sourceId: string): Promise<Media[]>;
+  findAllBySourceId(sourceId: string, tx?: Transaction): Promise<Media[]>;
   searchInDirectory(
     sourceId: string,
     directoryPath: string,
-    params: { query?: string; tags?: string[] }
+    params: { query?: string; tags?: string[] },
+    tx?: Transaction
   ): Promise<Media[]>;
 };
