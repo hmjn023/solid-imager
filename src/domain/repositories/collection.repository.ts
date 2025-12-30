@@ -5,7 +5,8 @@ import type {
   UpdateCollection,
 } from "~/domain/collections/schemas";
 
-export type CollectionRepository = {
+// biome-ignore lint/style/useNamingConvention: Interface naming
+export type ICollectionRepository = {
   findAll(): Promise<Collection[]>;
   findById(id: string): Promise<Collection | null>;
   create(collection: NewCollection): Promise<Collection>;

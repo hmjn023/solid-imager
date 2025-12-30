@@ -1,13 +1,5 @@
-import {
-  deleteIp,
-  deleteMediaIp,
-  insertIp,
-  insertMediaIp,
-  selectIpById,
-  selectIps,
-  selectIpsByMediaId,
-  updateIp,
-} from "~/infrastructure/db/queries/ips";
+import type { NewIp } from "~/domain/ips/schemas";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 
 /**
  * IpService - IP (知的財産) 管理機能
@@ -20,83 +12,64 @@ import {
 export const IpService = {
   /**
    * Retrieves all Intellectual Properties (IPs).
-   * @returns {Promise<any>} A list of all IPs.
    */
   async getAllIps() {
-    return await selectIps();
+    return await IpRepository.findAll();
   },
 
   /**
    * Creates a new Intellectual Property (IP).
-   * @param {object} ipData - The data for the new IP.
-   * @param {string} ipData.name - The name of the IP.
-   * @param {string} [ipData.description] - An optional description for the IP.
-   * @returns {Promise<any>} The newly created IP.
    */
   async createIp(ipData: { name: string; description?: string }) {
-    const result = await insertIp(ipData);
-    return result[0];
+    const newIp: NewIp = {
+      name: ipData.name,
+      description: ipData.description,
+    };
+    return await IpRepository.create(newIp);
   },
 
   /**
    * Retrieves details of a specific Intellectual Property (IP) by its ID.
-   * @param {string} ipId - The ID of the IP.
-   * @returns {Promise<any>} The details of the specified IP.
    */
   async getIpDetails(ipId: string) {
-    return await selectIpById(ipId);
+    return await IpRepository.findById(ipId);
   },
 
   /**
    * Updates an existing Intellectual Property (IP).
-   * @param {number} ipId - The ID of the IP to update.
-   * @param {object} ipData - The updated data for the IP.
-   * @param {string} [ipData.name] - The new name of the IP.
-   * @param {string} [ipData.description] - The new description for the IP.
-   * @returns {Promise<any>} The updated IP.
    */
   async updateIp(
     ipId: string,
     ipData: { name?: string; description?: string }
   ) {
-    return await updateIp(ipId, ipData);
+    return await IpRepository.update(ipId, ipData);
   },
 
   /**
    * Deletes an Intellectual Property (IP) by its ID.
-   * @param {string} ipId - The ID of the IP to delete.
-   * @returns {Promise<any>} Confirmation of deletion.
    */
   async deleteIp(ipId: string) {
-    return await deleteIp(ipId);
+    return await IpRepository.delete(ipId);
   },
 
   /**
    * Retrieves IPs associated with a specific media.
-   * @param {string} mediaId - The ID of the media.
-   * @returns {Promise<any>} A list of IPs associated with the media.
    */
   async getIpsForMedia(mediaId: string) {
-    return await selectIpsByMediaId(mediaId);
+    return await IpRepository.findByMediaId(mediaId);
   },
 
   /**
    * Adds an IP to a media.
-   * @param {string} mediaId - The ID of the media.
-   * @param {string} ipId - The ID of the IP to add.
-   * @returns {Promise<any>} The created association.
    */
   async addIpToMedia(mediaId: string, ipId: string) {
-    return await insertMediaIp(mediaId, ipId);
+    return await IpRepository.addMedia(mediaId, ipId);
   },
 
   /**
    * Removes an IP from a media.
-   * @param {string} mediaId - The ID of the media.
-   * @param {string} ipId - The ID of the IP to remove.
-   * @returns {Promise<any>} Confirmation of removal.
    */
   async removeIpFromMedia(mediaId: string, ipId: string) {
-    return await deleteMediaIp(mediaId, ipId);
+    return await IpRepository.removeMedia(mediaId, ipId);
   },
 };

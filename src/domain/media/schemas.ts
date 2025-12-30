@@ -148,6 +148,13 @@ export const authorSchema = z.object({
 
 export type Author = z.infer<typeof authorSchema>;
 
+export const newAuthorSchema = z.object({
+  name: z.string(),
+  accountId: z.string().nullable().optional(),
+});
+
+export type NewAuthor = z.infer<typeof newAuthorSchema>;
+
 export const mediaUrlSchema = z.object({
   id: z.uuid({ version: "v4" }),
   mediaId: z.uuid({ version: "v4" }),

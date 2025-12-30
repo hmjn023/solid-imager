@@ -8,8 +8,8 @@ import type {
   AddMediaRequest,
   DownloadItem,
   Media,
+  NewAuthor,
 } from "~/domain/media/schemas";
-import { upsertAuthor } from "~/infrastructure/db/queries/authors";
 import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
@@ -19,6 +19,7 @@ import {
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
@@ -125,10 +126,11 @@ export async function processDownloadJob(
 
   // Register Author
   if (item.authorName) {
-    const author = await upsertAuthor({
+    const newAuthor: NewAuthor = {
       name: item.authorName,
       accountId: item.authorId,
-    });
+    };
+    const author = await AuthorRepository.create(newAuthor);
     await insertMediaAuthor(insertedMedia.id, author.id);
   }
 
