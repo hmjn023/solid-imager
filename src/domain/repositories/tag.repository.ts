@@ -1,3 +1,4 @@
+import type { MediaTag } from "~/domain/media/schemas";
 import type { NewTag, TagResponse, UpdateTag } from "~/domain/tags/schemas";
 
 // Re-export types for usage in implementations
@@ -15,9 +16,7 @@ export type TagRepository = {
   delete(id: string): Promise<void>;
 
   // Associations
-  findByMediaId(
-    mediaId: string
-  ): Promise<(Tag & { type: "positive" | "negative" })[]>;
+  findByMediaId(mediaId: string): Promise<MediaTag[]>;
   addTagsToMedia(
     mediaId: string,
     tags: { name: string; type: "positive" | "negative" }[],

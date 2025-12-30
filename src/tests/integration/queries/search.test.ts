@@ -1,11 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
-  globalSearchMedia,
-  searchMedia,
-  searchMediaInDirectory,
-} from "~/infrastructure/db/queries/search";
-import {
   mediaSources,
   medias,
   mediaTags,
@@ -13,6 +8,11 @@ import {
   type NewTag,
   tags,
 } from "~/infrastructure/db/schema";
+import {
+  globalSearchMedia,
+  searchMedia,
+  searchMediaInDirectory,
+} from "~/infrastructure/repositories/media-repository-utils";
 
 describe("search queries Integration", () => {
   const mediaSourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";

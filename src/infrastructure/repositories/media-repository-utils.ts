@@ -13,7 +13,6 @@ import {
 } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
-  type Media,
   mediaCharacters,
   mediaIps,
   mediaProjects,
@@ -21,7 +20,7 @@ import {
   mediaTags,
   tags,
 } from "~/infrastructure/db/schema";
-import { UnknownDbError } from "../errors";
+import { UnknownDbError } from "../db/errors";
 
 /**
  * Escapes special characters in a string for use in a LIKE query.
@@ -159,7 +158,7 @@ function buildOrderByClause(
  *
  * @param {string} mediaSourceId - The ID of the media source to search within.
  * @param {object} searchOptions - Options for the search.
- * @returns {Promise<{ media: Media[]; total: number }>} A promise that resolves with matching media items and total count.
+ * @returns {Promise<{ media: unknown[]; total: number }>} A promise that resolves with matching media items and total count.
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const searchMedia = async (
@@ -213,7 +212,7 @@ export const searchMedia = async (
  * @param {object} searchOptions - Options for the search.
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
- * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items within the directory.
+ * @returns {Promise<unknown[]>} A promise that resolves with an array of matching media items within the directory.
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const searchMediaInDirectory = async (
@@ -263,7 +262,7 @@ export const searchMediaInDirectory = async (
  * @param {object} searchOptions - Options for the search.
  * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
  * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
- * @returns {Promise<Media[]>} A promise that resolves with an array of matching media items from all sources.
+ * @returns {Promise<unknown[]>} A promise that resolves with an array of matching media items from all sources.
  * @throws {UnknownDbError} If a database error occurs during the search.
  */
 export const globalSearchMedia = async (searchOptions: {

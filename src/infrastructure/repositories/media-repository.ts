@@ -1,33 +1,33 @@
 import { and, eq } from "drizzle-orm";
 import {
   type AddMediaRequest,
+  type Author,
+  type Media,
+  type MediaGenerationInfo,
   type MediaSearchRequest,
   type MediaSearchResponse,
+  type MediaTag,
+  type MediaUrl,
   mediaSearchResponseSchema,
   type UpdateMediaRequest,
 } from "~/domain/media/schemas";
 import type { IMediaRepository } from "~/domain/repositories/media.repository";
 import { db } from "~/infrastructure/db/index";
+import {
+  mediaGenerationInfo,
+  medias,
+  mediaUrls,
+  type NewMedia,
+} from "~/infrastructure/db/schema";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { NotFoundError, UnknownDbError } from "../db/errors";
 // import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
 // import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
 import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
-} from "~/infrastructure/db/queries/search";
-import {
-  type Author,
-  type Media,
-  type MediaGenerationInfo,
-  type MediaUrl,
-  mediaGenerationInfo,
-  medias,
-  mediaUrls,
-  type NewMedia,
-  type Tag,
-} from "~/infrastructure/db/schema";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { NotFoundError, UnknownDbError } from "../db/errors";
+} from "./media-repository-utils";
 
 export const MediaRepository: IMediaRepository = {
   /**
@@ -231,9 +231,7 @@ export const MediaRepository: IMediaRepository = {
     return mediaSearchResponseSchema.parse(result);
   },
 
-  async getTags(
-    mediaId: string
-  ): Promise<(Tag & { type: "positive" | "negative" })[]> {
+  async getTags(mediaId: string): Promise<MediaTag[]> {
     return await TagRepository.findByMediaId(mediaId);
   },
 
@@ -248,7 +246,15 @@ export const MediaRepository: IMediaRepository = {
       if (result.length === 0) {
         return null;
       }
-      return result[0];
+      const info = result[0];
+      return {
+        ...info,
+        aiGenerated: info.aiGenerated ?? false,
+        modelName: info.modelName ?? "",
+        seed: info.seed ?? -1,
+        cfgScale: info.cfgScale ?? 0,
+        steps: info.steps ?? 0,
+      };
     } catch (error) {
       throw new UnknownDbError({
         message: `Failed to select media generation info for mediaId: ${mediaId}`,
@@ -314,7 +320,15 @@ export const MediaRepository: IMediaRepository = {
           set: values,
         })
         .returning();
-      return result[0];
+      const info = result[0];
+      return {
+        ...info,
+        aiGenerated: info.aiGenerated ?? false,
+        modelName: info.modelName ?? "",
+        seed: info.seed ?? -1,
+        cfgScale: info.cfgScale ?? 0,
+        steps: info.steps ?? 0,
+      };
     } catch (error) {
       throw new UnknownDbError({
         message: `Failed to upsert media generation info for mediaId: ${mediaId}`,

@@ -177,6 +177,7 @@ export const tagSchema = z.object({
   updatedAt: z.coerce.date(),
   type: z.enum(["positive", "negative"]), // from mediaTags
 });
+export type MediaTag = z.infer<typeof tagSchema>;
 
 export const mediaGenerationInfoSchema = z.object({
   mediaId: z.uuid({ version: "v4" }),
@@ -194,6 +195,7 @@ export const mediaGenerationInfoSchema = z.object({
   cfgScale: z.number(),
   steps: z.number(),
 });
+export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
 // Search schemas
 export const mediaSearchRequestSchema = z.object({

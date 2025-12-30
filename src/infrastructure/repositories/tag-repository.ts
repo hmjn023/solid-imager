@@ -1,4 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
+import type { MediaTag } from "~/domain/media/schemas";
 import type {
   NewTag,
   Tag,
@@ -137,9 +138,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     }
   }
 
-  async findByMediaId(
-    mediaId: string
-  ): Promise<(Tag & { type: "positive" | "negative" })[]> {
+  async findByMediaId(mediaId: string): Promise<MediaTag[]> {
     try {
       const result = await db
         .select({
@@ -158,7 +157,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
         .where(eq(mediaTags.mediaId, mediaId));
 
-      return result as unknown as (Tag & { type: "positive" | "negative" })[];
+      return result as unknown as MediaTag[];
     } catch (error) {
       throw new UnknownDbError({
         message: `Failed to retrieve tags for media ID: ${mediaId}`,

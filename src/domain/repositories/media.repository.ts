@@ -1,16 +1,14 @@
 import type {
   AddMediaRequest,
+  Author,
   Media,
+  MediaGenerationInfo,
   MediaSearchRequest,
   MediaSearchResponse,
+  MediaTag,
+  MediaUrl,
   UpdateMediaRequest,
 } from "~/domain/media/schemas";
-import type {
-  Author,
-  MediaGenerationInfo,
-  MediaUrl,
-  Tag,
-} from "~/infrastructure/db/schema";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IMediaRepository = {
@@ -25,9 +23,7 @@ export type IMediaRepository = {
   ): Promise<MediaSearchResponse>;
 
   // Ancillary data
-  getTags(
-    mediaId: string
-  ): Promise<(Tag & { type: "positive" | "negative" })[]>;
+  getTags(mediaId: string): Promise<MediaTag[]>;
   getGenerationInfo(mediaId: string): Promise<MediaGenerationInfo | null>;
   getAuthors(mediaId: string): Promise<Author[]>;
   getUrls(mediaId: string): Promise<MediaUrl[]>;
