@@ -85,24 +85,13 @@ export const upsertMediaGenerationInfo = async (
   workflow: object | null
 ): Promise<typeof mediaGenerationInfo.$inferSelect> => {
   try {
-    const existingInfo = await db
-      .select()
-      .from(mediaGenerationInfo)
-      .where(eq(mediaGenerationInfo.mediaId, mediaId));
-
-    if (existingInfo.length > 0) {
-      // Update existing record
-      const result = await db
-        .update(mediaGenerationInfo)
-        .set({ prompt, workflow })
-        .where(eq(mediaGenerationInfo.mediaId, mediaId))
-        .returning();
-      return result[0];
-    }
-    // Insert new record
     const result = await db
       .insert(mediaGenerationInfo)
       .values({ mediaId, prompt, workflow })
+      .onConflictDoUpdate({
+        target: mediaGenerationInfo.mediaId,
+        set: { prompt, workflow },
+      })
       .returning();
     return result[0];
   } catch (error) {

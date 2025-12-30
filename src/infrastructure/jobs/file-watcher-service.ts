@@ -10,8 +10,10 @@ import {
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { processMediaJob } from "~/infrastructure/jobs/thumbnails";
+import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 /**
  * Handles file addition events from the file system watcher.
@@ -33,37 +35,49 @@ async function handleFileAdded(
     // Check if file is an image
     const ext = path.extname(relativePath).toLowerCase();
     const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
-    if (!imageExtensions.includes(ext)) {
+    // Simple video/audio check could be added here similar to MediaService
+    if (
+      !(
+        imageExtensions.includes(ext) ||
+        [".mp4", ".webm", ".mov", ".mp3", ".wav"].includes(ext)
+      )
+    ) {
       return;
     }
 
     // Check if media already exists
-    const existing = await MediaRepository.findBySourceAndPath(
+    const existing = await MediaRepository.findByPath(
       mediaSourceId,
       relativePath
     );
-    if (existing.length > 0) {
+    if (existing) {
       return;
     }
 
     // Extract metadata
-    const metadata = await MediaRepository.getFileMetadata(fullPath);
+    const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
+
+    // Determine type
+    let mediaType: "image" | "video" | "audio" = "image";
+    if ([".mp4", ".webm", ".mov"].includes(ext)) {
+      mediaType = "video";
+    }
+    if ([".mp3", ".wav"].includes(ext)) {
+      mediaType = "audio";
+    }
 
     // Create media entry
     const media = await MediaRepository.create({
       mediaSourceId,
       filePath: relativePath,
       fileName: path.basename(relativePath),
-      mediaType: "image",
+      mediaType,
       width: metadata.width,
       height: metadata.height,
-      fileSize: metadata.size,
+      size: metadata.size,
       description: null,
-      sourceUrl: null,
       createdAt: metadata.createdAt,
       modifiedAt: metadata.modifiedAt,
-      indexedAt: new Date(),
-      status: "active",
     });
 
     // Queue thumbnail generation
@@ -73,13 +87,21 @@ async function handleFileAdded(
         sourcePath: basePath,
         type: "thumbnail" as const,
       },
+      {
+        mediaId: media.id,
+        sourcePath: basePath,
+        type: "extractTags" as const,
+      },
     ]);
     startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
 
     // Extract metadata in the background
     await ImageProcessor.extractMetadata(fullPath, media.id);
-  } catch (_error) {
-    // Error already logged in console by handleFileAdded
+  } catch (error) {
+    logger.error(
+      { err: error, mediaSourceId, relativePath },
+      "Failed to handle file added"
+    );
   }
 }
 
@@ -93,27 +115,31 @@ async function handleFileDeleted(
 ): Promise<void> {
   try {
     // Find media by path
-    const mediaItems = await MediaRepository.findBySourceAndPath(
-      mediaSourceId,
-      relativePath
-    );
+    const media = await MediaRepository.findByPath(mediaSourceId, relativePath);
 
-    if (mediaItems.length === 0) {
+    if (!media) {
       return;
     }
 
-    for (const media of mediaItems) {
-      // Delete from database
-      await MediaRepository.delete(media.id);
+    // Delete from database
+    await MediaRepository.delete(media.id);
 
-      // Delete thumbnail
-      const { deleteThumbnail } = await import(
-        "~/infrastructure/jobs/thumbnails"
-      );
-      await deleteThumbnail(mediaSourceId, media.id);
-    }
-  } catch (_error) {
-    // Error already logged in console by handleFileDeleted
+    // Delete thumbnail
+    const { deleteThumbnail } = await import(
+      "~/infrastructure/jobs/thumbnails"
+    );
+    await deleteThumbnail(mediaSourceId, media.id);
+
+    // Notify
+    SseManager.sendEvent(mediaSourceId, "media-deleted", {
+      filePath: media.filePath,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    logger.error(
+      { err: error, mediaSourceId, relativePath },
+      "Failed to handle file deleted"
+    );
   }
 }
 
@@ -135,44 +161,51 @@ async function handleFileChanged(
     const fullPath = path.join(basePath, relativePath);
 
     // Find media by path
-    const mediaItems = await MediaRepository.findBySourceAndPath(
-      mediaSourceId,
-      relativePath
-    );
+    const media = await MediaRepository.findByPath(mediaSourceId, relativePath);
 
-    if (mediaItems.length === 0) {
+    if (!media) {
       // Treat as new file
       await handleFileAdded(mediaSourceId, relativePath);
       return;
     }
 
-    for (const media of mediaItems) {
-      // Update metadata
-      const metadata = await MediaRepository.getFileMetadata(fullPath);
-      await MediaRepository.update(media.id, {
-        width: metadata.width,
-        height: metadata.height,
-        fileSize: metadata.size,
-        modifiedAt: metadata.modifiedAt,
-      });
+    // Update metadata
+    const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    await MediaRepository.update(media.id, {
+      width: metadata.width,
+      height: metadata.height,
+      size: metadata.size,
+      modifiedAt: metadata.modifiedAt,
+    });
 
-      // Regenerate thumbnail
-      addJobsToQueue(mediaSourceId, [
-        {
-          mediaId: media.id,
-          sourcePath: basePath,
-          type: "thumbnail" as const,
-        },
-      ]);
-      startJobQueue(mediaSourceId, (job) =>
-        processMediaJob(job, mediaSourceId)
-      );
+    // Regenerate thumbnail
+    addJobsToQueue(mediaSourceId, [
+      {
+        mediaId: media.id,
+        sourcePath: basePath,
+        type: "thumbnail" as const,
+      },
+      {
+        mediaId: media.id,
+        sourcePath: basePath,
+        type: "extractTags" as const,
+      },
+    ]);
+    startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
 
-      // Re-extract metadata
-      await ImageProcessor.extractMetadata(fullPath, media.id);
-    }
-  } catch (_error) {
-    // Error already logged in console by handleFileChanged
+    // Re-extract metadata
+    await ImageProcessor.extractMetadata(fullPath, media.id);
+
+    // Notify
+    SseManager.sendEvent(mediaSourceId, "media-changed", {
+      mediaId: media.id,
+      filePath: media.filePath,
+    });
+  } catch (error) {
+    logger.error(
+      { err: error, mediaSourceId, relativePath },
+      "Failed to handle file changed"
+    );
   }
 }
 
@@ -197,8 +230,8 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
       onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
       onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
     });
-  } catch (_error) {
-    // Error already logged in console by startMonitoring
+  } catch (error) {
+    logger.error({ err: error, mediaSourceId }, "Failed to start monitoring");
   }
 }
 

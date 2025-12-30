@@ -4,12 +4,15 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { DownloadItem } from "~/domain/media/schemas";
+import type {
+  AddMediaRequest,
+  DownloadItem,
+  Media,
+} from "~/domain/media/schemas";
 import { upsertAuthor } from "~/infrastructure/db/queries/authors";
 import { insertMediaAuthor } from "~/infrastructure/db/queries/media-authors";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
 import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
-import type { NewMedia } from "~/infrastructure/db/schema";
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import {
   addJobsToQueue,
@@ -17,6 +20,7 @@ import {
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 /**
  * Downloads an image from a URL and saves it to the specified path.
@@ -49,6 +53,11 @@ function formatMetadataAsMarkdown(item: DownloadItem): string {
 /**
  * Processes a download job by fetching the image from URL and registering it as media.
  */
+
+// ... (existing imports)
+
+// ...
+
 export async function processDownloadJob(
   _job: Job,
   mediaSourceId: string,
@@ -72,10 +81,10 @@ export async function processDownloadJob(
   await downloadImage(item.imageUrl, fullPath);
 
   // Get file metadata
-  const metadata = await MediaRepository.getFileMetadata(fullPath);
+  const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
   // Create media entry
-  const newMedia: NewMedia = {
+  const newMedia: AddMediaRequest = {
     mediaSourceId,
     filePath,
     fileName: filename,
@@ -83,12 +92,29 @@ export async function processDownloadJob(
     description: formatMetadataAsMarkdown(item),
     width: metadata.width,
     height: metadata.height,
-    fileSize: metadata.size,
+    size: metadata.size,
     createdAt: item.timestamp ? new Date(item.timestamp) : metadata.createdAt,
     modifiedAt: metadata.modifiedAt,
   };
 
-  const insertedMedia = await MediaRepository.create(newMedia);
+  let insertedMedia: Media;
+  try {
+    insertedMedia = await MediaRepository.create(newMedia);
+  } catch (error) {
+    // Handle race condition with FileWatcherService
+    const existing = await MediaRepository.findByPath(mediaSourceId, filePath);
+    if (existing) {
+      insertedMedia = existing;
+      // Update description if we have one and existing doesn't (or overwrite)
+      if (newMedia.description) {
+        await MediaRepository.update(existing.id, {
+          description: newMedia.description,
+        });
+      }
+    } else {
+      throw error;
+    }
+  }
 
   // Register URLs
   const urlsToRegister = [item.imageUrl];

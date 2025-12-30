@@ -22,7 +22,7 @@ export const addMediaRequestSchema = z.object({
   fileName: z.string().min(1, "File name is required"),
   size: z.number().int().positive("File size must be a positive integer"),
   createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema,
   description: z.string().nullable(),
   sourceUrls: z.array(z.string().url()).optional(),
@@ -51,7 +51,8 @@ export const updateMediaRequestSchema = z.object({
     .positive("File size must be a positive integer")
     .optional(),
   createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(), // Keeping updatedAt for BC if needed, but modifiedAt is primary
   mediaType: mediaTypeSchema.optional(),
   width: z
     .number()
@@ -158,7 +159,7 @@ export const mediaUrlSchema = z.object({
 export type MediaUrl = z.infer<typeof mediaUrlSchema>;
 
 export const tagSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
   attribute: z.string().nullable(),

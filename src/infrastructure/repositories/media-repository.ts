@@ -1,20 +1,17 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import sharp from "sharp";
-import type { z } from "zod";
 import {
+  type AddMediaRequest,
   type MediaSearchRequest,
   type MediaSearchResponse,
   mediaSearchResponseSchema,
+  type UpdateMediaRequest,
 } from "~/domain/media/schemas";
-import type { conflictSchema } from "~/domain/media/upload-schemas";
+import type { IMediaRepository } from "~/domain/repositories/media.repository";
 import {
   deleteMedia as dbDeleteMedia,
   updateMedia as dbUpdateMedia,
   insertMedia,
   selectMediaById,
   selectMediaBySourceId,
-  selectMediaBySourceIdAndDirectoryPath,
   selectMediaBySourceIdAndFilePath,
 } from "~/infrastructure/db/queries/media";
 import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
@@ -25,40 +22,91 @@ import {
   searchMedia as searchMediaQuery,
 } from "~/infrastructure/db/queries/search";
 import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
-import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import type {
+  Author,
+  Media,
+  MediaGenerationInfo,
+  MediaUrl,
+  NewMedia,
+  Tag,
+} from "~/infrastructure/db/schema";
 import { NotFoundError } from "../db/errors";
 
-export const MediaRepository = {
+export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by its ID.
    */
-  async findById(mediaId: string): Promise<Media> {
-    return await selectMediaById(mediaId);
+  async findById(mediaId: string): Promise<Media | null> {
+    try {
+      return await selectMediaById(mediaId);
+    } catch (e) {
+      if (e instanceof NotFoundError) {
+        return null;
+      }
+      throw e;
+    }
   },
 
   /**
    * Retrieves a specific media item by Source ID and File Path.
    */
-  async findBySourceAndPath(
-    mediaSourceId: string,
-    filePath: string
-  ): Promise<Media[]> {
-    return await selectMediaBySourceIdAndFilePath(mediaSourceId, filePath);
+  async findByPath(sourceId: string, filePath: string): Promise<Media | null> {
+    const results = await selectMediaBySourceIdAndFilePath(sourceId, filePath);
+    return results[0] || null;
   },
 
   /**
    * Creates a new media entry in the database.
    */
-  async create(media: NewMedia): Promise<Media> {
-    return await insertMedia(media);
+  async create(media: AddMediaRequest): Promise<Media> {
+    const newMedia: NewMedia = {
+      ...media,
+      fileSize: media.size,
+      status: "active",
+      indexedAt: new Date(),
+    };
+    return await insertMedia(newMedia);
   },
 
   /**
    * Updates an existing media entry.
    */
-  async update(mediaId: string, updates: Partial<Media>): Promise<Media> {
-    return await dbUpdateMedia(mediaId, updates);
+  async update(mediaId: string, updates: UpdateMediaRequest): Promise<Media> {
+    // updates is validated by Zod at controller/service level.
+    // Map domain fields to DB fields
+    const dbUpdates: Partial<NewMedia> = {};
+
+    if (updates.filePath !== undefined) {
+      dbUpdates.filePath = updates.filePath;
+    }
+    if (updates.fileName !== undefined) {
+      dbUpdates.fileName = updates.fileName;
+    }
+    if (updates.size !== undefined) {
+      dbUpdates.fileSize = updates.size;
+    }
+    if (updates.mediaType !== undefined) {
+      dbUpdates.mediaType = updates.mediaType;
+    }
+    if (updates.width !== undefined) {
+      dbUpdates.width = updates.width;
+    }
+    if (updates.height !== undefined) {
+      dbUpdates.height = updates.height;
+    }
+    if (updates.description !== undefined) {
+      dbUpdates.description = updates.description;
+    }
+    if (updates.createdAt !== undefined) {
+      dbUpdates.createdAt = updates.createdAt;
+    }
+    if (updates.modifiedAt !== undefined) {
+      dbUpdates.modifiedAt = updates.modifiedAt;
+    } else {
+      dbUpdates.modifiedAt = new Date(); // Always update modifiedAt
+    }
+
+    return await dbUpdateMedia(mediaId, dbUpdates);
   },
 
   /**
@@ -82,17 +130,13 @@ export const MediaRepository = {
       ? params.excludeTags.split(",").map((t: string) => t.trim())
       : undefined;
     const projectsArray = params.projects
-      ? params.projects
-          .split(",")
-          .map((p: string) => Number.parseInt(p.trim(), 10))
+      ? params.projects.split(",").map((p: string) => p.trim())
       : undefined;
     const ipsArray = params.ips
-      ? params.ips.split(",").map((i: string) => Number.parseInt(i.trim(), 10))
+      ? params.ips.split(",").map((i: string) => i.trim())
       : undefined;
     const charactersArray = params.characters
-      ? params.characters
-          .split(",")
-          .map((c: string) => Number.parseInt(c.trim(), 10))
+      ? params.characters.split(",").map((c: string) => c.trim())
       : undefined;
 
     const result = await searchMediaQuery(mediaSourceId, {
@@ -112,50 +156,15 @@ export const MediaRepository = {
     return mediaSearchResponseSchema.parse(result);
   },
 
-  /**
-   * Lists media in a directory.
-   */
-  async listByDirectory(
-    mediaSourceId: string,
-    directoryPath: string
-  ): Promise<Media[]> {
-    return await selectMediaBySourceIdAndDirectoryPath(
-      mediaSourceId,
-      directoryPath
-    );
-  },
-
-  /**
-   * Searches for media in a directory.
-   */
-  async searchInDirectory(
-    mediaSourceId: string,
-    directoryPath: string,
-    params: { query?: string; tags?: string[] }
-  ): Promise<Media[]> {
-    return await searchMediaInDirectory(mediaSourceId, directoryPath, params);
-  },
-
-  /**
-   * Retrieves all media for a source.
-   */
-  async findAllBySourceId(mediaSourceId: string): Promise<Media[]> {
-    return await selectMediaBySourceId(mediaSourceId);
-  },
-
-  /**
-   * Retrieves tags for a media item.
-   */
   async getTags(
     mediaId: string
   ): Promise<(Tag & { type: "positive" | "negative" })[]> {
     return await selectMediaTagsByMediaId(mediaId);
   },
 
-  /**
-   * Retrieves generation info for a media item.
-   */
-  async getGenerationInfo(mediaId: string) {
+  async getGenerationInfo(
+    mediaId: string
+  ): Promise<MediaGenerationInfo | null> {
     return await selectMediaGenerationInfoById(mediaId).catch((error) => {
       if (error instanceof NotFoundError) {
         return null;
@@ -164,255 +173,24 @@ export const MediaRepository = {
     });
   },
 
-  /**
-   * Retrieves authors for a media item.
-   */
-  async getAuthors(mediaId: string) {
+  async getAuthors(mediaId: string): Promise<Author[]> {
     return await selectAuthorsByMediaId(mediaId);
   },
 
-  /**
-   * Retrieves source URLs for a media item.
-   */
-  async getUrls(mediaId: string) {
+  async getUrls(mediaId: string): Promise<MediaUrl[]> {
     return await selectMediaUrlsByMediaId(mediaId);
   },
 
-  /**
-   * Saves a file to the filesystem and returns metadata.
-   * Does NOT insert into DB.
-   */
-  async saveFile(
-    basePath: string,
-    file: File,
-    options: {
-      filename?: string;
-      overwrite?: boolean;
-      autoIncrement?: boolean;
-    }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
-    const uploadRequest = options;
-    let targetFileName = uploadRequest.filename || file.name;
-    let targetFilePath = path.join(basePath, targetFileName);
-    let relativeFilePath = path.relative(basePath, targetFilePath);
-    let conflict: z.infer<typeof conflictSchema> | undefined;
-
-    // Handle file name conflicts
-    let counter = 0;
-    while (
-      await fs
-        .stat(targetFilePath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      if (uploadRequest.overwrite) {
-        break; // Overwrite existing file
-      }
-
-      if (!uploadRequest.autoIncrement) {
-        conflict = {
-          existingFile: relativeFilePath,
-          suggestedName: "",
-        };
-        throw new Error("File already exists and overwrite is not allowed.");
-      }
-
-      counter++;
-      const ext = path.extname(file.name);
-      const base = path.basename(file.name, ext);
-      targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(basePath, targetFileName);
-      relativeFilePath = path.relative(basePath, targetFilePath);
-      conflict = {
-        existingFile: path.relative(
-          basePath,
-          path.join(basePath, uploadRequest.filename || file.name)
-        ),
-        suggestedName: targetFileName,
-      };
-    }
-
-    // Save the file
-    await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
-
-    // Extract metadata
-    const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if metadata extraction fails
-      throw new Error("Could not extract media dimensions.");
-    }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
+  // Bulk
+  async findAllBySourceId(mediaSourceId: string): Promise<Media[]> {
+    return await selectMediaBySourceId(mediaSourceId);
   },
 
-  /**
-   * Scans a directory for media files.
-   * Uses an iterative approach to avoid stack overflow.
-   */
-  async scanDirectory(basePath: string): Promise<string[]> {
-    const files: string[] = [];
-    const queue: string[] = [basePath];
-
-    while (queue.length > 0) {
-      const dir = queue.shift();
-      if (!dir) {
-        continue;
-      }
-
-      try {
-        const dirents = await fs.readdir(dir, { withFileTypes: true });
-        for (const dirent of dirents) {
-          const res = path.resolve(dir, dirent.name);
-          if (dirent.isDirectory()) {
-            queue.push(res);
-          } else {
-            files.push(res);
-          }
-        }
-      } catch (_e) {
-        // Ignore errors for individual directories to allow partial scanning
-        // In the future, this should be logged
-      }
-    }
-
-    return files;
-  },
-
-  /**
-   * Extracts metadata from a file on disk.
-   */
-  async extractMetadataFromFile(
-    fullPath: string,
-    mediaId: string
-  ): Promise<void> {
-    await ImageProcessor.extractMetadata(fullPath, mediaId);
-  },
-
-  /**
-   * Gets basic file metadata (size, dimensions) for a file on disk.
-   */
-  async getFileMetadata(filePath: string) {
-    const stats = await fs.stat(filePath);
-    const metadata = await sharp(filePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      throw new Error(`Could not extract media dimensions for ${filePath}`);
-    }
-
-    return {
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-    };
-  },
-
-  /**
-   * Copies a file from source path to target base path.
-   * Handles naming conflicts similar to saveFile.
-   */
-  async copyFile(
-    sourcePath: string,
-    targetBasePath: string,
-    options: {
-      filename?: string;
-      overwrite?: boolean;
-      autoIncrement?: boolean;
-    }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
-    const uploadRequest = options;
-    const sourceFileName = path.basename(sourcePath);
-    let targetFileName = uploadRequest.filename || sourceFileName;
-    let targetFilePath = path.join(targetBasePath, targetFileName);
-    let relativeFilePath = path.relative(targetBasePath, targetFilePath);
-    let conflict: z.infer<typeof conflictSchema> | undefined;
-
-    // Handle file name conflicts
-    let counter = 0;
-    while (
-      await fs
-        .stat(targetFilePath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      if (uploadRequest.overwrite) {
-        break; // Overwrite existing file
-      }
-
-      if (!uploadRequest.autoIncrement) {
-        conflict = {
-          existingFile: relativeFilePath,
-          suggestedName: "",
-        };
-        throw new Error("File already exists and overwrite is not allowed.");
-      }
-
-      counter++;
-      const ext = path.extname(sourceFileName);
-      const base = path.basename(sourceFileName, ext);
-      targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(targetBasePath, targetFileName);
-      relativeFilePath = path.relative(targetBasePath, targetFilePath);
-      conflict = {
-        existingFile: path.relative(
-          targetBasePath,
-          path.join(targetBasePath, uploadRequest.filename || sourceFileName)
-        ),
-        suggestedName: targetFileName,
-      };
-    }
-
-    // Copy the file
-    await fs.copyFile(sourcePath, targetFilePath);
-
-    // Extract metadata
-    const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if validation fails
-      throw new Error("Could not extract media dimensions from copied file.");
-    }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
+  async searchInDirectory(
+    mediaSourceId: string,
+    directoryPath: string,
+    params: { query?: string; tags?: string[] }
+  ): Promise<Media[]> {
+    return await searchMediaInDirectory(mediaSourceId, directoryPath, params);
   },
 };

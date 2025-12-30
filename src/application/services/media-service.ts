@@ -2,9 +2,9 @@
  * MediaService - Media Management Service
  */
 
-import fs from "node:fs/promises";
 import path from "node:path";
 import {
+  type AddMediaRequest,
   type Media,
   type MediaDetails,
   mediaIdSchema,
@@ -16,8 +16,8 @@ import {
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
+import { NotFoundError } from "~/infrastructure/db/errors";
 import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources";
-import type { NewMedia } from "~/infrastructure/db/schema";
 import {
   addJobsToQueue,
   startJobQueue,
@@ -27,8 +27,10 @@ import {
   deleteThumbnail,
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { getDriver } from "~/infrastructure/storage/factory";
+import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 export const MediaService = {
   /**
@@ -88,28 +90,42 @@ export const MediaService = {
       overwrite: formData.get("overwrite")?.toString(),
     });
 
-    // 1. Save File via Repository
-    const fileInfo = await MediaRepository.saveFile(basePath, file, {
+    // 1. Save File via LocalStorage
+    const fileInfo = await LocalMediaStorage.saveFile(basePath, file, {
       filename: uploadRequest.filename,
       overwrite: uploadRequest.overwrite,
       autoIncrement: uploadRequest.autoIncrement,
     });
 
     // 2. Create Media Entry
-    const newMedia: NewMedia = {
+    const newMedia: AddMediaRequest = {
       mediaSourceId: validatedSourceId,
       filePath: fileInfo.filePath,
       fileName: fileInfo.fileName,
       mediaType: "image", // TODO: Determine based on file type
-      description: uploadRequest.description || "",
+      description: uploadRequest.description || null,
       width: fileInfo.width,
       height: fileInfo.height,
-      fileSize: fileInfo.size,
+      size: fileInfo.size,
       createdAt: fileInfo.createdAt,
       modifiedAt: fileInfo.modifiedAt,
     };
 
-    const insertedMedia = await MediaRepository.create(newMedia);
+    let insertedMedia: Media;
+    try {
+      insertedMedia = await MediaRepository.create(newMedia);
+    } catch (error) {
+      // Handle race condition with FileWatcherService
+      const existing = await MediaRepository.findByPath(
+        validatedSourceId,
+        fileInfo.filePath
+      );
+      if (existing) {
+        insertedMedia = existing;
+      } else {
+        throw error;
+      }
+    }
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
@@ -147,8 +163,11 @@ export const MediaService = {
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new NotFoundError({ message: "Media not found" });
+    }
     if (media.mediaSourceId !== validatedSourceId) {
-      throw new Error("Media not found");
+      throw new NotFoundError({ message: "Media not found in source" });
     }
 
     const [tags, generationInfo, authors, urls] = await Promise.all([
@@ -163,16 +182,13 @@ export const MediaService = {
     // If generation info is not found, try to extract it (Lazy Extraction)
     if (!finalGenerationInfo) {
       const mediaSource = await selectMediaSourceById(validatedSourceId);
-      if (mediaSource.type === "local") {
+      if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };
         const fullPath = path.join(connectionInfo.path, media.filePath);
 
         try {
-          // We use Repository to extract metadata, which calls Infra/ImageProcessor
-          await MediaRepository.extractMetadataFromFile(
-            fullPath,
-            validatedMediaId
-          );
+          // Use ImageProcessor directly for metadata extraction
+          await ImageProcessor.extractMetadata(fullPath, validatedMediaId);
           finalGenerationInfo =
             await MediaRepository.getGenerationInfo(validatedMediaId);
         } catch (_e) {
@@ -215,6 +231,9 @@ export const MediaService = {
     }
 
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new Error("Media not found");
+    }
     if (media.mediaSourceId !== validatedSourceId) {
       throw new Error("Media not found");
     }
@@ -224,28 +243,24 @@ export const MediaService = {
   },
 
   /**
-   * Deletes media.
-   */
-
-  /**
    * Registers existing media from a directory.
    */
   async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-    const files = await MediaRepository.scanDirectory(directoryPath);
+    const files = await LocalMediaStorage.scanDirectory(directoryPath);
     const newMediaItems: { id: string; filePath: string }[] = [];
 
     for (const file of files) {
       try {
         const relativePath = path.relative(directoryPath, file);
-        const existing = await MediaRepository.findBySourceAndPath(
+        const existing = await MediaRepository.findByPath(
           validatedSourceId,
           relativePath
         );
 
-        if (existing.length === 0) {
+        if (!existing) {
           try {
-            const metadata = await MediaRepository.getFileMetadata(file);
+            const metadata = await LocalMediaStorage.getFileMetadata(file);
 
             // Simple extension check for media type
             const ext = path.extname(file).toLowerCase();
@@ -257,19 +272,21 @@ export const MediaService = {
               mediaType = "audio";
             }
 
-            const newMedia = await MediaRepository.create({
+            const newMedia: AddMediaRequest = {
               mediaSourceId: validatedSourceId,
               filePath: relativePath,
               fileName: path.basename(file),
               mediaType,
               width: metadata.width,
               height: metadata.height,
-              fileSize: metadata.size,
+              size: metadata.size,
               createdAt: metadata.createdAt,
               modifiedAt: metadata.modifiedAt,
-              indexedAt: new Date(),
-            });
-            newMediaItems.push({ id: newMedia.id, filePath: relativePath });
+              description: null,
+            };
+
+            const created = await MediaRepository.create(newMedia);
+            newMediaItems.push({ id: created.id, filePath: relativePath });
           } catch (_e) {
             // Ignore creation errors
           }
@@ -308,6 +325,9 @@ export const MediaService = {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new Error("Media not found");
+    }
     if (media.mediaSourceId !== validatedSourceId) {
       throw new Error("Media not found");
     }
@@ -323,6 +343,9 @@ export const MediaService = {
     const parsedUpdates = updateMediaRequestSchema.parse(updates);
 
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new Error("Media not found");
+    }
     if (media.mediaSourceId !== validatedSourceId) {
       throw new Error("Media not found");
     }
@@ -380,8 +403,11 @@ export const MediaService = {
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new NotFoundError({ message: "Media not found" });
+    }
     if (media.mediaSourceId !== validatedSourceId) {
-      throw new Error("Media not found");
+      throw new NotFoundError({ message: "Media not found" });
     }
 
     return await MediaRepository.getTags(validatedMediaId);
@@ -390,16 +416,16 @@ export const MediaService = {
   /**
    * Retrieves metadata (generation info) for a media item.
    */
-  /**
-   * Retrieves metadata (generation info) for a media item.
-   */
   async getMediaMetadata(mediaSourceId: string, mediaId: string) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
     const media = await MediaRepository.findById(validatedMediaId);
+    if (!media) {
+      throw new NotFoundError({ message: "Media not found" });
+    }
     if (media.mediaSourceId !== validatedSourceId) {
-      throw new Error("Media not found");
+      throw new NotFoundError({ message: "Media not found" });
     }
 
     const generationInfo =
@@ -453,7 +479,7 @@ export const MediaService = {
     );
 
     // 3. Perform Physical Copy
-    const fileInfo = await MediaRepository.copyFile(
+    const fileInfo = await LocalMediaStorage.copyFile(
       fullSourcePath,
       targetConnection.path,
       {
@@ -463,19 +489,17 @@ export const MediaService = {
     );
 
     // 4. Create New Media Entry in DB
-    const newMedia: NewMedia = {
+    const newMedia: AddMediaRequest = {
       mediaSourceId: validatedTargetSourceId,
       filePath: fileInfo.filePath,
       fileName: fileInfo.fileName,
       mediaType: sourceMedia.mediaType, // Preserve type
       width: fileInfo.width,
       height: fileInfo.height,
-      fileSize: fileInfo.size,
+      size: fileInfo.size,
       description: sourceMedia.description, // Preserve description
-      status: "active",
-      createdAt: fileInfo.createdAt, // Preserve original creation time if possible, or use stats
+      createdAt: fileInfo.createdAt,
       modifiedAt: fileInfo.modifiedAt,
-      indexedAt: new Date(),
     };
 
     const newMediaEntry = await MediaRepository.create(newMedia);
@@ -514,29 +538,22 @@ export const MediaService = {
     targetSourceId: string
   ): Promise<{ success: boolean; media: Media }> {
     // 1. Copy
-    // We don't call this.copyMedia to avoid double notification if we want custom move notification
-    // But copyMedia logic is complex, so better reuse it.
-    // However, copyMedia emits "media-copied".
-    // If we want "media-moved", we might get both.
-    // Let's rely on copyMedia for copy part.
     const result = await this.copyMedia(sourceMediaId, targetSourceId);
 
     // 2. Delete Original if Copy Successful
     if (result.success) {
       const sourceMedia = await MediaRepository.findById(sourceMediaId);
-      await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId);
+      if (sourceMedia) {
+        await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId);
 
-      // Notify via SSE (override or supplement?)
-      // deleteMedia emits "media-deleted".
-      // copyMedia emits "media-copied".
-      // "media-moved" is a composite.
-      // Providing explicit "media-moved" might be useful for UI to show "Moved" instead of "Deleted".
-      SseManager.notifyMediaMoved(
-        sourceMedia.mediaSourceId,
-        targetSourceId,
-        sourceMediaId,
-        result.media
-      );
+        // Notify via SSE (override or supplement?)
+        SseManager.notifyMediaMoved(
+          sourceMedia.mediaSourceId,
+          targetSourceId,
+          sourceMediaId,
+          result.media
+        );
+      }
     }
 
     return result;
@@ -568,9 +585,11 @@ export const MediaService = {
       const mediaSource = await selectMediaSourceById(media.mediaSourceId);
       if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };
-        const fullPath = path.join(connectionInfo.path, media.filePath);
         try {
-          await fs.unlink(fullPath);
+          await LocalMediaStorage.deleteFile(
+            connectionInfo.path,
+            media.filePath
+          );
         } catch (_e) {
           // Log error
         }
