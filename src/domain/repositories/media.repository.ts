@@ -31,6 +31,12 @@ export type IMediaRepository = {
   getGenerationInfo(mediaId: string): Promise<MediaGenerationInfo | null>;
   getAuthors(mediaId: string): Promise<Author[]>;
   getUrls(mediaId: string): Promise<MediaUrl[]>;
+  addUrls(mediaId: string, urls: string[]): Promise<MediaUrl[]>;
+  upsertGenerationInfo(
+    mediaId: string,
+    prompt: string | null,
+    workflow: unknown
+  ): Promise<MediaGenerationInfo>;
 
   // Bulk/List
   findAllBySourceId(sourceId: string): Promise<Media[]>;

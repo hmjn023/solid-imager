@@ -12,7 +12,7 @@ import type {
 } from "~/domain/media/schemas";
 
 // import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
-import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls";
+// import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls"; // Removed
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import {
   addJobsToQueue,
@@ -125,7 +125,7 @@ export async function processDownloadJob(
   if (item.tweetUrl) {
     urlsToRegister.push(item.tweetUrl);
   }
-  await insertMediaUrls(insertedMedia.id, urlsToRegister);
+  await MediaRepository.addUrls(insertedMedia.id, urlsToRegister);
 
   // Register Author
   if (item.authorName) {

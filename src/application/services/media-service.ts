@@ -132,10 +132,12 @@ export const MediaService = {
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
-      const { insertMediaUrls } = await import(
-        "~/infrastructure/db/queries/media-urls"
-      );
-      await insertMediaUrls(insertedMedia.id, [uploadRequest.sourceUrl]);
+      // const { insertMediaUrls } = await import(
+      //   "~/infrastructure/db/queries/media-urls"
+      // );
+      await MediaRepository.addUrls(insertedMedia.id, [
+        uploadRequest.sourceUrl,
+      ]);
     }
 
     // 3. Trigger Jobs
@@ -360,11 +362,8 @@ export const MediaService = {
 
     // Update URLs if provided
     if (parsedUpdates.sourceUrls && parsedUpdates.sourceUrls.length > 0) {
-      const { insertMediaUrls, selectMediaUrlsByMediaId } = await import(
-        "~/infrastructure/db/queries/media-urls"
-      );
       // Fetch existing URLs to prevent duplicates
-      const existingUrls = await selectMediaUrlsByMediaId(validatedMediaId);
+      const existingUrls = await MediaRepository.getUrls(validatedMediaId);
       const existingUrlSet = new Set(existingUrls.map((u) => u.url));
 
       const newUrls = parsedUpdates.sourceUrls.filter(
@@ -372,7 +371,7 @@ export const MediaService = {
       );
 
       if (newUrls.length > 0) {
-        await insertMediaUrls(validatedMediaId, newUrls);
+        await MediaRepository.addUrls(validatedMediaId, newUrls);
       }
     }
 

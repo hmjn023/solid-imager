@@ -7,11 +7,12 @@
 import sharp from "sharp";
 import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
-import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info";
+// import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info"; // Removed
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
 import { logger } from "~/infrastructure/logger";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 /**
@@ -84,7 +85,7 @@ export const ImageProcessor = {
       const { tags, prompt, workflow } = extractDataFromComments(comments);
 
       // Store generation info
-      await upsertMediaGenerationInfo(
+      await MediaRepository.upsertGenerationInfo(
         mediaId,
         // Ensure prompt is stored as a string if it's an object
         typeof prompt === "object" ? JSON.stringify(prompt) : prompt,

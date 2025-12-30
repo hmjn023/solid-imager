@@ -8,8 +8,8 @@ import {
 } from "~/domain/media/schemas";
 import type { IMediaRepository } from "~/domain/repositories/media.repository";
 import { db } from "~/infrastructure/db/index";
-import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
-import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
+// import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
+// import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
 import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
@@ -19,7 +19,9 @@ import {
   type Media,
   type MediaGenerationInfo,
   type MediaUrl,
+  mediaGenerationInfo,
   medias,
+  mediaUrls,
   type NewMedia,
   type Tag,
 } from "~/infrastructure/db/schema";
@@ -238,12 +240,21 @@ export const MediaRepository: IMediaRepository = {
   async getGenerationInfo(
     mediaId: string
   ): Promise<MediaGenerationInfo | null> {
-    return await selectMediaGenerationInfoById(mediaId).catch((error) => {
-      if (error instanceof NotFoundError) {
+    try {
+      const result = await db
+        .select()
+        .from(mediaGenerationInfo)
+        .where(eq(mediaGenerationInfo.mediaId, mediaId));
+      if (result.length === 0) {
         return null;
       }
-      throw error;
-    });
+      return result[0];
+    } catch (error) {
+      throw new UnknownDbError({
+        message: `Failed to select media generation info for mediaId: ${mediaId}`,
+        details: error,
+      });
+    }
   },
 
   async getAuthors(mediaId: string): Promise<Author[]> {
@@ -251,7 +262,65 @@ export const MediaRepository: IMediaRepository = {
   },
 
   async getUrls(mediaId: string): Promise<MediaUrl[]> {
-    return await selectMediaUrlsByMediaId(mediaId);
+    try {
+      return await db
+        .select()
+        .from(mediaUrls)
+        .where(eq(mediaUrls.mediaId, mediaId));
+    } catch (error) {
+      throw new UnknownDbError({
+        message: `Failed to select media URLs for mediaId: ${mediaId}`,
+        details: error,
+      });
+    }
+  },
+
+  async addUrls(mediaId: string, urls: string[]): Promise<MediaUrl[]> {
+    if (urls.length === 0) {
+      return [];
+    }
+    try {
+      const values = urls.map((url) => ({
+        mediaId,
+        url,
+      }));
+      return await db.insert(mediaUrls).values(values).returning();
+    } catch (error) {
+      throw new UnknownDbError({
+        message: "Failed to insert media URLs",
+        details: error,
+      });
+    }
+  },
+
+  async upsertGenerationInfo(
+    mediaId: string,
+    prompt: string | null,
+    workflow: unknown
+  ): Promise<MediaGenerationInfo> {
+    try {
+      const values = {
+        mediaId,
+        prompt,
+        workflow,
+        metadata: { prompt }, // legacy compatibility or derived
+      };
+      // Simple upsert
+      const result = await db
+        .insert(mediaGenerationInfo)
+        .values(values)
+        .onConflictDoUpdate({
+          target: mediaGenerationInfo.mediaId,
+          set: values,
+        })
+        .returning();
+      return result[0];
+    } catch (error) {
+      throw new UnknownDbError({
+        message: `Failed to upsert media generation info for mediaId: ${mediaId}`,
+        details: error,
+      });
+    }
   },
 
   // Bulk
