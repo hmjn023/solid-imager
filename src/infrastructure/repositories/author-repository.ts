@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { IAuthorRepository } from "~/domain/repositories/author.repository";
+import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import { db } from "~/infrastructure/db/index";
 import {
   type Author,

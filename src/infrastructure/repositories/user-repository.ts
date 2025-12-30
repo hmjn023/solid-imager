@@ -4,7 +4,7 @@ import type {
   UpdateUser,
   User,
   UserRepository as UserRepositoryDef,
-} from "~/domain/repositories/user.repository";
+} from "~/domain/repositories/user-repository";
 import {
   ConstraintError,
   NotFoundError,

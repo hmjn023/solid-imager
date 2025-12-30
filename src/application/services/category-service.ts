@@ -3,7 +3,7 @@ import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
 import type {
   Category,
   CategoryRepository,
-} from "~/domain/repositories/category.repository";
+} from "~/domain/repositories/category-repository";
 import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
 
 // Initialize repository

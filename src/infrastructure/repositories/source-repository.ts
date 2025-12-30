@@ -4,7 +4,7 @@ import type {
   MediaSource,
   NewMediaSource,
   SourceRepository,
-} from "~/domain/repositories/source.repository";
+} from "~/domain/repositories/source-repository";
 import {
   ConstraintError,
   NotFoundError,

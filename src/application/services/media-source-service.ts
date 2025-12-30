@@ -2,7 +2,7 @@ import { cache } from "@solidjs/router";
 import type {
   MediaSource,
   NewMediaSource,
-} from "~/domain/repositories/source.repository";
+} from "~/domain/repositories/source-repository";
 import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 

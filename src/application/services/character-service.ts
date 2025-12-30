@@ -6,7 +6,7 @@ import type {
 import type {
   Character,
   CharacterRepository,
-} from "~/domain/repositories/character.repository";
+} from "~/domain/repositories/character-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 
 // Initialize repository

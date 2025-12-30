@@ -1,14 +1,11 @@
 import { eq } from "drizzle-orm";
 import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   Category,
   CategoryRepository,
-} from "~/domain/repositories/category.repository";
-import {
-  // ConstraintError,
-  NotFoundError,
-  UnknownDbError,
-} from "~/infrastructure/db/errors";
+} from "~/domain/repositories/category-repository";
+import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { categories } from "~/infrastructure/db/schema";
 
@@ -25,9 +22,12 @@ export class DrizzleCategoryRepository implements CategoryRepository {
     }
   }
 
-  async findById(id: string): Promise<Category | null> {
+  async findById(id: string, tx?: Transaction): Promise<Category | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select()
         .from(categories)
         .where(eq(categories.id, id));
@@ -43,23 +43,21 @@ export class DrizzleCategoryRepository implements CategoryRepository {
     }
   }
 
-  async create(category: NewCategory): Promise<Category> {
+  async create(category: NewCategory, tx?: Transaction): Promise<Category> {
     try {
-      // Drizzle expects possibly optional properties, schema allows optional
-      // Map to db schema expected type if cleaner, or use unknown cast
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .insert(categories)
         .values({
           ...category,
-          // Defaults are handled by DB or need explicitness if missing from Zod
           description: category.description ?? "",
           color: category.color ?? "#808080",
         })
         .returning();
       return result[0] as unknown as Category;
     } catch (error: unknown) {
-      // Categories don't enforce unique name in current schema explicitly shown,
-      // but if they did we'd catch it. If parentId FK fails, also catchable.
       throw new UnknownDbError({
         message: "Failed to insert category",
         details: error,
@@ -67,9 +65,16 @@ export class DrizzleCategoryRepository implements CategoryRepository {
     }
   }
 
-  async update(id: string, category: UpdateCategory): Promise<Category> {
+  async update(
+    id: string,
+    category: UpdateCategory,
+    tx?: Transaction
+  ): Promise<Category> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .update(categories)
         .set(category)
         .where(eq(categories.id, id))
@@ -92,9 +97,12 @@ export class DrizzleCategoryRepository implements CategoryRepository {
     }
   }
 
-  async delete(id: string): Promise<void> {
+  async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .delete(categories)
         .where(eq(categories.id, id))
         .returning();

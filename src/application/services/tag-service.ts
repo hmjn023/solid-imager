@@ -3,7 +3,7 @@ import type {
   NewTag,
   Tag,
   TagRepository,
-} from "~/domain/repositories/tag.repository";
+} from "~/domain/repositories/tag-repository";
 import type { UpdateTag } from "~/domain/tags/schemas";
 import { DrizzleTagRepository } from "~/infrastructure/repositories/tag-repository";
 

@@ -5,7 +5,8 @@ import type {
   NewCollectionItem,
   UpdateCollection,
 } from "~/domain/collections/schemas";
-import type { ICollectionRepository } from "~/domain/repositories/collection.repository";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import type { ICollectionRepository } from "~/domain/repositories/collection-repository";
 import { ConstraintError, NotFoundError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { collections, mediaCollections } from "~/infrastructure/db/schema";
@@ -15,8 +16,11 @@ export const CollectionRepository: ICollectionRepository = {
     return await db.select().from(collections);
   },
 
-  async findById(id: string): Promise<Collection | null> {
-    const result = await db
+  async findById(id: string, tx?: Transaction): Promise<Collection | null> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .select()
       .from(collections)
       .where(eq(collections.id, id))
@@ -24,9 +28,15 @@ export const CollectionRepository: ICollectionRepository = {
     return result[0] || null;
   },
 
-  async create(collection: NewCollection): Promise<Collection> {
+  async create(
+    collection: NewCollection,
+    tx?: Transaction
+  ): Promise<Collection> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .insert(collections)
         .values(collection)
         .returning();
@@ -34,7 +44,6 @@ export const CollectionRepository: ICollectionRepository = {
     } catch (error: unknown) {
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        // Unique violation
         throw new ConstraintError({
           message: "Collection with this name already exists",
           details: error,
@@ -44,9 +53,16 @@ export const CollectionRepository: ICollectionRepository = {
     }
   },
 
-  async update(id: string, updates: UpdateCollection): Promise<Collection> {
+  async update(
+    id: string,
+    updates: UpdateCollection,
+    tx?: Transaction
+  ): Promise<Collection> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .update(collections)
         .set(updates)
         .where(eq(collections.id, id))
@@ -73,8 +89,11 @@ export const CollectionRepository: ICollectionRepository = {
     }
   },
 
-  async delete(id: string): Promise<void> {
-    const result = await db
+  async delete(id: string, tx?: Transaction): Promise<void> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .delete(collections)
       .where(eq(collections.id, id))
       .returning();
@@ -86,9 +105,16 @@ export const CollectionRepository: ICollectionRepository = {
     }
   },
 
-  async addItem(collectionId: string, item: NewCollectionItem): Promise<void> {
+  async addItem(
+    collectionId: string,
+    item: NewCollectionItem,
+    tx?: Transaction
+  ): Promise<void> {
     try {
-      await db.insert(mediaCollections).values({
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      await client.insert(mediaCollections).values({
         collectionId,
         mediaId: item.mediaId,
         displayOrder: item.displayOrder,
@@ -105,8 +131,15 @@ export const CollectionRepository: ICollectionRepository = {
     }
   },
 
-  async removeItem(collectionId: string, mediaId: string): Promise<void> {
-    const result = await db
+  async removeItem(
+    collectionId: string,
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<void> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    const result = await client
       .delete(mediaCollections)
       .where(
         and(

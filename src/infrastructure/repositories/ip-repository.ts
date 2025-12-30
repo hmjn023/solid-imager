@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { Ip, NewIp, UpdateIp } from "~/domain/ips/schemas";
-import type { IIpRepository } from "~/domain/repositories/ip.repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import { db } from "~/infrastructure/db";
 import { ConstraintError, NotFoundError } from "~/infrastructure/db/errors";
 import { ips, mediaIps } from "~/infrastructure/db/schema";

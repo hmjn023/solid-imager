@@ -5,7 +5,7 @@ import type {
   Project,
   UpdateProject,
 } from "~/domain/projects/schemas";
-import type { IProjectRepository } from "~/domain/repositories/project.repository";
+import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import { db } from "~/infrastructure/db";
 import { NotFoundError } from "~/infrastructure/db/errors";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";

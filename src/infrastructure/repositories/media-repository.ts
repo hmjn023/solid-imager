@@ -12,7 +12,7 @@ import {
   mediaSearchResponseSchema,
   type UpdateMediaRequest,
 } from "~/domain/media/schemas";
-import type { IMediaRepository } from "~/domain/repositories/media.repository";
+import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db } from "~/infrastructure/db/index";
 import {
   mediaGenerationInfo,

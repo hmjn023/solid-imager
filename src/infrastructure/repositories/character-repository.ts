@@ -5,7 +5,7 @@ import type {
   UpdateCharacter,
 } from "~/domain/characters/schemas";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { CharacterRepository } from "~/domain/repositories/character.repository";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import {
   ConstraintError,
   NotFoundError,

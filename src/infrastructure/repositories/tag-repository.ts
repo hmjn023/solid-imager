@@ -5,7 +5,7 @@ import type {
   NewTag,
   Tag,
   TagRepository as TagRepositoryDef,
-} from "~/domain/repositories/tag.repository";
+} from "~/domain/repositories/tag-repository";
 import type { UpdateTag } from "~/domain/tags/schemas";
 import {
   ConstraintError,
