@@ -1,3 +1,4 @@
+import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 
@@ -8,6 +9,7 @@ import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 export const appRouter = {
   sources: sourcesRouter,
   tags: tagsRouter,
+  media: mediaRouter,
 };
 
 export type AppRouter = typeof appRouter;
