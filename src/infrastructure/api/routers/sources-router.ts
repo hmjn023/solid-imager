@@ -37,10 +37,19 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
  * Media Sources Router Implementation
  */
 export const sourcesRouter = {
-  list: os.handler(async () => {
-    const sources = await MediaSourceService.fetchSources();
-    return sources.map(toSafeMediaSource);
-  }),
+  list: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "List all media sources",
+        description:
+          "Retrieve a list of all registered media sources with sensitive information removed",
+      },
+    })
+    .handler(async () => {
+      const sources = await MediaSourceService.fetchSources();
+      return sources.map(toSafeMediaSource);
+    }),
 
   get: os
     .input(

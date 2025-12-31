@@ -6,6 +6,7 @@ import { MediaService } from "~/application/services/media-service";
 import { appRouter } from "~/domain/shared/api-contract";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
+import { openApiTags } from "./openapi-tags";
 
 const handler = new RPCHandler(appRouter);
 
@@ -22,7 +23,8 @@ export const app = new Elysia()
       info: {
         title: "Solid Imager oRPC API",
         version: "1.0.0",
-        description: "oRPC endpoints for Solid Imager",
+        description:
+          "API for managing media sources, media files, tags, and AI-powered features",
       },
       servers: [
         {
@@ -30,6 +32,7 @@ export const app = new Elysia()
           description: "Development server (oRPC)",
         },
       ],
+      tags: openApiTags,
     });
     return spec;
   })

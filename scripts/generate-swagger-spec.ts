@@ -2,6 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { appRouter } from "../src/domain/shared/api-contract";
+import { openApiTags } from "../src/infrastructure/api/openapi-tags";
 
 async function generateOpenAPISpec() {
   try {
@@ -12,7 +13,8 @@ async function generateOpenAPISpec() {
       info: {
         title: "Solid Imager oRPC API",
         version: "1.0.0",
-        description: "oRPC endpoints for Solid Imager",
+        description:
+          "API for managing media sources, media files, tags, and AI-powered features",
       },
       servers: [
         {
@@ -20,6 +22,7 @@ async function generateOpenAPISpec() {
           description: "Development server (oRPC)",
         },
       ],
+      tags: openApiTags,
     });
 
     const outputPath = path.resolve(process.cwd(), "public/openapi.json");
