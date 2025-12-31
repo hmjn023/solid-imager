@@ -15,16 +15,16 @@ This plan outlines the steps to further decouple the Domain and Application laye
 **Problem**: Services currently instantiate repository implementations directly at the top level.
 **Solution**: Refactor services to accept dependencies via parameters or a registry.
 
-- [ ] Refactor `MediaService` to accept `IMediaRepository`, `ISourceRepository`, and `IStorageService`.
-- [ ] Refactor `TaggingService` to accept `IPythonClient` (or an equivalent domain interface).
-- [ ] Implement a simple Service Locator or Dependency Container for the application layer.
+- [x] Refactor `MediaService` to accept `IMediaRepository`, `ISourceRepository`, and `IStorageService`.
+- [x] Refactor `TaggingService` to accept `IPythonClient` (or an equivalent domain interface).
+- [x] Implement a simple Service Locator or Dependency Container for the application layer.
 
 ### Task 2: Abstract Infrastructure Services
 **Problem**: `MediaService` still imports `LocalMediaStorage` and Node.js built-ins.
 **Solution**: Ensure all infrastructure tasks are defined as interfaces in the domain layer.
 
-- [ ] Define `IImageProcessor` in `src/domain/services` for tasks like metadata extraction and thumbnail generation.
-- [ ] Ensure `IStorageService` is the only point of contact for file operations in the application layer.
+- [x] Define `IImageProcessor` in `src/domain/services` for tasks like metadata extraction and thumbnail generation.
+- [x] Ensure `IStorageService` is the only point of contact for file operations in the application layer.
 - [ ] Move any remaining Node.js specific code (e.g., `node:path`) into infrastructure implementations.
 
 ### Task 3: Domain Error Handling
@@ -51,9 +51,9 @@ This plan outlines the steps to further decouple the Domain and Application laye
 - [x] Update Repositories to throw Domain Errors.
 
 ### Phase 2: Service Refactoring
-- [ ] Refactor `MediaService` (highest priority).
-- [ ] Refactor `TaggingService` and `ThumbnailService`.
-- [ ] Remove direct infrastructure imports from `src/application/services`.
+- [x] Refactor `MediaService` (highest priority).
+- [x] Refactor `TaggingService` and `ThumbnailService`.
+- [x] Remove direct infrastructure imports from `src/application/services` (mostly done).
 
 ### Phase 3: Validation
 - [ ] Verify unit tests can pass using mocks only (no DB, no FS).

@@ -11,7 +11,7 @@ export async function extractTags(
   mediaPath: string,
   mediaId: string
 ): Promise<void> {
-  const metadata = await ImageProcessor.extractMetadata(mediaPath, mediaId);
+  const metadata = await ImageProcessor.extractMetadata(mediaPath);
   const tagsToInsert = metadata.tags.map((tag) => ({
     name: tag.name,
     type: tag.type,

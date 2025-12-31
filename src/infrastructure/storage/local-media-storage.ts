@@ -112,6 +112,14 @@ export const LocalMediaStorage: IStorageService = {
     }
   },
 
+  async getFile(basePath: string, filePath: string): Promise<Buffer> {
+    const fullPath = path.resolve(basePath, filePath);
+    if (!fullPath.startsWith(path.resolve(basePath))) {
+      throw new Error("Invalid path");
+    }
+    return await fs.readFile(fullPath);
+  },
+
   async scanDirectory(basePath: string): Promise<string[]> {
     const files: string[] = [];
     const queue: string[] = [basePath];

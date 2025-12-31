@@ -13,6 +13,7 @@ import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
@@ -57,7 +58,7 @@ async function handleFileAdded(
     }
 
     // Extract metadata
-    const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
     // Determine type
     let mediaType: "image" | "video" | "audio" = "image";
@@ -74,12 +75,12 @@ async function handleFileAdded(
       filePath: relativePath,
       fileName: path.basename(relativePath),
       mediaType,
-      width: metadata.width,
-      height: metadata.height,
-      fileSize: metadata.size,
+      width: fileMetadata.width,
+      height: fileMetadata.height,
+      fileSize: fileMetadata.size,
       description: null,
-      createdAt: metadata.createdAt,
-      modifiedAt: metadata.modifiedAt,
+      createdAt: fileMetadata.createdAt,
+      modifiedAt: fileMetadata.modifiedAt,
     });
 
     // Queue thumbnail generation
@@ -98,7 +99,29 @@ async function handleFileAdded(
     startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
 
     // Extract metadata in the background
-    await ImageProcessor.extractMetadata(fullPath, media.id);
+    try {
+      const metadata = await ImageProcessor.extractMetadata(fullPath);
+
+      // Store generation info
+      await MediaRepository.upsertGenerationInfo(
+        media.id,
+        typeof metadata.prompt === "object"
+          ? JSON.stringify(metadata.prompt)
+          : (metadata.prompt as string | null),
+        metadata.workflow as object | null
+      );
+
+      // Store tags
+      if (metadata.tags.length > 0) {
+        await TagRepository.addTagsToMedia(
+          media.id,
+          metadata.tags,
+          "comfyui_workflow"
+        );
+      }
+    } catch (_e) {
+      // Ignore extraction errors
+    }
   } catch (error) {
     logger.error(
       { err: error, mediaSourceId, relativePath },
@@ -149,10 +172,6 @@ async function handleFileDeleted(
  * Handles file change events from the file system watcher.
  * Updates the media metadata and regenerates the thumbnail.
  */
-/**
- * Handles file change events from the file system watcher.
- * Updates the media metadata and regenerates the thumbnail.
- */
 async function handleFileChanged(
   mediaSourceId: string,
   relativePath: string
@@ -176,12 +195,12 @@ async function handleFileChanged(
     }
 
     // Update metadata
-    const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
     await MediaRepository.update(media.id, {
-      width: metadata.width,
-      height: metadata.height,
-      fileSize: metadata.size,
-      modifiedAt: metadata.modifiedAt,
+      width: fileMetadata.width,
+      height: fileMetadata.height,
+      fileSize: fileMetadata.size,
+      modifiedAt: fileMetadata.modifiedAt,
     });
 
     // Regenerate thumbnail
@@ -200,7 +219,29 @@ async function handleFileChanged(
     startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
 
     // Re-extract metadata
-    await ImageProcessor.extractMetadata(fullPath, media.id);
+    try {
+      const metadata = await ImageProcessor.extractMetadata(fullPath);
+
+      // Store generation info
+      await MediaRepository.upsertGenerationInfo(
+        media.id,
+        typeof metadata.prompt === "object"
+          ? JSON.stringify(metadata.prompt)
+          : (metadata.prompt as string | null),
+        metadata.workflow as object | null
+      );
+
+      // Store tags
+      if (metadata.tags.length > 0) {
+        await TagRepository.addTagsToMedia(
+          media.id,
+          metadata.tags,
+          "comfyui_workflow"
+        );
+      }
+    } catch (_e) {
+      // Ignore extraction errors
+    }
 
     // Notify
     SseManager.sendEvent(mediaSourceId, "media-changed", {

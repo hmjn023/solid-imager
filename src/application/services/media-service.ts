@@ -11,6 +11,7 @@ import {
   type AddMediaRequest,
   type Media,
   type MediaDetails,
+  type MediaGenerationInfo,
   mediaIdSchema,
   mediaSearchRequestSchema,
   mediaSourceIdSchema,
@@ -21,7 +22,10 @@ import {
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
-import type { SourceRepository } from "~/domain/repositories/source-repository"; // Assume interface name
+import type { SourceRepository } from "~/domain/repositories/source-repository";
+import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository"; // Added
+import type { IImageProcessor } from "~/domain/services/image-processor";
+import type { IStorageService } from "~/domain/services/storage-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import {
   addJobsToQueue,
@@ -34,25 +38,43 @@ import {
 } from "~/infrastructure/jobs/thumbnails";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Default implementation
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Default implementation
-import { getDriver } from "~/infrastructure/storage/factory";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository"; // Default implementation
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 // Temporary registration of default implementations
 // Ideally this should be done in a composition root
 services.registerMediaRepository(MediaRepository);
-const defaultSourceRepo = new DrizzleSourceRepository();
+// Avoid re-registering if already registered (e.g. by TaggingService)
+try {
+  services.getSourceRepository();
+} catch {
+  services.registerSourceRepository(new DrizzleSourceRepository());
+}
+services.registerStorageService(LocalMediaStorage);
+services.registerTagRepository(TagRepository);
+services.registerImageProcessor(ImageProcessor);
 
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
+  private readonly storageService: IStorageService;
+  private readonly tagRepository: TagRepositoryDef;
+  private readonly imageProcessor: IImageProcessor;
 
+  // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
     mediaRepository: IMediaRepository,
-    sourceRepository: SourceRepository
+    sourceRepository: SourceRepository,
+    storageService: IStorageService,
+    tagRepository: TagRepositoryDef,
+    imageProcessor: IImageProcessor
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
+    this.storageService = storageService;
+    this.tagRepository = tagRepository;
+    this.imageProcessor = imageProcessor;
   }
 
   /**
@@ -112,13 +134,12 @@ export class MediaServiceImpl {
       overwrite: formData.get("overwrite")?.toString(),
     });
 
-    // 1. Save File via LocalStorage
-    const fileInfo = await LocalMediaStorage.saveFile(basePath, file, {
+    // 1. Save File via StorageService
+    const fileInfo = await this.storageService.saveFile(basePath, file, {
       filename: uploadRequest.filename,
       overwrite: uploadRequest.overwrite,
       autoIncrement: uploadRequest.autoIncrement,
-      // biome-ignore lint/suspicious/noExplicitAny: LocalMediaStorage options TODO
-    } as any);
+    });
 
     // 2. Create Media Entry
     const newMedia: AddMediaRequest = {
@@ -203,21 +224,10 @@ export class MediaServiceImpl {
 
     // If generation info is not found, try to extract it (Lazy Extraction)
     if (!finalGenerationInfo) {
-      const mediaSource =
-        await this.sourceRepository.findById(validatedSourceId);
-      if (mediaSource && mediaSource.type === "local") {
-        const connectionInfo = mediaSource.connectionInfo as { path: string };
-        const fullPath = path.join(connectionInfo.path, media.filePath);
-
-        try {
-          // Use ImageProcessor directly for metadata extraction
-          await ImageProcessor.extractMetadata(fullPath, validatedMediaId);
-          finalGenerationInfo =
-            await this.mediaRepository.getGenerationInfo(validatedMediaId);
-        } catch (_e) {
-          // Ignore extraction errors
-        }
-      }
+      finalGenerationInfo = await this.extractAndUpdateMetadata(
+        media,
+        validatedSourceId
+      );
     }
 
     return {
@@ -261,8 +271,11 @@ export class MediaServiceImpl {
       throw new ResourceNotFoundError("Media not found in source");
     }
 
-    const driver = getDriver(mediaSource);
-    return driver.get(media.filePath);
+    if (mediaSource.type !== "local") {
+      throw new Error("Only local media sources is supported.");
+    }
+    const connectionInfo = mediaSource.connectionInfo as { path: string };
+    return this.storageService.getFile(connectionInfo.path, media.filePath);
   }
 
   /**
@@ -270,7 +283,7 @@ export class MediaServiceImpl {
    */
   async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-    const files = await LocalMediaStorage.scanDirectory(directoryPath);
+    const files = await this.storageService.scanDirectory(directoryPath);
     const newMediaItems: { id: string; filePath: string }[] = [];
 
     for (const file of files) {
@@ -283,7 +296,7 @@ export class MediaServiceImpl {
 
         if (!existing) {
           try {
-            const metadata = await LocalMediaStorage.getFileMetadata(file);
+            const metadata = await this.storageService.getFileMetadata(file);
 
             // Simple extension check for media type
             const ext = path.extname(file).toLowerCase();
@@ -511,7 +524,7 @@ export class MediaServiceImpl {
     );
 
     // 3. Perform Physical Copy
-    const fileInfo = await LocalMediaStorage.copyFile(
+    const fileInfo = await this.storageService.copyFile(
       fullSourcePath,
       targetConnection.path,
       {
@@ -634,7 +647,7 @@ export class MediaServiceImpl {
       if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };
         try {
-          await LocalMediaStorage.deleteFile(
+          await this.storageService.deleteFile(
             connectionInfo.path,
             media.filePath
           );
@@ -650,10 +663,55 @@ export class MediaServiceImpl {
       timestamp: new Date().toISOString(),
     });
   }
+
+  /**
+   * Helper to lazy-extract metadata for local files if missing.
+   */
+  private async extractAndUpdateMetadata(
+    media: Media,
+    sourceId: string
+  ): Promise<MediaGenerationInfo | null> {
+    const mediaSource = await this.sourceRepository.findById(sourceId);
+    if (!mediaSource || mediaSource.type !== "local") {
+      return null;
+    }
+
+    const connectionInfo = mediaSource.connectionInfo as { path: string };
+    const fullPath = path.join(connectionInfo.path, media.filePath);
+
+    try {
+      const metadata = await this.imageProcessor.extractMetadata(fullPath);
+
+      // Store generation info
+      await this.mediaRepository.upsertGenerationInfo(
+        media.id,
+        typeof metadata.prompt === "object"
+          ? JSON.stringify(metadata.prompt)
+          : (metadata.prompt as string | null),
+        metadata.workflow as object | null
+      );
+
+      // Store tags
+      if (metadata.tags.length > 0) {
+        await this.tagRepository.addTagsToMedia(
+          media.id,
+          metadata.tags,
+          "comfyui_workflow"
+        );
+      }
+
+      return await this.mediaRepository.getGenerationInfo(media.id);
+    } catch (_e) {
+      return null;
+    }
+  }
 }
 
 // Export a default instance for backward compatibility
 export const MediaService = new MediaServiceImpl(
   services.getMediaRepository(),
-  defaultSourceRepo
+  services.getSourceRepository(),
+  services.getStorageService(),
+  services.getTagRepository(),
+  services.getImageProcessor()
 );

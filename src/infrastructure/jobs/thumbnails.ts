@@ -14,6 +14,7 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 const sourceRepo = new DrizzleSourceRepository();
 
@@ -109,7 +110,29 @@ export async function processMediaJob(
   if (job.type === "thumbnail") {
     await generateThumbnail(media, job.sourcePath, mediaSourceId);
     const mediaPath = path.join(job.sourcePath, media.filePath);
-    await ImageProcessor.extractMetadata(mediaPath, media.id);
+    try {
+      const metadata = await ImageProcessor.extractMetadata(mediaPath);
+
+      // Store generation info
+      await MediaRepository.upsertGenerationInfo(
+        media.id,
+        typeof metadata.prompt === "object"
+          ? JSON.stringify(metadata.prompt)
+          : (metadata.prompt as string | null),
+        metadata.workflow as object | null
+      );
+
+      // Store tags
+      if (metadata.tags.length > 0) {
+        await TagRepository.addTagsToMedia(
+          media.id,
+          metadata.tags,
+          "comfyui_workflow"
+        );
+      }
+    } catch (_e) {
+      // Ignore metadata extraction errors during thumbnail generation
+    }
 
     // Notify clients that the thumbnail is ready
     SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {

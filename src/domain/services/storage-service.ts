@@ -24,6 +24,8 @@ export type IStorageService = {
 
   deleteFile(basePath: string, filePath: string): Promise<void>;
 
+  getFile(basePath: string, filePath: string): Promise<Buffer>;
+
   scanDirectory(basePath: string): Promise<string[]>;
 
   getFileMetadata(fullPath: string): Promise<{
