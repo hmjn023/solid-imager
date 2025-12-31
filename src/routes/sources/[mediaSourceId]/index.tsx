@@ -590,6 +590,12 @@ export default function MediaListPage() {
       await action(sourceId, id, targetSourceId);
       toast.success(`Media ${actionName} successfully`);
       await mediaQuery.refetch();
+      // Invalidate target source cache to ensure fresh data when navigating
+      if (sourceId !== targetSourceId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["media", targetSourceId],
+        });
+      }
     } catch (e) {
       logger.error(
         { err: e, mediaId: id, targetSourceId, mode },

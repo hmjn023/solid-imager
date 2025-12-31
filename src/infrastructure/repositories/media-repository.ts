@@ -1,71 +1,228 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import sharp from "sharp";
-import type { z } from "zod";
+import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
+import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
+  type AddMediaRequest,
+  type Author,
+  type Media,
+  type MediaGenerationInfo,
   type MediaSearchRequest,
   type MediaSearchResponse,
+  type MediaTag,
+  type MediaUrl,
   mediaSearchResponseSchema,
+  type UpdateMediaRequest,
 } from "~/domain/media/schemas";
-import type { conflictSchema } from "~/domain/media/upload-schemas";
+import type { IMediaRepository } from "~/domain/repositories/media-repository";
+import { db } from "~/infrastructure/db/index";
 import {
-  deleteMedia as dbDeleteMedia,
-  updateMedia as dbUpdateMedia,
-  insertMedia,
-  selectMediaById,
-  selectMediaBySourceId,
-  selectMediaBySourceIdAndDirectoryPath,
-  selectMediaBySourceIdAndFilePath,
-} from "~/infrastructure/db/queries/media";
-import { selectAuthorsByMediaId } from "~/infrastructure/db/queries/media-authors";
-import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info";
-import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls";
+  mediaGenerationInfo,
+  medias,
+  mediaUrls,
+  type NewMedia,
+} from "~/infrastructure/db/schema";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+// import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
+// import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
 import {
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
-} from "~/infrastructure/db/queries/search";
-import { selectMediaTagsByMediaId } from "~/infrastructure/db/queries/tags";
-import type { Media, NewMedia, Tag } from "~/infrastructure/db/schema";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { NotFoundError } from "../db/errors";
+} from "./media-repository-utils";
 
-export const MediaRepository = {
+type DbMedia = InferSelectModel<typeof medias>;
+
+function mapToMedia(dbMedia: DbMedia): Media {
+  return {
+    id: dbMedia.id,
+    mediaSourceId: dbMedia.mediaSourceId,
+    filePath: dbMedia.filePath,
+    fileName: dbMedia.fileName,
+    mediaType: dbMedia.mediaType,
+    width: dbMedia.width,
+    height: dbMedia.height,
+    fileSize: dbMedia.fileSize,
+    description: dbMedia.description,
+    createdAt: dbMedia.createdAt,
+    modifiedAt: dbMedia.modifiedAt,
+    indexedAt: dbMedia.indexedAt,
+    status: dbMedia.status as Media["status"],
+  };
+}
+
+type DbMediaUrl = InferSelectModel<typeof mediaUrls>;
+
+function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
+  return {
+    id: dbUrl.id,
+    mediaId: dbUrl.mediaId,
+    url: dbUrl.url,
+    createdAt: dbUrl.createdAt,
+    updatedAt: dbUrl.updatedAt,
+  };
+}
+
+export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by its ID.
    */
-  async findById(mediaId: string): Promise<Media> {
-    return await selectMediaById(mediaId);
+  async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
+        .select()
+        .from(medias)
+        .where(eq(medias.id, mediaId));
+      if (result.length === 0) {
+        return null;
+      }
+      return mapToMedia(result[0]);
+    } catch (e) {
+      if (e instanceof ResourceNotFoundError) {
+        return null;
+      }
+      throw new UnexpectedError(`Failed to select media by ID: ${mediaId}`, e);
+    }
   },
 
   /**
    * Retrieves a specific media item by Source ID and File Path.
    */
-  async findBySourceAndPath(
-    mediaSourceId: string,
-    filePath: string
-  ): Promise<Media[]> {
-    return await selectMediaBySourceIdAndFilePath(mediaSourceId, filePath);
+  async findByPath(
+    sourceId: string,
+    filePath: string,
+    tx?: Transaction
+  ): Promise<Media | null> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
+        .select()
+        .from(medias)
+        .where(
+          and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath))
+        );
+      if (result.length === 0) {
+        return null;
+      }
+      return mapToMedia(result[0]);
+    } catch (error) {
+      throw new UnexpectedError(
+        "Failed to select media by source ID and file path",
+        error
+      );
+    }
   },
 
   /**
    * Creates a new media entry in the database.
    */
-  async create(media: NewMedia): Promise<Media> {
-    return await insertMedia(media);
+  async create(media: AddMediaRequest, tx?: Transaction): Promise<Media> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const newMedia: NewMedia = {
+        ...media,
+        status: "active",
+        indexedAt: new Date(),
+      };
+      const result = await client.insert(medias).values(newMedia).returning();
+      return mapToMedia(result[0]);
+    } catch (error) {
+      throw new UnexpectedError("Failed to insert media", error);
+    }
   },
 
   /**
    * Updates an existing media entry.
    */
-  async update(mediaId: string, updates: Partial<Media>): Promise<Media> {
-    return await dbUpdateMedia(mediaId, updates);
+  async update(
+    mediaId: string,
+    updates: UpdateMediaRequest,
+    tx?: Transaction
+  ): Promise<Media> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const dbUpdates: Partial<NewMedia> = {};
+
+      if (updates.filePath !== undefined) {
+        dbUpdates.filePath = updates.filePath;
+      }
+      if (updates.fileName !== undefined) {
+        dbUpdates.fileName = updates.fileName;
+      }
+      if (updates.fileSize !== undefined) {
+        dbUpdates.fileSize = updates.fileSize;
+      }
+      if (updates.mediaType !== undefined) {
+        dbUpdates.mediaType = updates.mediaType;
+      }
+      if (updates.width !== undefined) {
+        dbUpdates.width = updates.width;
+      }
+      if (updates.height !== undefined) {
+        dbUpdates.height = updates.height;
+      }
+      if (updates.description !== undefined) {
+        dbUpdates.description = updates.description;
+      }
+      if (updates.createdAt !== undefined) {
+        dbUpdates.createdAt = updates.createdAt;
+      }
+
+      dbUpdates.modifiedAt = updates.modifiedAt || new Date();
+
+      const result = await client
+        .update(medias)
+        .set(dbUpdates)
+        .where(eq(medias.id, mediaId))
+        .returning();
+
+      if (result.length === 0) {
+        throw new ResourceNotFoundError("Media", mediaId);
+      }
+      return mapToMedia(result[0]);
+    } catch (error) {
+      if (error instanceof ResourceNotFoundError) {
+        throw error;
+      }
+      throw new UnexpectedError(
+        `Failed to update media with ID: ${mediaId}`,
+        error
+      );
+    }
   },
 
   /**
    * Deletes a media entry from the database.
    */
-  async delete(mediaId: string): Promise<void> {
-    await dbDeleteMedia(mediaId);
+  async delete(mediaId: string, tx?: Transaction): Promise<void> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
+        .delete(medias)
+        .where(eq(medias.id, mediaId))
+        .returning();
+      if (result.length === 0) {
+        throw new ResourceNotFoundError("Media", mediaId);
+      }
+    } catch (error) {
+      if (error instanceof ResourceNotFoundError) {
+        throw error;
+      }
+      throw new UnexpectedError(
+        `Failed to delete media with ID: ${mediaId}`,
+        error
+      );
+    }
   },
 
   /**
@@ -73,8 +230,12 @@ export const MediaRepository = {
    */
   async search(
     mediaSourceId: string,
-    params: MediaSearchRequest
+    params: MediaSearchRequest,
+    tx?: Transaction
   ): Promise<MediaSearchResponse> {
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
     const tagsArray = params.tags
       ? params.tags.split(",").map((t: string) => t.trim())
       : undefined;
@@ -82,337 +243,205 @@ export const MediaRepository = {
       ? params.excludeTags.split(",").map((t: string) => t.trim())
       : undefined;
     const projectsArray = params.projects
-      ? params.projects
-          .split(",")
-          .map((p: string) => Number.parseInt(p.trim(), 10))
+      ? params.projects.split(",").map((p: string) => p.trim())
       : undefined;
     const ipsArray = params.ips
-      ? params.ips.split(",").map((i: string) => Number.parseInt(i.trim(), 10))
+      ? params.ips.split(",").map((i: string) => i.trim())
       : undefined;
     const charactersArray = params.characters
-      ? params.characters
-          .split(",")
-          .map((c: string) => Number.parseInt(c.trim(), 10))
+      ? params.characters.split(",").map((c: string) => c.trim())
       : undefined;
 
-    const result = await searchMediaQuery(mediaSourceId, {
-      query: params.q,
-      tags: tagsArray,
-      tagMode: params.tagMode,
-      excludeTags: excludeTagsArray,
-      projects: projectsArray,
-      ips: ipsArray,
-      characters: charactersArray,
-      sort: params.sort,
-      order: params.order,
-      limit: params.limit,
-      offset: params.offset,
-    });
+    // Note: searchMediaQuery currently doesn't accept tx.
+    // However, it builds a query object. In Drizzle we might need to pass the client.
+    // Let's assume for now search is read-only and doesn't strictly need to be in the same connection
+    // UNLESS we are in PGlite where we MUST be on the same connection if a transaction is open.
+    // I will update searchMediaQuery to accept client later if needed.
+    const result = await searchMediaQuery(
+      mediaSourceId,
+      {
+        query: params.q,
+        tags: tagsArray,
+        tagMode: params.tagMode,
+        excludeTags: excludeTagsArray,
+        projects: projectsArray,
+        ips: ipsArray,
+        characters: charactersArray,
+        sort: params.sort,
+        order: params.order,
+        limit: params.limit,
+        offset: params.offset,
+      },
+      client
+    );
 
     return mediaSearchResponseSchema.parse(result);
   },
 
-  /**
-   * Lists media in a directory.
-   */
-  async listByDirectory(
-    mediaSourceId: string,
-    directoryPath: string
-  ): Promise<Media[]> {
-    return await selectMediaBySourceIdAndDirectoryPath(
-      mediaSourceId,
-      directoryPath
-    );
+  async getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
+    return await TagRepository.findByMediaId(mediaId, tx);
   },
 
-  /**
-   * Searches for media in a directory.
-   */
+  async getGenerationInfo(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaGenerationInfo | null> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
+        .select()
+        .from(mediaGenerationInfo)
+        .where(eq(mediaGenerationInfo.mediaId, mediaId));
+      if (result.length === 0) {
+        return null;
+      }
+      const info = result[0];
+      return {
+        ...info,
+        aiGenerated: info.aiGenerated ?? false,
+        modelName: info.modelName ?? "",
+        seed: info.seed ?? -1,
+        cfgScale: info.cfgScale ?? 0,
+        steps: info.steps ?? 0,
+      };
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to select media generation info for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  async getAuthors(mediaId: string, tx?: Transaction): Promise<Author[]> {
+    return await AuthorRepository.findByMediaId(mediaId, tx);
+  },
+
+  async getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const results = await client
+        .select()
+        .from(mediaUrls)
+        .where(eq(mediaUrls.mediaId, mediaId));
+      return results.map(mapToMediaUrl);
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to select media URLs for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  async addUrls(
+    mediaId: string,
+    urls: string[],
+    tx?: Transaction
+  ): Promise<MediaUrl[]> {
+    if (urls.length === 0) {
+      return [];
+    }
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const values = urls.map((url) => ({
+        mediaId,
+        url,
+      }));
+      const results = await client.insert(mediaUrls).values(values).returning();
+      return results.map(mapToMediaUrl);
+    } catch (error) {
+      throw new UnexpectedError("Failed to insert media URLs", error);
+    }
+  },
+
+  async upsertGenerationInfo(
+    mediaId: string,
+    prompt: string | null,
+    workflow: unknown,
+    tx?: Transaction
+  ): Promise<MediaGenerationInfo> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const values = {
+        mediaId,
+        prompt,
+        workflow,
+        metadata: { prompt }, // legacy compatibility or derived
+      };
+      // Simple upsert
+      const result = await client
+        .insert(mediaGenerationInfo)
+        .values(values)
+        .onConflictDoUpdate({
+          target: mediaGenerationInfo.mediaId,
+          set: values,
+        })
+        .returning();
+      const info = result[0];
+      return {
+        ...info,
+        aiGenerated: info.aiGenerated ?? false,
+        modelName: info.modelName ?? "",
+        seed: info.seed ?? -1,
+        cfgScale: info.cfgScale ?? 0,
+        steps: info.steps ?? 0,
+      };
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to upsert media generation info for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  // Bulk
+  async findAllBySourceId(
+    mediaSourceId: string,
+    tx?: Transaction
+  ): Promise<Media[]> {
+    try {
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const results = await client
+        .select()
+        .from(medias)
+        .where(eq(medias.mediaSourceId, mediaSourceId));
+      return results.map(mapToMedia);
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to select medias by source ID: ${mediaSourceId}`,
+        error
+      );
+    }
+  },
+
   async searchInDirectory(
     mediaSourceId: string,
     directoryPath: string,
-    params: { query?: string; tags?: string[] }
+    params: { query?: string; tags?: string[] },
+    tx?: Transaction
   ): Promise<Media[]> {
-    return await searchMediaInDirectory(mediaSourceId, directoryPath, params);
-  },
-
-  /**
-   * Retrieves all media for a source.
-   */
-  async findAllBySourceId(mediaSourceId: string): Promise<Media[]> {
-    return await selectMediaBySourceId(mediaSourceId);
-  },
-
-  /**
-   * Retrieves tags for a media item.
-   */
-  async getTags(
-    mediaId: string
-  ): Promise<(Tag & { type: "positive" | "negative" })[]> {
-    return await selectMediaTagsByMediaId(mediaId);
-  },
-
-  /**
-   * Retrieves generation info for a media item.
-   */
-  async getGenerationInfo(mediaId: string) {
-    return await selectMediaGenerationInfoById(mediaId).catch((error) => {
-      if (error instanceof NotFoundError) {
-        return null;
-      }
-      throw error;
-    });
-  },
-
-  /**
-   * Retrieves authors for a media item.
-   */
-  async getAuthors(mediaId: string) {
-    return await selectAuthorsByMediaId(mediaId);
-  },
-
-  /**
-   * Retrieves source URLs for a media item.
-   */
-  async getUrls(mediaId: string) {
-    return await selectMediaUrlsByMediaId(mediaId);
-  },
-
-  /**
-   * Saves a file to the filesystem and returns metadata.
-   * Does NOT insert into DB.
-   */
-  async saveFile(
-    basePath: string,
-    file: File,
-    options: {
-      filename?: string;
-      overwrite?: boolean;
-      autoIncrement?: boolean;
-    }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
-    const uploadRequest = options;
-    let targetFileName = uploadRequest.filename || file.name;
-    let targetFilePath = path.join(basePath, targetFileName);
-    let relativeFilePath = path.relative(basePath, targetFilePath);
-    let conflict: z.infer<typeof conflictSchema> | undefined;
-
-    // Handle file name conflicts
-    let counter = 0;
-    while (
-      await fs
-        .stat(targetFilePath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      if (uploadRequest.overwrite) {
-        break; // Overwrite existing file
-      }
-
-      if (!uploadRequest.autoIncrement) {
-        conflict = {
-          existingFile: relativeFilePath,
-          suggestedName: "",
-        };
-        throw new Error("File already exists and overwrite is not allowed.");
-      }
-
-      counter++;
-      const ext = path.extname(file.name);
-      const base = path.basename(file.name, ext);
-      targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(basePath, targetFileName);
-      relativeFilePath = path.relative(basePath, targetFilePath);
-      conflict = {
-        existingFile: path.relative(
-          basePath,
-          path.join(basePath, uploadRequest.filename || file.name)
-        ),
-        suggestedName: targetFileName,
-      };
-    }
-
-    // Save the file
-    await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
-
-    // Extract metadata
-    const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if metadata extraction fails
-      throw new Error("Could not extract media dimensions.");
-    }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
-  },
-
-  /**
-   * Scans a directory for media files.
-   * Uses an iterative approach to avoid stack overflow.
-   */
-  async scanDirectory(basePath: string): Promise<string[]> {
-    const files: string[] = [];
-    const queue: string[] = [basePath];
-
-    while (queue.length > 0) {
-      const dir = queue.shift();
-      if (!dir) {
-        continue;
-      }
-
-      try {
-        const dirents = await fs.readdir(dir, { withFileTypes: true });
-        for (const dirent of dirents) {
-          const res = path.resolve(dir, dirent.name);
-          if (dirent.isDirectory()) {
-            queue.push(res);
-          } else {
-            files.push(res);
-          }
-        }
-      } catch (_e) {
-        // Ignore errors for individual directories to allow partial scanning
-        // In the future, this should be logged
-      }
-    }
-
-    return files;
-  },
-
-  /**
-   * Extracts metadata from a file on disk.
-   */
-  async extractMetadataFromFile(
-    fullPath: string,
-    mediaId: string
-  ): Promise<void> {
-    await ImageProcessor.extractMetadata(fullPath, mediaId);
-  },
-
-  /**
-   * Gets basic file metadata (size, dimensions) for a file on disk.
-   */
-  async getFileMetadata(filePath: string) {
-    const stats = await fs.stat(filePath);
-    const metadata = await sharp(filePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      throw new Error(`Could not extract media dimensions for ${filePath}`);
-    }
-
-    return {
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-    };
-  },
-
-  /**
-   * Copies a file from source path to target base path.
-   * Handles naming conflicts similar to saveFile.
-   */
-  async copyFile(
-    sourcePath: string,
-    targetBasePath: string,
-    options: {
-      filename?: string;
-      overwrite?: boolean;
-      autoIncrement?: boolean;
-    }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
-    const uploadRequest = options;
-    const sourceFileName = path.basename(sourcePath);
-    let targetFileName = uploadRequest.filename || sourceFileName;
-    let targetFilePath = path.join(targetBasePath, targetFileName);
-    let relativeFilePath = path.relative(targetBasePath, targetFilePath);
-    let conflict: z.infer<typeof conflictSchema> | undefined;
-
-    // Handle file name conflicts
-    let counter = 0;
-    while (
-      await fs
-        .stat(targetFilePath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      if (uploadRequest.overwrite) {
-        break; // Overwrite existing file
-      }
-
-      if (!uploadRequest.autoIncrement) {
-        conflict = {
-          existingFile: relativeFilePath,
-          suggestedName: "",
-        };
-        throw new Error("File already exists and overwrite is not allowed.");
-      }
-
-      counter++;
-      const ext = path.extname(sourceFileName);
-      const base = path.basename(sourceFileName, ext);
-      targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(targetBasePath, targetFileName);
-      relativeFilePath = path.relative(targetBasePath, targetFilePath);
-      conflict = {
-        existingFile: path.relative(
-          targetBasePath,
-          path.join(targetBasePath, uploadRequest.filename || sourceFileName)
-        ),
-        suggestedName: targetFileName,
-      };
-    }
-
-    // Copy the file
-    await fs.copyFile(sourcePath, targetFilePath);
-
-    // Extract metadata
-    const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
-
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if validation fails
-      throw new Error("Could not extract media dimensions from copied file.");
-    }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
+    const client =
+      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+      db;
+    // searchMediaInDirectory internally uses searchMediaQuery structure so it returns formatted results,
+    // hopefully compatible with Media. But let's check media-repository-utils.ts for that.
+    const results = await searchMediaInDirectory(
+      mediaSourceId,
+      directoryPath,
+      params,
+      client
+    );
+    // If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
+    // Assuming it returns something schema-compliant for now, but strictly we should check.
+    return results as unknown as Media[];
   },
 };

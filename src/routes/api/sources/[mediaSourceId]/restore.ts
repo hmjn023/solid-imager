@@ -236,9 +236,12 @@ async function restoreMediaItem(mediaSourceId: string, item: RestoreItem) {
     .insert(medias)
     .values({
       ...mediaValues,
+      // Default to 0 if width/height are undefined, assuming schema requires number
+      width: mediaValues.width ?? 0,
+      height: mediaValues.height ?? 0,
       indexedAt: new Date(),
     })
-    .returning({ id: medias.id });
+    .returning();
   return inserted[0].id;
 }
 

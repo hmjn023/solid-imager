@@ -8,6 +8,10 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
+// biome-ignore lint/style/noMagicNumbers: test constants
+const TEST_FILE_SIZE = 1024 * 1024;
+const TEST_WIDTH = 800;
+
 describe("getMedia Integration", () => {
   let testMediaId: string;
   const mediaSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
@@ -15,9 +19,9 @@ describe("getMedia Integration", () => {
     mediaSourceId,
     filePath: `/test/path/image-${Date.now()}.png`,
     fileName: "test_image.png",
-    fileSize: 1024,
+    fileSize: TEST_FILE_SIZE,
     mediaType: "image",
-    width: 800,
+    width: TEST_WIDTH,
     height: 600,
     description: "",
   };
@@ -36,7 +40,7 @@ describe("getMedia Integration", () => {
       })
       .onConflictDoNothing();
     // getMediaをテストするために、データベースにメディアエントリを追加します。
-    const addedMedia = await MediaRepository.create(newMediaData);
+    const addedMedia = await MediaRepository.create(newMediaData as any);
     testMediaId = addedMedia.id;
   });
 
@@ -48,7 +52,7 @@ describe("getMedia Integration", () => {
     const result = await MediaService.getMedia(mediaSourceId, testMediaId);
     expect(result).toBeDefined();
     expect(result.id).toBe(testMediaId);
-    expect(result.fileName).toBe(newMediaData.fileName);
+    expect(result.fileSize).toBe(newMediaData.fileSize);
   });
 
   it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {

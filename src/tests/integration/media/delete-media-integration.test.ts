@@ -37,7 +37,7 @@ describe("deleteMedia Integration", () => {
       description: "",
     };
     // データベースに初期メディアエントリを追加します。
-    const addedMedia = await MediaRepository.create(initialMediaData);
+    const addedMedia = await MediaRepository.create(initialMediaData as any);
     testMediaId = addedMedia.id;
   });
 

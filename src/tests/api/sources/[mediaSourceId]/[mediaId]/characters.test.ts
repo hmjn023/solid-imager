@@ -43,14 +43,19 @@ describe("GET /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
 
 describe("POST /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
   it("should add character to media", async () => {
-    const mockCharacter = { id: 1, name: "Test Character" };
+    const mockCharacter = {
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      name: "Test Character",
+    };
     (CharacterService.addCharacterToMedia as any).mockResolvedValue(
       mockCharacter
     );
 
     const request = new Request("http://localhost", {
       method: "POST",
-      body: JSON.stringify({ characterId: 1 }),
+      body: JSON.stringify({
+        characterId: "123e4567-e89b-42d3-a456-426614174002",
+      }),
     });
 
     const response = await POST({ params: mockParams, request } as any);
@@ -72,14 +77,19 @@ describe("POST /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
 
 describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/characters", () => {
   it("should remove character from media", async () => {
-    const mockCharacter = { id: 1, name: "Test Character" };
+    const mockCharacter = {
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      name: "Test Character",
+    };
     (CharacterService.removeCharacterFromMedia as any).mockResolvedValue(
       mockCharacter
     );
 
     const request = new Request("http://localhost", {
       method: "DELETE",
-      body: JSON.stringify({ characterId: 1 }),
+      body: JSON.stringify({
+        characterId: "123e4567-e89b-42d3-a456-426614174002",
+      }),
     });
 
     const response = await DELETE({ params: mockParams, request } as any);

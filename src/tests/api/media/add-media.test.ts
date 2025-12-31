@@ -11,7 +11,7 @@ describe("addMedia Contract", () => {
       mediaSourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/image.png",
       fileName: "image.png", // Added missing fileName
-      size: 1024, // Changed from fileSize to size
+      fileSize: 1024,
       createdAt: new Date(),
       updatedAt: new Date(),
       mediaType: "image" as const,
@@ -33,7 +33,7 @@ describe("addMedia Contract", () => {
       mediaType: newMediaData.mediaType,
       width: newMediaData.width,
       height: newMediaData.height,
-      fileSize: newMediaData.size,
+      fileSize: newMediaData.fileSize,
       createdAt: newMediaData.createdAt,
       modifiedAt: newMediaData.updatedAt,
       indexedAt: newMediaData.updatedAt,
@@ -45,7 +45,7 @@ describe("addMedia Contract", () => {
     expect(result.id).toBeTypeOf("string");
     expect(result.filePath).toBe(newMediaData.filePath);
     expect(result.fileName).toBe(newMediaData.fileName);
-    expect(result.fileSize).toBe(newMediaData.size);
+    expect(result.fileSize).toBe(newMediaData.fileSize);
     expect(result.createdAt).toEqual(newMediaData.createdAt);
     expect(result.modifiedAt).toEqual(newMediaData.updatedAt);
     expect(result.mediaType).toBe(newMediaData.mediaType);
@@ -69,7 +69,7 @@ describe("addMedia Contract", () => {
       mediaSourceId: "b0000000-0000-4000-8000-000000000000",
       filePath: "/path/to/test/duplicate.png",
       fileName: "duplicate.png",
-      size: 1024,
+      fileSize: 1024,
       createdAt: new Date(),
       updatedAt: new Date(),
       mediaType: "image" as const,

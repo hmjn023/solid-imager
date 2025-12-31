@@ -67,8 +67,8 @@ export const insertMedia = vi.fn((media: NewMedia) => {
     modifiedAt: media.modifiedAt || new Date(),
     indexedAt: media.indexedAt || new Date(),
     description: media.description || null,
-    sourceUrl: media.sourceUrl || null,
     fileSize: media.fileSize || null,
+    status: media.status || "active",
   };
   mockDbState.medias.push(newEntry);
   return Promise.resolve([newEntry]);

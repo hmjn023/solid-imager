@@ -4,6 +4,11 @@ import { TagService } from "~/application/services/tag-service";
 import { newTagSchema } from "~/domain/tags/schemas";
 import { logger } from "~/infrastructure/logger";
 
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 /**
  * @swagger
  * /api/tags:
@@ -28,7 +33,7 @@ export async function GET() {
   try {
     const tags = await TagService.getAllTags();
     return new Response(JSON.stringify(tags), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -70,9 +75,11 @@ export async function POST({ request }: APIEvent) {
   try {
     const data = await request.json();
     const validatedData = newTagSchema.parse(data);
+
     const newTag = await TagService.createTag(validatedData);
+
     return new Response(JSON.stringify(newTag), {
-      status: 201,
+      status: HTTP_CREATED,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

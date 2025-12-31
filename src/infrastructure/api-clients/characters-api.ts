@@ -16,7 +16,7 @@ export function fetchAllCharacters() {
 export function createCharacter(data: {
   name: string;
   description?: string;
-  ipId?: number;
+  ipId?: string;
 }) {
   return apiRequest(API_ENDPOINTS.characters, characterSchema, {
     method: "POST",
@@ -26,8 +26,8 @@ export function createCharacter(data: {
 }
 
 export function updateCharacter(
-  id: number,
-  data: { name?: string; description?: string; ipId?: number }
+  id: string,
+  data: { name?: string; description?: string; ipId?: string }
 ) {
   return apiRequest(`${API_ENDPOINTS.characters}/${id}`, characterSchema, {
     method: "PATCH",
@@ -36,7 +36,7 @@ export function updateCharacter(
   });
 }
 
-export function deleteCharacter(id: number) {
+export function deleteCharacter(id: string) {
   return apiRequest(`${API_ENDPOINTS.characters}/${id}`, characterSchema, {
     method: "DELETE",
   });
@@ -52,7 +52,7 @@ export function fetchCharactersForMedia(sourceId: string, mediaId: string) {
 export function addCharacterToMedia(
   sourceId: string,
   mediaId: string,
-  characterId: number
+  characterId: string
 ) {
   return apiRequest(API_ENDPOINTS.mediaCharacters(sourceId, mediaId), z.any(), {
     method: "POST",
@@ -64,7 +64,7 @@ export function addCharacterToMedia(
 export function removeCharacterFromMedia(
   sourceId: string,
   mediaId: string,
-  characterId: number
+  characterId: string
 ) {
   return apiRequest(API_ENDPOINTS.mediaCharacters(sourceId, mediaId), z.any(), {
     method: "DELETE",

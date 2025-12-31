@@ -111,7 +111,7 @@ const mockDb = {
 
 // 統合テストファイルのパターンを判定
 const isIntegrationTest = (filePath: string) =>
-  filePath.includes("/integration/");
+  filePath.includes("/integration/") || filePath.includes("/tests/api/");
 
 // ~/infrastructure/db/index のモックを条件付きで設定
 vi.mock("~/infrastructure/db/index", async (_importOriginal) => {

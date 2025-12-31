@@ -128,3 +128,8 @@ bun run gen:spec
         // z.infer を使って型をエクスポート
         export type UserData = z.infer<typeof userDataSchema>;
         ```
+-   **リポジトリのルール (Explicit Mapping):**
+    -   **明示的なマッピング:** データベースからの戻り値を `as unknown as Type` でキャストすることを禁止します。必ず `mapToDomain` などのヘルパー関数を作成し、明示的にマッピングしてください。これにより、DBスキーマの変更による型不整合を防ぎます。
+-   **APIレスポンスのセキュリティ:**
+    -   **Safe DTO:** パスワードや秘密鍵などの機密情報を含むエンティティをそのままAPIレスポンスとして返さないでください。必ず `Safe` プレフィックスのついたスキーマ（例: `SafeMediaSource`）にマッピングし、機密情報を除外してから返却してください。
+

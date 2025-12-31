@@ -4,7 +4,7 @@
  */
 
 import path from "node:path";
-import chokidar from "chokidar";
+import chokidar, { type FSWatcher } from "chokidar";
 
 // Regex to ignore dotfiles in file system watcher
 const IGNORE_DOTFILES_REGEX = /(^|[/\\])\../;
@@ -15,7 +15,7 @@ type SseClient = {
 };
 
 type FileWatcher = {
-  watcher: chokidar.FSWatcher;
+  watcher: FSWatcher;
   path: string;
 };
 

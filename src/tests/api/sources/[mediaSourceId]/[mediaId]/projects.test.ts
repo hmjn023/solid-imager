@@ -43,12 +43,17 @@ describe("GET /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
 
 describe("POST /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
   it("should add project to media", async () => {
-    const mockProject = { id: 1, name: "Test Project" };
+    const mockProject = {
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      name: "Test Project",
+    };
     (ProjectService.addProjectToMedia as any).mockResolvedValue(mockProject);
 
     const request = new Request("http://localhost", {
       method: "POST",
-      body: JSON.stringify({ projectId: 1 }),
+      body: JSON.stringify({
+        projectId: "123e4567-e89b-42d3-a456-426614174002",
+      }),
     });
 
     const response = await POST({ params: mockParams, request } as any);
@@ -70,14 +75,19 @@ describe("POST /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
 
 describe("DELETE /api/sources/{mediaSourceId}/{mediaId}/projects", () => {
   it("should remove project from media", async () => {
-    const mockProject = { id: 1, name: "Test Project" };
+    const mockProject = {
+      id: "123e4567-e89b-42d3-a456-426614174002",
+      name: "Test Project",
+    };
     (ProjectService.removeProjectFromMedia as any).mockResolvedValue(
       mockProject
     );
 
     const request = new Request("http://localhost", {
       method: "DELETE",
-      body: JSON.stringify({ projectId: 1 }),
+      body: JSON.stringify({
+        projectId: "123e4567-e89b-42d3-a456-426614174002",
+      }),
     });
 
     const response = await DELETE({ params: mockParams, request } as any);

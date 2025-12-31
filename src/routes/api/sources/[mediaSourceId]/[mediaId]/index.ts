@@ -1,6 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
+import { ResourceNotFoundError } from "~/domain/errors";
 import { updateMediaRequestSchema } from "~/domain/media/schemas";
 
 // パスパラメータのスキーマ
@@ -70,7 +71,7 @@ export async function GET({ params }: APIEvent) {
       headers: { "Content-Type": `image/${media.mediaType}` },
     });
   } catch (error) {
-    if (error instanceof Error && error.message.includes("not found")) {
+    if (error instanceof ResourceNotFoundError) {
       return new Response("Media not found", { status: 404 });
     }
     return new Response("Internal Server Error", { status: 500 });
@@ -140,8 +141,21 @@ export async function PUT({ params, request }: APIEvent) {
   }
   const data = parsedBody.data;
 
-  const result = await MediaService.updateMedia(mediaSourceId, mediaId, data);
-  return result;
+  try {
+    const result = await MediaService.updateMedia(mediaSourceId, mediaId, data);
+    return result;
+  } catch (error) {
+    if (error instanceof ResourceNotFoundError) {
+      return new Response(JSON.stringify({ error: "Media not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ error: "Internal server error" }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
 
 /**
@@ -191,7 +205,7 @@ export async function DELETE({ params }: APIEvent) {
     await MediaService.deleteMedia(mediaSourceId, mediaId);
     return new Response(null, { status: 204 });
   } catch (error) {
-    if (error instanceof Error && error.message === "Media not found") {
+    if (error instanceof ResourceNotFoundError) {
       return new Response(JSON.stringify({ error: "Media not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },

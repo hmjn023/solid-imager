@@ -4,6 +4,11 @@ import { CategoryService } from "~/application/services/category-service";
 import { newCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 
+const HTTP_OK = 200;
+const HTTP_CREATED = 201;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 /**
  * @swagger
  * /api/categories:
@@ -28,7 +33,7 @@ export async function GET() {
   try {
     const categories = await CategoryService.getAllCategories();
     return new Response(JSON.stringify(categories), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -70,9 +75,11 @@ export async function POST({ request }: APIEvent) {
   try {
     const data = await request.json();
     const validatedData = newCategorySchema.parse(data);
+
     const newCategory = await CategoryService.createCategory(validatedData);
+
     return new Response(JSON.stringify(newCategory), {
-      status: 201,
+      status: HTTP_CREATED,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {

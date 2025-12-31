@@ -25,7 +25,7 @@ async function main() {
   console.log("Tags received:", JSON.stringify(tags, null, 2));
 
   console.log("Requesting CCIP feature...");
-  const feature = await taggingService.getCCIPFeature(imageBuffer.buffer as ArrayBuffer);
+  const feature = await taggingService.getCcipFeature(imageBuffer.buffer as ArrayBuffer);
   console.log("CCIP Feature length:", feature.feature.length);
 }
 

@@ -4,6 +4,12 @@ import { CategoryService } from "~/application/services/category-service";
 import { updateCategorySchema } from "~/domain/categories/schemas";
 import { logger } from "~/infrastructure/logger";
 
+const HTTP_OK = 200;
+const HTTP_NO_CONTENT = 204;
+const _HTTP_BAD_REQUEST = 400;
+const _HTTP_NOT_FOUND = 404;
+const _HTTP_INTERNAL_SERVER_ERROR = 500;
+
 // パスパラメータ 'id' のスキーマ
 const IdParamSchema = z.object({
   id: z.string().uuid(), // UUID v4 を想定します。
@@ -44,9 +50,11 @@ export async function GET({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
+
     const category = await CategoryService.getCategoryDetails(id);
+
     return new Response(JSON.stringify(category), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -119,8 +127,9 @@ export async function PUT({ params, request }: APIEvent) {
       id,
       validatedBody
     );
+
     return new Response(JSON.stringify(updatedCategory), {
-      status: 200,
+      status: HTTP_OK,
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
@@ -175,10 +184,11 @@ export async function DELETE({ params }: APIEvent) {
   try {
     const parsedParams = IdParamSchema.parse(params);
     const { id } = parsedParams;
-    const result = await CategoryService.deleteCategory(id);
-    return new Response(JSON.stringify(result), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
+
+    await CategoryService.deleteCategory(id);
+
+    return new Response(null, {
+      status: HTTP_NO_CONTENT,
     });
   } catch (error) {
     if (error instanceof ZodError) {

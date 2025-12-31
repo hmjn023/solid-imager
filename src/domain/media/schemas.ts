@@ -20,9 +20,9 @@ export const addMediaRequestSchema = z.object({
   mediaSourceId: z.uuid({ version: "v4", message: "Invalid source ID format" }),
   filePath: z.string().min(1, "File path is required"),
   fileName: z.string().min(1, "File name is required"),
-  size: z.number().int().positive("File size must be a positive integer"),
+  fileSize: z.number().int().positive("File size must be a positive integer"),
   createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
   mediaType: mediaTypeSchema,
   description: z.string().nullable(),
   sourceUrls: z.array(z.string().url()).optional(),
@@ -45,13 +45,14 @@ export type ImageMetadataComment = z.infer<typeof imageMetadataCommentSchema>;
 export const updateMediaRequestSchema = z.object({
   filePath: z.string().min(1, "File path cannot be empty").optional(),
   fileName: z.string().min(1, "File name cannot be empty").optional(),
-  size: z
+  fileSize: z
     .number()
     .int()
     .positive("File size must be a positive integer")
     .optional(),
   createdAt: z.coerce.date().optional(),
-  updatedAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
+  updatedAt: z.coerce.date().optional(), // Keeping updatedAt for BC if needed, but modifiedAt is primary
   mediaType: mediaTypeSchema.optional(),
   width: z
     .number()
@@ -147,6 +148,13 @@ export const authorSchema = z.object({
 
 export type Author = z.infer<typeof authorSchema>;
 
+export const newAuthorSchema = z.object({
+  name: z.string(),
+  accountId: z.string().nullable().optional(),
+});
+
+export type NewAuthor = z.infer<typeof newAuthorSchema>;
+
 export const mediaUrlSchema = z.object({
   id: z.uuid({ version: "v4" }),
   mediaId: z.uuid({ version: "v4" }),
@@ -158,7 +166,7 @@ export const mediaUrlSchema = z.object({
 export type MediaUrl = z.infer<typeof mediaUrlSchema>;
 
 export const tagSchema = z.object({
-  id: z.number(),
+  id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
   attribute: z.string().nullable(),
@@ -169,6 +177,7 @@ export const tagSchema = z.object({
   updatedAt: z.coerce.date(),
   type: z.enum(["positive", "negative"]), // from mediaTags
 });
+export type MediaTag = z.infer<typeof tagSchema>;
 
 export const mediaGenerationInfoSchema = z.object({
   mediaId: z.uuid({ version: "v4" }),
@@ -186,6 +195,7 @@ export const mediaGenerationInfoSchema = z.object({
   cfgScale: z.number(),
   steps: z.number(),
 });
+export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
 // Search schemas
 export const mediaSearchRequestSchema = z.object({

@@ -7,18 +7,13 @@
 import sharp from "sharp";
 import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
-import { upsertMediaGenerationInfo } from "~/infrastructure/db/queries/media-generation-info";
-import { insertMediaTags } from "~/infrastructure/db/queries/tags";
-
-/**
- * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
- */
+import type { IImageProcessor } from "~/domain/services/image-processor";
 import { logger } from "~/infrastructure/logger";
 
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
-export const ImageProcessor = {
+export class LocalImageProcessor implements IImageProcessor {
   /**
    * Generates a thumbnail for a given image.
    * @param {string} mediaPath - The path to the source image file.
@@ -36,18 +31,14 @@ export const ImageProcessor = {
       .resize(size, size, { fit: "inside", withoutEnlargement: true })
       .webp({ quality })
       .toFile(outputPath);
-  },
+  }
 
   /**
    * Extracts metadata from an image file.
    * @param {string} mediaPath - The path to the source image file.
-   * @param {string} mediaId - The ID of the media item.
    * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
    */
-  async extractMetadata(
-    mediaPath: string,
-    mediaId: string
-  ): Promise<{
+  async extractMetadata(mediaPath: string): Promise<{
     tags: { name: string; type: "positive" | "negative" }[];
     prompt: unknown;
     workflow: unknown;
@@ -83,29 +74,15 @@ export const ImageProcessor = {
       }
 
       const { tags, prompt, workflow } = extractDataFromComments(comments);
-
-      // Store generation info
-      await upsertMediaGenerationInfo(
-        mediaId,
-        // Ensure prompt is stored as a string if it's an object
-        typeof prompt === "object" ? JSON.stringify(prompt) : prompt,
-        workflow as object | null
-      );
-
-      // Store tags
-      if (tags.length > 0) {
-        await insertMediaTags(mediaId, tags, "comfyui_workflow");
-      }
-
       return { tags, prompt, workflow };
     } catch (error) {
       logger.error(
-        { err: error, mediaId },
+        { err: error, mediaPath },
         "[ImageProcessor] Failed to extract metadata"
       );
       return { tags: [], prompt: null, workflow: null };
     }
-  },
+  }
 
   /**
    * Retrieves the dimensions (width and height) of an image.
@@ -117,8 +94,10 @@ export const ImageProcessor = {
   ): Promise<{ width: number; height: number }> {
     // TODO: Get image dimensions
     throw new Error("Not implemented");
-  },
-};
+  }
+}
+
+export const ImageProcessor = new LocalImageProcessor();
 
 /**
  * Provides video processing functionalities such as thumbnail generation from video.

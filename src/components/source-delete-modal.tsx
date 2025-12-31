@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { Portal } from "solid-js/web";
-import type { MediaSourceInfo } from "~/domain/sources/types";
+import type { MediaSourceInfo } from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceDeleteModal component.
