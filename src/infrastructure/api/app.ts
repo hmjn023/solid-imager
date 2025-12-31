@@ -19,6 +19,7 @@ const openApiGenerator = new OpenAPIGenerator();
 export const app = new Elysia()
   .use(
     swagger({
+      path: "/api/swagger",
       documentation: {
         info: {
           title: "Solid Imager API",
