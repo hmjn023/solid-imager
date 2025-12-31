@@ -20,6 +20,9 @@ export const app = new Elysia()
   .use(
     swagger({
       path: "/api/swagger",
+      swaggerOptions: {
+        url: "/api/swagger/json",
+      },
       documentation: {
         info: {
           title: "Solid Imager API",
