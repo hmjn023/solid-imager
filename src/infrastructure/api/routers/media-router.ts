@@ -45,6 +45,21 @@ export const mediaRouter = {
     }),
 
   /**
+   * Get media details (with tags, category, IP, characters, etc.)
+   */
+  getDetails: os
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        mediaId: z.string().uuid(),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.getMediaDetails(input.sourceId, input.mediaId)
+    ),
+
+  /**
    * Get media file content (binary)
    * Note: This returns the actual image/video file
    */
@@ -64,6 +79,21 @@ export const mediaRouter = {
       // This endpoint will remain as /api/sources/:id/:mediaId
       return imageBuffer;
     }),
+
+  /**
+   * Get tags for a media file
+   */
+  getTags: os
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        mediaId: z.string().uuid(),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.getMediaTags(input.sourceId, input.mediaId)
+    ),
 
   /**
    * Update media metadata
