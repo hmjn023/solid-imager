@@ -373,6 +373,18 @@ export async function createCollection(data: unknown): Promise<Collection> {
 2.  ドメインで定義されたインターフェースを実装
 3.  データ構造にドメイン型を使用
 
+**データ永続化とリポジトリ**:
+
+リポジトリパターンを実装する際は、以下のルールを厳守してください：
+
+1.  **Explicit Mapping (明示的なマッピング)**:
+    - データベースエンティティを `as unknown as DomainEntity` でキャストしてはいけません。
+    - 必ず `mapToDomain(dbEntity): DomainEntity` のようなマッパー関数を実装し、明示的にフィールドを変換してください。
+    - これにより、データベーススキーマの変更が意図せずドメインモデルに波及するのを防ぎます。
+
+2.  **Domain Errors**:
+    - リポジトリ内では、`NotFoundError` などのインフラストラクチャ固有のエラーをキャッチし、ドメイン層で定義された `ResourceNotFoundError` などのドメインエラーに変換して再スローしてください。
+
 **例**: 新しいストレージドライバーの追加
 ```typescript
 // src/infrastructure/storage/dropbox.ts
