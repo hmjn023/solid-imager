@@ -1,8 +1,4 @@
-/**
- * SSE Manager
- * Server-Sent Events management for real-time updates
- */
-
+import { EventEmitter } from "node:events";
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
 
@@ -25,10 +21,17 @@ const clientsMap = new Map<string, Set<SseClient>>();
 // mediaSourceId -> FileWatcher
 const watchersMap = new Map<string, FileWatcher>();
 
+// Event emitter for internal subscriptions (oRPC, etc.)
+const eventEmitter = new EventEmitter();
+
 /**
  * Manages Server-Sent Events (SSE) for real-time updates to connected clients.
  */
 export const SseManager = {
+  /**
+   * Internal event emitter
+   */
+  emitter: eventEmitter,
   /**
    * Adds a new client to the SSE manager for a specific media source.
    * @param {string} mediaSourceId - The ID of the media source.
@@ -77,6 +80,9 @@ export const SseManager = {
    * @param {unknown} data - The data payload of the event.
    */
   sendEvent(mediaSourceId: string, eventType: string, data: unknown): void {
+    // Notify through internal emitter first
+    eventEmitter.emit(`event:${mediaSourceId}`, { event: eventType, data });
+
     const clients = clientsMap.get(mediaSourceId);
     if (!clients) {
       return;

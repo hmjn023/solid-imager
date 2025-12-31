@@ -77,13 +77,8 @@ export function fetchSourceDump(
   });
 }
 
-/**
- * Restores a media source from a dump
- * @param id - Media source ID
- * @param data - The dump data to restore (JSON object)
- * @returns Restore result
- */
-export function restoreSource(id: string, data: unknown) {
+// biome-ignore lint/suspicious/noExplicitAny: complex dump structure
+export function restoreSource(id: string, data: any) {
   return orpc.sources.restore({ id, data });
 }
 

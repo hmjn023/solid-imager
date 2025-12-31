@@ -1,5 +1,6 @@
 import { os } from "@orpc/server";
 import { z } from "zod";
+import { BackupService } from "~/application/services/backup-service";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import type { MediaSource } from "~/domain/repositories/source-repository";
@@ -7,6 +8,7 @@ import {
   mediaSourceInfoSchema,
   type SafeMediaSource,
 } from "~/domain/sources/schemas";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 
 /**
@@ -113,26 +115,41 @@ export const sourcesRouter = {
     )
     .handler(async ({ input }) => {
       await MediaSourceService.deleteSource(input.id);
+
+      // ファイル監視の停止
+      import("~/infrastructure/jobs/file-watcher-service")
+        .then((module) => {
+          module.FileWatcherService.stopMonitoring(input.id).catch((error) => {
+            logger.error(
+              { err: error, sourceId: input.id },
+              "Failed to stop file watcher"
+            );
+          });
+        })
+        .catch((error) => {
+          logger.error(
+            { err: error, sourceId: input.id },
+            "Failed to load file watcher service"
+          );
+        });
+
       return { success: true };
     }),
 
   /**
    * Restores a media source from a dump
-   * NOTE: For now, this is a placeholder/delegate
    */
   restore: os
     .input(
       z.object({
         id: z.string().uuid(),
-        data: z.any(),
+        data: z.array(z.any()),
       })
     )
-    .handler(({ input }) => {
-      // TODO: Move restoration logic to a service
-      throw new Error(
-        `Restoration via oRPC not implemented for source ${input.id}. Use REST API.`
-      );
-    }),
+    .handler(
+      async ({ input }) =>
+        await BackupService.restoreSource(input.id, input.data)
+    ),
 
   /**
    * Imports a media source from a Zip file
@@ -144,10 +161,54 @@ export const sourcesRouter = {
         file: z.instanceof(File),
       })
     )
-    .handler(({ input }) => {
-      // TODO: Move import logic to a service
-      throw new Error(
-        `Import via oRPC not implemented for source ${input.id}. Use REST API.`
-      );
+    .handler(
+      async ({ input }) =>
+        await BackupService.importSourceZip(input.id, input.file)
+    ),
+
+  /**
+   * Real-time events stream for a media source
+   */
+  events: os
+    .input(z.object({ id: z.string().uuid() }))
+    .handler(async function* ({ input, signal }) {
+      // Yield initial connection event
+      yield { event: "connected", data: "connected" };
+
+      // Queue for events
+      // biome-ignore lint/suspicious/noExplicitAny: SSE payload
+      const queue: { event: string; data: any }[] = [];
+      let resolve: (() => void) | null = null;
+
+      // biome-ignore lint/suspicious/noExplicitAny: SSE payload is dynamic
+      const onEvent = (payload: { event: string; data: any }) => {
+        queue.push(payload);
+        if (resolve) {
+          resolve();
+          resolve = null;
+        }
+      };
+
+      const eventName = `event:${input.id}`;
+      SseManager.emitter.on(eventName, onEvent);
+
+      try {
+        while (!signal?.aborted) {
+          if (queue.length === 0) {
+            await new Promise<void>((r) => {
+              resolve = r as unknown as () => void;
+            });
+          }
+
+          while (queue.length > 0) {
+            const item = queue.shift();
+            if (item) {
+              yield item;
+            }
+          }
+        }
+      } finally {
+        SseManager.emitter.off(eventName, onEvent);
+      }
     }),
 };
