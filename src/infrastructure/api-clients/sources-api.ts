@@ -1,17 +1,22 @@
 /**
  * Media Sources API Client
  * Handles all API calls related to media sources
+ *
+ * NOTE: This file is being migrated to use oRPC.
+ * - list, get, create, update, delete: Migrated to oRPC ✅
+ * - dump, restore, import: Still using REST API (will migrate later)
  */
 
 import { z } from "zod";
 import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { apiBlobRequest, apiRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";
 
 /**
  * Schema for media source list response
  */
-const mediaSourceListSchema = z.array(mediaSourceInfoSchema);
+const _mediaSourceListSchema = z.array(mediaSourceInfoSchema);
 
 /**
  * Schema for restore response
@@ -35,7 +40,16 @@ const importResponseSchema = z.object({
  * @returns Array of media sources
  */
 export function fetchMediaSources() {
-  return apiRequest(API_ENDPOINTS.sources, mediaSourceListSchema);
+  return orpc.sources.list();
+}
+
+/**
+ * Fetches a single media source by ID
+ * @param id - Media source ID
+ * @returns Media source
+ */
+export function fetchMediaSource(id: string) {
+  return orpc.sources.get({ id });
 }
 
 /**
@@ -44,11 +58,7 @@ export function fetchMediaSources() {
  * @returns Created media source
  */
 export function createMediaSource(data: unknown) {
-  return apiRequest(API_ENDPOINTS.sources, mediaSourceInfoSchema, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.sources.create(data as z.infer<typeof mediaSourceInfoSchema>);
 }
 
 /**
@@ -58,10 +68,9 @@ export function createMediaSource(data: unknown) {
  * @returns Updated media source
  */
 export function updateMediaSource(id: string, data: unknown) {
-  return apiRequest(API_ENDPOINTS.sourceDetail(id), mediaSourceInfoSchema, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
+  return orpc.sources.update({
+    id,
+    data: data as Partial<z.infer<typeof mediaSourceInfoSchema>>,
   });
 }
 
@@ -70,11 +79,7 @@ export function updateMediaSource(id: string, data: unknown) {
  * @param id - Media source ID
  */
 export async function deleteMediaSource(id: string): Promise<void> {
-  // DELETE requests typically don't return data, so we use a simple schema
-  const voidSchema = z.unknown();
-  await apiRequest(API_ENDPOINTS.sourceDetail(id), voidSchema, {
-    method: "DELETE",
-  });
+  await orpc.sources.delete({ id });
 }
 
 /**

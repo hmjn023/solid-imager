@@ -1,4 +1,5 @@
 import { os } from "@orpc/server";
+import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import type { MediaSource } from "~/domain/repositories/source-repository";
@@ -38,6 +39,20 @@ export const sourcesRouter = {
     return sources.map(toSafeMediaSource);
   }),
 
+  get: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+      })
+    )
+    .handler(async ({ input }) => {
+      const [source] = await MediaSourceService.fetchSourceById(input.id);
+      if (!source) {
+        throw new Error(`Source not found: ${input.id}`);
+      }
+      return toSafeMediaSource(source);
+    }),
+
   create: os.input(mediaSourceInfoSchema).handler(async ({ input }) => {
     const result = await MediaSourceService.createSource(input);
     const createdSource = result[0];
@@ -71,4 +86,30 @@ export const sourcesRouter = {
 
     return toSafeMediaSource(createdSource);
   }),
+
+  update: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        data: mediaSourceInfoSchema.partial(),
+      })
+    )
+    .handler(async ({ input }) => {
+      const result = await MediaSourceService.updateSource(
+        input.id,
+        input.data
+      );
+      return toSafeMediaSource(result[0]);
+    }),
+
+  delete: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+      })
+    )
+    .handler(async ({ input }) => {
+      await MediaSourceService.deleteSource(input.id);
+      return { success: true };
+    }),
 };
