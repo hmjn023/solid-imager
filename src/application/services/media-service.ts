@@ -494,17 +494,26 @@ export class MediaServiceImpl {
 
     // 1. Get Source Media and Source Info
     const sourceMedia = await this.mediaRepository.findById(
-      validatedSourceMediaId
+      validatedSourceMediaId,
+      tx
     );
     if (!sourceMedia) {
       throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
     }
 
+    // Get source media metadata (authors, URLs)
+    const [sourceAuthors, sourceUrls] = await Promise.all([
+      this.mediaRepository.getAuthors(validatedSourceMediaId, tx),
+      this.mediaRepository.getUrls(validatedSourceMediaId, tx),
+    ]);
+
     const sourceSource = await this.sourceRepository.findById(
-      sourceMedia.mediaSourceId
+      sourceMedia.mediaSourceId,
+      tx
     );
     const targetSource = await this.sourceRepository.findById(
-      validatedTargetSourceId
+      validatedTargetSourceId,
+      tx
     );
 
     if (!(sourceSource && targetSource)) {
@@ -543,11 +552,40 @@ export class MediaServiceImpl {
       height: fileInfo.height,
       fileSize: fileInfo.size,
       description: sourceMedia.description,
-      createdAt: fileInfo.createdAt,
-      modifiedAt: fileInfo.modifiedAt,
+      // Preserve original dates instead of using new file timestamps
+      createdAt: sourceMedia.createdAt,
+      modifiedAt: sourceMedia.modifiedAt,
     };
 
     const newMediaEntry = await this.mediaRepository.create(newMedia, tx);
+
+    // 4.1. Copy Authors
+    if (sourceAuthors.length > 0) {
+      const { AuthorRepository } = await import(
+        "~/infrastructure/repositories/author-repository"
+      );
+      for (const author of sourceAuthors) {
+        // Create or get existing author
+        const newAuthor = await AuthorRepository.create(
+          {
+            name: author.name,
+            accountId: author.accountId,
+          },
+          tx
+        );
+        // Link to new media
+        await AuthorRepository.addMedia(newMediaEntry.id, newAuthor.id, tx);
+      }
+    }
+
+    // 4.2. Copy URLs
+    if (sourceUrls.length > 0) {
+      await this.mediaRepository.addUrls(
+        newMediaEntry.id,
+        sourceUrls.map((u) => u.url),
+        tx
+      );
+    }
 
     // 5. Start Thumbnail Generation for New Media
     const sourcePath = targetConnection.path;
@@ -642,7 +680,8 @@ export class MediaServiceImpl {
     // 3. Delete file from filesystem
     if (media.mediaSourceId) {
       const mediaSource = await this.sourceRepository.findById(
-        media.mediaSourceId
+        media.mediaSourceId,
+        tx
       );
       if (mediaSource && mediaSource.type === "local") {
         const connectionInfo = mediaSource.connectionInfo as { path: string };

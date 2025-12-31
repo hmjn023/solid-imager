@@ -12,7 +12,7 @@ export type NewMediaSource = Omit<MediaSourceInfo, "id">;
 
 export type SourceRepository = {
   findAll(): Promise<MediaSource[]>;
-  findById(id: string): Promise<MediaSource | null>;
+  findById(id: string, tx?: Transaction): Promise<MediaSource | null>;
   create(source: NewMediaSource, tx?: Transaction): Promise<MediaSource>;
   update(
     id: string,

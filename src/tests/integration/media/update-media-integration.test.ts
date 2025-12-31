@@ -11,7 +11,6 @@ const TEST_FILE_SIZE = 1024 * 1024;
 // biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_UPDATED_SIZE = 2048 * 1024;
 const TEST_WIDTH = 800;
-// biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_UPDATED_WIDTH = 1200;
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;

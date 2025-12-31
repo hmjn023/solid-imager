@@ -1,34 +1,13 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { MediaService } from "~/application/services/media-service";
 
-// We need to dynamically import these to work around Vitest's hoisting
-let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
-let testDb: any, db: any;
-
-vi.mock("~/infrastructure/db/index", async () => {
-  const { PGlite: PgLiteClass } = await import("@electric-sql/pglite");
-  const { drizzle: drizzleFunc } = await import("drizzle-orm/pglite");
-  const schemaModule = await import("~/infrastructure/db/schema");
-
-  const pg = new PgLiteClass();
-  const dbInstance = drizzleFunc(pg, { schema: schemaModule });
-
-  // Expose the testDb instance to the global scope for the test file
-  (global as any).vitestTestDb = pg;
-
-  return { db: dbInstance };
-});
+// Mocks are handled in setup-integration.ts
+let migrate: any;
+let schema: any;
+let db: any;
 
 import type { MediaSource } from "~/infrastructure/db/schema";
 
@@ -39,19 +18,24 @@ describe("registerExistingMedia Integration", () => {
   let tempSourceDir: string;
 
   beforeAll(async () => {
-    // Dynamically import dependencies
-    const pgliteModule = await import("@electric-sql/pglite");
-    _PGlite = pgliteModule.PGlite;
-    const drizzleOrmModule = await import("drizzle-orm/pglite");
-    drizzle = drizzleOrmModule.drizzle;
-    const drizzleOrm = await import("drizzle-orm");
-    _eq = drizzleOrm.eq;
+    // Import dependencies
     const migratorModule = await import("drizzle-orm/pglite/migrator");
     migrate = migratorModule.migrate;
     schema = await import("~/infrastructure/db/schema");
 
-    testDb = (global as any).vitestTestDb;
-    db = drizzle(testDb, { schema });
+    // Get DB instance
+    const dbModule = await import("~/infrastructure/db/index");
+    db = dbModule.db;
+
+    // Ensure clean state by resetting schema
+    try {
+      await db.execute("DROP SCHEMA IF EXISTS drizzle CASCADE;");
+      await db.execute("DROP SCHEMA IF EXISTS public CASCADE;");
+      await db.execute("DROP TYPE IF EXISTS public.job_status CASCADE;");
+      await db.execute("CREATE SCHEMA public;");
+    } catch (_e) {
+      // Ignore
+    }
 
     await migrate(db, {
       migrationsFolder: "drizzle",

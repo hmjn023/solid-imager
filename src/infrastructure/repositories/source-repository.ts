@@ -37,9 +37,12 @@ export class DrizzleSourceRepository implements SourceRepository {
     }
   }
 
-  async findById(id: string): Promise<MediaSource | null> {
+  async findById(id: string, tx?: Transaction): Promise<MediaSource | null> {
     try {
-      const result = await db
+      const client =
+        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
+        db;
+      const result = await client
         .select()
         .from(mediaSources)
         .where(eq(mediaSources.id, id));
