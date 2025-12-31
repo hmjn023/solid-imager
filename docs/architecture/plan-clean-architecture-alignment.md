@@ -57,6 +57,7 @@ This plan outlines the steps to further decouple the Domain and Application laye
 - [x] Remove direct infrastructure imports from `src/application/services` (mostly done).
 
 ### Phase 3: Validation
-- [ ] Verify unit tests can pass using mocks only (no DB, no FS).
+- [x] Verify unit tests can pass using mocks only (no DB, no FS).
+  - *Added `src/tests/unit/application/services/media-service.test.ts` as proof.*
 - [x] Run `bun run check` to ensure no illegal upward dependencies.
 
