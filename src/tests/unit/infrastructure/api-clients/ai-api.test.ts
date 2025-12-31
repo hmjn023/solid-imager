@@ -4,8 +4,8 @@ import { fetchAiTags } from "~/infrastructure/api-clients/ai-api";
 // Mock the orpc client
 vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
   orpc: {
-    utils: {
-      aiTag: vi.fn(),
+    ai: {
+      tag: vi.fn(),
     },
   },
 }));
@@ -13,7 +13,7 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 describe("AI API Client", () => {
-  it("should call orpc.utils.aiTag with correct parameters for fetchAiTags", async () => {
+  it("should call orpc.ai.tag with correct parameters for fetchAiTags", async () => {
     const params = {
       mediaSourceId: "test-source-id",
       mediaId: "test-media-id",
@@ -27,11 +27,11 @@ describe("AI API Client", () => {
       ips_mapping: { ip1: ["tag1"] },
     };
 
-    (orpc.utils.aiTag as any).mockResolvedValue(mockResponse as any);
+    (orpc.ai.tag as any).mockResolvedValue(mockResponse as any);
 
     const result = await fetchAiTags(params);
 
-    expect(orpc.utils.aiTag).toHaveBeenCalledWith(params);
+    expect(orpc.ai.tag).toHaveBeenCalledWith(params);
     expect(result).toEqual(mockResponse);
   });
 });

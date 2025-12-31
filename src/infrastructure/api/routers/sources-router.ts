@@ -6,6 +6,7 @@ import { MediaSourceService } from "~/application/services/media-source-service"
 import type { MediaSource } from "~/domain/repositories/source-repository";
 import {
   mediaSourceInfoSchema,
+  mediaSourceStatusSchema,
   type SafeMediaSource,
 } from "~/domain/sources/schemas";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -186,6 +187,18 @@ export const sourcesRouter = {
       async ({ input }) =>
         await BackupService.importSourceZip(input.id, input.file)
     ),
+
+  /**
+   * Get status of a media source
+   */
+  status: os
+    .input(z.object({ id: z.string().uuid() }))
+    .output(mediaSourceStatusSchema)
+    .handler(async ({ input }) => {
+      const status = await MediaSourceService.getStatus(input.id);
+      // biome-ignore lint/suspicious/noExplicitAny: Service return type mismatch?
+      return status as any;
+    }),
 
   /**
    * Real-time events stream for a media source

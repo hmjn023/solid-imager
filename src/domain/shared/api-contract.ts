@@ -1,5 +1,7 @@
+import { aiRouter } from "~/infrastructure/api/routers/ai-router";
 import { categoriesRouter } from "~/infrastructure/api/routers/categories-router";
 import { charactersRouter } from "~/infrastructure/api/routers/characters-router";
+import { directoriesRouter } from "~/infrastructure/api/routers/directories-router";
 import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
@@ -23,6 +25,8 @@ export const appRouter = {
   ips: ipsRouter,
   thumbnails: thumbnailsRouter,
   downloads: downloadsRouter,
+  directories: directoriesRouter,
+  ai: aiRouter,
   utils: utilsRouter,
 };
 
