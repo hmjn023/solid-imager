@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import { swagger } from "@elysiajs/swagger";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { RPCHandler } from "@orpc/server/fetch";
 import { Elysia } from "elysia";
@@ -17,28 +16,6 @@ const openApiGenerator = new OpenAPIGenerator();
  * Elysia アプリケーション
  */
 export const app = new Elysia()
-  .use(
-    swagger({
-      path: "/api/swagger",
-      swaggerOptions: {
-        url: "/api/swagger/json",
-      },
-      documentation: {
-        info: {
-          title: "Solid Imager API",
-          version: "1.0.0",
-          description:
-            "API documentation for Solid Imager (Binary endpoints only. oRPC endpoints are documented at /api/openapi.json)",
-        },
-        servers: [
-          {
-            url: "http://localhost:3000",
-            description: "Development server",
-          },
-        ],
-      },
-    })
-  )
   // OpenAPI spec for oRPC endpoints
   .get("/api/openapi.json", async () => {
     const spec = await openApiGenerator.generate(appRouter, {
