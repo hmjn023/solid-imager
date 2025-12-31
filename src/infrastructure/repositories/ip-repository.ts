@@ -1,9 +1,13 @@
 import { and, eq } from "drizzle-orm";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { Ip, NewIp, UpdateIp } from "~/domain/ips/schemas";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import { db } from "~/infrastructure/db";
-import { ConstraintError, NotFoundError } from "~/infrastructure/db/errors";
 import { ips, mediaIps } from "~/infrastructure/db/schema";
 
 const mapToDomain = (dbIp: typeof ips.$inferSelect): Ip => ({
@@ -39,10 +43,7 @@ export const IpRepository: IIpRepository = {
     } catch (error: unknown) {
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        throw new ConstraintError({
-          message: "IP with this name already exists",
-          details: error,
-        });
+        throw new ResourceConflictError("IP with this name already exists");
       }
       throw error;
     }
@@ -60,21 +61,18 @@ export const IpRepository: IIpRepository = {
         .returning();
 
       if (!result[0]) {
-        throw new NotFoundError({ message: `IP with ID ${id} not found` });
+        throw new ResourceNotFoundError("IP", id);
       }
       return mapToDomain(result[0]);
     } catch (error: unknown) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        throw new ConstraintError({
-          message: "IP with this name already exists",
-          details: error,
-        });
+        throw new ResourceConflictError("IP with this name already exists");
       }
-      throw error;
+      throw new UnexpectedError("Failed to update IP", error);
     }
   },
 
@@ -84,7 +82,7 @@ export const IpRepository: IIpRepository = {
       db;
     const result = await client.delete(ips).where(eq(ips.id, id)).returning();
     if (result.length === 0) {
-      throw new NotFoundError({ message: `IP with ID ${id} not found` });
+      throw new ResourceNotFoundError("IP", id);
     }
   },
 
@@ -141,9 +139,7 @@ export const IpRepository: IIpRepository = {
       .returning();
 
     if (result.length === 0) {
-      throw new NotFoundError({
-        message: `MediaIp with mediaId ${mediaId} and ipId ${ipId} not found`,
-      });
+      throw new ResourceNotFoundError("MediaIP association");
     }
   },
 };

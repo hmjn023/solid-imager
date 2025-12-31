@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   MediaSource,
   NewMediaSource,
   SourceRepository,
 } from "~/domain/repositories/source-repository";
-import {
-  ConstraintError,
-  NotFoundError,
-  UnknownDbError,
-} from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources } from "~/infrastructure/db/schema";
 
@@ -23,10 +23,7 @@ export class DrizzleSourceRepository implements SourceRepository {
       // We might need explicit casting or mapping if types diverge.
       return results as unknown as MediaSource[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select media sources",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to select media sources", error);
     }
   }
 
@@ -42,10 +39,10 @@ export class DrizzleSourceRepository implements SourceRepository {
       }
       return result[0] as unknown as MediaSource;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select media source by ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select media source by ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -70,15 +67,11 @@ export class DrizzleSourceRepository implements SourceRepository {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "Media source with this name or ID already exists",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Media source with this name or ID already exists"
+        );
       }
-      throw new UnknownDbError({
-        message: "Failed to insert media source",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert media source", error);
     }
   }
 
@@ -101,13 +94,11 @@ export class DrizzleSourceRepository implements SourceRepository {
         // If update fails because it doesn't exist, we might want to throw NotFound or return null?
         // The interface definition for update usually implies existing entity.
         // Let's throw NotFound to match current behavior for update actions.
-        throw new NotFoundError({
-          message: `Media source with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Media source", id);
       }
       return result[0] as unknown as MediaSource;
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       if (
@@ -116,15 +107,14 @@ export class DrizzleSourceRepository implements SourceRepository {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "Media source with this name or ID already exists",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Media source with this name or ID already exists"
+        );
       }
-      throw new UnknownDbError({
-        message: `Failed to update media source with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to update media source with ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -138,18 +128,16 @@ export class DrizzleSourceRepository implements SourceRepository {
         .where(eq(mediaSources.id, id))
         .returning();
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Media source with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Media source", id);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete media source with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to delete media source with ID: ${id}`,
+        error
+      );
     }
   }
 }

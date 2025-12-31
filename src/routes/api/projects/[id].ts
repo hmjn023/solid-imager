@@ -1,8 +1,8 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { ProjectService } from "~/application/services/project-service";
+import { ResourceNotFoundError } from "~/domain/errors";
 import { updateProjectSchema } from "~/domain/projects/schemas";
-import { NotFoundError } from "~/infrastructure/db/errors";
 import { logger } from "~/infrastructure/logger";
 
 // Schema for 'id' path parameter
@@ -140,7 +140,7 @@ export async function PATCH({ params, request }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error instanceof NotFoundError) {
+    if (error instanceof ResourceNotFoundError) {
       logger.warn(
         { err: error, projectId: params.id },
         "Project not found for update"
@@ -208,7 +208,7 @@ export async function DELETE({ params }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error instanceof NotFoundError) {
+    if (error instanceof ResourceNotFoundError) {
       logger.warn(
         { err: error, projectId: params.id },
         "Project not found for deletion"

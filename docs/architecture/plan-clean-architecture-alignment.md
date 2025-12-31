@@ -31,9 +31,9 @@ This plan outlines the steps to further decouple the Domain and Application laye
 **Problem**: Repository implementations throw infrastructure errors (`NotFoundError`, `ConstraintError`) from the DB layer.
 **Solution**: Define business-level errors in the domain layer.
 
-- [ ] Create `src/domain/errors/index.ts` defining base domain errors (e.g., `DomainError`, `ResourceNotFound`, `ResourceConflict`).
-- [ ] Update all Repositories to catch database exceptions and re-throw appropriate Domain Errors.
-- [ ] Update API routes/middleware to handle Domain Errors and map them to HTTP status codes.
+- [x] Create `src/domain/errors/index.ts` defining base domain errors (e.g., `DomainError`, `ResourceNotFound`, `ResourceConflict`).
+- [x] Update all Repositories to catch database exceptions and re-throw appropriate Domain Errors.
+- [x] Update API routes/middleware to handle Domain Errors and map them to HTTP status codes.
 
 ### Task 4: Strict Separation of Models
 **Problem**: Some domain types might still be influenced by DB schema constraints or Drizzle-specific types.

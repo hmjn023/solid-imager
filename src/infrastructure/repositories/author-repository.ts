@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import { db } from "~/infrastructure/db/index";
@@ -58,7 +59,7 @@ export const AuthorRepository: IAuthorRepository = {
       .returning();
 
     if (!result[0]) {
-      throw new Error(`Author with ID ${id} not found`);
+      throw new ResourceNotFoundError("Author", id);
     }
     return result[0];
   },

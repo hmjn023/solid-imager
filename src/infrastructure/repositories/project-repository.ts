@@ -1,4 +1,5 @@
 import { and, eq } from "drizzle-orm";
+import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   NewProject,
@@ -7,7 +8,6 @@ import type {
 } from "~/domain/projects/schemas";
 import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import { db } from "~/infrastructure/db";
-import { NotFoundError } from "~/infrastructure/db/errors";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";
 
 const mapToDomain = (dbProject: typeof projects.$inferSelect): Project => ({
@@ -70,7 +70,7 @@ export const ProjectRepository: IProjectRepository = {
       .returning();
 
     if (!result[0]) {
-      throw new NotFoundError({ message: `Project with id ${id} not found` });
+      throw new ResourceNotFoundError("Project", id);
     }
     return mapToDomain(result[0]);
   },
@@ -85,7 +85,7 @@ export const ProjectRepository: IProjectRepository = {
       .returning();
 
     if (result.length === 0) {
-      throw new NotFoundError({ message: `Project with id ${id} not found` });
+      throw new ResourceNotFoundError("Project", id);
     }
   },
 
@@ -150,9 +150,7 @@ export const ProjectRepository: IProjectRepository = {
       .returning();
 
     if (result.length === 0) {
-      throw new NotFoundError({
-        message: `MediaProject with mediaId ${mediaId} and projectId ${projectId} not found`,
-      });
+      throw new ResourceNotFoundError("MediaProject association");
     }
   },
 };

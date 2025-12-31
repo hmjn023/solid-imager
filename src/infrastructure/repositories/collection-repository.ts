@@ -5,9 +5,13 @@ import type {
   NewCollectionItem,
   UpdateCollection,
 } from "~/domain/collections/schemas";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { ICollectionRepository } from "~/domain/repositories/collection-repository";
-import { ConstraintError, NotFoundError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { collections, mediaCollections } from "~/infrastructure/db/schema";
 
@@ -44,12 +48,11 @@ export const CollectionRepository: ICollectionRepository = {
     } catch (error: unknown) {
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        throw new ConstraintError({
-          message: "Collection with this name already exists",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Collection with this name already exists"
+        );
       }
-      throw error;
+      throw new UnexpectedError("Failed to create collection", error);
     }
   },
 
@@ -69,23 +72,20 @@ export const CollectionRepository: ICollectionRepository = {
         .returning();
 
       if (!result[0]) {
-        throw new NotFoundError({
-          message: `Collection with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Collection", id);
       }
       return result[0];
     } catch (error: unknown) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        throw new ConstraintError({
-          message: "Collection with this name already exists",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Collection with this name already exists"
+        );
       }
-      throw error;
+      throw new UnexpectedError("Failed to update collection", error);
     }
   },
 
@@ -99,9 +99,7 @@ export const CollectionRepository: ICollectionRepository = {
       .returning();
 
     if (result.length === 0) {
-      throw new NotFoundError({
-        message: `Collection with ID ${id} not found`,
-      });
+      throw new ResourceNotFoundError("Collection", id);
     }
   },
 
@@ -122,12 +120,11 @@ export const CollectionRepository: ICollectionRepository = {
     } catch (error: unknown) {
       // biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
       if ((error as any).code === "23505") {
-        throw new ConstraintError({
-          message: "Media already exists in this collection",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Media already exists in this collection"
+        );
       }
-      throw error;
+      throw new UnexpectedError("Failed to add item to collection", error);
     }
   },
 
@@ -150,9 +147,7 @@ export const CollectionRepository: ICollectionRepository = {
       .returning();
 
     if (result.length === 0) {
-      throw new NotFoundError({
-        message: `Media ${mediaId} not found in collection ${collectionId}`,
-      });
+      throw new ResourceNotFoundError("CollectionItem association");
     }
   },
 };

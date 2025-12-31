@@ -4,13 +4,13 @@ import type {
   NewCharacter,
   UpdateCharacter,
 } from "~/domain/characters/schemas";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import {
-  ConstraintError,
-  NotFoundError,
-  UnknownDbError,
-} from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { characters, mediaCharacters } from "~/infrastructure/db/schema";
 
@@ -20,10 +20,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       const results = await db.select().from(characters);
       return results as Character[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select characters",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to select characters", error);
     }
   }
 
@@ -41,10 +38,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       }
       return result[0] as Character;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select character by ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select character by ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -68,15 +65,11 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "Character with this name already exists in this IP",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Character with this name already exists in this IP"
+        );
       }
-      throw new UnknownDbError({
-        message: "Failed to insert character",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert character", error);
     }
   }
 
@@ -99,13 +92,11 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Character with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Character", id);
       }
       return result[0] as Character;
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       if (
@@ -114,15 +105,14 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "Character with this name already exists in this IP",
-          details: error,
-        });
+        throw new ResourceConflictError(
+          "Character with this name already exists in this IP"
+        );
       }
-      throw new UnknownDbError({
-        message: `Failed to update character with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to update character with ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -137,18 +127,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Character with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Character", id);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete character with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to delete character with ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -174,10 +162,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         .where(eq(mediaCharacters.mediaId, mediaId));
       return results as Character[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to find characters for media: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to find characters for media: ${mediaId}`,
+        error
+      );
     }
   }
 
@@ -205,10 +193,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         // Service layer usually expects this to be idempotent or fail silently if it's already there
         return;
       }
-      throw new UnknownDbError({
-        message: `Failed to add character ${characterId} to media ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to add character ${characterId} to media ${mediaId}`,
+        error
+      );
     }
   }
 
@@ -230,10 +218,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
           )
         );
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to remove character ${characterId} from media ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to remove character ${characterId} from media ${mediaId}`,
+        error
+      );
     }
   }
 }

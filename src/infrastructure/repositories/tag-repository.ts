@@ -1,4 +1,9 @@
 import { eq, inArray } from "drizzle-orm";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { MediaTag } from "~/domain/media/schemas";
 import type {
@@ -7,11 +12,6 @@ import type {
   TagRepository as TagRepositoryDef,
 } from "~/domain/repositories/tag-repository";
 import type { UpdateTag } from "~/domain/tags/schemas";
-import {
-  ConstraintError,
-  NotFoundError,
-  UnknownDbError,
-} from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
 
@@ -23,10 +23,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       // TagResponse has Date for createdAt/updatedAt, Drizzle returns Date.
       return results as unknown as Tag[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select tags",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to select tags", error);
     }
   }
 
@@ -38,10 +35,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       }
       return result[0] as unknown as Tag;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select tag by ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to select tag by ID: ${id}`, error);
     }
   }
 
@@ -53,10 +47,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       }
       return result[0] as unknown as Tag;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select tag by name: ${name}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to select tag by name: ${name}`, error);
     }
   }
 
@@ -74,15 +65,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: `Tag with name '${tag.name}' already exists`,
-          details: error,
-        });
+        throw new ResourceConflictError(
+          `Tag with name '${tag.name}' already exists`
+        );
       }
-      throw new UnknownDbError({
-        message: "Failed to insert tag",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert tag", error);
     }
   }
 
@@ -98,13 +85,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Tag with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Tag", id);
       }
       return result[0] as unknown as Tag;
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       if (
@@ -113,15 +98,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: `Tag with name '${tag.name}' already exists`,
-          details: error,
-        });
+        throw new ResourceConflictError(
+          `Tag with name '${tag.name}' already exists`
+        );
       }
-      throw new UnknownDbError({
-        message: `Failed to update tag with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to update tag with ID: ${id}`, error);
     }
   }
 
@@ -136,18 +117,13 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Tag with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Tag", id);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete tag with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to delete tag with ID: ${id}`, error);
     }
   }
 
@@ -175,10 +151,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
       return result as unknown as MediaTag[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to retrieve tags for media ID: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to retrieve tags for media ID: ${mediaId}`,
+        error
+      );
     }
   }
 
@@ -264,15 +240,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "One or more media tags already exist",
-          details: error,
-        });
+        throw new ResourceConflictError("One or more media tags already exist");
       }
-      throw new UnknownDbError({
-        message: `Failed to insert media tags for media ID: ${mediaId}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to insert media tags for media ID: ${mediaId}`,
+        error
+      );
     }
   }
 }

@@ -1,15 +1,15 @@
 import { eq } from "drizzle-orm";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "~/domain/errors";
 import type {
   NewUser,
   UpdateUser,
   User,
   UserRepository as UserRepositoryDef,
 } from "~/domain/repositories/user-repository";
-import {
-  ConstraintError,
-  NotFoundError,
-  UnknownDbError,
-} from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { users } from "~/infrastructure/db/schema";
 
@@ -19,10 +19,7 @@ export class DrizzleUserRepository implements UserRepositoryDef {
       const results = await db.select().from(users);
       return results as unknown as User[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select users",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to select users", error);
     }
   }
 
@@ -34,10 +31,7 @@ export class DrizzleUserRepository implements UserRepositoryDef {
       }
       return result[0] as unknown as User;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select user by ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to select user by ID: ${id}`, error);
     }
   }
 
@@ -52,10 +46,10 @@ export class DrizzleUserRepository implements UserRepositoryDef {
       }
       return result[0] as unknown as User;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select user by email: ${email}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select user by email: ${email}`,
+        error
+      );
     }
   }
 
@@ -70,15 +64,9 @@ export class DrizzleUserRepository implements UserRepositoryDef {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "User with this email already exists",
-          details: error,
-        });
+        throw new ResourceConflictError("User with this email already exists");
       }
-      throw new UnknownDbError({
-        message: "Failed to insert user",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert user", error);
     }
   }
 
@@ -91,13 +79,11 @@ export class DrizzleUserRepository implements UserRepositoryDef {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `User with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("User", id);
       }
       return result[0] as unknown as User;
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
       if (
@@ -106,15 +92,9 @@ export class DrizzleUserRepository implements UserRepositoryDef {
         "code" in error &&
         (error as { code: string }).code === "23505"
       ) {
-        throw new ConstraintError({
-          message: "User with this email already exists",
-          details: error,
-        });
+        throw new ResourceConflictError("User with this email already exists");
       }
-      throw new UnknownDbError({
-        message: `Failed to update user with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to update user with ID: ${id}`, error);
     }
   }
 
@@ -123,18 +103,13 @@ export class DrizzleUserRepository implements UserRepositoryDef {
       const result = await db.delete(users).where(eq(users.id, id)).returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `User with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("User", id);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete user with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(`Failed to delete user with ID: ${id}`, error);
     }
   }
 }

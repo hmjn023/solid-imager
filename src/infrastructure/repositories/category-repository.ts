@@ -1,11 +1,11 @@
 import { eq } from "drizzle-orm";
 import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
+import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type {
   Category,
   CategoryRepository,
 } from "~/domain/repositories/category-repository";
-import { NotFoundError, UnknownDbError } from "~/infrastructure/db/errors";
 import { db } from "~/infrastructure/db/index";
 import { categories } from "~/infrastructure/db/schema";
 
@@ -15,10 +15,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
       const results = await db.select().from(categories);
       return results as unknown as Category[];
     } catch (error) {
-      throw new UnknownDbError({
-        message: "Failed to select categories",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to select categories", error);
     }
   }
 
@@ -36,10 +33,10 @@ export class DrizzleCategoryRepository implements CategoryRepository {
       }
       return result[0] as unknown as Category;
     } catch (error) {
-      throw new UnknownDbError({
-        message: `Failed to select category by ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to select category by ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -58,10 +55,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
         .returning();
       return result[0] as unknown as Category;
     } catch (error: unknown) {
-      throw new UnknownDbError({
-        message: "Failed to insert category",
-        details: error,
-      });
+      throw new UnexpectedError("Failed to insert category", error);
     }
   }
 
@@ -81,19 +75,17 @@ export class DrizzleCategoryRepository implements CategoryRepository {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Category with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Category", id);
       }
       return result[0] as unknown as Category;
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to update category with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to update category with ID: ${id}`,
+        error
+      );
     }
   }
 
@@ -108,18 +100,16 @@ export class DrizzleCategoryRepository implements CategoryRepository {
         .returning();
 
       if (result.length === 0) {
-        throw new NotFoundError({
-          message: `Category with ID ${id} not found`,
-        });
+        throw new ResourceNotFoundError("Category", id);
       }
     } catch (error) {
-      if (error instanceof NotFoundError) {
+      if (error instanceof ResourceNotFoundError) {
         throw error;
       }
-      throw new UnknownDbError({
-        message: `Failed to delete category with ID: ${id}`,
-        details: error,
-      });
+      throw new UnexpectedError(
+        `Failed to delete category with ID: ${id}`,
+        error
+      );
     }
   }
 }

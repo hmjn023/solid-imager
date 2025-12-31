@@ -1,7 +1,7 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { ZodError, z } from "zod";
 import { CharacterService } from "~/application/services/character-service";
-import { NotFoundError } from "~/infrastructure/db/errors";
+import { ResourceNotFoundError } from "~/domain/errors";
 
 const HTTP_OK = 200;
 const HTTP_CREATED = 201;
@@ -211,7 +211,7 @@ export async function DELETE({ params, request }: APIEvent) {
         headers: { "Content-Type": "application/json" },
       });
     }
-    if (error instanceof NotFoundError) {
+    if (error instanceof ResourceNotFoundError) {
       return new Response(JSON.stringify({ error: "Association not found" }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
