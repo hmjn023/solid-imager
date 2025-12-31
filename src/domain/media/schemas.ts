@@ -236,7 +236,7 @@ export const downloadItemSchema = z.object({
   imageUrl: z.string().url("Invalid image URL"),
   tweetUrl: z.string().url("Invalid tweet URL").optional(),
   tweetText: z.string().optional(),
-  timestamp: z.string().datetime().optional(),
+  timestamp: z.coerce.date().optional(),
   authorName: z.string().optional(),
   authorId: z.string().optional(),
 });
