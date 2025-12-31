@@ -1,4 +1,3 @@
-import { cache } from "@solidjs/router";
 import type {
   MediaSource,
   NewMediaSource,
@@ -25,15 +24,12 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 // Initialize repository
 const sourceRepo = new DrizzleSourceRepository();
 
-const fetchSourcesServer = cache(async (): Promise<MediaSource[]> => {
-  "use server";
-  return await sourceRepo.findAll();
-}, "fetchSources");
+const fetchSourcesServer = async (): Promise<MediaSource[]> =>
+  await sourceRepo.findAll();
 
 const createSourceServer = async (
   sourceData: NewMediaSource
 ): Promise<MediaSource[]> => {
-  "use server";
   const result = await sourceRepo.create(sourceData);
   return [result];
 };
@@ -42,28 +38,24 @@ const updateSourceServer = async (
   mediaSourceId: string,
   sourceData: Partial<MediaSource>
 ): Promise<MediaSource[]> => {
-  "use server";
   const result = await sourceRepo.update(mediaSourceId, sourceData);
   return [result];
 };
 
-const fetchSourceByIdServer = cache(
-  async (mediaSourceId: string): Promise<(MediaSource | undefined)[]> => {
-    "use server";
-    try {
-      const result = await sourceRepo.findById(mediaSourceId);
-      return result ? [result] : [];
-    } catch (_error) {
-      return [];
-    }
-  },
-  "fetchSourceById"
-);
+const fetchSourceByIdServer = async (
+  mediaSourceId: string
+): Promise<(MediaSource | undefined)[]> => {
+  try {
+    const result = await sourceRepo.findById(mediaSourceId);
+    return result ? [result] : [];
+  } catch (_error) {
+    return [];
+  }
+};
 
 const deleteSourceServer = async (
   mediaSourceId: string
 ): Promise<MediaSource[]> => {
-  "use server";
   // The repository currently returns void for delete(), but the service expects MediaSource[].
   // We fetch it first before deleting to satisfy the return type if needed.
   const source = await sourceRepo.findById(mediaSourceId);
@@ -77,7 +69,6 @@ const deleteSourceServer = async (
  * @returns {Promise<any>} A promise that resolves with the connection test result.
  */
 const testConnectionServer = async (mediaSourceId: string) => {
-  "use server";
   const { getDriver } = await import("~/infrastructure/storage/factory");
 
   try {
@@ -120,7 +111,6 @@ const testConnectionServer = async (mediaSourceId: string) => {
 };
 
 const getStatusServer = async (mediaSourceId: string) => {
-  "use server";
   try {
     const test = await testConnectionServer(mediaSourceId);
     return {

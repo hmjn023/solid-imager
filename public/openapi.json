@@ -1,829 +1,1446 @@
 {
-  "openapi": "3.0.0",
   "info": {
-    "title": "Solid Imager API",
+    "title": "Solid Imager oRPC API",
     "version": "1.0.0",
-    "description": "API documentation for the Solid Imager application."
+    "description": "oRPC endpoints for Solid Imager"
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
-      "description": "Development server"
+      "url": "http://localhost:3000/api/rpc",
+      "description": "Development server (oRPC)"
     }
   ],
-  "paths": {},
-  "components": {
-    "schemas": {
-      "MediaSource": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The unique identifier for the media source."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the media source."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the media source."
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "local",
-              "sftp",
-              "s3"
-            ],
-            "description": "The type of the media source."
-          },
-          "connectionInfo": {
-            "type": "object",
-            "description": "Connection information for the media source."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time the media source was created."
-          },
-          "updatedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time the media source was last updated."
-          }
-        }
-      },
-      "NewMediaSource": {
-        "type": "object",
-        "required": [
-          "name",
-          "type",
-          "connectionInfo"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the media source."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the media source."
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "local",
-              "sftp",
-              "s3"
-            ],
-            "description": "The type of the media source."
-          },
-          "connectionInfo": {
-            "type": "object",
-            "description": "Connection information for the media source. Varies based on the `type`. For `local`, it should be `{ \"path\": \"/path/to/media\" }`.\n"
-          }
-        }
-      },
-      "Media": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mediaSourceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "filePath": {
-            "type": "string"
-          },
-          "fileName": {
-            "type": "string"
-          },
-          "mediaType": {
-            "type": "string",
-            "enum": [
-              "image",
-              "video",
-              "audio"
-            ]
-          },
-          "width": {
-            "type": "integer"
-          },
-          "height": {
-            "type": "integer"
-          },
-          "fileSize": {
-            "type": "integer"
-          },
-          "description": {
-            "type": "string"
-          },
-          "sourceUrl": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "modifiedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "indexedAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "active",
-              "archived",
-              "deleted"
-            ]
-          }
-        }
-      },
-      "Category": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "The unique identifier for the category."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the category."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the category."
-          },
-          "color": {
-            "type": "string",
-            "description": "The color associated with the category (e.g., hex code)."
-          },
-          "parentId": {
-            "type": "integer",
-            "nullable": true,
-            "description": "The ID of the parent category, if any."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time the category was created."
-          }
-        }
-      },
-      "NewCategory": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the new category."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the new category."
-          },
-          "color": {
-            "type": "string",
-            "description": "The color associated with the new category."
-          },
-          "parentId": {
-            "type": "integer",
-            "nullable": true,
-            "description": "The ID of the parent category, if any."
-          }
-        }
-      },
-      "UpdateCategory": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The new name for the category."
-          },
-          "description": {
-            "type": "string",
-            "description": "The new description for the category."
-          },
-          "color": {
-            "type": "string",
-            "description": "The new color for the category."
-          },
-          "parentId": {
-            "type": "integer",
-            "nullable": true,
-            "description": "The new parent ID for the category."
-          }
-        }
-      },
-      "IP": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "The unique identifier for the Intellectual Property."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the Intellectual Property."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the Intellectual Property."
-          }
-        }
-      },
-      "NewIP": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the new Intellectual Property."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the new Intellectual Property."
-          }
-        }
-      },
-      "UpdateIP": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The new name for the Intellectual Property."
-          },
-          "description": {
-            "type": "string",
-            "description": "The new description for the Intellectual Property."
-          }
-        }
-      },
-      "AppConfig": {
-        "type": "object",
-        "properties": {
-          "server": {
-            "type": "object",
-            "properties": {
-              "port": {
-                "type": "integer"
-              },
-              "host": {
-                "type": "string"
-              }
-            }
-          },
-          "media": {
-            "type": "object",
-            "properties": {
-              "supportedFormats": {
-                "type": "array",
-                "items": {
-                  "type": "string"
+  "openapi": "3.1.1",
+  "paths": {
+    "/sources/list": {
+      "post": {
+        "operationId": "sources.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
                 }
-              },
-              "thumbnailSizes": {
-                "type": "array",
-                "items": {
-                  "type": "integer"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/get": {
+      "post": {
+        "operationId": "sources.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
                 }
-              },
-              "cacheDirectory": {
-                "type": "string"
-              },
-              "autoGenerate": {
-                "type": "boolean"
-              },
-              "maxConcurrentJobs": {
-                "type": "integer"
-              }
-            }
-          },
-          "upload": {
-            "type": "object",
-            "properties": {
-              "maxFileSize": {
-                "type": "integer"
-              },
-              "allowOverwrite": {
-                "type": "boolean"
               }
             }
           }
         }
-      },
-      "UpdateMediaSource": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The new name for the media source."
-          },
-          "description": {
-            "type": "string",
-            "description": "The new description for the media source."
-          },
-          "connectionInfo": {
-            "type": "object",
-            "description": "The new connection information for the media source."
-          }
-        }
-      },
-      "UploadRequest": {
-        "type": "object",
-        "required": [
-          "file"
-        ],
-        "properties": {
-          "file": {
-            "type": "string",
-            "format": "binary",
-            "description": "The media file to upload."
-          },
-          "filename": {
-            "type": "string",
-            "description": "Custom file name for the uploaded media."
-          },
-          "autoIncrement": {
-            "type": "boolean",
-            "description": "Whether to auto-increment filename on conflict."
-          },
-          "description": {
-            "type": "string",
-            "description": "Description for the media."
-          },
-          "sourceUrl": {
-            "type": "string",
-            "description": "Source URL for the media."
-          },
-          "overwrite": {
-            "type": "boolean",
-            "description": "Whether to overwrite existing file on conflict."
-          }
-        }
-      },
-      "UploadResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the upload was successful."
-          },
-          "filePath": {
-            "type": "string",
-            "description": "The path where the file was saved."
-          },
-          "conflict": {
-            "type": "object",
-            "properties": {
-              "existingFile": {
-                "type": "string",
-                "description": "The path of the existing file."
-              },
-              "suggestedName": {
-                "type": "string",
-                "description": "A suggested new name to avoid conflict."
+      }
+    },
+    "/sources/create": {
+      "post": {
+        "operationId": "sources.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
               }
             }
           }
         }
-      },
-      "MediaSourceStatus": {
-        "type": "object",
-        "properties": {
-          "mediaSourceId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The ID of the media source."
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "idle",
-              "scanning",
-              "indexing",
-              "error"
-            ],
-            "description": "Current status of the media source."
-          },
-          "lastScan": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "Timestamp of the last scan."
-          },
-          "indexedFiles": {
-            "type": "integer",
-            "description": "Number of files currently indexed."
-          },
-          "totalFiles": {
-            "type": "integer",
-            "description": "Total number of files found in the source."
-          },
-          "errorMessage": {
-            "type": "string",
-            "nullable": true,
-            "description": "Any error message if the source is in an error state."
-          }
-        }
-      },
-      "UpdateMediaRequest": {
-        "type": "object",
-        "properties": {
-          "filename": {
-            "type": "string",
-            "description": "New filename for the media."
-          },
-          "description": {
-            "type": "string",
-            "description": "New description for the media."
-          },
-          "sourceUrl": {
-            "type": "string",
-            "description": "New source URL for the media."
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of tags to associate with the media (replaces existing tags)."
-          }
-        }
-      },
-      "UpdateMediaResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the update was successful."
-          },
-          "updatedFields": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of fields that were updated."
-          },
-          "oldFilePath": {
-            "type": "string",
-            "description": "Old file path if filename was changed."
-          },
-          "newFilePath": {
-            "type": "string",
-            "description": "New file path if filename was changed."
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Any warnings generated during the update."
-          }
-        }
-      },
-      "MediaDetails": {
-        "type": "object",
-        "properties": {
-          "mediaId": {
-            "type": "string",
-            "format": "uuid",
-            "description": "The ID of the media."
-          },
-          "rating": {
-            "type": "integer",
-            "description": "User rating for the media (0-5)."
-          },
-          "favorite": {
-            "type": "boolean",
-            "description": "Whether the media is marked as favorite."
-          },
-          "viewCount": {
-            "type": "integer",
-            "description": "Number of times the media has been viewed."
-          },
-          "lastViewedAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "Timestamp of the last view."
-          },
-          "category": {
-            "$ref": "#/components/schemas/Category"
-          },
-          "project": {
-            "$ref": "#/components/schemas/Project"
-          },
-          "ip": {
-            "$ref": "#/components/schemas/IP"
-          },
-          "characters": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Character"
-            }
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/MediaMetadata"
-          },
-          "tags": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Tag"
+      }
+    },
+    "/sources/update": {
+      "post": {
+        "operationId": "sources.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
             }
           }
         }
-      },
-      "Project": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "The unique identifier for the project."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the project."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the project."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time the project was created."
-          },
-          "archivedAt": {
-            "type": "string",
-            "format": "date-time",
-            "nullable": true,
-            "description": "The date and time the project was archived."
+      }
+    },
+    "/sources/delete": {
+      "post": {
+        "operationId": "sources.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "MediaMetadata": {
-        "type": "object",
-        "properties": {
-          "prompt": {
-            "type": "object",
-            "description": "JSON object representing the prompt used for generation."
-          },
-          "workflow": {
-            "type": "object",
-            "description": "JSON object representing the workflow used for generation."
-          },
-          "parameters": {
-            "type": "string",
-            "description": "Other parameters as a string."
+      }
+    },
+    "/sources/dump": {
+      "post": {
+        "operationId": "sources.dump",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "Tag": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "integer",
-            "description": "The unique identifier for the tag."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the tag."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the tag."
-          },
-          "attribute": {
-            "type": "string",
-            "description": "The attribute or classification of the tag."
-          },
-          "color": {
-            "type": "string",
-            "description": "The color for UI display."
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The date and time the tag was created."
+      }
+    },
+    "/sources/restore": {
+      "post": {
+        "operationId": "sources.restore",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "DirectoryItem": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the directory or file."
-          },
-          "path": {
-            "type": "string",
-            "description": "The relative path of the directory or file."
-          },
-          "type": {
-            "type": "string",
-            "enum": [
-              "directory",
-              "file"
-            ],
-            "description": "The type of the item."
-          },
-          "mediaType": {
-            "type": "string",
-            "enum": [
-              "image",
-              "video",
-              "audio",
-              "unknown"
-            ],
-            "description": "The media type if the item is a file."
-          },
-          "size": {
-            "type": "integer",
-            "description": "The size of the file in bytes."
-          },
-          "lastModified": {
-            "type": "string",
-            "format": "date-time",
-            "description": "The last modified timestamp."
+      }
+    },
+    "/sources/importZip": {
+      "post": {
+        "operationId": "sources.importZip",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "CreateDirectoryRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "The parent path where the new directory will be created."
-          },
-          "name": {
-            "type": "string",
-            "description": "The name of the new directory."
-          },
-          "recursive": {
-            "type": "boolean",
-            "description": "Whether to create parent directories if they don't exist."
+      }
+    },
+    "/sources/status": {
+      "post": {
+        "operationId": "sources.status",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "CreateDirectoryResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the directory creation was successful."
-          },
-          "fullPath": {
-            "type": "string",
-            "description": "The full path of the created directory."
-          },
-          "created": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "List of directories that were actually created."
+      }
+    },
+    "/sources/events": {
+      "post": {
+        "operationId": "sources.events",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "DeleteDirectoryRequest": {
-        "type": "object",
-        "required": [
-          "path"
-        ],
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "The path of the directory to delete."
-          },
-          "force": {
-            "type": "boolean",
-            "description": "Whether to force delete non-empty directories."
+      }
+    },
+    "/tags/list": {
+      "post": {
+        "operationId": "tags.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "DeleteDirectoryResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the directory deletion was successful."
-          },
-          "deletedFiles": {
-            "type": "integer",
-            "description": "Number of media files deleted within the directory."
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Any warnings generated during the deletion."
+      }
+    },
+    "/tags/get": {
+      "post": {
+        "operationId": "tags.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "RenameDirectoryRequest": {
-        "type": "object",
-        "required": [
-          "oldPath",
-          "newPath"
-        ],
-        "properties": {
-          "oldPath": {
-            "type": "string",
-            "description": "The current path of the directory to rename."
-          },
-          "newPath": {
-            "type": "string",
-            "description": "The new path for the directory."
+      }
+    },
+    "/tags/create": {
+      "post": {
+        "operationId": "tags.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "RenameDirectoryResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "description": "Indicates if the directory rename was successful."
-          },
-          "oldPath": {
-            "type": "string",
-            "description": "The old path of the directory."
-          },
-          "newPath": {
-            "type": "string",
-            "description": "The new path of the directory."
-          },
-          "warnings": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Any warnings generated during the rename."
+      }
+    },
+    "/tags/update": {
+      "post": {
+        "operationId": "tags.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "NewTag": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The name of the new tag."
-          },
-          "description": {
-            "type": "string",
-            "description": "A description of the new tag."
-          },
-          "attribute": {
-            "type": "string",
-            "description": "The attribute or classification of the new tag."
-          },
-          "color": {
-            "type": "string",
-            "description": "The color for UI display of the new tag."
+      }
+    },
+    "/tags/delete": {
+      "post": {
+        "operationId": "tags.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
-      },
-      "UpdateTag": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The new name for the tag."
-          },
-          "description": {
-            "type": "string",
-            "description": "The new description for the tag."
-          },
-          "attribute": {
-            "type": "string",
-            "description": "The new attribute or classification for the tag."
-          },
-          "color": {
-            "type": "string",
-            "description": "The new color for UI display of the tag."
+      }
+    },
+    "/media/search": {
+      "post": {
+        "operationId": "media.search",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/get": {
+      "post": {
+        "operationId": "media.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getDetails": {
+      "post": {
+        "operationId": "media.getDetails",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getContent": {
+      "post": {
+        "operationId": "media.getContent",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getTags": {
+      "post": {
+        "operationId": "media.getTags",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/update": {
+      "post": {
+        "operationId": "media.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/delete": {
+      "post": {
+        "operationId": "media.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/copy": {
+      "post": {
+        "operationId": "media.copy",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/move": {
+      "post": {
+        "operationId": "media.move",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/upload": {
+      "post": {
+        "operationId": "media.upload",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/list": {
+      "post": {
+        "operationId": "categories.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/get": {
+      "post": {
+        "operationId": "categories.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/create": {
+      "post": {
+        "operationId": "categories.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/update": {
+      "post": {
+        "operationId": "categories.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/delete": {
+      "post": {
+        "operationId": "categories.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/list": {
+      "post": {
+        "operationId": "projects.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/get": {
+      "post": {
+        "operationId": "projects.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/create": {
+      "post": {
+        "operationId": "projects.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/update": {
+      "post": {
+        "operationId": "projects.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/delete": {
+      "post": {
+        "operationId": "projects.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/listForMedia": {
+      "post": {
+        "operationId": "projects.listForMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/addToMedia": {
+      "post": {
+        "operationId": "projects.addToMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/removeFromMedia": {
+      "post": {
+        "operationId": "projects.removeFromMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/list": {
+      "post": {
+        "operationId": "characters.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/get": {
+      "post": {
+        "operationId": "characters.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/create": {
+      "post": {
+        "operationId": "characters.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/update": {
+      "post": {
+        "operationId": "characters.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/delete": {
+      "post": {
+        "operationId": "characters.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/listForMedia": {
+      "post": {
+        "operationId": "characters.listForMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/addToMedia": {
+      "post": {
+        "operationId": "characters.addToMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/removeFromMedia": {
+      "post": {
+        "operationId": "characters.removeFromMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/list": {
+      "post": {
+        "operationId": "ips.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/get": {
+      "post": {
+        "operationId": "ips.get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/create": {
+      "post": {
+        "operationId": "ips.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/update": {
+      "post": {
+        "operationId": "ips.update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/delete": {
+      "post": {
+        "operationId": "ips.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/listForMedia": {
+      "post": {
+        "operationId": "ips.listForMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/addToMedia": {
+      "post": {
+        "operationId": "ips.addToMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/removeFromMedia": {
+      "post": {
+        "operationId": "ips.removeFromMedia",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/thumbnails/generate": {
+      "post": {
+        "operationId": "thumbnails.generate",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/thumbnails/clear": {
+      "post": {
+        "operationId": "thumbnails.clear",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/downloads/start": {
+      "post": {
+        "operationId": "downloads.start",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/list": {
+      "post": {
+        "operationId": "directories.list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/create": {
+      "post": {
+        "operationId": "directories.create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/delete": {
+      "post": {
+        "operationId": "directories.delete",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/rename": {
+      "post": {
+        "operationId": "directories.rename",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/tag": {
+      "post": {
+        "operationId": "ai.tag",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/ccipFeature": {
+      "post": {
+        "operationId": "ai.ccipFeature",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/ccipDifference": {
+      "post": {
+        "operationId": "ai.ccipDifference",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utils/fetchUrl": {
+      "post": {
+        "operationId": "utils.fetchUrl",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
     }
-  },
-  "tags": []
+  }
 }
