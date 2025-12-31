@@ -114,99 +114,99 @@
 
 **Priority 1: コア機能（必須）**
 1. **Media Sources API** ✅ **完了**
-   - `GET /api/sources` → `orpc.sources.list()`
-   - `POST /api/sources` → `orpc.sources.create()`
-   - `GET /api/sources/:id` → `orpc.sources.get()`
-   - `PUT /api/sources/:id` → `orpc.sources.update()`
-   - `DELETE /api/sources/:id` → `orpc.sources.delete()`
+   - [x] `GET /api/sources` → `orpc.sources.list()`
+   - [x] `POST /api/sources` → `orpc.sources.create()`
+   - [x] `GET /api/sources/:id` → `orpc.sources.get()`
+   - [x] `PUT /api/sources/:id` → `orpc.sources.update()`
+   - [x] `DELETE /api/sources/:id` → `orpc.sources.delete()`
 
-2. **Media API**（最重要）
-   - `GET /api/sources/:id/search` → `orpc.media.search()`
-   - `GET /api/sources/:id/:mediaId` → `orpc.media.get()`
-   - `PUT /api/sources/:id/:mediaId` → `orpc.media.update()`
-   - `DELETE /api/sources/:id/:mediaId` → `orpc.media.delete()`
-   - `GET /api/sources/:id/:mediaId/details` → `orpc.media.getDetails()`
-   - `GET /api/sources/:id/:mediaId/thumbnail` → `orpc.media.getThumbnail()`
+2. **Media API**（最重要） ✅ **完了**
+   - [x] `GET /api/sources/:id/search` → `orpc.media.search()`
+   - [x] `GET /api/sources/:id/:mediaId` → `orpc.media.get()`
+   - [x] `PUT /api/sources/:id/:mediaId` → `orpc.media.update()`
+   - [x] `DELETE /api/sources/:id/:mediaId` → `orpc.media.delete()`
+   - [x] `GET /api/sources/:id/:mediaId/details` → `orpc.media.getDetails()`
+   - [x] `GET /api/sources/:id/:mediaId/thumbnail` → `orpc.media.getThumbnail()` (※バイナリ取得はREST維持/将来対応)
 
-3. **Tags API**
-   - `GET /api/tags` → `orpc.tags.list()`
-   - `POST /api/tags` → `orpc.tags.create()`
-   - `PUT /api/tags/:id` → `orpc.tags.update()`
-   - `DELETE /api/tags/:id` → `orpc.tags.delete()`
-   - `GET /api/sources/:id/:mediaId/tags` → `orpc.media.getTags()`
-   - `POST /api/sources/:id/:mediaId/tags` → `orpc.media.addTags()`
+3. **Tags API** ✅ **完了**
+   - [x] `GET /api/tags` → `orpc.tags.list()`
+   - [x] `POST /api/tags` → `orpc.tags.create()`
+   - [x] `PUT /api/tags/:id` → `orpc.tags.update()`
+   - [x] `DELETE /api/tags/:id` → `orpc.tags.delete()`
+   - [x] `GET /api/sources/:id/:mediaId/tags` → `orpc.media.getTags()`
+   - [x] `POST /api/sources/:id/:mediaId/tags` → `orpc.media.addTags()`
 
-**Priority 2: メタデータ管理**
+**Priority 2: メタデータ管理** ✅ **完了**
 4. **Projects API**
-   - `GET /api/projects` → `orpc.projects.list()`
-   - `POST /api/projects` → `orpc.projects.create()`
-   - `PUT /api/projects/:id` → `orpc.projects.update()`
-   - `DELETE /api/projects/:id` → `orpc.projects.delete()`
-   - Media-Project 関連付け
+   - [x] `GET /api/projects` → `orpc.projects.list()`
+   - [x] `POST /api/projects` → `orpc.projects.create()`
+   - [x] `PUT /api/projects/:id` → `orpc.projects.update()`
+   - [x] `DELETE /api/projects/:id` → `orpc.projects.delete()`
+   - [x] Media-Project 関連付け
 
 5. **Characters API**
-   - `GET /api/characters` → `orpc.characters.list()`
-   - `POST /api/characters` → `orpc.characters.create()`
-   - `PUT /api/characters/:id` → `orpc.characters.update()`
-   - `DELETE /api/characters/:id` → `orpc.characters.delete()`
-   - Media-Character 関連付け
+   - [x] `GET /api/characters` → `orpc.characters.list()`
+   - [x] `POST /api/characters` → `orpc.characters.create()`
+   - [x] `PUT /api/characters/:id` → `orpc.characters.update()`
+   - [x] `DELETE /api/characters/:id` → `orpc.characters.delete()`
+   - [x] Media-Character 関連付け
 
 6. **IPs API**
-   - `GET /api/ips` → `orpc.ips.list()`
-   - `POST /api/ips` → `orpc.ips.create()`
-   - `PUT /api/ips/:id` → `orpc.ips.update()`
-   - `DELETE /api/ips/:id` → `orpc.ips.delete()`
-   - Media-IP 関連付け
+   - [x] `GET /api/ips` → `orpc.ips.list()`
+   - [x] `POST /api/ips` → `orpc.ips.create()`
+   - [x] `PUT /api/ips/:id` → `orpc.ips.update()`
+   - [x] `DELETE /api/ips/:id` → `orpc.ips.delete()`
+   - [x] Media-IP 関連付け
 
 7. **Categories API**
-   - `GET /api/categories` → `orpc.categories.list()`
-   - `POST /api/categories` → `orpc.categories.create()`
-   - `PUT /api/categories/:id` → `orpc.categories.update()`
-   - `DELETE /api/categories/:id` → `orpc.categories.delete()`
+   - [x] `GET /api/categories` → `orpc.categories.list()`
+   - [x] `POST /api/categories` → `orpc.categories.create()`
+   - [x] `PUT /api/categories/:id` → `orpc.categories.update()`
+   - [x] `DELETE /api/categories/:id` → `orpc.categories.delete()`
 
 **Priority 3: ファイル操作**
 8. **Directory API**
-   - `GET /api/sources/:id/directories` → `orpc.directories.list()`
-   - `POST /api/sources/:id/directories/create` → `orpc.directories.create()`
-   - `POST /api/sources/:id/directories/delete` → `orpc.directories.delete()`
-   - `POST /api/sources/:id/directories/rename` → `orpc.directories.rename()`
-   - `GET /api/sources/:id/directories/:path` → `orpc.directories.get()`
-   - `GET /api/sources/:id/directories/:path/search` → `orpc.directories.search()`
+   - [ ] `GET /api/sources/:id/directories` → `orpc.directories.list()`
+   - [ ] `POST /api/sources/:id/directories/create` → `orpc.directories.create()`
+   - [ ] `POST /api/sources/:id/directories/delete` → `orpc.directories.delete()`
+   - [ ] `POST /api/sources/:id/directories/rename` → `orpc.directories.rename()`
+   - [ ] `GET /api/sources/:id/directories/:path` → `orpc.directories.get()`
+   - [ ] `GET /api/sources/:id/directories/:path/search` → `orpc.directories.search()`
 
-9. **Upload API**
-   - `POST /api/sources/:id/upload` → `orpc.media.upload()`
+9. **Upload API** ✅ **完了**
+   - [x] `POST /api/sources/:id/upload` → `orpc.media.upload()`
 
-10. **Media Operations**
-    - `POST /api/sources/:id/:mediaId/copy` → `orpc.media.copy()`
-    - `POST /api/sources/:id/:mediaId/move` → `orpc.media.move()`
+10. **Media Operations** ✅ **完了**
+    - [x] `POST /api/sources/:id/:mediaId/copy` → `orpc.media.copy()`
+    - [x] `POST /api/sources/:id/:mediaId/move` → `orpc.media.move()`
 
-**Priority 4: バックグラウンド処理・ユーティリティ**
+**Priority 4: バックグラウンド処理・ユーティリティ** ✅ **完了**
 11. **AI API**
-    - `POST /api/ai/tag` → `orpc.ai.tag()`
-    - `POST /api/ai/ccip/feature` → `orpc.ai.ccipFeature()`
-    - `POST /api/ai/ccip/difference` → `orpc.ai.ccipDifference()`
+    - [x] `POST /api/ai/tag` → `orpc.ai.tag()`
+    - [ ] `POST /api/ai/ccip/feature` → `orpc.ai.ccipFeature()`
+    - [ ] `POST /api/ai/ccip/difference` → `orpc.ai.ccipDifference()`
 
-12. **Thumbnails API**
-    - `GET /api/sources/:id/thumbnails` → `orpc.thumbnails.list()`
-    - `POST /api/sources/:id/thumbnails` → `orpc.thumbnails.generate()`
+12. **Thumbnails API** ✅ **完了**
+    - [x] `GET /api/sources/:id/thumbnails` → `orpc.thumbnails.list()`
+    - [x] `POST /api/sources/:id/thumbnails` → `orpc.thumbnails.generate()`
 
-13. **Import/Export API**
-    - `GET /api/sources/:id/dump` → `orpc.sources.dump()`
-    - `POST /api/sources/:id/restore` → `orpc.sources.restore()`
-    - `POST /api/sources/:id/import` → `orpc.sources.import()`
+13. **Import/Export API** ✅ **完了**
+    - [x] `GET /api/sources/:id/dump` → `orpc.sources.dump()`
+    - [x] `POST /api/sources/:id/restore` → `orpc.sources.restore()`
+    - [x] `POST /api/sources/:id/import` → `orpc.sources.importZip()`
 
-14. **Downloads API**
-    - `POST /api/downloads` → `orpc.downloads.create()`
+14. **Downloads API** ✅ **完了 (xtracter連携済)**
+    - [x] `POST /api/downloads` → `orpc.downloads.start()`
 
-15. **Utilities**
-    - `POST /api/fetch-url` → `orpc.utils.fetchUrl()`
-    - `GET /api/config` → `orpc.config.get()`
+15. **Utilities** ✅ **完了**
+    - [x] `POST /api/fetch-url` → `orpc.utils.fetchUrl()`
+    - [x] `GET /api/config` → `orpc.config.get()`
 
-**Priority 5: リアルタイム通信（後回し）**
+**Priority 5: リアルタイム通信** ✅ **完了**
 16. **SSE (Server-Sent Events)**
-    - `/api/sse/:id` → WebSocket または oRPC Streaming に移行を検討
-    - `/api/sources/:id/events` → 同上
-    - `/api/sources/:id/events/thumbnail-progress` → 同上
+    - [x] `/api/sse/:id` → `orpc.sources.events()`
+    - [x] `/api/sources/:id/events` → （統合済）
+    - [x] `/api/sources/:id/events/thumbnail-progress` → （sse-manager経由で統合）
 
 ##### 移行手順（各 API グループごと）
 
