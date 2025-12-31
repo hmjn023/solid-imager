@@ -63,8 +63,30 @@ export function fetchMediaDetails(sourceId: string, mediaId: string) {
  * @param file - File to upload
  * @returns Upload response with media information
  */
-export function uploadMedia(sourceId: string, file: File) {
-  return orpc.media.upload({ sourceId, file });
+export function uploadMedia(
+  sourceId: string,
+  file: File,
+  options?: {
+    filename?: string;
+    description?: string;
+    sourceUrl?: string;
+    overwrite?: boolean;
+    autoIncrement?: boolean;
+  }
+) {
+  return orpc.media.upload({
+    sourceId,
+    file,
+    filename: options?.filename,
+    description: options?.description,
+    sourceUrl: options?.sourceUrl,
+    overwrite:
+      options?.overwrite !== undefined ? String(options.overwrite) : undefined,
+    autoIncrement:
+      options?.autoIncrement !== undefined
+        ? String(options.autoIncrement)
+        : undefined,
+  });
 }
 
 /**
