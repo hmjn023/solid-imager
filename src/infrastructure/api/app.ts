@@ -8,10 +8,10 @@ const handler = new RPCHandler(appRouter);
  * Elysia アプリケーション
  */
 export const app = new Elysia().all(
-  "/rpc*",
+  "/*",
   async ({ request }: { request: Request }) => {
     const { response } = await handler.handle(request, {
-      prefix: "/rpc",
+      prefix: "/api/rpc",
     });
     return response ?? new Response("Not Found", { status: 404 });
   },
