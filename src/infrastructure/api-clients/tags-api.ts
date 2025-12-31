@@ -1,16 +1,54 @@
 /**
  * Tags API Client
  * Handles all API calls related to tags
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { tagListResponseSchema } from "~/domain/tags/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
+import type { z } from "zod";
+import type { newTagSchema, updateTagSchema } from "~/domain/tags/schemas";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Fetches all available tags
  * @returns Array of tags
  */
 export function fetchTags() {
-  return apiRequest(API_ENDPOINTS.tags, tagListResponseSchema);
+  return orpc.tags.list();
+}
+
+/**
+ * Fetches a single tag by ID
+ * @param id - Tag ID
+ * @returns Tag
+ */
+export function fetchTag(id: string) {
+  return orpc.tags.get({ id });
+}
+
+/**
+ * Creates a new tag
+ * @param data - Tag data
+ * @returns Created tag
+ */
+export function createTag(data: z.infer<typeof newTagSchema>) {
+  return orpc.tags.create(data);
+}
+
+/**
+ * Updates an existing tag
+ * @param id - Tag ID
+ * @param data - Updated tag data
+ * @returns Updated tag
+ */
+export function updateTag(id: string, data: z.infer<typeof updateTagSchema>) {
+  return orpc.tags.update({ id, data });
+}
+
+/**
+ * Deletes a tag
+ * @param id - Tag ID
+ */
+export async function deleteTag(id: string): Promise<void> {
+  await orpc.tags.delete({ id });
 }

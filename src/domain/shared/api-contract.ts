@@ -1,4 +1,5 @@
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
+import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 
 /**
  * API Router Definition
@@ -6,6 +7,7 @@ import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
  */
 export const appRouter = {
   sources: sourcesRouter,
+  tags: tagsRouter,
 };
 
 export type AppRouter = typeof appRouter;
