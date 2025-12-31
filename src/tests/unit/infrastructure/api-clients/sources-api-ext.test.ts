@@ -5,23 +5,30 @@ import {
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 
-// Mock the base-client
+// Mock the base-client (still needed for dump)
 vi.mock("~/infrastructure/api-clients/shared/base-client", () => ({
   apiRequest: vi.fn(),
   apiBlobRequest: vi.fn(),
 }));
 
-import {
-  apiBlobRequest,
-  apiRequest,
-} from "~/infrastructure/api-clients/shared/base-client";
+// Mock the orpc client
+vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
+  orpc: {
+    sources: {
+      restore: vi.fn(),
+    },
+  },
+}));
+
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { apiBlobRequest } from "~/infrastructure/api-clients/shared/base-client";
 
 describe("Sources API Client Extensions", () => {
   it("should call apiBlobRequest with correct parameters for fetchSourceDump", async () => {
     const id = "test-source-id";
     const mockBlob = new Blob(["dump content"]);
 
-    vi.mocked(apiBlobRequest).mockResolvedValue(mockBlob);
+    (apiBlobRequest as any).mockResolvedValue(mockBlob);
 
     // Test default mode
     const result = await fetchSourceDump(id);
@@ -44,24 +51,21 @@ describe("Sources API Client Extensions", () => {
     );
   });
 
-  it("should call apiRequest with correct parameters for restoreSource", async () => {
+  it("should call orpc.sources.restore with correct parameters", async () => {
     const id = "test-source-id";
     const data = { items: [] };
     const mockResponse = { processed: 10, skipped: 2 };
 
-    vi.mocked(apiRequest).mockResolvedValue(mockResponse);
+    ((orpc.sources as any).restore as any).mockResolvedValue(
+      mockResponse as any
+    );
 
     const result = await restoreSource(id, data);
 
-    expect(apiRequest).toHaveBeenCalledWith(
-      API_ENDPOINTS.sourceRestore(id),
-      expect.anything(), // zod schema
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }
-    );
+    expect((orpc.sources as any).restore).toHaveBeenCalledWith({
+      id,
+      data,
+    });
     expect(result).toEqual(mockResponse);
   });
 });

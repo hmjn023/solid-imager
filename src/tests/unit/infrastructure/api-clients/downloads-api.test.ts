@@ -1,16 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
-import { API_ENDPOINTS } from "~/infrastructure/api-clients/shared/endpoints";
 
-// Mock the base-client
-vi.mock("~/infrastructure/api-clients/shared/base-client", () => ({
-  apiRequest: vi.fn(),
+// Mock the orpc client
+vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
+  orpc: {
+    downloads: {
+      start: vi.fn(),
+    },
+  },
 }));
 
-import { apiRequest } from "~/infrastructure/api-clients/shared/base-client";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 describe("Downloads API Client", () => {
-  it("should call apiRequest with correct parameters for startDownloadJobs", async () => {
+  it("should call orpc.downloads.start with correct parameters", async () => {
     const mediaSourceId = "test-source-id";
     const items = [
       {
@@ -19,23 +22,13 @@ describe("Downloads API Client", () => {
       },
     ];
 
-    vi.mocked(apiRequest).mockResolvedValue({ success: true });
+    (orpc.downloads.start as any).mockResolvedValue({ success: true } as any);
 
-    await startDownloadJobs(mediaSourceId, items);
+    await startDownloadJobs(mediaSourceId, items as any);
 
-    expect(apiRequest).toHaveBeenCalledWith(
-      API_ENDPOINTS.downloads,
-      expect.anything(),
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          mediaSourceId,
-          items,
-        }),
-      }
-    );
+    expect(orpc.downloads.start).toHaveBeenCalledWith({
+      mediaSourceId,
+      items,
+    });
   });
 });

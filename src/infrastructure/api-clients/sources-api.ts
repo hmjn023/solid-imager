@@ -2,38 +2,14 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * NOTE: This file is being migrated to use oRPC.
- * - list, get, create, update, delete: Migrated to oRPC ✅
- * - dump, restore, import: Still using REST API (will migrate later)
+ * NOTE: This file is migrated to use oRPC ✅
  */
 
-import { z } from "zod";
-import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
+import type { z } from "zod";
+import type { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { apiBlobRequest, apiRequest } from "./shared/base-client";
+import { apiBlobRequest } from "./shared/base-client";
 import { API_ENDPOINTS } from "./shared/endpoints";
-
-/**
- * Schema for media source list response
- */
-const _mediaSourceListSchema = z.array(mediaSourceInfoSchema);
-
-/**
- * Schema for restore response
- */
-const restoreResponseSchema = z.object({
-  processed: z.number(),
-  skipped: z.number(),
-});
-
-/**
- * Schema for import response
- */
-const importResponseSchema = z.object({
-  success: z.boolean(),
-  importedCount: z.number(),
-  message: z.string().optional(),
-});
 
 /**
  * Fetches all media sources
@@ -57,8 +33,8 @@ export function fetchMediaSource(id: string) {
  * @param data - Media source data
  * @returns Created media source
  */
-export function createMediaSource(data: unknown) {
-  return orpc.sources.create(data as z.infer<typeof mediaSourceInfoSchema>);
+export function createMediaSource(data: z.infer<typeof mediaSourceInfoSchema>) {
+  return orpc.sources.create(data);
 }
 
 /**
@@ -67,10 +43,13 @@ export function createMediaSource(data: unknown) {
  * @param data - Updated media source data
  * @returns Updated media source
  */
-export function updateMediaSource(id: string, data: unknown) {
+export function updateMediaSource(
+  id: string,
+  data: Partial<z.infer<typeof mediaSourceInfoSchema>>
+) {
   return orpc.sources.update({
     id,
-    data: data as Partial<z.infer<typeof mediaSourceInfoSchema>>,
+    data,
   });
 }
 
@@ -105,11 +84,7 @@ export function fetchSourceDump(
  * @returns Restore result
  */
 export function restoreSource(id: string, data: unknown) {
-  return apiRequest(API_ENDPOINTS.sourceRestore(id), restoreResponseSchema, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.sources.restore({ id, data });
 }
 
 /**
@@ -119,11 +94,5 @@ export function restoreSource(id: string, data: unknown) {
  * @returns Import result
  */
 export function importSourceZip(id: string, file: File) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  return apiRequest(API_ENDPOINTS.sourceImport(id), importResponseSchema, {
-    method: "POST",
-    body: formData,
-  });
+  return orpc.sources.importZip({ id, file });
 }

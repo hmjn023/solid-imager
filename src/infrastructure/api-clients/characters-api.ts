@@ -1,16 +1,13 @@
 /**
  * Characters API Client
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { z } from "zod";
-import { characterSchema } from "~/domain/characters/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
-
-const characterListSchema = z.array(characterSchema);
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export function fetchAllCharacters() {
-  return apiRequest(API_ENDPOINTS.characters, characterListSchema);
+  return orpc.characters.list();
 }
 
 export function createCharacter(data: {
@@ -18,57 +15,36 @@ export function createCharacter(data: {
   description?: string;
   ipId?: string;
 }) {
-  return apiRequest(API_ENDPOINTS.characters, characterSchema, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.characters.create(data);
 }
 
 export function updateCharacter(
   id: string,
   data: { name?: string; description?: string; ipId?: string }
 ) {
-  return apiRequest(`${API_ENDPOINTS.characters}/${id}`, characterSchema, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.characters.update({ id, data });
 }
 
 export function deleteCharacter(id: string) {
-  return apiRequest(`${API_ENDPOINTS.characters}/${id}`, characterSchema, {
-    method: "DELETE",
-  });
+  return orpc.characters.delete({ id });
 }
 
-export function fetchCharactersForMedia(sourceId: string, mediaId: string) {
-  return apiRequest(
-    API_ENDPOINTS.mediaCharacters(sourceId, mediaId),
-    characterListSchema
-  );
+export function fetchCharactersForMedia(_sourceId: string, mediaId: string) {
+  return orpc.characters.listForMedia({ mediaId });
 }
 
 export function addCharacterToMedia(
-  sourceId: string,
+  _sourceId: string,
   mediaId: string,
   characterId: string
 ) {
-  return apiRequest(API_ENDPOINTS.mediaCharacters(sourceId, mediaId), z.any(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ characterId }),
-  });
+  return orpc.characters.addToMedia({ mediaId, characterId });
 }
 
 export function removeCharacterFromMedia(
-  sourceId: string,
+  _sourceId: string,
   mediaId: string,
   characterId: string
 ) {
-  return apiRequest(API_ENDPOINTS.mediaCharacters(sourceId, mediaId), z.any(), {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ characterId }),
-  });
+  return orpc.characters.removeFromMedia({ mediaId, characterId });
 }

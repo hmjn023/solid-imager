@@ -1,15 +1,12 @@
 /**
  * AI API Client
- * Handles AI-related operations
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
 import type { z } from "zod";
-import {
-  taggingResponseSchema,
-  type tagImageRequestSchema,
-} from "~/domain/tagging/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
+import type { tagImageRequestSchema } from "~/domain/tagging/schemas";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Fetches AI tags for a media item
@@ -17,11 +14,13 @@ import { API_ENDPOINTS } from "./shared/endpoints";
  * @returns The tagging response containing general tags, characters, and IPs
  */
 export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
-  return apiRequest(API_ENDPOINTS.aiTag, taggingResponseSchema, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(params),
-  });
+  return orpc.utils.aiTag(params);
+}
+
+/**
+ * Fetches AI tags for a file upload
+ * @param file - The file to tag
+ */
+export function fetchAiTagsForFile(file: File) {
+  return orpc.utils.aiTag({ file });
 }

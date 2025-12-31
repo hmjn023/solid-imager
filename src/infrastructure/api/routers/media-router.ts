@@ -142,4 +142,54 @@ export const mediaRouter = {
         throw error;
       }
     }),
+
+  /**
+   * Copy a media item to another source
+   */
+  copy: os
+    .input(
+      z.object({
+        mediaId: z.string().uuid(),
+        targetSourceId: z.string().uuid(),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.copyMedia(input.mediaId, input.targetSourceId)
+    ),
+
+  /**
+   * Move a media item to another source
+   */
+  move: os
+    .input(
+      z.object({
+        mediaId: z.string().uuid(),
+        targetSourceId: z.string().uuid(),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.moveMedia(input.mediaId, input.targetSourceId)
+    ),
+
+  /**
+   * Upload media to a source
+   */
+  upload: os
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        file: z.instanceof(File),
+      })
+    )
+    .handler(async ({ input }) => {
+      const formData = new FormData();
+      formData.append("file", input.file);
+      return await MediaService.uploadMedia(
+        input.sourceId,
+        input.file,
+        formData
+      );
+    }),
 };

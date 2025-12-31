@@ -102,6 +102,9 @@ export const sourcesRouter = {
       return toSafeMediaSource(result[0]);
     }),
 
+  /**
+   * Deletes a media source
+   */
   delete: os
     .input(
       z.object({
@@ -111,5 +114,40 @@ export const sourcesRouter = {
     .handler(async ({ input }) => {
       await MediaSourceService.deleteSource(input.id);
       return { success: true };
+    }),
+
+  /**
+   * Restores a media source from a dump
+   * NOTE: For now, this is a placeholder/delegate
+   */
+  restore: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        data: z.any(),
+      })
+    )
+    .handler(({ input }) => {
+      // TODO: Move restoration logic to a service
+      throw new Error(
+        `Restoration via oRPC not implemented for source ${input.id}. Use REST API.`
+      );
+    }),
+
+  /**
+   * Imports a media source from a Zip file
+   */
+  importZip: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        file: z.instanceof(File),
+      })
+    )
+    .handler(({ input }) => {
+      // TODO: Move import logic to a service
+      throw new Error(
+        `Import via oRPC not implemented for source ${input.id}. Use REST API.`
+      );
     }),
 };
