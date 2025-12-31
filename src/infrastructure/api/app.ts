@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { swagger } from "@elysiajs/swagger";
 import { RPCHandler } from "@orpc/server/fetch";
 import { Elysia } from "elysia";
 import { MediaService } from "~/application/services/media-service";
@@ -12,6 +13,24 @@ const handler = new RPCHandler(appRouter);
  * Elysia アプリケーション
  */
 export const app = new Elysia()
+  .use(
+    swagger({
+      documentation: {
+        info: {
+          title: "Solid Imager API",
+          version: "1.0.0",
+          description:
+            "API documentation for Solid Imager (Binary endpoints only. oRPC endpoints are documented separately)",
+        },
+        servers: [
+          {
+            url: "http://localhost:3000",
+            description: "Development server",
+          },
+        ],
+      },
+    })
+  )
   // Media Content
   .get(
     "/api/sources/:mediaSourceId/:mediaId",
