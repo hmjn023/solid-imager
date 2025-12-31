@@ -3,8 +3,20 @@ import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";
 import type { AppRouter } from "~/domain/shared/api-contract";
 
+/**
+ * Get the base URL for oRPC
+ * In browser: use current origin
+ * In SSR: use localhost (fallback)
+ */
+function getBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return `${window.location.origin}/api/rpc`;
+  }
+  return "http://localhost:3000/api/rpc";
+}
+
 const link = new RPCLink({
-  url: "/api/rpc",
+  url: getBaseUrl(),
 });
 
 /**
