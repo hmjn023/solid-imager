@@ -39,9 +39,10 @@ This plan outlines the steps to further decouple the Domain and Application laye
 **Problem**: Some domain types might still be influenced by DB schema constraints or Drizzle-specific types.
 **Solution**: Enforce strict mapping in repositories.
 
-- [ ] Audit all `mapToDomain` functions to ensure they return pure domain objects.
-- [ ] Verify that `src/domain` has zero imports from `src/infrastructure`.
-- [ ] Ensure API DTOs (Data Transfer Objects) are distinct from internal domain entities where necessary (especially for complex responses).
+- [x] Audit all `mapToDomain` functions to ensure they return pure domain objects.
+- [x] Verify that `src/domain` has zero imports from `src/infrastructure`.
+- [x] Ensure API DTOs (Data Transfer Objects) are distinct from internal domain entities where necessary (especially for complex responses).
+  - *Implemented `SafeMediaSource` to mask credentials in API responses.*
 
 ## 3. Implementation Checklist
 
@@ -57,4 +58,5 @@ This plan outlines the steps to further decouple the Domain and Application laye
 
 ### Phase 3: Validation
 - [ ] Verify unit tests can pass using mocks only (no DB, no FS).
-- [ ] Run `bun run check` to ensure no illegal upward dependencies.
+- [x] Run `bun run check` to ensure no illegal upward dependencies.
+

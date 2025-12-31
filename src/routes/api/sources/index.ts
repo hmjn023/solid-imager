@@ -1,11 +1,33 @@
 import type { APIEvent } from "@solidjs/start/server";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
-import { mediaSourceInfoSchema } from "~/domain/sources/schemas";
+import type { MediaSource } from "~/domain/repositories/source-repository";
+import {
+  mediaSourceInfoSchema,
+  type SafeMediaSource,
+} from "~/domain/sources/schemas";
 import { logger } from "~/infrastructure/logger";
 
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const HTTP_STATUS_BAD_REQUEST = 400;
+
+function toSafeMediaSource(source: MediaSource): SafeMediaSource {
+  const { connectionInfo, ...rest } = source;
+  // biome-ignore lint/suspicious/noExplicitAny: Dynamic connection info handling
+  const info = connectionInfo as any;
+
+  if (source.type === "sftp") {
+    // biome-ignore lint/correctness/noUnusedVariables: Omit from safe
+    const { password, privateKey, ...safe } = info;
+    return { ...rest, connectionInfo: safe };
+  }
+  if (source.type === "s3") {
+    // biome-ignore lint/correctness/noUnusedVariables: Omit from safe
+    const { accessKeyId, secretAccessKey, ...safe } = info;
+    return { ...rest, connectionInfo: safe };
+  }
+  return { ...rest, connectionInfo: info };
+}
 
 /**
  * @swagger
@@ -35,7 +57,8 @@ const HTTP_STATUS_BAD_REQUEST = 400;
 export async function GET() {
   try {
     const result = await MediaSourceService.fetchSources();
-    return new Response(JSON.stringify(result), {
+    const safeResult = result.map(toSafeMediaSource);
+    return new Response(JSON.stringify(safeResult), {
       status: 200,
       headers: {
         "Content-Type": "application/json",
@@ -119,7 +142,7 @@ export async function POST({ request }: APIEvent) {
         });
     }
 
-    return new Response(JSON.stringify(createdSource), {
+    return new Response(JSON.stringify(toSafeMediaSource(createdSource)), {
       status: 201,
       headers: {
         "Content-Type": "application/json",

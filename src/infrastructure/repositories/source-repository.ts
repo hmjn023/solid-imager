@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, type InferSelectModel } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
@@ -13,15 +13,25 @@ import type {
 import { db } from "~/infrastructure/db/index";
 import { mediaSources } from "~/infrastructure/db/schema";
 
+type DbMediaSource = InferSelectModel<typeof mediaSources>;
+
+function mapToMediaSource(dbSource: DbMediaSource): MediaSource {
+  return {
+    id: dbSource.id,
+    name: dbSource.name,
+    description: dbSource.description,
+    type: dbSource.type as MediaSource["type"],
+    connectionInfo: dbSource.connectionInfo as MediaSource["connectionInfo"],
+    createdAt: dbSource.createdAt,
+    updatedAt: dbSource.updatedAt,
+  };
+}
+
 export class DrizzleSourceRepository implements SourceRepository {
   async findAll(): Promise<MediaSource[]> {
     try {
       const results = await db.select().from(mediaSources);
-      // Map Drizzle result to Domain Entity if necessary.
-      // Currently they match in structure for MediaSourceInfo (mostly).
-      // Drizzle schema has createdAt/updatedAt as Date, which matches MediaSourceInfo (if Zod inferred correctly).
-      // We might need explicit casting or mapping if types diverge.
-      return results as unknown as MediaSource[];
+      return results.map(mapToMediaSource);
     } catch (error) {
       throw new UnexpectedError("Failed to select media sources", error);
     }
@@ -35,9 +45,9 @@ export class DrizzleSourceRepository implements SourceRepository {
         .where(eq(mediaSources.id, id));
 
       if (result.length === 0) {
-        return null; // Return null as per repository contract
+        return null;
       }
-      return result[0] as unknown as MediaSource;
+      return mapToMediaSource(result[0]);
     } catch (error) {
       throw new UnexpectedError(
         `Failed to select media source by ID: ${id}`,
@@ -52,14 +62,11 @@ export class DrizzleSourceRepository implements SourceRepository {
         /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
         db;
       // Drizzle insert expects values matching the schema.
-      // We cast to proper logic or use mapping if needed.
-      // For now, assume compatibility but avoid 'any' if possible or use 'unknown' then specific type.
-      // Drizzle's values() accepts InferInsertModel.
       const result = await client
         .insert(mediaSources)
         .values(source as typeof mediaSources.$inferInsert)
         .returning();
-      return result[0] as unknown as MediaSource;
+      return mapToMediaSource(result[0]);
     } catch (error: unknown) {
       if (
         error &&
@@ -91,12 +98,9 @@ export class DrizzleSourceRepository implements SourceRepository {
         .returning();
 
       if (result.length === 0) {
-        // If update fails because it doesn't exist, we might want to throw NotFound or return null?
-        // The interface definition for update usually implies existing entity.
-        // Let's throw NotFound to match current behavior for update actions.
         throw new ResourceNotFoundError("Media source", id);
       }
-      return result[0] as unknown as MediaSource;
+      return mapToMediaSource(result[0]);
     } catch (error) {
       if (error instanceof ResourceNotFoundError) {
         throw error;

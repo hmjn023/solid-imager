@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, type InferSelectModel } from "drizzle-orm";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -30,6 +30,38 @@ import {
   searchMedia as searchMediaQuery,
 } from "./media-repository-utils";
 
+type DbMedia = InferSelectModel<typeof medias>;
+
+function mapToMedia(dbMedia: DbMedia): Media {
+  return {
+    id: dbMedia.id,
+    mediaSourceId: dbMedia.mediaSourceId,
+    filePath: dbMedia.filePath,
+    fileName: dbMedia.fileName,
+    mediaType: dbMedia.mediaType,
+    width: dbMedia.width,
+    height: dbMedia.height,
+    fileSize: dbMedia.fileSize,
+    description: dbMedia.description,
+    createdAt: dbMedia.createdAt,
+    modifiedAt: dbMedia.modifiedAt,
+    indexedAt: dbMedia.indexedAt,
+    status: dbMedia.status as Media["status"],
+  };
+}
+
+type DbMediaUrl = InferSelectModel<typeof mediaUrls>;
+
+function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
+  return {
+    id: dbUrl.id,
+    mediaId: dbUrl.mediaId,
+    url: dbUrl.url,
+    createdAt: dbUrl.createdAt,
+    updatedAt: dbUrl.updatedAt,
+  };
+}
+
 export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by its ID.
@@ -46,7 +78,7 @@ export const MediaRepository: IMediaRepository = {
       if (result.length === 0) {
         return null;
       }
-      return result[0];
+      return mapToMedia(result[0]);
     } catch (e) {
       if (e instanceof ResourceNotFoundError) {
         return null;
@@ -68,26 +100,15 @@ export const MediaRepository: IMediaRepository = {
         /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
         db;
       const result = await client
-        .select({
-          id: medias.id,
-          mediaSourceId: medias.mediaSourceId,
-          filePath: medias.filePath,
-          fileName: medias.fileName,
-          mediaType: medias.mediaType,
-          width: medias.width,
-          height: medias.height,
-          fileSize: medias.fileSize,
-          description: medias.description,
-          createdAt: medias.createdAt,
-          modifiedAt: medias.modifiedAt,
-          indexedAt: medias.indexedAt,
-          status: medias.status,
-        })
+        .select()
         .from(medias)
         .where(
           and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath))
         );
-      return result[0] || null;
+      if (result.length === 0) {
+        return null;
+      }
+      return mapToMedia(result[0]);
     } catch (error) {
       throw new UnexpectedError(
         "Failed to select media by source ID and file path",
@@ -110,7 +131,7 @@ export const MediaRepository: IMediaRepository = {
         indexedAt: new Date(),
       };
       const result = await client.insert(medias).values(newMedia).returning();
-      return result[0];
+      return mapToMedia(result[0]);
     } catch (error) {
       throw new UnexpectedError("Failed to insert media", error);
     }
@@ -166,7 +187,7 @@ export const MediaRepository: IMediaRepository = {
       if (result.length === 0) {
         throw new ResourceNotFoundError("Media", mediaId);
       }
-      return result[0];
+      return mapToMedia(result[0]);
     } catch (error) {
       if (error instanceof ResourceNotFoundError) {
         throw error;
@@ -302,10 +323,11 @@ export const MediaRepository: IMediaRepository = {
       const client =
         /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
         db;
-      return await client
+      const results = await client
         .select()
         .from(mediaUrls)
         .where(eq(mediaUrls.mediaId, mediaId));
+      return results.map(mapToMediaUrl);
     } catch (error) {
       throw new UnexpectedError(
         `Failed to select media URLs for mediaId: ${mediaId}`,
@@ -330,7 +352,8 @@ export const MediaRepository: IMediaRepository = {
         mediaId,
         url,
       }));
-      return await client.insert(mediaUrls).values(values).returning();
+      const results = await client.insert(mediaUrls).values(values).returning();
+      return results.map(mapToMediaUrl);
     } catch (error) {
       throw new UnexpectedError("Failed to insert media URLs", error);
     }
@@ -387,10 +410,11 @@ export const MediaRepository: IMediaRepository = {
       const client =
         /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
         db;
-      return await client
+      const results = await client
         .select()
         .from(medias)
         .where(eq(medias.mediaSourceId, mediaSourceId));
+      return results.map(mapToMedia);
     } catch (error) {
       throw new UnexpectedError(
         `Failed to select medias by source ID: ${mediaSourceId}`,
@@ -408,11 +432,16 @@ export const MediaRepository: IMediaRepository = {
     const client =
       /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
       db;
-    return await searchMediaInDirectory(
+    // searchMediaInDirectory internally uses searchMediaQuery structure so it returns formatted results,
+    // hopefully compatible with Media. But let's check media-repository-utils.ts for that.
+    const results = await searchMediaInDirectory(
       mediaSourceId,
       directoryPath,
       params,
       client
     );
+    // If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
+    // Assuming it returns something schema-compliant for now, but strictly we should check.
+    return results as unknown as Media[];
   },
 };

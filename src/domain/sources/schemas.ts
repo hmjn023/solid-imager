@@ -91,3 +91,26 @@ export const cloneSourceRequestSchema = z.object({
   newName: z.string(),
 });
 export type CloneSourceRequest = z.infer<typeof cloneSourceRequestSchema>;
+
+// Safe schemas for API responses (masking secrets)
+export const safeSftpConnectionSchema = sftpConnectionSchema.omit({
+  password: true,
+  privateKey: true,
+});
+
+export const safeS3ConnectionSchema = s3ConnectionSchema.omit({
+  accessKeyId: true,
+  secretAccessKey: true,
+});
+
+export const safeConnectionInfoSchema = z.union([
+  localConnectionSchema,
+  safeSftpConnectionSchema,
+  safeS3ConnectionSchema,
+]);
+
+export const safeMediaSourceSchema = mediaSourceInfoSchema.extend({
+  connectionInfo: safeConnectionInfoSchema,
+});
+
+export type SafeMediaSource = z.infer<typeof safeMediaSourceSchema>;

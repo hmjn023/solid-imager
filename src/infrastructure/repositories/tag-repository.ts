@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, type InferSelectModel, inArray } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
@@ -15,13 +15,56 @@ import type { UpdateTag } from "~/domain/tags/schemas";
 import { db } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
 
+type DbTag = InferSelectModel<typeof tags>;
+
+function mapToDomain(dbTag: DbTag): Tag {
+  return {
+    id: dbTag.id,
+    name: dbTag.name,
+    description: dbTag.description,
+    attribute: dbTag.attribute,
+    color: dbTag.color,
+    source: dbTag.source,
+    authorId: dbTag.authorId,
+    createdAt: dbTag.createdAt,
+    updatedAt: dbTag.updatedAt,
+  };
+}
+
+// Result type from join query
+type MediaTagResult = {
+  id: string;
+  name: string;
+  description: string | null;
+  attribute: string | null;
+  color: string | null;
+  source: string;
+  authorId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  type: "positive" | "negative";
+};
+
+function mapToMediaTag(row: MediaTagResult): MediaTag {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    attribute: row.attribute,
+    color: row.color,
+    source: row.source,
+    authorId: row.authorId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    type: row.type,
+  };
+}
+
 export class DrizzleTagRepository implements TagRepositoryDef {
   async findAll(): Promise<Tag[]> {
     try {
       const results = await db.select().from(tags);
-      // Drizzle result matches Tag (TagResponse) structure (roughly)
-      // TagResponse has Date for createdAt/updatedAt, Drizzle returns Date.
-      return results as unknown as Tag[];
+      return results.map(mapToDomain);
     } catch (error) {
       throw new UnexpectedError("Failed to select tags", error);
     }
@@ -33,7 +76,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       if (result.length === 0) {
         return null;
       }
-      return result[0] as unknown as Tag;
+      return mapToDomain(result[0]);
     } catch (error) {
       throw new UnexpectedError(`Failed to select tag by ID: ${id}`, error);
     }
@@ -45,7 +88,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       if (result.length === 0) {
         return null;
       }
-      return result[0] as unknown as Tag;
+      return mapToDomain(result[0]);
     } catch (error) {
       throw new UnexpectedError(`Failed to select tag by name: ${name}`, error);
     }
@@ -57,7 +100,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
         db;
       const result = await client.insert(tags).values(tag).returning();
-      return result[0] as unknown as Tag;
+      return mapToDomain(result[0]);
     } catch (error: unknown) {
       if (
         error &&
@@ -87,7 +130,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
       if (result.length === 0) {
         throw new ResourceNotFoundError("Tag", id);
       }
-      return result[0] as unknown as Tag;
+      return mapToDomain(result[0]);
     } catch (error) {
       if (error instanceof ResourceNotFoundError) {
         throw error;
@@ -149,7 +192,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))
         .where(eq(mediaTags.mediaId, mediaId));
 
-      return result as unknown as MediaTag[];
+      return result.map(mapToMediaTag);
     } catch (error) {
       throw new UnexpectedError(
         `Failed to retrieve tags for media ID: ${mediaId}`,
