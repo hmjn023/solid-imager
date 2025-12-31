@@ -88,52 +88,6 @@ export default function Sources() {
       return;
     }
 
-    const ac = new AbortController();
-
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE handler logic
-    const startEventStream = async (mediaSourceId: string) => {
-      try {
-        const events = await orpc.sources.events(
-          { id: mediaSourceId },
-          { signal: ac.signal }
-        );
-
-        for await (const msg of events) {
-          if (ac.signal.aborted) {
-            break;
-          }
-
-          const { event, data } = msg;
-
-          switch (event) {
-            case "all-jobs-completed":
-              toast.success(
-                `Jobs for source ${mediaSourceId.substring(
-                  0,
-                  UUID_PREFIX_LENGTH
-                )}... completed! Processed: ${data?.processed}`
-              );
-              queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
-              break;
-            case "watcher-error":
-              toast.error(
-                `Watcher Error for ${mediaSourceId.substring(
-                  0,
-                  UUID_PREFIX_LENGTH
-                )}...: ${data?.error || "Unknown error"}`
-              );
-              break;
-            default:
-              break;
-          }
-        }
-      } catch (err) {
-        if (!ac.signal.aborted) {
-          logger.error({ err }, "Event stream error");
-        }
-      }
-    };
-
     // Watch for changes in mediaSources data and setup SSE
     createEffect(() => {
       const sources = mediaSources.data;
@@ -141,36 +95,63 @@ export default function Sources() {
         return;
       }
 
-      // Start stream for each source
-      // Note: This simple implementation might create multiple streams if sources change frequnetly,
-      // but typically the list is stable. A more robust way would be to track active streams
-      // or use a single stream if the backend supports it (currently per-source).
-      // Given the current architecture, we'll iterate.
-      // Ideally, we should clean up previous streams if the list changes, but here we just
-      // rely on the component unmount cleanup for simplicity unless the source list completely refreshes.
+      // Create a controller for this effect run (cancels previous run's streams)
+      const ac = new AbortController();
 
-      // Since createEffect runs on dependency change, we should be careful.
-      // However, fixing the immediate 404 is the priority.
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE handler logic
+      const startStreamForSource = async (id: string) => {
+        try {
+          const events = await orpc.sources.events(
+            { id },
+            { signal: ac.signal }
+          );
 
-      // Better approach: just start streams for loaded sources.
-      // Since it's a list, maybe we only want to listen to active ones?
-      // But the original code listened to all.
+          for await (const msg of events) {
+            if (ac.signal.aborted) {
+              break;
+            }
+
+            const { event, data } = msg;
+
+            switch (event) {
+              case "all-jobs-completed":
+                toast.success(
+                  `Jobs for source ${id.substring(
+                    0,
+                    UUID_PREFIX_LENGTH
+                  )}... completed! Processed: ${data?.processed}`
+                );
+                queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
+                break;
+              case "watcher-error":
+                toast.error(
+                  `Watcher Error for ${id.substring(
+                    0,
+                    UUID_PREFIX_LENGTH
+                  )}...: ${data?.error || "Unknown error"}`
+                );
+                break;
+              default:
+                break;
+            }
+          }
+        } catch (err) {
+          if (!ac.signal.aborted) {
+            logger.error({ err }, "Event stream error");
+          }
+        }
+      };
 
       for (const source of sources) {
-        // Check if we are already listening/setup logic?
-        // For now, let's just launch it. The previous code cleared all and re-added.
-        // Since we can't easily cancellation specific promises in this loop structure without tracking,
-        // we might just stick to the original behavior of "setup all".
-        // BUT, `orpc` returns a promise that resolves to an iterator.
-
-        // Let's rely on the fact that this effect won't re-run too often.
-        // And we use the AbortController to stop them all on unmount.
-        startEventStream(source.id);
+        if (source.id) {
+          startStreamForSource(source.id);
+        }
       }
-    });
 
-    onCleanup(() => {
-      ac.abort();
+      // Cleanup function run before next effect or on unmount
+      onCleanup(() => {
+        ac.abort();
+      });
     });
   });
 
