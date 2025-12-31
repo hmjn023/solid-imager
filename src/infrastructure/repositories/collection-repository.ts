@@ -12,7 +12,7 @@ import {
 } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { ICollectionRepository } from "~/domain/repositories/collection-repository";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { collections, mediaCollections } from "~/infrastructure/db/schema";
 
 export const CollectionRepository: ICollectionRepository = {
@@ -21,9 +21,7 @@ export const CollectionRepository: ICollectionRepository = {
   },
 
   async findById(id: string, tx?: Transaction): Promise<Collection | null> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .select()
       .from(collections)
@@ -37,9 +35,7 @@ export const CollectionRepository: ICollectionRepository = {
     tx?: Transaction
   ): Promise<Collection> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .insert(collections)
         .values(collection)
@@ -62,9 +58,7 @@ export const CollectionRepository: ICollectionRepository = {
     tx?: Transaction
   ): Promise<Collection> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .update(collections)
         .set(updates)
@@ -90,9 +84,7 @@ export const CollectionRepository: ICollectionRepository = {
   },
 
   async delete(id: string, tx?: Transaction): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .delete(collections)
       .where(eq(collections.id, id))
@@ -109,9 +101,7 @@ export const CollectionRepository: ICollectionRepository = {
     tx?: Transaction
   ): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       await client.insert(mediaCollections).values({
         collectionId,
         mediaId: item.mediaId,
@@ -133,9 +123,7 @@ export const CollectionRepository: ICollectionRepository = {
     mediaId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .delete(mediaCollections)
       .where(

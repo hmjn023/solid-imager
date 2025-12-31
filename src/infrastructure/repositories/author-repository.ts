@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   type Author,
   authors,
@@ -25,9 +25,7 @@ export const AuthorRepository: IAuthorRepository = {
   },
 
   async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     // Check duplication by accountId if present, similar to original upsert logic
     if (author.accountId) {
       const existing = await client
@@ -49,9 +47,7 @@ export const AuthorRepository: IAuthorRepository = {
     updates: Partial<Author>,
     tx?: Transaction
   ): Promise<Author> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .update(authors)
       .set(updates)
@@ -65,16 +61,12 @@ export const AuthorRepository: IAuthorRepository = {
   },
 
   async delete(id: string, tx?: Transaction): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     await client.delete(authors).where(eq(authors.id, id));
   },
 
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<Author[]> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .select({
         id: authors.id,
@@ -94,9 +86,7 @@ export const AuthorRepository: IAuthorRepository = {
     authorId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     await client
       .insert(mediaAuthors)
       .values({
@@ -111,9 +101,7 @@ export const AuthorRepository: IAuthorRepository = {
     authorId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     await client
       .delete(mediaAuthors)
       .where(

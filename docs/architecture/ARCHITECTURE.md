@@ -111,7 +111,7 @@ private mediaRepository = new DrizzleMediaRepository();
 
 （詳細は `docs/design/database-design.md` および ADR-002 参照）
 
-*   **ID戦略**: 外部公開するエンティティ（Media, Source等）には **UUID** を使用。内部管理マスタ（Tags等）には **SERIAL** を使用するハイブリッド戦略をとります。
+*   **ID戦略**: 全てのデータベーステーブルで **UUID (v4)** を使用します。これにより、クライアント・サーバ間での同期時におけるIDの競合を防止し、オフライン環境下でのデータ作成を可能にします。
 *   **多対多関係**: `media_tags`, `media_collections` のように `media_{entity}` という命名規則の中間テーブルを使用します。
 *   **タイムスタンプ**:
     *   `created_at`: 原本の作成日時

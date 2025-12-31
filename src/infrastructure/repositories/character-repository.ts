@@ -11,7 +11,7 @@ import {
 } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { characters, mediaCharacters } from "~/infrastructure/db/schema";
 
 export class DrizzleCharacterRepository implements CharacterRepository {
@@ -26,9 +26,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
   async findById(id: string, tx?: Transaction): Promise<Character | null> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .select()
         .from(characters)
@@ -47,9 +45,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
   async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .insert(characters)
         .values({
@@ -79,9 +75,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     tx?: Transaction
   ): Promise<Character> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .update(characters)
         .set({
@@ -118,9 +112,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
   async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .delete(characters)
         .where(eq(characters.id, id))
@@ -142,9 +134,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<Character[]> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const results = await client
         .select({
           id: characters.id,
@@ -175,9 +165,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     tx?: Transaction
   ): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       await client.insert(mediaCharacters).values({
         mediaId,
         characterId,
@@ -206,9 +194,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     tx?: Transaction
   ): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       await client
         .delete(mediaCharacters)
         .where(

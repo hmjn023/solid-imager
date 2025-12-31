@@ -12,7 +12,7 @@ import {
   sql,
 } from "drizzle-orm";
 import { UnexpectedError } from "~/domain/errors";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   mediaCharacters,
   mediaIps,
@@ -49,7 +49,7 @@ type SearchOptions = {
 function buildWhereClause(
   mediaSourceId: string,
   options: SearchOptions,
-  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
+  client: TransactionClient = db
 ): SQL | undefined {
   const conditions: (SQL | undefined)[] = [
     eq(medias.mediaSourceId, mediaSourceId),
@@ -164,7 +164,7 @@ function buildOrderByClause(
 export const searchMedia = async (
   mediaSourceId: string,
   searchOptions: SearchOptions,
-  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
+  client: TransactionClient = db
 ) => {
   try {
     const whereClause = buildWhereClause(mediaSourceId, searchOptions, client);
@@ -220,7 +220,7 @@ export const searchMediaInDirectory = async (
   mediaSourceId: string,
   directoryPath: string,
   searchOptions: { query?: string; tags?: string[] },
-  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
+  client: TransactionClient = db
 ) => {
   try {
     const conditions: (SQL | undefined)[] = [
@@ -272,7 +272,7 @@ export const globalSearchMedia = async (
     query?: string;
     tags?: string[];
   },
-  /* biome-ignore lint/suspicious/noExplicitAny: Transaction client */ client: any = db
+  client: TransactionClient = db
 ) => {
   try {
     const conditions: (SQL | undefined)[] = [];

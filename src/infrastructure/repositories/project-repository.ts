@@ -7,7 +7,7 @@ import type {
   UpdateProject,
 } from "~/domain/projects/schemas";
 import type { IProjectRepository } from "~/domain/repositories/project-repository";
-import { db } from "~/infrastructure/db";
+import { db, type TransactionClient } from "~/infrastructure/db";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";
 
 const mapToDomain = (dbProject: typeof projects.$inferSelect): Project => ({
@@ -26,9 +26,7 @@ export const ProjectRepository: IProjectRepository = {
   },
 
   async findById(id: string, tx?: Transaction): Promise<Project | null> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .select()
       .from(projects)
@@ -37,9 +35,7 @@ export const ProjectRepository: IProjectRepository = {
   },
 
   async create(project: NewProject, tx?: Transaction): Promise<Project> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client.insert(projects).values(project).returning();
     return mapToDomain(result[0]);
   },
@@ -49,9 +45,7 @@ export const ProjectRepository: IProjectRepository = {
     project: UpdateProject,
     tx?: Transaction
   ): Promise<Project> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const { archivedAt, ...rest } = project;
     const updateData: Partial<typeof projects.$inferInsert> = {
       ...rest,
@@ -76,9 +70,7 @@ export const ProjectRepository: IProjectRepository = {
   },
 
   async delete(id: string, tx?: Transaction): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .delete(projects)
       .where(eq(projects.id, id))
@@ -90,9 +82,7 @@ export const ProjectRepository: IProjectRepository = {
   },
 
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<Project[]> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .select({
         id: projects.id,
@@ -122,9 +112,7 @@ export const ProjectRepository: IProjectRepository = {
     projectId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     await client
       .insert(mediaProjects)
       .values({ mediaId, projectId })
@@ -136,9 +124,7 @@ export const ProjectRepository: IProjectRepository = {
     projectId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .delete(mediaProjects)
       .where(

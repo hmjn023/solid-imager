@@ -5,11 +5,19 @@ import { Pool } from "pg";
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
-type NodePostgresDb = ReturnType<typeof drizzleNodePostgres<typeof schema>>;
-type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
+export type NodePostgresDb = ReturnType<
+  typeof drizzleNodePostgres<typeof schema>
+>;
+export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
+export type DbInstance = NodePostgresDb | PgLiteDb;
 
-// biome-ignore lint/suspicious/noExplicitAny: initialized dynamically
-let _db: any = null;
+/**
+ * Type representing either a database instance or a transaction client.
+ * In Drizzle, both share the same common interface for queries.
+ */
+export type TransactionClient = NodePostgresDb | PgLiteDb;
+
+let _db: DbInstance | null = null;
 let _queryClient: Pool | PGlite | null = null;
 
 /**

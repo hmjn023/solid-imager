@@ -7,7 +7,7 @@ import {
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { Ip, NewIp, UpdateIp } from "~/domain/ips/schemas";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
-import { db } from "~/infrastructure/db";
+import { db, type TransactionClient } from "~/infrastructure/db";
 import { ips, mediaIps } from "~/infrastructure/db/schema";
 
 const mapToDomain = (dbIp: typeof ips.$inferSelect): Ip => ({
@@ -26,18 +26,14 @@ export const IpRepository: IIpRepository = {
   },
 
   async findById(id: string, tx?: Transaction): Promise<Ip | null> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client.select().from(ips).where(eq(ips.id, id));
     return result[0] ? mapToDomain(result[0]) : null;
   },
 
   async create(ip: NewIp, tx?: Transaction): Promise<Ip> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client.insert(ips).values(ip).returning();
       return mapToDomain(result[0]);
     } catch (error: unknown) {
@@ -51,9 +47,7 @@ export const IpRepository: IIpRepository = {
 
   async update(id: string, ip: UpdateIp, tx?: Transaction): Promise<Ip> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .update(ips)
         .set({ ...ip, updatedAt: new Date() })
@@ -77,9 +71,7 @@ export const IpRepository: IIpRepository = {
   },
 
   async delete(id: string, tx?: Transaction): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client.delete(ips).where(eq(ips.id, id)).returning();
     if (result.length === 0) {
       throw new ResourceNotFoundError("IP", id);
@@ -87,9 +79,7 @@ export const IpRepository: IIpRepository = {
   },
 
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<Ip[]> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .select({
         id: ips.id,
@@ -119,9 +109,7 @@ export const IpRepository: IIpRepository = {
     ipId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     await client.insert(mediaIps).values({ mediaId, ipId }).returning();
   },
 
@@ -130,9 +118,7 @@ export const IpRepository: IIpRepository = {
     ipId: string,
     tx?: Transaction
   ): Promise<void> {
-    const client =
-      /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-      db;
+    const client = (tx as unknown as TransactionClient) || db;
     const result = await client
       .delete(mediaIps)
       .where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.ipId, ipId)))

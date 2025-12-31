@@ -12,7 +12,7 @@ import type {
   TagRepository as TagRepositoryDef,
 } from "~/domain/repositories/tag-repository";
 import type { UpdateTag } from "~/domain/tags/schemas";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
 
 type DbTag = InferSelectModel<typeof tags>;
@@ -96,9 +96,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
   async create(tag: NewTag, tx?: Transaction): Promise<Tag> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client.insert(tags).values(tag).returning();
       return mapToDomain(result[0]);
     } catch (error: unknown) {
@@ -118,9 +116,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
   async update(id: string, tag: UpdateTag, tx?: Transaction): Promise<Tag> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .update(tags)
         .set(tag)
@@ -151,9 +147,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
   async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .delete(tags)
         .where(eq(tags.id, id))
@@ -172,9 +166,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .select({
           id: tags.id,
@@ -208,9 +200,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     tx?: Transaction
   ): Promise<void> {
     try {
-      const _client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const _client = (tx as unknown as TransactionClient) || db;
       const execute = async (t: Transaction) => {
         const tagNames = tagsToInsert.map((tag) => tag.name);
         if (tagNames.length === 0) {

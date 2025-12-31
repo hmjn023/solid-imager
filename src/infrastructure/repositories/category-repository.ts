@@ -6,7 +6,7 @@ import type {
   Category,
   CategoryRepository,
 } from "~/domain/repositories/category-repository";
-import { db } from "~/infrastructure/db/index";
+import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { categories } from "~/infrastructure/db/schema";
 
 export class DrizzleCategoryRepository implements CategoryRepository {
@@ -21,9 +21,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
   async findById(id: string, tx?: Transaction): Promise<Category | null> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .select()
         .from(categories)
@@ -42,9 +40,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
   async create(category: NewCategory, tx?: Transaction): Promise<Category> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .insert(categories)
         .values({
@@ -65,9 +61,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
     tx?: Transaction
   ): Promise<Category> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .update(categories)
         .set(category)
@@ -91,9 +85,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
   async delete(id: string, tx?: Transaction): Promise<void> {
     try {
-      const client =
-        /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (tx as any) ||
-        db;
+      const client = (tx as unknown as TransactionClient) || db;
       const result = await client
         .delete(categories)
         .where(eq(categories.id, id))

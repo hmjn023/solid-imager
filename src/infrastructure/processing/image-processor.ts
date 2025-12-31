@@ -86,14 +86,20 @@ export class LocalImageProcessor implements IImageProcessor {
 
   /**
    * Retrieves the dimensions (width and height) of an image.
-   * @param {string} _mediaPath - The path to the source image file.
+   * @param {string} mediaPath - The path to the source image file.
    * @returns {Promise<{ width: number; height: number }>} A promise that resolves with an object containing the width and height.
    */
-  getDimensions(
-    _mediaPath: string
+  async getDimensions(
+    mediaPath: string
   ): Promise<{ width: number; height: number }> {
-    // TODO: Get image dimensions
-    throw new Error("Not implemented");
+    const metadata = await sharp(mediaPath).metadata();
+    if (metadata.width === undefined || metadata.height === undefined) {
+      throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
+    }
+    return {
+      width: metadata.width,
+      height: metadata.height,
+    };
   }
 }
 

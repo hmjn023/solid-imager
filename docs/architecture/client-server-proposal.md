@@ -97,13 +97,14 @@
     2.  **ドメイン層の純粋化:** `src/domain` から環境依存の API を排除し、リポジトリパターンを導入。
 
 ### Phase 1: APIの分離と oRPC の導入
-*   **目標:** 現在のリポジトリ内で UI とバックエンドロジックを分離する。
+*   **目標:** 現在のリポジトリ内で UI とバックエンドロジックを分離し、型安全な RPC 通信を導入する。
 *   **ステップ:**
-    1.  `elysia` と `@orpc/server` をインストール。
-    2.  SolidStart の API ルート (`src/routes/api/*.ts`) 内で Elysia の `app.handle(request)` を呼び出す形でマウント。これにより、**Same-Origin (同一ポート) 通信となるため CORS 設定が不要**になり、かつ Elysia の型安全なルーターを活用可能。
-    3.  既存の API ロジックを Elysia ルーターへ順次移行。
-    4.  フロントエンドの `fetch` 呼び出しを oRPC クライアントに置き換え。
-    5.  *検証:* アプリケーションの動作は変わらず、通信が型安全になることを確認。
+    1.  `elysia`, `@orpc/server`, `@orpc/client`, `@orpc/zod` をインストール。
+    2.  **API Contract の定義 (`src/domain/shared/api-contract.ts`):** Zod スキーマを用いて API の仕様（Input/Output）を定義。これが Core パッケージの型情報の核となる。
+    3.  **Server Router の実装 (`src/infrastructure/api/routers/*.ts`):** Contract に基づき、Application Service を呼び出す実処理を実装。
+    4.  **Elysia のマウント (`src/routes/api/[[...path]].ts`):** SolidStart の Catch-all API ルート内で Elysia の `app.handle(request)` を呼び出す。これにより、**Same-Origin 通信による CORS 回避** と Elysia の型安全なルーティングを両立させる。
+    5.  **フロントエンドの移行:** 既存の `apiRequest` 呼び出しを oRPC クライアントに順次置き換え。
+    6.  *検証:* アプリケーションの動作は変わらず、通信が完全に型安全（End-to-End Type Safety）になることを確認。
 
 ### Phase 2: データレイヤーの抽象化
 *   **目標:** アプリケーションが DB の場所（プロセス内 vs ネットワーク越し）を意識しないようにする。
