@@ -1,54 +1,69 @@
-import { describe, expect, it, vi } from "vitest";
-import { API_ENDPOINTS } from "~/infrastructure/api-clients/shared/endpoints";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchSourceDump,
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 
-// Mock the base-client (still needed for dump)
-vi.mock("~/infrastructure/api-clients/shared/base-client", () => ({
-  apiRequest: vi.fn(),
-  apiBlobRequest: vi.fn(),
-}));
-
 // Mock the orpc client
 vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
   orpc: {
     sources: {
+      dump: vi.fn(),
       restore: vi.fn(),
     },
   },
 }));
 
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { apiBlobRequest } from "~/infrastructure/api-clients/shared/base-client";
 
 describe("Sources API Client Extensions", () => {
-  it("should call apiBlobRequest with correct parameters for fetchSourceDump", async () => {
+  const originalFetch = global.fetch;
+
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    vi.clearAllMocks();
+  });
+
+  it("should call orpc.sources.dump for json mode", async () => {
     const id = "test-source-id";
-    const mockBlob = new Blob(["dump content"]);
+    const mockDumpData = { defined: true };
 
-    (apiBlobRequest as any).mockResolvedValue(mockBlob);
+    (orpc.sources.dump as any).mockResolvedValue(mockDumpData);
 
-    // Test default mode
-    const result = await fetchSourceDump(id);
+    const result = await fetchSourceDump(id, "json");
 
-    expect(apiBlobRequest).toHaveBeenCalledWith(
-      `${API_ENDPOINTS.sourceDump(id)}?mode=json`,
-      {
-        method: "GET",
-      }
-    );
+    expect(orpc.sources.dump).toHaveBeenCalledWith({ id, mode: "json" });
+    // Verify result is a Blob containing the JSON
+    expect(result).toBeInstanceOf(Blob);
+    const text = await result.text();
+    expect(JSON.parse(text)).toEqual(mockDumpData);
+  });
+
+  it("should call fetch for zip mode with correct body", async () => {
+    const id = "test-source-id";
+    const mockBlob = new Blob(["zip content"]);
+
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(mockBlob),
+    });
+
+    const result = await fetchSourceDump(id, "zip");
+
+    expect(global.fetch).toHaveBeenCalledWith("/api/rpc/sources/dump", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        json: { id, mode: "zip" },
+      }),
+    });
     expect(result).toBe(mockBlob);
-
-    // Test zip mode
-    await fetchSourceDump(id, "zip");
-    expect(apiBlobRequest).toHaveBeenCalledWith(
-      `${API_ENDPOINTS.sourceDump(id)}?mode=zip`,
-      {
-        method: "GET",
-      }
-    );
   });
 
   it("should call orpc.sources.restore with correct parameters", async () => {

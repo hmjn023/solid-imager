@@ -137,8 +137,29 @@ export const sourcesRouter = {
     }),
 
   /**
-   * Restores a media source from a dump
+   * Dumps a media source
    */
+  dump: os
+    .input(
+      z.object({
+        id: z.string().uuid(),
+        mode: z.enum(["json", "zip"]).default("json"),
+      })
+    )
+    .handler(async ({ input }) => {
+      const result = await BackupService.createDump(input.id, input.mode);
+
+      if (input.mode === "zip") {
+        return new Response(result as ReadableStream, {
+          headers: {
+            "Content-Type": "application/zip",
+            "Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+          },
+        });
+      }
+
+      return result;
+    }),
   restore: os
     .input(
       z.object({

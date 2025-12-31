@@ -420,4 +420,145 @@ export const BackupService = {
       }
     }
   },
+
+  /**
+   * Generates a dump of the media source.
+   * Returns a JSON object or a ReadableStream for ZIP download.
+   */
+  // biome-ignore lint/suspicious/noExplicitAny: complex return type
+  async createDump(mediaSourceId: string, mode: "json" | "zip" = "json") {
+    // 1. Fetch Media Source Info (needed for Driver)
+    const mediaSource = await db.query.mediaSources.findFirst({
+      where: eq(mediaSources.id, mediaSourceId),
+    });
+
+    if (!mediaSource) {
+      throw new Error("Media Source not found");
+    }
+
+    // 2. Fetch Media Data (Relational query)
+    const mediaList = await db.query.medias.findMany({
+      where: eq(medias.mediaSourceId, mediaSourceId),
+      with: {
+        generationInfo: true,
+        urls: true,
+        tags: {
+          with: {
+            tag: true,
+          },
+        },
+        authors: {
+          with: {
+            author: true,
+          },
+        },
+      },
+    });
+
+    // 3. Transform to "restoration-ready" format
+    // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+    const dumpData = mediaList.map((media: any) => {
+      // Extract tags into a simple list of names/types
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const simpleTags = media.tags.map((mt: any) => ({
+        name: mt.tag.name,
+        type: mt.tagType,
+        confidence: mt.confidence,
+      }));
+
+      // Extract authors
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const simpleAuthors = media.authors.map((ma: any) => ({
+        name: ma.author.name,
+        accountId: ma.author.accountId,
+      }));
+
+      // Extract source URLs (flattened)
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const sourceUrls = media.urls.map((u: any) => u.url);
+
+      return {
+        id: media.id,
+        filePath: media.filePath,
+        fileName: media.fileName,
+        description: media.description,
+        width: media.width,
+        height: media.height,
+        fileSize: media.fileSize,
+        mediaType: media.mediaType,
+        createdAt: media.createdAt,
+        modifiedAt: media.modifiedAt,
+        indexedAt: media.indexedAt,
+
+        // Essential metadata for restoration
+        sourceUrls,
+
+        // AI Generation Info
+        generationInfo: media.generationInfo
+          ? {
+              prompt: media.generationInfo.prompt,
+              negativePrompt: media.generationInfo.negativePrompt,
+              modelName: media.generationInfo.modelName,
+              seed: media.generationInfo.seed,
+              steps: media.generationInfo.steps,
+              cfgScale: media.generationInfo.cfgScale,
+              aiGenerated: media.generationInfo.aiGenerated,
+              workflow: media.generationInfo.workflow, // Full workflow json
+              metadata: media.generationInfo.metadata, // Other metadata
+            }
+          : null,
+
+        tags: simpleTags,
+        authors: simpleAuthors,
+      };
+    });
+
+    // 4. Handle Response based on Mode
+    if (mode === "zip") {
+      const driver = getDriver(mediaSource);
+      // @ts-expect-error - dynamic import
+      // const archiver = (await import("archiver")).default;
+      // ↓ actually just removing the comment
+      const archiver = (await import("archiver")).default;
+
+      // Initialize Archiver
+      const archive = archiver("zip", {
+        zlib: { level: 9 }, // Sets the compression level.
+      });
+
+      // Handle archiving errors
+      archive.on("error", (_err: unknown) => {
+        // Do not throw, as it crashes the process.
+      });
+
+      const { PassThrough } = await import("node:stream");
+      const passThrough = new PassThrough();
+      archive.pipe(passThrough);
+
+      // Add Metadata JSON
+      archive.append(JSON.stringify(dumpData, null, 2), { name: "dump.json" });
+
+      // Add Images
+      // We process sequentially to avoid overwhelming the driver/fs
+      for (const media of mediaList) {
+        try {
+          const buffer = await driver.get(media.filePath);
+          archive.append(buffer, { name: `images/${media.filePath}` });
+        } catch (_e) {
+          // Skip missing files
+        }
+      }
+
+      // Finalize the archive (this indicates we are done appending)
+      archive.finalize();
+
+      // Return ReadableStream
+      const { Readable } = await import("node:stream");
+      // @ts-expect-error - Readable.toWeb is available in recent Node/Bun versions
+      // ↓ remove comment
+      return Readable.toWeb(passThrough) as ReadableStream;
+    }
+
+    return dumpData;
+  },
 };
