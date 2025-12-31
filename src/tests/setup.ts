@@ -3,7 +3,14 @@ import { PGlite } from "@electric-sql/pglite";
 import { config } from "dotenv";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { beforeEach, vi } from "vitest";
+import { beforeAll, beforeEach, vi } from "vitest";
+
+// サービス登録を全テスト開始前に行う
+beforeAll(async () => {
+  const { bootstrap } = await import("~/infrastructure/bootstrap");
+  bootstrap();
+});
+
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "~/infrastructure/db/schema";
 
@@ -109,12 +116,12 @@ const mockDb = {
   transaction: vi.fn((fn) => fn(mockDb)),
 };
 
-// 統合テストファイルのパターンを判定
-const isIntegrationTest = (filePath: string) =>
-  filePath.includes("/integration/") || filePath.includes("/tests/api/");
-
 // ~/infrastructure/db/index のモックを条件付きで設定
 vi.mock("~/infrastructure/db/index", async (_importOriginal) => {
+  // 統合テストファイルのパターンを判定
+  const isIntegrationTest = (filePath: string) =>
+    filePath.includes("/integration/") || filePath.includes("/tests/api/");
+
   // テストファイルのパスを取得（グローバル変数から）
   // @ts-expect-error - accessing internal test state
   const testPath = globalThis.__vitest_worker__?.filepath || "";

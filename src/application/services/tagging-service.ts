@@ -6,18 +6,9 @@ import type {
   CcipFeatureResponse,
   TaggingResponse,
 } from "~/domain/tagging/schemas";
-import { pythonClient } from "~/infrastructure/ai/python-client";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { MediaService } from "./media-service";
 
-// Register dependencies
-services.registerAiClient(pythonClient);
-// Only register if not already registered (to avoid overwriting if MediaService did it, though MediaService currently doesn't)
-try {
-  services.getSourceRepository();
-} catch {
-  services.registerSourceRepository(new DrizzleSourceRepository());
-}
+// DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
 export class TaggingService {
   private readonly aiClient: IAiClient;
@@ -94,7 +85,22 @@ export class TaggingService {
   }
 }
 
-export const taggingService = new TaggingService(
-  services.getAiClient(),
-  services.getSourceRepository()
-);
+// For backward compatibility and deferred initialization
+let _taggingService: TaggingService | null = null;
+const getTaggingService = () => {
+  if (!_taggingService) {
+    _taggingService = new TaggingService(
+      services.getAiClient(),
+      services.getSourceRepository()
+    );
+  }
+  return _taggingService;
+};
+
+export const taggingService = new Proxy({} as TaggingService, {
+  get(_target, prop) {
+    const service = getTaggingService();
+    const value = service[prop as keyof TaggingService];
+    return typeof value === "function" ? value.bind(service) : value;
+  },
+});

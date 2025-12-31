@@ -36,24 +36,8 @@ import {
   deleteThumbnail,
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Default implementation
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository"; // Default implementation
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-// Temporary registration of default implementations
-// Ideally this should be done in a composition root
-services.registerMediaRepository(MediaRepository);
-// Avoid re-registering if already registered (e.g. by TaggingService)
-try {
-  services.getSourceRepository();
-} catch {
-  services.registerSourceRepository(new DrizzleSourceRepository());
-}
-services.registerStorageService(LocalMediaStorage);
-services.registerTagRepository(TagRepository);
-services.registerImageProcessor(ImageProcessor);
+// DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
@@ -156,20 +140,7 @@ export class MediaServiceImpl {
     };
 
     let insertedMedia: Media;
-    try {
-      insertedMedia = await this.mediaRepository.create(newMedia);
-    } catch (error) {
-      // Handle race condition with FileWatcherService
-      const existing = await this.mediaRepository.findByPath(
-        validatedSourceId,
-        fileInfo.filePath
-      );
-      if (existing) {
-        insertedMedia = existing;
-      } else {
-        throw error;
-      }
-    }
+    insertedMedia = await this.mediaRepository.upsert(newMedia);
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
@@ -321,7 +292,7 @@ export class MediaServiceImpl {
               description: null,
             };
 
-            const created = await this.mediaRepository.create(newMedia);
+            const created = await this.mediaRepository.upsert(newMedia);
             newMediaItems.push({ id: created.id, filePath: relativePath });
           } catch (_e) {
             // Ignore creation errors
@@ -746,11 +717,25 @@ export class MediaServiceImpl {
   }
 }
 
-// Export a default instance for backward compatibility
-export const MediaService = new MediaServiceImpl(
-  services.getMediaRepository(),
-  services.getSourceRepository(),
-  services.getStorageService(),
-  services.getTagRepository(),
-  services.getImageProcessor()
-);
+// For backward compatibility and deferred initialization
+let _mediaService: MediaServiceImpl | null = null;
+const getMediaService = () => {
+  if (!_mediaService) {
+    _mediaService = new MediaServiceImpl(
+      services.getMediaRepository(),
+      services.getSourceRepository(),
+      services.getStorageService(),
+      services.getTagRepository(),
+      services.getImageProcessor()
+    );
+  }
+  return _mediaService;
+};
+
+export const MediaService = new Proxy({} as MediaServiceImpl, {
+  get(_target, prop) {
+    const service = getMediaService();
+    const value = service[prop as keyof MediaServiceImpl];
+    return typeof value === "function" ? value.bind(service) : value;
+  },
+});

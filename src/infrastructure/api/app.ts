@@ -5,9 +5,13 @@ import { RPCHandler } from "@orpc/server/fetch";
 import { Elysia } from "elysia";
 import { MediaService } from "~/application/services/media-service";
 import { appRouter } from "~/domain/shared/api-contract";
+import { bootstrap } from "~/infrastructure/bootstrap";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { openApiTags } from "./openapi-tags";
+
+// Initialize services (DI)
+bootstrap();
 
 const handler = new RPCHandler(appRouter);
 

@@ -8,7 +8,7 @@ import type { AppRouter } from "~/domain/shared/api-contract";
  * In browser: use current origin
  * In SSR: use localhost (fallback)
  */
-function getBaseUrl(): string {
+export function getBaseUrl(): string {
   if (typeof window !== "undefined") {
     return `${window.location.origin}/api/rpc`;
   }

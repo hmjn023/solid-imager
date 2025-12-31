@@ -20,17 +20,45 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
   // biome-ignore lint/suspicious/noExplicitAny: Dynamic connection info handling
   const info = connectionInfo as any;
 
+  if (source.type === "local") {
+    return {
+      ...rest,
+      connectionInfo: {
+        path: info.path,
+      },
+    };
+  }
   if (source.type === "sftp") {
-    // biome-ignore lint/correctness/noUnusedVariables: Omit from safe
-    const { password, privateKey, ...safe } = info;
-    return { ...rest, connectionInfo: safe };
+    return {
+      ...rest,
+      type: source.type,
+      connectionInfo: {
+        host: info.host,
+        port: info.port,
+        username: info.username,
+        remotePath: info.remotePath,
+      },
+    };
   }
   if (source.type === "s3") {
-    // biome-ignore lint/correctness/noUnusedVariables: Omit from safe
-    const { accessKeyId, secretAccessKey, ...safe } = info;
-    return { ...rest, connectionInfo: safe };
+    return {
+      ...rest,
+      type: source.type,
+      connectionInfo: {
+        bucket: info.bucket,
+        region: info.region,
+        prefix: info.prefix,
+      },
+    };
   }
-  return { ...rest, connectionInfo: info };
+  // Fallback for local
+  return {
+    ...rest,
+    type: source.type,
+    connectionInfo: {
+      path: info.path || "",
+    },
+  };
 }
 
 /**

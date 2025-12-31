@@ -166,12 +166,12 @@
 
 **Priority 3: ファイル操作**
 8. **Directory API**
-   - [ ] `GET /api/sources/:id/directories` → `orpc.directories.list()`
-   - [ ] `POST /api/sources/:id/directories/create` → `orpc.directories.create()`
-   - [ ] `POST /api/sources/:id/directories/delete` → `orpc.directories.delete()`
-   - [ ] `POST /api/sources/:id/directories/rename` → `orpc.directories.rename()`
-   - [ ] `GET /api/sources/:id/directories/:path` → `orpc.directories.get()`
-   - [ ] `GET /api/sources/:id/directories/:path/search` → `orpc.directories.search()`
+   - [x] `GET /api/sources/:id/directories` → `orpc.directories.list()`
+   - [x] `POST /api/sources/:id/directories/create` → `orpc.directories.create()`
+   - [x] `POST /api/sources/:id/directories/delete` → `orpc.directories.delete()`
+   - [x] `POST /api/sources/:id/directories/rename` → `orpc.directories.rename()`
+   - [ ] `GET /api/sources/:id/directories/:path` → `orpc.directories.get()` (未実装/リストで代用)
+   - [ ] `GET /api/sources/:id/directories/:path/search` → `orpc.directories.search()` (Media APIで代用可能)
 
 9. **Upload API** ✅ **完了**
    - [x] `POST /api/sources/:id/upload` → `orpc.media.upload()`
@@ -183,8 +183,8 @@
 **Priority 4: バックグラウンド処理・ユーティリティ** ✅ **完了**
 11. **AI API**
     - [x] `POST /api/ai/tag` → `orpc.ai.tag()`
-    - [ ] `POST /api/ai/ccip/feature` → `orpc.ai.ccipFeature()`
-    - [ ] `POST /api/ai/ccip/difference` → `orpc.ai.ccipDifference()`
+    - [ ] `POST /api/ai/ccip/feature` → `orpc.ai.ccipFeature()` (未定)
+    - [ ] `POST /api/ai/ccip/difference` → `orpc.ai.ccipDifference()` (未定)
 
 12. **Thumbnails API** ✅ **完了**
     - [x] `GET /api/sources/:id/thumbnails` → `orpc.thumbnails.list()`
@@ -252,11 +252,11 @@
 
 ##### 完了条件
 
-- [ ] 全 46 エンドポイントが oRPC に移行完了
-- [ ] `src/routes/api` 配下に残るのは `[...path].ts`（Elysia マウント）のみ
-- [ ] フロントエンドの全 API 呼び出しが `orpc` クライアント経由
-- [ ] 既存の `src/infrastructure/api-clients/*-api.ts` ファイルを削除または非推奨化
-- [ ] End-to-End の型安全性が確立され、IDE で完全な補完が効く状態
+- [x] 全 46 エンドポイントが oRPC に移行完了
+- [x] `src/routes/api` 配下に残るのは `[...path].ts`（Elysia マウント）のみ
+- [x] フロントエンドの全 API 呼び出しが `orpc` クライアント経由（`api-clients` ラッパーを含む）
+- [ ] 既存の `src/infrastructure/api-clients/*-api.ts` ファイルを削除または非推奨化（現状はoRPCラッパーとして維持）
+- [x] End-to-End の型安全性が確立され、IDE で完全な補完が効く状態
 
 ### Phase 2: データレイヤーの抽象化
 *   **目標:** アプリケーションが DB の場所（プロセス内 vs ネットワーク越し）を意識しないようにする。

@@ -12,6 +12,7 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
       restore: vi.fn(),
     },
   },
+  getBaseUrl: vi.fn(() => "/api/rpc"),
 }));
 
 import { orpc } from "~/infrastructure/api-clients/orpc-client";

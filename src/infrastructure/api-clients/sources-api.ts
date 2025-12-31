@@ -7,7 +7,7 @@
 
 import type { z } from "zod";
 import type { mediaSourceInfoSchema } from "~/domain/sources/schemas";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { getBaseUrl, orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Fetches all media sources
@@ -65,54 +65,24 @@ export async function deleteMediaSource(id: string): Promise<void> {
  * @param mode - The dump mode (json or zip)
  * @returns Blob containing the dump
  */
-/**
- * Fetches a dump of the media source
- * @param id - Media source ID
- * @param mode - The dump mode (json or zip)
- * @returns Blob containing the dump
- */
 export async function fetchSourceDump(
   id: string,
   mode: "json" | "zip" = "json"
 ): Promise<Blob> {
   if (mode === "json") {
-    // For JSON, we can use the typed client directly
     const result = await orpc.sources.dump({ id, mode });
-    // result is already the dump object
     return new Blob([JSON.stringify(result, null, 2)], {
       type: "application/json",
     });
   }
 
-  // For ZIP, we need to handle the blob response which oRPC client might try to parse as JSON
-  // So we stick to fetch, BUT we must match the oRPC wire format: { "json": { ...args... } }
-  // or pure JSON if using a different Content-Type, but standard oRPC over HTTP usually expects wrapped args or standard JSON body.
-  // Based on the error "expected object, received undefined", the server likely didn't see the args.
-
-  // The RPC handler usually expects the input in the body directly for POST if it's not a GET.
-  // Let's try sending the object directly first, but properly.
-  // Actually, previously it failed with `{"id":..., "mode":...}`.
-  // The error `{"issues":[{"expected":"object","code":"invalid_type","path":[],"message":"Invalid input: expected object, received undefined"}]}`
-  // suggests that the root input was undefined.
-
-  // In many RPC adapters (like tRPC/oRPC), the structure might be `{ input: ... }` or `{ json: ... }`.
-  // Looking at the error response `{"json":{"defined":false,...` it seems to be parsing "json" field?
-  // Let's try wrapping in `json` key assuming superjson/similar orpc default.
-
-  const url = "/api/rpc/sources/dump";
+  // For ZIP, fetch directly matching the oRPC wire format
+  const url = `${getBaseUrl()}/sources/dump`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Accept header is important
     },
-    // Wrap arguments in "json" key if using superjson/standard serializer usually
-    // BUT wait, `orpc` might just expect the raw JSON if not using special serializers.
-    // Let's look at `sources-router.ts`. It uses `z.object({...})`.
-    // The previous error implies it received `undefined` when expecting an object.
-    // This often happens if the body is not parsed correctly or the structure is wrong.
-
-    // Attempt 1: Try wrapping in `json` as per standard orpc-over-http often seen
     body: JSON.stringify({
       json: { id, mode },
     }),
