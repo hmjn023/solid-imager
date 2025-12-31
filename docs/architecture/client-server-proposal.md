@@ -99,12 +99,164 @@
 ### Phase 1: APIの分離と oRPC の導入
 *   **目標:** 現在のリポジトリ内で UI とバックエンドロジックを分離し、型安全な RPC 通信を導入する。
 *   **ステップ:**
-    1.  `elysia`, `@orpc/server`, `@orpc/client`, `@orpc/zod` をインストール。
-    2.  **API Contract の定義 (`src/domain/shared/api-contract.ts`):** Zod スキーマを用いて API の仕様（Input/Output）を定義。これが Core パッケージの型情報の核となる。
-    3.  **Server Router の実装 (`src/infrastructure/api/routers/*.ts`):** Contract に基づき、Application Service を呼び出す実処理を実装。
-    4.  **Elysia のマウント (`src/routes/api/[[...path]].ts`):** SolidStart の Catch-all API ルート内で Elysia の `app.handle(request)` を呼び出す。これにより、**Same-Origin 通信による CORS 回避** と Elysia の型安全なルーティングを両立させる。
-    5.  **フロントエンドの移行:** 既存の `apiRequest` 呼び出しを oRPC クライアントに順次置き換え。
+    1.  `elysia`, `@orpc/server`, `@orpc/client`, `@orpc/zod` をインストール。✅ **完了**
+    2.  **API Contract の定義 (`src/domain/shared/api-contract.ts`):** Zod スキーマを用いて API の仕様（Input/Output）を定義。これが Core パッケージの型情報の核となる。✅ **完了**
+    3.  **Server Router の実装 (`src/infrastructure/api/routers/*.ts`):** Contract に基づき、Application Service を呼び出す実処理を実装。✅ **完了（sources のみ）**
+    4.  **Elysia のマウント (`src/routes/api/[...path].ts`):** SolidStart の Catch-all API ルート内で Elysia の `app.handle(request)` を呼び出す。これにより、**Same-Origin 通信による CORS 回避** と Elysia の型安全なルーティングを両立させる。✅ **完了**
+    5.  **段階的な API 移行:** 既存の REST API エンドポイントを oRPC に順次移行。
     6.  *検証:* アプリケーションの動作は変わらず、通信が完全に型安全（End-to-End Type Safety）になることを確認。
+
+#### Phase 1.5: 段階的な API 移行計画
+
+既存の REST API エンドポイント（46個）を優先度別に oRPC へ移行します。
+
+##### 移行の優先順位
+
+**Priority 1: コア機能（必須）**
+1. **Media Sources API** ✅ **完了**
+   - `GET /api/sources` → `orpc.sources.list()`
+   - `POST /api/sources` → `orpc.sources.create()`
+   - `GET /api/sources/:id` → `orpc.sources.get()`
+   - `PUT /api/sources/:id` → `orpc.sources.update()`
+   - `DELETE /api/sources/:id` → `orpc.sources.delete()`
+
+2. **Media API**（最重要）
+   - `GET /api/sources/:id/search` → `orpc.media.search()`
+   - `GET /api/sources/:id/:mediaId` → `orpc.media.get()`
+   - `PUT /api/sources/:id/:mediaId` → `orpc.media.update()`
+   - `DELETE /api/sources/:id/:mediaId` → `orpc.media.delete()`
+   - `GET /api/sources/:id/:mediaId/details` → `orpc.media.getDetails()`
+   - `GET /api/sources/:id/:mediaId/thumbnail` → `orpc.media.getThumbnail()`
+
+3. **Tags API**
+   - `GET /api/tags` → `orpc.tags.list()`
+   - `POST /api/tags` → `orpc.tags.create()`
+   - `PUT /api/tags/:id` → `orpc.tags.update()`
+   - `DELETE /api/tags/:id` → `orpc.tags.delete()`
+   - `GET /api/sources/:id/:mediaId/tags` → `orpc.media.getTags()`
+   - `POST /api/sources/:id/:mediaId/tags` → `orpc.media.addTags()`
+
+**Priority 2: メタデータ管理**
+4. **Projects API**
+   - `GET /api/projects` → `orpc.projects.list()`
+   - `POST /api/projects` → `orpc.projects.create()`
+   - `PUT /api/projects/:id` → `orpc.projects.update()`
+   - `DELETE /api/projects/:id` → `orpc.projects.delete()`
+   - Media-Project 関連付け
+
+5. **Characters API**
+   - `GET /api/characters` → `orpc.characters.list()`
+   - `POST /api/characters` → `orpc.characters.create()`
+   - `PUT /api/characters/:id` → `orpc.characters.update()`
+   - `DELETE /api/characters/:id` → `orpc.characters.delete()`
+   - Media-Character 関連付け
+
+6. **IPs API**
+   - `GET /api/ips` → `orpc.ips.list()`
+   - `POST /api/ips` → `orpc.ips.create()`
+   - `PUT /api/ips/:id` → `orpc.ips.update()`
+   - `DELETE /api/ips/:id` → `orpc.ips.delete()`
+   - Media-IP 関連付け
+
+7. **Categories API**
+   - `GET /api/categories` → `orpc.categories.list()`
+   - `POST /api/categories` → `orpc.categories.create()`
+   - `PUT /api/categories/:id` → `orpc.categories.update()`
+   - `DELETE /api/categories/:id` → `orpc.categories.delete()`
+
+**Priority 3: ファイル操作**
+8. **Directory API**
+   - `GET /api/sources/:id/directories` → `orpc.directories.list()`
+   - `POST /api/sources/:id/directories/create` → `orpc.directories.create()`
+   - `POST /api/sources/:id/directories/delete` → `orpc.directories.delete()`
+   - `POST /api/sources/:id/directories/rename` → `orpc.directories.rename()`
+   - `GET /api/sources/:id/directories/:path` → `orpc.directories.get()`
+   - `GET /api/sources/:id/directories/:path/search` → `orpc.directories.search()`
+
+9. **Upload API**
+   - `POST /api/sources/:id/upload` → `orpc.media.upload()`
+
+10. **Media Operations**
+    - `POST /api/sources/:id/:mediaId/copy` → `orpc.media.copy()`
+    - `POST /api/sources/:id/:mediaId/move` → `orpc.media.move()`
+
+**Priority 4: バックグラウンド処理・ユーティリティ**
+11. **AI API**
+    - `POST /api/ai/tag` → `orpc.ai.tag()`
+    - `POST /api/ai/ccip/feature` → `orpc.ai.ccipFeature()`
+    - `POST /api/ai/ccip/difference` → `orpc.ai.ccipDifference()`
+
+12. **Thumbnails API**
+    - `GET /api/sources/:id/thumbnails` → `orpc.thumbnails.list()`
+    - `POST /api/sources/:id/thumbnails` → `orpc.thumbnails.generate()`
+
+13. **Import/Export API**
+    - `GET /api/sources/:id/dump` → `orpc.sources.dump()`
+    - `POST /api/sources/:id/restore` → `orpc.sources.restore()`
+    - `POST /api/sources/:id/import` → `orpc.sources.import()`
+
+14. **Downloads API**
+    - `POST /api/downloads` → `orpc.downloads.create()`
+
+15. **Utilities**
+    - `POST /api/fetch-url` → `orpc.utils.fetchUrl()`
+    - `GET /api/config` → `orpc.config.get()`
+
+**Priority 5: リアルタイム通信（後回し）**
+16. **SSE (Server-Sent Events)**
+    - `/api/sse/:id` → WebSocket または oRPC Streaming に移行を検討
+    - `/api/sources/:id/events` → 同上
+    - `/api/sources/:id/events/thumbnail-progress` → 同上
+
+##### 移行手順（各 API グループごと）
+
+1. **Router の作成**
+   ```typescript
+   // src/infrastructure/api/routers/media-router.ts
+   export const mediaRouter = {
+     search: os.input(searchSchema).handler(async ({ input }) => {
+       return await MediaService.search(input);
+     }),
+     // ...
+   };
+   ```
+
+2. **Contract への追加**
+   ```typescript
+   // src/domain/shared/api-contract.ts
+   export const appRouter = {
+     sources: sourcesRouter,
+     media: mediaRouter,  // 追加
+     tags: tagsRouter,    // 追加
+     // ...
+   };
+   ```
+
+3. **フロントエンドの移行**
+   ```typescript
+   // Before
+   const media = await apiRequest('/api/sources/123/search', schema, { ... });
+   
+   // After
+   const media = await orpc.media.search({ sourceId: '123', ... });
+   ```
+
+4. **既存 REST エンドポイントの削除**
+   - oRPC への移行が完了し、動作確認が取れたら、対応する `src/routes/api/**/*.ts` ファイルを削除
+
+##### 移行の進め方
+
+- **週次スプリント方式:** 毎週 1〜2 つの API グループを移行
+- **並行運用期間:** 各 API は移行後も既存の REST エンドポイントを 1 スプリント維持し、問題がないことを確認してから削除
+- **テストの追加:** 各 API 移行時に、oRPC 経由での動作を確認する統合テストを追加
+
+##### 完了条件
+
+- [ ] 全 46 エンドポイントが oRPC に移行完了
+- [ ] `src/routes/api` 配下に残るのは `[...path].ts`（Elysia マウント）のみ
+- [ ] フロントエンドの全 API 呼び出しが `orpc` クライアント経由
+- [ ] 既存の `src/infrastructure/api-clients/*-api.ts` ファイルを削除または非推奨化
+- [ ] End-to-End の型安全性が確立され、IDE で完全な補完が効く状態
 
 ### Phase 2: データレイヤーの抽象化
 *   **目標:** アプリケーションが DB の場所（プロセス内 vs ネットワーク越し）を意識しないようにする。
