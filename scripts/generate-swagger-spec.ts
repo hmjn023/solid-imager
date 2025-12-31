@@ -1,36 +1,34 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import swaggerJsdoc from "swagger-jsdoc";
+import { OpenAPIGenerator } from "@orpc/openapi";
+import { appRouter } from "../src/domain/shared/api-contract";
 
-const options: swaggerJsdoc.Options = {
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Solid Imager API",
-      version: "1.0.0",
-      description: "API documentation for the Solid Imager application.",
-    },
-    servers: [
-      {
-        url: "http://localhost:3000",
-        description: "Development server",
-      },
-    ],
-  },
-  apis: ["./src/routes/api/**/*.ts", "./src/domain/**/*.ts"],
-};
-
-async function generateSwaggerSpec() {
+async function generateOpenAPISpec() {
   try {
-    console.log("Generating Swagger API specification...");
-    const spec = swaggerJsdoc(options);
+    console.log("Generating OpenAPI specification from oRPC router...");
+
+    const generator = new OpenAPIGenerator();
+    const spec = await generator.generate(appRouter, {
+      info: {
+        title: "Solid Imager oRPC API",
+        version: "1.0.0",
+        description: "oRPC endpoints for Solid Imager",
+      },
+      servers: [
+        {
+          url: "http://localhost:3000/api/rpc",
+          description: "Development server (oRPC)",
+        },
+      ],
+    });
+
     const outputPath = path.resolve(process.cwd(), "public/openapi.json");
     await fs.writeFile(outputPath, JSON.stringify(spec, null, 2));
-    console.log(`API specification written to ${outputPath}`);
+    console.log(`OpenAPI specification written to ${outputPath}`);
   } catch (error) {
-    console.error("Error generating Swagger spec:", error);
+    console.error("Error generating OpenAPI spec:", error);
     process.exit(1);
   }
 }
 
-void generateSwaggerSpec();
+void generateOpenAPISpec();

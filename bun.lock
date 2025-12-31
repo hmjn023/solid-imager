@@ -44,6 +44,7 @@
       },
       "devDependencies": {
         "@biomejs/biome": "2.2.4",
+        "@orpc/openapi": "^1.13.2",
         "@playwright/test": "^1.57.0",
         "@tailwindcss/vite": "^4.1.17",
         "@types/archiver": "^7.0.0",
