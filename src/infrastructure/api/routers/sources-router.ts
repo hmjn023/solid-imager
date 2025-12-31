@@ -52,6 +52,13 @@ export const sourcesRouter = {
     }),
 
   get: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Get media source by ID",
+        description: "Retrieve a specific media source by its UUID",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -65,41 +72,57 @@ export const sourcesRouter = {
       return toSafeMediaSource(source);
     }),
 
-  create: os.input(mediaSourceInfoSchema).handler(async ({ input }) => {
-    const result = await MediaSourceService.createSource(input);
-    const createdSource = result[0];
+  create: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Create a new media source",
+        description: "Register a new media source (local, SFTP, S3, etc.)",
+      },
+    })
+    .input(mediaSourceInfoSchema)
+    .handler(async ({ input }) => {
+      const result = await MediaSourceService.createSource(input);
+      const createdSource = result[0];
 
-    // ローカルソースの場合、バックグラウンド処理を開始
-    if (createdSource && createdSource.type === "local") {
-      MediaService.registerExistingMedia(
-        createdSource.id,
-        (createdSource.connectionInfo as { path: string }).path
-      );
+      // ローカルソースの場合、バックグラウンド処理を開始
+      if (createdSource && createdSource.type === "local") {
+        MediaService.registerExistingMedia(
+          createdSource.id,
+          (createdSource.connectionInfo as { path: string }).path
+        );
 
-      // ファイル監視の開始
-      import("~/infrastructure/jobs/file-watcher-service")
-        .then((module) => {
-          module.FileWatcherService.startMonitoring(createdSource.id).catch(
-            (error) => {
-              logger.error(
-                { err: error, sourceId: createdSource.id },
-                "Failed to start file watcher"
-              );
-            }
-          );
-        })
-        .catch((error) => {
-          logger.error(
-            { err: error, sourceId: createdSource.id },
-            "Failed to load file watcher service"
-          );
-        });
-    }
+        // ファイル監視の開始
+        import("~/infrastructure/jobs/file-watcher-service")
+          .then((module) => {
+            module.FileWatcherService.startMonitoring(createdSource.id).catch(
+              (error) => {
+                logger.error(
+                  { err: error, sourceId: createdSource.id },
+                  "Failed to start file watcher"
+                );
+              }
+            );
+          })
+          .catch((error) => {
+            logger.error(
+              { err: error, sourceId: createdSource.id },
+              "Failed to load file watcher service"
+            );
+          });
+      }
 
-    return toSafeMediaSource(createdSource);
-  }),
+      return toSafeMediaSource(createdSource);
+    }),
 
   update: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Update media source",
+        description: "Update an existing media source's configuration",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -118,6 +141,13 @@ export const sourcesRouter = {
    * Deletes a media source
    */
   delete: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Delete media source",
+        description: "Remove a media source and stop its file monitoring",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -150,6 +180,13 @@ export const sourcesRouter = {
    * Dumps a media source
    */
   dump: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Export media source",
+        description: "Export media source data as JSON or ZIP archive",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -171,6 +208,13 @@ export const sourcesRouter = {
       return result;
     }),
   restore: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Restore media source",
+        description: "Restore media source from exported JSON data",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -186,6 +230,13 @@ export const sourcesRouter = {
    * Imports a media source from a Zip file
    */
   importZip: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Import media source from ZIP",
+        description: "Import media source data from a ZIP archive",
+      },
+    })
     .input(
       z.object({
         id: z.string().uuid(),
@@ -201,6 +252,13 @@ export const sourcesRouter = {
    * Get status of a media source
    */
   status: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Get media source status",
+        description: "Retrieve current status and statistics of a media source",
+      },
+    })
     .input(z.object({ id: z.string().uuid() }))
     .output(mediaSourceStatusSchema)
     .handler(async ({ input }) => {
@@ -213,6 +271,14 @@ export const sourcesRouter = {
    * Real-time events stream for a media source
    */
   events: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Subscribe to media source events",
+        description:
+          "Real-time Server-Sent Events stream for media source updates",
+      },
+    })
     .input(z.object({ id: z.string().uuid() }))
     .handler(async function* ({ input, signal }) {
       // Yield initial connection event

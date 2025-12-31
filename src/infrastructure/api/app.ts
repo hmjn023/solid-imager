@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import type { OpenAPI } from "@orpc/contract";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { RPCHandler } from "@orpc/server/fetch";
 import { Elysia } from "elysia";
@@ -12,6 +13,53 @@ const handler = new RPCHandler(appRouter);
 
 // Generate OpenAPI spec for oRPC endpoints
 const openApiGenerator = new OpenAPIGenerator();
+
+// Mapping of router prefixes to tag names
+const routerTagMap: Record<string, string> = {
+  sources: "Media Sources",
+  media: "Media",
+  tags: "Tags",
+  categories: "Categories",
+  projects: "Projects",
+  characters: "Characters",
+  ips: "IPs",
+  thumbnails: "Thumbnails",
+  downloads: "Downloads",
+  directories: "Directories",
+  ai: "AI",
+  utils: "Utilities",
+};
+
+/**
+ * OpenAPIスペックにタグを自動割り当てする
+ */
+// biome-ignore lint/suspicious/noExplicitAny: OpenAPI spec object structure
+function assignTags(spec: any) {
+  if (!spec.paths) {
+    return;
+  }
+
+  for (const pathItem of Object.values(spec.paths)) {
+    if (!pathItem) {
+      continue;
+    }
+
+    for (const method of ["get", "post", "put", "delete", "patch"] as const) {
+      // biome-ignore lint/suspicious/noExplicitAny: Dynamic method access on OpenAPI paths
+      const operation = (pathItem as any)[method] as
+        | OpenAPI.OperationObject
+        | undefined;
+      if (operation?.operationId) {
+        const routerName = operation.operationId.split(".")[0];
+        const tagName = routerTagMap[routerName];
+
+        if (tagName) {
+          operation.tags = [tagName];
+        }
+      }
+    }
+  }
+}
 
 /**
  * Elysia アプリケーション
@@ -34,6 +82,9 @@ export const app = new Elysia()
       ],
       tags: openApiTags,
     });
+
+    assignTags(spec);
+
     return spec;
   })
   // Media Content
