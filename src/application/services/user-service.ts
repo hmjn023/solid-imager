@@ -1,30 +1,19 @@
-import { cache } from "@solidjs/router";
 import type { NewUser, UpdateUser } from "~/domain/users/schemas";
 import { UserRepository } from "~/infrastructure/repositories/user-repository";
 
 export const UserService = {
-  getAllUsers: cache(async () => {
-    "use server";
-    return await UserRepository.findAll();
-  }, "getAllUsers"),
+  getAllUsers: async () => await UserRepository.findAll(),
 
-  createUser: async (userData: NewUser) => {
-    "use server";
-    return await UserRepository.create(userData);
-  },
+  createUser: async (userData: NewUser) =>
+    await UserRepository.create(userData),
 
-  getUserDetails: cache(async (userId: string) => {
-    "use server";
-    return await UserRepository.findById(userId);
-  }, "getUserDetails"),
+  getUserDetails: async (userId: string) =>
+    await UserRepository.findById(userId),
 
-  updateUser: async (userId: string, userData: UpdateUser) => {
-    "use server";
-    return await UserRepository.update(userId, userData);
-  },
+  updateUser: async (userId: string, userData: UpdateUser) =>
+    await UserRepository.update(userId, userData),
 
   deleteUser: async (userId: string) => {
-    "use server";
     await UserRepository.delete(userId);
     return { success: true };
   },

@@ -1,41 +1,29 @@
 /**
  * Media API Client
  * Handles all API calls related to media items
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { z } from "zod";
-import {
-  mediaDetailsSchema,
-  mediaSchema,
-  uploadResponseSchema,
-} from "~/domain/media/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
-
-// Define response schema for copy/move action (Success + Media object)
-// Since the backend returns { success: boolean, media: Media }, we can define a schema
-// Define response schema for copy/move action (Success + Media object)
-// Since the backend returns { success: boolean, media: Media }, we can define a schema
-const actionResponseSchema = z.object({
-  success: z.boolean(),
-  media: mediaSchema,
-});
-
-/**
- * Schema for media list response
- */
-const mediaListSchema = z.array(mediaSchema);
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { searchMedia } from "./search-api";
 
 /**
  * Fetches media list for a specific source
  * @param sourceId - Media source ID
  * @returns Array of media items
  */
-export function fetchMediaList(sourceId: string) {
-  return apiRequest(API_ENDPOINTS.mediaList(sourceId), mediaListSchema);
+export async function fetchMediaList(sourceId: string) {
+  const result = await orpc.media.search({
+    sourceId,
+    params: {
+      tagMode: "and",
+      offset: 0,
+      limit: 100, // Reasonable default
+    },
+  });
+  return result.media;
 }
-
-import { searchMedia } from "./search-api";
 
 /**
  * Fetches media list with pagination for infinite scroll
@@ -50,14 +38,12 @@ export function fetchMediaListInfinite(
   limit = 50
 ) {
   // Use search API for pagination support
-  // Default sort by date desc is handled by backend if not specified,
-  // but we can be explicit if needed.
   return searchMedia(sourceId, {
     offset: pageParam,
     limit,
     sort: "date",
     order: "desc",
-    tagMode: "and", // Default
+    tagMode: "and",
   });
 }
 
@@ -68,22 +54,38 @@ export function fetchMediaListInfinite(
  * @returns Media details including tags and generation info
  */
 export function fetchMediaDetails(sourceId: string, mediaId: string) {
-  return apiRequest(
-    API_ENDPOINTS.mediaDetails(sourceId, mediaId),
-    mediaDetailsSchema
-  );
+  return orpc.media.getDetails({ sourceId, mediaId });
 }
 
 /**
  * Uploads media to a specific source
  * @param sourceId - Media source ID
- * @param formData - FormData containing the file and metadata
+ * @param file - File to upload
  * @returns Upload response with media information
  */
-export function uploadMedia(sourceId: string, formData: FormData) {
-  return apiRequest(API_ENDPOINTS.mediaUpload(sourceId), uploadResponseSchema, {
-    method: "POST",
-    body: formData,
+export function uploadMedia(
+  sourceId: string,
+  file: File,
+  options?: {
+    filename?: string;
+    description?: string;
+    sourceUrl?: string;
+    overwrite?: boolean;
+    autoIncrement?: boolean;
+  }
+) {
+  return orpc.media.upload({
+    sourceId,
+    file,
+    filename: options?.filename,
+    description: options?.description,
+    sourceUrl: options?.sourceUrl,
+    overwrite:
+      options?.overwrite !== undefined ? String(options.overwrite) : undefined,
+    autoIncrement:
+      options?.autoIncrement !== undefined
+        ? String(options.autoIncrement)
+        : undefined,
   });
 }
 
@@ -99,12 +101,10 @@ export function updateMedia(
   mediaId: string,
   updates: { description?: string; sourceUrl?: string }
 ) {
-  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), mediaSchema, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(updates),
+  return orpc.media.update({
+    sourceId,
+    mediaId,
+    data: updates,
   });
 }
 
@@ -114,56 +114,33 @@ export function updateMedia(
  * @param mediaId - Media ID
  */
 export function deleteMedia(sourceId: string, mediaId: string) {
-  // Use mediaUpdate endpoint structure (resource root) for DELETE
-  return apiRequest(API_ENDPOINTS.mediaUpdate(sourceId, mediaId), z.void(), {
-    method: "DELETE",
-  });
+  return orpc.media.delete({ sourceId, mediaId });
 }
 
 /**
  * Copies a media item to another source
- * @param sourceId - Current Media source ID
+ * @param sourceId - Current Media source ID (Legacy param, kept for signature compatibility)
  * @param mediaId - Media ID
  * @param targetSourceId - Target Media source ID
  */
 export function copyMedia(
-  sourceId: string,
+  _sourceId: string,
   mediaId: string,
   targetSourceId: string
 ) {
-  return apiRequest(
-    API_ENDPOINTS.mediaCopy(sourceId, mediaId),
-    actionResponseSchema,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ targetSourceId }),
-    }
-  );
+  return orpc.media.copy({ mediaId, targetSourceId });
 }
 
 /**
  * Moves a media item to another source
- * @param sourceId - Current Media source ID
+ * @param sourceId - Current Media source ID (Legacy param, kept for signature compatibility)
  * @param mediaId - Media ID
  * @param targetSourceId - Target Media source ID
  */
 export function moveMedia(
-  sourceId: string,
+  _sourceId: string,
   mediaId: string,
   targetSourceId: string
 ) {
-  return apiRequest(
-    API_ENDPOINTS.mediaMove(sourceId, mediaId),
-    actionResponseSchema,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ targetSourceId }),
-    }
-  );
+  return orpc.media.move({ mediaId, targetSourceId });
 }

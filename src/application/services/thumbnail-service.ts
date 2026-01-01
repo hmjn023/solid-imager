@@ -1,7 +1,8 @@
+import fs from "node:fs/promises";
 import {
-  clearThumbnailCache as apiClearThumbnailCache,
-  startThumbnailGeneration as apiStartThumbnailGeneration,
-} from "~/infrastructure/api-clients/thumbnails";
+  generateThumbnailsForSource,
+  getSourceCacheDir,
+} from "~/infrastructure/jobs/thumbnails";
 
 /**
  * Provides services for managing thumbnail generation and retrieval.
@@ -31,8 +32,9 @@ export const ThumbnailService = {
    * @param {string} mediaSourceId - The ID of the media source.
    * @returns {Promise<any>} A promise that resolves when the generation process starts.
    */
-  startThumbnailGeneration(mediaSourceId: string) {
-    return apiStartThumbnailGeneration(mediaSourceId);
+  async startThumbnailGeneration(mediaSourceId: string) {
+    const count = await generateThumbnailsForSource(mediaSourceId);
+    return { success: true, count };
   },
 
   /**
@@ -40,7 +42,13 @@ export const ThumbnailService = {
    * @param {string} mediaSourceId - The ID of the media source.
    * @returns {Promise<any>} A promise that resolves when the cache has been cleared.
    */
-  clearThumbnailCache(mediaSourceId: string) {
-    return apiClearThumbnailCache(mediaSourceId);
+  async clearThumbnailCache(mediaSourceId: string) {
+    const cacheDir = getSourceCacheDir(mediaSourceId);
+    try {
+      await fs.rm(cacheDir, { recursive: true, force: true });
+      return { success: true };
+    } catch (error) {
+      throw new Error(`Failed to clear thumbnail cache: ${error}`);
+    }
   },
 };

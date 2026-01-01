@@ -1,4 +1,3 @@
-import { cache } from "@solidjs/router";
 import type {
   NewTag,
   Tag,
@@ -10,29 +9,20 @@ import { DrizzleTagRepository } from "~/infrastructure/repositories/tag-reposito
 // Initialize repository
 const tagRepo: TagRepository = new DrizzleTagRepository();
 
-const getAllTagsServer = cache(async (): Promise<Tag[]> => {
-  "use server";
-  return await tagRepo.findAll();
-}, "getAllTags");
+const getAllTagsServer = async (): Promise<Tag[]> => await tagRepo.findAll();
 
-const createTagServer = async (data: NewTag): Promise<Tag> => {
-  "use server";
-  return await tagRepo.create(data);
-};
+const createTagServer = async (data: NewTag): Promise<Tag> =>
+  await tagRepo.create(data);
 
-const getTagByIdServer = cache(async (id: string): Promise<Tag | undefined> => {
-  "use server";
+const getTagByIdServer = async (id: string): Promise<Tag | undefined> => {
   const result = await tagRepo.findById(id);
   return result ?? undefined;
-}, "getTagById");
-
-const updateTagServer = async (id: string, data: UpdateTag): Promise<Tag> => {
-  "use server";
-  return await tagRepo.update(id, data);
 };
 
+const updateTagServer = async (id: string, data: UpdateTag): Promise<Tag> =>
+  await tagRepo.update(id, data);
+
 const deleteTagServer = async (id: string): Promise<{ success: true }> => {
-  "use server";
   await tagRepo.delete(id);
   return { success: true };
 };

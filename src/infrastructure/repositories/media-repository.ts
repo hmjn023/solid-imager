@@ -132,6 +132,42 @@ export const MediaRepository: IMediaRepository = {
   },
 
   /**
+   * Upserts a media entry in the database.
+   */
+  async upsert(media: AddMediaRequest, tx?: Transaction): Promise<Media> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const newMedia: NewMedia = {
+        ...media,
+        status: "active",
+        indexedAt: new Date(),
+      };
+      const result = await client
+        .insert(medias)
+        .values(newMedia)
+        .onConflictDoUpdate({
+          target: [medias.mediaSourceId, medias.filePath],
+          set: {
+            fileName: newMedia.fileName,
+            mediaType: newMedia.mediaType,
+            width: newMedia.width,
+            height: newMedia.height,
+            fileSize: newMedia.fileSize,
+            description: newMedia.description,
+            createdAt: newMedia.createdAt,
+            modifiedAt: newMedia.modifiedAt,
+            indexedAt: newMedia.indexedAt,
+            status: newMedia.status,
+          },
+        })
+        .returning();
+      return mapToMedia(result[0]);
+    } catch (error) {
+      throw new UnexpectedError("Failed to upsert media", error);
+    }
+  },
+
+  /**
    * Updates an existing media entry.
    */
   async update(
@@ -263,7 +299,12 @@ export const MediaRepository: IMediaRepository = {
       client
     );
 
-    return mediaSearchResponseSchema.parse(result);
+    const mappedResult = {
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here due to searchMediaQuery return type
+      media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
+      total: Number(result.total),
+    };
+    return mediaSearchResponseSchema.parse(mappedResult);
   },
 
   async getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
@@ -384,14 +425,19 @@ export const MediaRepository: IMediaRepository = {
   // Bulk
   async findAllBySourceId(
     mediaSourceId: string,
+    limit = 100,
+    offset = 0,
     tx?: Transaction
   ): Promise<Media[]> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const results = await client
+      const query = client
         .select()
         .from(medias)
-        .where(eq(medias.mediaSourceId, mediaSourceId));
+        .where(eq(medias.mediaSourceId, mediaSourceId))
+        .limit(limit)
+        .offset(offset);
+      const results = await query;
       return results.map(mapToMedia);
     } catch (error) {
       throw new UnexpectedError(
@@ -418,6 +464,6 @@ export const MediaRepository: IMediaRepository = {
     );
     // If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
     // Assuming it returns something schema-compliant for now, but strictly we should check.
-    return results as unknown as Media[];
+    return results.map(mapToMedia);
   },
 };

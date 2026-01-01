@@ -5,6 +5,11 @@
  */
 
 import sharp from "sharp";
+
+// Optimize sharp memory usage
+// Default cache is too aggressive for development environment
+sharp.cache({ memory: 100, items: 200, files: 20 });
+
 import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "~/domain/services/image-processor";

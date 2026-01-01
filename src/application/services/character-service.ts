@@ -1,4 +1,3 @@
-import { cache } from "@solidjs/router";
 import type {
   NewCharacter,
   UpdateCharacter,
@@ -12,56 +11,39 @@ import { DrizzleCharacterRepository } from "~/infrastructure/repositories/charac
 // Initialize repository
 const characterRepo: CharacterRepository = new DrizzleCharacterRepository();
 
-const getAllCharactersServer = cache(async (): Promise<Character[]> => {
-  "use server";
-  return await characterRepo.findAll();
-}, "getAllCharacters");
+const getAllCharactersServer = async (): Promise<Character[]> =>
+  await characterRepo.findAll();
 
-const createCharacterServer = async (
-  data: NewCharacter
-): Promise<Character> => {
-  "use server";
-  return await characterRepo.create(data);
+const createCharacterServer = async (data: NewCharacter): Promise<Character> =>
+  await characterRepo.create(data);
+
+const getCharacterByIdServer = async (
+  id: string
+): Promise<Character | undefined> => {
+  const result = await characterRepo.findById(id);
+  return result ?? undefined;
 };
-
-const getCharacterByIdServer = cache(
-  async (id: string): Promise<Character | undefined> => {
-    "use server";
-    const result = await characterRepo.findById(id);
-    return result ?? undefined;
-  },
-  "getCharacterById"
-);
 
 const updateCharacterServer = async (
   id: string,
   data: UpdateCharacter
-): Promise<Character> => {
-  "use server";
-  return await characterRepo.update(id, data);
-};
+): Promise<Character> => await characterRepo.update(id, data);
 
 const deleteCharacterServer = async (
   id: string
 ): Promise<{ success: true }> => {
-  "use server";
   await characterRepo.delete(id);
   return { success: true };
 };
 
-const getCharactersForMediaServer = cache(
-  async (mediaId: string): Promise<Character[]> => {
-    "use server";
-    return await characterRepo.findByMediaId(mediaId);
-  },
-  "getCharactersForMedia"
-);
+const getCharactersForMediaServer = async (
+  mediaId: string
+): Promise<Character[]> => await characterRepo.findByMediaId(mediaId);
 
 const addCharacterToMediaServer = async (
   mediaId: string,
   characterId: string
 ): Promise<void> => {
-  "use server";
   await characterRepo.addToMedia(mediaId, characterId);
 };
 
@@ -69,7 +51,6 @@ const removeCharacterFromMediaServer = async (
   mediaId: string,
   characterId: string
 ): Promise<void> => {
-  "use server";
   await characterRepo.removeFromMedia(mediaId, characterId);
 };
 

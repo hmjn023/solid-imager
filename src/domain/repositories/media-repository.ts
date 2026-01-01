@@ -20,6 +20,7 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<Media | null>;
   create(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
+  upsert(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
   update(
     id: string,
     media: UpdateMediaRequest,
@@ -53,7 +54,12 @@ export type IMediaRepository = {
   ): Promise<MediaGenerationInfo>;
 
   // Bulk/List
-  findAllBySourceId(sourceId: string, tx?: Transaction): Promise<Media[]>;
+  findAllBySourceId(
+    sourceId: string,
+    limit?: number,
+    offset?: number,
+    tx?: Transaction
+  ): Promise<Media[]>;
   searchInDirectory(
     sourceId: string,
     directoryPath: string,

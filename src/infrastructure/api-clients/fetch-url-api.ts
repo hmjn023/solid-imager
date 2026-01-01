@@ -1,10 +1,10 @@
 /**
  * Fetch URL API Client
- * Handles fetching files from external URLs
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { apiBlobRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Fetches a file from an external URL via the backend proxy
@@ -12,9 +12,5 @@ import { API_ENDPOINTS } from "./shared/endpoints";
  * @returns Blob containing the fetched file
  */
 export function fetchFromUrl(url: string): Promise<Blob> {
-  return apiBlobRequest(API_ENDPOINTS.fetchUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
-  });
+  return orpc.utils.fetchUrl({ url });
 }
