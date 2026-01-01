@@ -770,6 +770,11 @@ export class MediaServiceImpl {
 
 // For backward compatibility and deferred initialization
 let _mediaService: MediaServiceImpl | null = null;
+
+export const resetMediaService = () => {
+  _mediaService = null;
+};
+
 const getMediaService = () => {
   if (!_mediaService) {
     _mediaService = new MediaServiceImpl(
