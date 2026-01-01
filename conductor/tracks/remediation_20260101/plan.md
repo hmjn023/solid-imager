@@ -1,7 +1,7 @@
 # Plan: コードレビュー結果の修正とアーキテクチャの改善
 
 ## Phase 1: 環境クリーンアップと基盤整備
-- [ ] Task: `tsc_output.txt` の削除
+- [x] Task: `tsc_output.txt` の削除 5f6f5b6
 - [ ] Task: `.gitignore` への `tsc_output.txt` 追加
 - [ ] Task: `ServiceRegistry` または `MediaService` にシングルトンのリセット機能を追加
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
