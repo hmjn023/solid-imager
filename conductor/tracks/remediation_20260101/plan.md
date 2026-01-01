@@ -2,7 +2,7 @@
 
 ## Phase 1: 環境クリーンアップと基盤整備
 - [x] Task: `tsc_output.txt` の削除 5f6f5b6
-- [ ] Task: `ServiceRegistry` または `MediaService` にシングルトンのリセット機能を追加
+- [x] Task: `ServiceRegistry` または `MediaService` にシングルトンのリセット機能を追加 a83c732
 - [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
 
 ## Phase 2: MediaService のリファクタリング (DI & API)
