@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
 import type { Media } from "~/domain/media/schemas";
+import type { IAuthorRepository } from "~/domain/repositories/author-repository";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
+import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository } from "~/domain/repositories/tag-repository";
 import type { IImageProcessor } from "~/domain/services/image-processor";
@@ -16,6 +20,10 @@ describe("MediaService Unit Tests", () => {
   let mockStorageService: IStorageService;
   let mockTagRepository: TagRepository;
   let mockImageProcessor: IImageProcessor;
+  let mockAuthorRepository: IAuthorRepository;
+  let mockProjectRepository: IProjectRepository;
+  let mockCharacterRepository: CharacterRepository;
+  let mockIpRepository: IIpRepository;
 
   beforeEach(() => {
     // Create mocks for all dependencies
@@ -52,13 +60,37 @@ describe("MediaService Unit Tests", () => {
       extractMetadata: vi.fn(),
     } as unknown as IImageProcessor;
 
+    mockAuthorRepository = {
+      create: vi.fn(),
+      addMedia: vi.fn(),
+    } as unknown as IAuthorRepository;
+
+    mockProjectRepository = {
+      findByMediaId: vi.fn(),
+      addMedia: vi.fn(),
+    } as unknown as IProjectRepository;
+
+    mockCharacterRepository = {
+      findByMediaId: vi.fn(),
+      addToMedia: vi.fn(),
+    } as unknown as CharacterRepository;
+
+    mockIpRepository = {
+      findByMediaId: vi.fn(),
+      addMedia: vi.fn(),
+    } as unknown as IIpRepository;
+
     // Instantiate service with mocks
     mediaService = new MediaServiceImpl(
       mockMediaRepository,
       mockSourceRepository,
       mockStorageService,
       mockTagRepository,
-      mockImageProcessor
+      mockImageProcessor,
+      mockAuthorRepository,
+      mockProjectRepository,
+      mockCharacterRepository,
+      mockIpRepository
     );
   });
 

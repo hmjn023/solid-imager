@@ -15,7 +15,11 @@ import {
   medias,
   projects,
 } from "~/infrastructure/db/schema";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
@@ -58,6 +62,10 @@ describe("MediaService - Copy Media Integration", () => {
     services.registerMediaRepository(MediaRepository);
     services.registerSourceRepository(new DrizzleSourceRepository());
     services.registerTagRepository(TagRepository);
+    services.registerAuthorRepository(AuthorRepository);
+    services.registerProjectRepository(ProjectRepository);
+    services.registerCharacterRepository(new DrizzleCharacterRepository());
+    services.registerIpRepository(IpRepository);
     services.registerStorageService(mockStorageService as any);
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);

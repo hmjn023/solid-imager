@@ -21,7 +21,11 @@ import {
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
+import type { IAuthorRepository } from "~/domain/repositories/author-repository";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
+import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository"; // Added
 import type { IImageProcessor } from "~/domain/services/image-processor";
@@ -37,8 +41,7 @@ import {
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
 
-// DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
-
+// biome-ignore lint/nursery/useMaxParams: Dependency injection
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
@@ -52,13 +55,21 @@ export class MediaServiceImpl {
     sourceRepository: SourceRepository,
     storageService: IStorageService,
     tagRepository: TagRepositoryDef,
-    imageProcessor: IImageProcessor
+    imageProcessor: IImageProcessor,
+    authorRepository: IAuthorRepository,
+    projectRepository: IProjectRepository,
+    characterRepository: CharacterRepository,
+    ipRepository: IIpRepository
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
     this.storageService = storageService;
     this.tagRepository = tagRepository;
     this.imageProcessor = imageProcessor;
+    this.authorRepository = authorRepository;
+    this.projectRepository = projectRepository;
+    this.characterRepository = characterRepository;
+    this.ipRepository = ipRepository;
   }
 
   /**
@@ -782,7 +793,11 @@ const getMediaService = () => {
       services.getSourceRepository(),
       services.getStorageService(),
       services.getTagRepository(),
-      services.getImageProcessor()
+      services.getImageProcessor(),
+      services.getAuthorRepository(),
+      services.getProjectRepository(),
+      services.getCharacterRepository(),
+      services.getIpRepository()
     );
   }
   return _mediaService;
