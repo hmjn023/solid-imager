@@ -6,8 +6,8 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 6bd4863
 
 ## Phase 2: MediaService のリファクタリング (DI & API)
-- [ ] Task: `MediaServiceImpl` コンストラクタの更新（全リポジトリの注入）
-- [ ] Task: `_copyMediaMetadata` の注入済みリポジトリ利用への修正
+- [x] Task: `MediaServiceImpl` コンストラクタの更新（全リポジトリの注入） bc1106a
+- [x] Task: `_copyMediaMetadata` の注入済みリポジトリ利用への修正 5bd6419
 - [ ] Task: `uploadMedia` のシグネチャ変更（型付きオブジェクトへの移行）
 - [ ] Task: 上記変更に伴う各ルート・テストの修正
 - [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
