@@ -5,12 +5,18 @@ import { Open } from "unzipper";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
   authors,
+  characters,
+  ips,
   mediaAuthors,
+  mediaCharacters,
   mediaGenerationInfo,
+  mediaIps,
+  mediaProjects,
   mediaSources,
   medias,
   mediaTags,
   mediaUrls,
+  projects,
   tags,
 } from "~/infrastructure/db/schema";
 import { getDriver } from "~/infrastructure/storage/factory";
@@ -134,6 +140,10 @@ export const BackupService = {
    * Generates a dump of the media source.
    * Returns a JSON object or a ReadableStream for ZIP download.
    */
+  /**
+   * Generates a dump of the media source.
+   * Returns a JSON object or a ReadableStream for ZIP download.
+   */
   async createDump(mediaSourceId: string, mode: "json" | "zip" = "json") {
     // 1. Fetch Media Source Info (needed for Driver)
     const mediaSource = await db.query.mediaSources.findFirst({
@@ -170,6 +180,11 @@ export const BackupService = {
             ip: true,
           },
         },
+        projects: {
+          with: {
+            project: true,
+          },
+        },
       },
     });
 
@@ -204,6 +219,13 @@ export const BackupService = {
       const simpleIps = media.ips.map((mi: any) => ({
         name: mi.ip.name,
         description: mi.ip.description,
+      }));
+
+      // Extract Projects
+      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      const simpleProjects = media.projects.map((mp: any) => ({
+        name: mp.project.name,
+        description: mp.project.description,
       }));
 
       // Extract source URLs (flattened)
@@ -245,6 +267,7 @@ export const BackupService = {
         authors: simpleAuthors,
         characters: simpleCharacters,
         ips: simpleIps,
+        projects: simpleProjects,
       };
     });
 
@@ -300,6 +323,7 @@ export const BackupService = {
   },
 
   // Helper methods for Restore
+  // Helper methods for Restore
   async processRestoreItem(
     mediaSourceId: string,
     // biome-ignore lint/suspicious/noExplicitAny: complex item structure
@@ -335,12 +359,13 @@ export const BackupService = {
       await this.restoreAuthors(mediaId, item.authors);
     }
     if (item.characters) {
-      // NOTE: Should implement restoreCharacters but skipping for now or TODO
-      // Actually let's implement minimal logic or skip to avoid errors
-      // await this.restoreCharacters(mediaId, item.characters);
+      await this.restoreCharacters(mediaId, item.characters);
     }
     if (item.ips) {
-      // await this.restoreIps(mediaId, item.ips);
+      await this.restoreIps(mediaId, item.ips);
+    }
+    if (item.projects) {
+      await this.restoreProjects(mediaId, item.projects);
     }
     if (item.sourceUrls) {
       await this.restoreUrls(mediaId, item.sourceUrls);
@@ -486,6 +511,109 @@ export const BackupService = {
     }
   },
 
+  // biome-ignore lint/suspicious/noExplicitAny: complex projects structure
+  async restoreProjects(mediaId: string, projectsList: any[]) {
+    await db.delete(mediaProjects).where(eq(mediaProjects.mediaId, mediaId));
+    for (const p of projectsList) {
+      if (!p.name) {
+        continue;
+      }
+      let project = await db.query.projects.findFirst({
+        where: eq(projects.name, p.name),
+      });
+      if (!project) {
+        const [insertedProject] = await db
+          .insert(projects)
+          .values({ name: p.name, description: p.description || "" })
+          .returning();
+        project = insertedProject;
+      }
+      if (project) {
+        await db
+          .insert(mediaProjects)
+          .values({
+            mediaId,
+            projectId: project.id,
+          })
+          .onConflictDoNothing();
+      }
+    }
+  },
+
+  // biome-ignore lint/suspicious/noExplicitAny: complex characters structure
+  async restoreCharacters(mediaId: string, charactersList: any[]) {
+    await db
+      .delete(mediaCharacters)
+      .where(eq(mediaCharacters.mediaId, mediaId));
+    for (const c of charactersList) {
+      if (!c.name) {
+        continue;
+      }
+      // Note: IP association is tricky during flat restore.
+      // We'll try to find existing character by name.
+      // If we need to create one, we won't associate IP unless we can infer it confidently, which we can't here easily.
+      let character = await db.query.characters.findFirst({
+        where: eq(characters.name, c.name),
+      });
+      if (!character) {
+        const [insertedCharacter] = await db
+          .insert(characters)
+          .values({
+            name: c.name,
+            description: c.description || "",
+            source: "restored",
+          })
+          .returning();
+        character = insertedCharacter;
+      }
+      if (character) {
+        await db
+          .insert(mediaCharacters)
+          .values({
+            mediaId,
+            characterId: character.id,
+            confidence: c.confidence || null,
+            source: "restored",
+          })
+          .onConflictDoNothing();
+      }
+    }
+  },
+
+  // biome-ignore lint/suspicious/noExplicitAny: complex ips structure
+  async restoreIps(mediaId: string, ipsList: any[]) {
+    await db.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
+    for (const i of ipsList) {
+      if (!i.name) {
+        continue;
+      }
+      let ip = await db.query.ips.findFirst({
+        where: eq(ips.name, i.name),
+      });
+      if (!ip) {
+        const [insertedIp] = await db
+          .insert(ips)
+          .values({
+            name: i.name,
+            description: i.description || "",
+            source: "restored",
+          })
+          .returning();
+        ip = insertedIp;
+      }
+      if (ip) {
+        await db
+          .insert(mediaIps)
+          .values({
+            mediaId,
+            ipId: ip.id,
+            source: "restored",
+          })
+          .onConflictDoNothing();
+      }
+    }
+  },
+
   // Helper methods for Import
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Legacy import logic
   async processImportItem(
@@ -572,6 +700,79 @@ export const BackupService = {
       }
     }
 
+    // Characters
+    if (Array.isArray(item.characters)) {
+      await tx
+        .delete(mediaCharacters)
+        .where(eq(mediaCharacters.mediaId, mediaId));
+      for (const c of item.characters) {
+        let charRecord = await tx.query.characters.findFirst({
+          where: eq(characters.name, c.name),
+        });
+        if (!charRecord) {
+          const [newChar] = await tx
+            .insert(characters)
+            .values({
+              name: c.name,
+              description: c.description || "",
+              source: "imported",
+            })
+            .returning();
+          charRecord = newChar;
+        }
+        await tx.insert(mediaCharacters).values({
+          mediaId,
+          characterId: charRecord.id,
+          confidence: c.confidence || null,
+          source: "imported",
+        });
+      }
+    }
+
+    // IPs
+    if (Array.isArray(item.ips)) {
+      await tx.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
+      for (const i of item.ips) {
+        let ipRecord = await tx.query.ips.findFirst({
+          where: eq(ips.name, i.name),
+        });
+        if (!ipRecord) {
+          const [newIp] = await tx
+            .insert(ips)
+            .values({
+              name: i.name,
+              description: i.description || "",
+              source: "imported",
+            })
+            .returning();
+          ipRecord = newIp;
+        }
+        await tx
+          .insert(mediaIps)
+          .values({ mediaId, ipId: ipRecord.id, source: "imported" });
+      }
+    }
+
+    // Projects
+    if (Array.isArray(item.projects)) {
+      await tx.delete(mediaProjects).where(eq(mediaProjects.mediaId, mediaId));
+      for (const p of item.projects) {
+        let projRecord = await tx.query.projects.findFirst({
+          where: eq(projects.name, p.name),
+        });
+        if (!projRecord) {
+          const [newProj] = await tx
+            .insert(projects)
+            .values({ name: p.name, description: p.description || "" })
+            .returning();
+          projRecord = newProj;
+        }
+        await tx
+          .insert(mediaProjects)
+          .values({ mediaId, projectId: projRecord.id });
+      }
+    }
+
     // Generation Info
     if (item.generationInfo) {
       const { mediaId: _, ...info } = item.generationInfo;
@@ -594,7 +795,5 @@ export const BackupService = {
         await tx.insert(mediaUrls).values({ mediaId, url });
       }
     }
-
-    // NOTE: Characters/IPs import not fully implemented in old logic, leaving as is for now to match interface
   },
 };

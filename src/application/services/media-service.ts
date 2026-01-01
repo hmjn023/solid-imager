@@ -472,12 +472,6 @@ export class MediaServiceImpl {
       throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
     }
 
-    // Get source media metadata (authors, URLs)
-    const [sourceAuthors, sourceUrls] = await Promise.all([
-      this.mediaRepository.getAuthors(validatedSourceMediaId, tx),
-      this.mediaRepository.getUrls(validatedSourceMediaId, tx),
-    ]);
-
     const sourceSource = await this.sourceRepository.findById(
       sourceMedia.mediaSourceId,
       tx
@@ -530,33 +524,8 @@ export class MediaServiceImpl {
 
     const newMediaEntry = await this.mediaRepository.create(newMedia, tx);
 
-    // 4.1. Copy Authors
-    if (sourceAuthors.length > 0) {
-      const { AuthorRepository } = await import(
-        "~/infrastructure/repositories/author-repository"
-      );
-      for (const author of sourceAuthors) {
-        // Create or get existing author
-        const newAuthor = await AuthorRepository.create(
-          {
-            name: author.name,
-            accountId: author.accountId,
-          },
-          tx
-        );
-        // Link to new media
-        await AuthorRepository.addMedia(newMediaEntry.id, newAuthor.id, tx);
-      }
-    }
-
-    // 4.2. Copy URLs
-    if (sourceUrls.length > 0) {
-      await this.mediaRepository.addUrls(
-        newMediaEntry.id,
-        sourceUrls.map((u) => u.url),
-        tx
-      );
-    }
+    // 4. Copy Metadata
+    await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
 
     // 5. Start Thumbnail Generation for New Media
     const sourcePath = targetConnection.path;
@@ -677,6 +646,88 @@ export class MediaServiceImpl {
   /**
    * Helper to lazy-extract metadata for local files if missing.
    */
+  /**
+   * Helper to copy metadata (Authors, Projects, Characters, IPs, URLs)
+   */
+  private async _copyMediaMetadata(
+    sourceMediaId: string,
+    newMediaId: string,
+    tx: Transaction
+  ): Promise<void> {
+    // 1. Authors
+    const sourceAuthors = await this.mediaRepository.getAuthors(
+      sourceMediaId,
+      tx
+    );
+    if (sourceAuthors.length > 0) {
+      const { AuthorRepository } = await import(
+        "~/infrastructure/repositories/author-repository"
+      );
+      for (const author of sourceAuthors) {
+        // Create or get existing author
+        const newAuthor = await AuthorRepository.create(
+          {
+            name: author.name,
+            accountId: author.accountId,
+          },
+          tx
+        );
+        // Link to new media
+        await AuthorRepository.addMedia(newMediaId, newAuthor.id, tx);
+      }
+    }
+
+    // 2. Projects
+    const { ProjectRepository } = await import(
+      "~/infrastructure/repositories/project-repository"
+    );
+    const sourceProjects = await ProjectRepository.findByMediaId(
+      sourceMediaId,
+      tx
+    );
+    if (sourceProjects.length > 0) {
+      for (const project of sourceProjects) {
+        await ProjectRepository.addMedia(newMediaId, project.id, tx);
+      }
+    }
+
+    // 3. Characters
+    const { DrizzleCharacterRepository } = await import(
+      "~/infrastructure/repositories/character-repository"
+    );
+    const characterRepo = new DrizzleCharacterRepository();
+    const sourceCharacters = await characterRepo.findByMediaId(
+      sourceMediaId,
+      tx
+    );
+    if (sourceCharacters.length > 0) {
+      for (const character of sourceCharacters) {
+        await characterRepo.addToMedia(newMediaId, character.id, tx);
+      }
+    }
+
+    // 4. IPs
+    const { IpRepository } = await import(
+      "~/infrastructure/repositories/ip-repository"
+    );
+    const sourceIps = await IpRepository.findByMediaId(sourceMediaId, tx);
+    if (sourceIps.length > 0) {
+      for (const ip of sourceIps) {
+        await IpRepository.addMedia(newMediaId, ip.id, tx);
+      }
+    }
+
+    // 5. URLs
+    const sourceUrls = await this.mediaRepository.getUrls(sourceMediaId, tx);
+    if (sourceUrls.length > 0) {
+      await this.mediaRepository.addUrls(
+        newMediaId,
+        sourceUrls.map((u) => u.url),
+        tx
+      );
+    }
+  }
+
   private async extractAndUpdateMetadata(
     media: Media,
     sourceId: string
