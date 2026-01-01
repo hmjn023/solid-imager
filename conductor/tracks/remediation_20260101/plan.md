@@ -1,9 +1,9 @@
 # Plan: コードレビュー結果の修正とアーキテクチャの改善
 
-## Phase 1: 環境クリーンアップと基盤整備
+## Phase 1: 環境クリーンアップと基盤整備 [checkpoint: 6bd4863]
 - [x] Task: `tsc_output.txt` の削除 5f6f5b6
 - [x] Task: `ServiceRegistry` または `MediaService` にシングルトンのリセット機能を追加 a83c732
-- [ ] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 6bd4863
 
 ## Phase 2: MediaService のリファクタリング (DI & API)
 - [ ] Task: `MediaServiceImpl` コンストラクタの更新（全リポジトリの注入）
