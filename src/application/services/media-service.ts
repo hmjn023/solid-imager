@@ -392,18 +392,15 @@ export class MediaServiceImpl {
       }
 
       if (parsedUpdates.authors?.length) {
-        const { AuthorRepository } = await import(
-          "~/infrastructure/repositories/author-repository"
-        );
         for (const authorData of parsedUpdates.authors) {
-          const author = await AuthorRepository.create(
+          const author = await this.authorRepository.create(
             {
               name: authorData.name,
               accountId: authorData.accountId || null,
             },
             t
           );
-          await AuthorRepository.addMedia(validatedMediaId, author.id, t);
+          await this.authorRepository.addMedia(validatedMediaId, author.id, t);
         }
       }
 
@@ -671,12 +668,9 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceAuthors.length > 0) {
-      const { AuthorRepository } = await import(
-        "~/infrastructure/repositories/author-repository"
-      );
       for (const author of sourceAuthors) {
         // Create or get existing author
-        const newAuthor = await AuthorRepository.create(
+        const newAuthor = await this.authorRepository.create(
           {
             name: author.name,
             accountId: author.accountId,
@@ -684,47 +678,37 @@ export class MediaServiceImpl {
           tx
         );
         // Link to new media
-        await AuthorRepository.addMedia(newMediaId, newAuthor.id, tx);
+        await this.authorRepository.addMedia(newMediaId, newAuthor.id, tx);
       }
     }
 
     // 2. Projects
-    const { ProjectRepository } = await import(
-      "~/infrastructure/repositories/project-repository"
-    );
-    const sourceProjects = await ProjectRepository.findByMediaId(
+    const sourceProjects = await this.projectRepository.findByMediaId(
       sourceMediaId,
       tx
     );
     if (sourceProjects.length > 0) {
       for (const project of sourceProjects) {
-        await ProjectRepository.addMedia(newMediaId, project.id, tx);
+        await this.projectRepository.addMedia(newMediaId, project.id, tx);
       }
     }
 
     // 3. Characters
-    const { DrizzleCharacterRepository } = await import(
-      "~/infrastructure/repositories/character-repository"
-    );
-    const characterRepo = new DrizzleCharacterRepository();
-    const sourceCharacters = await characterRepo.findByMediaId(
+    const sourceCharacters = await this.characterRepository.findByMediaId(
       sourceMediaId,
       tx
     );
     if (sourceCharacters.length > 0) {
       for (const character of sourceCharacters) {
-        await characterRepo.addToMedia(newMediaId, character.id, tx);
+        await this.characterRepository.addToMedia(newMediaId, character.id, tx);
       }
     }
 
     // 4. IPs
-    const { IpRepository } = await import(
-      "~/infrastructure/repositories/ip-repository"
-    );
-    const sourceIps = await IpRepository.findByMediaId(sourceMediaId, tx);
+    const sourceIps = await this.ipRepository.findByMediaId(sourceMediaId, tx);
     if (sourceIps.length > 0) {
       for (const ip of sourceIps) {
-        await IpRepository.addMedia(newMediaId, ip.id, tx);
+        await this.ipRepository.addMedia(newMediaId, ip.id, tx);
       }
     }
 
