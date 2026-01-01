@@ -7,7 +7,7 @@
 
 import type { z } from "zod";
 import type { mediaSourceInfoSchema } from "~/domain/sources/schemas";
-import { getBaseUrl, orpc } from "~/infrastructure/api-clients/orpc-client";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Fetches all media sources
@@ -69,23 +69,10 @@ export async function fetchSourceDump(
   id: string,
   mode: "json" | "zip" = "json"
 ): Promise<Blob> {
-  if (mode === "json") {
-    const result = await orpc.sources.dump({ id, mode });
-    return new Blob([JSON.stringify(result, null, 2)], {
-      type: "application/json",
-    });
-  }
-
-  // For ZIP, fetch directly matching the oRPC wire format
-  const url = `${getBaseUrl()}/sources/dump`;
+  // Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
+  const url = `/api/sources/${id}/dump?mode=${mode}`;
   const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      json: { id, mode },
-    }),
+    method: "GET",
   });
 
   if (!response.ok) {
@@ -107,6 +94,21 @@ export function restoreSource(id: string, data: any) {
  * @param file - The ZIP file to import
  * @returns Import result
  */
-export function importSourceZip(id: string, file: File) {
-  return orpc.sources.importZip({ id, file });
+export async function importSourceZip(id: string, file: File) {
+  // Send raw file body to avoid FormData parsing issues in Vinxi/Node environment
+  const url = `/api/sources/${id}/import`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/zip",
+    },
+    body: file,
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
+  }
+
+  return await response.json();
 }

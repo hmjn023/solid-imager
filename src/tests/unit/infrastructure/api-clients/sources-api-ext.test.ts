@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchSourceDump,
+  importSourceZip,
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 
@@ -29,24 +30,32 @@ describe("Sources API Client Extensions", () => {
     vi.clearAllMocks();
   });
 
-  it("should call orpc.sources.dump for json mode", async () => {
+  it("should call direct endpoint for json mode", async () => {
     const id = "test-source-id";
     const mockDumpData = { defined: true };
+    const mockBlob = new Blob([JSON.stringify(mockDumpData)], {
+      type: "application/json",
+    });
 
-    (orpc.sources.dump as any).mockResolvedValue(mockDumpData);
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      blob: () => Promise.resolve(mockBlob),
+    });
 
     const result = await fetchSourceDump(id, "json");
 
-    expect(orpc.sources.dump).toHaveBeenCalledWith({ id, mode: "json" });
-    // Verify result is a Blob containing the JSON
-    expect(result).toBeInstanceOf(Blob);
-    const text = await result.text();
-    expect(JSON.parse(text)).toEqual(mockDumpData);
+    expect(global.fetch).toHaveBeenCalledWith(
+      `/api/sources/${id}/dump?mode=json`,
+      {
+        method: "GET",
+      }
+    );
+    expect(result).toBe(mockBlob);
   });
 
-  it("should call fetch for zip mode with correct body", async () => {
+  it("should call direct endpoint for zip mode", async () => {
     const id = "test-source-id";
-    const mockBlob = new Blob(["zip content"]);
+    const mockBlob = new Blob(["zip content"], { type: "application/zip" });
 
     (global.fetch as any).mockResolvedValue({
       ok: true,
@@ -55,16 +64,37 @@ describe("Sources API Client Extensions", () => {
 
     const result = await fetchSourceDump(id, "zip");
 
-    expect(global.fetch).toHaveBeenCalledWith("/api/rpc/sources/dump", {
+    expect(global.fetch).toHaveBeenCalledWith(
+      `/api/sources/${id}/dump?mode=zip`,
+      {
+        method: "GET",
+      }
+    );
+    expect(result).toBe(mockBlob);
+  });
+
+  it("should call import endpoint with binary body", async () => {
+    const id = "test-source-id";
+    const mockFile = new File(["zip content"], "test.zip", {
+      type: "application/zip",
+    });
+    const mockResponse = { success: true };
+
+    (global.fetch as any).mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve(mockResponse),
+    });
+
+    const result = await importSourceZip(id, mockFile);
+
+    expect(global.fetch).toHaveBeenCalledWith(`/api/sources/${id}/import`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/zip",
       },
-      body: JSON.stringify({
-        json: { id, mode: "zip" },
-      }),
+      body: mockFile,
     });
-    expect(result).toBe(mockBlob);
+    expect(result).toEqual(mockResponse);
   });
 
   it("should call orpc.sources.restore with correct parameters", async () => {
