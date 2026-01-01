@@ -182,7 +182,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
             <Select
               itemComponent={(itemProps) => (
                 <SelectItem item={itemProps.item}>
-                  {itemProps.item.label}
+                  {itemProps.item.rawValue.label}
                 </SelectItem>
               )}
               onChange={(v) =>
