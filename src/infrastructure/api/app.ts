@@ -201,7 +201,8 @@ export const app = new Elysia()
         // Convert Web Stream to Node Readable
         // biome-ignore lint/suspicious/noExplicitAny: stream casting
         const webStream = request.body as ReadableStream<any>;
-        const nodeStream = Readable.fromWeb(webStream);
+        // biome-ignore lint/suspicious/noExplicitAny: node stream casting
+        const nodeStream = Readable.fromWeb(webStream as any);
 
         // Write stream to temp file
         await pipeline(nodeStream, createWriteStream(tempFilePath));

@@ -5,7 +5,10 @@ import toast from "solid-toast";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
-import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "~/domain/sources/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
   createMediaSource,
@@ -25,10 +28,12 @@ const UUID_PREFIX_LENGTH = 4;
 export default function Sources() {
   const [showFormModal, setShowFormModal] = createSignal(false);
   const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-  const [editingSource, setEditingSource] =
-    createSignal<MediaSourceInfo | null>(null);
-  const [deletingSource, setDeletingSource] =
-    createSignal<MediaSourceInfo | null>(null);
+  const [editingSource, setEditingSource] = createSignal<
+    SafeMediaSource | MediaSourceInfo | null
+  >(null);
+  const [deletingSource, setDeletingSource] = createSignal<
+    SafeMediaSource | MediaSourceInfo | null
+  >(null);
 
   const queryClient = useQueryClient();
   const mediaSources = createQuery(() => ({
@@ -41,7 +46,7 @@ export default function Sources() {
     setShowFormModal(true);
   };
 
-  const handleEditSource = (source: MediaSourceInfo) => {
+  const handleEditSource = (source: SafeMediaSource | MediaSourceInfo) => {
     setEditingSource(source);
     setShowFormModal(true);
   };
@@ -63,7 +68,7 @@ export default function Sources() {
     }
   };
 
-  const handleDeleteSource = (source: MediaSourceInfo) => {
+  const handleDeleteSource = (source: SafeMediaSource | MediaSourceInfo) => {
     setDeletingSource(source);
     setShowDeleteModal(true);
   };

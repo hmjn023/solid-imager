@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import type { SafeMediaSource } from "~/domain/sources/schemas";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
 type MoveCopyMediaDialogProps = {
@@ -27,9 +28,16 @@ type MoveCopyMediaDialogProps = {
 
 export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
   const [targetSourceId, setTargetSourceId] = createSignal<string | null>(null);
-  const [sources] = createResource(
+
+  const [sources] = createResource<SafeMediaSource[], boolean>(
     () => props.open,
-    (isOpen) => (isOpen ? fetchMediaSources() : Promise.resolve([]))
+    async (isOpen) => {
+      if (!isOpen) {
+        return [];
+      }
+      return await fetchMediaSources();
+    },
+    { initialValue: [] }
   );
 
   const handleConfirm = () => {

@@ -180,22 +180,25 @@ export const searchMedia = async (
       .where(whereClause);
 
     // Execute Main Query
-    let query = client
+    const query = client
       .select()
       .from(medias)
       .where(whereClause)
       .orderBy(orderByClause);
 
     // Apply pagination if limit is provided
+    // biome-ignore lint/suspicious/noExplicitAny: Drizzle query builder type mismatch
+    let pagedQuery: any = query;
+
     if (searchOptions.limit !== undefined) {
-      query = query
+      pagedQuery = pagedQuery
         .limit(searchOptions.limit)
         .offset(searchOptions.offset || 0);
     } else if (searchOptions.offset && searchOptions.offset > 0) {
-      query = query.offset(searchOptions.offset);
+      pagedQuery = pagedQuery.offset(searchOptions.offset);
     }
 
-    const mediaList = await query;
+    const mediaList = await pagedQuery;
 
     return { media: mediaList, total };
   } catch (error) {

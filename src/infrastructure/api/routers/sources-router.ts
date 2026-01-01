@@ -271,10 +271,31 @@ export const sourcesRouter = {
         file: z.instanceof(File),
       })
     )
-    .handler(
-      async ({ input }) =>
-        await BackupService.importSourceZip(input.id, input.file)
-    ),
+    .handler(async ({ input }) => {
+      const { randomUUID } = await import("node:crypto");
+      const path = await import("node:path");
+      const nodeOs = await import("node:os");
+      const fs = await import("node:fs/promises");
+
+      const tempFilePath = path.join(
+        nodeOs.tmpdir(),
+        `import-rpc-${randomUUID()}.zip`
+      );
+
+      try {
+        await fs.writeFile(
+          tempFilePath,
+          Buffer.from(await input.file.arrayBuffer())
+        );
+        return await BackupService.importSourceZip(input.id, tempFilePath);
+      } finally {
+        try {
+          await fs.unlink(tempFilePath);
+        } catch {
+          // ignore
+        }
+      }
+    }),
 
   /**
    * Get status of a media source

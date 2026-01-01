@@ -6,18 +6,21 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceCard component.
- * @property {MediaSourceInfo} mediaSource - The media source object to display.
- * @property {(source: MediaSourceInfo) => void} [onEdit] - Callback function when the edit button is clicked.
- * @property {(source: MediaSourceInfo) => void} [onDelete] - Callback function when the delete button is clicked.
+ * @property {SafeMediaSource | MediaSourceInfo} mediaSource - The media source object to display.
+ * @property {(source: SafeMediaSource | MediaSourceInfo) => void} [onEdit] - Callback function when the edit button is clicked.
+ * @property {(source: SafeMediaSource | MediaSourceInfo) => void} [onDelete] - Callback function when the delete button is clicked.
  */
 type SourceCardProps = {
-  mediaSource: MediaSourceInfo;
-  onEdit?: (source: MediaSourceInfo) => void;
-  onDelete?: (source: MediaSourceInfo) => void;
+  mediaSource: SafeMediaSource | MediaSourceInfo;
+  onEdit?: (source: SafeMediaSource | MediaSourceInfo) => void;
+  onDelete?: (source: SafeMediaSource | MediaSourceInfo) => void;
 };
 /**
  * A card component to display information about a single media source.
@@ -58,7 +61,9 @@ export default function SourceCard(props: SourceCardProps) {
             {typeof props.mediaSource.connectionInfo === "object" &&
             props.mediaSource.connectionInfo !== null &&
             "path" in props.mediaSource.connectionInfo
-              ? String(props.mediaSource.connectionInfo.path)
+              ? String(
+                  (props.mediaSource.connectionInfo as { path: string }).path
+                )
               : "N/A"}
           </p>
         </CardContent>
