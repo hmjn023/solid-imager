@@ -14,6 +14,7 @@ import { Label } from "~/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
@@ -179,6 +180,11 @@ export default function SourceFormModal(props: SourceFormModalProps) {
           <div class="space-y-2">
             <Label>Type</Label>
             <Select
+              itemComponent={(itemProps) => (
+                <SelectItem item={itemProps.item}>
+                  {itemProps.item.label}
+                </SelectItem>
+              )}
               onChange={(v) =>
                 setFormData("type", v?.value as "local" | "sftp" | "s3")
               }
@@ -193,7 +199,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
               }}
             >
               <SelectTrigger>
-                <SelectValue<{ value: string; label: string }> />
+                <SelectValue<{ value: string; label: string }>>
+                  {(state) => state.selectedOption().label}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent />
             </Select>
