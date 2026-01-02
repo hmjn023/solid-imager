@@ -13,7 +13,7 @@
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 02efd86
 
 ## Phase 3: BackupService の最適化
-- [ ] Task: `restoreSource` におけるバルクインサートロジックの実装
+- [x] Task: `restoreSource` におけるバルクインサートロジックの実装 ec30178
 - [ ] Task: 大規模データを用いたパフォーマンスの改善確認（テストコード上での検証）
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
