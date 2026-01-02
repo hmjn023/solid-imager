@@ -17,7 +17,7 @@
 - [x] Task: 大規模データを用いたパフォーマンスの改善確認（テストコード上での検証） 417504f
 - [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) e03bad9
 
-## Phase 4: 最終検証
-- [~] Task: `npm run typecheck` による型エラーの不在確認
-- [ ] Task: `npm test` による既存機能へのデグレード不在確認
-- [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
+## Phase 4: 最終検証 [checkpoint: 6fdfbb7]
+- [x] Task: `npm run typecheck` による型エラーの不在確認 d6cb08d
+- [x] Task: `npm test` による既存機能へのデグレード不在確認 d6cb08d
+- [x] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md) 6fdfbb7
