@@ -18,6 +18,7 @@ import {
   updateMediaRequestSchema,
 } from "~/domain/media/schemas";
 import {
+  type UploadMediaRequest,
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
@@ -48,6 +49,10 @@ export class MediaServiceImpl {
   private readonly storageService: IStorageService;
   private readonly tagRepository: TagRepositoryDef;
   private readonly imageProcessor: IImageProcessor;
+  private readonly authorRepository: IAuthorRepository;
+  private readonly projectRepository: IProjectRepository;
+  private readonly characterRepository: CharacterRepository;
+  private readonly ipRepository: IIpRepository;
 
   // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
@@ -103,7 +108,7 @@ export class MediaServiceImpl {
   async uploadMedia(
     mediaSourceId: string,
     file: File,
-    formData: FormData
+    options: UploadMediaRequest
   ): Promise<UploadResponse> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const mediaSource = await this.sourceRepository.findById(validatedSourceId);
@@ -121,13 +126,7 @@ export class MediaServiceImpl {
     const connectionInfo = mediaSource.connectionInfo as { path: string };
     const basePath = connectionInfo.path;
 
-    const uploadRequest = uploadMediaRequestSchema.parse({
-      filename: formData.get("filename")?.toString(),
-      autoIncrement: formData.get("autoIncrement")?.toString(),
-      description: formData.get("description")?.toString(),
-      sourceUrl: formData.get("sourceUrl")?.toString(),
-      overwrite: formData.get("overwrite")?.toString(),
-    });
+    const uploadRequest = uploadMediaRequestSchema.parse(options);
 
     // 1. Save File via StorageService
     const fileInfo = await this.storageService.saveFile(basePath, file, {
