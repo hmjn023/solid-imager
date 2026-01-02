@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { Open } from "unzipper";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
@@ -29,6 +29,7 @@ const _IMAGES_PREFIX = /^images\//;
 export const BackupService = {
   /**
    * Restores media metadata from a JSON dump.
+   * Optimized with Bulk Operations.
    */
   async restoreSource(
     mediaSourceId: string,
@@ -43,39 +44,409 @@ export const BackupService = {
       throw new Error("Media source not found");
     }
 
+    const { validItems, skippedCount, errorMessages } =
+      await this._filterValidItems(items, mediaSource);
+
+    if (validItems.length === 0) {
+      return {
+        processed: 0,
+        skipped: skippedCount,
+        errors: errorMessages,
+      };
+    }
+
+    // Master Data Handling
+    const { tagMap, authorMap, projectMap, ipMap, charMap } =
+      await this._restoreMasterData(validItems);
+
+    // Media Handling
+    await this._restoreMediaRecords(mediaSourceId, validItems);
+
+    const mediaPathToId = await this._mapMediaPathsToIds(
+      mediaSourceId,
+      validItems
+    );
+
+    // Relations Handling
+    await this._restoreRelations({
+      validItems,
+      mediaPathToId,
+      tagMap,
+      authorMap,
+      projectMap,
+      ipMap,
+      charMap,
+    });
+
+    return {
+      processed: validItems.length,
+      skipped: skippedCount,
+      errors: errorMessages,
+    };
+  },
+
+  // biome-ignore lint/suspicious/noExplicitAny: complex structure
+  async _filterValidItems(items: any[], mediaSource: any) {
     const connectionInfo = mediaSource.connectionInfo as { path: string };
     const basePath = connectionInfo.path;
     const isLocal = mediaSource.type === "local";
 
-    let processedCount = 0;
-    let skippedCount = 0;
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const validItems: any[] = [];
     const errorMessages: string[] = [];
+    let skippedCount = 0;
 
     for (const item of items) {
-      try {
-        const result = await this.processRestoreItem(
-          mediaSourceId,
-          item,
-          isLocal,
-          basePath
-        );
-        if (result === "skipped") {
+      if (!(item.filePath && item.fileName)) {
+        skippedCount++;
+        continue;
+      }
+
+      if (isLocal) {
+        const fullPath = path.join(basePath, item.filePath);
+        try {
+          await fs.access(fullPath);
+        } catch {
           skippedCount++;
-        } else {
-          processedCount++;
+          continue;
         }
-      } catch (err) {
-        errorMessages.push(
-          `Failed to restore ${item.filePath}: ${err instanceof Error ? err.message : String(err)}`
-        );
+      }
+      validItems.push(item);
+    }
+    return { validItems, skippedCount, errorMessages };
+  },
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
+  // biome-ignore lint/suspicious/noExplicitAny: complex structure
+  async _restoreMasterData(validItems: any[]) {
+    const tagNames = new Set<string>();
+    const authorNames = new Set<string>();
+    const projectNames = new Set<string>();
+    const charNames = new Set<string>();
+    const ipNames = new Set<string>();
+
+    for (const item of validItems) {
+      if (item.tags) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const t of item.tags as any[]) {
+          if (t.name) {
+            tagNames.add(t.name);
+          }
+        }
+      }
+      if (item.authors) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const a of item.authors as any[]) {
+          if (a.name) {
+            authorNames.add(a.name);
+          }
+        }
+      }
+      if (item.projects) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const p of item.projects as any[]) {
+          if (p.name) {
+            projectNames.add(p.name);
+          }
+        }
+      }
+      if (item.characters) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const c of item.characters as any[]) {
+          if (c.name) {
+            charNames.add(c.name);
+          }
+        }
+      }
+      if (item.ips) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const i of item.ips as any[]) {
+          if (i.name) {
+            ipNames.add(i.name);
+          }
+        }
       }
     }
 
-    return {
-      processed: processedCount,
-      skipped: skippedCount,
-      errors: errorMessages,
-    };
+    const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
+      source: "restored",
+    });
+    const authorMap = await this._ensureMasterData(
+      authors,
+      authors.name,
+      authorNames,
+      {}
+    );
+    const projectMap = await this._ensureMasterData(
+      projects,
+      projects.name,
+      projectNames,
+      { description: "" }
+    );
+    const ipMap = await this._ensureMasterData(ips, ips.name, ipNames, {
+      description: "",
+      source: "restored",
+    });
+    const charMap = await this._ensureMasterData(
+      characters,
+      characters.name,
+      charNames,
+      { description: "", source: "restored" }
+    );
+
+    return { tagMap, authorMap, projectMap, ipMap, charMap };
+  },
+
+  // biome-ignore lint/suspicious/noExplicitAny: complex structure
+  async _restoreMediaRecords(mediaSourceId: string, validItems: any[]) {
+    const mediaValues = validItems.map((item) => ({
+      mediaSourceId,
+      filePath: item.filePath,
+      fileName: item.fileName,
+      description: item.description || null,
+      width: item.width ?? 0,
+      height: item.height ?? 0,
+      fileSize: item.fileSize || 0,
+      mediaType: (item.mediaType === "image" || item.mediaType === "video"
+        ? item.mediaType
+        : "image") as "image" | "video",
+      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+      modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
+      indexedAt: new Date(),
+      status: "active" as const,
+    }));
+
+    await db
+      .insert(medias)
+      .values(mediaValues)
+      .onConflictDoUpdate({
+        target: [medias.mediaSourceId, medias.filePath],
+        set: {
+          description: sql`excluded.description`,
+          modifiedAt: sql`excluded.modified_at`,
+          width: sql`excluded.width`,
+          height: sql`excluded.height`,
+          fileSize: sql`excluded.file_size`,
+        },
+      });
+  },
+
+  // biome-ignore lint/suspicious/noExplicitAny: complex structure
+  async _mapMediaPathsToIds(mediaSourceId: string, validItems: any[]) {
+    const storedMedias = await db.query.medias.findMany({
+      where: and(
+        eq(medias.mediaSourceId, mediaSourceId),
+        inArray(
+          medias.filePath,
+          validItems.map((i) => i.filePath)
+        )
+      ),
+      columns: { id: true, filePath: true },
+    });
+    return new Map(storedMedias.map((m) => [m.filePath, m.id]));
+  },
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
+  async _restoreRelations({
+    validItems,
+    mediaPathToId,
+    tagMap,
+    authorMap,
+    projectMap,
+    ipMap,
+    charMap,
+  }: {
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    validItems: any[];
+    mediaPathToId: Map<string, string>;
+    tagMap: Map<string, string>;
+    authorMap: Map<string, string>;
+    projectMap: Map<string, string>;
+    ipMap: Map<string, string>;
+    charMap: Map<string, string>;
+  }) {
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaTagsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaAuthorsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaProjectsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaCharsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaIpsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaUrlsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const mediaGenInfoData: any[] = [];
+
+    for (const item of validItems) {
+      const mediaId = mediaPathToId.get(item.filePath);
+      if (!mediaId) {
+        continue;
+      }
+
+      if (item.tags) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const t of item.tags as any[]) {
+          const tagId = t.name ? tagMap.get(t.name) : undefined;
+          if (tagId) {
+            mediaTagsData.push({
+              mediaId,
+              tagId,
+              tagType: (t.type === "positive" || t.type === "negative"
+                ? t.type
+                : "positive") as "positive" | "negative",
+              confidence: t.confidence || null,
+              source: "restored",
+            });
+          }
+        }
+      }
+
+      if (item.authors) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const a of item.authors as any[]) {
+          const authorId = a.name ? authorMap.get(a.name) : undefined;
+          if (authorId) {
+            mediaAuthorsData.push({ mediaId, authorId });
+          }
+        }
+      }
+
+      if (item.projects) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const p of item.projects as any[]) {
+          const projectId = p.name ? projectMap.get(p.name) : undefined;
+          if (projectId) {
+            mediaProjectsData.push({ mediaId, projectId });
+          }
+        }
+      }
+
+      if (item.ips) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const i of item.ips as any[]) {
+          const ipId = i.name ? ipMap.get(i.name) : undefined;
+          if (ipId) {
+            mediaIpsData.push({ mediaId, ipId, source: "restored" });
+          }
+        }
+      }
+
+      if (item.characters) {
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        for (const c of item.characters as any[]) {
+          const charId = c.name ? charMap.get(c.name) : undefined;
+          if (charId) {
+            mediaCharsData.push({
+              mediaId,
+              characterId: charId,
+              confidence: c.confidence || null,
+              source: "restored",
+            });
+          }
+        }
+      }
+
+      if (item.sourceUrls) {
+        for (const url of item.sourceUrls as string[]) {
+          mediaUrlsData.push({ mediaId, url });
+        }
+      }
+
+      if (item.generationInfo) {
+        const { mediaId: _, ...info } = item.generationInfo;
+        mediaGenInfoData.push({
+          mediaId,
+          ...info,
+        });
+      }
+    }
+
+    const mediaIds = Array.from(mediaPathToId.values());
+    if (mediaIds.length > 0) {
+      await db.delete(mediaTags).where(inArray(mediaTags.mediaId, mediaIds));
+      await db
+        .delete(mediaAuthors)
+        .where(inArray(mediaAuthors.mediaId, mediaIds));
+      await db
+        .delete(mediaProjects)
+        .where(inArray(mediaProjects.mediaId, mediaIds));
+      await db
+        .delete(mediaCharacters)
+        .where(inArray(mediaCharacters.mediaId, mediaIds));
+      await db.delete(mediaIps).where(inArray(mediaIps.mediaId, mediaIds));
+      await db.delete(mediaUrls).where(inArray(mediaUrls.mediaId, mediaIds));
+      await db
+        .delete(mediaGenerationInfo)
+        .where(inArray(mediaGenerationInfo.mediaId, mediaIds));
+    }
+
+    if (mediaTagsData.length) {
+      await db.insert(mediaTags).values(mediaTagsData).onConflictDoNothing();
+    }
+    if (mediaAuthorsData.length) {
+      await db
+        .insert(mediaAuthors)
+        .values(mediaAuthorsData)
+        .onConflictDoNothing();
+    }
+    if (mediaProjectsData.length) {
+      await db
+        .insert(mediaProjects)
+        .values(mediaProjectsData)
+        .onConflictDoNothing();
+    }
+    if (mediaCharsData.length) {
+      await db
+        .insert(mediaCharacters)
+        .values(mediaCharsData)
+        .onConflictDoNothing();
+    }
+    if (mediaIpsData.length) {
+      await db.insert(mediaIps).values(mediaIpsData).onConflictDoNothing();
+    }
+    if (mediaUrlsData.length) {
+      await db.insert(mediaUrls).values(mediaUrlsData).onConflictDoNothing();
+    }
+
+    if (mediaGenInfoData.length) {
+      await db
+        .insert(mediaGenerationInfo)
+        .values(mediaGenInfoData)
+        .onConflictDoNothing();
+    }
+  },
+
+  async _ensureMasterData(
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    table: any,
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    nameColumn: any,
+    names: Set<string>,
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    defaults: any
+  ): Promise<Map<string, string>> {
+    const nameList = Array.from(names);
+    if (nameList.length === 0) {
+      return new Map();
+    }
+
+    // Bulk Insert
+    await db
+      .insert(table)
+      .values(nameList.map((name) => ({ name, ...defaults })))
+      .onConflictDoNothing();
+
+    // Fetch IDs
+    const records = await db
+      .select({ id: table.id, name: nameColumn })
+      .from(table)
+      .where(inArray(nameColumn, nameList));
+
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic record
+    return new Map(records.map((r: any) => [r.name, r.id]));
   },
 
   /**
