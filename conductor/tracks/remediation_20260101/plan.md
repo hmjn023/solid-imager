@@ -14,7 +14,7 @@
 
 ## Phase 3: BackupService の最適化
 - [x] Task: `restoreSource` におけるバルクインサートロジックの実装 ec30178
-- [ ] Task: 大規模データを用いたパフォーマンスの改善確認（テストコード上での検証）
+- [x] Task: 大規模データを用いたパフォーマンスの改善確認（テストコード上での検証） 417504f
 - [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
 
 ## Phase 4: 最終検証
