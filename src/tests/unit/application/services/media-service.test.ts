@@ -12,6 +12,7 @@ import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
 
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
+const MEDIA_SOURCE_NOT_FOUND_REGEX = /media source.*not found/i;
 
 describe("MediaService Unit Tests", () => {
   let mediaService: MediaServiceImpl;
@@ -31,6 +32,7 @@ describe("MediaService Unit Tests", () => {
       findById: vi.fn(),
       findByPath: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
       search: vi.fn(),
@@ -50,6 +52,12 @@ describe("MediaService Unit Tests", () => {
 
     mockStorageService = {
       getFileStats: vi.fn(),
+      saveFile: vi.fn(),
+      getFile: vi.fn(),
+      scanDirectory: vi.fn(),
+      getFileMetadata: vi.fn(),
+      copyFile: vi.fn(),
+      deleteFile: vi.fn(),
     } as unknown as IStorageService;
 
     mockTagRepository = {
@@ -157,6 +165,73 @@ describe("MediaService Unit Tests", () => {
       await expect(
         mediaService.getMediaDetails(sourceId, mediaId)
       ).rejects.toThrow(MEDIA_NOT_FOUND_REGEX);
+    });
+  });
+
+  describe("uploadMedia", () => {
+    it("should successfully upload and register media", async () => {
+      const sourceId = "123e4567-e89b-42d3-a456-426614174001";
+      const file = new File(["test"], "test.png", { type: "image/png" });
+      const options = {
+        filename: "custom.png",
+        description: "Test description",
+        overwrite: true,
+        autoIncrement: false,
+      };
+
+      const mockSource = {
+        id: sourceId,
+        type: "local",
+        connectionInfo: { path: "/root" },
+      };
+
+      const mockFileInfo = {
+        filePath: "custom.png",
+        fileName: "custom.png",
+        width: 100,
+        height: 100,
+        size: 4,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+      };
+
+      const mockMedia = {
+        id: "new-media-id",
+        ...mockFileInfo,
+        mediaSourceId: sourceId,
+        mediaType: "image",
+      };
+
+      vi.mocked(mockSourceRepository.findById).mockResolvedValue(
+        mockSource as any
+      );
+      vi.mocked(mockStorageService.saveFile).mockResolvedValue(
+        mockFileInfo as any
+      );
+      vi.mocked(mockMediaRepository.upsert).mockResolvedValue(mockMedia as any);
+
+      const result = await mediaService.uploadMedia(sourceId, file, options);
+
+      expect(result.success).toBe(true);
+      expect(mockStorageService.saveFile).toHaveBeenCalledWith(
+        "/root",
+        file,
+        expect.objectContaining({
+          filename: "custom.png",
+          overwrite: true,
+        })
+      );
+      expect(mockMediaRepository.upsert).toHaveBeenCalled();
+    });
+
+    it("should throw error if source not found", async () => {
+      const sourceId = "123e4567-e89b-42d3-a456-426614174999";
+      const file = new File(["test"], "test.png", { type: "image/png" });
+      vi.mocked(mockSourceRepository.findById).mockResolvedValue(null);
+
+      await expect(
+        mediaService.uploadMedia(sourceId, file, {})
+      ).rejects.toThrow(MEDIA_SOURCE_NOT_FOUND_REGEX);
     });
   });
 });
