@@ -5,12 +5,12 @@
 - [x] Task: `ServiceRegistry` または `MediaService` にシングルトンのリセット機能を追加 a83c732
 - [x] Task: Conductor - User Manual Verification 'Phase 1' (Protocol in workflow.md) 6bd4863
 
-## Phase 2: MediaService のリファクタリング (DI & API)
+## Phase 2: MediaService のリファクタリング (DI & API) [checkpoint: 02efd86]
 - [x] Task: `MediaServiceImpl` コンストラクタの更新（全リポジトリの注入） bc1106a
 - [x] Task: `_copyMediaMetadata` の注入済みリポジトリ利用への修正 5bd6419
 - [x] Task: `uploadMedia` のシグネチャ変更（型付きオブジェクトへの移行） 41d41ba
 - [x] Task: 上記変更に伴う各ルート・テストの修正 6475031
-- [ ] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 02efd86
 
 ## Phase 3: BackupService の最適化
 - [ ] Task: `restoreSource` におけるバルクインサートロジックの実装
