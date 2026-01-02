@@ -191,29 +191,14 @@ export const mediaRouter = {
         autoIncrement: z.string().optional(),
       })
     )
-    .handler(async ({ input }) => {
-      const formData = new FormData();
-      formData.append("file", input.file);
-      if (input.filename) {
-        formData.append("filename", input.filename);
-      }
-      if (input.description) {
-        formData.append("description", input.description);
-      }
-      if (input.sourceUrl) {
-        formData.append("sourceUrl", input.sourceUrl);
-      }
-      if (input.overwrite) {
-        formData.append("overwrite", input.overwrite);
-      }
-      if (input.autoIncrement) {
-        formData.append("autoIncrement", input.autoIncrement);
-      }
-
-      return await MediaService.uploadMedia(
-        input.sourceId,
-        input.file,
-        formData
-      );
-    }),
+    .handler(
+      async ({ input }) =>
+        await MediaService.uploadMedia(input.sourceId, input.file, {
+          filename: input.filename,
+          description: input.description,
+          sourceUrl: input.sourceUrl,
+          overwrite: input.overwrite === "true",
+          autoIncrement: input.autoIncrement === "true",
+        })
+    ),
 };

@@ -69,6 +69,16 @@ function assignTags(spec: any) {
  * Elysia アプリケーション
  */
 export const app = new Elysia()
+  .onError(({ code, error, request }) => {
+    logger.error(
+      { err: error, code, path: request.url },
+      "Unhandled Elysia Error"
+    );
+    return new Response(JSON.stringify({ error: String(error) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  })
   // OpenAPI spec for oRPC endpoints
   .get("/api/openapi.json", async () => {
     const spec = await openApiGenerator.generate(appRouter, {
@@ -127,6 +137,106 @@ export const app = new Elysia()
         logger.error({ err: error, mediaId }, "Failed to serve thumbnail");
         return new Response("Thumbnail error", { status: 500 });
       }
+    }
+  )
+  // Media Source Dump Download
+  .get(
+    "/api/sources/:mediaSourceId/dump",
+    async ({ params: { mediaSourceId }, query }) => {
+      try {
+        const mode = query?.mode as string | undefined;
+        const dumpMode = (mode === "zip" ? "zip" : "json") as "json" | "zip";
+
+        const { BackupService } = await import(
+          "~/application/services/backup-service"
+        );
+
+        const result = await BackupService.createDump(mediaSourceId, dumpMode);
+
+        if (dumpMode === "zip") {
+          return new Response(result as ReadableStream, {
+            headers: {
+              "Content-Type": "application/zip",
+              "Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.zip"`,
+            },
+          });
+        }
+
+        // JSON mode
+        return new Response(JSON.stringify(result), {
+          headers: {
+            "Content-Type": "application/json",
+            "Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.json"`,
+          },
+        });
+      } catch (error) {
+        logger.error({ err: error, mediaSourceId }, "Failed to generate dump");
+        return new Response("Dump generation failed", { status: 500 });
+      }
+    }
+  )
+  // Media Source ZIP Import
+  .post(
+    "/api/sources/:mediaSourceId/import",
+    async ({ params: { mediaSourceId }, request }) => {
+      let tempFilePath: string | null = null;
+      try {
+        if (!request.body) {
+          return new Response("File stream is required", { status: 400 });
+        }
+
+        const { BackupService } = await import(
+          "~/application/services/backup-service"
+        );
+        const { randomUUID } = await import("node:crypto");
+        const path = await import("node:path");
+        const os = await import("node:os");
+        const { Readable } = await import("node:stream");
+        const { pipeline } = await import("node:stream/promises");
+        const { createWriteStream } = await import("node:fs");
+
+        // Create temp file path
+        tempFilePath = path.join(os.tmpdir(), `import-${randomUUID()}.zip`);
+
+        // Convert Web Stream to Node Readable
+        // biome-ignore lint/suspicious/noExplicitAny: stream casting
+        const webStream = request.body as ReadableStream<any>;
+        // biome-ignore lint/suspicious/noExplicitAny: node stream casting
+        const nodeStream = Readable.fromWeb(webStream as any);
+
+        // Write stream to temp file
+        await pipeline(nodeStream, createWriteStream(tempFilePath));
+
+        // Process import from file
+        const result = await BackupService.importSourceZip(
+          mediaSourceId,
+          tempFilePath
+        );
+
+        return Response.json(result);
+      } catch (error) {
+        logger.error({ err: error, mediaSourceId }, "Failed to import ZIP");
+        return new Response(
+          JSON.stringify({
+            success: false,
+            message: (error as Error).message,
+          }),
+          { status: 500, headers: { "Content-Type": "application/json" } }
+        );
+      } finally {
+        // Clean up temp file
+        if (tempFilePath) {
+          const nodeFs = await import("node:fs/promises");
+          try {
+            await nodeFs.unlink(tempFilePath);
+          } catch {
+            // ignore
+          }
+        }
+      }
+    },
+    {
+      parse: "none", // Disable Elysia body parser to handle raw body stream
     }
   )
   .all(

@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { searchState, setSearchState } from "~/domain/search/store";
-import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import type { SafeMediaSource } from "~/domain/sources/schemas";
 import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
@@ -31,7 +31,7 @@ import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 
 // Type alias to avoid conflict with DOM MediaSource API
-type Source = MediaSourceInfo;
+type Source = SafeMediaSource;
 
 const buildSearchParams = (state: typeof searchState) => ({
   q: state.searchQuery,

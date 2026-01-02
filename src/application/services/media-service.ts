@@ -18,10 +18,15 @@ import {
   updateMediaRequestSchema,
 } from "~/domain/media/schemas";
 import {
+  type UploadMediaRequest,
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
+import type { IAuthorRepository } from "~/domain/repositories/author-repository";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
+import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository"; // Added
 import type { IImageProcessor } from "~/domain/services/image-processor";
@@ -37,14 +42,17 @@ import {
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
 
-// DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
-
+// biome-ignore lint/nursery/useMaxParams: Dependency injection
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
   private readonly storageService: IStorageService;
   private readonly tagRepository: TagRepositoryDef;
   private readonly imageProcessor: IImageProcessor;
+  private readonly authorRepository: IAuthorRepository;
+  private readonly projectRepository: IProjectRepository;
+  private readonly characterRepository: CharacterRepository;
+  private readonly ipRepository: IIpRepository;
 
   // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
@@ -52,13 +60,21 @@ export class MediaServiceImpl {
     sourceRepository: SourceRepository,
     storageService: IStorageService,
     tagRepository: TagRepositoryDef,
-    imageProcessor: IImageProcessor
+    imageProcessor: IImageProcessor,
+    authorRepository: IAuthorRepository,
+    projectRepository: IProjectRepository,
+    characterRepository: CharacterRepository,
+    ipRepository: IIpRepository
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
     this.storageService = storageService;
     this.tagRepository = tagRepository;
     this.imageProcessor = imageProcessor;
+    this.authorRepository = authorRepository;
+    this.projectRepository = projectRepository;
+    this.characterRepository = characterRepository;
+    this.ipRepository = ipRepository;
   }
 
   /**
@@ -92,7 +108,7 @@ export class MediaServiceImpl {
   async uploadMedia(
     mediaSourceId: string,
     file: File,
-    formData: FormData
+    options: UploadMediaRequest
   ): Promise<UploadResponse> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const mediaSource = await this.sourceRepository.findById(validatedSourceId);
@@ -110,13 +126,7 @@ export class MediaServiceImpl {
     const connectionInfo = mediaSource.connectionInfo as { path: string };
     const basePath = connectionInfo.path;
 
-    const uploadRequest = uploadMediaRequestSchema.parse({
-      filename: formData.get("filename")?.toString(),
-      autoIncrement: formData.get("autoIncrement")?.toString(),
-      description: formData.get("description")?.toString(),
-      sourceUrl: formData.get("sourceUrl")?.toString(),
-      overwrite: formData.get("overwrite")?.toString(),
-    });
+    const uploadRequest = uploadMediaRequestSchema.parse(options);
 
     // 1. Save File via StorageService
     const fileInfo = await this.storageService.saveFile(basePath, file, {
@@ -381,18 +391,15 @@ export class MediaServiceImpl {
       }
 
       if (parsedUpdates.authors?.length) {
-        const { AuthorRepository } = await import(
-          "~/infrastructure/repositories/author-repository"
-        );
         for (const authorData of parsedUpdates.authors) {
-          const author = await AuthorRepository.create(
+          const author = await this.authorRepository.create(
             {
               name: authorData.name,
               accountId: authorData.accountId || null,
             },
             t
           );
-          await AuthorRepository.addMedia(validatedMediaId, author.id, t);
+          await this.authorRepository.addMedia(validatedMediaId, author.id, t);
         }
       }
 
@@ -472,12 +479,6 @@ export class MediaServiceImpl {
       throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
     }
 
-    // Get source media metadata (authors, URLs)
-    const [sourceAuthors, sourceUrls] = await Promise.all([
-      this.mediaRepository.getAuthors(validatedSourceMediaId, tx),
-      this.mediaRepository.getUrls(validatedSourceMediaId, tx),
-    ]);
-
     const sourceSource = await this.sourceRepository.findById(
       sourceMedia.mediaSourceId,
       tx
@@ -530,33 +531,8 @@ export class MediaServiceImpl {
 
     const newMediaEntry = await this.mediaRepository.create(newMedia, tx);
 
-    // 4.1. Copy Authors
-    if (sourceAuthors.length > 0) {
-      const { AuthorRepository } = await import(
-        "~/infrastructure/repositories/author-repository"
-      );
-      for (const author of sourceAuthors) {
-        // Create or get existing author
-        const newAuthor = await AuthorRepository.create(
-          {
-            name: author.name,
-            accountId: author.accountId,
-          },
-          tx
-        );
-        // Link to new media
-        await AuthorRepository.addMedia(newMediaEntry.id, newAuthor.id, tx);
-      }
-    }
-
-    // 4.2. Copy URLs
-    if (sourceUrls.length > 0) {
-      await this.mediaRepository.addUrls(
-        newMediaEntry.id,
-        sourceUrls.map((u) => u.url),
-        tx
-      );
-    }
+    // 4. Copy Metadata
+    await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
 
     // 5. Start Thumbnail Generation for New Media
     const sourcePath = targetConnection.path;
@@ -677,6 +653,75 @@ export class MediaServiceImpl {
   /**
    * Helper to lazy-extract metadata for local files if missing.
    */
+  /**
+   * Helper to copy metadata (Authors, Projects, Characters, IPs, URLs)
+   */
+  private async _copyMediaMetadata(
+    sourceMediaId: string,
+    newMediaId: string,
+    tx: Transaction
+  ): Promise<void> {
+    // 1. Authors
+    const sourceAuthors = await this.mediaRepository.getAuthors(
+      sourceMediaId,
+      tx
+    );
+    if (sourceAuthors.length > 0) {
+      for (const author of sourceAuthors) {
+        // Create or get existing author
+        const newAuthor = await this.authorRepository.create(
+          {
+            name: author.name,
+            accountId: author.accountId,
+          },
+          tx
+        );
+        // Link to new media
+        await this.authorRepository.addMedia(newMediaId, newAuthor.id, tx);
+      }
+    }
+
+    // 2. Projects
+    const sourceProjects = await this.projectRepository.findByMediaId(
+      sourceMediaId,
+      tx
+    );
+    if (sourceProjects.length > 0) {
+      for (const project of sourceProjects) {
+        await this.projectRepository.addMedia(newMediaId, project.id, tx);
+      }
+    }
+
+    // 3. Characters
+    const sourceCharacters = await this.characterRepository.findByMediaId(
+      sourceMediaId,
+      tx
+    );
+    if (sourceCharacters.length > 0) {
+      for (const character of sourceCharacters) {
+        await this.characterRepository.addToMedia(newMediaId, character.id, tx);
+      }
+    }
+
+    // 4. IPs
+    const sourceIps = await this.ipRepository.findByMediaId(sourceMediaId, tx);
+    if (sourceIps.length > 0) {
+      for (const ip of sourceIps) {
+        await this.ipRepository.addMedia(newMediaId, ip.id, tx);
+      }
+    }
+
+    // 5. URLs
+    const sourceUrls = await this.mediaRepository.getUrls(sourceMediaId, tx);
+    if (sourceUrls.length > 0) {
+      await this.mediaRepository.addUrls(
+        newMediaId,
+        sourceUrls.map((u) => u.url),
+        tx
+      );
+    }
+  }
+
   private async extractAndUpdateMetadata(
     media: Media,
     sourceId: string
@@ -719,6 +764,11 @@ export class MediaServiceImpl {
 
 // For backward compatibility and deferred initialization
 let _mediaService: MediaServiceImpl | null = null;
+
+export const resetMediaService = () => {
+  _mediaService = null;
+};
+
 const getMediaService = () => {
   if (!_mediaService) {
     _mediaService = new MediaServiceImpl(
@@ -726,7 +776,11 @@ const getMediaService = () => {
       services.getSourceRepository(),
       services.getStorageService(),
       services.getTagRepository(),
-      services.getImageProcessor()
+      services.getImageProcessor(),
+      services.getAuthorRepository(),
+      services.getProjectRepository(),
+      services.getCharacterRepository(),
+      services.getIpRepository()
     );
   }
   return _mediaService;
