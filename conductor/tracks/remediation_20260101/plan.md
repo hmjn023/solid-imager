@@ -12,12 +12,12 @@
 - [x] Task: 上記変更に伴う各ルート・テストの修正 6475031
 - [x] Task: Conductor - User Manual Verification 'Phase 2' (Protocol in workflow.md) 02efd86
 
-## Phase 3: BackupService の最適化
+## Phase 3: BackupService の最適化 [checkpoint: e03bad9]
 - [x] Task: `restoreSource` におけるバルクインサートロジックの実装 ec30178
 - [x] Task: 大規模データを用いたパフォーマンスの改善確認（テストコード上での検証） 417504f
-- [ ] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Phase 3' (Protocol in workflow.md) e03bad9
 
 ## Phase 4: 最終検証
-- [ ] Task: `npm run typecheck` による型エラーの不在確認
+- [~] Task: `npm run typecheck` による型エラーの不在確認
 - [ ] Task: `npm test` による既存機能へのデグレード不在確認
 - [ ] Task: Conductor - User Manual Verification 'Phase 4' (Protocol in workflow.md)
