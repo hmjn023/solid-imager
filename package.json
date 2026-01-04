@@ -109,6 +109,9 @@
     "src/!(tests)/**/*.{ts,tsx}": [
       "vitest related --run",
       "vinxi build"
+    ],
+    "**/*.{ts,tsx}": [
+      "bash -c 'bun run typecheck'"
     ]
   }
 }
