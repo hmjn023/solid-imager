@@ -354,7 +354,18 @@ export const sourcesRouter = {
         while (!signal?.aborted) {
           if (queue.length === 0) {
             await new Promise<void>((r) => {
-              resolve = r as unknown as () => void;
+              const onAbort = () => {
+                r();
+              };
+              if (signal) {
+                signal.addEventListener("abort", onAbort, { once: true });
+              }
+              resolve = () => {
+                if (signal) {
+                  signal.removeEventListener("abort", onAbort);
+                }
+                r();
+              };
             });
           }
 

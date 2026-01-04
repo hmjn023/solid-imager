@@ -17,7 +17,9 @@ async function init() {
     try {
         // Load API URL first
         const settings = await chrome.storage.local.get(['selectedSourceId', 'apiUrl']);
-        apiUrlInput.value = settings.apiUrl || DEFAULT_API_URL;
+        // If settings.apiUrl is present, use it. Otherwise use DEFAULT_API_URL.
+        const currentApiUrl = settings.apiUrl || DEFAULT_API_URL;
+        apiUrlInput.value = currentApiUrl;
         const savedId = settings.selectedSourceId;
 
         console.log('[xtracter] Initializing popup, fetching sources...');

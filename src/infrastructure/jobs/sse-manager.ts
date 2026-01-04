@@ -22,7 +22,9 @@ const clientsMap = new Map<string, Set<SseClient>>();
 const watchersMap = new Map<string, FileWatcher>();
 
 // Event emitter for internal subscriptions (oRPC, etc.)
+const DEFAULT_MAX_LISTENERS = 100;
 const eventEmitter = new EventEmitter();
+eventEmitter.setMaxListeners(DEFAULT_MAX_LISTENERS);
 
 /**
  * Manages Server-Sent Events (SSE) for real-time updates to connected clients.
