@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   vite: {
+    // @ts-ignore: Vite version mismatch in Vinxi/SolidStart
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm", "effect"],

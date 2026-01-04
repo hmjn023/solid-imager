@@ -200,7 +200,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     tx?: Transaction
   ): Promise<void> {
     try {
-      const _client = (tx as unknown as TransactionClient) || db;
+      // const _client = (tx as unknown as TransactionClient) || db;
       const execute = async (t: Transaction) => {
         const tagNames = tagsToInsert.map((tag) => tag.name);
         if (tagNames.length === 0) {
@@ -216,9 +216,9 @@ export class DrizzleTagRepository implements TagRepositoryDef {
             .where(inArray(tags.name, tagNames));
 
         const existingTagNames = existingTags.map(
-          /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
-            tag: any
-          ) => tag.name
+          /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */(
+          tag: any
+        ) => tag.name
         );
         const newTagNames = tagNames.filter(
           (name) => !existingTagNames.includes(name)

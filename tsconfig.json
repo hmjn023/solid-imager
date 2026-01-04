@@ -23,5 +23,12 @@
     },
     "strictNullChecks": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "xtracter",
+    "node_modules",
+    ".vinxi",
+    ".output",
+    "dist"
+  ]
 }

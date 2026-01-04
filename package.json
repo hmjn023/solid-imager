@@ -1,6 +1,9 @@
 {
   "name": "example-with-tailwindcss",
   "type": "module",
+  "workspaces": [
+    "xtracter"
+  ],
   "scripts": {
     "dev": "vinxi dev",
     "build": "vinxi build",
