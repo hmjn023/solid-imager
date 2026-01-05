@@ -5,6 +5,8 @@ export interface TweetMetadata {
     timestamp: string;
     authorName: string;
     authorId: string;
+    cookies?: any[];
+    userAgent?: string;
 }
 
 export interface DownloadMessage {

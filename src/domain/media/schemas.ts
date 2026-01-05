@@ -239,6 +239,8 @@ export const downloadItemSchema = z.object({
   timestamp: z.coerce.date().optional(),
   authorName: z.string().optional(),
   authorId: z.string().optional(),
+  cookies: z.array(z.any()).optional(),
+  userAgent: z.string().optional(),
 });
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;

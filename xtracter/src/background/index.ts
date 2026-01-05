@@ -160,11 +160,23 @@ async function postDownloads(items: TweetMetadata[]) {
     }
 }
 
-chrome.runtime.onMessage.addListener((message: Message | { type: string }, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message: Message | { type: string, url?: string }, _sender, sendResponse) => {
     // Handle Popup Requests
     if (message.type === 'GET_SOURCES') {
         getMediaSources().then(sources => sendResponse(sources));
         return true; // Async response
+    }
+
+    if (message.type === 'GET_COOKIES') {
+        const url = (message as any).url;
+        if (!url) {
+            sendResponse([]);
+            return;
+        }
+        chrome.cookies.getAll({ url }, (cookies) => {
+            sendResponse(cookies);
+        });
+        return true;
     }
 
     if (message.type === 'DOWNLOAD_JSON_FROM_POPUP') {
