@@ -42,7 +42,6 @@ import {
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
 
-// biome-ignore lint/nursery/useMaxParams: Dependency injection
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
@@ -133,14 +132,21 @@ export class MediaServiceImpl {
       filename: uploadRequest.filename,
       overwrite: uploadRequest.overwrite,
       autoIncrement: uploadRequest.autoIncrement,
-    });
+    }); // Determine media type based on extension
+    const ext = path.extname(fileInfo.fileName).toLowerCase();
+    let mediaType: "image" | "video" | "audio" = "image";
+    if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
+      mediaType = "video";
+    } else if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
+      mediaType = "audio";
+    }
 
     // 2. Create Media Entry
     const newMedia: AddMediaRequest = {
       mediaSourceId: validatedSourceId,
       filePath: fileInfo.filePath,
       fileName: fileInfo.fileName,
-      mediaType: "image", // TODO: Determine based on file type
+      mediaType,
       description: uploadRequest.description || null,
       width: fileInfo.width,
       height: fileInfo.height,
@@ -232,10 +238,13 @@ export class MediaServiceImpl {
   /**
    * Retrieves media content (file buffer).
    */
+  /**
+   * Retrieves media content (file buffer) and content type.
+   */
   async getMediaContent(
     mediaSourceId: string,
     mediaId: string
-  ): Promise<Buffer> {
+  ): Promise<{ buffer: Buffer; contentType: string }> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
@@ -256,7 +265,53 @@ export class MediaServiceImpl {
       throw new Error("Only local media sources is supported.");
     }
     const connectionInfo = mediaSource.connectionInfo as { path: string };
-    return this.storageService.getFile(connectionInfo.path, media.filePath);
+    const buffer = await this.storageService.getFile(
+      connectionInfo.path,
+      media.filePath
+    );
+
+    const ext = path.extname(media.fileName).toLowerCase().replace(".", "");
+    let contentType = "application/octet-stream";
+    switch (ext) {
+      case "jpg":
+      case "jpeg":
+        contentType = "image/jpeg";
+        break;
+      case "png":
+        contentType = "image/png";
+        break;
+      case "gif":
+        contentType = "image/gif";
+        break;
+      case "webp":
+        contentType = "image/webp";
+        break;
+      case "mp4":
+        contentType = "video/mp4";
+        break;
+      case "webm":
+        contentType = "video/webm";
+        break;
+      case "mov":
+        contentType = "video/quicktime";
+        break;
+      case "mkv":
+        contentType = "video/x-matroska";
+        break;
+      case "avi":
+        contentType = "video/x-msvideo";
+        break;
+      case "mp3":
+        contentType = "audio/mpeg";
+        break;
+      case "wav":
+        contentType = "audio/wav";
+        break;
+      default:
+        break;
+    }
+
+    return { buffer, contentType };
   }
 
   /**
@@ -282,10 +337,9 @@ export class MediaServiceImpl {
             // Simple extension check for media type
             const ext = path.extname(file).toLowerCase();
             let mediaType: "image" | "video" | "audio" = "image";
-            if ([".mp4", ".webm", ".mov"].includes(ext)) {
+            if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
               mediaType = "video";
-            }
-            if ([".mp3", ".wav"].includes(ext)) {
+            } else if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
               mediaType = "audio";
             }
 

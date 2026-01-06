@@ -622,16 +622,16 @@ export const BackupService = {
         // AI Generation Info
         generationInfo: media.generationInfo
           ? {
-            prompt: media.generationInfo.prompt,
-            negativePrompt: media.generationInfo.negativePrompt,
-            modelName: media.generationInfo.modelName,
-            seed: media.generationInfo.seed,
-            steps: media.generationInfo.steps,
-            cfgScale: media.generationInfo.cfgScale,
-            aiGenerated: media.generationInfo.aiGenerated,
-            workflow: media.generationInfo.workflow, // Full workflow json
-            metadata: media.generationInfo.metadata, // Other metadata
-          }
+              prompt: media.generationInfo.prompt,
+              negativePrompt: media.generationInfo.negativePrompt,
+              modelName: media.generationInfo.modelName,
+              seed: media.generationInfo.seed,
+              steps: media.generationInfo.steps,
+              cfgScale: media.generationInfo.cfgScale,
+              aiGenerated: media.generationInfo.aiGenerated,
+              workflow: media.generationInfo.workflow, // Full workflow json
+              metadata: media.generationInfo.metadata, // Other metadata
+            }
           : null,
 
         tags: simpleTags,

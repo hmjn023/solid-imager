@@ -150,6 +150,56 @@ export const LocalMediaStorage: IStorageService = {
 
   async getFileMetadata(fullPath: string) {
     const stats = await fs.stat(fullPath);
+    const ext = path.extname(fullPath).toLowerCase();
+
+    // Video formats
+    if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
+      const ffmpeg = (await import("fluent-ffmpeg")).default;
+
+      return new Promise<{
+        width: number;
+        height: number;
+        size: number;
+        createdAt: Date;
+        modifiedAt: Date;
+        duration?: number;
+      }>((resolve, reject) => {
+        ffmpeg.ffprobe(fullPath, (err, videoData) => {
+          if (err) {
+            reject(
+              new Error(
+                `Could not extract video metadata for ${fullPath}: ${err.message}`
+              )
+            );
+            return;
+          }
+
+          // Find video stream
+          const videoStream = videoData.streams.find(
+            (s) => s.codec_type === "video"
+          );
+          if (!(videoStream?.width && videoStream?.height)) {
+            reject(
+              new Error(
+                `No video stream found or missing dimensions for ${fullPath}`
+              )
+            );
+            return;
+          }
+
+          resolve({
+            width: videoStream.width,
+            height: videoStream.height,
+            size: stats.size,
+            createdAt: stats.birthtime,
+            modifiedAt: stats.mtime,
+            duration: videoData.format.duration,
+          });
+        });
+      });
+    }
+
+    // Image formats
     const metadata = await sharp(fullPath).metadata();
 
     if (!(metadata.width && metadata.height)) {

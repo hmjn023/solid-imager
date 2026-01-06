@@ -236,16 +236,17 @@ function resolveCreatedAt(
   return fileMeta.createdAt;
 }
 
-/**
- * Helper to determine media type from extension
- */
-function getMediaType(filePath: string): "image" | "video" {
+// Update helper to determine media type from extension
+function getMediaType(filePath: string): "image" | "video" | "audio" {
   const ext = path.extname(filePath).toLowerCase().replace(".", "");
   if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
     return "image";
   }
   if (["mp4", "webm", "mov", "mkv"].includes(ext)) {
     return "video";
+  }
+  if (["mp3", "wav", "ogg", "m4a"].includes(ext)) {
+    return "audio";
   }
   return "image"; // default
 }
@@ -281,7 +282,7 @@ async function handleYtDlpDownload(
       mediaSourceId,
       filePath: relativePath,
       fileName: path.basename(filePath),
-      mediaType: mediaType as "image" | "video",
+      mediaType,
       description: item.tweetText || metadata.description || metadata.title,
       width: metadata.width || fileMeta.width || 0,
       height: metadata.height || fileMeta.height || 0,
@@ -337,12 +338,15 @@ export async function processDownloadJob(
     // Get file metadata
     const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
+    // Determine media type using getMediaType
+    const mediaType = getMediaType(fullPath);
+
     // Create media entry
     const newMedia: AddMediaRequest = {
       mediaSourceId,
       filePath,
       fileName: filename,
-      mediaType: "image",
+      mediaType,
       description: formatMetadataAsMarkdown(item),
       width: metadata.width,
       height: metadata.height,

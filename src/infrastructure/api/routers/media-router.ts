@@ -71,7 +71,7 @@ export const mediaRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const imageBuffer = await MediaService.getMediaContent(
+      const { buffer: imageBuffer } = await MediaService.getMediaContent(
         input.sourceId,
         input.mediaId
       );

@@ -106,11 +106,14 @@ export const app = new Elysia()
     "/api/sources/:mediaSourceId/:mediaId",
     async ({ params: { mediaSourceId, mediaId } }) => {
       try {
-        const buffer = await MediaService.getMediaContent(
+        const { buffer, contentType } = await MediaService.getMediaContent(
           mediaSourceId,
           mediaId
         );
-        return new Response(buffer as unknown as BodyInit, { status: 200 });
+        return new Response(buffer as unknown as BodyInit, {
+          status: 200,
+          headers: { "Content-Type": contentType },
+        });
       } catch (error) {
         logger.error({ err: error, mediaId }, "Failed to serve media content");
         return new Response("Media not found", { status: 404 });
