@@ -71,13 +71,13 @@ export const mediaRouter = {
       })
     )
     .handler(async ({ input }) => {
-      const { buffer: imageBuffer } = await MediaService.getMediaContent(
+      const { buffer } = await MediaService.getMediaContent(
         input.sourceId,
         input.mediaId
       );
       // oRPC doesn't handle binary data well, so we'll keep this as REST for now
       // This endpoint will remain as /api/sources/:id/:mediaId
-      return imageBuffer;
+      return buffer;
     }),
 
   /**
