@@ -199,6 +199,17 @@ export const LocalMediaStorage: IStorageService = {
       });
     }
 
+    // Audio formats
+    if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
+      return {
+        width: 0,
+        height: 0,
+        size: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+      };
+    }
+
     // Image formats
     const metadata = await sharp(fullPath).metadata();
 
