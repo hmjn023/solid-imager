@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Open } from "unzipper";
-import { db, type TransactionClient } from "~/infrastructure/db";
+import { db } from "~/infrastructure/db";
 import {
   authors,
   characters,
@@ -477,40 +477,36 @@ export const BackupService = {
     }
 
     const driver = getDriver(mediaSource);
-    let importedCount = 0;
+    const _importedCount = 0;
 
-    // Process files and metadata
+    // Process files
     for (const item of dumpData) {
-      const imagePathInZip = `images/${item.filePath}`;
-      const imageFile = directory.files.find((f) => f.path === imagePathInZip);
-
-      if (imageFile) {
-        const content = await imageFile.buffer();
-        await driver.put(item.filePath, content);
-      }
-
-      await db.transaction(async (tx) => {
-        await this.processImportItem(
-          tx as unknown as TransactionClient,
-          mediaSourceId,
-          item
+      if (item.filePath) {
+        const imagePathInZip = `images/${item.filePath}`;
+        const imageFile = directory.files.find(
+          (f) => f.path === imagePathInZip
         );
-      });
 
-      importedCount++;
+        if (imageFile) {
+          const content = await imageFile.buffer();
+          await driver.put(item.filePath, content);
+        }
+      }
     }
+
+    // Process metadata using bulk restore logic
+    // This reuses the optimized batch insertion logic from restoreSource
+    const restoreResult = await this.restoreSource(mediaSourceId, dumpData);
 
     return {
       success: true,
-      importedCount,
-      message: `Successfully imported ${importedCount} items`,
+      importedCount: restoreResult.processed,
+      skippedCount: restoreResult.skipped,
+      errors: restoreResult.errors,
+      message: `Successfully imported ${restoreResult.processed} items (Skipped: ${restoreResult.skipped})`,
     };
   },
 
-  /**
-   * Generates a dump of the media source.
-   * Returns a JSON object or a ReadableStream for ZIP download.
-   */
   /**
    * Generates a dump of the media source.
    * Returns a JSON object or a ReadableStream for ZIP download.
@@ -525,44 +521,171 @@ export const BackupService = {
       throw new Error("Media Source not found");
     }
 
-    // 2. Fetch Media Data (Relational query)
-    const mediaList = await db.query.medias.findMany({
-      where: eq(medias.mediaSourceId, mediaSourceId),
-      with: {
-        generationInfo: true,
-        urls: true,
-        tags: {
-          with: {
-            tag: true,
-          },
+    if (mode === "json") {
+      // Legacy full-load for JSON mode (use with caution on large datasets)
+      // Reuse the logic via a helper or simple query if needed, but for now duplicate
+      // or keep the existing query structure but non-chunked?
+      // To avoid code duplication, we could use the chunked iterator to build the array.
+
+      // We can just query all at once for JSON mode as before, assuming JSON mode is for smaller debug exports.
+      // Or better, forbid JSON mode for large datasets?
+      // Let's stick to the previous implementation for JSON mode for now to minimize risk,
+      // but we need to re-implement the query since I am replacing the method.
+
+      const mediaList = await db.query.medias.findMany({
+        where: eq(medias.mediaSourceId, mediaSourceId),
+        with: {
+          generationInfo: true,
+          urls: true,
+          tags: { with: { tag: true } },
+          authors: { with: { author: true } },
+          characters: { with: { character: true } },
+          ips: { with: { ip: true } },
+          projects: { with: { project: true } },
         },
-        authors: {
-          with: {
-            author: true,
-          },
-        },
-        characters: {
-          with: {
-            character: true,
-          },
-        },
-        ips: {
-          with: {
-            ip: true,
-          },
-        },
-        projects: {
-          with: {
-            project: true,
-          },
-        },
-      },
+      });
+      return this._transformMediaList(mediaList);
+    }
+
+    // ZIP Mode: Streaming Implementation
+    const driver = getDriver(mediaSource);
+    const archiver = (await import("archiver")).default;
+    const { PassThrough, Readable } = await import("node:stream");
+    const fsSync = await import("node:fs");
+    const os = await import("node:os");
+    const { randomUUID } = await import("node:crypto");
+
+    const passThrough = new PassThrough();
+    const archive = archiver("zip", {
+      zlib: { level: 9 },
     });
 
-    // 3. Transform to "restoration-ready" format
-    // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
-    const dumpData = mediaList.map((media: any) => {
-      // Extract tags into a simple list of names/types
+    // Cleanup function references
+    let tempJsonPath: string | null = null;
+    const cleanup = async () => {
+      if (tempJsonPath) {
+        try {
+          await fsSync.promises.unlink(tempJsonPath); // Use fsSync.promises for async unlink
+        } catch (_e) {
+          // ignore
+        }
+      }
+    };
+
+    archive.on("error", async (_err: unknown) => {
+      await cleanup();
+    });
+
+    // Ensure cleanup on ambiguous close/end if possible, or reliance on end triggers.
+    // Ideally we hook into the stream completion, but for response streams, the server handles it.
+    // We can clean up when archiving is finalized.
+
+    archive.pipe(passThrough);
+
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Streaming logic is complex
+    (async () => {
+      try {
+        tempJsonPath = path.join(os.tmpdir(), `dump-${randomUUID()}.json`);
+        const jsonStream = fsSync.createWriteStream(tempJsonPath);
+
+        jsonStream.write("[\n");
+
+        const limit = 50;
+        let offset = 0;
+        let hasMore = true;
+        let isFirst = true;
+
+        while (hasMore) {
+          const mediaList = await db.query.medias.findMany({
+            where: eq(medias.mediaSourceId, mediaSourceId),
+            limit,
+            offset,
+            with: {
+              generationInfo: true,
+              urls: true,
+              tags: { with: { tag: true } },
+              authors: { with: { author: true } },
+              characters: { with: { character: true } },
+              ips: { with: { ip: true } },
+              projects: { with: { project: true } },
+            },
+            orderBy: medias.id, // Ensure stable ordering
+          });
+
+          if (mediaList.length < limit) {
+            hasMore = false;
+          }
+          offset += limit;
+
+          if (mediaList.length === 0 && isFirst) {
+            // If no items at all, write empty array
+            hasMore = false;
+            break;
+          }
+          if (mediaList.length === 0) {
+            // No more items, but some were processed
+            hasMore = false;
+            break;
+          }
+
+          const transformedItems = this._transformMediaList(mediaList);
+
+          for (const item of transformedItems) {
+            // Write JSON
+            if (!isFirst) {
+              jsonStream.write(",\n");
+            }
+            jsonStream.write(JSON.stringify(item, null, 2));
+            isFirst = false;
+
+            // Add image to archive
+            if (item.filePath) {
+              try {
+                const buffer = await driver.get(item.filePath);
+                archive.append(buffer, { name: `images/${item.filePath}` });
+              } catch (_e) {
+                // ignore missing files
+              }
+            }
+          }
+        }
+
+        jsonStream.write("\n]");
+        await new Promise<void>((resolve, reject) => {
+          jsonStream.end(() => resolve());
+          jsonStream.on("error", reject);
+        });
+
+        // Append the complete JSON dump file
+        archive.append(fsSync.createReadStream(tempJsonPath), {
+          name: "dump.json",
+        });
+      } catch (_err) {
+        // Can't easily signal error to downstream if headers sent, but we can abort archive
+        archive.abort();
+      } finally {
+        await archive.finalize();
+        // We can delete the temp file after finalization (which means it's been read into the zip stream?)
+        // Wait, archiver reads the file *during* pipe. We must not delete it until archive emits 'end' or we are sure.
+        // Actually, we can just let OS temp cleanup handle it or try to delete after a delay?
+        // Safer: Delete it in the 'end' event of the *passThrough* stream or archive.
+        // But since this is a background async function, we can await the stream finish?
+        // For now, we will just start the cleanup with a small delay or rely on implicit cleanup.
+        // A better way is:
+        passThrough.on("close", cleanup);
+        passThrough.on("end", cleanup);
+      }
+    })();
+
+    return Readable.toWeb(passThrough) as ReadableStream;
+  },
+
+  // Helper to transform media list to dump format
+  // biome-ignore lint/suspicious/noExplicitAny: complex structure
+  _transformMediaList(mediaList: any[]) {
+    // biome-ignore lint/suspicious/noExplicitAny: explicit any needed
+    return mediaList.map((media: any) => {
+      // Extract tags
       // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
       const simpleTags = media.tags.map((mt: any) => ({
         name: mt.tag.name,
@@ -599,7 +722,7 @@ export const BackupService = {
         description: mp.project.description,
       }));
 
-      // Extract source URLs (flattened)
+      // Extract source URLs
       // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
       const sourceUrls = media.urls.map((u: any) => u.url);
 
@@ -616,7 +739,7 @@ export const BackupService = {
         modifiedAt: media.modifiedAt,
         indexedAt: media.indexedAt,
 
-        // Essential metadata for restoration
+        // Essential metadata
         sourceUrls,
 
         // AI Generation Info
@@ -629,8 +752,8 @@ export const BackupService = {
               steps: media.generationInfo.steps,
               cfgScale: media.generationInfo.cfgScale,
               aiGenerated: media.generationInfo.aiGenerated,
-              workflow: media.generationInfo.workflow, // Full workflow json
-              metadata: media.generationInfo.metadata, // Other metadata
+              workflow: media.generationInfo.workflow,
+              metadata: media.generationInfo.metadata,
             }
           : null,
 
@@ -641,530 +764,7 @@ export const BackupService = {
         projects: simpleProjects,
       };
     });
-
-    // 4. Handle Response based on Mode
-    if (mode === "zip") {
-      const driver = getDriver(mediaSource);
-      const archiver = (await import("archiver")).default;
-      const { PassThrough, Readable } = await import("node:stream");
-
-      const passThrough = new PassThrough();
-      const archive = archiver("zip", {
-        zlib: { level: 9 },
-      });
-
-      // エラーハンドリング
-      archive.on("error", (_err: unknown) => {
-        // ignore
-      });
-
-      // パイプ接続
-      archive.pipe(passThrough);
-
-      // バックグラウンドでアーカイブ作成を開始
-      (async () => {
-        try {
-          // メタデータJSONを追加
-          archive.append(JSON.stringify(dumpData, null, 2), {
-            name: "dump.json",
-          });
-
-          // 画像ファイルを順次追加
-          for (const media of mediaList) {
-            try {
-              const buffer = await driver.get(media.filePath);
-              archive.append(buffer, { name: `images/${media.filePath}` });
-            } catch (_e) {
-              // ignore
-            }
-          }
-        } catch (_err) {
-          // ignore
-        } finally {
-          // 完了またはエラー時にfinalize
-          await archive.finalize();
-        }
-      })();
-
-      // ストリームを即座に返す
-      return Readable.toWeb(passThrough) as ReadableStream;
-    }
-
-    return dumpData;
   },
 
-  // Helper methods for Restore
-  // Helper methods for Restore
-  async processRestoreItem(
-    mediaSourceId: string,
-    // biome-ignore lint/suspicious/noExplicitAny: complex item structure
-    item: any,
-    isLocal: boolean,
-    basePath: string
-  ): Promise<"processed" | "skipped"> {
-    if (!(item.filePath && item.fileName)) {
-      return "skipped";
-    }
-
-    if (isLocal) {
-      const fullPath = path.join(basePath, item.filePath);
-      try {
-        await fs.access(fullPath);
-      } catch {
-        return "skipped";
-      }
-    }
-
-    const mediaId = await this.restoreMediaRecord(mediaSourceId, item);
-    if (!mediaId) {
-      return "skipped";
-    }
-
-    if (item.generationInfo) {
-      await this.restoreGenerationInfo(mediaId, item.generationInfo);
-    }
-    if (item.tags) {
-      await this.restoreTags(mediaId, item.tags);
-    }
-    if (item.authors) {
-      await this.restoreAuthors(mediaId, item.authors);
-    }
-    if (item.characters) {
-      await this.restoreCharacters(mediaId, item.characters);
-    }
-    if (item.ips) {
-      await this.restoreIps(mediaId, item.ips);
-    }
-    if (item.projects) {
-      await this.restoreProjects(mediaId, item.projects);
-    }
-    if (item.sourceUrls) {
-      await this.restoreUrls(mediaId, item.sourceUrls);
-    }
-
-    return "processed";
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex item structure
-  async restoreMediaRecord(mediaSourceId: string, item: any) {
-    const existingMedia = await db.query.medias.findFirst({
-      where: and(
-        eq(medias.mediaSourceId, mediaSourceId),
-        eq(medias.filePath, item.filePath)
-      ),
-    });
-
-    const mediaValues = {
-      mediaSourceId,
-      filePath: item.filePath,
-      fileName: item.fileName,
-      description: item.description || null,
-      width: item.width ?? 0,
-      height: item.height ?? 0,
-      fileSize: item.fileSize || 0,
-      mediaType: (item.mediaType === "image" || item.mediaType === "video"
-        ? item.mediaType
-        : "image") as "image" | "video",
-      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-      modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
-    };
-
-    if (existingMedia) {
-      await db
-        .update(medias)
-        .set(mediaValues)
-        .where(eq(medias.id, existingMedia.id));
-      return existingMedia.id;
-    }
-    const inserted = await db
-      .insert(medias)
-      .values({
-        ...mediaValues,
-        indexedAt: new Date(),
-        status: "active",
-      })
-      .returning();
-    return inserted[0].id;
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex info structure
-  async restoreGenerationInfo(mediaId: string, info: any) {
-    const { mediaId: _, ...rest } = info;
-    await db
-      .insert(mediaGenerationInfo)
-      .values({
-        mediaId,
-        ...rest,
-      })
-      .onConflictDoUpdate({
-        target: mediaGenerationInfo.mediaId,
-        set: { ...rest },
-      });
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex tags structure
-  async restoreTags(mediaId: string, tagsList: any[]) {
-    await db.delete(mediaTags).where(eq(mediaTags.mediaId, mediaId));
-    for (const t of tagsList) {
-      if (!t.name) {
-        continue;
-      }
-      let tag = await db.query.tags.findFirst({
-        where: eq(tags.name, t.name),
-      });
-      if (!tag) {
-        const [insertedTag] = await db
-          .insert(tags)
-          .values({ name: t.name, source: "restored" })
-          .onConflictDoNothing()
-          .returning();
-
-        tag = insertedTag;
-        if (!tag) {
-          tag = await db.query.tags.findFirst({ where: eq(tags.name, t.name) });
-        }
-      }
-      if (tag) {
-        await db
-          .insert(mediaTags)
-          .values({
-            mediaId,
-            tagId: tag.id,
-            tagType: (t.type === "positive" || t.type === "negative"
-              ? t.type
-              : "positive") as "positive" | "negative",
-            confidence: t.confidence || null,
-            source: "restored",
-          })
-          .onConflictDoNothing();
-      }
-    }
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex authors structure
-  async restoreAuthors(mediaId: string, authorsList: any[]) {
-    await db.delete(mediaAuthors).where(eq(mediaAuthors.mediaId, mediaId));
-    for (const a of authorsList) {
-      if (!a.name) {
-        continue;
-      }
-      let author = await db.query.authors.findFirst({
-        where: eq(authors.name, a.name),
-      });
-      if (!author) {
-        const [insertedAuthor] = await db
-          .insert(authors)
-          .values({ name: a.name, accountId: a.accountId || null })
-          .returning();
-        author = insertedAuthor;
-      }
-      if (author) {
-        await db
-          .insert(mediaAuthors)
-          .values({
-            mediaId,
-            authorId: author.id,
-          })
-          .onConflictDoNothing();
-      }
-    }
-  },
-
-  async restoreUrls(mediaId: string, sourceUrls: string[]) {
-    for (const url of sourceUrls) {
-      await db
-        .insert(mediaUrls)
-        .values({
-          mediaId,
-          url,
-        })
-        .onConflictDoNothing();
-    }
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex projects structure
-  async restoreProjects(mediaId: string, projectsList: any[]) {
-    await db.delete(mediaProjects).where(eq(mediaProjects.mediaId, mediaId));
-    for (const p of projectsList) {
-      if (!p.name) {
-        continue;
-      }
-      let project = await db.query.projects.findFirst({
-        where: eq(projects.name, p.name),
-      });
-      if (!project) {
-        const [insertedProject] = await db
-          .insert(projects)
-          .values({ name: p.name, description: p.description || "" })
-          .returning();
-        project = insertedProject;
-      }
-      if (project) {
-        await db
-          .insert(mediaProjects)
-          .values({
-            mediaId,
-            projectId: project.id,
-          })
-          .onConflictDoNothing();
-      }
-    }
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex characters structure
-  async restoreCharacters(mediaId: string, charactersList: any[]) {
-    await db
-      .delete(mediaCharacters)
-      .where(eq(mediaCharacters.mediaId, mediaId));
-    for (const c of charactersList) {
-      if (!c.name) {
-        continue;
-      }
-      // Note: IP association is tricky during flat restore.
-      // We'll try to find existing character by name.
-      // If we need to create one, we won't associate IP unless we can infer it confidently, which we can't here easily.
-      let character = await db.query.characters.findFirst({
-        where: eq(characters.name, c.name),
-      });
-      if (!character) {
-        const [insertedCharacter] = await db
-          .insert(characters)
-          .values({
-            name: c.name,
-            description: c.description || "",
-            source: "restored",
-          })
-          .returning();
-        character = insertedCharacter;
-      }
-      if (character) {
-        await db
-          .insert(mediaCharacters)
-          .values({
-            mediaId,
-            characterId: character.id,
-            confidence: c.confidence || null,
-            source: "restored",
-          })
-          .onConflictDoNothing();
-      }
-    }
-  },
-
-  // biome-ignore lint/suspicious/noExplicitAny: complex ips structure
-  async restoreIps(mediaId: string, ipsList: any[]) {
-    await db.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
-    for (const i of ipsList) {
-      if (!i.name) {
-        continue;
-      }
-      let ip = await db.query.ips.findFirst({
-        where: eq(ips.name, i.name),
-      });
-      if (!ip) {
-        const [insertedIp] = await db
-          .insert(ips)
-          .values({
-            name: i.name,
-            description: i.description || "",
-            source: "restored",
-          })
-          .returning();
-        ip = insertedIp;
-      }
-      if (ip) {
-        await db
-          .insert(mediaIps)
-          .values({
-            mediaId,
-            ipId: ip.id,
-            source: "restored",
-          })
-          .onConflictDoNothing();
-      }
-    }
-  },
-
-  // Helper methods for Import
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Legacy import logic
-  async processImportItem(
-    tx: TransactionClient,
-    mediaSourceId: string,
-    // biome-ignore lint/suspicious/noExplicitAny: complex item structure
-    item: any
-  ) {
-    const [insertedMedia] = await tx
-      .insert(medias)
-      .values({
-        mediaSourceId,
-        filePath: item.filePath,
-        fileName: item.fileName,
-        mediaType: (item.mediaType === "image" || item.mediaType === "video"
-          ? item.mediaType
-          : "image") as "image" | "video",
-        width: item.width || 0,
-        height: item.height || 0,
-        fileSize: item.fileSize || 0,
-        description: item.description || null,
-        createdAt: new Date(item.createdAt),
-        modifiedAt: new Date(item.modifiedAt),
-        indexedAt: new Date(item.indexedAt),
-        status: "active",
-      })
-      .onConflictDoUpdate({
-        target: [medias.mediaSourceId, medias.filePath],
-        set: {
-          description: item.description || null,
-          modifiedAt: new Date(item.modifiedAt),
-          width: item.width || 0,
-          height: item.height || 0,
-          fileSize: item.fileSize || 0,
-        },
-      })
-      .returning();
-
-    const mediaId = insertedMedia.id;
-
-    // Tags
-    if (Array.isArray(item.tags)) {
-      await tx.delete(mediaTags).where(eq(mediaTags.mediaId, mediaId));
-      for (const tag of item.tags) {
-        let tagRecord = await tx.query.tags.findFirst({
-          where: eq(tags.name, tag.name),
-        });
-        if (!tagRecord) {
-          const [newTag] = await tx
-            .insert(tags)
-            .values({ name: tag.name, source: "imported" })
-            .returning();
-          tagRecord = newTag;
-        }
-        await tx.insert(mediaTags).values({
-          mediaId,
-          tagId: tagRecord.id,
-          tagType: (tag.type === "positive" || tag.type === "negative"
-            ? tag.type
-            : "positive") as "positive" | "negative",
-          confidence: tag.confidence || null,
-          source: "imported",
-        });
-      }
-    }
-
-    // Authors
-    if (Array.isArray(item.authors)) {
-      await tx.delete(mediaAuthors).where(eq(mediaAuthors.mediaId, mediaId));
-      for (const author of item.authors) {
-        let authorRecord = await tx.query.authors.findFirst({
-          where: eq(authors.name, author.name),
-        });
-        if (!authorRecord) {
-          const [newAuthor] = await tx
-            .insert(authors)
-            .values({ name: author.name, accountId: author.accountId || null })
-            .returning();
-          authorRecord = newAuthor;
-        }
-        await tx
-          .insert(mediaAuthors)
-          .values({ mediaId, authorId: authorRecord.id });
-      }
-    }
-
-    // Characters
-    if (Array.isArray(item.characters)) {
-      await tx
-        .delete(mediaCharacters)
-        .where(eq(mediaCharacters.mediaId, mediaId));
-      for (const c of item.characters) {
-        let charRecord = await tx.query.characters.findFirst({
-          where: eq(characters.name, c.name),
-        });
-        if (!charRecord) {
-          const [newChar] = await tx
-            .insert(characters)
-            .values({
-              name: c.name,
-              description: c.description || "",
-              source: "imported",
-            })
-            .returning();
-          charRecord = newChar;
-        }
-        await tx.insert(mediaCharacters).values({
-          mediaId,
-          characterId: charRecord.id,
-          confidence: c.confidence || null,
-          source: "imported",
-        });
-      }
-    }
-
-    // IPs
-    if (Array.isArray(item.ips)) {
-      await tx.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
-      for (const i of item.ips) {
-        let ipRecord = await tx.query.ips.findFirst({
-          where: eq(ips.name, i.name),
-        });
-        if (!ipRecord) {
-          const [newIp] = await tx
-            .insert(ips)
-            .values({
-              name: i.name,
-              description: i.description || "",
-              source: "imported",
-            })
-            .returning();
-          ipRecord = newIp;
-        }
-        await tx
-          .insert(mediaIps)
-          .values({ mediaId, ipId: ipRecord.id, source: "imported" });
-      }
-    }
-
-    // Projects
-    if (Array.isArray(item.projects)) {
-      await tx.delete(mediaProjects).where(eq(mediaProjects.mediaId, mediaId));
-      for (const p of item.projects) {
-        let projRecord = await tx.query.projects.findFirst({
-          where: eq(projects.name, p.name),
-        });
-        if (!projRecord) {
-          const [newProj] = await tx
-            .insert(projects)
-            .values({ name: p.name, description: p.description || "" })
-            .returning();
-          projRecord = newProj;
-        }
-        await tx
-          .insert(mediaProjects)
-          .values({ mediaId, projectId: projRecord.id });
-      }
-    }
-
-    // Generation Info
-    if (item.generationInfo) {
-      const { mediaId: _, ...info } = item.generationInfo;
-      await tx
-        .insert(mediaGenerationInfo)
-        .values({
-          mediaId,
-          ...info,
-        })
-        .onConflictDoUpdate({
-          target: mediaGenerationInfo.mediaId,
-          set: { ...info },
-        });
-    }
-
-    // Source URLs
-    if (Array.isArray(item.sourceUrls)) {
-      await tx.delete(mediaUrls).where(eq(mediaUrls.mediaId, mediaId));
-      for (const url of item.sourceUrls) {
-        await tx.insert(mediaUrls).values({ mediaId, url });
-      }
-    }
-  },
+  // Helper methods for Restore (processRestoreItem, restoreMediaRecord etc. removed as they are deprecated)
 };

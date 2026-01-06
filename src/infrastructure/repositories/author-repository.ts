@@ -26,16 +26,21 @@ export const AuthorRepository: IAuthorRepository = {
 
   async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
     const client = (tx as unknown as TransactionClient) || db;
-    // Check duplication by accountId if present, similar to original upsert logic
-    if (author.accountId) {
-      const existing = await client
-        .select()
-        .from(authors)
-        .where(eq(authors.accountId, author.accountId))
-        .limit(1);
-      if (existing[0]) {
-        return existing[0];
-      }
+    // Check duplication
+    // If accountId exists, check by accountId.
+    // If not, check by name (fallback for local files/legacy data)
+    const condition = author.accountId
+      ? eq(authors.accountId, author.accountId)
+      : eq(authors.name, author.name);
+
+    const existing = await client
+      .select()
+      .from(authors)
+      .where(condition)
+      .limit(1);
+
+    if (existing[0]) {
+      return existing[0];
     }
 
     const result = await client.insert(authors).values(author).returning();
