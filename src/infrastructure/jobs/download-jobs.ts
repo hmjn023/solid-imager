@@ -13,7 +13,7 @@ import type {
   Media,
   NewAuthor,
 } from "~/domain/media/schemas";
-
+import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
 // import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 // import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls"; // Removed
 import type { Job } from "~/infrastructure/jobs/job-manager";
@@ -237,19 +237,6 @@ function resolveCreatedAt(
 }
 
 // Update helper to determine media type from extension
-function getMediaType(filePath: string): "image" | "video" | "audio" {
-  const ext = path.extname(filePath).toLowerCase().replace(".", "");
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) {
-    return "image";
-  }
-  if (["mp4", "webm", "mov", "mkv"].includes(ext)) {
-    return "video";
-  }
-  if (["mp3", "wav", "ogg", "m4a"].includes(ext)) {
-    return "audio";
-  }
-  return "image"; // default
-}
 
 async function handleYtDlpDownload(
   item: DownloadItem,
@@ -273,7 +260,7 @@ async function handleYtDlpDownload(
     const relativePath = path.relative(basePath, filePath);
 
     // Determine media type
-    const mediaType = getMediaType(filePath);
+    const mediaType = getMediaTypeFromExtension(filePath);
 
     // Get file metadata (size etc, verify it exists)
     const fileMeta = await LocalMediaStorage.getFileMetadata(filePath);
@@ -339,7 +326,7 @@ export async function processDownloadJob(
     const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
     // Determine media type using getMediaType
-    const mediaType = getMediaType(fullPath);
+    const mediaType = getMediaTypeFromExtension(fullPath);
 
     // Create media entry
     const newMedia: AddMediaRequest = {

@@ -39,7 +39,7 @@ export const mediaRouter = {
     .handler(async ({ input }) => {
       const media = await MediaService.getMedia(input.sourceId, input.mediaId);
       if (!media) {
-        throw new Error(`Media not found: ${input.mediaId}`);
+        throw new ResourceNotFoundError("Media", input.mediaId);
       }
       return media;
     }),
@@ -106,20 +106,14 @@ export const mediaRouter = {
         data: updateMediaRequestSchema,
       })
     )
-    .handler(async ({ input }) => {
-      try {
-        return await MediaService.updateMedia(
+    .handler(
+      async ({ input }) =>
+        await MediaService.updateMedia(
           input.sourceId,
           input.mediaId,
           input.data
-        );
-      } catch (error) {
-        if (error instanceof ResourceNotFoundError) {
-          throw new Error(`Media not found: ${input.mediaId}`);
-        }
-        throw error;
-      }
-    }),
+        )
+    ),
 
   /**
    * Delete a media file
@@ -132,15 +126,8 @@ export const mediaRouter = {
       })
     )
     .handler(async ({ input }) => {
-      try {
-        await MediaService.deleteMedia(input.sourceId, input.mediaId);
-        return { success: true };
-      } catch (error) {
-        if (error instanceof ResourceNotFoundError) {
-          throw new Error(`Media not found: ${input.mediaId}`);
-        }
-        throw error;
-      }
+      await MediaService.deleteMedia(input.sourceId, input.mediaId);
+      return { success: true };
     }),
 
   /**

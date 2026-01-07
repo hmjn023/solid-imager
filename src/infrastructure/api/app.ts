@@ -4,6 +4,7 @@ import { OpenAPIGenerator } from "@orpc/openapi";
 import { RPCHandler } from "@orpc/server/fetch";
 import { Elysia } from "elysia";
 import { MediaService } from "~/application/services/media-service";
+import { ResourceNotFoundError } from "~/domain/errors";
 import { appRouter } from "~/domain/shared/api-contract";
 import { bootstrap } from "~/infrastructure/bootstrap";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
@@ -70,6 +71,13 @@ function assignTags(spec: any) {
  */
 export const app = new Elysia()
   .onError(({ code, error, request }) => {
+    if (error instanceof ResourceNotFoundError) {
+      return new Response(JSON.stringify({ error: error.message }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     logger.error(
       { err: error, code, path: request.url },
       "Unhandled Elysia Error"

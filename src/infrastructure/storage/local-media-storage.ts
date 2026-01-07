@@ -5,6 +5,23 @@ import type { z } from "zod";
 import type { conflictSchema } from "~/domain/media/upload-schemas";
 import type { IStorageService } from "~/domain/services/storage-service";
 
+/**
+ * Resolves a path safely, ensuring it remains within the base path.
+ * Prevents path traversal attacks.
+ */
+const resolveSafePath = (basePath: string, targetPath: string): string => {
+  const resolvedPath = path.resolve(basePath, targetPath);
+  const absoluteBase = path.resolve(basePath);
+
+  if (
+    resolvedPath !== absoluteBase &&
+    !resolvedPath.startsWith(absoluteBase + path.sep)
+  ) {
+    throw new Error(`Invalid path: ${targetPath}`);
+  }
+  return resolvedPath;
+};
+
 export const LocalMediaStorage: IStorageService = {
   async saveFile(
     basePath: string,
@@ -26,7 +43,12 @@ export const LocalMediaStorage: IStorageService = {
   }> {
     const uploadRequest = options;
     let targetFileName = uploadRequest.filename || file.name;
-    let targetFilePath = path.join(basePath, targetFileName);
+
+    // Removed silent sanitization to allow strict validation by resolveSafePath
+    // If strictness is needed (e.g. no subdirectories), check here.
+    // For now, ensuring no traversal is the priority.
+
+    let targetFilePath = resolveSafePath(basePath, targetFileName);
     let relativeFilePath = path.relative(basePath, targetFilePath);
     let conflict: z.infer<typeof conflictSchema> | undefined;
 
@@ -54,51 +76,52 @@ export const LocalMediaStorage: IStorageService = {
       const ext = path.extname(file.name);
       const base = path.basename(file.name, ext);
       targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(basePath, targetFileName);
+      targetFilePath = resolveSafePath(basePath, targetFileName);
       relativeFilePath = path.relative(basePath, targetFilePath);
       conflict = {
         existingFile: path.relative(
           basePath,
-          path.join(basePath, uploadRequest.filename || file.name)
+          resolveSafePath(basePath, uploadRequest.filename || file.name)
         ),
         suggestedName: targetFileName,
       };
     }
 
     // Save the file
-    // Note: file.arrayBuffer() returns a Promise in some environments, but standard File API in standard is sync-ish or async.
-    // In Bun/Node global File, arrayBuffer() is async.
     await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
 
     // Extract basic metadata
     const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
+    try {
+      const metadata = await sharp(targetFilePath).metadata();
 
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if metadata extraction fails
-      throw new Error("Could not extract media dimensions.");
+      if (!(metadata.width && metadata.height)) {
+        await fs.unlink(targetFilePath); // Clean up if validation fails
+        throw new Error("Could not extract media dimensions.");
+      }
+
+      return {
+        filePath: relativeFilePath,
+        fileName: targetFileName,
+        width: metadata.width,
+        height: metadata.height,
+        size: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+        conflict,
+      };
+    } catch (e) {
+      try {
+        await fs.unlink(targetFilePath);
+      } catch (_) {
+        /* ignore unlink error */
+      }
+      throw e;
     }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
   },
 
   async deleteFile(basePath: string, filePath: string): Promise<void> {
-    const fullPath = path.resolve(basePath, filePath);
-    // Security check: ensure fullPath is within basePath
-    if (!fullPath.startsWith(path.resolve(basePath))) {
-      // Allow deletion if it matches exactly, but generally prevent traversing up.
-      // However, filePath usually comes from DB which we trust more than user input,
-      // but good to be safe. For now, trusting the caller (MediaService).
-    }
+    const fullPath = resolveSafePath(basePath, filePath);
 
     // Check if exists
     try {
@@ -113,10 +136,7 @@ export const LocalMediaStorage: IStorageService = {
   },
 
   async getFile(basePath: string, filePath: string): Promise<Buffer> {
-    const fullPath = path.resolve(basePath, filePath);
-    if (!fullPath.startsWith(path.resolve(basePath))) {
-      throw new Error("Invalid path");
-    }
+    const fullPath = resolveSafePath(basePath, filePath);
     return await fs.readFile(fullPath);
   },
 
@@ -141,7 +161,7 @@ export const LocalMediaStorage: IStorageService = {
           }
         }
       } catch (_e) {
-        // Ignore errors for individual directories to allow partial scanning
+        // Ignore errors
       }
     }
 
@@ -247,7 +267,8 @@ export const LocalMediaStorage: IStorageService = {
     const uploadRequest = options;
     const sourceFileName = path.basename(sourcePath);
     let targetFileName = uploadRequest.filename || sourceFileName;
-    let targetFilePath = path.join(targetBasePath, targetFileName);
+
+    let targetFilePath = resolveSafePath(targetBasePath, targetFileName);
     let relativeFilePath = path.relative(targetBasePath, targetFilePath);
     let conflict: z.infer<typeof conflictSchema> | undefined;
 
@@ -275,12 +296,15 @@ export const LocalMediaStorage: IStorageService = {
       const ext = path.extname(sourceFileName);
       const base = path.basename(sourceFileName, ext);
       targetFileName = `${base}_${counter}${ext}`;
-      targetFilePath = path.join(targetBasePath, targetFileName);
+      targetFilePath = resolveSafePath(targetBasePath, targetFileName);
       relativeFilePath = path.relative(targetBasePath, targetFilePath);
       conflict = {
         existingFile: path.relative(
           targetBasePath,
-          path.join(targetBasePath, uploadRequest.filename || sourceFileName)
+          resolveSafePath(
+            targetBasePath,
+            uploadRequest.filename || sourceFileName
+          )
         ),
         suggestedName: targetFileName,
       };
@@ -291,22 +315,31 @@ export const LocalMediaStorage: IStorageService = {
 
     // Extract metadata
     const stats = await fs.stat(targetFilePath);
-    const metadata = await sharp(targetFilePath).metadata();
+    try {
+      const metadata = await sharp(targetFilePath).metadata();
 
-    if (!(metadata.width && metadata.height)) {
-      await fs.unlink(targetFilePath); // Clean up if validation fails
-      throw new Error("Could not extract media dimensions from copied file.");
+      if (!(metadata.width && metadata.height)) {
+        await fs.unlink(targetFilePath); // Clean up
+        throw new Error("Could not extract media dimensions from copied file.");
+      }
+
+      return {
+        filePath: relativeFilePath,
+        fileName: targetFileName,
+        width: metadata.width,
+        height: metadata.height,
+        size: stats.size,
+        createdAt: stats.birthtime,
+        modifiedAt: stats.mtime,
+        conflict,
+      };
+    } catch (e) {
+      try {
+        await fs.unlink(targetFilePath);
+      } catch (_) {
+        // Ignore error if temporary file cleanup fails
+      }
+      throw e;
     }
-
-    return {
-      filePath: relativeFilePath,
-      fileName: targetFileName,
-      width: metadata.width,
-      height: metadata.height,
-      size: stats.size,
-      createdAt: stats.birthtime,
-      modifiedAt: stats.mtime,
-      conflict,
-    };
   },
 };

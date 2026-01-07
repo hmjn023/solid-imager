@@ -22,6 +22,10 @@ import {
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
+import {
+  getContentTypeFromExtension,
+  getMediaTypeFromExtension,
+} from "~/domain/media/utils/media-type-utils";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
@@ -41,6 +45,51 @@ import {
   deleteThumbnail,
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
+
+const SIGNATURES = {
+  png: Buffer.from("89504e470d0a1a0a", "hex"),
+  jpg: Buffer.from("ffd8ff", "hex"),
+  jpeg: Buffer.from("ffd8ff", "hex"),
+  gif: Buffer.from("47494638", "hex"),
+  webp: Buffer.from("52494646", "hex"), // RIFF
+  mp4: Buffer.from("66747970", "hex"), // ftyp
+  webm: Buffer.from("1a45dfa3", "hex"),
+  mp3: Buffer.from("494433", "hex"), // ID3
+  wav: Buffer.from("52494646", "hex"), // RIFF
+};
+
+const WEBP_SUBTYPE = Buffer.from("57454250", "hex"); // WEBP
+const FILE_HEADER_BYTES = 12;
+const WEBP_OFFSET = 8;
+const WEBP_END = 12;
+
+export async function validateFileSignature(
+  file: File,
+  filename: string
+): Promise<void> {
+  const ext = path.extname(filename).toLowerCase().replace(".", "");
+  const buffer = await file.slice(0, FILE_HEADER_BYTES).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  // Basic checks
+  if (ext in SIGNATURES) {
+    const sig = SIGNATURES[ext as keyof typeof SIGNATURES];
+    // Check start signature
+    if (sig && !bytes.subarray(0, sig.length).every((b, i) => b === sig[i])) {
+      throw new Error(`File signature mismatch for .${ext}`);
+    }
+  }
+
+  // Extra check for WEBP: RIFF....WEBP
+  if (
+    ext === "webp" &&
+    !bytes
+      .subarray(WEBP_OFFSET, WEBP_END)
+      .every((b, i) => b === WEBP_SUBTYPE[i])
+  ) {
+    throw new Error("Invalid WEBP signature (missing WEBP)");
+  }
+}
 
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
@@ -127,19 +176,18 @@ export class MediaServiceImpl {
 
     const uploadRequest = uploadMediaRequestSchema.parse(options);
 
+    // 0. Validate File Signature
+    await validateFileSignature(file, uploadRequest.filename ?? file.name);
+
     // 1. Save File via StorageService
     const fileInfo = await this.storageService.saveFile(basePath, file, {
       filename: uploadRequest.filename,
       overwrite: uploadRequest.overwrite,
       autoIncrement: uploadRequest.autoIncrement,
-    }); // Determine media type based on extension
-    const ext = path.extname(fileInfo.fileName).toLowerCase();
-    let mediaType: "image" | "video" | "audio" = "image";
-    if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
-      mediaType = "video";
-    } else if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
-      mediaType = "audio";
-    }
+    });
+
+    // Determine media type based on extension
+    const mediaType = getMediaTypeFromExtension(fileInfo.fileName);
 
     // 2. Create Media Entry
     const newMedia: AddMediaRequest = {
@@ -156,7 +204,17 @@ export class MediaServiceImpl {
     };
 
     let insertedMedia: Media;
-    insertedMedia = await this.mediaRepository.upsert(newMedia);
+    try {
+      insertedMedia = await this.mediaRepository.upsert(newMedia);
+    } catch (error) {
+      // 3. Rollback: Delete file if DB insertion fails
+      try {
+        await this.storageService.deleteFile(basePath, fileInfo.filePath);
+      } catch (_deleteError) {
+        // Ignore rollback error
+      }
+      throw error;
+    }
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
@@ -165,7 +223,7 @@ export class MediaServiceImpl {
       ]);
     }
 
-    // 3. Trigger Jobs
+    // 4. Trigger Jobs
     addJobsToQueue(validatedSourceId, [
       { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
       { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
@@ -270,46 +328,7 @@ export class MediaServiceImpl {
       media.filePath
     );
 
-    const ext = path.extname(media.fileName).toLowerCase().replace(".", "");
-    let contentType = "application/octet-stream";
-    switch (ext) {
-      case "jpg":
-      case "jpeg":
-        contentType = "image/jpeg";
-        break;
-      case "png":
-        contentType = "image/png";
-        break;
-      case "gif":
-        contentType = "image/gif";
-        break;
-      case "webp":
-        contentType = "image/webp";
-        break;
-      case "mp4":
-        contentType = "video/mp4";
-        break;
-      case "webm":
-        contentType = "video/webm";
-        break;
-      case "mov":
-        contentType = "video/quicktime";
-        break;
-      case "mkv":
-        contentType = "video/x-matroska";
-        break;
-      case "avi":
-        contentType = "video/x-msvideo";
-        break;
-      case "mp3":
-        contentType = "audio/mpeg";
-        break;
-      case "wav":
-        contentType = "audio/wav";
-        break;
-      default:
-        break;
-    }
+    const contentType = getContentTypeFromExtension(media.fileName);
 
     return { buffer, contentType };
   }
@@ -335,13 +354,7 @@ export class MediaServiceImpl {
             const metadata = await this.storageService.getFileMetadata(file);
 
             // Simple extension check for media type
-            const ext = path.extname(file).toLowerCase();
-            let mediaType: "image" | "video" | "audio" = "image";
-            if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
-              mediaType = "video";
-            } else if ([".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
-              mediaType = "audio";
-            }
+            const mediaType = getMediaTypeFromExtension(file);
 
             const newMedia: AddMediaRequest = {
               mediaSourceId: validatedSourceId,

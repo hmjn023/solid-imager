@@ -39,6 +39,11 @@ export interface GetSourcesMessage {
     type: 'GET_SOURCES';
 }
 
+export interface GetCookiesMessage {
+    type: 'GET_COOKIES';
+    url: string;
+}
+
 export interface GetMetadataMessage {
     type: 'GET_METADATA';
 }
@@ -48,4 +53,4 @@ export interface DownloadJsonMessage {
 }
 
 export type Message = DownloadMessage | DownloadBulkMessage | PostDownloadMessage | PostBulkMessage;
-export type ExtendedMessage = Message | GetSourcesMessage | GetMetadataMessage | DownloadJsonMessage;
+export type ExtendedMessage = Message | GetSourcesMessage | GetMetadataMessage | DownloadJsonMessage | GetCookiesMessage;

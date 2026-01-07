@@ -19,14 +19,32 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
+// ...
 import { getDriver } from "~/infrastructure/storage/factory";
 
 // const _IMAGES_PREFIX = /^images\//;
 
 /**
+ * Validates that a path is relative and does not contain traversal segments.
+ */
+function validateRelativePath(p: string): void {
+  if (!p) {
+    return;
+  }
+  const normalized = path.normalize(p);
+  // Check for absolute paths (start with /) or traversal (..)
+  // Note: path.isAbsolute check depends on OS, but we want to block starting with / anywhere basically for backups
+  if (path.isAbsolute(p) || p.startsWith("/") || normalized.includes("..")) {
+    throw new Error(`Invalid path in backup: ${p}`);
+  }
+}
+
+/**
  * Service for handling media source backups, restoration, and imports.
  */
 export const BackupService = {
+  // ... (restoreSource)
+
   /**
    * Restores media metadata from a JSON dump.
    * Optimized with Bulk Operations.
@@ -99,6 +117,14 @@ export const BackupService = {
     for (const item of items) {
       if (!(item.filePath && item.fileName)) {
         skippedCount++;
+        continue;
+      }
+
+      try {
+        validateRelativePath(item.filePath);
+      } catch (e) {
+        skippedCount++;
+        errorMessages.push((e as Error).message);
         continue;
       }
 
@@ -482,6 +508,12 @@ export const BackupService = {
     // Process files
     for (const item of dumpData) {
       if (item.filePath) {
+        try {
+          validateRelativePath(item.filePath);
+        } catch (_e) {
+          continue;
+        }
+
         const imagePathInZip = `images/${item.filePath}`;
         const imageFile = directory.files.find(
           (f) => f.path === imagePathInZip

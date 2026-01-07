@@ -9,13 +9,21 @@ import {
   it,
   vi,
 } from "vitest";
+import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { taggingService } from "~/application/services/tagging-service";
-
+import { pythonClient } from "~/infrastructure/ai/python-client";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 // Mock LocalMediaStorage to avoid needing real media files (ffmpeg/sharp dependencies)
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-// biome-ignore lint/suspicious/noExplicitAny: Mocking
 vi.spyOn(LocalMediaStorage, "getFileMetadata").mockImplementation(
   (filePath: string): Promise<any> => {
     const ext = path.extname(filePath).toLowerCase();
@@ -53,11 +61,8 @@ vi.spyOn(LocalMediaStorage, "getFileMetadata").mockImplementation(
   }
 );
 
-// biome-ignore lint/suspicious/noExplicitAny: Mock types
 let migrate: any;
-// biome-ignore lint/suspicious/noExplicitAny: Mock types
 let schema: any;
-// biome-ignore lint/suspicious/noExplicitAny: Mock types
 let db: any;
 
 import type { MediaSource } from "~/infrastructure/db/schema";
@@ -69,6 +74,17 @@ describe("Media Type Handling Integration", () => {
   const ExpectedMixedMediaCount = 3;
 
   beforeAll(async () => {
+    services.registerMediaRepository(MediaRepository);
+    services.registerSourceRepository(new DrizzleSourceRepository());
+    services.registerStorageService(LocalMediaStorage);
+    services.registerTagRepository(TagRepository);
+    services.registerImageProcessor(ImageProcessor);
+    services.registerAuthorRepository(AuthorRepository);
+    services.registerProjectRepository(ProjectRepository);
+    services.registerCharacterRepository(new DrizzleCharacterRepository());
+    services.registerIpRepository(IpRepository);
+    services.registerAiClient(pythonClient);
+
     try {
       const migratorModule = await import("drizzle-orm/pglite/migrator");
       migrate = migratorModule.migrate;

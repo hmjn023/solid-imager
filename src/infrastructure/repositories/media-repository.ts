@@ -276,11 +276,8 @@ export const MediaRepository: IMediaRepository = {
       ? params.characters.split(",").map((c: string) => c.trim())
       : undefined;
 
-    // Note: searchMediaQuery currently doesn't accept tx.
-    // However, it builds a query object. In Drizzle we might need to pass the client.
-    // Let's assume for now search is read-only and doesn't strictly need to be in the same connection
-    // UNLESS we are in PGlite where we MUST be on the same connection if a transaction is open.
-    // I will update searchMediaQuery to accept client later if needed.
+    // searchMediaQuery accepts client (which can be a transaction or the main db instance).
+    // Ensure we pass the correct client to maintain transaction integrity if provided.
     const result = await searchMediaQuery(
       mediaSourceId,
       {

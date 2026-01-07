@@ -207,13 +207,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
           return;
         }
 
-        const existingTags =
-          await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
-            t as any
-          )
-            .select()
-            .from(tags)
-            .where(inArray(tags.name, tagNames));
+        const client = t as unknown as TransactionClient;
+        const existingTags = await client
+          .select()
+          .from(tags)
+          .where(inArray(tags.name, tagNames));
 
         const existingTagNames = existingTags.map(
           /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
@@ -226,13 +224,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
         let newTagsCreated: (typeof tags.$inferSelect)[] = [];
         if (newTagNames.length > 0) {
-          newTagsCreated =
-            await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
-              t as any
-            )
-              .insert(tags)
-              .values(newTagNames.map((name) => ({ name, source })))
-              .returning();
+          newTagsCreated = await (t as unknown as TransactionClient)
+            .insert(tags)
+            .values(newTagNames.map((name) => ({ name, source })))
+            .returning();
         }
 
         const allTags = [...existingTags, ...newTagsCreated];
@@ -252,9 +247,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         });
 
         if (mediaTagsToInsert.length > 0) {
-          await /* biome-ignore lint/suspicious/noExplicitAny: Transaction cast */ (
-            t as any
-          )
+          await (t as unknown as TransactionClient)
             .insert(mediaTags)
             .values(mediaTagsToInsert)
             .onConflictDoNothing();

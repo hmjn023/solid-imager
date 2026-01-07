@@ -1,10 +1,20 @@
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
+import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
+import { pythonClient } from "~/infrastructure/ai/python-client";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 // biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_FILE_SIZE = 1024 * 1024;
@@ -16,6 +26,19 @@ const TEST_UPDATED_WIDTH = 1200;
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
 describe("updateMedia Integration", () => {
+  beforeAll(() => {
+    // Register services
+    services.registerMediaRepository(MediaRepository);
+    services.registerSourceRepository(new DrizzleSourceRepository());
+    services.registerStorageService(LocalMediaStorage);
+    services.registerTagRepository(TagRepository);
+    services.registerImageProcessor(ImageProcessor);
+    services.registerAuthorRepository(AuthorRepository);
+    services.registerProjectRepository(ProjectRepository);
+    services.registerCharacterRepository(new DrizzleCharacterRepository());
+    services.registerIpRepository(IpRepository);
+    services.registerAiClient(pythonClient);
+  });
   let testMediaId: string;
   // const testSourceId = "b0000000-0000-0000-0000-000000000000";
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
