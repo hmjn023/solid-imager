@@ -47,24 +47,24 @@ async function retryWithBackoff<T>(
 // Fetch sources from API
 async function getMediaSources(): Promise<SafeMediaSource[]> {
     try {
-        console.log('[xtracter] Fetching media sources...');
+        // console.log('[xtracter] Fetching media sources...');
 
         const sources = await retryWithBackoff(async () => {
             const client = await getClient();
             return await client.sources.list();
         });
 
-        console.log(`[xtracter] Successfully fetched ${sources.length} media sources`);
+        // console.log(`[xtracter] Successfully fetched ${sources.length} media sources`);
         return sources as SafeMediaSource[];
     } catch (error) {
         if (error instanceof APIError) {
-            console.error(
-                `[xtracter] Failed to fetch media sources: ${error.message}`,
-                `\nError code: ${error.code}`,
-                error.originalError
-            );
+            // console.error(
+            //     `[xtracter] Failed to fetch media sources: ${error.message}`,
+            //     `\nError code: ${error.code}`,
+            //     error.originalError
+            // );
         } else {
-            console.error('[xtracter] Unexpected error fetching media sources:', error);
+            // console.error('[xtracter] Unexpected error fetching media sources:', error);
         }
         return [];
     }

@@ -25,4 +25,9 @@ export type IProjectRepository = {
     projectId: string,
     tx?: Transaction
   ): Promise<void>;
+  addMediaBulk(
+    mediaId: string,
+    projectIds: string[],
+    tx?: Transaction
+  ): Promise<void>;
 };

@@ -734,18 +734,13 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceAuthors.length > 0) {
-      for (const author of sourceAuthors) {
-        // Create or get existing author
-        const newAuthor = await this.authorRepository.create(
-          {
-            name: author.name,
-            accountId: author.accountId,
-          },
-          tx
-        );
-        // Link to new media
-        await this.authorRepository.addMedia(newMediaId, newAuthor.id, tx);
-      }
+      // Optimization: We assume sourceAuthors are already valid entities in our DB,
+      // so we can link them directly without re-checking/creating them.
+      await this.authorRepository.addMediaBulk(
+        newMediaId,
+        sourceAuthors.map((a) => a.id),
+        tx
+      );
     }
 
     // 2. Projects
@@ -754,9 +749,11 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceProjects.length > 0) {
-      for (const project of sourceProjects) {
-        await this.projectRepository.addMedia(newMediaId, project.id, tx);
-      }
+      await this.projectRepository.addMediaBulk(
+        newMediaId,
+        sourceProjects.map((p) => p.id),
+        tx
+      );
     }
 
     // 3. Characters
@@ -765,17 +762,21 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceCharacters.length > 0) {
-      for (const character of sourceCharacters) {
-        await this.characterRepository.addToMedia(newMediaId, character.id, tx);
-      }
+      await this.characterRepository.addToMediaBulk(
+        newMediaId,
+        sourceCharacters.map((c) => c.id),
+        tx
+      );
     }
 
     // 4. IPs
     const sourceIps = await this.ipRepository.findByMediaId(sourceMediaId, tx);
     if (sourceIps.length > 0) {
-      for (const ip of sourceIps) {
-        await this.ipRepository.addMedia(newMediaId, ip.id, tx);
-      }
+      await this.ipRepository.addMediaBulk(
+        newMediaId,
+        sourceIps.map((i) => i.id),
+        tx
+      );
     }
 
     // 5. URLs

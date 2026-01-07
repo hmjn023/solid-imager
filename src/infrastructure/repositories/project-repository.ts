@@ -139,4 +139,24 @@ export const ProjectRepository: IProjectRepository = {
       throw new ResourceNotFoundError("MediaProject association");
     }
   },
+  async addMediaBulk(
+    mediaId: string,
+    projectIds: string[],
+    tx?: Transaction
+  ): Promise<void> {
+    const client = (tx as unknown as TransactionClient) || db;
+    if (projectIds.length === 0) {
+      return;
+    }
+
+    await client
+      .insert(mediaProjects)
+      .values(
+        projectIds.map((projectId) => ({
+          mediaId,
+          projectId,
+        }))
+      )
+      .onConflictDoNothing();
+  },
 };

@@ -138,6 +138,15 @@ async function downloadWithYtDlp(
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
 
+  // Verify yt-dlp is available
+  try {
+    await execFileAsync("yt-dlp", ["--version"]);
+  } catch (_e) {
+    throw new Error(
+      "yt-dlp binary not found or not executable. Please ensure it is installed and in your PATH."
+    );
+  }
+
   const template = "%(id)s.%(ext)s";
   const args = [
     "--no-simulate",

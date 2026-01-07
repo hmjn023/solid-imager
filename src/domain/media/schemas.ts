@@ -206,7 +206,7 @@ export const mediaSearchRequestSchema = z.object({
   projects: z.string().optional(), // comma-separated project IDs
   ips: z.string().optional(), // comma-separated IP IDs
   characters: z.string().optional(), // comma-separated character IDs
-  sort: z.enum(["date", "name", "size"]).optional(),
+  sort: z.enum(["date", "name", "size"]).optional(), // size maps to fileSize
   order: z.enum(["asc", "desc"]).default("desc"),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().default(0),

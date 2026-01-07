@@ -25,6 +25,11 @@ export type IAuthorRepository = {
   // Associations
   findByMediaId(mediaId: string, tx?: Transaction): Promise<Author[]>;
   addMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void>;
+  addMediaBulk(
+    mediaId: string,
+    authorIds: string[],
+    tx?: Transaction
+  ): Promise<void>;
   removeMedia(
     mediaId: string,
     authorId: string,

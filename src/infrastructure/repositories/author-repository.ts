@@ -116,4 +116,24 @@ export const AuthorRepository: IAuthorRepository = {
         )
       );
   },
+  async addMediaBulk(
+    mediaId: string,
+    authorIds: string[],
+    tx?: Transaction
+  ): Promise<void> {
+    const client = (tx as unknown as TransactionClient) || db;
+    if (authorIds.length === 0) {
+      return;
+    }
+
+    await client
+      .insert(mediaAuthors)
+      .values(
+        authorIds.map((authorId) => ({
+          mediaId,
+          authorId,
+        }))
+      )
+      .onConflictDoNothing();
+  },
 };

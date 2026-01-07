@@ -288,8 +288,8 @@ export const sourcesRouter = {
         // Stream the file to disk
         const fileStream = input.file.stream();
         await pipeline(
-          // @ts-expect-error - input.file.stream() returns a Web ReadableStream
-          Readable.fromWeb(fileStream),
+          // biome-ignore lint/suspicious/noExplicitAny: Cast to any to assume compatibility with node stream if available in this environment
+          Readable.fromWeb(fileStream as any),
           fs.createWriteStream(tempFilePath)
         );
 
