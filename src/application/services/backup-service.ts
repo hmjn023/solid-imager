@@ -259,16 +259,25 @@ export const BackupService = {
 
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
   async _mapMediaPathsToIds(mediaSourceId: string, validItems: any[]) {
-    const storedMedias = await db.query.medias.findMany({
-      where: and(
-        eq(medias.mediaSourceId, mediaSourceId),
-        inArray(
-          medias.filePath,
-          validItems.map((i) => i.filePath)
-        )
-      ),
-      columns: { id: true, filePath: true },
-    });
+    // Parameter limit avoidance: Split validItems into chunks
+    const ChunkSize = 10_000;
+    const storedMedias: { id: string; filePath: string }[] = [];
+
+    for (let i = 0; i < validItems.length; i += ChunkSize) {
+      const chunk = validItems.slice(i, i + ChunkSize);
+      const chunkResults = await db.query.medias.findMany({
+        where: and(
+          eq(medias.mediaSourceId, mediaSourceId),
+          inArray(
+            medias.filePath,
+            chunk.map((item) => item.filePath)
+          )
+        ),
+        columns: { id: true, filePath: true },
+      });
+      storedMedias.push(...chunkResults);
+    }
+
     return new Map(storedMedias.map((m) => [m.filePath, m.id]));
   },
 

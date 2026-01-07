@@ -70,14 +70,12 @@ export const mediaRouter = {
         mediaId: z.string().uuid(),
       })
     )
-    .handler(async ({ input }) => {
-      const { buffer } = await MediaService.getMediaContent(
-        input.sourceId,
-        input.mediaId
+    .handler(({ input }) => {
+      // JSONシリアライズを避けるため、バッファコンテンツではなくURLまたはストリームを返す必要があります
+      // 現時点では、誤用を防ぐためにバッファの返却を削除するか、エラーをスローするのが安全です。
+      throw new Error(
+        `Use the REST endpoint /api/sources/${input.sourceId}/${input.mediaId} for binary content.`
       );
-      // oRPC doesn't handle binary data well, so we'll keep this as REST for now
-      // This endpoint will remain as /api/sources/:id/:mediaId
-      return buffer;
     }),
 
   /**
