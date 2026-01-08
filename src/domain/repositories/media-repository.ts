@@ -33,6 +33,11 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<MediaSearchResponse>;
 
+  globalSearch(
+    criteria: MediaSearchRequest,
+    tx?: Transaction
+  ): Promise<MediaSearchResponse>;
+
   // Ancillary data
   getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;
   getGenerationInfo(

@@ -26,6 +26,7 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 // import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
 // import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
 import {
+  globalSearchMedia,
   searchMediaInDirectory,
   searchMedia as searchMediaQuery,
 } from "./media-repository-utils";
@@ -298,6 +299,55 @@ export const MediaRepository: IMediaRepository = {
 
     const mappedResult = {
       // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here due to searchMediaQuery return type
+      media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
+      total: Number(result.total),
+    };
+    return mediaSearchResponseSchema.parse(mappedResult);
+  },
+
+  /**
+   * Performs a global search for media across all sources.
+   */
+  async globalSearch(
+    params: MediaSearchRequest,
+    tx?: Transaction
+  ): Promise<MediaSearchResponse> {
+    const client = (tx as unknown as TransactionClient) || db;
+    const tagsArray = params.tags
+      ? params.tags.split(",").map((t: string) => t.trim())
+      : undefined;
+    const excludeTagsArray = params.excludeTags
+      ? params.excludeTags.split(",").map((t: string) => t.trim())
+      : undefined;
+    const projectsArray = params.projects
+      ? params.projects.split(",").map((p: string) => p.trim())
+      : undefined;
+    const ipsArray = params.ips
+      ? params.ips.split(",").map((i: string) => i.trim())
+      : undefined;
+    const charactersArray = params.characters
+      ? params.characters.split(",").map((c: string) => c.trim())
+      : undefined;
+
+    const result = await globalSearchMedia(
+      {
+        query: params.q,
+        tags: tagsArray,
+        tagMode: params.tagMode,
+        excludeTags: excludeTagsArray,
+        projects: projectsArray,
+        ips: ipsArray,
+        characters: charactersArray,
+        sort: params.sort,
+        order: params.order,
+        limit: params.limit,
+        offset: params.offset,
+      },
+      client
+    );
+
+    const mappedResult = {
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here
       media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
       total: Number(result.total),
     };
