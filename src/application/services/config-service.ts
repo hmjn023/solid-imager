@@ -2,12 +2,14 @@
  * ConfigService - 設定管理機能
  * Feature 6: 設定管理機能
  */
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 /**
  * Represents the application's configuration structure.
  * @property {object} [key: string] - Allows for flexible configuration properties.
  */
-type AppConfig = {
+export type AppConfig = {
   // TODO: Define config structure
   [key: string]: unknown;
 };
@@ -19,9 +21,17 @@ export const ConfigService = {
    * Retrieves the current application configuration.
    * @returns {Promise<AppConfig>} A promise that resolves with the application configuration.
    */
-  getAppConfig(): Promise<AppConfig> {
-    // TODO: Read config.json from project root
-    throw new Error("Not implemented");
+  async getAppConfig(): Promise<AppConfig> {
+    try {
+      const configPath = join(process.cwd(), "config.json");
+      const content = await readFile(configPath, "utf-8");
+      return JSON.parse(content) as AppConfig;
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT") {
+        return {};
+      }
+      throw error;
+    }
   },
 
   /**
