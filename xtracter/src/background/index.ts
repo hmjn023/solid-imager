@@ -106,6 +106,12 @@ async function postDownloads(items: TweetMetadata[]) {
 
     try {
         console.log(`[xtracter] Posting ${items.length} downloads to source ${mediaSourceId}...`);
+        console.log(`[xtracter] Items:`, items.map(item => ({
+            imageUrl: item.imageUrl,
+            tweetUrl: item.tweetUrl,
+            hasCookies: !!item.cookies,
+            hasUserAgent: !!item.userAgent,
+        })));
 
         const result = await retryWithBackoff(async () => {
             const client = await getClient();

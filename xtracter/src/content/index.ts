@@ -4,7 +4,8 @@ import { TweetMetadata } from '../types';
 console.log('xtracter content script loaded');
 
 const OBSERVER_CONFIG = { childList: true, subtree: true };
-const PROCESSED_CLASS = 'xtracter-processed';
+const PROCESSED_IMAGE_CLASS = 'xtracter-image-processed';
+const PROCESSED_VIDEO_CLASS = 'xtracter-video-processed';
 
 function createButtonContainer(element: HTMLElement, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): HTMLDivElement {
     const container = document.createElement('div');
@@ -170,7 +171,7 @@ function processImages() {
             }
         }
 
-        if (imageElement.parentElement?.classList.contains(PROCESSED_CLASS)) return;
+        if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) return;
 
         const container = imageElement.parentElement;
         if (container) {
@@ -178,7 +179,7 @@ function processImages() {
             if (style.position === 'static') {
                 container.style.position = 'relative';
             }
-            container.classList.add(PROCESSED_CLASS);
+            container.classList.add(PROCESSED_IMAGE_CLASS);
             const btnContainer = createButtonContainer(imageElement, 'IMAGE');
             container.appendChild(btnContainer);
         }
@@ -193,17 +194,17 @@ function processImages() {
         // Usually the videoComponent itself or a child wrapper.
         // We need to make sure we don't break the player UI.
         const container = videoComponent.parentElement;
-        if (!container || container.classList.contains(PROCESSED_CLASS)) return;
+        if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) return;
 
         // Check if there is already a processed marker inside (to avoid double processing if we query differently)
-        if (container.querySelector(`.${PROCESSED_CLASS}`)) return;
+        if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) return;
 
         const style = window.getComputedStyle(container);
         if (style.position === 'static') {
             container.style.position = 'relative';
         }
 
-        container.classList.add(PROCESSED_CLASS);
+        container.classList.add(PROCESSED_VIDEO_CLASS);
 
         // Pass the container or one of its children as the 'element' reference? 
         // We just need it to find the article in handleAction.
