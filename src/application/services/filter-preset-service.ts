@@ -2,6 +2,8 @@
  * FilterPresetService - フィルタ・プリセット機能
  * Feature 20: フィルタ・プリセット機能
  */
+import { db } from "~/infrastructure/db";
+import { presets } from "~/infrastructure/db/schema";
 
 /**
  * Provides services for managing filter presets.
@@ -9,22 +11,27 @@
 export const FilterPresetService = {
   /**
    * Retrieves all saved filter presets.
-   * @returns {any} A list of all filter presets.
+   * @returns {Promise<any[]>} A list of all filter presets.
    */
-  getPresets() {
-    // TODO: Get all saved filter presets
-    throw new Error("Not implemented");
+  async getPresets() {
+    return await db.select().from(presets).orderBy(presets.createdAt);
   },
 
   /**
    * Saves a new search filter preset.
-   * @param {object} _presetData - The data for the preset.
-   * @param {string} _presetData.name - The name of the preset.
-   * @param {unknown} _presetData.conditions - The search conditions to save.
-   * @returns {any} The newly saved preset.
+   * @param {object} presetData - The data for the preset.
+   * @param {string} presetData.name - The name of the preset.
+   * @param {unknown} presetData.conditions - The search conditions to save.
+   * @returns {Promise<any>} The newly saved preset.
    */
-  savePreset(_presetData: { name: string; conditions: unknown }) {
-    // TODO: Save search filter preset
-    throw new Error("Not implemented");
+  async savePreset(presetData: { name: string; conditions: unknown }) {
+    const [savedPreset] = await db
+      .insert(presets)
+      .values({
+        name: presetData.name,
+        value: presetData.conditions,
+      })
+      .returning();
+    return savedPreset;
   },
 };
