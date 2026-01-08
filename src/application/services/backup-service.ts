@@ -512,7 +512,6 @@ export const BackupService = {
     }
 
     const driver = getDriver(mediaSource);
-    const _importedCount = 0;
 
     // Process files
     for (const item of dumpData) {
