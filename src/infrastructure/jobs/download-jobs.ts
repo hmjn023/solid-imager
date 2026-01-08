@@ -254,41 +254,63 @@ async function handleYtDlpDownload(
 ) {
   // Use yt-dlp
   // biome-ignore lint/suspicious/noConsole: Expected
-  console.log(`Using yt-dlp for URL: ${item.imageUrl}`);
-  const results = await downloadWithYtDlp(
-    item.imageUrl,
-    basePath,
-    item.cookies,
-    item.userAgent
-  );
+  console.log(`[DownloadJob] Using yt-dlp for URL: ${item.imageUrl}`);
 
-  for (const res of results) {
-    const { filePath, metadata } = res;
+  try {
+    const results = await downloadWithYtDlp(
+      item.imageUrl,
+      basePath,
+      item.cookies,
+      item.userAgent
+    );
 
-    // Calculate relative path
-    const relativePath = path.relative(basePath, filePath);
+    // biome-ignore lint/suspicious/noConsole: Expected
+    console.log(`[DownloadJob] yt-dlp downloaded ${results.length} file(s)`);
 
-    // Determine media type
-    const mediaType = getMediaTypeFromExtension(filePath);
+    for (const res of results) {
+      const { filePath, metadata } = res;
 
-    // Get file metadata (size etc, verify it exists)
-    const fileMeta = await LocalMediaStorage.getFileMetadata(filePath);
+      // Calculate relative path
+      const relativePath = path.relative(basePath, filePath);
 
-    const newMedia: AddMediaRequest = {
-      mediaSourceId,
-      filePath: relativePath,
-      fileName: path.basename(filePath),
-      mediaType,
-      description: item.tweetText || metadata.description || metadata.title,
-      width: metadata.width || fileMeta.width || 0,
-      height: metadata.height || fileMeta.height || 0,
-      fileSize: fileMeta.size,
-      createdAt: resolveCreatedAt(item, metadata, fileMeta),
-      modifiedAt: fileMeta.modifiedAt,
-      sourceUrls: [item.imageUrl], // The tweet URL
-    };
+      // Determine media type
+      const mediaType = getMediaTypeFromExtension(filePath);
 
-    await registerMedia(newMedia, mediaSourceId, item, basePath);
+      // biome-ignore lint/suspicious/noConsole: Expected
+      console.log(
+        `[DownloadJob] Processing file: ${relativePath}, type: ${mediaType}`
+      );
+
+      // Get file metadata (size etc, verify it exists)
+      const fileMeta = await LocalMediaStorage.getFileMetadata(filePath);
+
+      const newMedia: AddMediaRequest = {
+        mediaSourceId,
+        filePath: relativePath,
+        fileName: path.basename(filePath),
+        mediaType,
+        description: item.tweetText || metadata.description || metadata.title,
+        width: metadata.width || fileMeta.width || 0,
+        height: metadata.height || fileMeta.height || 0,
+        fileSize: fileMeta.size,
+        createdAt: resolveCreatedAt(item, metadata, fileMeta),
+        modifiedAt: fileMeta.modifiedAt,
+        sourceUrls: [item.imageUrl], // The tweet URL
+      };
+
+      await registerMedia(newMedia, mediaSourceId, item, basePath);
+    }
+  } catch (error) {
+    // biome-ignore lint/suspicious/noConsole: Expected
+    console.error("[DownloadJob] yt-dlp download failed:", error);
+
+    // Notify frontend via SSE
+    SseManager.sendEvent(mediaSourceId, "download-error", {
+      url: item.imageUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
   }
 }
 
@@ -297,9 +319,19 @@ export async function processDownloadJob(
   mediaSourceId: string,
   item: DownloadItem
 ): Promise<void> {
+  // biome-ignore lint/suspicious/noConsole: Expected
+  console.log(`[DownloadJob] Starting download job for: ${item.imageUrl}`);
+
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
-    throw new Error("Media source not found or not a local source");
+    const error = "Media source not found or not a local source";
+    // biome-ignore lint/suspicious/noConsole: Expected
+    console.error(`[DownloadJob] ${error}`);
+    SseManager.sendEvent(mediaSourceId, "download-error", {
+      url: item.imageUrl,
+      error,
+    });
+    throw new Error(error);
   }
 
   const connectionInfo = mediaSource.connectionInfo as { path: string };
@@ -317,42 +349,72 @@ export async function processDownloadJob(
 
   const isTwitterPost = item.imageUrl.match(TWITTER_URL_REGEX);
 
-  if (isTwitterPost) {
-    await handleYtDlpDownload(item, mediaSourceId, basePath);
-  } else {
-    // Traditional Direct Image Download
-    // Generate filename from URL
-    const urlPath = new URL(item.imageUrl).pathname;
-    const originalFilename = path.basename(urlPath);
-    const filename = `download-${Date.now()}-${originalFilename}`;
-    const filePath = filename;
-    const fullPath = path.join(basePath, filePath);
+  // biome-ignore lint/suspicious/noConsole: Expected
+  console.log(
+    `[DownloadJob] URL pattern check - isTwitterPost: ${!!isTwitterPost}`
+  );
 
-    // Download the image
-    await downloadImage(item.imageUrl, fullPath);
+  try {
+    if (isTwitterPost) {
+      // biome-ignore lint/suspicious/noConsole: Expected
+      console.log("[DownloadJob] Using yt-dlp download method");
+      await handleYtDlpDownload(item, mediaSourceId, basePath);
+    } else {
+      // biome-ignore lint/suspicious/noConsole: Expected
+      console.log("[DownloadJob] Using direct image download method");
 
-    // Get file metadata
-    const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
+      // Traditional Direct Image Download
+      // Generate filename from URL
+      const urlPath = new URL(item.imageUrl).pathname;
+      const originalFilename = path.basename(urlPath);
+      const filename = `download-${Date.now()}-${originalFilename}`;
+      const filePath = filename;
+      const fullPath = path.join(basePath, filePath);
 
-    // Determine media type using getMediaType
-    const mediaType = getMediaTypeFromExtension(fullPath);
+      // Download the image
+      await downloadImage(item.imageUrl, fullPath);
 
-    // Create media entry
-    const newMedia: AddMediaRequest = {
-      mediaSourceId,
-      filePath,
-      fileName: filename,
-      mediaType,
-      description: formatMetadataAsMarkdown(item),
-      width: metadata.width,
-      height: metadata.height,
-      fileSize: metadata.size,
-      createdAt: item.timestamp ? new Date(item.timestamp) : metadata.createdAt,
-      modifiedAt: metadata.modifiedAt,
-      sourceUrls: [item.imageUrl, ...(item.tweetUrl ? [item.tweetUrl] : [])],
-    };
+      // Get file metadata
+      const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
-    await registerMedia(newMedia, mediaSourceId, item, basePath);
+      // Determine media type using getMediaType
+      const mediaType = getMediaTypeFromExtension(fullPath);
+
+      // Create media entry
+      const newMedia: AddMediaRequest = {
+        mediaSourceId,
+        filePath,
+        fileName: filename,
+        mediaType,
+        description: formatMetadataAsMarkdown(item),
+        width: metadata.width,
+        height: metadata.height,
+        fileSize: metadata.size,
+        createdAt: item.timestamp
+          ? new Date(item.timestamp)
+          : metadata.createdAt,
+        modifiedAt: metadata.modifiedAt,
+        sourceUrls: [item.imageUrl, ...(item.tweetUrl ? [item.tweetUrl] : [])],
+      };
+
+      await registerMedia(newMedia, mediaSourceId, item, basePath);
+    }
+
+    // biome-ignore lint/suspicious/noConsole: Expected
+    console.log(
+      `[DownloadJob] Download completed successfully for: ${item.imageUrl}`
+    );
+  } catch (error) {
+    // biome-ignore lint/suspicious/noConsole: Expected
+    console.error(`[DownloadJob] Download failed for ${item.imageUrl}:`, error);
+
+    // Notify frontend via SSE
+    SseManager.sendEvent(mediaSourceId, "download-error", {
+      url: item.imageUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
   }
 }
 
