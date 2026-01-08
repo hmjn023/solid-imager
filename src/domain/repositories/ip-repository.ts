@@ -13,4 +13,9 @@ export type IIpRepository = {
   findByMediaId(mediaId: string, tx?: Transaction): Promise<Ip[]>;
   addMedia(mediaId: string, ipId: string, tx?: Transaction): Promise<void>;
   removeMedia(mediaId: string, ipId: string, tx?: Transaction): Promise<void>;
+  addMediaBulk(
+    mediaId: string,
+    ipIds: string[],
+    tx?: Transaction
+  ): Promise<void>;
 };

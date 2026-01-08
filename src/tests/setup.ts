@@ -11,9 +11,6 @@ beforeAll(async () => {
   bootstrap();
 });
 
-// biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
-import * as schema from "~/infrastructure/db/schema";
-
 // .envファイルのパスを指定して読み込む
 config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -133,6 +130,8 @@ vi.mock("~/infrastructure/db/index", async (_importOriginal) => {
 
   if (isIntegrationTest(testPath)) {
     // 統合テストの場合は新しいPGLiteインスタンスを使用
+    // schemaを動的にインポートしてホイスティングの問題を回避
+    const schema = await import("~/infrastructure/db/schema");
     const client = new PGlite();
     const testDb = drizzle(client, { schema });
     await migrate(testDb, { migrationsFolder: "./drizzle" });

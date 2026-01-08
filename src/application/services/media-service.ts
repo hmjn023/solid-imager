@@ -22,6 +22,10 @@ import {
   type UploadResponse,
   uploadMediaRequestSchema,
 } from "~/domain/media/upload-schemas";
+import {
+  getContentTypeFromExtension,
+  getMediaTypeFromExtension,
+} from "~/domain/media/utils/media-type-utils";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
@@ -42,7 +46,51 @@ import {
   processMediaJob,
 } from "~/infrastructure/jobs/thumbnails";
 
-// biome-ignore lint/nursery/useMaxParams: Dependency injection
+const SIGNATURES = {
+  png: Buffer.from("89504e470d0a1a0a", "hex"),
+  jpg: Buffer.from("ffd8ff", "hex"),
+  jpeg: Buffer.from("ffd8ff", "hex"),
+  gif: Buffer.from("47494638", "hex"),
+  webp: Buffer.from("52494646", "hex"), // RIFF
+  mp4: Buffer.from("66747970", "hex"), // ftyp
+  webm: Buffer.from("1a45dfa3", "hex"),
+  mp3: Buffer.from("494433", "hex"), // ID3
+  wav: Buffer.from("52494646", "hex"), // RIFF
+};
+
+const WEBP_SUBTYPE = Buffer.from("57454250", "hex"); // WEBP
+const FILE_HEADER_BYTES = 12;
+const WEBP_OFFSET = 8;
+const WEBP_END = 12;
+
+export async function validateFileSignature(
+  file: File,
+  filename: string
+): Promise<void> {
+  const ext = path.extname(filename).toLowerCase().replace(".", "");
+  const buffer = await file.slice(0, FILE_HEADER_BYTES).arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+
+  // Basic checks
+  if (ext in SIGNATURES) {
+    const sig = SIGNATURES[ext as keyof typeof SIGNATURES];
+    // Check start signature
+    if (sig && !bytes.subarray(0, sig.length).every((b, i) => b === sig[i])) {
+      throw new Error(`File signature mismatch for .${ext}`);
+    }
+  }
+
+  // Extra check for WEBP: RIFF....WEBP
+  if (
+    ext === "webp" &&
+    !bytes
+      .subarray(WEBP_OFFSET, WEBP_END)
+      .every((b, i) => b === WEBP_SUBTYPE[i])
+  ) {
+    throw new Error("Invalid WEBP signature (missing WEBP)");
+  }
+}
+
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
@@ -128,6 +176,9 @@ export class MediaServiceImpl {
 
     const uploadRequest = uploadMediaRequestSchema.parse(options);
 
+    // 0. Validate File Signature
+    await validateFileSignature(file, uploadRequest.filename ?? file.name);
+
     // 1. Save File via StorageService
     const fileInfo = await this.storageService.saveFile(basePath, file, {
       filename: uploadRequest.filename,
@@ -135,12 +186,15 @@ export class MediaServiceImpl {
       autoIncrement: uploadRequest.autoIncrement,
     });
 
+    // Determine media type based on extension
+    const mediaType = getMediaTypeFromExtension(fileInfo.fileName);
+
     // 2. Create Media Entry
     const newMedia: AddMediaRequest = {
       mediaSourceId: validatedSourceId,
       filePath: fileInfo.filePath,
       fileName: fileInfo.fileName,
-      mediaType: "image", // TODO: Determine based on file type
+      mediaType,
       description: uploadRequest.description || null,
       width: fileInfo.width,
       height: fileInfo.height,
@@ -150,7 +204,17 @@ export class MediaServiceImpl {
     };
 
     let insertedMedia: Media;
-    insertedMedia = await this.mediaRepository.upsert(newMedia);
+    try {
+      insertedMedia = await this.mediaRepository.upsert(newMedia);
+    } catch (error) {
+      // 3. Rollback: Delete file if DB insertion fails
+      try {
+        await this.storageService.deleteFile(basePath, fileInfo.filePath);
+      } catch (_deleteError) {
+        // Ignore rollback error
+      }
+      throw error;
+    }
 
     // Register URL if present (legacy support for sourceUrl in upload)
     if (uploadRequest.sourceUrl) {
@@ -159,7 +223,7 @@ export class MediaServiceImpl {
       ]);
     }
 
-    // 3. Trigger Jobs
+    // 4. Trigger Jobs
     addJobsToQueue(validatedSourceId, [
       { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
       { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
@@ -232,10 +296,13 @@ export class MediaServiceImpl {
   /**
    * Retrieves media content (file buffer).
    */
+  /**
+   * Retrieves media content (file buffer) and content type.
+   */
   async getMediaContent(
     mediaSourceId: string,
     mediaId: string
-  ): Promise<Buffer> {
+  ): Promise<{ buffer: Buffer; contentType: string }> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
@@ -256,7 +323,14 @@ export class MediaServiceImpl {
       throw new Error("Only local media sources is supported.");
     }
     const connectionInfo = mediaSource.connectionInfo as { path: string };
-    return this.storageService.getFile(connectionInfo.path, media.filePath);
+    const buffer = await this.storageService.getFile(
+      connectionInfo.path,
+      media.filePath
+    );
+
+    const contentType = getContentTypeFromExtension(media.fileName);
+
+    return { buffer, contentType };
   }
 
   /**
@@ -280,14 +354,7 @@ export class MediaServiceImpl {
             const metadata = await this.storageService.getFileMetadata(file);
 
             // Simple extension check for media type
-            const ext = path.extname(file).toLowerCase();
-            let mediaType: "image" | "video" | "audio" = "image";
-            if ([".mp4", ".webm", ".mov"].includes(ext)) {
-              mediaType = "video";
-            }
-            if ([".mp3", ".wav"].includes(ext)) {
-              mediaType = "audio";
-            }
+            const mediaType = getMediaTypeFromExtension(file);
 
             const newMedia: AddMediaRequest = {
               mediaSourceId: validatedSourceId,
@@ -667,18 +734,13 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceAuthors.length > 0) {
-      for (const author of sourceAuthors) {
-        // Create or get existing author
-        const newAuthor = await this.authorRepository.create(
-          {
-            name: author.name,
-            accountId: author.accountId,
-          },
-          tx
-        );
-        // Link to new media
-        await this.authorRepository.addMedia(newMediaId, newAuthor.id, tx);
-      }
+      // Optimization: We assume sourceAuthors are already valid entities in our DB,
+      // so we can link them directly without re-checking/creating them.
+      await this.authorRepository.addMediaBulk(
+        newMediaId,
+        sourceAuthors.map((a) => a.id),
+        tx
+      );
     }
 
     // 2. Projects
@@ -687,9 +749,11 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceProjects.length > 0) {
-      for (const project of sourceProjects) {
-        await this.projectRepository.addMedia(newMediaId, project.id, tx);
-      }
+      await this.projectRepository.addMediaBulk(
+        newMediaId,
+        sourceProjects.map((p) => p.id),
+        tx
+      );
     }
 
     // 3. Characters
@@ -698,17 +762,21 @@ export class MediaServiceImpl {
       tx
     );
     if (sourceCharacters.length > 0) {
-      for (const character of sourceCharacters) {
-        await this.characterRepository.addToMedia(newMediaId, character.id, tx);
-      }
+      await this.characterRepository.addToMediaBulk(
+        newMediaId,
+        sourceCharacters.map((c) => c.id),
+        tx
+      );
     }
 
     // 4. IPs
     const sourceIps = await this.ipRepository.findByMediaId(sourceMediaId, tx);
     if (sourceIps.length > 0) {
-      for (const ip of sourceIps) {
-        await this.ipRepository.addMedia(newMediaId, ip.id, tx);
-      }
+      await this.ipRepository.addMediaBulk(
+        newMediaId,
+        sourceIps.map((i) => i.id),
+        tx
+      );
     }
 
     // 5. URLs

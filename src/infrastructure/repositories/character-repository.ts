@@ -210,4 +210,31 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       );
     }
   }
+  async addToMediaBulk(
+    mediaId: string,
+    characterIds: string[],
+    tx?: Transaction
+  ): Promise<void> {
+    const client = (tx as unknown as TransactionClient) || db;
+    if (characterIds.length === 0) {
+      return;
+    }
+
+    try {
+      await client
+        .insert(mediaCharacters)
+        .values(
+          characterIds.map((characterId) => ({
+            mediaId,
+            characterId,
+          }))
+        )
+        .onConflictDoNothing();
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to bulk add characters to media ${mediaId}`,
+        error
+      );
+    }
+  }
 }

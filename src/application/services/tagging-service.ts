@@ -32,6 +32,15 @@ export class TaggingService {
     mediaId: string
   ): Promise<TaggingResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
+    if (media.mediaType !== "image") {
+      return {
+        general: {},
+        character: {},
+        ips: [],
+        // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+        ips_mapping: {},
+      };
+    }
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
@@ -45,7 +54,10 @@ export class TaggingService {
     }
     // Fallback for non-local sources (fetch content and send buffer)
     // This might be slow but it works
-    const buffer = await MediaService.getMediaContent(mediaSourceId, mediaId);
+    const { buffer } = await MediaService.getMediaContent(
+      mediaSourceId,
+      mediaId
+    );
     return await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
   }
 
@@ -58,6 +70,9 @@ export class TaggingService {
     mediaId: string
   ): Promise<CcipFeatureResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
+    if (media.mediaType !== "image") {
+      throw new Error("CCIP feature extraction is only supported for images");
+    }
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
@@ -69,7 +84,10 @@ export class TaggingService {
       const fullPath = path.join(connectionInfo.path, media.filePath);
       return await this.aiClient.extractCcipFeatureByPath(fullPath);
     }
-    const buffer = await MediaService.getMediaContent(mediaSourceId, mediaId);
+    const { buffer } = await MediaService.getMediaContent(
+      mediaSourceId,
+      mediaId
+    );
     return await this.aiClient.extractCcipFeature(buffer.buffer as ArrayBuffer);
   }
 

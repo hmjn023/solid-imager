@@ -1,4 +1,4 @@
-import { Message, TweetMetadata } from '../types';
+import { DownloadBulkMessage, DownloadMessage, ExtendedMessage, PostBulkMessage, PostDownloadMessage, TweetMetadata } from '../types';
 import { getClient, APIError } from '../api';
 import type { SafeMediaSource } from '~/domain/sources/schemas';
 
@@ -47,24 +47,24 @@ async function retryWithBackoff<T>(
 // Fetch sources from API
 async function getMediaSources(): Promise<SafeMediaSource[]> {
     try {
-        console.log('[xtracter] Fetching media sources...');
+        // console.log('[xtracter] Fetching media sources...');
 
         const sources = await retryWithBackoff(async () => {
             const client = await getClient();
-            return await (client.sources.list as any)({});
+            return await client.sources.list();
         });
 
-        console.log(`[xtracter] Successfully fetched ${sources.length} media sources`);
+        // console.log(`[xtracter] Successfully fetched ${sources.length} media sources`);
         return sources as SafeMediaSource[];
     } catch (error) {
         if (error instanceof APIError) {
-            console.error(
-                `[xtracter] Failed to fetch media sources: ${error.message}`,
-                `\nError code: ${error.code}`,
-                error.originalError
-            );
+            // console.error(
+            //     `[xtracter] Failed to fetch media sources: ${error.message}`,
+            //     `\nError code: ${error.code}`,
+            //     error.originalError
+            // );
         } else {
-            console.error('[xtracter] Unexpected error fetching media sources:', error);
+            // console.error('[xtracter] Unexpected error fetching media sources:', error);
         }
         return [];
     }
@@ -106,6 +106,12 @@ async function postDownloads(items: TweetMetadata[]) {
 
     try {
         console.log(`[xtracter] Posting ${items.length} downloads to source ${mediaSourceId}...`);
+        console.log(`[xtracter] Items:`, items.map(item => ({
+            imageUrl: item.imageUrl,
+            tweetUrl: item.tweetUrl,
+            hasCookies: !!item.cookies,
+            hasUserAgent: !!item.userAgent,
+        })));
 
         const result = await retryWithBackoff(async () => {
             const client = await getClient();
@@ -160,11 +166,45 @@ async function postDownloads(items: TweetMetadata[]) {
     }
 }
 
-chrome.runtime.onMessage.addListener((message: Message | { type: string }, _sender, sendResponse) => {
+// Type Guard Functions
+function isDownloadMessage(msg: ExtendedMessage): msg is DownloadMessage {
+    return msg.type === 'DOWNLOAD';
+}
+
+function isDownloadBulkMessage(msg: ExtendedMessage): msg is DownloadBulkMessage {
+    return msg.type === 'DOWNLOAD_BULK';
+}
+
+function isPostDownloadMessage(msg: ExtendedMessage): msg is PostDownloadMessage {
+    return msg.type === 'POST_DOWNLOAD';
+}
+
+function isPostBulkMessage(msg: ExtendedMessage): msg is PostBulkMessage {
+    return msg.type === 'POST_BULK';
+}
+
+function isGetCookiesMessage(msg: ExtendedMessage): msg is { type: 'GET_COOKIES', url: string } {
+    return msg.type === 'GET_COOKIES';
+}
+
+
+chrome.runtime.onMessage.addListener((message: ExtendedMessage, _sender, sendResponse) => {
     // Handle Popup Requests
     if (message.type === 'GET_SOURCES') {
         getMediaSources().then(sources => sendResponse(sources));
         return true; // Async response
+    }
+
+    if (isGetCookiesMessage(message)) {
+        const url = message.url;
+        if (!url) {
+            sendResponse([]);
+            return;
+        }
+        chrome.cookies.getAll({ url }, (cookies) => {
+            sendResponse(cookies);
+        });
+        return true;
     }
 
     if (message.type === 'DOWNLOAD_JSON_FROM_POPUP') {
@@ -196,9 +236,9 @@ chrome.runtime.onMessage.addListener((message: Message | { type: string }, _send
     }
 
     // Handle Content Script Requests
-    if (message.type === 'DOWNLOAD') {
+    if (isDownloadMessage(message)) {
         // ... existing download logic ...
-        const { imageUrl, authorId, timestamp } = (message as any).data;
+        const { imageUrl, authorId, timestamp } = message.data;
         const safeAuthorId = authorId.replace(/[^a-zA-Z0-9@_-]/g, '');
         const safeTimestamp = new Date(timestamp).getTime();
         const filenameBase = `xtracter/${safeAuthorId}_${safeTimestamp}`;
@@ -206,21 +246,21 @@ chrome.runtime.onMessage.addListener((message: Message | { type: string }, _send
             url: imageUrl,
             filename: `${filenameBase}.png`
         });
-    } else if (message.type === 'DOWNLOAD_BULK') {
+    } else if (isDownloadBulkMessage(message)) {
         // ... existing bulk download logic ...
         const now = new Date();
         const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `xtracter/xtracter-${dateStr}.json`;
-        const jsonString = JSON.stringify((message as any).data, null, 2);
+        const jsonString = JSON.stringify(message.data, null, 2);
         const dataUrl = 'data:application/json;base64,' + btoa(unescape(encodeURIComponent(jsonString)));
         chrome.downloads.download({
             url: dataUrl,
             filename: filename
         });
-    } else if (message.type === 'POST_DOWNLOAD') {
-        postDownloads([(message as any).data]);
-    } else if (message.type === 'POST_BULK') {
-        postDownloads((message as any).data);
+    } else if (isPostDownloadMessage(message)) {
+        postDownloads([message.data]);
+    } else if (isPostBulkMessage(message)) {
+        postDownloads(message.data);
     }
 
     return true;
