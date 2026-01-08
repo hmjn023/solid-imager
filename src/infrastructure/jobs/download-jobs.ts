@@ -22,6 +22,7 @@ import {
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { logger } from "~/infrastructure/logger";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
@@ -120,8 +121,7 @@ async function createNetscapeCookieFile(
     await fs.writeFile(cookieFilePath, lines.join("\n"));
     return cookieFilePath;
   } catch (e) {
-    // biome-ignore lint/suspicious/noConsole: Expected warning
-    console.warn("Failed to create cookie file:", e);
+    logger.warn({ err: e }, "Failed to create cookie file");
     return null;
   }
 }
@@ -174,12 +174,6 @@ async function downloadWithYtDlp(
       maxBuffer: MAX_BUFFER,
     });
 
-    // Clean up cookie file
-    if (cookieFilePath) {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
-      fs.unlink(cookieFilePath).catch(() => {});
-    }
-
     // yt-dlp may output multiple JSON objects (one per line) if it downloads multiple files (e.g. playlist, or multiple media in one tweet)
     // However, for single tweet URL, it might just be one.
     // We split by newline and parse each non-empty line.
@@ -203,21 +197,20 @@ async function downloadWithYtDlp(
         // Let's return the full path and handle relative path calculation in the caller.
         results.push({ filePath: finalPath, metadata: data });
       } catch (e) {
-        // biome-ignore lint/suspicious/noConsole: Expected
-        console.warn("Failed to parse yt-dlp JSON line:", e);
+        logger.warn({ err: e }, "Failed to parse yt-dlp JSON line");
       }
     }
 
     return results;
   } catch (error) {
-    // Clean up cookie file on error too
+    logger.error({ err: error }, "yt-dlp execution failed");
+    throw new Error(`yt-dlp failed: ${error}`);
+  } finally {
+    // Clean up cookie file
     if (cookieFilePath) {
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
       fs.unlink(cookieFilePath).catch(() => {});
     }
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.error("yt-dlp execution failed:", error);
-    throw new Error(`yt-dlp failed: ${error}`);
   }
 }
 
@@ -253,8 +246,7 @@ async function handleYtDlpDownload(
   basePath: string
 ) {
   // Use yt-dlp
-  // biome-ignore lint/suspicious/noConsole: Expected
-  console.log(`[DownloadJob] Using yt-dlp for URL: ${item.imageUrl}`);
+  logger.info({ url: item.imageUrl }, "[DownloadJob] Using yt-dlp");
 
   try {
     const results = await downloadWithYtDlp(
@@ -264,8 +256,10 @@ async function handleYtDlpDownload(
       item.userAgent
     );
 
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.log(`[DownloadJob] yt-dlp downloaded ${results.length} file(s)`);
+    logger.info(
+      { count: results.length },
+      "[DownloadJob] yt-dlp download completed"
+    );
 
     for (const res of results) {
       const { filePath, metadata } = res;
@@ -276,9 +270,9 @@ async function handleYtDlpDownload(
       // Determine media type
       const mediaType = getMediaTypeFromExtension(filePath);
 
-      // biome-ignore lint/suspicious/noConsole: Expected
-      console.log(
-        `[DownloadJob] Processing file: ${relativePath}, type: ${mediaType}`
+      logger.info(
+        { relativePath, mediaType },
+        "[DownloadJob] Processing file from yt-dlp"
       );
 
       // Get file metadata (size etc, verify it exists)
@@ -301,8 +295,7 @@ async function handleYtDlpDownload(
       await registerMedia(newMedia, mediaSourceId, item, basePath);
     }
   } catch (error) {
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.error("[DownloadJob] yt-dlp download failed:", error);
+    logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
 
     // Notify frontend via SSE
     SseManager.sendEvent(mediaSourceId, "download-error", {
@@ -319,14 +312,12 @@ export async function processDownloadJob(
   mediaSourceId: string,
   item: DownloadItem
 ): Promise<void> {
-  // biome-ignore lint/suspicious/noConsole: Expected
-  console.log(`[DownloadJob] Starting download job for: ${item.imageUrl}`);
+  logger.info({ url: item.imageUrl }, "[DownloadJob] Starting download job");
 
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     const error = "Media source not found or not a local source";
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.error(`[DownloadJob] ${error}`);
+    logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
     SseManager.sendEvent(mediaSourceId, "download-error", {
       url: item.imageUrl,
       error,
@@ -349,19 +340,17 @@ export async function processDownloadJob(
 
   const isTwitterPost = item.imageUrl.match(TWITTER_URL_REGEX);
 
-  // biome-ignore lint/suspicious/noConsole: Expected
-  console.log(
-    `[DownloadJob] URL pattern check - isTwitterPost: ${!!isTwitterPost}`
+  logger.info(
+    { isTwitterPost: !!isTwitterPost },
+    "[DownloadJob] URL pattern check"
   );
 
   try {
     if (isTwitterPost) {
-      // biome-ignore lint/suspicious/noConsole: Expected
-      console.log("[DownloadJob] Using yt-dlp download method");
+      logger.info({}, "[DownloadJob] Using yt-dlp download method");
       await handleYtDlpDownload(item, mediaSourceId, basePath);
     } else {
-      // biome-ignore lint/suspicious/noConsole: Expected
-      console.log("[DownloadJob] Using direct image download method");
+      logger.info({}, "[DownloadJob] Using direct image download method");
 
       // Traditional Direct Image Download
       // Generate filename from URL
@@ -400,13 +389,15 @@ export async function processDownloadJob(
       await registerMedia(newMedia, mediaSourceId, item, basePath);
     }
 
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.log(
-      `[DownloadJob] Download completed successfully for: ${item.imageUrl}`
+    logger.info(
+      { url: item.imageUrl },
+      "[DownloadJob] Download completed successfully"
     );
   } catch (error) {
-    // biome-ignore lint/suspicious/noConsole: Expected
-    console.error(`[DownloadJob] Download failed for ${item.imageUrl}:`, error);
+    logger.error(
+      { err: error, url: item.imageUrl },
+      "[DownloadJob] Download failed"
+    );
 
     // Notify frontend via SSE
     SseManager.sendEvent(mediaSourceId, "download-error", {
@@ -517,8 +508,10 @@ export async function queueDownloadJobs(
         item
       );
     } catch (error) {
-      // biome-ignore lint/suspicious/noConsole: Expected
-      console.error(`Failed to download item: ${item.imageUrl}`, error);
+      logger.error(
+        { err: error, url: item.imageUrl },
+        "Failed to download item"
+      );
       // Continue with next item even if one fails
     }
   }

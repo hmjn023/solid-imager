@@ -40,6 +40,23 @@ export class LocalImageProcessor implements IImageProcessor {
     // Check if it is a video
     if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
       logger.info({ mediaPath }, "[ImageProcessor] Generating video thumbnail");
+
+      // Verify ffmpeg availability
+      try {
+        const { execFile } = await import("node:child_process");
+        const { promisify } = await import("node:util");
+        const execFileAsync = promisify(execFile);
+        await execFileAsync("ffmpeg", ["-version"]);
+      } catch (_e) {
+        logger.error(
+          { mediaPath },
+          "[ImageProcessor] ffmpeg binary not found. Cannot generate video thumbnail."
+        );
+        throw new Error(
+          "ffmpeg is not installed or not in PATH. Please install ffmpeg to support video thumbnails."
+        );
+      }
+
       const ffmpeg = (await import("fluent-ffmpeg")).default;
       const os = (await import("node:os")).default;
       const fs = (await import("node:fs/promises")).default;
