@@ -624,9 +624,10 @@ export const BackupService = {
 
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Streaming logic is complex
     (async () => {
+      let jsonStream: import("node:fs").WriteStream | undefined;
       try {
         tempJsonPath = path.join(os.tmpdir(), `dump-${randomUUID()}.json`);
-        const jsonStream = fsSync.createWriteStream(tempJsonPath);
+        jsonStream = fsSync.createWriteStream(tempJsonPath);
 
         jsonStream.write("[\n");
 
@@ -692,8 +693,8 @@ export const BackupService = {
 
         jsonStream.write("\n]");
         await new Promise<void>((resolve, reject) => {
-          jsonStream.end(() => resolve());
-          jsonStream.on("error", reject);
+          jsonStream?.end(() => resolve());
+          jsonStream?.on("error", reject);
         });
 
         // Append the complete JSON dump file
@@ -703,6 +704,7 @@ export const BackupService = {
       } catch (_err) {
         // Can't easily signal error to downstream if headers sent, but we can abort archive
         archive.abort();
+        jsonStream?.destroy();
       } finally {
         await archive.finalize();
         // We can delete the temp file after finalization (which means it's been read into the zip stream?)
