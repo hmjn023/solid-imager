@@ -30,9 +30,9 @@ export type SearchFilterState = {
   selectedTags: string[];
   excludeTags: string[];
   tagMode: "and" | "or";
-  selectedProjects: number[];
-  selectedIps: number[];
-  selectedCharacters: number[];
+  selectedProjects: string[];
+  selectedIps: string[];
+  selectedCharacters: string[];
   sortBy: "date" | "name" | "size";
   sortOrder: "asc" | "desc";
 };
@@ -53,10 +53,10 @@ type SearchFiltersProps = {
 function FilterSection<T>(props: {
   label: string;
   items: T[] | undefined;
-  selectedItems: (string | number)[];
+  selectedItems: string[];
   onSelect: (item: T) => void;
-  onRemove: (id: string | number) => void;
-  getItemKey: (item: T) => string | number;
+  onRemove: (id: string) => void;
+  getItemKey: (item: T) => string;
   getItemLabel: (item: T) => string;
   getItemDescription?: (item: T) => string | undefined | null;
   placeholder?: string;
@@ -106,7 +106,7 @@ function FilterSection<T>(props: {
         optionLabel={props.getItemLabel}
         options={props.items || []}
         optionTextValue={props.getItemLabel}
-        optionValue={(item) => String(props.getItemKey(item))}
+        optionValue={(item) => props.getItemKey(item)}
         placeholder={props.placeholder}
         triggerMode="focus"
         value={value()}
@@ -167,7 +167,7 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(tag) => tag.name}
         items={props.tags}
         label="タグ (含む)"
-        onRemove={(id) => removeTag(id as string)}
+        onRemove={(id) => removeTag(id)}
         onSelect={(tag) => addTag(tag.name)}
         placeholder="タグを検索..."
         selectedItems={props.state.selectedTags}
@@ -209,7 +209,7 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(tag) => tag.name}
         items={props.tags}
         label="除外タグ"
-        onRemove={(id) => removeExcludeTag(id as string)}
+        onRemove={(id) => removeExcludeTag(id)}
         onSelect={(tag) => addExcludeTag(tag.name)}
         placeholder="除外タグを検索..."
         selectedItems={props.state.excludeTags}

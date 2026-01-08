@@ -1,12 +1,11 @@
 /**
  * Downloads API Client
- * Handles download-related operations
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { z } from "zod";
 import type { DownloadItem } from "~/domain/media/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
  * Starts a download job
@@ -18,14 +17,8 @@ export function startDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ) {
-  return apiRequest(API_ENDPOINTS.downloads, z.any(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      mediaSourceId,
-      items,
-    }),
+  return orpc.downloads.start({
+    mediaSourceId,
+    items,
   });
 }

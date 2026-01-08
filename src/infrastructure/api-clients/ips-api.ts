@@ -1,63 +1,42 @@
 /**
  * IPs API Client
+ *
+ * NOTE: Migrated to use oRPC ✅
  */
 
-import { z } from "zod";
-import { ipSchema } from "~/domain/ips/schemas";
-import { apiRequest } from "./shared/base-client";
-import { API_ENDPOINTS } from "./shared/endpoints";
-
-const ipListSchema = z.array(ipSchema);
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export function fetchAllIps() {
-  return apiRequest(API_ENDPOINTS.ips, ipListSchema);
+  return orpc.ips.list();
 }
 
 export function createIp(data: { name: string; description?: string }) {
-  return apiRequest(API_ENDPOINTS.ips, ipSchema, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.ips.create(data);
 }
 
 export function updateIp(
-  id: number,
+  id: string,
   data: { name?: string; description?: string }
 ) {
-  return apiRequest(`${API_ENDPOINTS.ips}/${id}`, ipSchema, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
+  return orpc.ips.update({ id, data });
 }
 
-export function deleteIp(id: number) {
-  return apiRequest(`${API_ENDPOINTS.ips}/${id}`, ipSchema, {
-    method: "DELETE",
-  });
+export function deleteIp(id: string) {
+  return orpc.ips.delete({ id });
 }
 
-export function fetchIpsForMedia(sourceId: string, mediaId: string) {
-  return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), ipListSchema);
+export function fetchIpsForMedia(_sourceId: string, mediaId: string) {
+  return orpc.ips.listForMedia({ mediaId });
 }
 
-export function addIpToMedia(sourceId: string, mediaId: string, ipId: number) {
-  return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), z.any(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ipId }),
-  });
+export function addIpToMedia(_sourceId: string, mediaId: string, ipId: string) {
+  return orpc.ips.addToMedia({ mediaId, ipId });
 }
 
 export function removeIpFromMedia(
-  sourceId: string,
+  _sourceId: string,
   mediaId: string,
-  ipId: number
+  ipId: string
 ) {
-  return apiRequest(API_ENDPOINTS.mediaIps(sourceId, mediaId), z.any(), {
-    method: "DELETE",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ipId }),
-  });
+  return orpc.ips.removeFromMedia({ mediaId, ipId });
 }

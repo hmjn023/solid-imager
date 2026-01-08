@@ -3,7 +3,7 @@
  * Extracted from src/lib/helpers/storage-drivers.ts
  */
 
-import type { S3Connection } from "~/domain/sources/types";
+import type { S3Connection } from "~/domain/sources/schemas";
 
 /**
  * Provides functionalities for interacting with AWS S3 storage.

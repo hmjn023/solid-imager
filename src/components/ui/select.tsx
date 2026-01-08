@@ -1,18 +1,24 @@
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import {
   Content as SelectPrimitiveContent,
+  type SelectContentProps as SelectPrimitiveContentProps,
   Description as SelectPrimitiveDescription,
+  type SelectDescriptionProps as SelectPrimitiveDescriptionProps,
   ErrorMessage as SelectPrimitiveErrorMessage,
+  type SelectErrorMessageProps as SelectPrimitiveErrorMessageProps,
   HiddenSelect as SelectPrimitiveHiddenSelect,
   Icon as SelectPrimitiveIcon,
   Item as SelectPrimitiveItem,
   ItemIndicator as SelectPrimitiveItemIndicator,
   ItemLabel as SelectPrimitiveItemLabel,
+  type SelectItemProps as SelectPrimitiveItemProps,
   Label as SelectPrimitiveLabel,
+  type SelectLabelProps as SelectPrimitiveLabelProps,
   Listbox as SelectPrimitiveListbox,
   Portal as SelectPrimitivePortal,
   Root as SelectPrimitiveRoot,
   Trigger as SelectPrimitiveTrigger,
+  type SelectTriggerProps as SelectPrimitiveTriggerProps,
   Value as SelectPrimitiveValue,
 } from "@kobalte/core/select";
 import { cva } from "class-variance-authority";
@@ -26,7 +32,7 @@ const SelectValue = SelectPrimitiveValue;
 const SelectHiddenSelect = SelectPrimitiveHiddenSelect;
 
 type SelectTriggerProps<T extends ValidComponent = "button"> =
-  SelectPrimitiveTrigger.SelectTriggerProps<T> & {
+  SelectPrimitiveTriggerProps<T> & {
     class?: string | undefined;
     children?: JSX.Element;
   };
@@ -66,7 +72,7 @@ const SelectTrigger = <T extends ValidComponent = "button">(
 };
 
 type SelectContentProps<T extends ValidComponent = "div"> =
-  SelectPrimitiveContent.SelectContentProps<T> & { class?: string | undefined };
+  SelectPrimitiveContentProps<T> & { class?: string | undefined };
 
 const SelectContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, SelectContentProps<T>>
@@ -88,7 +94,7 @@ const SelectContent = <T extends ValidComponent = "div">(
 };
 
 type SelectItemProps<T extends ValidComponent = "li"> =
-  SelectPrimitiveItem.SelectItemProps<T> & {
+  SelectPrimitiveItemProps<T> & {
     class?: string | undefined;
     children?: JSX.Element;
   };
@@ -146,7 +152,7 @@ const labelVariants = cva(
 );
 
 type SelectLabelProps<T extends ValidComponent = "label"> =
-  SelectPrimitiveLabel.SelectLabelProps<T> & {
+  SelectPrimitiveLabelProps<T> & {
     class?: string | undefined;
   };
 
@@ -163,7 +169,7 @@ const SelectLabel = <T extends ValidComponent = "label">(
 };
 
 type SelectDescriptionProps<T extends ValidComponent = "div"> =
-  SelectPrimitiveDescription.SelectDescriptionProps<T> & {
+  SelectPrimitiveDescriptionProps<T> & {
     class?: string | undefined;
   };
 
@@ -182,7 +188,7 @@ const SelectDescription = <T extends ValidComponent = "div">(
 };
 
 type SelectErrorMessageProps<T extends ValidComponent = "div"> =
-  SelectPrimitiveErrorMessage.SelectErrorMessageProps<T> & {
+  SelectPrimitiveErrorMessageProps<T> & {
     class?: string | undefined;
   };
 

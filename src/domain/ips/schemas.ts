@@ -21,6 +21,7 @@ export const ipSchema = z.object({
   id: z.string().uuid(),
   name: z.string(),
   description: z.string().nullable(),
+  source: z.string(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

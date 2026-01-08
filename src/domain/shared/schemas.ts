@@ -37,8 +37,8 @@ export const searchOptionsSchema = z
     filename: z.string().optional(),
     dateRange: z
       .object({
-        from: z.date().optional(),
-        to: z.date().optional(),
+        from: z.coerce.date().optional(),
+        to: z.coerce.date().optional(),
       })
       .optional(),
   })

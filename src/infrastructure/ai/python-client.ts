@@ -1,3 +1,4 @@
+import type { IAiClient } from "~/domain/interfaces/ai-client";
 import {
   type CcipDifferenceResponse,
   type CcipFeatureResponse,
@@ -7,7 +8,7 @@ import {
   taggingResponseSchema,
 } from "~/domain/tagging/schemas";
 
-export class PythonClient {
+export class PythonClient implements IAiClient {
   private readonly baseUrl: string;
 
   constructor(baseUrl = "http://localhost:8000") {

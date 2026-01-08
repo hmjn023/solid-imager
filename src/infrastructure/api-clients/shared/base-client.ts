@@ -60,9 +60,14 @@ export async function apiRequest<T>(
       // Try to parse error response
       let errorData: unknown;
       try {
-        errorData = await response.json();
+        const text = await response.text();
+        try {
+          errorData = JSON.parse(text);
+        } catch {
+          errorData = text;
+        }
       } catch {
-        errorData = await response.text();
+        errorData = "Unknown error";
       }
 
       throw new ApiError(

@@ -1,112 +1,66 @@
-import {
-  deleteCharacter,
-  deleteMediaCharacter,
-  insertCharacter,
-  insertMediaCharacter,
-  selectCharacterById,
-  selectCharacters,
-  selectCharactersByMediaId,
-  updateCharacter,
-} from "~/infrastructure/db/queries/characters";
+import type {
+  NewCharacter,
+  UpdateCharacter,
+} from "~/domain/characters/schemas";
+import type {
+  Character,
+  CharacterRepository,
+} from "~/domain/repositories/character-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 
-/**
- * CharacterService - キャラクター管理機能
- * Feature 11: キャラクター管理機能
- */
+// Initialize repository
+const characterRepo: CharacterRepository = new DrizzleCharacterRepository();
 
-/**
- * Provides services for managing characters.
- */
+const getAllCharactersServer = async (): Promise<Character[]> =>
+  await characterRepo.findAll();
+
+const createCharacterServer = async (data: NewCharacter): Promise<Character> =>
+  await characterRepo.create(data);
+
+const getCharacterByIdServer = async (
+  id: string
+): Promise<Character | undefined> => {
+  const result = await characterRepo.findById(id);
+  return result ?? undefined;
+};
+
+const updateCharacterServer = async (
+  id: string,
+  data: UpdateCharacter
+): Promise<Character> => await characterRepo.update(id, data);
+
+const deleteCharacterServer = async (
+  id: string
+): Promise<{ success: true }> => {
+  await characterRepo.delete(id);
+  return { success: true };
+};
+
+const getCharactersForMediaServer = async (
+  mediaId: string
+): Promise<Character[]> => await characterRepo.findByMediaId(mediaId);
+
+const addCharacterToMediaServer = async (
+  mediaId: string,
+  characterId: string
+): Promise<void> => {
+  await characterRepo.addToMedia(mediaId, characterId);
+};
+
+const removeCharacterFromMediaServer = async (
+  mediaId: string,
+  characterId: string
+): Promise<void> => {
+  await characterRepo.removeFromMedia(mediaId, characterId);
+};
+
 export const CharacterService = {
-  /**
-   * Retrieves all characters.
-   * @returns {Promise<any>} A list of all characters.
-   */
-  async getAllCharacters() {
-    return await selectCharacters();
-  },
-
-  /**
-   * Creates a new character.
-   * @param {object} characterData - The data for the new character.
-   * @param {string} characterData.name - The name of the character.
-   * @param {number} [characterData.ipId] - The ID of the intellectual property (IP) the character belongs to.
-   * @param {string} [characterData.description] - An optional description for the character.
-   * @returns {Promise<any>} The newly created character.
-   */
-  async createCharacter(characterData: {
-    name: string;
-    ipId?: string;
-    description?: string;
-  }) {
-    const result = await insertCharacter(characterData);
-    return result[0];
-  },
-
-  /**
-   * Retrieves details of a specific character by its ID.
-   * @param {string} characterId - The ID of the character.
-   * @returns {Promise<any>} The details of the specified character.
-   */
-  async getCharacterDetails(characterId: string) {
-    return await selectCharacterById(characterId);
-  },
-
-  /**
-   * Updates an existing character.
-   * @param {number} characterId - The ID of the character to update.
-   * @param {object} characterData - The updated data for the character.
-   * @param {string} [characterData.name] - The new name of the character.
-   * @param {number} [characterData.ipId] - The new IP ID the character belongs to.
-   * @param {string} [characterData.description] - The new description for the character.
-   * @returns {Promise<any>} The updated character.
-   */
-  async updateCharacter(
-    characterId: string,
-    characterData: {
-      name?: string;
-      ipId?: string;
-      description?: string;
-    }
-  ) {
-    return await updateCharacter(characterId, characterData);
-  },
-
-  /**
-   * Deletes a character by its ID.
-   * @param {string} characterId - The ID of the character to delete.
-   * @returns {Promise<any>} Confirmation of deletion.
-   */
-  async deleteCharacter(characterId: string) {
-    return await deleteCharacter(characterId);
-  },
-
-  /**
-   * Retrieves characters associated with a specific media.
-   * @param {string} mediaId - The ID of the media.
-   * @returns {Promise<any>} A list of characters associated with the media.
-   */
-  async getCharactersForMedia(mediaId: string) {
-    return await selectCharactersByMediaId(mediaId);
-  },
-
-  /**
-   * Adds a character to a media.
-   * @param {string} mediaId - The ID of the media.
-   * @param {string} characterId - The ID of the character to add.
-   * @returns {Promise<any>} The created association.
-   */
-  async addCharacterToMedia(mediaId: string, characterId: string) {
-    return await insertMediaCharacter(mediaId, characterId);
-  },
-
-  /**
-   * Removes a character from a media.
-   * @param {string} mediaId - The ID of the media.
-   * @param {string} characterId - The ID of the character to remove.
-   * @returns {Promise<any>} Confirmation of removal.
-   */
-  async removeCharacterFromMedia(mediaId: string, characterId: string) {
-    return await deleteMediaCharacter(mediaId, characterId);
-  },
+  getAllCharacters: getAllCharactersServer,
+  createCharacter: createCharacterServer,
+  getCharacterDetails: getCharacterByIdServer,
+  updateCharacter: updateCharacterServer,
+  deleteCharacter: deleteCharacterServer,
+  getCharactersForMedia: getCharactersForMediaServer,
+  addCharacterToMedia: addCharacterToMediaServer,
+  removeCharacterFromMedia: removeCharacterFromMediaServer,
 };

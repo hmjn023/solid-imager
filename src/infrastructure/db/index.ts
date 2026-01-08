@@ -5,10 +5,19 @@ import { Pool } from "pg";
 // biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
-type NodePostgresDb = ReturnType<typeof drizzleNodePostgres>;
-type PgLiteDb = ReturnType<typeof drizzlePglite>;
+export type NodePostgresDb = ReturnType<
+  typeof drizzleNodePostgres<typeof schema>
+>;
+export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
+export type DbInstance = NodePostgresDb | PgLiteDb;
 
-let _db: NodePostgresDb | PgLiteDb | null = null;
+/**
+ * Type representing either a database instance or a transaction client.
+ * In Drizzle, both share the same common interface for queries.
+ */
+export type TransactionClient = NodePostgresDb | PgLiteDb;
+
+let _db: DbInstance | null = null;
 let _queryClient: Pool | PGlite | null = null;
 
 /**
@@ -24,8 +33,11 @@ function initializeDb() {
   }
 
   const dbHost = process.env.DB_HOST;
+  const isTestEnv =
+    process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-  if (dbHost === "pglite") {
+  // テスト環境では必ずPGliteを使用
+  if (isTestEnv || dbHost === "pglite") {
     _queryClient = new PGlite("./.data/pglite");
     _db = drizzlePglite(_queryClient, { schema });
     return _db;
@@ -52,7 +64,7 @@ function initializeDb() {
  * A proxy object for the Drizzle ORM database instance.
  * It ensures that the database is initialized lazily upon first access.
  */
-export const db = new Proxy({} as NodePostgresDb | PGliteDb, {
+export const db = new Proxy({} as NodePostgresDb | PgLiteDb, {
   get(_target, prop) {
     const instance = initializeDb();
     const value = instance[prop as keyof typeof instance];

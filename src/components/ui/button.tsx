@@ -1,4 +1,7 @@
-import { Root as ButtonPrimitiveRoot } from "@kobalte/core/button";
+import {
+  Root as ButtonPrimitiveRoot,
+  type ButtonRootProps,
+} from "@kobalte/core/button";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
@@ -47,12 +50,11 @@ const buttonVariants = cva(
  * @property {string} [class] - Optional CSS class for custom styling.
  * @property {JSX.Element} [children] - The content to be rendered inside the button.
  */
-type ButtonProps<T extends ValidComponent = "button"> =
-  ButtonPrimitiveRoot.ButtonRootProps<T> &
-    VariantProps<typeof buttonVariants> & {
-      class?: string | undefined;
-      children?: JSX.Element;
-    };
+type ButtonProps<T extends ValidComponent = "button"> = ButtonRootProps<T> &
+  VariantProps<typeof buttonVariants> & {
+    class?: string | undefined;
+    children?: JSX.Element;
+  };
 /**
  * A customizable button component that supports various styles and sizes.
  * It leverages `@kobalte/core/button` for accessibility and `class-variance-authority` for styling.

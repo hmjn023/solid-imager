@@ -138,7 +138,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     queryFn: fetchAllCharacters,
   }));
 
-  const handleAddProject = async (projectId: number) => {
+  const handleAddProject = async (projectId: string) => {
     await addProjectToMedia(
       props.media.mediaSourceId,
       props.media.id,
@@ -149,7 +149,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     });
   };
 
-  const handleRemoveProject = async (projectId: number) => {
+  const handleRemoveProject = async (projectId: string) => {
     await removeProjectFromMedia(
       props.media.mediaSourceId,
       props.media.id,
@@ -166,14 +166,14 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     queryClient.invalidateQueries({ queryKey: ["allProjects"] });
   };
 
-  const handleAddIp = async (ipId: number) => {
+  const handleAddIp = async (ipId: string) => {
     await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
     queryClient.invalidateQueries({
       queryKey: ["ipsForMedia", props.media.id],
     });
   };
 
-  const handleRemoveIp = async (ipId: number) => {
+  const handleRemoveIp = async (ipId: string) => {
     await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
     queryClient.invalidateQueries({
       queryKey: ["ipsForMedia", props.media.id],
@@ -198,7 +198,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     return allChars.filter((char) => char.ipId && ipIds.has(char.ipId));
   });
 
-  const handleAddCharacter = async (characterId: number) => {
+  const handleAddCharacter = async (characterId: string) => {
     await addCharacterToMedia(
       props.media.mediaSourceId,
       props.media.id,
@@ -218,7 +218,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     }
   };
 
-  const handleRemoveCharacter = async (characterId: number) => {
+  const handleRemoveCharacter = async (characterId: string) => {
     await removeCharacterFromMedia(
       props.media.mediaSourceId,
       props.media.id,

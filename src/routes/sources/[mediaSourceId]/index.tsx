@@ -53,7 +53,7 @@ import {
   moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
@@ -62,6 +62,7 @@ import {
   restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
+import { logger } from "~/infrastructure/logger";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
@@ -261,17 +262,13 @@ export default function MediaListPage() {
   };
 
   const handleUpload = async (options: UploadOptions) => {
-    const formData = new FormData();
-    formData.append("file", options.file);
-    formData.append("filename", options.filename);
-    formData.append("description", options.description);
-    if (options.sourceUrl) {
-      formData.append("sourceUrl", options.sourceUrl);
-    }
-    formData.append("overwrite", String(options.overwrite));
-    formData.append("autoIncrement", String(options.autoIncrement));
-
-    await uploadMedia(mediaSourceId() || "", formData);
+    await uploadMedia(mediaSourceId() || "", options.file, {
+      filename: options.filename,
+      description: options.description,
+      sourceUrl: options.sourceUrl,
+      overwrite: options.overwrite,
+      autoIncrement: options.autoIncrement,
+    });
     toast.success("Media uploaded successfully");
     // Invalidate query to refetch list
     queryClient.invalidateQueries({
@@ -357,6 +354,7 @@ export default function MediaListPage() {
       toast.success("Bulk download started");
       // Refetch will happen via SSE events
     } catch (error) {
+      logger.error({ err: error }, "Failed to process JSON upload");
       toast.error(`Failed to start download: ${(error as Error).message}`);
     }
   };
@@ -378,7 +376,11 @@ export default function MediaListPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
-    } catch (_error) {
+    } catch (error) {
+      logger.error(
+        { err: error, mediaSourceId: id, mode },
+        "Failed to download dump"
+      );
       toast.error("Failed to download dump");
     }
   };
@@ -435,6 +437,7 @@ export default function MediaListPage() {
             queryKey: ["media", id],
           });
         } catch (error) {
+          logger.error({ err: error }, "Restore from JSON failed");
           toast.error(`Restore failed: ${(error as Error).message}`, {
             id: "restore-toast",
           });
@@ -444,6 +447,7 @@ export default function MediaListPage() {
       };
       reader.readAsText(file);
     } catch (error) {
+      logger.error({ err: error }, "Import failed");
       toast.error(`Import failed: ${(error as Error).message}`, {
         id: "restore-toast",
       });
@@ -552,7 +556,8 @@ export default function MediaListPage() {
       await deleteMedia(mediaSourceId() || "", id);
       toast.success("Media deleted successfully");
       await mediaQuery.refetch();
-    } catch (_e) {
+    } catch (e) {
+      logger.error({ err: e, mediaId: id }, "Failed to delete media");
       toast.error("Failed to delete media");
     } finally {
       setDeleteDialogOpen(false);
@@ -581,7 +586,17 @@ export default function MediaListPage() {
       await action(sourceId, id, targetSourceId);
       toast.success(`Media ${actionName} successfully`);
       await mediaQuery.refetch();
+      // Invalidate target source cache to ensure fresh data when navigating
+      if (sourceId !== targetSourceId) {
+        await queryClient.invalidateQueries({
+          queryKey: ["media", targetSourceId],
+        });
+      }
     } catch (e) {
+      logger.error(
+        { err: e, mediaId: id, targetSourceId, mode },
+        `Failed to ${mode} media`
+      );
       toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
     } finally {
       setMediaIdToMoveCopy(null);
@@ -592,8 +607,7 @@ export default function MediaListPage() {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
 
-      // SSE Subscription for real-time updates
-      const eventSource = new EventSource(`/api/sse/${mediaSourceId()}`);
+      const ac = new AbortController();
 
       const invalidateMedia = () => {
         queryClient.invalidateQueries({
@@ -601,72 +615,81 @@ export default function MediaListPage() {
         });
       };
 
-      // Listen for thumbnail generation completion
-      eventSource.addEventListener("thumbnail-generated", (_event) => {
-        toast.success("Thumbnail generated");
-        invalidateMedia();
-      });
-
-      // Listen for media files deleted from the directory
-      eventSource.addEventListener("media-deleted", (_event) => {
-        toast.success("Media deleted");
-        invalidateMedia();
-      });
-
-      // Listen for media files added to the directory
-      eventSource.addEventListener("media-added", (_event) => {
-        toast.success("New media detected");
-        invalidateMedia();
-      });
-
-      // Listen for media-copied (Manual SSE)
-      eventSource.addEventListener("media-copied", (_event) => {
-        // toast.success("Media copied"); // Toast already handled by API response
-        invalidateMedia();
-      });
-
-      // Listen for media-moved (Manual SSE)
-      eventSource.addEventListener("media-moved", (_event) => {
-        // toast.success("Media moved"); // Toast already handled by API response
-        invalidateMedia();
-      });
-
-      // Listen for media files changed in the directory
-      eventSource.addEventListener("media-changed", (_event) => {
-        // Ideally we might want to update specific item in cache,
-        // but invalidating is safer for now
-        invalidateMedia();
-      });
-
-      // Listen for all jobs completion
-      eventSource.addEventListener("all-jobs-completed", (event) => {
+      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE event handler
+      const startEventStream = async () => {
         try {
-          const data = JSON.parse(event.data);
-          toast.success(`All jobs completed! Processed: ${data.processed}`);
-          invalidateMedia();
-        } catch (_e) {
-          toast.success("All jobs completed!");
-          invalidateMedia();
-        }
-      });
+          const id = mediaSourceId();
+          if (!id) {
+            return;
+          }
 
-      // Listen for watcher errors
-      eventSource.addEventListener("watcher-error", (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
-        } catch (_e) {
-          toast.error("Watcher Error: Unknown error");
-        }
-      });
+          // Start oRPC stream
+          // Assuming orpc client allows passing signal in options
+          // If not, we rely on the loop breaking when cleanup runs (though loop might stick on await)
+          const events = await orpc.sources.events(
+            { id },
+            { signal: ac.signal }
+          );
 
-      eventSource.onerror = (_err) => {
-        eventSource.close();
+          for await (const msg of events) {
+            if (ac.signal.aborted) {
+              break;
+            }
+
+            const { event, data } = msg;
+
+            switch (event) {
+              case "thumbnail-generated":
+                toast.success("Thumbnail generated");
+                invalidateMedia();
+                break;
+              case "media-deleted":
+                toast.success("Media deleted");
+                invalidateMedia();
+                break;
+              case "media-added":
+                toast.success("New media detected");
+                invalidateMedia();
+                break;
+              case "media-copied":
+                invalidateMedia();
+                break;
+              case "media-moved":
+                invalidateMedia();
+                break;
+              case "media-changed":
+                invalidateMedia();
+                break;
+              case "all-jobs-completed":
+                // data is already an object, no need to parse
+                toast.success(
+                  `All jobs completed! Processed: ${data?.processed}`
+                );
+                invalidateMedia();
+                break;
+              case "watcher-error":
+                toast.error(`Watcher Error: ${data?.error || "Unknown error"}`);
+                break;
+              case "connected":
+                // console.log("Connected to event stream");
+                break;
+              default:
+                break;
+            }
+          }
+        } catch (err) {
+          if (!ac.signal.aborted) {
+            logger.error({ err }, "Event stream error");
+            // Retry logic could go here
+          }
+        }
       };
+
+      startEventStream();
 
       onCleanup(() => {
         document.removeEventListener("paste", handlePaste);
-        eventSource.close();
+        ac.abort();
       });
     }
   });

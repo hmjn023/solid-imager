@@ -1,0 +1,41 @@
+{
+    "manifest_version": 3,
+    "name": "xtracter",
+    "version": "1.0.0",
+    "permissions": [
+        "activeTab",
+        "downloads",
+        "storage",
+        "notifications"
+    ],
+    "host_permissions": [
+        "https://twitter.com/*",
+        "https://x.com/*",
+        "http://localhost:3000/*",
+        "http://*/*",
+        "https://*/*"
+    ],
+    "icons": {
+        "128": "icon.png"
+    },
+    "action": {
+        "default_popup": "src/popup/index.html",
+        "default_icon": "icon.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://twitter.com/*",
+                "https://x.com/*"
+            ],
+            "js": [
+                "src/content/index.ts"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "background": {
+        "service_worker": "src/background/index.ts",
+        "type": "module"
+    }
+}

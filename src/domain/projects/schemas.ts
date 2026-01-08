@@ -8,7 +8,7 @@ export const newProjectSchema = z.object({
 export const updateProjectSchema = z.object({
   name: z.string().min(1, "Project name is required").optional(),
   description: z.string().optional(),
-  archivedAt: z.string().datetime().nullable().optional(),
+  archivedAt: z.coerce.date().nullable().optional(),
 });
 
 export type NewProject = z.infer<typeof newProjectSchema>;

@@ -1,5 +1,6 @@
 import type { TagData, Workflow } from "./schemas";
 
+/*
 function _extractTagsFromWidgetValue(
   widgetValue: unknown,
   extractedTags: string[]
@@ -12,6 +13,7 @@ function _extractTagsFromWidgetValue(
     extractedTags.push(...tags);
   }
 }
+*/
 
 export function processWidgetValueTags(
   widgetValue: unknown,

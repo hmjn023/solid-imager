@@ -57,7 +57,7 @@ export default function ManagerPage() {
   const [formData, setFormData] = createSignal<{
     name: string;
     description: string;
-    ipId?: number;
+    ipId?: string;
   }>({ name: "", description: "" });
 
   const queryClient = useQueryClient();
@@ -119,21 +119,6 @@ export default function ManagerPage() {
     setFormData({ name: "", description: "" });
   };
 
-  const handleDelete = async (id: number) => {
-    // biome-ignore lint/suspicious/noAlert: Simple confirmation
-    if (!confirm("Are you sure you want to delete this item?")) {
-      return;
-    }
-    if (activeTab() === "projects") {
-      await deleteProject(id);
-    } else if (activeTab() === "ips") {
-      await deleteIp(id);
-    } else if (activeTab() === "characters") {
-      await deleteCharacter(id);
-    }
-    invalidateQueries();
-  };
-
   const openCreateDialog = () => {
     setEditingItem(null);
     setFormData({ name: "", description: "" });
@@ -142,7 +127,7 @@ export default function ManagerPage() {
 
   const openEditDialog = (item: Entity) => {
     setEditingItem(item);
-    const initialData: { name: string; description: string; ipId?: number } = {
+    const initialData: { name: string; description: string; ipId?: string } = {
       name: item.name,
       description: item.description || "",
     };
@@ -245,7 +230,21 @@ export default function ManagerPage() {
                     Edit
                   </Button>
                   <Button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => {
+                      if (
+                        // biome-ignore lint/suspicious/noAlert: Simple confirmation
+                        !confirm("Are you sure you want to delete this item?")
+                      ) {
+                        return;
+                      }
+                      if (activeTab() === "projects") {
+                        deleteProject(item.id).then(invalidateQueries);
+                      } else if (activeTab() === "ips") {
+                        deleteIp(item.id).then(invalidateQueries);
+                      } else if (activeTab() === "characters") {
+                        deleteCharacter(item.id).then(invalidateQueries);
+                      }
+                    }}
                     size="sm"
                     variant="destructive"
                   >

@@ -3,6 +3,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // @ts-ignore: Vite version mismatch in Vitest/Vinxi
   plugins: [tsconfigPaths()],
   test: {
     alias: {
@@ -21,6 +22,10 @@ export default defineConfig({
       forks: {
         singleFork: true,
       },
+    },
+    // テスト環境では必ずPGliteを使用
+    env: {
+      DB_HOST: 'pglite',
     },
   },
 });

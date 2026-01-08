@@ -39,8 +39,10 @@ export type Workflow = z.infer<typeof workflowSchema>;
 export const newTagSchema = tagDataSchema.extend({
   name: z.string().min(1, "Tag name cannot be empty"),
 });
+export type NewTag = z.infer<typeof newTagSchema>;
 
 export const updateTagSchema = tagDataSchema.partial();
+export type UpdateTag = z.infer<typeof updateTagSchema>;
 
 /**
  * Zod schema for tag API response (frontend)
@@ -53,6 +55,7 @@ export const tagResponseSchema = z.object({
   attribute: z.string().nullable(),
   color: z.string().nullable(),
   source: z.string(),
+  authorId: z.string().uuid().nullable(),
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
 });

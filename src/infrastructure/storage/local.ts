@@ -5,7 +5,7 @@
 
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { LocalConnectionInfo } from "~/domain/sources/types";
+import type { LocalConnection } from "~/domain/sources/schemas";
 import type { MediaSourceDriver, MediaSourceEntry } from "./types";
 
 /**
@@ -17,9 +17,9 @@ export class LocalDriver implements MediaSourceDriver {
 
   /**
    * Creates an instance of LocalDriver.
-   * @param {LocalConnectionInfo} connectionInfo - The connection information for the local media source.
+   * @param {LocalConnection} connectionInfo - The connection information for the local media source.
    */
-  constructor(connectionInfo: LocalConnectionInfo) {
+  constructor(connectionInfo: LocalConnection) {
     this.basePath = connectionInfo.path;
   }
 

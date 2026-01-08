@@ -10,12 +10,25 @@
     "allowJs": true,
     "noEmit": true,
     "strict": true,
-    "types": ["vinxi/types/client", "vitest/globals"],
+    "types": [
+      "vinxi/types/client",
+      "vitest/globals"
+    ],
     "isolatedModules": true,
     "baseUrl": ".",
     "paths": {
-      "~/*": ["./src/*"]
+      "~/*": [
+        "./src/*"
+      ]
     },
-    "strictNullChecks": true
-  }
+    "strictNullChecks": true,
+    "skipLibCheck": true
+  },
+  "exclude": [
+    "xtracter",
+    "node_modules",
+    ".vinxi",
+    ".output",
+    "dist"
+  ]
 }

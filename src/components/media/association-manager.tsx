@@ -11,7 +11,7 @@ import {
 } from "~/components/ui/command";
 
 type Item = {
-  id: number | string;
+  id: string;
   name: string;
   description?: string | null;
 };
@@ -20,8 +20,8 @@ type AssociationManagerProps = {
   title: string;
   items: Item[];
   availableItems: Item[];
-  onAdd: (id: number) => void;
-  onRemove: (id: number) => void;
+  onAdd: (id: string) => void;
+  onRemove: (id: string) => void;
   onCreate?: (name: string) => void;
   isLoading?: boolean;
 };
@@ -51,7 +51,7 @@ export default function AssociationManager(props: AssociationManagerProps) {
               <button
                 class="ml-1 rounded-full p-0.5 hover:bg-secondary-foreground/20"
                 disabled={props.isLoading}
-                onClick={() => props.onRemove(item.id as number)}
+                onClick={() => props.onRemove(item.id)}
                 type="button"
               >
                 <svg
@@ -119,7 +119,7 @@ export default function AssociationManager(props: AssociationManagerProps) {
               {(item) => (
                 <CommandItem
                   onSelect={() => {
-                    props.onAdd(item.id as number);
+                    props.onAdd(item.id);
                     setOpen(false);
                     setSearch("");
                   }}

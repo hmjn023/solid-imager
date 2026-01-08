@@ -1,82 +1,40 @@
-/**
- * CategoryService - カテゴリ管理機能
- * Feature 10: カテゴリ管理機能
- */
+import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
+import type {
+  Category,
+  CategoryRepository,
+} from "~/domain/repositories/category-repository";
+import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
 
-/**
- * Provides services for managing categories.
- */
-import {
-  deleteCategory,
-  insertCategory,
-  selectCategories,
-  selectCategoryById,
-  updateCategory,
-} from "~/infrastructure/db/queries/categories";
+// Initialize repository
+const categoryRepo: CategoryRepository = new DrizzleCategoryRepository();
 
-/**
- * CategoryService - カテゴリ管理機能
- * Feature 10: カテゴリ管理機能
- */
+const getAllCategoriesServer = async (): Promise<Category[]> =>
+  await categoryRepo.findAll();
 
-/**
- * Provides services for managing categories.
- */
+const createCategoryServer = async (data: NewCategory): Promise<Category> =>
+  await categoryRepo.create(data);
+
+const getCategoryByIdServer = async (
+  id: string
+): Promise<Category | undefined> => {
+  const result = await categoryRepo.findById(id);
+  return result ?? undefined;
+};
+
+const updateCategoryServer = async (
+  id: string,
+  data: UpdateCategory
+): Promise<Category> => await categoryRepo.update(id, data);
+
+const deleteCategoryServer = async (id: string): Promise<{ success: true }> => {
+  await categoryRepo.delete(id);
+  return { success: true };
+};
+
 export const CategoryService = {
-  /**
-   * Retrieves all categories.
-   * @returns {Promise<any>} A list of all categories.
-   */
-  async getAllCategories() {
-    return await selectCategories();
-  },
-
-  /**
-   * Creates a new category.
-   * @param {object} categoryData - The data for the new category.
-   * @param {string} categoryData.name - The name of the category.
-   * @param {string} [categoryData.description] - An optional description for the category.
-   * @param {string} [categoryData.color] - An optional color for the category.
-   * @param {number} [categoryData.parentId] - An optional parent category ID.
-   * @returns {Promise<any>} The newly created category.
-   */
-  async createCategory(categoryData: {
-    name: string;
-    description?: string;
-    color?: string;
-    parentId?: string;
-  }) {
-    const result = await insertCategory(categoryData);
-    return result[0];
-  },
-
-  async getCategoryDetails(categoryId: string) {
-    return await selectCategoryById(categoryId);
-  },
-
-  /**
-   * Updates an existing category.
-   * @param {number} categoryId - The ID of the category to update.
-   * @param {object} categoryData - The updated data for the category.
-   * @param {string} [categoryData.name] - The new name of the category.
-   * @param {string} [categoryData.description] - The new description for the category.
-   * @param {string} [categoryData.color] - The new color for the category.
-   * @param {number} [categoryData.parentId] - The new parent category ID.
-   * @returns {Promise<any>} The updated category.
-   */
-  async updateCategory(
-    categoryId: string,
-    categoryData: {
-      name?: string;
-      description?: string;
-      color?: string;
-      parentId?: string;
-    }
-  ) {
-    return await updateCategory(categoryId, categoryData);
-  },
-
-  async deleteCategory(categoryId: string) {
-    return await deleteCategory(categoryId);
-  },
+  getAllCategories: getAllCategoriesServer,
+  createCategory: createCategoryServer,
+  getCategoryDetails: getCategoryByIdServer,
+  updateCategory: updateCategoryServer,
+  deleteCategory: deleteCategoryServer,
 };

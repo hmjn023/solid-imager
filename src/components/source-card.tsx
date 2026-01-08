@@ -6,19 +6,52 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type { MediaSourceInfo } from "~/domain/sources/schemas";
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceCard component.
- * @property {MediaSourceInfo} mediaSource - The media source object to display.
- * @property {(source: MediaSourceInfo) => void} [onEdit] - Callback function when the edit button is clicked.
- * @property {(source: MediaSourceInfo) => void} [onDelete] - Callback function when the delete button is clicked.
+ * @property {SafeMediaSource | MediaSourceInfo} mediaSource - The media source object to display.
+ * @property {(source: SafeMediaSource | MediaSourceInfo) => void} [onEdit] - Callback function when the edit button is clicked.
+ * @property {(source: SafeMediaSource | MediaSourceInfo) => void} [onDelete] - Callback function when the delete button is clicked.
  */
 type SourceCardProps = {
-  mediaSource: MediaSourceInfo;
-  onEdit?: (source: MediaSourceInfo) => void;
-  onDelete?: (source: MediaSourceInfo) => void;
+  mediaSource: SafeMediaSource | MediaSourceInfo;
+  onEdit?: (source: SafeMediaSource | MediaSourceInfo) => void;
+  onDelete?: (source: SafeMediaSource | MediaSourceInfo) => void;
 };
+
+const getTypeLabel = (type: string) => {
+  switch (type) {
+    case "local":
+      return "Local Filesystem";
+    case "sftp":
+      return "SFTP";
+    case "s3":
+      return "S3 Compatible Storage";
+    default:
+      return type;
+  }
+};
+
+const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
+  // biome-ignore lint/suspicious/noExplicitAny: loose type check
+  const info = source.connectionInfo as any;
+
+  if (source.type === "local") {
+    return `Path: ${info.path || "N/A"}`;
+  }
+  if (source.type === "sftp") {
+    return `SFTP: ${info.host || "?"}:${info.remotePath || "?"}`;
+  }
+  if (source.type === "s3") {
+    return `S3: ${info.bucket || "?"} (${info.region || "?"})`;
+  }
+  return "Unknown Connection";
+};
+
 /**
  * A card component to display information about a single media source.
  * It includes options to edit and delete the media source.
@@ -51,16 +84,15 @@ export default function SourceCard(props: SourceCardProps) {
         </CardHeader>
         <CardContent>
           <CardDescription>{props.mediaSource.description}</CardDescription>
-          <p>Type: {props.mediaSource.type}</p>
-          {/* HACK: connectionInfoはパスを持つオブジェクトである保証はありません */}
-          <p>
-            Path:{" "}
-            {typeof props.mediaSource.connectionInfo === "object" &&
-            props.mediaSource.connectionInfo !== null &&
-            "path" in props.mediaSource.connectionInfo
-              ? String(props.mediaSource.connectionInfo.path)
-              : "N/A"}
-          </p>
+          <div class="mt-4 space-y-2 text-sm">
+            <p>
+              <span class="font-semibold">Type:</span>{" "}
+              {getTypeLabel(props.mediaSource.type)}
+            </p>
+            <p class="truncate" title={getConnectionDetails(props.mediaSource)}>
+              {getConnectionDetails(props.mediaSource)}
+            </p>
+          </div>
         </CardContent>
         {/* 編集ボタンと削除ボタン */}
         <div class="absolute top-2 right-2 z-10 flex gap-1">

@@ -134,6 +134,9 @@ describe("getMediaDetails", () => {
 
     // Verify generation info
     expect(details.generationInfo).not.toBeNull();
+    if (!details.generationInfo?.prompt) {
+      throw new Error("Prompt should be defined");
+    }
     const parsedPrompt = JSON.parse(details.generationInfo.prompt);
     expect(parsedPrompt.prompt).toBe("test prompt");
 
