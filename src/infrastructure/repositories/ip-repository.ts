@@ -128,4 +128,24 @@ export const IpRepository: IIpRepository = {
       throw new ResourceNotFoundError("MediaIP association");
     }
   },
+  async addMediaBulk(
+    mediaId: string,
+    ipIds: string[],
+    tx?: Transaction
+  ): Promise<void> {
+    const client = (tx as unknown as TransactionClient) || db;
+    if (ipIds.length === 0) {
+      return;
+    }
+
+    await client
+      .insert(mediaIps)
+      .values(
+        ipIds.map((ipId) => ({
+          mediaId,
+          ipId,
+        }))
+      )
+      .onConflictDoNothing();
+  },
 };

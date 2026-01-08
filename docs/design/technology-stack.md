@@ -20,6 +20,7 @@ Validation: zod
 File Watching: chokidar
 API Documentation: Swagger (swagger-jsdoc, swagger-ui-dist)
 AI/ML: dghs-imgutils, onnxruntime, uvicorn
+External Tools: yt-dlp, ffmpeg (System binaries)
 Dependency Management (Python): uv
 ```
 

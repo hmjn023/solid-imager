@@ -32,4 +32,9 @@ export type CharacterRepository = {
     characterId: string,
     tx?: Transaction
   ): Promise<void>;
+  addToMediaBulk(
+    mediaId: string,
+    characterIds: string[],
+    tx?: Transaction
+  ): Promise<void>;
 };

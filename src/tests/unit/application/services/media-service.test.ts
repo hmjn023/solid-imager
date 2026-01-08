@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
 import type { Media } from "~/domain/media/schemas";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
@@ -131,16 +131,18 @@ describe("MediaService Unit Tests", () => {
       };
 
       // Setup repository responses
-      vi.mocked(mockMediaRepository.findById).mockResolvedValue(mockMedia);
-      vi.mocked(mockMediaRepository.getTags).mockResolvedValue([]);
-      vi.mocked(mockMediaRepository.getGenerationInfo).mockResolvedValue(null);
-      vi.mocked(mockMediaRepository.getAuthors).mockResolvedValue([]);
-      vi.mocked(mockMediaRepository.getUrls).mockResolvedValue([]);
-      vi.mocked(mockSourceRepository.findById).mockResolvedValue(
+      // Setup repository responses
+      (mockMediaRepository.findById as Mock).mockResolvedValue(mockMedia);
+      (mockMediaRepository.getTags as Mock).mockResolvedValue([]);
+      (mockMediaRepository.getGenerationInfo as Mock).mockResolvedValue(null);
+      (mockMediaRepository.getAuthors as Mock).mockResolvedValue([]);
+      (mockMediaRepository.getUrls as Mock).mockResolvedValue([]);
+      (mockSourceRepository.findById as Mock).mockResolvedValue(
         mockSource as any
       );
       // getFileStats removed as it is not in IStorageService and not used here
-      vi.mocked(mockImageProcessor.extractMetadata).mockResolvedValue({
+      // getFileStats removed as it is not in IStorageService and not used here
+      (mockImageProcessor.extractMetadata as Mock).mockResolvedValue({
         tags: [],
         prompt: null,
         workflow: null,
@@ -160,7 +162,7 @@ describe("MediaService Unit Tests", () => {
     it("should throw error if media not found", async () => {
       const mediaId = "123e4567-e89b-42d3-a456-426614174999";
       const sourceId = "123e4567-e89b-42d3-a456-426614174888";
-      vi.mocked(mockMediaRepository.findById).mockResolvedValue(null);
+      (mockMediaRepository.findById as Mock).mockResolvedValue(null);
 
       await expect(
         mediaService.getMediaDetails(sourceId, mediaId)
@@ -171,7 +173,8 @@ describe("MediaService Unit Tests", () => {
   describe("uploadMedia", () => {
     it("should successfully upload and register media", async () => {
       const sourceId = "123e4567-e89b-42d3-a456-426614174001";
-      const file = new File(["test"], "test.png", { type: "image/png" });
+      const pngSignature = Buffer.from("89504e470d0a1a0a", "hex");
+      const file = new File([pngSignature], "test.png", { type: "image/png" });
       const options = {
         filename: "custom.png",
         description: "Test description",
@@ -202,13 +205,13 @@ describe("MediaService Unit Tests", () => {
         mediaType: "image",
       };
 
-      vi.mocked(mockSourceRepository.findById).mockResolvedValue(
+      (mockSourceRepository.findById as Mock).mockResolvedValue(
         mockSource as any
       );
-      vi.mocked(mockStorageService.saveFile).mockResolvedValue(
+      (mockStorageService.saveFile as Mock).mockResolvedValue(
         mockFileInfo as any
       );
-      vi.mocked(mockMediaRepository.upsert).mockResolvedValue(mockMedia as any);
+      (mockMediaRepository.upsert as Mock).mockResolvedValue(mockMedia as any);
 
       const result = await mediaService.uploadMedia(sourceId, file, options);
 
@@ -227,11 +230,49 @@ describe("MediaService Unit Tests", () => {
     it("should throw error if source not found", async () => {
       const sourceId = "123e4567-e89b-42d3-a456-426614174999";
       const file = new File(["test"], "test.png", { type: "image/png" });
-      vi.mocked(mockSourceRepository.findById).mockResolvedValue(null);
+      (mockSourceRepository.findById as Mock).mockResolvedValue(null);
 
       await expect(
         mediaService.uploadMedia(sourceId, file, {})
       ).rejects.toThrow(MEDIA_SOURCE_NOT_FOUND_REGEX);
+    });
+
+    it("should delete file if DB insertion fails (rollback)", async () => {
+      const sourceId = "123e4567-e89b-42d3-a456-426614174001";
+      const pngSignature = Buffer.from("89504e470d0a1a0a", "hex");
+      const file = new File([pngSignature], "test.png", { type: "image/png" });
+      const options = { filename: "fail.png", overwrite: true };
+
+      const mockSource = {
+        id: sourceId,
+        type: "local",
+        connectionInfo: { path: "/root" },
+      };
+
+      const mockFileInfo = {
+        filePath: "fail.png",
+        fileName: "fail.png",
+        width: 100,
+        height: 100,
+        size: 4,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+      };
+
+      (mockSourceRepository.findById as Mock).mockResolvedValue(mockSource);
+      (mockStorageService.saveFile as Mock).mockResolvedValue(mockFileInfo);
+      (mockMediaRepository.upsert as Mock).mockRejectedValue(
+        new Error("DB Error")
+      );
+
+      await expect(
+        mediaService.uploadMedia(sourceId, file, options)
+      ).rejects.toThrow("DB Error");
+
+      expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
+        "/root",
+        "fail.png"
+      );
     });
   });
 });

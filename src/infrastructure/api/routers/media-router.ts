@@ -39,7 +39,7 @@ export const mediaRouter = {
     .handler(async ({ input }) => {
       const media = await MediaService.getMedia(input.sourceId, input.mediaId);
       if (!media) {
-        throw new Error(`Media not found: ${input.mediaId}`);
+        throw new ResourceNotFoundError("Media", input.mediaId);
       }
       return media;
     }),
@@ -70,14 +70,12 @@ export const mediaRouter = {
         mediaId: z.string().uuid(),
       })
     )
-    .handler(async ({ input }) => {
-      const imageBuffer = await MediaService.getMediaContent(
-        input.sourceId,
-        input.mediaId
+    .handler(({ input }) => {
+      // JSONシリアライズを避けるため、バッファコンテンツではなくURLまたはストリームを返す必要があります
+      // 現時点では、誤用を防ぐためにバッファの返却を削除するか、エラーをスローするのが安全です。
+      throw new Error(
+        `Use the REST endpoint /api/sources/${input.sourceId}/${input.mediaId} for binary content.`
       );
-      // oRPC doesn't handle binary data well, so we'll keep this as REST for now
-      // This endpoint will remain as /api/sources/:id/:mediaId
-      return imageBuffer;
     }),
 
   /**
@@ -106,20 +104,14 @@ export const mediaRouter = {
         data: updateMediaRequestSchema,
       })
     )
-    .handler(async ({ input }) => {
-      try {
-        return await MediaService.updateMedia(
+    .handler(
+      async ({ input }) =>
+        await MediaService.updateMedia(
           input.sourceId,
           input.mediaId,
           input.data
-        );
-      } catch (error) {
-        if (error instanceof ResourceNotFoundError) {
-          throw new Error(`Media not found: ${input.mediaId}`);
-        }
-        throw error;
-      }
-    }),
+        )
+    ),
 
   /**
    * Delete a media file
@@ -132,15 +124,8 @@ export const mediaRouter = {
       })
     )
     .handler(async ({ input }) => {
-      try {
-        await MediaService.deleteMedia(input.sourceId, input.mediaId);
-        return { success: true };
-      } catch (error) {
-        if (error instanceof ResourceNotFoundError) {
-          throw new Error(`Media not found: ${input.mediaId}`);
-        }
-        throw error;
-      }
+      await MediaService.deleteMedia(input.sourceId, input.mediaId);
+      return { success: true };
     }),
 
   /**

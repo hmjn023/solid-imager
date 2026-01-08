@@ -10,7 +10,18 @@ import {
   it,
   vi,
 } from "vitest";
+import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
+import { pythonClient } from "~/infrastructure/ai/python-client";
+import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 // We need to dynamically import these to work around Vitest's hoisting
 let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
@@ -37,6 +48,17 @@ describe("getMediaDetails", () => {
   const testImageName = "test-image-with-metadata.png";
 
   beforeAll(async () => {
+    services.registerMediaRepository(MediaRepository);
+    services.registerSourceRepository(new DrizzleSourceRepository());
+    services.registerStorageService(LocalMediaStorage);
+    services.registerTagRepository(TagRepository);
+    services.registerImageProcessor(ImageProcessor);
+    services.registerAuthorRepository(AuthorRepository);
+    services.registerProjectRepository(ProjectRepository);
+    services.registerCharacterRepository(new DrizzleCharacterRepository());
+    services.registerIpRepository(IpRepository);
+    services.registerAiClient(pythonClient);
+
     // Dynamically import dependencies
     const pgliteModule = await import("@electric-sql/pglite");
     _PGlite = pgliteModule.PGlite;

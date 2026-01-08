@@ -275,7 +275,9 @@ export const sourcesRouter = {
       const { randomUUID } = await import("node:crypto");
       const path = await import("node:path");
       const nodeOs = await import("node:os");
-      const fs = await import("node:fs/promises");
+      const fs = await import("node:fs");
+      const { pipeline } = await import("node:stream/promises");
+      const { Readable } = await import("node:stream");
 
       const tempFilePath = path.join(
         nodeOs.tmpdir(),
@@ -283,14 +285,18 @@ export const sourcesRouter = {
       );
 
       try {
-        await fs.writeFile(
-          tempFilePath,
-          Buffer.from(await input.file.arrayBuffer())
+        // Stream the file to disk
+        const fileStream = input.file.stream();
+        await pipeline(
+          // biome-ignore lint/suspicious/noExplicitAny: Cast to any to assume compatibility with node stream if available in this environment
+          Readable.fromWeb(fileStream as any),
+          fs.createWriteStream(tempFilePath)
         );
+
         return await BackupService.importSourceZip(input.id, tempFilePath);
       } finally {
         try {
-          await fs.unlink(tempFilePath);
+          await fs.promises.unlink(tempFilePath);
         } catch {
           // ignore
         }

@@ -67,7 +67,6 @@ describe("BackupService Performance", () => {
       createdAt: new Date().toISOString(),
       modifiedAt: new Date().toISOString(),
       tags: [
-        // biome-ignore lint/style/noMagicNumbers: test data generation
         { name: `Tag A ${i % 10}`, type: "positive" },
         // biome-ignore lint/style/noMagicNumbers: test data generation
         { name: `Tag B ${i % 20}`, type: "positive" },
