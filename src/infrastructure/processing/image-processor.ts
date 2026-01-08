@@ -16,6 +16,7 @@ import type { IImageProcessor } from "~/domain/services/image-processor";
 import { logger } from "~/infrastructure/logger";
 
 const RANDOM_STRING_RADIX = 36;
+let isFfmpegAvailable: boolean | undefined;
 
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
@@ -42,12 +43,19 @@ export class LocalImageProcessor implements IImageProcessor {
       logger.info({ mediaPath }, "[ImageProcessor] Generating video thumbnail");
 
       // Verify ffmpeg availability
-      try {
-        const { execFile } = await import("node:child_process");
-        const { promisify } = await import("node:util");
-        const execFileAsync = promisify(execFile);
-        await execFileAsync("ffmpeg", ["-version"]);
-      } catch (_e) {
+      if (isFfmpegAvailable === undefined) {
+        try {
+          const { execFile } = await import("node:child_process");
+          const { promisify } = await import("node:util");
+          const execFileAsync = promisify(execFile);
+          await execFileAsync("ffmpeg", ["-version"]);
+          isFfmpegAvailable = true;
+        } catch (_e) {
+          isFfmpegAvailable = false;
+        }
+      }
+
+      if (!isFfmpegAvailable) {
         logger.error(
           { mediaPath },
           "[ImageProcessor] ffmpeg binary not found. Cannot generate video thumbnail."
