@@ -4,7 +4,10 @@
  */
 
 import { services } from "~/application/registry";
-import type { MediaSearchRequest } from "~/domain/media/schemas";
+import type {
+  MediaSearchRequest,
+  MediaSearchResponse,
+} from "~/domain/media/schemas";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 
 /**
@@ -17,6 +20,7 @@ import type { IMediaRepository } from "~/domain/repositories/media-repository";
 type SearchOptions = {
   tags?: string[];
   sortBy?: string;
+  order?: "asc" | "desc";
   page?: number;
   limit?: number;
 };
@@ -33,25 +37,28 @@ export class SearchServiceImpl {
   /**
    * Performs a global search for media across all configured sources.
    * @param {SearchOptions} searchOptions - Options for filtering, sorting, and pagination.
-   * @returns {Promise<any>} A list of media items matching the search criteria.
+   * @returns {Promise<MediaSearchResponse>} A list of media items matching the search criteria.
    */
-  async globalSearchMedia(searchOptions: SearchOptions) {
+  async globalSearchMedia(
+    searchOptions: SearchOptions
+  ): Promise<MediaSearchResponse> {
     const limit = searchOptions.limit || DEFAULT_PAGE_LIMIT;
     const offset = searchOptions.page ? (searchOptions.page - 1) * limit : 0;
 
-    let sort: "date" | "name" | "size" = "date";
-    if (searchOptions.sortBy === "name") {
-      sort = "name";
+    let sort: "date" | "name" | "size";
+    switch (searchOptions.sortBy) {
+      case "name":
+      case "size":
+        sort = searchOptions.sortBy;
+        break;
+      default:
+        sort = "date";
     }
-    if (searchOptions.sortBy === "size") {
-      sort = "size";
-    }
-    // Assuming 'date' is default for other values
 
     const request: MediaSearchRequest = {
       tags: searchOptions.tags?.join(",") || undefined,
       sort,
-      order: "desc", // Default order
+      order: searchOptions.order || "desc",
       limit,
       offset,
     };

@@ -63,6 +63,9 @@ function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
   };
 }
 
+const splitAndTrim = (value: string | undefined) =>
+  value ? value.split(",").map((item) => item.trim()) : undefined;
+
 export const MediaRepository: IMediaRepository = {
   /**
    * Retrieves a specific media item by its ID.
@@ -261,21 +264,11 @@ export const MediaRepository: IMediaRepository = {
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
     const client = (tx as unknown as TransactionClient) || db;
-    const tagsArray = params.tags
-      ? params.tags.split(",").map((t: string) => t.trim())
-      : undefined;
-    const excludeTagsArray = params.excludeTags
-      ? params.excludeTags.split(",").map((t: string) => t.trim())
-      : undefined;
-    const projectsArray = params.projects
-      ? params.projects.split(",").map((p: string) => p.trim())
-      : undefined;
-    const ipsArray = params.ips
-      ? params.ips.split(",").map((i: string) => i.trim())
-      : undefined;
-    const charactersArray = params.characters
-      ? params.characters.split(",").map((c: string) => c.trim())
-      : undefined;
+    const tagsArray = splitAndTrim(params.tags);
+    const excludeTagsArray = splitAndTrim(params.excludeTags);
+    const projectsArray = splitAndTrim(params.projects);
+    const ipsArray = splitAndTrim(params.ips);
+    const charactersArray = splitAndTrim(params.characters);
 
     // searchMediaQuery accepts client (which can be a transaction or the main db instance).
     // Ensure we pass the correct client to maintain transaction integrity if provided.
@@ -313,21 +306,11 @@ export const MediaRepository: IMediaRepository = {
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
     const client = (tx as unknown as TransactionClient) || db;
-    const tagsArray = params.tags
-      ? params.tags.split(",").map((t: string) => t.trim())
-      : undefined;
-    const excludeTagsArray = params.excludeTags
-      ? params.excludeTags.split(",").map((t: string) => t.trim())
-      : undefined;
-    const projectsArray = params.projects
-      ? params.projects.split(",").map((p: string) => p.trim())
-      : undefined;
-    const ipsArray = params.ips
-      ? params.ips.split(",").map((i: string) => i.trim())
-      : undefined;
-    const charactersArray = params.characters
-      ? params.characters.split(",").map((c: string) => c.trim())
-      : undefined;
+    const tagsArray = splitAndTrim(params.tags);
+    const excludeTagsArray = splitAndTrim(params.excludeTags);
+    const projectsArray = splitAndTrim(params.projects);
+    const ipsArray = splitAndTrim(params.ips);
+    const charactersArray = splitAndTrim(params.characters);
 
     const result = await globalSearchMedia(
       {
