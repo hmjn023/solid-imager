@@ -206,6 +206,7 @@ export const mediaTags = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.tagId, table.tagType] }),
+    tagIdIndex: index("idx_media_tags_tag_id").on(table.tagId),
   })
 );
 
@@ -411,6 +412,9 @@ export const mediaCharacters = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
+    characterIdIndex: index("idx_media_characters_character_id").on(
+      table.characterId
+    ),
   })
 );
 
@@ -684,6 +688,7 @@ export const mediaAuthors = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.authorId] }),
+    authorIdIndex: index("idx_media_authors_author_id").on(table.authorId),
   })
 );
 
