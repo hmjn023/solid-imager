@@ -1,5 +1,5 @@
 {
-  "id": "b41675a6-d922-40ce-aea2-03ffdfbb11f4",
+  "id": "d87c09f4-02a7-4650-a559-32839a269507",
   "prevId": "9f6b56e9-be0c-4968-a900-374c2ad6b3c1",
   "version": "7",
   "dialect": "postgresql",
@@ -477,11 +477,17 @@
         }
       },
       "indexes": {
-        "idx_media_authors_author_id": {
-          "name": "idx_media_authors_author_id",
+        "idx_media_authors_author_id_media_id": {
+          "name": "idx_media_authors_author_id_media_id",
           "columns": [
             {
               "expression": "author_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -642,11 +648,17 @@
         }
       },
       "indexes": {
-        "idx_media_characters_character_id": {
-          "name": "idx_media_characters_character_id",
+        "idx_media_characters_character_id_media_id": {
+          "name": "idx_media_characters_character_id_media_id",
           "columns": [
             {
               "expression": "character_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1500,11 +1512,17 @@
         }
       },
       "indexes": {
-        "idx_media_tags_tag_id": {
-          "name": "idx_media_tags_tag_id",
+        "idx_media_tags_tag_id_media_id": {
+          "name": "idx_media_tags_tag_id_media_id",
           "columns": [
             {
               "expression": "tag_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
