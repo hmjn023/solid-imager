@@ -27,6 +27,9 @@ export const ConfigService = {
       const content = await readFile(configPath, "utf-8");
       return JSON.parse(content) as AppConfig;
     } catch (error) {
+      if (error instanceof SyntaxError) {
+        return {};
+      }
       if (typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT") {
         return {};
       }
