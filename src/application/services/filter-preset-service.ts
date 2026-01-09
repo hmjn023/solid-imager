@@ -3,7 +3,7 @@
  * Feature 20: フィルタ・プリセット機能
  */
 import { db } from "~/infrastructure/db";
-import { presets } from "~/infrastructure/db/schema";
+import { type Preset, presets } from "~/infrastructure/db/schema";
 
 /**
  * Provides services for managing filter presets.
@@ -11,10 +11,10 @@ import { presets } from "~/infrastructure/db/schema";
 export const FilterPresetService = {
   /**
    * Retrieves all saved filter presets.
-   * @returns {Promise<any[]>} A list of all filter presets.
+   * @returns {Promise<Preset[]>} A list of all filter presets.
    */
-  async getPresets() {
-    return await db.select().from(presets).orderBy(presets.createdAt);
+  async getPresets(): Promise<Preset[]> {
+    return db.select().from(presets).orderBy(presets.createdAt);
   },
 
   /**
@@ -22,9 +22,12 @@ export const FilterPresetService = {
    * @param {object} presetData - The data for the preset.
    * @param {string} presetData.name - The name of the preset.
    * @param {unknown} presetData.conditions - The search conditions to save.
-   * @returns {Promise<any>} The newly saved preset.
+   * @returns {Promise<Preset>} The newly saved preset.
    */
-  async savePreset(presetData: { name: string; conditions: unknown }) {
+  async savePreset(presetData: {
+    name: string;
+    conditions: unknown;
+  }): Promise<Preset> {
     const [savedPreset] = await db
       .insert(presets)
       .values({
