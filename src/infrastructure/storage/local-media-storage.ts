@@ -90,24 +90,18 @@ export const LocalMediaStorage: IStorageService = {
     // Save the file
     await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
 
-    // Extract basic metadata
-    const stats = await fs.stat(targetFilePath);
+    // Extract valid metadata using getFileMetadata to support both images and videos
     try {
-      const metadata = await sharp(targetFilePath).metadata();
-
-      if (!(metadata.width && metadata.height)) {
-        await fs.unlink(targetFilePath); // Clean up if validation fails
-        throw new Error("Could not extract media dimensions.");
-      }
+      const metadata = await LocalMediaStorage.getFileMetadata(targetFilePath);
 
       return {
         filePath: relativeFilePath,
         fileName: targetFileName,
         width: metadata.width,
         height: metadata.height,
-        size: stats.size,
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
+        size: metadata.size,
+        createdAt: metadata.createdAt,
+        modifiedAt: metadata.modifiedAt,
         conflict,
       };
     } catch (e) {
@@ -313,24 +307,19 @@ export const LocalMediaStorage: IStorageService = {
     // Copy the file
     await fs.copyFile(sourcePath, targetFilePath);
 
-    // Extract metadata
-    const stats = await fs.stat(targetFilePath);
+    // Extract metadata using getFileMetadata
     try {
-      const metadata = await sharp(targetFilePath).metadata();
-
-      if (!(metadata.width && metadata.height)) {
-        await fs.unlink(targetFilePath); // Clean up
-        throw new Error("Could not extract media dimensions from copied file.");
-      }
+      // Use LocalMediaStorage.getFileMetadata to support video files as well
+      const metadata = await LocalMediaStorage.getFileMetadata(targetFilePath);
 
       return {
         filePath: relativeFilePath,
         fileName: targetFileName,
         width: metadata.width,
         height: metadata.height,
-        size: stats.size,
-        createdAt: stats.birthtime,
-        modifiedAt: stats.mtime,
+        size: metadata.size,
+        createdAt: metadata.createdAt,
+        modifiedAt: metadata.modifiedAt,
         conflict,
       };
     } catch (e) {
