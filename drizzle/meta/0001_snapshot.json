@@ -1,5 +1,5 @@
 {
-  "id": "d87c09f4-02a7-4650-a559-32839a269507",
+  "id": "184a752e-e13b-4b5d-b953-4bb0fbf4f8ab",
   "prevId": "9f6b56e9-be0c-4968-a900-374c2ad6b3c1",
   "version": "7",
   "dialect": "postgresql",
@@ -48,6 +48,21 @@
           "columns": [
             {
               "expression": "account_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_authors_name": {
+          "name": "idx_authors_name",
+          "columns": [
+            {
+              "expression": "name",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -213,7 +228,23 @@
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_characters_ip_id": {
+          "name": "idx_characters_ip_id",
+          "columns": [
+            {
+              "expression": "ip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "characters_ip_id_ips_id_fk": {
           "name": "characters_ip_id_ips_id_fk",
@@ -559,11 +590,17 @@
         }
       },
       "indexes": {
-        "idx_media_categories_category_id": {
-          "name": "idx_media_categories_category_id",
+        "idx_media_categories_category_id_media_id": {
+          "name": "idx_media_categories_category_id_media_id",
           "columns": [
             {
               "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1072,11 +1109,17 @@
         }
       },
       "indexes": {
-        "idx_media_ips_ip_id": {
-          "name": "idx_media_ips_ip_id",
+        "idx_media_ips_ip_id_media_id": {
+          "name": "idx_media_ips_ip_id_media_id",
           "columns": [
             {
               "expression": "ip_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1148,11 +1191,17 @@
         }
       },
       "indexes": {
-        "idx_media_projects_project_id": {
-          "name": "idx_media_projects_project_id",
+        "idx_media_projects_project_id_media_id": {
+          "name": "idx_media_projects_project_id_media_id",
           "columns": [
             {
               "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "media_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1512,11 +1561,17 @@
         }
       },
       "indexes": {
-        "idx_media_tags_tag_id_media_id": {
-          "name": "idx_media_tags_tag_id_media_id",
+        "idx_media_tags_tag_id_tag_type_media_id": {
+          "name": "idx_media_tags_tag_id_tag_type_media_id",
           "columns": [
             {
               "expression": "tag_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tag_type",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2033,7 +2088,23 @@
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_projects_name": {
+          "name": "idx_projects_name",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
@@ -2216,6 +2287,21 @@
           "columns": [
             {
               "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_tags_author_id": {
+          "name": "idx_tags_author_id",
+          "columns": [
+            {
+              "expression": "author_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
