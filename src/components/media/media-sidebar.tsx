@@ -1,6 +1,7 @@
 import { Collapsible } from "@kobalte/core";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { toast } from "solid-toast";
 import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
@@ -90,8 +91,8 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       setIsEditingDescription(false);
       // Trigger refetch to update the UI
       props.onUpdate?.();
-    } catch (_error) {
-      // TODO: Show error notification to user
+    } catch (error) {
+      toast.error(`Failed to update description: ${(error as Error).message}`);
     }
   };
 
