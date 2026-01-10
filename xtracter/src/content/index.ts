@@ -150,7 +150,7 @@ function extractMetadata(article: HTMLElement | null, element: HTMLElement, medi
         }
 
         if (!authorId) {
-            authorId = ((userNameNode as HTMLElement)?.innerText.match(/@\w+/)?.[0]) || '';
+            authorId = ((userNameNode as HTMLElement)?.innerText?.match(/@\w+/)?.[0]) || '';
         }
     }
 
