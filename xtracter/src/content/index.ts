@@ -199,7 +199,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 });
 
-function processImages() {
+function processMedia() {
     // Process Images
     const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
     images.forEach((img) => {
@@ -278,10 +278,10 @@ const observer = new MutationObserver((mutations) => {
         }
     }
     if (shouldProcess) {
-        processImages();
+        processMedia();
     }
 });
 
 observer.observe(document.body, OBSERVER_CONFIG);
 
-processImages();
+processMedia();
