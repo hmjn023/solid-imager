@@ -179,6 +179,7 @@ export const tags = pgTable(
   (table) => ({
     nameUnique: unique("tags_name_unique").on(table.name),
     nameIndex: index("idx_tags_name").on(table.name),
+    authorIdIndex: index("idx_tags_author_id").on(table.authorId),
   })
 );
 
@@ -206,6 +207,9 @@ export const mediaTags = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.tagId, table.tagType] }),
+    tagIdTagTypeMediaIdIndex: index(
+      "idx_media_tags_tag_id_tag_type_media_id"
+    ).on(table.tagId, table.tagType, table.mediaId),
   })
 );
 
@@ -321,19 +325,25 @@ export const categories = pgTable(
  * Schema for the projects table.
  * Stores information about projects that media items can be associated with.
  */
-export const projects = pgTable("projects", {
-  id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-  /** プロジェクト名 */
-  name: text("name").notNull(),
-  /** プロジェクトの説明 */
-  description: text("description").default(""),
-  /** 作成日時 */
-  createdAt: timestamp("created_at").defaultNow(),
-  /** 更新日時 */
-  updatedAt: timestamp("updated_at").defaultNow(),
-  /** アーカイブ日時 */
-  archivedAt: timestamp("archived_at"),
-});
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+    /** プロジェクト名 */
+    name: text("name").notNull(),
+    /** プロジェクトの説明 */
+    description: text("description").default(""),
+    /** 作成日時 */
+    createdAt: timestamp("created_at").defaultNow(),
+    /** 更新日時 */
+    updatedAt: timestamp("updated_at").defaultNow(),
+    /** アーカイブ日時 */
+    archivedAt: timestamp("archived_at"),
+  },
+  (table) => ({
+    nameIndex: index("idx_projects_name").on(table.name),
+  })
+);
 
 /**
  * Schema for the ips table.
@@ -386,6 +396,7 @@ export const characters = pgTable(
   },
   (table) => ({
     nameIpIdUnique: unique("name_ipId_unique").on(table.name, table.ipId),
+    ipIdIndex: index("idx_characters_ip_id").on(table.ipId),
   })
 );
 
@@ -411,6 +422,9 @@ export const mediaCharacters = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
+    characterIdMediaIdIndex: index(
+      "idx_media_characters_character_id_media_id"
+    ).on(table.characterId, table.mediaId),
   })
 );
 
@@ -432,9 +446,9 @@ export const mediaCategories = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.categoryId] }),
-    categoryIdIndex: index("idx_media_categories_category_id").on(
-      table.categoryId
-    ),
+    categoryIdMediaIdIndex: index(
+      "idx_media_categories_category_id_media_id"
+    ).on(table.categoryId, table.mediaId),
   })
 );
 
@@ -456,7 +470,10 @@ export const mediaProjects = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.projectId] }),
-    projectIdIndex: index("idx_media_projects_project_id").on(table.projectId),
+    projectIdMediaIdIndex: index("idx_media_projects_project_id_media_id").on(
+      table.projectId,
+      table.mediaId
+    ),
   })
 );
 
@@ -480,7 +497,10 @@ export const mediaIps = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.ipId] }),
-    ipIdIndex: index("idx_media_ips_ip_id").on(table.ipId),
+    ipIdMediaIdIndex: index("idx_media_ips_ip_id_media_id").on(
+      table.ipId,
+      table.mediaId
+    ),
   })
 );
 
@@ -665,6 +685,7 @@ export const authors = pgTable(
   },
   (table) => ({
     accountIdIndex: index("idx_authors_account_id").on(table.accountId),
+    nameIndex: index("idx_authors_name").on(table.name),
   })
 );
 
@@ -684,6 +705,10 @@ export const mediaAuthors = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.mediaId, table.authorId] }),
+    authorIdMediaIdIndex: index("idx_media_authors_author_id_media_id").on(
+      table.authorId,
+      table.mediaId
+    ),
   })
 );
 
