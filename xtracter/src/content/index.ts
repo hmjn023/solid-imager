@@ -109,7 +109,7 @@ function extractMetadataFromUrl(): Partial<TweetMetadata> {
     if (pathParts.length >= 3 && pathParts[1] === 'status') {
         authorId = '@' + pathParts[0];
         // Remove /photo/1, /video/1 to reconstruct base Tweet URL
-        tweetUrl = `https://x.com/${pathParts[0]}/status/${pathParts[2]}`;
+        tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[2]}`;
     }
 
     return { authorId, tweetUrl };
