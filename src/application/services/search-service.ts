@@ -1,7 +1,14 @@
 /**
- * SearchService - グローバル検索機能
- * Feature 7: メディアソート・検索機能
+ * SearchService - Global Search Functionality
+ * Feature 7: Media Sort/Search Functionality
  */
+
+import { services } from "~/application/registry";
+import type {
+  MediaSearchRequest,
+  MediaSearchResponse,
+} from "~/domain/media/schemas";
+import type { IMediaRepository } from "~/domain/repositories/media-repository";
 
 /**
  * Defines the options available for searching media.
@@ -13,20 +20,71 @@
 type SearchOptions = {
   tags?: string[];
   sortBy?: string;
+  order?: "asc" | "desc";
   page?: number;
   limit?: number;
 };
-/**
- * Provides services for global media search functionalities.
- */
-export const SearchService = {
+
+const DEFAULT_PAGE_LIMIT = 20;
+
+export class SearchServiceImpl {
+  private readonly mediaRepository: IMediaRepository;
+
+  constructor(mediaRepository: IMediaRepository) {
+    this.mediaRepository = mediaRepository;
+  }
+
   /**
    * Performs a global search for media across all configured sources.
-   * @param {SearchOptions} _searchOptions - Options for filtering, sorting, and pagination.
-   * @returns {any} A list of media items matching the search criteria.
+   * @param {SearchOptions} searchOptions - Options for filtering, sorting, and pagination.
+   * @returns {Promise<MediaSearchResponse>} A list of media items matching the search criteria.
    */
-  globalSearchMedia(_searchOptions: SearchOptions) {
-    // TODO: Search across all sources
-    throw new Error("Not implemented");
-  },
+  async globalSearchMedia(
+    searchOptions: SearchOptions
+  ): Promise<MediaSearchResponse> {
+    const limit = searchOptions.limit || DEFAULT_PAGE_LIMIT;
+    const offset = searchOptions.page ? (searchOptions.page - 1) * limit : 0;
+
+    let sort: "date" | "name" | "size";
+    switch (searchOptions.sortBy) {
+      case "name":
+      case "size":
+        sort = searchOptions.sortBy;
+        break;
+      default:
+        sort = "date";
+    }
+
+    const request: MediaSearchRequest = {
+      tags: searchOptions.tags?.join(",") || undefined,
+      sort,
+      order: searchOptions.order || "desc",
+      limit,
+      offset,
+    };
+
+    return await this.mediaRepository.globalSearch(request);
+  }
+}
+
+// Singleton handling similar to MediaService to avoid circular dependency issues during initialization if any
+let _searchService: SearchServiceImpl | null = null;
+
+export const resetSearchService = () => {
+  _searchService = null;
 };
+
+const getSearchService = () => {
+  if (!_searchService) {
+    _searchService = new SearchServiceImpl(services.getMediaRepository());
+  }
+  return _searchService;
+};
+
+export const SearchService = new Proxy({} as SearchServiceImpl, {
+  get(_target, prop) {
+    const service = getSearchService();
+    const value = service[prop as keyof SearchServiceImpl];
+    return typeof value === "function" ? value.bind(service) : value;
+  },
+});

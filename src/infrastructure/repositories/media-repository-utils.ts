@@ -47,13 +47,15 @@ type SearchOptions = {
  * Builds the WHERE clause for media search.
  */
 function buildWhereClause(
-  mediaSourceId: string,
+  mediaSourceId: string | undefined,
   options: SearchOptions,
   client: TransactionClient = db
 ): SQL | undefined {
-  const conditions: (SQL | undefined)[] = [
-    eq(medias.mediaSourceId, mediaSourceId),
-  ];
+  const conditions: (SQL | undefined)[] = [];
+
+  if (mediaSourceId) {
+    conditions.push(eq(medias.mediaSourceId, mediaSourceId));
+  }
 
   // Filename/description search with escape
   if (options.query) {
@@ -263,45 +265,51 @@ export const searchMediaInDirectory = async (
 };
 
 /**
- * Performs a global search for media across all sources based on a query and/or tags.
- * @param {object} searchOptions - Options for the search.
- * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
- * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
- * @returns {Promise<InferSelectModel<typeof medias>[]>} A promise that resolves with an array of matching media items from all sources.
+ * Performs a global search for media across all sources based on search options.
+ * @param {SearchOptions} searchOptions - Options for the search.
+ * @param {TransactionClient} client - The database client to use.
+ * @returns {Promise<{ media: InferSelectModel<typeof medias>[]; total: number }>} A promise that resolves with matching media items from all sources.
  * @throws {UnexpectedError} If a database error occurs during the search.
  */
 export const globalSearchMedia = async (
-  searchOptions: {
-    query?: string;
-    tags?: string[];
-  },
+  searchOptions: SearchOptions,
   client: TransactionClient = db
 ) => {
   try {
-    const conditions: (SQL | undefined)[] = [];
+    const whereClause = buildWhereClause(undefined, searchOptions, client);
+    const orderByClause = buildOrderByClause(
+      searchOptions.sort,
+      searchOptions.order
+    );
 
-    if (searchOptions.query) {
-      const escapedQuery = escapeLikeString(searchOptions.query);
-      conditions.push(
-        or(
-          like(medias.fileName, `%${escapedQuery}%`),
-          like(medias.description, `%${escapedQuery}%`)
-        )
-      );
+    // Execute Count Query
+    const [{ total }] = await client
+      .select({ total: count() })
+      .from(medias)
+      .where(whereClause);
+
+    // Execute Main Query
+    const query = client
+      .select()
+      .from(medias)
+      .where(whereClause)
+      .orderBy(orderByClause);
+
+    // Apply pagination if limit is provided
+    // biome-ignore lint/suspicious/noExplicitAny: Drizzle query builder type mismatch
+    let pagedQuery: any = query;
+
+    if (searchOptions.limit !== undefined) {
+      pagedQuery = pagedQuery
+        .limit(searchOptions.limit)
+        .offset(searchOptions.offset || 0);
+    } else if (searchOptions.offset && searchOptions.offset > 0) {
+      pagedQuery = pagedQuery.offset(searchOptions.offset);
     }
 
-    if (searchOptions.tags && searchOptions.tags.length > 0) {
-      const mediaIdsWithTags = client
-        .select({ mediaId: mediaTags.mediaId })
-        .from(mediaTags)
-        .innerJoin(tags, eq(mediaTags.tagId, tags.id))
-        .where(inArray(tags.name, searchOptions.tags));
-      conditions.push(inArray(medias.id, mediaIdsWithTags));
-    }
+    const mediaList = await pagedQuery;
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-
-    return await client.select().from(medias).where(whereClause);
+    return { media: mediaList, total };
   } catch (error) {
     throw new UnexpectedError("Failed to perform global media search", error);
   }
