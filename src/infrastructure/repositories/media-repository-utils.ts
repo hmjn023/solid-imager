@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   getTableColumns,
+  type InferSelectModel,
   inArray,
   like,
   notInArray,
@@ -198,13 +199,14 @@ export const searchMedia = async (
 
     const results = await pagedQuery;
 
-    // biome-ignore lint/suspicious/noExplicitAny: Drizzle query result type
-    const mediaList = results.map((r: any) => {
-      // Extract original media columns by removing totalCount
-      // biome-ignore lint/correctness/noUnusedVariables: Used to separate totalCount from rest
-      const { totalCount, ...mediaData } = r;
-      return mediaData;
-    });
+    const mediaList = results.map(
+      (r: InferSelectModel<typeof medias> & { totalCount: number }) => {
+        // Extract original media columns by removing totalCount
+        // biome-ignore lint/correctness/noUnusedVariables: Used to separate totalCount from rest
+        const { totalCount, ...mediaData } = r;
+        return mediaData;
+      }
+    );
 
     let total = results.length > 0 ? results[0].totalCount : 0;
 
@@ -212,11 +214,11 @@ export const searchMedia = async (
     // We must run a count query to get the total.
     // If offset is 0 and result is empty, total is definitely 0.
     if (mediaList.length === 0 && (searchOptions.offset || 0) > 0) {
-      const [{ count: totalCount }] = await client
-        .select({ count: count() })
+      const countResult = await client
+        .select({ total: count() })
         .from(medias)
         .where(whereClause);
-      total = totalCount;
+      total = countResult[0]?.total ?? 0;
     }
 
     return { media: mediaList, total };
