@@ -7,7 +7,7 @@ const OBSERVER_CONFIG = { childList: true, subtree: true };
 const PROCESSED_IMAGE_CLASS = 'xtracter-image-processed';
 const PROCESSED_VIDEO_CLASS = 'xtracter-video-processed';
 
-function createButtonContainer(element: HTMLElement, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): HTMLDivElement {
+function createButtonContainer(metadata: TweetMetadata, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): HTMLDivElement {
     const container = document.createElement('div');
     container.style.position = 'absolute';
     container.style.top = '5px';
@@ -22,8 +22,8 @@ function createButtonContainer(element: HTMLElement, type: 'IMAGE' | 'VIDEO' = '
         e.stopPropagation();
     });
 
-    const dlBtn = createButton(type === 'VIDEO' ? 'DL VIDEO' : 'DL', '#000', () => handleAction(element, 'DOWNLOAD', type));
-    const postBtn = createButton('POST', '#0056b3', () => handleAction(element, 'POST_DOWNLOAD', type));
+    const dlBtn = createButton(type === 'VIDEO' ? 'DL VIDEO' : 'DL', '#000', () => handleAction(metadata, 'DOWNLOAD', type));
+    const postBtn = createButton('POST', '#0056b3', () => handleAction(metadata, 'POST_DOWNLOAD', type));
 
     container.appendChild(dlBtn);
     container.appendChild(postBtn);
@@ -61,14 +61,8 @@ function createButton(text: string, bgColor: string, onClick: () => void): HTMLB
     return button;
 }
 
-function handleAction(element: HTMLElement, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
-    const tweetArticle = element.closest('article');
-    if (!tweetArticle) {
-        console.error('Could not find tweet article');
-        return;
-    }
 
-    const metadata = extractMetadata(tweetArticle, element as HTMLImageElement, mediaType); // cast if image, but for video we might pass container or poster
+function handleAction(metadata: TweetMetadata, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
     console.log(`Action ${type} triggered:`, metadata);
 
     if (mediaType === 'VIDEO') {
@@ -84,45 +78,94 @@ function handleAction(element: HTMLElement, type: 'DOWNLOAD' | 'POST_DOWNLOAD', 
     }
 }
 
-function extractMetadata(article: HTMLElement, element: HTMLElement, mediaType: 'IMAGE' | 'VIDEO' = 'IMAGE'): TweetMetadata {
-    const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
-    const tweetText = tweetTextNode ? (tweetTextNode as HTMLElement).innerText : '';
 
-    const timeNode = article.querySelector('time');
-    const timestamp = timeNode ? timeNode.getAttribute('datetime') || '' : '';
+function findTweetArticle(element: HTMLElement): HTMLElement | null {
+    // 1. Standard case: ancestor
+    const closest = element.closest('article');
+    if (closest) return closest;
 
-    const timeLink = timeNode?.closest('a');
-    const tweetUrl = timeLink ? timeLink.href : window.location.href;
+    // 2. Popup/Layer case: search in common layer
+    const layer = element.closest('[data-testid="layers"]') || document.querySelector('[data-testid="layers"]');
+    if (layer) {
+        const article = layer.querySelector('article');
+        if (article) return article as HTMLElement;
+    }
 
-    const userNameNode = article.querySelector('div[data-testid="User-Name"]');
-    const authorName = (userNameNode?.querySelector('span')?.innerText) || '';
+    // 3. Document-wide search (focusing on the single active article if unique)
+    const articles = document.querySelectorAll('article');
+    if (articles.length === 1) return articles[0] as HTMLElement;
+
+    return null;
+}
+
+function extractMetadataFromUrl(): Partial<TweetMetadata> {
+    const url = new URL(window.location.href);
+    const pathParts = url.pathname.split('/').filter(p => p);
 
     let authorId = '';
-    const userAnchor = userNameNode?.querySelector('a');
-    if (userAnchor) {
-        try {
-            const url = new URL(userAnchor.href);
-            const pathParts = url.pathname.split('/').filter(p => p);
-            if (pathParts.length > 0) {
-                authorId = '@' + pathParts[0];
+    let tweetUrl = window.location.href;
+
+    // pathParts check: ['username', 'status', '1234567890', 'photo', '1']
+    if (pathParts.length >= 3 && pathParts[1] === 'status') {
+        authorId = '@' + pathParts[0];
+        // Remove /photo/1, /video/1 to reconstruct base Tweet URL
+        tweetUrl = `https://x.com/${pathParts[0]}/status/${pathParts[2]}`;
+    }
+
+    return { authorId, tweetUrl };
+}
+
+function extractMetadata(article: HTMLElement | null, element: HTMLElement, mediaType: 'IMAGE' | 'VIDEO' = 'IMAGE'): TweetMetadata {
+    let tweetText = '';
+    let timestamp = '';
+    let tweetUrl = window.location.href;
+    let authorName = '';
+    let authorId = '';
+
+    // If article is found, try to extract from DOM
+    if (article) {
+        const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
+        tweetText = tweetTextNode ? (tweetTextNode as HTMLElement).innerText : '';
+
+        const timeNode = article.querySelector('time');
+        timestamp = timeNode ? timeNode.getAttribute('datetime') || '' : '';
+
+        const timeLink = timeNode?.closest('a');
+        if (timeLink) tweetUrl = timeLink.href;
+
+        const userNameNode = article.querySelector('div[data-testid="User-Name"]');
+        authorName = (userNameNode?.querySelector('span')?.innerText) || '';
+
+        const userAnchor = userNameNode?.querySelector('a');
+        if (userAnchor) {
+            try {
+                const url = new URL(userAnchor.href);
+                const pathParts = url.pathname.split('/').filter(p => p);
+                if (pathParts.length > 0) {
+                    authorId = '@' + pathParts[0];
+                }
+            } catch (e) {
+                console.error('Error parsing user URL:', e);
             }
-        } catch (e) {
-            console.error('Error parsing user URL:', e);
+        }
+
+        if (!authorId) {
+            authorId = ((userNameNode as HTMLElement)?.innerText?.match(/@\w+/)?.[0]) || '';
         }
     }
 
-    if (!authorId) {
-        authorId = ((userNameNode as HTMLElement)?.innerText.match(/@\w+/)?.[0]) || '';
+    // Fallback: extract from URL if critical info is missing
+    if (!authorId || !tweetUrl || tweetUrl === window.location.href) {
+        const urlMetadata = extractMetadataFromUrl();
+        if (urlMetadata.authorId && !authorId) authorId = urlMetadata.authorId;
+        if (urlMetadata.tweetUrl) tweetUrl = urlMetadata.tweetUrl;
     }
 
     let imageUrl: string;
 
     if (mediaType === 'VIDEO') {
-        // For video, we use the tweet URL as the image URL
-        // backend should handle this if it detects a tweet URL
         imageUrl = tweetUrl;
     } else {
-        // Image logic
         try {
             const img = element as HTMLImageElement;
             const url = new URL(img.src);
@@ -135,7 +178,7 @@ function extractMetadata(article: HTMLElement, element: HTMLElement, mediaType: 
     }
 
     return {
-        imageUrl, // repurposed for tweetUrl in case of video
+        imageUrl,
         tweetUrl,
         tweetText,
         timestamp,
@@ -156,31 +199,37 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
 });
 
-function processImages() {
+function processMedia() {
     // Process Images
     const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
     images.forEach((img) => {
         const imageElement = img as HTMLImageElement;
 
-        // Store metadata for bulk export
-        const tweetArticle = imageElement.closest('article');
-        if (tweetArticle) {
-            const metadata = extractMetadata(tweetArticle as HTMLElement, imageElement, 'IMAGE');
-            if (metadata.imageUrl && !processedMetadata.has(metadata.imageUrl)) {
-                processedMetadata.set(metadata.imageUrl, metadata);
-            }
-        }
-
         if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) return;
 
         const container = imageElement.parentElement;
         if (container) {
+            // Extract metadata first
+            const tweetArticle = findTweetArticle(imageElement);
+            if (!tweetArticle) {
+                // If finding article fails, we still try to extract from URL in extractMetadata
+                // But logging it might be useful
+                // console.warn('Could not find tweet article for image, falling back to URL extraction');
+            }
+
+            const metadata = extractMetadata(tweetArticle, imageElement, 'IMAGE');
+
+            // Store metadata for bulk export
+            if (metadata.imageUrl && !processedMetadata.has(metadata.imageUrl)) {
+                processedMetadata.set(metadata.imageUrl, metadata);
+            }
+
             const style = window.getComputedStyle(container);
             if (style.position === 'static') {
                 container.style.position = 'relative';
             }
             container.classList.add(PROCESSED_IMAGE_CLASS);
-            const btnContainer = createButtonContainer(imageElement, 'IMAGE');
+            const btnContainer = createButtonContainer(metadata, 'IMAGE');
             container.appendChild(btnContainer);
         }
     });
@@ -199,6 +248,10 @@ function processImages() {
         // Check if there is already a processed marker inside (to avoid double processing if we query differently)
         if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) return;
 
+        // Extract metadata first
+        const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
+        const metadata = extractMetadata(tweetArticle, container as HTMLElement, 'VIDEO');
+
         const style = window.getComputedStyle(container);
         if (style.position === 'static') {
             container.style.position = 'relative';
@@ -206,11 +259,9 @@ function processImages() {
 
         container.classList.add(PROCESSED_VIDEO_CLASS);
 
-        // Pass the container or one of its children as the 'element' reference? 
-        // We just need it to find the article in handleAction.
-        const btnContainer = createButtonContainer(container as HTMLElement, 'VIDEO');
+        const btnContainer = createButtonContainer(metadata, 'VIDEO');
 
-        // Adjust position for video?
+        // Adjust position for video
         btnContainer.style.top = '10px';
         btnContainer.style.right = '10px';
 
@@ -227,10 +278,10 @@ const observer = new MutationObserver((mutations) => {
         }
     }
     if (shouldProcess) {
-        processImages();
+        processMedia();
     }
 });
 
 observer.observe(document.body, OBSERVER_CONFIG);
 
-processImages();
+processMedia();

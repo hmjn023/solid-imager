@@ -4,6 +4,8 @@ import {
   count,
   desc,
   eq,
+  getTableColumns,
+  type InferSelectModel,
   inArray,
   like,
   notInArray,
@@ -175,15 +177,12 @@ export const searchMedia = async (
       searchOptions.order
     );
 
-    // Execute Count Query
-    const [{ total }] = await client
-      .select({ total: count() })
-      .from(medias)
-      .where(whereClause);
-
-    // Execute Main Query
+    // Optimize: Combine count and data retrieval into a single query using window functions
     const query = client
-      .select()
+      .select({
+        ...getTableColumns(medias),
+        totalCount: sql<number>`count(*) over()`.mapWith(Number),
+      })
       .from(medias)
       .where(whereClause)
       .orderBy(orderByClause);
@@ -200,7 +199,29 @@ export const searchMedia = async (
       pagedQuery = pagedQuery.offset(searchOptions.offset);
     }
 
-    const mediaList = await pagedQuery;
+    const results = await pagedQuery;
+
+    const mediaList = results.map(
+      (r: InferSelectModel<typeof medias> & { totalCount: number }) => {
+        // Extract original media columns by removing totalCount
+        // biome-ignore lint/correctness/noUnusedVariables: Used to separate totalCount from rest
+        const { totalCount, ...mediaData } = r;
+        return mediaData;
+      }
+    );
+
+    let total = results.length > 0 ? results[0].totalCount : 0;
+
+    // Fallback: If result is empty but offset > 0, we don't know the total.
+    // We must run a count query to get the total.
+    // If offset is 0 and result is empty, total is definitely 0.
+    if (mediaList.length === 0 && (searchOptions.offset || 0) > 0) {
+      const countResult = await client
+        .select({ total: count() })
+        .from(medias)
+        .where(whereClause);
+      total = countResult[0]?.total ?? 0;
+    }
 
     return { media: mediaList, total };
   } catch (error) {
