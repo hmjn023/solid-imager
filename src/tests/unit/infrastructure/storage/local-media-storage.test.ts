@@ -31,7 +31,6 @@ describe("LocalMediaStorage Unit Tests", () => {
     // Mock fluent-ffmpeg
     // fluent-ffmpeg default export is a function that returns an object (command)
     // but explicit ffprobe usage: ffmpeg.ffprobe(path, cb)
-    // @ts-expect-error - Mocking library structure
     vi.mocked(ffmpeg).ffprobe = vi.fn((_path, cb) => {
       cb(null, {
         // biome-ignore lint/style/useNamingConvention: external library property
