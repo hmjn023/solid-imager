@@ -15,6 +15,13 @@
       "when": 1768052635363,
       "tag": "0001_parched_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768154643869,
+      "tag": "0002_lumpy_vin_gonzales",
+      "breakpoints": true
     }
   ]
 }
