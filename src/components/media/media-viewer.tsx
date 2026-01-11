@@ -1,6 +1,5 @@
 import { useParams } from "@solidjs/router";
 import { createMemo, Match, Switch } from "solid-js";
-import { isServer } from "solid-js/web";
 import type { MediaDetails } from "~/domain/media/schemas";
 
 type MediaViewerProps = {
@@ -10,11 +9,9 @@ type MediaViewerProps = {
 export default function MediaViewer(props: MediaViewerProps) {
   const params = useParams();
 
-  const mediaUrl = createMemo(() => {
-    const url = `/api/sources/${params.mediaSourceId}/${params.mediaId}`;
-    const fullUrl = isServer ? `http://localhost:3000${url}` : url;
-    return fullUrl;
-  });
+  const mediaUrl = createMemo(
+    () => `/api/sources/${params.mediaSourceId}/${params.mediaId}`
+  );
 
   return (
     <div class="flex h-full w-full items-center justify-center bg-black/5">
