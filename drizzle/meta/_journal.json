@@ -15,6 +15,13 @@
       "when": 1768052635363,
       "tag": "0001_parched_monster_badoon",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1768256273328,
+      "tag": "0002_last_mister_fear",
+      "breakpoints": true
     }
   ]
 }
