@@ -143,7 +143,9 @@ export const medias = pgTable(
       table.filePath
     ),
     mediaSourceIdIndex: index("idx_media_source_id").on(table.mediaSourceId),
-    fileSizeIndex: index("idx_media_file_size").on(table.fileSize),
+    fileSizeIndex: index("idx_media_file_size")
+      .on(table.fileSize)
+      .concurrently(),
     fileNameIndex: index("idx_media_file_name").on(table.fileName),
     createdAtIndex: index("idx_media_created_at").on(table.createdAt),
     descriptionIndex: index("idx_media_description").on(table.description),
