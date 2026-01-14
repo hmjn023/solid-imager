@@ -5,6 +5,7 @@ import {
   type AddMediaRequest,
   type Author,
   type Media,
+  type MediaDetails,
   type MediaGenerationInfo,
   type MediaSearchRequest,
   type MediaSearchResponse,
@@ -414,6 +415,83 @@ export const MediaRepository: IMediaRepository = {
     } catch (error) {
       throw new UnexpectedError(
         `Failed to upsert media generation info for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  /**
+   * Retrieves media details including tags, authors, URLs, and generation info in a single query.
+   * This is a performance optimization over calling individual methods.
+   */
+  async getDetails(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaDetails | null> {
+    try {
+      // NOTE: We cannot simply use `db` here because `db` in this codebase is a proxy
+      // that might not support the relational query builder methods directly or type inference might be lost.
+      // However, we can use the `query` property if it's available on the client.
+      // The `db` import is `NodePgDatabase<Schema> | PgliteDatabase<Schema>`.
+
+      const client = (tx as unknown as TransactionClient) || db;
+
+      // Use the relational query builder
+      const result = await client.query.medias.findFirst({
+        where: eq(medias.id, mediaId),
+        with: {
+          tags: {
+            with: {
+              tag: true,
+            },
+          },
+          generationInfo: true,
+          authors: {
+            with: {
+              author: true,
+            },
+          },
+          urls: true,
+        },
+      });
+
+      if (!result) {
+        return null;
+      }
+
+      // Map the result to the domain model
+      const media = mapToMedia(result);
+
+      const tags = result.tags.map((mediaTag) => ({
+        ...mediaTag.tag,
+        type: mediaTag.tagType,
+      }));
+
+      const authors = result.authors.map((mediaAuthor) => mediaAuthor.author);
+
+      const urls = result.urls.map(mapToMediaUrl);
+
+      const generationInfo = result.generationInfo
+        ? {
+            ...result.generationInfo,
+            aiGenerated: result.generationInfo.aiGenerated ?? false,
+            modelName: result.generationInfo.modelName ?? "",
+            seed: result.generationInfo.seed ?? -1,
+            cfgScale: result.generationInfo.cfgScale ?? 0,
+            steps: result.generationInfo.steps ?? 0,
+          }
+        : null;
+
+      return {
+        ...media,
+        tags,
+        generationInfo,
+        authors,
+        urls,
+      };
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to get media details for ID: ${mediaId}`,
         error
       );
     }

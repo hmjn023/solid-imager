@@ -44,6 +44,7 @@ describe("MediaService Unit Tests", () => {
       getUrls: vi.fn(),
       addUrls: vi.fn(),
       upsertGenerationInfo: vi.fn(),
+      getDetails: vi.fn(),
     } as unknown as IMediaRepository;
 
     mockSourceRepository = {

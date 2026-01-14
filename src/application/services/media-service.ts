@@ -258,6 +258,26 @@ export class MediaServiceImpl {
       throw new ResourceNotFoundError("Media not found in source");
     }
 
+    const details = await this.mediaRepository.getDetails(validatedMediaId);
+
+    if (details) {
+      let finalGenerationInfo = details.generationInfo;
+
+      // If generation info is not found, try to extract it (Lazy Extraction)
+      if (!finalGenerationInfo) {
+        finalGenerationInfo = await this.extractAndUpdateMetadata(
+          media,
+          validatedSourceId
+        );
+      }
+      return {
+        ...details,
+        generationInfo: finalGenerationInfo,
+      };
+    }
+
+    // Fallback if getDetails returns null (should not happen since we already checked existence)
+    // but ensures type safety
     const [tags, generationInfo, authors, urls] = await Promise.all([
       this.mediaRepository.getTags(validatedMediaId),
       this.mediaRepository.getGenerationInfo(validatedMediaId),

@@ -3,6 +3,7 @@ import type {
   AddMediaRequest,
   Author,
   Media,
+  MediaDetails,
   MediaGenerationInfo,
   MediaSearchRequest,
   MediaSearchResponse,
@@ -52,6 +53,9 @@ export type IMediaRepository = {
     workflow: unknown,
     tx?: Transaction
   ): Promise<MediaGenerationInfo>;
+
+  // Composite data
+  getDetails(mediaId: string, tx?: Transaction): Promise<MediaDetails | null>;
 
   // Bulk/List
   findAllBySourceId(
