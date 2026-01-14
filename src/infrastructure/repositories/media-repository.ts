@@ -5,6 +5,7 @@ import {
   type AddMediaRequest,
   type Author,
   type Media,
+  type MediaDetails,
   type MediaGenerationInfo,
   type MediaSearchRequest,
   type MediaSearchResponse,
@@ -59,6 +60,29 @@ function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
     url: dbUrl.url,
     createdAt: dbUrl.createdAt,
     updatedAt: dbUrl.updatedAt,
+  };
+}
+
+// biome-ignore lint/suspicious/noExplicitAny: Drizzle relation query result type is complex
+function mapToMediaDetails(row: any): MediaDetails {
+  return {
+    ...mapToMedia(row),
+    tags: row.tags.map((mt: any) => ({
+      ...mt.tag,
+      type: mt.tagType,
+    })),
+    generationInfo: row.generationInfo
+      ? {
+          ...row.generationInfo,
+          aiGenerated: row.generationInfo.aiGenerated ?? false,
+          modelName: row.generationInfo.modelName ?? "",
+          seed: row.generationInfo.seed ?? -1,
+          cfgScale: row.generationInfo.cfgScale ?? 0,
+          steps: row.generationInfo.steps ?? 0,
+        }
+      : null,
+    authors: row.authors.map((ma: any) => ma.author),
+    urls: row.urls.map(mapToMediaUrl),
   };
 }
 
@@ -302,6 +326,47 @@ export const MediaRepository: IMediaRepository = {
       total: Number(result.total),
     };
     return mediaSearchResponseSchema.parse(mappedResult);
+  },
+
+  /**
+   * Optimized: Fetch media and all relations in a single query using Drizzle's relational query builder.
+   * This avoids N+1 query issues (or N+4 in this case) when fetching details.
+   */
+  async getDetails(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaDetails | null> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const result = await client.query.medias.findFirst({
+        where: eq(medias.id, mediaId),
+        with: {
+          tags: {
+            with: {
+              tag: true,
+            },
+          },
+          generationInfo: true,
+          authors: {
+            with: {
+              author: true,
+            },
+          },
+          urls: true,
+        },
+      });
+
+      if (!result) {
+        return null;
+      }
+
+      return mapToMediaDetails(result);
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to get media details for mediaId: ${mediaId}`,
+        error
+      );
+    }
   },
 
   async getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
