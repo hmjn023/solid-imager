@@ -732,6 +732,7 @@ export const mediaUrls = pgTable(
   },
   (table) => ({
     mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
+    urlIndex: index("idx_media_urls_url").on(table.url),
   })
 );
 
@@ -800,6 +801,7 @@ export const mediaCollections = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.collectionId, table.mediaId] }),
+    mediaIdIndex: index("idx_media_collections_media_id").on(table.mediaId),
   })
 );
 
