@@ -704,7 +704,7 @@ export class MediaServiceImpl {
       const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, t);
       if (copyResult.deferred) {
         accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
-        accumulatedDeferred.sse.push(...copyResult.deferred.sse);
+        // We omit individual media-copied event for move context
       }
 
       // 2. Delete Original if Copy Successful
@@ -721,8 +721,31 @@ export class MediaServiceImpl {
           );
           if (deleteResult) {
             accumulatedDeferred.jobs.push(...deleteResult.jobs);
-            accumulatedDeferred.sse.push(...deleteResult.sse);
+            // We omit individual media-deleted event for move context
           }
+
+          // Replicate SseManager.notifyMediaMoved logic but deferred
+          const sseEventSource: DeferredSse = {
+            mediaSourceId: sourceMedia.mediaSourceId,
+            event: "media-moved",
+            payload: {
+              type: "source",
+              mediaId: sourceMediaId,
+              targetId: targetSourceId,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          const sseEventTarget: DeferredSse = {
+            mediaSourceId: targetSourceId,
+            event: "media-moved",
+            payload: {
+              type: "target",
+              media: copyResult.media,
+              sourceId: sourceMedia.mediaSourceId,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
         }
       }
       return {
