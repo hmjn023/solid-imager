@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit push",
     "db:drop": "drizzle-kit drop",
     "db:dump": "bun scripts/dump-db.ts",
+    "db:restore": "bun scripts/restore-db.ts",
     "db:studio": "drizzle-kit studio",
     "lint": "biome lint ./src",
     "format": "biome format --fix ./src",
