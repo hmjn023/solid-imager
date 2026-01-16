@@ -1,3 +1,7 @@
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+
 /**
  * Hash Utilities
  * Extracted from src/lib/helpers/utils.ts
@@ -10,12 +14,14 @@
 export const HashUtils = {
   /**
    * Generates an MD5 hash for a given file.
-   * @param {string} _filePath - The path to the file.
+   * @param {string} filePath - The path to the file.
    * @returns {Promise<string>} A promise that resolves with the MD5 hash as a string.
    */
-  generateMd5(_filePath: string): Promise<string> {
-    // TODO: Generate MD5 hash of file
-    throw new Error("Not implemented");
+  async generateMd5(filePath: string): Promise<string> {
+    const hash = createHash("md5");
+    const input = createReadStream(filePath);
+    await pipeline(input, hash);
+    return hash.digest("hex");
   },
 
   /**
