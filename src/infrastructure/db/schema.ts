@@ -16,6 +16,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -143,6 +144,7 @@ export const medias = pgTable(
       table.filePath
     ),
     mediaSourceIdIndex: index("idx_media_source_id").on(table.mediaSourceId),
+    fileSizeIndex: index("idx_media_file_size").on(table.fileSize),
     fileNameIndex: index("idx_media_file_name").on(table.fileName),
     createdAtIndex: index("idx_media_created_at").on(table.createdAt),
     descriptionIndex: index("idx_media_description").on(table.description),
@@ -729,6 +731,7 @@ export const mediaUrls = pgTable(
   },
   (table) => ({
     mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
+    urlIndex: uniqueIndex("idx_media_urls_url_unique").on(table.url),
   })
 );
 
@@ -797,6 +800,7 @@ export const mediaCollections = pgTable(
   },
   (table) => ({
     pk: primaryKey({ columns: [table.collectionId, table.mediaId] }),
+    mediaIdIndex: index("idx_media_collections_media_id").on(table.mediaId),
   })
 );
 

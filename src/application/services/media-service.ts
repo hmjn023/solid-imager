@@ -250,34 +250,27 @@ export class MediaServiceImpl {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-    const media = await this.mediaRepository.findById(validatedMediaId);
-    if (!media) {
+    const mediaDetails =
+      await this.mediaRepository.getDetails(validatedMediaId);
+    if (!mediaDetails) {
       throw new ResourceNotFoundError("Media", validatedMediaId);
     }
-    if (media.mediaSourceId !== validatedSourceId) {
+    if (mediaDetails.mediaSourceId !== validatedSourceId) {
       throw new ResourceNotFoundError("Media not found in source");
     }
 
-    const [tags, generationInfo, authors, urls] = await Promise.all([
-      this.mediaRepository.getTags(validatedMediaId),
-      this.mediaRepository.getGenerationInfo(validatedMediaId),
-      this.mediaRepository.getAuthors(validatedMediaId),
-      this.mediaRepository.getUrls(validatedMediaId),
-    ]);
-
-    let finalGenerationInfo = generationInfo;
+    let finalGenerationInfo = mediaDetails.generationInfo;
 
     // If generation info is not found, try to extract it (Lazy Extraction)
     if (!finalGenerationInfo) {
       finalGenerationInfo = await this.extractAndUpdateMetadata(
-        media,
+        mediaDetails,
         validatedSourceId
       );
     }
 
     return {
-      ...media,
-      tags,
+      ...mediaDetails,
       generationInfo: finalGenerationInfo
         ? {
             ...finalGenerationInfo,
@@ -288,8 +281,6 @@ export class MediaServiceImpl {
             steps: finalGenerationInfo.steps ?? 0,
           }
         : null,
-      authors,
-      urls,
     };
   }
 

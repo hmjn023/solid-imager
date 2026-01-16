@@ -29,6 +29,7 @@
     "node_modules",
     ".vinxi",
     ".output",
-    "dist"
+    "dist",
+    "scripts"
   ]
 }

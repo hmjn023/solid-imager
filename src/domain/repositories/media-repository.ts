@@ -3,6 +3,7 @@ import type {
   AddMediaRequest,
   Author,
   Media,
+  MediaDetails,
   MediaGenerationInfo,
   MediaSearchRequest,
   MediaSearchResponse,
@@ -37,6 +38,11 @@ export type IMediaRepository = {
     criteria: MediaSearchRequest,
     tx?: Transaction
   ): Promise<MediaSearchResponse>;
+
+  /**
+   * Retrieves full media details (tags, authors, etc.) in a single optimized query.
+   */
+  getDetails(mediaId: string, tx?: Transaction): Promise<MediaDetails | null>;
 
   // Ancillary data
   getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;

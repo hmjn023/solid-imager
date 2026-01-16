@@ -1,16 +1,39 @@
-# 設計書
+# 設計ドキュメント
 
-このディレクトリには、ComfyUIメディア管理システムの設計情報が格納されています。
+このディレクトリには、solid-imager の設計情報が格納されています。
 
-各ファイルは、システムの特定の側面に関するドキュメントです。
+## 📂 ドキュメント一覧
 
-- `01-overview.md`: プロジェクトの概要と用語の定義
-- `02-system-requirements.md`: システムの要件
-- `03-technology-stack.md`: 使用されている技術スタック
-- `04-database-design.md`: データベースの設計
-- `05-api-design.md`: APIの設計
-- `06-feature-details.md`: 各機能の詳細な仕様
-- `07-type-definitions.md`: 型定義
-- `08-frontend.md`: フロントエンドの設計
-- `09-api-documentation.md`: APIドキュメンテーション (Swagger)
-- `XX-schedule.md`: バックエンド実装スケジュール
+### 概要・要件
+- **[overview.md](./overview.md)** - プロジェクトの概要と用語の定義
+- **[system-requirements.md](./system-requirements.md)** - システムの要件
+
+### 技術・アーキテクチャ
+- **[technology-stack.md](./technology-stack.md)** - 使用されている技術スタック
+- **[database-design.md](./database-design.md)** - データベースの設計
+- **[api-design.md](./api-design.md)** - API の設計
+
+### 実装ガイド
+- **[orpc-guide.md](./orpc-guide.md)** - oRPC による型安全な API 実装ガイド
+- **[python-ai-service.md](./python-ai-service.md)** - Python AI サービスの詳細
+- **[browser-extension.md](./browser-extension.md)** - ブラウザ拡張機能 (xtracter)
+
+### UI・パフォーマンス
+- **[frontend.md](./frontend.md)** - フロントエンドの設計
+- **[performance-optimization.md](./performance-optimization.md)** - パフォーマンス最適化
+
+## 🚀 開発を始める
+
+1. まず [AGENTS.md](../../AGENTS.md) を読んで開発フローを理解する
+2. [technology-stack.md](./technology-stack.md) で使用技術を確認
+3. [orpc-guide.md](./orpc-guide.md) で API 実装方法を学ぶ
+4. [database-design.md](./database-design.md) でデータ構造を理解
+
+## 📚 アーキテクチャドキュメント
+
+より詳細なアーキテクチャ情報は [../architecture/](../architecture/) を参照してください。
+
+- **[ARCHITECTURE.md](../architecture/ARCHITECTURE.md)** - クリーンアーキテクチャの実装詳細
+- **[ADR-001](../architecture/ADR-001-clean-architecture.md)** - クリーンアーキテクチャ採用の経緯
+- **[ADR-002](../architecture/ADR-002-database-schema-consistency.md)** - DB スキーマ一貫性の方針
+- **[ADR-003](../architecture/ADR-003-feature-requirements-and-schema-extensions.md)** - 機能要件とスキーマ拡張

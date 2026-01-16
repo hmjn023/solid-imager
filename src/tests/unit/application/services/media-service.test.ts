@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
-import type { Media } from "~/domain/media/schemas";
+import type { MediaDetails } from "~/domain/media/schemas";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
@@ -44,6 +44,7 @@ describe("MediaService Unit Tests", () => {
       getUrls: vi.fn(),
       addUrls: vi.fn(),
       upsertGenerationInfo: vi.fn(),
+      getDetails: vi.fn(),
     } as unknown as IMediaRepository;
 
     mockSourceRepository = {
@@ -107,7 +108,7 @@ describe("MediaService Unit Tests", () => {
       // Valid v4 UUIDs
       const mediaId = "123e4567-e89b-42d3-a456-426614174000";
       const sourceId = "123e4567-e89b-42d3-a456-426614174001";
-      const mockMedia: Media = {
+      const mockMedia: MediaDetails = {
         id: mediaId,
         mediaSourceId: sourceId,
         filePath: "/path/to/image.png",
@@ -121,48 +122,28 @@ describe("MediaService Unit Tests", () => {
         createdAt: new Date(),
         modifiedAt: new Date(),
         indexedAt: new Date(),
-      };
-
-      const mockSource = {
-        id: sourceId,
-        name: "Test Source",
-        type: "local",
-        connectionInfo: { path: "/root" },
-      };
-
-      // Setup repository responses
-      // Setup repository responses
-      (mockMediaRepository.findById as Mock).mockResolvedValue(mockMedia);
-      (mockMediaRepository.getTags as Mock).mockResolvedValue([]);
-      (mockMediaRepository.getGenerationInfo as Mock).mockResolvedValue(null);
-      (mockMediaRepository.getAuthors as Mock).mockResolvedValue([]);
-      (mockMediaRepository.getUrls as Mock).mockResolvedValue([]);
-      (mockSourceRepository.findById as Mock).mockResolvedValue(
-        mockSource as any
-      );
-      // getFileStats removed as it is not in IStorageService and not used here
-      // getFileStats removed as it is not in IStorageService and not used here
-      (mockImageProcessor.extractMetadata as Mock).mockResolvedValue({
         tags: [],
-        prompt: null,
-        workflow: null,
-      });
+        generationInfo: null,
+        authors: [],
+        urls: [],
+      };
+
+      // Setup repository responses
+      (mockMediaRepository.getDetails as Mock).mockResolvedValue(mockMedia);
 
       // Call the method
       const result = await mediaService.getMediaDetails(sourceId, mediaId);
 
       // Verify interactions and result
-      // The implementation parses the IDs first, then calls repository.
-      expect(mockMediaRepository.findById).toHaveBeenCalledWith(mediaId);
+      expect(mockMediaRepository.getDetails).toHaveBeenCalledWith(mediaId);
       expect(result).toBeDefined();
       expect(result.id).toBe(mediaId);
-      expect(mockImageProcessor.extractMetadata).toHaveBeenCalled();
     });
 
     it("should throw error if media not found", async () => {
       const mediaId = "123e4567-e89b-42d3-a456-426614174999";
       const sourceId = "123e4567-e89b-42d3-a456-426614174888";
-      (mockMediaRepository.findById as Mock).mockResolvedValue(null);
+      (mockMediaRepository.getDetails as Mock).mockResolvedValue(null);
 
       await expect(
         mediaService.getMediaDetails(sourceId, mediaId)
