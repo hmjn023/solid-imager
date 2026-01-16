@@ -349,7 +349,20 @@ formData.append('metadata', JSON.stringify({
 ```json
 {
   "success": true,
-  "mediaId": "uuid-of-uploaded-media"
+  "filePath": "path/to/uploaded/image.jpg"
+}
+```
+
+ファイル名の競合が発生した場合:
+
+```json
+{
+  "success": false,
+  "filePath": "",
+  "conflict": {
+    "existingFile": "image.jpg",
+    "suggestedName": "image_1.jpg"
+  }
 }
 ```
 

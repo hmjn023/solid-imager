@@ -192,8 +192,8 @@ Dependency Management (Python): uv
   - メディアソースのインポート
   - メタデータの復元
 - **実装場所**: 
-  - エクスポート: `src/infrastructure/api/routers/sources-router.ts`
-  - インポート: `src/infrastructure/api/routers/sources-router.ts`
+  - エクスポート: `src/infrastructure/api/app.ts` (REST エンドポイント)
+  - インポート: `src/infrastructure/api/app.ts` (REST エンドポイント)
 
 ### ブラウザ拡張機能 (xtracter)
 - **Chrome Extension**: X (Twitter) から画像を抽出

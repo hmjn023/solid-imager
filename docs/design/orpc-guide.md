@@ -98,7 +98,7 @@ export const mediaSearchRequestSchema = z.object({
  * メディア検索レスポンス
  */
 export const mediaSearchResponseSchema = z.object({
-  items: z.array(mediaSchema),
+  items: z.array(mediaSchema), // mediaSchema は同ファイル内で定義されたメディア単体のスキーマ
   total: z.number(),
   offset: z.number(),
   limit: z.number().nullable(),
