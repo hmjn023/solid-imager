@@ -38,6 +38,7 @@ import type { IStorageService } from "~/domain/services/storage-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import {
   addJobsToQueue,
+  type Job,
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -62,6 +63,39 @@ const WEBP_SUBTYPE = Buffer.from("57454250", "hex"); // WEBP
 const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
+
+type DeferredJobs = {
+  mediaSourceId: string;
+  jobs: Job[];
+};
+
+type DeferredSse = {
+  mediaSourceId: string;
+  event: string;
+  // biome-ignore lint/suspicious/noExplicitAny: SSE payload is flexible
+  payload: any;
+};
+
+type DeferredActions = {
+  jobs: DeferredJobs[];
+  sse: DeferredSse[];
+};
+
+function executeDeferredActions(actions: DeferredActions) {
+  if (actions.jobs.length > 0) {
+    for (const item of actions.jobs) {
+      addJobsToQueue(item.mediaSourceId, item.jobs);
+      startJobQueue(item.mediaSourceId, (job) =>
+        processMediaJob(job, item.mediaSourceId)
+      );
+    }
+  }
+  if (actions.sse.length > 0) {
+    for (const item of actions.sse) {
+      SseManager.sendEvent(item.mediaSourceId, item.event, item.payload);
+    }
+  }
+}
 
 export async function validateFileSignature(
   file: File,
@@ -524,7 +558,7 @@ export class MediaServiceImpl {
     sourceMediaId: string,
     targetSourceId: string,
     tx?: Transaction
-  ): Promise<{ success: boolean; media: Media }> {
+  ): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
     const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
     const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
 
@@ -592,20 +626,53 @@ export class MediaServiceImpl {
     // 4. Copy Metadata
     await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
 
-    // 5. Start Thumbnail Generation for New Media
+    // 5. Prepare Deferred Actions (Jobs + Notifications)
     const sourcePath = targetConnection.path;
-    await addJobsToQueue(validatedTargetSourceId, [
+    const jobs: Job[] = [
       {
         mediaId: newMediaEntry.id,
         sourcePath,
         type: "thumbnail",
       },
-    ]);
+    ];
+
+    const deferredActions: DeferredActions = {
+      jobs: [
+        {
+          mediaSourceId: validatedTargetSourceId,
+          jobs,
+        },
+      ],
+      sse: [], // Will be handled differently if no tx
+    };
+
+    // Note: notifyMediaCopied is a static helper that might not fit easily into DeferredSse structure
+    // without duplicating its logic. SseManager.notifyMediaCopied sends "media-copied".
+    // Let's replicate the event structure.
+    const sseEvent: DeferredSse = {
+      mediaSourceId: validatedTargetSourceId,
+      event: "media-copied",
+      payload: {
+        sourceMediaId,
+        media: newMediaEntry,
+      },
+    };
+
+    if (tx) {
+      deferredActions.sse.push(sseEvent);
+      return {
+        success: true,
+        media: newMediaEntry,
+        deferred: deferredActions,
+      };
+    }
+
+    // Execute immediately if no transaction
+    addJobsToQueue(validatedTargetSourceId, jobs);
     startJobQueue(validatedTargetSourceId, (job) =>
       processMediaJob(job, validatedTargetSourceId)
     );
 
-    // Notify via SSE
     SseManager.notifyMediaCopied(
       sourceMediaId,
       validatedTargetSourceId,
@@ -625,36 +692,82 @@ export class MediaServiceImpl {
     sourceMediaId: string,
     targetSourceId: string,
     tx?: Transaction
-  ): Promise<{ success: boolean; media: Media }> {
+  ): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
     const execute = async (t: Transaction) => {
+      const accumulatedDeferred: DeferredActions = {
+        jobs: [],
+        sse: [],
+      };
+
       // 1. Copy
-      const result = await this.copyMedia(sourceMediaId, targetSourceId, t);
+      const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, t);
+      if (copyResult.deferred) {
+        accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
+        accumulatedDeferred.sse.push(...copyResult.deferred.sse);
+      }
 
       // 2. Delete Original if Copy Successful
-      if (result.success) {
+      if (copyResult.success) {
         const sourceMedia = await this.mediaRepository.findById(
           sourceMediaId,
           t
         );
         if (sourceMedia) {
-          await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId, t);
+          const deleteResult = await this.deleteMedia(
+            sourceMedia.mediaSourceId,
+            sourceMediaId,
+            t
+          );
+          if (deleteResult) {
+            accumulatedDeferred.jobs.push(...deleteResult.jobs);
+            accumulatedDeferred.sse.push(...deleteResult.sse);
+          }
 
-          // Notify via SSE
+          // Notify via SSE (Move specific event)
+          // Since deleteMedia adds "media-deleted" and copyMedia adds "media-copied",
+          // "media-moved" is an extra event.
+          // Note: "media-deleted" and "media-copied" might be enough for UI,
+          // but if we want "media-moved", we should add it.
+          // Existing code:
+          /*
           SseManager.notifyMediaMoved(
             sourceMedia.mediaSourceId,
             targetSourceId,
             sourceMediaId,
             result.media
           );
+          */
+          // We should add this to deferred as well.
+          accumulatedDeferred.sse.push({
+            mediaSourceId: sourceMedia.mediaSourceId,
+            event: "media-moved",
+            payload: {
+              targetSourceId,
+              oldMediaId: sourceMediaId,
+              newMedia: copyResult.media,
+            },
+          });
         }
       }
-      return result;
+      return {
+        ...copyResult,
+        deferred: accumulatedDeferred,
+      };
     };
 
     if (tx) {
       return await execute(tx);
     }
-    return await DrizzleTransactionManager.transaction(execute);
+
+    // Top-level transaction
+    const result = await DrizzleTransactionManager.transaction(execute);
+
+    // Execute deferred actions after commit
+    if (result.deferred) {
+      executeDeferredActions(result.deferred);
+    }
+
+    return result;
   }
 
   /**
@@ -664,7 +777,7 @@ export class MediaServiceImpl {
     mediaSourceId: string,
     mediaId: string,
     tx?: Transaction
-  ): Promise<void> {
+  ): Promise<DeferredActions | undefined> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
@@ -701,11 +814,29 @@ export class MediaServiceImpl {
       }
     }
 
-    // Notify via SSE
-    SseManager.sendEvent(validatedSourceId, "media-deleted", {
-      filePath: media.filePath,
-      timestamp: new Date().toISOString(),
-    });
+    // Prepare Deferred Notification
+    const sseEvent: DeferredSse = {
+      mediaSourceId: validatedSourceId,
+      event: "media-deleted",
+      payload: {
+        filePath: media.filePath,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    if (tx) {
+      return {
+        jobs: [],
+        sse: [sseEvent],
+      };
+    }
+
+    // Notify via SSE immediately
+    SseManager.sendEvent(
+      sseEvent.mediaSourceId,
+      sseEvent.event,
+      sseEvent.payload
+    );
   }
 
   /**
