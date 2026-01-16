@@ -7,17 +7,79 @@
 **API仕様の信頼できる唯一の情報源（Single Source of Truth）は、ソースコードのJSDocコメントから自動生成されるOpenAPI仕様です。** 詳細なリクエスト/レスポンススキーマやパラメータについては、アプリケーション実行中にアクセスできるSwagger UIを参照してください。
 
 -   **Swagger UI:** [`/docs/swagger`](http://localhost:3000/docs/swagger)
+-   **OpenAPI Spec:** [`/api/openapi.json`](http://localhost:3000/api/openapi.json)
 
 このドキュメントの目的は、API全体の構造と設計思想を理解しやすくすることです。APIドキュメントの自動生成プロセスについては、[09-api-documentation.md](./09-api-documentation.md) を参照してください。
 
+---
+
+## APIアーキテクチャ
+
+このプロジェクトでは、**2種類のAPIエンドポイント**を提供しています。
+
+### 1. oRPC エンドポイント (Type-safe RPC)
+
+**エンドポイントベース:** `/api/*`（すべてのRPCコール）
+
+**特徴:**
+- ✅ 完全な型安全性（クライアント・サーバー間で型を共有）
+- ✅ 自動的なOpenAPI仕様生成
+- ✅ Zodスキーマベースのバリデーション
+- ✅ JSON形式のリクエスト/レスポンス
+
+**実装場所:**
+- ルーター定義: `src/infrastructure/api/routers/`
+- 型定義: `src/domain/shared/api-contract.ts`
+- エントリーポイント: `src/routes/api/[...path].ts`
+
+**使用例:**
+```typescript
+import { createORPCClient } from "~/infrastructure/api-clients/orpc-client";
+
+const client = createORPCClient();
+
+// 型安全な呼び出し
+const result = await client.media.search({
+  sourceId: "uuid",
+  params: { q: "example", limit: 50 }
+});
+// ↑ 型が自動推論される
+```
+
+**詳細:** [oRPC実装ガイド](./orpc-guide.md) を参照
+
+### 2. RESTエンドポイント (Binary Content)
+
+**用途:** バイナリコンテンツ（画像、動画、ZIPなど）の配信
+
+oRPC は JSON ベースのため、バイナリコンテンツは専用の REST エンドポイントで提供します。
+
+**主なエンドポイント:**
+- `GET /api/sources/:sourceId/:mediaId` - メディアファイル本体
+- `GET /api/sources/:sourceId/:mediaId/thumbnail` - サムネイル
+- `GET /api/sources/:sourceId/dump` - バックアップZIP
+- `POST /api/sources/:sourceId/import` - ZIPインポート
+
+**実装場所:** `src/infrastructure/api/app.ts`
+
+**使用例:**
+```html
+<!-- 画像の表示 -->
+<img src="/api/sources/{sourceId}/{mediaId}" alt="media" />
+
+<!-- サムネイル -->
+<img src="/api/sources/{sourceId}/{mediaId}/thumbnail" alt="thumbnail" />
+```
+
+---
+
 ## 共通原則
 
--   RESTful設計原則に準拠します。
--   エンドポイントの命名規則に一貫性を持たせます。
--   HTTPメソッド（`GET`, `POST`, `PUT`, `DELETE`）を適切に使い分けます。
--   エラーハンドリングを統一します。
--   パス内のパラメータは `{param}` 形式で表現されます（例: `/api/categories/{id}`）。
--   SolidStartのファイルベースルーティングを利用しており、`[param]` や `[...param]` といったディレクトリ・ファイル名がAPIパスに対応します。
+-   **型安全性**: oRPC により、クライアントとサーバー間で型定義を共有
+-   **スキーマ駆動**: すべてのデータ構造は Zod スキーマで定義
+-   **エラーハンドリングの統一**: カスタムエラークラスを使用（`ResourceNotFoundError` など）
+-   **Safe DTO**: 機密情報（パスワード、APIキー）はレスポンスに含めない
+-   **OpenAPI自動生成**: JSDoc コメントから自動的にドキュメント生成
 
 ## セキュリティ (Security)
 
