@@ -34,6 +34,11 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<MediaSearchResponse>;
 
+  globalSearch(
+    criteria: MediaSearchRequest,
+    tx?: Transaction
+  ): Promise<MediaSearchResponse>;
+
   /**
    * Retrieves full media details (tags, authors, etc.) in a single optimized query.
    */

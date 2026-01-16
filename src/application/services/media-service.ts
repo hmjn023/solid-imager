@@ -250,9 +250,8 @@ export class MediaServiceImpl {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-    const mediaDetails = await this.mediaRepository.getDetails(
-      validatedMediaId
-    );
+    const mediaDetails =
+      await this.mediaRepository.getDetails(validatedMediaId);
     if (!mediaDetails) {
       throw new ResourceNotFoundError("Media", validatedMediaId);
     }

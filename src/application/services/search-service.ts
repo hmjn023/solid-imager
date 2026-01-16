@@ -56,7 +56,9 @@ export class SearchServiceImpl {
     }
 
     const request: MediaSearchRequest = {
+      q: undefined,
       tags: searchOptions.tags?.join(",") || undefined,
+      tagMode: "and",
       sort,
       order: searchOptions.order || "desc",
       limit,

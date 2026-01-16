@@ -17,14 +17,14 @@ import {
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
-  authors,
-  mediaAuthors,
+  type authors,
+  type mediaAuthors,
   mediaGenerationInfo,
   medias,
-  mediaTags,
+  type mediaTags,
   mediaUrls,
   type NewMedia,
-  tags,
+  type tags,
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
@@ -37,6 +37,19 @@ import {
 } from "./media-repository-utils";
 
 type DbMedia = InferSelectModel<typeof medias>;
+
+/**
+ * Splits a comma-separated string into an array of strings.
+ */
+function splitAndTrim(value: string | undefined): string[] | undefined {
+  if (!value) {
+    return;
+  }
+  return value
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
 
 function mapToMedia(dbMedia: DbMedia): Media {
   return {
@@ -309,6 +322,42 @@ export const MediaRepository: IMediaRepository = {
     // Ensure we pass the correct client to maintain transaction integrity if provided.
     const result = await searchMediaQuery(
       mediaSourceId,
+      {
+        query: params.q,
+        tags: tagsArray,
+        tagMode: params.tagMode,
+        excludeTags: excludeTagsArray,
+        projects: projectsArray,
+        ips: ipsArray,
+        characters: charactersArray,
+        sort: params.sort,
+        order: params.order,
+        limit: params.limit,
+        offset: params.offset,
+      },
+      client
+    );
+
+    const mappedResult = {
+      // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here due to searchMediaQuery return type
+      media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
+      total: Number(result.total),
+    };
+    return mediaSearchResponseSchema.parse(mappedResult);
+  },
+
+  async globalSearch(
+    params: MediaSearchRequest,
+    tx?: Transaction
+  ): Promise<MediaSearchResponse> {
+    const client = (tx as unknown as TransactionClient) || db;
+    const tagsArray = splitAndTrim(params.tags);
+    const excludeTagsArray = splitAndTrim(params.excludeTags);
+    const projectsArray = splitAndTrim(params.projects);
+    const ipsArray = splitAndTrim(params.ips);
+    const charactersArray = splitAndTrim(params.characters);
+
+    const result = await globalSearchMedia(
       {
         query: params.q,
         tags: tagsArray,

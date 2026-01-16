@@ -133,12 +133,12 @@ describe("search queries Integration", () => {
   });
 
   it("should perform a global search by query", async () => {
-    const results = await globalSearchMedia({ query: "apple" });
+    const { media: results } = await globalSearchMedia({ query: "apple" });
     expect(results.length).toBe(2);
   });
 
   it("should perform a global search by tag", async () => {
-    const results = await globalSearchMedia({ tags: ["dessert"] });
+    const { media: results } = await globalSearchMedia({ tags: ["dessert"] });
     expect(results.length).toBe(1);
     expect(results[0].fileName).toBe("apple_pie.jpg");
   });
