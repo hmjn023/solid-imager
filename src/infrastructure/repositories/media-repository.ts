@@ -17,10 +17,14 @@ import {
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
+  authors,
+  mediaAuthors,
   mediaGenerationInfo,
   medias,
+  mediaTags,
   mediaUrls,
   type NewMedia,
+  tags,
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
@@ -63,11 +67,21 @@ function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
   };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: Drizzle relation query result type is complex
-function mapToMediaDetails(row: any): MediaDetails {
+type MediaWithRelations = InferSelectModel<typeof medias> & {
+  tags: (InferSelectModel<typeof mediaTags> & {
+    tag: InferSelectModel<typeof tags>;
+  })[];
+  generationInfo: InferSelectModel<typeof mediaGenerationInfo> | null;
+  authors: (InferSelectModel<typeof mediaAuthors> & {
+    author: InferSelectModel<typeof authors>;
+  })[];
+  urls: InferSelectModel<typeof mediaUrls>[];
+};
+
+function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
   return {
     ...mapToMedia(row),
-    tags: row.tags.map((mt: any) => ({
+    tags: row.tags.map((mt) => ({
       ...mt.tag,
       type: mt.tagType,
     })),
@@ -81,7 +95,7 @@ function mapToMediaDetails(row: any): MediaDetails {
           steps: row.generationInfo.steps ?? 0,
         }
       : null,
-    authors: row.authors.map((ma: any) => ma.author),
+    authors: row.authors.map((ma) => ma.author),
     urls: row.urls.map(mapToMediaUrl),
   };
 }
