@@ -44,6 +44,7 @@ describe("MediaService Unit Tests", () => {
       getUrls: vi.fn(),
       addUrls: vi.fn(),
       upsertGenerationInfo: vi.fn(),
+      getDetails: vi.fn(),
     } as unknown as IMediaRepository;
 
     mockSourceRepository = {
@@ -132,7 +133,7 @@ describe("MediaService Unit Tests", () => {
 
       // Setup repository responses
       // Setup repository responses
-      (mockMediaRepository.findById as Mock).mockResolvedValue(mockMedia);
+      (mockMediaRepository.getDetails as Mock).mockResolvedValue(mockMedia);
       (mockMediaRepository.getTags as Mock).mockResolvedValue([]);
       (mockMediaRepository.getGenerationInfo as Mock).mockResolvedValue(null);
       (mockMediaRepository.getAuthors as Mock).mockResolvedValue([]);
@@ -153,7 +154,7 @@ describe("MediaService Unit Tests", () => {
 
       // Verify interactions and result
       // The implementation parses the IDs first, then calls repository.
-      expect(mockMediaRepository.findById).toHaveBeenCalledWith(mediaId);
+      expect(mockMediaRepository.getDetails).toHaveBeenCalledWith(mediaId);
       expect(result).toBeDefined();
       expect(result.id).toBe(mediaId);
       expect(mockImageProcessor.extractMetadata).toHaveBeenCalled();
@@ -162,6 +163,7 @@ describe("MediaService Unit Tests", () => {
     it("should throw error if media not found", async () => {
       const mediaId = "123e4567-e89b-42d3-a456-426614174999";
       const sourceId = "123e4567-e89b-42d3-a456-426614174888";
+      (mockMediaRepository.getDetails as Mock).mockResolvedValue(null);
       (mockMediaRepository.findById as Mock).mockResolvedValue(null);
 
       await expect(

@@ -1,1 +1,0 @@
-CREATE INDEX CONCURRENTLY "idx_media_file_size" ON "media" USING btree ("file_size");
