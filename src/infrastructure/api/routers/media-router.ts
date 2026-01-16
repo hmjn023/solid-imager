@@ -1,4 +1,4 @@
-import { os } from "@orpc/server";
+import { ORPCError, os } from "@orpc/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
 import { ResourceNotFoundError } from "~/domain/errors";
@@ -70,12 +70,13 @@ export const mediaRouter = {
         mediaId: z.string().uuid(),
       })
     )
-    .handler(({ input }) => {
+    .handler(() => {
       // JSONシリアライズを避けるため、バッファコンテンツではなくURLまたはストリームを返す必要があります
       // 現時点では、誤用を防ぐためにバッファの返却を削除するか、エラーをスローするのが安全です。
-      throw new Error(
-        `Use the REST endpoint /api/sources/${input.sourceId}/${input.mediaId} for binary content.`
-      );
+      throw new ORPCError("BAD_REQUEST", {
+        message:
+          "Binary content cannot be returned via oRPC. Please use the dedicated REST endpoint. Refer to the API documentation for details.",
+      });
     }),
 
   /**
