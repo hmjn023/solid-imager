@@ -16,6 +16,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -732,7 +733,7 @@ export const mediaUrls = pgTable(
   },
   (table) => ({
     mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
-    urlIndex: index("idx_media_urls_url").on(table.url),
+    urlIndex: uniqueIndex("idx_media_urls_url_unique").on(table.url),
   })
 );
 
