@@ -9,7 +9,7 @@
 -   **Swagger UI:** [`/docs/swagger`](http://localhost:3000/docs/swagger)
 -   **OpenAPI Spec:** [`/api/openapi.json`](http://localhost:3000/api/openapi.json)
 
-このドキュメントの目的は、API全体の構造と設計思想を理解しやすくすることです。APIドキュメントの自動生成プロセスについては、[09-api-documentation.md](./09-api-documentation.md) を参照してください。
+このドキュメントの目的は、API全体の構造と設計思想を理解しやすくすることです。API実装の詳細については、[oRPC実装ガイド](./orpc-guide.md) を参照してください。
 
 ---
 
