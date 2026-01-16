@@ -655,6 +655,7 @@ export class MediaServiceImpl {
       payload: {
         sourceMediaId,
         media: newMediaEntry,
+        timestamp: new Date().toISOString(),
       },
     };
 
@@ -722,31 +723,6 @@ export class MediaServiceImpl {
             accumulatedDeferred.jobs.push(...deleteResult.jobs);
             accumulatedDeferred.sse.push(...deleteResult.sse);
           }
-
-          // Notify via SSE (Move specific event)
-          // Since deleteMedia adds "media-deleted" and copyMedia adds "media-copied",
-          // "media-moved" is an extra event.
-          // Note: "media-deleted" and "media-copied" might be enough for UI,
-          // but if we want "media-moved", we should add it.
-          // Existing code:
-          /*
-          SseManager.notifyMediaMoved(
-            sourceMedia.mediaSourceId,
-            targetSourceId,
-            sourceMediaId,
-            result.media
-          );
-          */
-          // We should add this to deferred as well.
-          accumulatedDeferred.sse.push({
-            mediaSourceId: sourceMedia.mediaSourceId,
-            event: "media-moved",
-            payload: {
-              targetSourceId,
-              oldMediaId: sourceMediaId,
-              newMedia: copyResult.media,
-            },
-          });
         }
       }
       return {
