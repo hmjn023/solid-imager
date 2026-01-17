@@ -1,4 +1,4 @@
-import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { and, desc, eq, type InferSelectModel } from "drizzle-orm";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -551,8 +551,10 @@ export const MediaRepository: IMediaRepository = {
         .select()
         .from(medias)
         .where(eq(medias.mediaSourceId, mediaSourceId))
+        .orderBy(desc(medias.createdAt))
         .limit(limit)
         .offset(offset);
+
       const results = await query;
       return results.map(mapToMedia);
     } catch (error) {
