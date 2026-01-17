@@ -1,7 +1,7 @@
 # Implementation Plan - Xtracter Bulk Import & Preview
 
 ## Phase 1: Backend Schema & API Implementation
-- [x] Task: Define shared schemas (Zod) for Import/Export ensuring compatibility with `BackupService`. [b00a660]
+- [x] Task: Define shared schemas (Zod) for Import/Export ensuring compatibility with `BackupService`. [dff7c3d]
     - [ ] Sub-task: Create `import-schemas.ts` in `domain/media` (or share with backup).
     - [ ] Sub-task: Update `api-contract.ts` to include `downloads.preview`.
 - [ ] Task: Implement `downloads.preview` ORPC procedure.
