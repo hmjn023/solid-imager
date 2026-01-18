@@ -7,7 +7,7 @@
     - [x] Sub-task: Ensure `max-h-[90vh]` and `overflow-y-auto` are correctly applied to the content area.
 - [x] Task: Conductor - User Manual Verification 'Modal Layout Refinement' (Protocol in workflow.md) f882320
 
-## Phase 2: Verification
-- [ ] Task: Visual Verification.
-    - [ ] Sub-task: Test with many items (forcing scroll) and verify top header visibility.
-- [ ] Task: Conductor - User Manual Verification 'Verification' (Protocol in workflow.md)
+## Phase 2: Verification [checkpoint: aac5dde]
+- [x] Task: Visual Verification. b284496
+    - [x] Sub-task: Test with many items (forcing scroll) and verify top header visibility.
+- [x] Task: Conductor - User Manual Verification 'Verification' (Protocol in workflow.md) b284496
