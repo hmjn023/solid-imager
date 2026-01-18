@@ -58,6 +58,7 @@ export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
  * Defines the current state of a background job.
  */
 export const jobStatusEnum = pgEnum("job_status", [
+  "pending_approval",
   "pending",
   "in_progress",
   "completed",

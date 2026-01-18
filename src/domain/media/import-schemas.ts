@@ -12,7 +12,7 @@ export const importItemSchema = z.object({
   /** User-provided or scraped description */
   description: z.string().optional(),
   /** ISO timestamp string or Date */
-  timestamp: z.union([z.string(), z.date()]).optional(),
+  timestamp: z.coerce.date().optional(),
   /** Author information */
   author: z
     .object({
@@ -36,6 +36,22 @@ export const importItemSchema = z.object({
 });
 
 export type ImportItem = z.infer<typeof importItemSchema>;
+
+/**
+ * Maps ImportItem to the legacy DownloadItem format used by existing jobs.
+ */
+export function mapImportItemToDownloadItem(item: ImportItem) {
+  return {
+    imageUrl: item.imageUrl,
+    tweetUrl: item.sourceUrl,
+    tweetText: item.description,
+    timestamp: item.timestamp,
+    authorName: item.author?.name,
+    authorId: item.author?.accountId ?? undefined,
+    cookies: item.cookies,
+    userAgent: item.userAgent,
+  };
+}
 
 /**
  * Schema for bulk import requests.
