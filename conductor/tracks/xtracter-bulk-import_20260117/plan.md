@@ -30,7 +30,7 @@
 - [x] Task: Conductor - User Manual Verification 'Frontend Preview UI Implementation' (Protocol in workflow.md) [feb6f31]
 
 ## Phase 4: Integration & Verification
-- [ ] Task: End-to-End Testing.
+- [x] Task: End-to-End Testing. [734ae44]
     - [ ] Sub-task: Verify flow from Browser Extension -> Backend -> Preview Modal -> DB Save.
     - [ ] Sub-task: Verify tags and authors are correctly saved.
-- [ ] Task: Conductor - User Manual Verification 'Integration & Verification' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Integration & Verification' (Protocol in workflow.md) [734ae44]
