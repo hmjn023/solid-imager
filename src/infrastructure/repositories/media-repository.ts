@@ -499,7 +499,7 @@ export const MediaRepository: IMediaRepository = {
         .values(values)
         .onConflictDoUpdate({
           target: mediaUrls.url,
-          set: { mediaId: sql`excluded.media_id` }, // dummy update to force return
+          set: { updatedAt: sql`now()` },
         })
         .returning();
       return results.map(mapToMediaUrl);

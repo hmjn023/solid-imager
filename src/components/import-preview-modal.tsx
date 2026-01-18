@@ -58,11 +58,19 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
       return;
     }
 
+    const mediaSourceId = currentJob.mediaSourceId as string;
+    if (!mediaSourceId || mediaSourceId === DEFAULT_ID) {
+      toast.error(
+        "Please ensure a valid media source is associated with this job"
+      );
+      return;
+    }
+
     try {
       await orpc.downloads.approve({
         jobId: props.jobId,
         selectedIndices: selectedIndices(),
-        mediaSourceId: (currentJob.mediaSourceId as string) || DEFAULT_ID,
+        mediaSourceId,
       });
 
       toast.success(`Approved ${selectedIndices().length} items for download`);
@@ -118,7 +126,7 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
                       </div>
                       {/* biome-ignore lint/performance/noImgElement: External URL */}
                       <img
-                        alt=""
+                        alt={item.description || "Imported media item"}
                         class="mb-2 aspect-video w-full rounded bg-gray-100 object-cover"
                         height={225}
                         src={item.imageUrl}

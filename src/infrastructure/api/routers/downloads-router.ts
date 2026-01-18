@@ -104,6 +104,11 @@ export const downloadsRouter = {
       throw new Error("Job not found or already processed");
     }
 
+    const NilUuid = "00000000-0000-0000-0000-000000000000";
+    if (!input.mediaSourceId || input.mediaSourceId === NilUuid) {
+      throw new Error("Valid mediaSourceId is required for approval");
+    }
+
     const payload = job.payload as z.infer<typeof bulkImportRequestSchema>;
     const selectedItems = input.selectedIndices.map(
       (idx) => payload.items[idx]
@@ -118,7 +123,10 @@ export const downloadsRouter = {
       const originalFilename = path.basename(urlPath);
       // Use standard download filename format
       // download-{hash}-{originalName} in order to make it deterministic
-      const hash = crypto.createHash("md5").update(item.imageUrl).digest("hex");
+      const hash = crypto
+        .createHash("sha256")
+        .update(item.imageUrl)
+        .digest("hex");
       const filename = `download-${hash}-${originalFilename}`;
 
       return {
@@ -147,17 +155,14 @@ export const downloadsRouter = {
     });
 
     // 3. Import rich metadata (tags, authors etc)
-    await BackupService.importMetadata(
-      input.mediaSourceId || "00000000-0000-0000-0000-000000000000",
-      backupItems
-    );
+    await BackupService.importMetadata(input.mediaSourceId, backupItems);
 
     // 4. Queue physical downloads
     const downloadItems = itemsWithPaths.map((item) =>
       mapImportItemToDownloadItem(item, item._targetFilePath)
     );
     const jobCount = await queueDownloadJobs(
-      input.mediaSourceId || "00000000-0000-0000-0000-000000000000",
+      input.mediaSourceId,
       downloadItems
     );
 
