@@ -1,7 +1,9 @@
 import { useLocation } from "@solidjs/router";
+import { clientOnly } from "@solidjs/start";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
-import ImportStatus from "./import-status";
+
+const ImportStatus = clientOnly(() => import("./import-status"));
 
 /**
  * Navigation component that displays a list of links and highlights the active link based on the current route.
