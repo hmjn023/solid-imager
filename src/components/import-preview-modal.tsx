@@ -78,7 +78,7 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
 
   return (
     <Show when={props.isOpen}>
-      <div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div class="fixed inset-0 z-[60] flex items-start justify-center bg-black bg-opacity-50 p-4 pt-20">
         <div class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
           <div class="flex items-center justify-between border-b p-4">
             <h2 class="font-bold text-xl">Import Preview</h2>
@@ -97,8 +97,6 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
                 <For each={items()}>
                   {(item, index) => (
                     // biome-ignore lint/a11y/useSemanticElements: UI choice
-                    // biome-ignore lint/a11y/noStaticElementInteractions: UI choice
-                    // biome-ignore lint/a11y/useKeyWithClickEvents: UI choice
                     <div
                       class={`relative flex cursor-pointer flex-col rounded border p-2 ${selectedIndices().includes(index()) ? "border-blue-500 bg-blue-50" : "border-gray-200"}`}
                       onClick={() => toggleSelect(index())}
@@ -119,7 +117,6 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
                         />
                       </div>
                       {/* biome-ignore lint/performance/noImgElement: External URL */}
-                      {/* biome-ignore lint/nursery/useImageSize: Dynamic URL */}
                       <img
                         alt=""
                         class="mb-2 aspect-video w-full rounded bg-gray-100 object-cover"
