@@ -1,5 +1,5 @@
 {
-  "id": "d11ca8a8-7d0c-45d6-8e86-50bca4956844",
+  "id": "2883a03b-a7d9-4f78-a322-64eb54f571d6",
   "prevId": "fbeedf7c-8a3d-4e26-b30d-3ed9a6d0f9bd",
   "version": "7",
   "dialect": "postgresql",
@@ -1322,21 +1322,6 @@
         }
       },
       "indexes": {
-        "idx_media_relations_parent": {
-          "name": "idx_media_relations_parent",
-          "columns": [
-            {
-              "expression": "parent_media_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_media_relations_child": {
           "name": "idx_media_relations_child",
           "columns": [
@@ -2328,21 +2313,6 @@
         }
       },
       "indexes": {
-        "idx_tags_name": {
-          "name": "idx_tags_name",
-          "columns": [
-            {
-              "expression": "name",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
         "idx_tags_author_id": {
           "name": "idx_tags_author_id",
           "columns": [
@@ -2514,7 +2484,6 @@
       "name": "job_status",
       "schema": "public",
       "values": [
-        "pending_approval",
         "pending",
         "in_progress",
         "completed",

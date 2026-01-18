@@ -182,7 +182,6 @@ export const tags = pgTable(
   },
   (table) => ({
     nameUnique: unique("tags_name_unique").on(table.name),
-    nameIndex: index("idx_tags_name").on(table.name),
     authorIdIndex: index("idx_tags_author_id").on(table.authorId),
   })
 );
@@ -659,9 +658,6 @@ export const mediaRelationsTable = pgTable(
       table.parentMediaId,
       table.childMediaId,
       table.relationType
-    ),
-    parentMediaIdIndex: index("idx_media_relations_parent").on(
-      table.parentMediaId
     ),
     childMediaIdIndex: index("idx_media_relations_child").on(
       table.childMediaId
