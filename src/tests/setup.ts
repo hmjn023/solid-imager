@@ -30,6 +30,23 @@ const { mockDb } = vi.hoisted(() => ({
   mockDb: {
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
+        onConflictDoNothing: vi.fn(() => ({
+          returning: vi.fn(() => [
+            {
+              id: "mock-uuid-1",
+              mediaSourceId: "b0000000-0000-4000-8000-000000000000",
+              filePath: "/mock/path/image.png",
+              fileName: "image.png",
+              mediaType: "image",
+              width: 800,
+              height: 600,
+              fileSize: 1024,
+              createdAt: new Date(),
+              modifiedAt: new Date(),
+              indexedAt: new Date(),
+            },
+          ]),
+        })),
         returning: vi.fn(() => [
           {
             id: "mock-uuid-1",
