@@ -5,6 +5,7 @@ const apiUrlInput = document.getElementById('api-url') as HTMLInputElement;
 const select = document.getElementById('source-select') as HTMLSelectElement;
 const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
+const sendImagerBtn = document.getElementById('send-imager-btn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const exportStatusDiv = document.getElementById('export-status') as HTMLDivElement;
 
@@ -136,6 +137,38 @@ saveBtn.addEventListener('click', async () => {
         statusDiv.textContent = '';
         statusDiv.className = '';
     }, 2000);
+});
+
+sendImagerBtn.addEventListener('click', async () => {
+    try {
+        exportStatusDiv.textContent = 'Collecting data...';
+        exportStatusDiv.className = '';
+
+        const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!activeTab?.id) throw new Error('No active tab');
+
+        // 1. Get metadata from Content Script
+        const items = await chrome.tabs.sendMessage(activeTab.id, { type: 'GET_METADATA' });
+
+        if (!items || !Array.isArray(items) || items.length === 0) {
+            throw new Error('No items collected. Are you on X.com?');
+        }
+
+        // 2. Send to Background for POSTing
+        await chrome.runtime.sendMessage({ type: 'POST_PREVIEW', data: items });
+
+        exportStatusDiv.textContent = `Sent ${items.length} items to Imager!`;
+        exportStatusDiv.className = 'success';
+
+        setTimeout(() => {
+            exportStatusDiv.textContent = '';
+            exportStatusDiv.className = '';
+        }, 3000);
+    } catch (error) {
+        console.error(error);
+        exportStatusDiv.textContent = error instanceof Error ? error.message : 'Failed to send data';
+        exportStatusDiv.className = 'error';
+    }
 });
 
 exportBtn.addEventListener('click', async () => {

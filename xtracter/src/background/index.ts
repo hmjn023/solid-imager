@@ -1,4 +1,4 @@
-import { DownloadBulkMessage, DownloadMessage, ExtendedMessage, PostBulkMessage, PostDownloadMessage, TweetMetadata } from '../types';
+import { DownloadBulkMessage, DownloadMessage, ExtendedMessage, PostBulkMessage, PostDownloadMessage, PostPreviewMessage, ImportItem } from '../types';
 import { getClient, APIError } from '../api';
 import type { SafeMediaSource } from '~/domain/sources/schemas';
 
@@ -88,13 +88,12 @@ async function getTargetSourceId(): Promise<string | null> {
     return null;
 }
 
-async function postDownloads(items: TweetMetadata[]) {
+async function postDownloads(items: ImportItem[]) {
     const mediaSourceId = await getTargetSourceId();
     if (!mediaSourceId) {
         const errorMsg = 'No valid media source found (and none selected in settings)';
         console.error(`[xtracter] ${errorMsg}`);
 
-        // ユーザーに通知
         chrome.notifications.create({
             type: 'basic',
             iconUrl: 'icon.png',
@@ -106,31 +105,17 @@ async function postDownloads(items: TweetMetadata[]) {
 
     try {
         console.log(`[xtracter] Posting ${items.length} downloads to source ${mediaSourceId}...`);
-        console.log(`[xtracter] Items:`, items.map(item => ({
-            imageUrl: item.imageUrl,
-            tweetUrl: item.tweetUrl,
-            hasCookies: !!item.cookies,
-            hasUserAgent: !!item.userAgent,
-        })));
 
         const result = await retryWithBackoff(async () => {
             const client = await getClient();
             return await client.downloads.start({
                 mediaSourceId,
-                items: items.map(item => ({
-                    ...item,
-                    tweetUrl: item.tweetUrl || undefined,
-                    tweetText: item.tweetText || undefined,
-                    timestamp: item.timestamp || undefined,
-                    authorName: item.authorName || undefined,
-                    authorId: item.authorId || undefined,
-                }))
+                items: items
             });
         });
 
         console.log('[xtracter] Download job queued successfully:', result);
 
-        // 成功通知
         chrome.notifications.create({
             type: 'basic',
             iconUrl: 'icon.png',
@@ -138,31 +123,66 @@ async function postDownloads(items: TweetMetadata[]) {
             message: `Successfully queued ${items.length} download(s)`
         });
     } catch (error) {
-        if (error instanceof APIError) {
-            console.error(
-                `[xtracter] Failed to post download job: ${error.message}`,
-                `\nError code: ${error.code}`,
-                `\nItems count: ${items.length}`,
-                error.originalError
-            );
+        handleApiError(error, 'post downloads');
+    }
+}
 
-            // エラー通知
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icon.png',
-                title: 'xtracter Error',
-                message: `Failed to queue downloads: ${error.message}`
-            });
-        } else {
-            console.error('[xtracter] Unexpected error posting download job:', error);
+async function postPreview(items: ImportItem[]) {
+    const mediaSourceId = await getTargetSourceId();
+    // mediaSourceId is optional for preview but recommended
+    
+    try {
+        console.log(`[xtracter] Sending ${items.length} items for preview...`);
 
-            chrome.notifications.create({
-                type: 'basic',
-                iconUrl: 'icon.png',
-                title: 'xtracter Error',
-                message: 'An unexpected error occurred. Check console for details.'
+        const result = await retryWithBackoff(async () => {
+            const client = await getClient();
+            return await client.downloads.preview({
+                mediaSourceId: mediaSourceId || undefined,
+                items: items
             });
-        }
+        });
+
+        console.log('[xtracter] Preview data saved successfully:', result);
+
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon.png',
+            title: 'xtracter',
+            message: `Successfully sent ${items.length} item(s) for preview`
+        });
+        
+        // Optionally open the app preview page
+        // const appUrl = await getAppUrl();
+        // chrome.tabs.create({ url: `${appUrl}/downloads/preview?jobId=${result.jobId}` });
+        
+    } catch (error) {
+        handleApiError(error, 'post preview');
+    }
+}
+
+function handleApiError(error: unknown, action: string) {
+    if (error instanceof APIError) {
+        console.error(
+            `[xtracter] Failed to ${action}: ${error.message}`,
+            `\nError code: ${error.code}`,
+            error.originalError
+        );
+
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon.png',
+            title: 'xtracter Error',
+            message: `Failed to ${action}: ${error.message}`
+        });
+    } else {
+        console.error(`[xtracter] Unexpected error during ${action}:`, error);
+
+        chrome.notifications.create({
+            type: 'basic',
+            iconUrl: 'icon.png',
+            title: 'xtracter Error',
+            message: 'An unexpected error occurred. Check console for details.'
+        });
     }
 }
 
@@ -181,6 +201,10 @@ function isPostDownloadMessage(msg: ExtendedMessage): msg is PostDownloadMessage
 
 function isPostBulkMessage(msg: ExtendedMessage): msg is PostBulkMessage {
     return msg.type === 'POST_BULK';
+}
+
+function isPostPreviewMessage(msg: ExtendedMessage): msg is PostPreviewMessage {
+    return msg.type === 'POST_PREVIEW';
 }
 
 function isGetCookiesMessage(msg: ExtendedMessage): msg is { type: 'GET_COOKIES', url: string } {
@@ -237,17 +261,16 @@ chrome.runtime.onMessage.addListener((message: ExtendedMessage, _sender, sendRes
 
     // Handle Content Script Requests
     if (isDownloadMessage(message)) {
-        // ... existing download logic ...
-        const { imageUrl, authorId, timestamp } = message.data;
+        const { imageUrl, author, timestamp } = message.data;
+        const authorId = author?.accountId || 'unknown';
         const safeAuthorId = authorId.replace(/[^a-zA-Z0-9@_-]/g, '');
-        const safeTimestamp = new Date(timestamp).getTime();
+        const safeTimestamp = timestamp ? new Date(timestamp).getTime() : Date.now();
         const filenameBase = `xtracter/${safeAuthorId}_${safeTimestamp}`;
         chrome.downloads.download({
             url: imageUrl,
             filename: `${filenameBase}.png`
         });
     } else if (isDownloadBulkMessage(message)) {
-        // ... existing bulk download logic ...
         const now = new Date();
         const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `xtracter/xtracter-${dateStr}.json`;
@@ -261,6 +284,8 @@ chrome.runtime.onMessage.addListener((message: ExtendedMessage, _sender, sendRes
         postDownloads([message.data]);
     } else if (isPostBulkMessage(message)) {
         postDownloads(message.data);
+    } else if (isPostPreviewMessage(message)) {
+        postPreview(message.data);
     }
 
     return true;

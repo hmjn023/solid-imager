@@ -12,13 +12,13 @@
 - [x] Task: Conductor - User Manual Verification 'Backend Schema & API Implementation' (Protocol in workflow.md) [281effb]
 
 ## Phase 2: Xtracter Extension Update
-- [ ] Task: Update `xtracter` data extraction logic.
+- [x] Task: Update `xtracter` data extraction logic. [fb0a55e]
     - [ ] Sub-task: Modify `types.ts` to match the new shared schema.
     - [ ] Sub-task: Implement tag and author extraction mapping.
-- [ ] Task: Implement "Send to Imager" feature.
+- [x] Task: Implement "Send to Imager" feature. [fb0a55e]
     - [ ] Sub-task: Add UI button in Popup.
     - [ ] Sub-task: Call `orpc.downloads.preview` with extracted data.
-- [ ] Task: Conductor - User Manual Verification 'Xtracter Extension Update' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Xtracter Extension Update' (Protocol in workflow.md)
 
 ## Phase 3: Frontend Preview UI Implementation
 - [ ] Task: Implement Preview Modal Component.

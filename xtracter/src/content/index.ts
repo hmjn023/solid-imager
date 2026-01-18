@@ -1,5 +1,5 @@
 // ... existing imports ...
-import { TweetMetadata } from '../types';
+import { ImportItem } from '../types';
 
 console.log('xtracter content script loaded');
 
@@ -7,7 +7,7 @@ const OBSERVER_CONFIG = { childList: true, subtree: true };
 const PROCESSED_IMAGE_CLASS = 'xtracter-image-processed';
 const PROCESSED_VIDEO_CLASS = 'xtracter-video-processed';
 
-function createButtonContainer(metadata: TweetMetadata, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): HTMLDivElement {
+function createButtonContainer(metadata: ImportItem, type: 'IMAGE' | 'VIDEO' = 'IMAGE'): HTMLDivElement {
     const container = document.createElement('div');
     container.style.position = 'absolute';
     container.style.top = '5px';
@@ -62,12 +62,12 @@ function createButton(text: string, bgColor: string, onClick: () => void): HTMLB
 }
 
 
-function handleAction(metadata: TweetMetadata, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
+function handleAction(metadata: ImportItem, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
     console.log(`Action ${type} triggered:`, metadata);
 
     if (mediaType === 'VIDEO') {
         // Fetch cookies for video downloads to handle auth
-        chrome.runtime.sendMessage({ type: 'GET_COOKIES', url: metadata.tweetUrl }, (cookies) => {
+        chrome.runtime.sendMessage({ type: 'GET_COOKIES', url: metadata.sourceUrl }, (cookies) => {
             if (cookies) {
                 metadata.cookies = cookies;
             }
@@ -98,7 +98,7 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
     return null;
 }
 
-function extractMetadataFromUrl(): Partial<TweetMetadata> {
+function extractMetadataFromUrl(): Partial<ImportItem> {
     const url = new URL(window.location.href);
     const pathParts = url.pathname.split('/').filter(p => p);
 
@@ -112,10 +112,13 @@ function extractMetadataFromUrl(): Partial<TweetMetadata> {
         tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[2]}`;
     }
 
-    return { authorId, tweetUrl };
+    return { 
+        author: { name: '', accountId: authorId }, 
+        sourceUrl: tweetUrl 
+    };
 }
 
-function extractMetadata(article: HTMLElement | null, element: HTMLElement, mediaType: 'IMAGE' | 'VIDEO' = 'IMAGE'): TweetMetadata {
+function extractMetadata(article: HTMLElement | null, element: HTMLElement, mediaType: 'IMAGE' | 'VIDEO' = 'IMAGE'): ImportItem {
     let tweetText = '';
     let timestamp = '';
     let tweetUrl = window.location.href;
@@ -157,8 +160,8 @@ function extractMetadata(article: HTMLElement | null, element: HTMLElement, medi
     // Fallback: extract from URL if critical info is missing
     if (!authorId || !tweetUrl || tweetUrl === window.location.href) {
         const urlMetadata = extractMetadataFromUrl();
-        if (urlMetadata.authorId && !authorId) authorId = urlMetadata.authorId;
-        if (urlMetadata.tweetUrl) tweetUrl = urlMetadata.tweetUrl;
+        if (urlMetadata.author?.accountId && !authorId) authorId = urlMetadata.author.accountId;
+        if (urlMetadata.sourceUrl) tweetUrl = urlMetadata.sourceUrl;
     }
 
     let imageUrl: string;
@@ -179,16 +182,18 @@ function extractMetadata(article: HTMLElement | null, element: HTMLElement, medi
 
     return {
         imageUrl,
-        tweetUrl,
-        tweetText,
-        timestamp,
-        authorName,
-        authorId,
+        sourceUrl: tweetUrl,
+        description: tweetText,
+        timestamp: timestamp ? new Date(timestamp) : undefined,
+        author: {
+            name: authorName,
+            accountId: authorId,
+        },
         userAgent: navigator.userAgent
     };
 }
 
-const processedMetadata = new Map<string, TweetMetadata>();
+const processedMetadata = new Map<string, ImportItem>();
 
 // Listen for requests from Popup/Background
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -1,32 +1,30 @@
-export interface TweetMetadata {
-    imageUrl: string;
-    tweetUrl: string;
-    tweetText: string;
-    timestamp: string;
-    authorName: string;
-    authorId: string;
-    cookies?: any[];
-    userAgent?: string;
-}
+import type { ImportItem } from "~/domain/media/import-schemas";
+
+export type { ImportItem };
 
 export interface DownloadMessage {
     type: 'DOWNLOAD';
-    data: TweetMetadata;
+    data: ImportItem;
 }
 
 export interface DownloadBulkMessage {
     type: 'DOWNLOAD_BULK';
-    data: TweetMetadata[];
+    data: ImportItem[];
 }
 
 export interface PostDownloadMessage {
     type: 'POST_DOWNLOAD';
-    data: TweetMetadata;
+    data: ImportItem;
 }
 
 export interface PostBulkMessage {
     type: 'POST_BULK';
-    data: TweetMetadata[];
+    data: ImportItem[];
+}
+
+export interface PostPreviewMessage {
+    type: 'POST_PREVIEW';
+    data: ImportItem[];
 }
 
 export interface MediaSource {
@@ -52,5 +50,5 @@ export interface DownloadJsonMessage {
     type: 'DOWNLOAD_JSON_FROM_POPUP';
 }
 
-export type Message = DownloadMessage | DownloadBulkMessage | PostDownloadMessage | PostBulkMessage;
+export type Message = DownloadMessage | DownloadBulkMessage | PostDownloadMessage | PostBulkMessage | PostPreviewMessage;
 export type ExtendedMessage = Message | GetSourcesMessage | GetMetadataMessage | DownloadJsonMessage | GetCookiesMessage;
