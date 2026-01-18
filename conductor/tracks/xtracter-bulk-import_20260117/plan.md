@@ -9,7 +9,7 @@
     - [ ] Sub-task: Implement handler to save data to `jobs` table with `pending_approval` status.
 - [x] Task: Refactor `BackupService` to expose schema transformation logic. [b0a2dee]
     - [ ] Sub-task: Extract schema validation/transformation logic for reusability.
-- [ ] Task: Conductor - User Manual Verification 'Backend Schema & API Implementation' (Protocol in workflow.md)
+- [~] Task: Conductor - User Manual Verification 'Backend Schema & API Implementation' (Protocol in workflow.md)
 
 ## Phase 2: Xtracter Extension Update
 - [ ] Task: Update `xtracter` data extraction logic.
