@@ -132,9 +132,13 @@ async function createNetscapeCookieFile(
 async function downloadWithYtDlp(
   url: string,
   outputDir: string,
-  cookies?: Cookie[],
-  userAgent?: string
+  options: {
+    cookies?: Cookie[];
+    userAgent?: string;
+    outputTemplate?: string;
+  } = {}
 ): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
+  const { cookies, userAgent, outputTemplate } = options;
   // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -147,7 +151,7 @@ async function downloadWithYtDlp(
     );
   }
 
-  const template = "%(id)s.%(ext)s";
+  const template = outputTemplate || "%(id)s.%(ext)s";
   const args = [
     "--no-simulate",
     "--print-json",
@@ -248,13 +252,21 @@ async function handleYtDlpDownload(
   // Use yt-dlp
   logger.info({ url: item.imageUrl }, "[DownloadJob] Using yt-dlp");
 
+  let outputTemplate: string | undefined;
+  if (item.targetFilePath) {
+    // If target path is provided (e.g., "pending/id.ext"), preserve the "pending/id" part
+    // but let yt-dlp decide the extension.
+    const dir = path.dirname(item.targetFilePath);
+    const name = path.parse(item.targetFilePath).name;
+    outputTemplate = path.join(dir, `${name}.%(ext)s`);
+  }
+
   try {
-    const results = await downloadWithYtDlp(
-      item.imageUrl,
-      basePath,
-      item.cookies,
-      item.userAgent
-    );
+    const results = await downloadWithYtDlp(item.imageUrl, basePath, {
+      cookies: item.cookies,
+      userAgent: item.userAgent,
+      outputTemplate,
+    });
 
     logger.info(
       { count: results.length },
@@ -292,7 +304,11 @@ async function handleYtDlpDownload(
         sourceUrls: [item.imageUrl], // The tweet URL
       };
 
-      await registerMedia(newMedia, mediaSourceId, item, basePath);
+      await registerMedia(newMedia, mediaSourceId, {
+        item,
+        basePath,
+        originalTargetFilePath: item.targetFilePath,
+      });
     }
   } catch (error) {
     logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
@@ -354,10 +370,20 @@ export async function processDownloadJob(
 
       // Traditional Direct Image Download
       // Generate filename from URL
-      const urlPath = new URL(item.imageUrl).pathname;
-      const originalFilename = path.basename(urlPath);
-      const filename = `download-${Date.now()}-${originalFilename}`;
-      const filePath = filename;
+      // Formulate filename
+      let filePath: string;
+      let filename: string;
+
+      if (item.targetFilePath) {
+        filePath = item.targetFilePath;
+        filename = path.basename(filePath);
+      } else {
+        const urlPath = new URL(item.imageUrl).pathname;
+        const originalFilename = path.basename(urlPath);
+        filename = `download-${Date.now()}-${originalFilename}`;
+        filePath = filename;
+      }
+
       const fullPath = path.join(basePath, filePath);
 
       // Download the image
@@ -386,7 +412,11 @@ export async function processDownloadJob(
         sourceUrls: [item.imageUrl, ...(item.tweetUrl ? [item.tweetUrl] : [])],
       };
 
-      await registerMedia(newMedia, mediaSourceId, item, basePath);
+      await registerMedia(newMedia, mediaSourceId, {
+        item,
+        basePath,
+        originalTargetFilePath: item.targetFilePath,
+      });
     }
 
     logger.info(
@@ -409,29 +439,70 @@ export async function processDownloadJob(
   }
 }
 
+// biome-ignore lint/complexity: consolidated logic and internal helper
 async function registerMedia(
   newMedia: AddMediaRequest,
   mediaSourceId: string,
-  item: DownloadItem,
-  basePath: string
+  options: {
+    item: DownloadItem;
+    basePath: string;
+    originalTargetFilePath?: string;
+  }
 ) {
+  const { item, basePath, originalTargetFilePath } = options;
   let insertedMedia: Media;
   try {
     insertedMedia = await MediaRepository.create(newMedia);
   } catch (error) {
-    // Handle race condition with FileWatcherService
-    const existing = await MediaRepository.findByPath(
+    // 1. Try to find by the NEW file path (standard race condition check)
+    let existing = await MediaRepository.findByPath(
       mediaSourceId,
       newMedia.filePath
     );
+
+    // 2. If not found, and we have an original target path (pending record), check that.
+    if (!existing && originalTargetFilePath) {
+      existing = await MediaRepository.findByPath(
+        mediaSourceId,
+        originalTargetFilePath
+      );
+
+      // If found, it means we have a pending record (ghost) that needs to be updated
+      // because the actual download resulted in a different path (e.g. diff extension)
+      if (existing) {
+        logger.info(
+          {
+            oldPath: originalTargetFilePath,
+            newPath: newMedia.filePath,
+            mediaId: existing.id,
+          },
+          "[DownloadJob] Updating pending media record with new file path"
+        );
+        await MediaRepository.update(existing.id, {
+          filePath: newMedia.filePath,
+          fileName: newMedia.fileName,
+          mediaType: newMedia.mediaType,
+          fileSize: newMedia.fileSize,
+          width: newMedia.width,
+          height: newMedia.height,
+        });
+      }
+    }
+
     if (existing) {
       insertedMedia = existing;
       // Update description if we have one and existing doesn't (or overwrite)
-      if (newMedia.description) {
-        await MediaRepository.update(existing.id, {
-          description: newMedia.description,
-        });
-      }
+      // Update description AND physical metadata because the existing record
+      // might be a placeholder from importMetadata with 0 size/width/height.
+      await MediaRepository.update(existing.id, {
+        description: newMedia.description || existing.description,
+        fileSize: newMedia.fileSize,
+        width: newMedia.width,
+        height: newMedia.height,
+        mediaType: newMedia.mediaType,
+        modifiedAt: newMedia.modifiedAt,
+        createdAt: newMedia.createdAt,
+      });
     } else {
       throw error;
     }

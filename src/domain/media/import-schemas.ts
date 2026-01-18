@@ -40,7 +40,10 @@ export type ImportItem = z.infer<typeof importItemSchema>;
 /**
  * Maps ImportItem to the legacy DownloadItem format used by existing jobs.
  */
-export function mapImportItemToDownloadItem(item: ImportItem) {
+export function mapImportItemToDownloadItem(
+  item: ImportItem,
+  targetFilePath?: string
+) {
   return {
     imageUrl: item.imageUrl,
     tweetUrl: item.sourceUrl,
@@ -50,6 +53,7 @@ export function mapImportItemToDownloadItem(item: ImportItem) {
     authorId: item.author?.accountId ?? undefined,
     cookies: item.cookies,
     userAgent: item.userAgent,
+    targetFilePath,
   };
 }
 

@@ -241,6 +241,7 @@ export const downloadItemSchema = z.object({
   authorId: z.string().optional(),
   cookies: z.array(z.any()).optional(),
   userAgent: z.string().optional(),
+  targetFilePath: z.string().optional(),
 });
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;

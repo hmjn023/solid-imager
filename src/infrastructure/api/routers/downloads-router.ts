@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import path from "node:path";
 import { os } from "@orpc/server";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -25,7 +25,9 @@ export const downloadsRouter = {
     }
 
     // Map new ImportItem format to legacy DownloadItem format
-    const downloadItems = input.items.map(mapImportItemToDownloadItem);
+    const downloadItems = input.items.map((item) =>
+      mapImportItemToDownloadItem(item)
+    );
 
     const jobCount = await queueDownloadJobs(
       input.mediaSourceId,
@@ -106,13 +108,27 @@ export const downloadsRouter = {
       (idx) => payload.items[idx]
     );
 
-    // 1. Convert to Backup Format for metadata import
-    const backupItems = selectedItems.map((item) => {
-      const id = randomUUID();
-      const ext = item.imageUrl.split(".").pop()?.split("?")[0] || "png";
+    // 1. Prepare items with fixed Paths
+    const itemsWithPaths = selectedItems.map((item, index) => {
+      // Use standard download filename format
+      // download-{timestamp}-{index}-{originalName}
+      // index is added to prevent collision since Date.now() is constant in loop
+      const urlPath = new URL(item.imageUrl).pathname;
+      const originalFilename = path.basename(urlPath);
+      const filename = `download-${Date.now()}-${index}-${originalFilename}`;
+
       return {
-        filePath: `pending/${id}.${ext}`,
-        fileName: `pending-${id}.${ext}`,
+        ...item,
+        _targetFilePath: filename,
+        _targetFileName: filename,
+      };
+    });
+
+    // 2. Convert to Backup Format for metadata import
+    const backupItems = itemsWithPaths.map((item) => {
+      return {
+        filePath: item._targetFilePath,
+        fileName: item._targetFileName,
         description: item.description,
         createdAt: item.timestamp,
         modifiedAt: item.timestamp,
@@ -126,14 +142,16 @@ export const downloadsRouter = {
       };
     });
 
-    // 2. Import rich metadata (tags, authors etc)
+    // 3. Import rich metadata (tags, authors etc)
     await BackupService.importMetadata(
       input.mediaSourceId || "00000000-0000-0000-0000-000000000000",
       backupItems
     );
 
-    // 3. Queue physical downloads
-    const downloadItems = selectedItems.map(mapImportItemToDownloadItem);
+    // 4. Queue physical downloads
+    const downloadItems = itemsWithPaths.map((item) =>
+      mapImportItemToDownloadItem(item, item._targetFilePath)
+    );
     const jobCount = await queueDownloadJobs(
       input.mediaSourceId || "00000000-0000-0000-0000-000000000000",
       downloadItems
