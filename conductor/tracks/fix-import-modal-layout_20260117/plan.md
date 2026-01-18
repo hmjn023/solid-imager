@@ -1,6 +1,6 @@
 # Implementation Plan - Fix Import Preview Modal Layout
 
-## Phase 1: Modal Layout Refinement
+## Phase 1: Modal Layout Refinement [checkpoint: e2d3998]
 - [x] Task: Adjust Modal CSS and Structure. f882320
     - [x] Sub-task: Increase `z-index` of `ImportPreviewModal` to `z-[60]` or higher to exceed navigation bar (`z-50`).
     - [x] Sub-task: Modify container layout from `items-center` to a more robust positioning (e.g., `items-start` with `pt-20` or fixed layout) to prevent top overflow.
