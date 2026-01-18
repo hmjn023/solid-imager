@@ -4,7 +4,7 @@
 - [x] Task: Define shared schemas (Zod) for Import/Export ensuring compatibility with `BackupService`. [dff7c3d]
     - [ ] Sub-task: Create `import-schemas.ts` in `domain/media` (or share with backup).
     - [ ] Sub-task: Update `api-contract.ts` to include `downloads.preview`.
-- [x] Task: Implement `downloads.preview` ORPC procedure. [2eba862]
+- [x] Task: Implement `downloads.preview` ORPC procedure. [b0c6769]
     - [ ] Sub-task: Write tests for `downloads-router.ts` (preview endpoint).
     - [ ] Sub-task: Implement handler to save data to `jobs` table with `pending_approval` status.
 - [ ] Task: Refactor `BackupService` to expose schema transformation logic.
