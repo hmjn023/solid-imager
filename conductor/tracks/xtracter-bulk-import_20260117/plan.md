@@ -20,14 +20,14 @@
     - [ ] Sub-task: Call `orpc.downloads.preview` with extracted data.
 - [x] Task: Conductor - User Manual Verification 'Xtracter Extension Update' (Protocol in workflow.md) [dd1ef25]
 
-## Phase 3: Frontend Preview UI Implementation
+## Phase 3: Frontend Preview UI Implementation [checkpoint: feb6f31]
 - [x] Task: Implement Preview Modal Component. [dd1ef25]
     - [ ] Sub-task: Create `ImportPreviewModal.tsx`.
     - [ ] Sub-task: Implement list view with selection checkboxes.
 - [x] Task: Integrate Preview Flow. [fb0a55e]
     - [ ] Sub-task: Fetch pending jobs from `jobs` table.
     - [ ] Sub-task: Connect "Import" button to `downloads.start` (or execute job).
-- [~] Task: Conductor - User Manual Verification 'Frontend Preview UI Implementation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Frontend Preview UI Implementation' (Protocol in workflow.md) [feb6f31]
 
 ## Phase 4: Integration & Verification
 - [ ] Task: End-to-End Testing.
