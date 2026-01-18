@@ -62,3 +62,16 @@ export const bulkImportRequestSchema = z.object({
 });
 
 export type BulkImportRequest = z.infer<typeof bulkImportRequestSchema>;
+
+/**
+ * Schema for approving selected items from a preview job.
+ */
+export const approveImportRequestSchema = z.object({
+  jobId: z.string().uuid("Invalid job ID"),
+  selectedIndices: z
+    .array(z.number())
+    .min(1, "At least one item must be selected"),
+  mediaSourceId: z.string().uuid("Invalid media source ID"),
+});
+
+export type ApproveImportRequest = z.infer<typeof approveImportRequestSchema>;

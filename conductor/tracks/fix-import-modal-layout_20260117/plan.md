@@ -5,7 +5,7 @@
     - [x] Sub-task: Increase `z-index` of `ImportPreviewModal` to `z-[60]` or higher to exceed navigation bar (`z-50`).
     - [x] Sub-task: Modify container layout from `items-center` to a more robust positioning (e.g., `items-start` with `pt-20` or fixed layout) to prevent top overflow.
     - [x] Sub-task: Ensure `max-h-[90vh]` and `overflow-y-auto` are correctly applied to the content area.
-- [ ] Task: Conductor - User Manual Verification 'Modal Layout Refinement' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Modal Layout Refinement' (Protocol in workflow.md) f882320
 
 ## Phase 2: Verification
 - [ ] Task: Visual Verification.
