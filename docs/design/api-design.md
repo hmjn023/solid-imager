@@ -301,7 +301,11 @@ onCleanup(() => eventSource.close());
 
 | Method | Path | 説明 |
 |---|---|---|
-| `POST` | `/api/downloads` | JSONファイルから複数の画像を一括ダウンロードして登録します。 |
+| `POST` | `/api/downloads.start` | 画像URLリストから一括ダウンロードジョブを開始します。 |
+| `POST` | `/api/downloads.preview` | インポート候補のメタデータを送信し、プレビュー用のジョブを作成します（承認待ち状態）。 |
+| `GET` | `/api/downloads.listPending` | 承認待ちのプレビュージョブ一覧を取得します。 |
+| `GET` | `/api/downloads.getPending` | 特定のプレビュージョブの詳細を取得します。 |
+| `POST` | `/api/downloads.approve` | プレビュージョブからアイテムを選択し、インポートとダウンロードを開始します。 |
 
 ### AI (Artificial Intelligence)
 
@@ -311,40 +315,38 @@ onCleanup(() => eventSource.close());
 | `POST` | `/api/ai/ccip/feature` | 画像からCCIP特徴量を抽出します。ファイルアップロードまたはメディアID指定に対応。 |
 | `POST` | `/api/ai/ccip/difference` | 2つのCCIP特徴量間の差分を計算します。 |
 
-**`POST /api/downloads`**
+**`POST /api/downloads.preview`**
 
-JSONファイルに記載された画像URLから画像を一括ダウンロードし、メディアとして登録します。各画像のメタデータ（ツイート情報、タイムスタンプ、作者情報など）はMarkdown形式でdescriptionフィールドに保存されます。
+ブラウザ拡張機能などから収集した画像メタデータを送信し、インポート前の「プレビュー（承認待ち）」状態として保存します。
+このAPIは実際のダウンロードを行わず、`jobs` テーブルに `pending_approval` ステータスでレコードを作成します。
 
-**リクエストボディ**:
+**リクエストボディ (ImportItemスキーマ)**:
 ```json
 {
-  "mediaSourceId": "uuid-here",
+  "mediaSourceId": "uuid-here (optional)",
   "items": [
     {
       "imageUrl": "https://example.com/image.jpg",
-      "tweetUrl": "https://x.com/user/status/123",
-      "tweetText": "Sample tweet text",
+      "sourceUrl": "https://x.com/user/status/123",
+      "description": "Tweet text",
       "timestamp": "2025-11-24T04:05:10.000Z",
-      "authorName": "Author Name",
-      "authorId": "@author"
+      "author": {
+        "name": "Author Name",
+        "accountId": "@author"
+      },
+      "tags": [
+        { "name": "tag1", "type": "positive" }
+      ]
     }
   ]
 }
 ```
 
-**レスポンス**:
-```json
-{
-  "success": true,
-  "jobCount": 1,
-  "message": "Queued 1 download jobs"
-}
-```
-
-**処理フロー**:
-1. JSONファイルをパースして各画像のダウンロードジョブを作成
-2. 各画像をURLからダウンロードしてメディアソースに保存
-3. メタデータをMarkdown形式でdescriptionに記録
-4. サムネイル生成ジョブをキューに追加
-5. SSEイベント(`media-added`, `thumbnail-generated`)を通じてフロントエンドに通知
+**処理フロー (Preview & Approve)**:
+1. `POST /api/downloads.preview`: メタデータを送信し、ジョブIDを受け取る。
+2. フロントエンド: `GET /api/downloads.listPending` でジョブを検知し、通知を表示。
+3. ユーザー: プレビュー画面でインポートするアイテムを選択。
+4. `POST /api/downloads.approve`: 選択されたアイテムに対してインポート処理を実行。
+    - タグ、Author等のメタデータを作成。
+    - 画像ダウンロードジョブをキューに追加。
 

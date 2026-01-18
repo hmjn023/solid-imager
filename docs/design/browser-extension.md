@@ -7,9 +7,9 @@
 ### 主な機能
 
 1. **ダウンロードボタンの追加**: タイムライン画像の右上にボタンを表示
-2. **メタデータ抽出**: ツイート情報を JSON として保存
-3. **solid-imager 連携**: 直接 API にアップロード
-4. **動画対応**: Twitter の動画も抽出可能
+2. **一括プレビュー & インポート**: タイムライン上の画像を収集し、ポップアップから一括送信。アプリ側でプレビュー・選別してから取り込み可能。
+3. **リッチなメタデータ抽出**: ツイート本文、投稿者情報に加え、タグ付け（将来的な自動抽出含む）に対応。
+4. **solid-imager 連携**: oRPC API を通じてメタデータを送信。
 
 ---
 
@@ -29,32 +29,33 @@
 │  │  │  │  └──────────────┘  └──────────────┘     │  │  │  │
 │  │  │  └──────────────────────────────────────────┘  │  │  │
 │  │  └────────────────────────────────────────────────┘  │  │
-│  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
-                           ↓
+                           ↓ メタデータ収集
 ┌─────────────────────────────────────────────────────────────┐
 │                  xtracter Extension                         │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Content Script (index.ts)                           │  │
-│  │  - DOM 監視 (MutationObserver)                        │  │
-│  │  - ボタン追加                                         │  │
-│  │  - メタデータ抽出                                     │  │
+│  │  Popup (index.html)                                  │  │
+│  │  - "Send to Imager (Bulk)" ボタン                     │  │
+│  │  - 設定画面                                           │  │
 │  └──────────────────────────────────────────────────────┘  │
+│                           ↓ POST_PREVIEW メッセージ
 │  ┌──────────────────────────────────────────────────────┐  │
 │  │  Background Script (index.ts)                        │  │
-│  │  - ダウンロード処理                                   │  │
-│  │  - API 通信                                           │  │
-│  └──────────────────────────────────────────────────────┘  │
-│  ┌──────────────────────────────────────────────────────┐  │
-│  │  Popup (index.html)                                  │  │
-│  │  - 設定画面                                           │  │
-│  │  - ステータス表示                                     │  │
+│  │  - oRPC クライアント                                  │  │
+│  │  - API 通信 (downloads.preview)                       │  │
 │  └──────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
-                           ↓ HTTP POST
+                           ↓ oRPC (JSON)
 ┌─────────────────────────────────────────────────────────────┐
 │                    solid-imager API                         │
-│  POST /api/sources/{sourceId}/upload                        │
+│  POST /api/rpc/downloads.preview                            │
+│  (DB: jobs table -> pending_approval)                       │
+└─────────────────────────────────────────────────────────────┘
+                           ↓ 通知 & 取得
+┌─────────────────────────────────────────────────────────────┐
+│                  solid-imager Frontend                      │
+│  - Pending Import Notification                              │
+│  - Preview Modal -> User Selection -> Approve               │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -325,23 +326,35 @@ async function loadSettings() {
 
 ## API 連携
 
-### solid-imager へのアップロード
+### solid-imager へのプレビュー送信 (Bulk Import)
 
-**エンドポイント**: `POST /api/sources/{sourceId}/upload`
+**エンドポイント**: `POST /api/rpc/downloads.preview` (oRPC)
 
-**リクエスト**: `multipart/form-data`
+**リクエスト**: `application/json` (ImportItem Schema)
 
 ```typescript
-const formData = new FormData();
-formData.append('file', blob, 'image.jpg');
-formData.append('metadata', JSON.stringify({
-  tweetUrl: 'https://twitter.com/user/status/123',
-  tweetText: 'Example tweet',
-  authorName: 'User Name',
-  authorHandle: '@username',
-  timestamp: '2024-01-01T00:00:00Z',
-  imageUrl: 'https://pbs.twimg.com/media/...',
-}));
+// ImportItem[]
+const items = [
+  {
+    imageUrl: 'https://pbs.twimg.com/media/...',
+    sourceUrl: 'https://twitter.com/user/status/123',
+    description: 'Example tweet',
+    author: {
+      name: 'User Name',
+      accountId: '@username',
+    },
+    timestamp: '2024-01-01T00:00:00Z',
+    tags: [
+      { name: 'art', type: 'positive' }
+    ]
+  }
+];
+
+// oRPC call
+client.downloads.preview({
+  mediaSourceId: "uuid (optional)",
+  items: items
+});
 ```
 
 **レスポンス**:
@@ -349,20 +362,8 @@ formData.append('metadata', JSON.stringify({
 ```json
 {
   "success": true,
-  "filePath": "path/to/uploaded/image.jpg"
-}
-```
-
-ファイル名の競合が発生した場合:
-
-```json
-{
-  "success": false,
-  "filePath": "",
-  "conflict": {
-    "existingFile": "image.jpg",
-    "suggestedName": "image_1.jpg"
-  }
+  "jobId": "uuid-of-preview-job",
+  "message": "Import data saved for preview"
 }
 ```
 
@@ -370,28 +371,20 @@ formData.append('metadata', JSON.stringify({
 
 **場所**: `src/api.ts`
 
+`@orpc/client` を使用して型安全に通信します。
+
 ```typescript
-export async function uploadToSolidImager(
-  apiUrl: string,
-  sourceId: string,
-  file: Blob,
-  metadata: TweetMetadata
-): Promise<{ success: boolean; mediaId?: string }> {
-  const formData = new FormData();
-  formData.append('file', file, generateFileName(metadata));
-  formData.append('metadata', JSON.stringify(metadata));
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/fetch";
 
-  const response = await fetch(`${apiUrl}/api/sources/${sourceId}/upload`, {
-    method: 'POST',
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-  }
-
-  return await response.json();
-}
+export const getClient = async () => {
+    // ... config loading ...
+    const link = new RPCLink({
+        url: url,
+        // ... headers etc
+    });
+    return createORPCClient(link);
+};
 ```
 
 ---
