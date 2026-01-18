@@ -1,4 +1,4 @@
-import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { and, eq, type InferSelectModel, sql } from "drizzle-orm";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -497,7 +497,10 @@ export const MediaRepository: IMediaRepository = {
       const results = await client
         .insert(mediaUrls)
         .values(values)
-        .onConflictDoNothing()
+        .onConflictDoUpdate({
+          target: mediaUrls.url,
+          set: { mediaId: sql`excluded.media_id` }, // dummy update to force return
+        })
         .returning();
       return results.map(mapToMediaUrl);
     } catch (error) {

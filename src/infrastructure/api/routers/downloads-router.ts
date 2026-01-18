@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import path from "node:path";
 import { os } from "@orpc/server";
 import { desc, eq } from "drizzle-orm";
@@ -109,13 +110,16 @@ export const downloadsRouter = {
     );
 
     // 1. Prepare items with fixed Paths
-    const itemsWithPaths = selectedItems.map((item, index) => {
+    const itemsWithPaths = selectedItems.map((item, _index) => {
       // Use standard download filename format
       // download-{timestamp}-{index}-{originalName}
       // index is added to prevent collision since Date.now() is constant in loop
       const urlPath = new URL(item.imageUrl).pathname;
       const originalFilename = path.basename(urlPath);
-      const filename = `download-${Date.now()}-${index}-${originalFilename}`;
+      // Use standard download filename format
+      // download-{hash}-{originalName} in order to make it deterministic
+      const hash = crypto.createHash("md5").update(item.imageUrl).digest("hex");
+      const filename = `download-${hash}-${originalFilename}`;
 
       return {
         ...item,

@@ -5,6 +5,11 @@ const { mockDb } = vi.hoisted(() => ({
   mockDb: {
     insert: vi.fn(() => ({
       values: vi.fn(() => ({
+        onConflictDoUpdate: vi.fn(() => ({
+          returning: vi.fn(() => [
+            { id: "mock-id", url: "http://example.com/1" },
+          ]),
+        })),
         onConflictDoNothing: vi.fn(() => ({
           returning: vi.fn(() => [
             { id: "mock-id", url: "http://example.com/1" },
@@ -28,7 +33,7 @@ describe("MediaRepository Unit", () => {
     vi.clearAllMocks();
   });
 
-  it("addUrls should call onConflictDoNothing to avoid duplicate errors", async () => {
+  it("addUrls should call onConflictDoUpdate to ensure IDs are returned", async () => {
     const mediaId = "media-1";
     const urls = ["http://example.com/1", "http://example.com/2"];
 

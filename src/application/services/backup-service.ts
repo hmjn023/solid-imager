@@ -301,19 +301,23 @@ export const BackupService = {
       status: defaultStatus,
     }));
 
-    await db
-      .insert(medias)
-      .values(mediaValues)
-      .onConflictDoUpdate({
-        target: [medias.mediaSourceId, medias.filePath],
-        set: {
-          description: sql`excluded.description`,
-          modifiedAt: sql`excluded.modified_at`,
-          width: sql`excluded.width`,
-          height: sql`excluded.height`,
-          fileSize: sql`excluded.file_size`,
-        },
-      });
+    const ChunkSize = 1000;
+    for (let i = 0; i < mediaValues.length; i += ChunkSize) {
+      const chunk = mediaValues.slice(i, i + ChunkSize);
+      await db
+        .insert(medias)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: [medias.mediaSourceId, medias.filePath],
+          set: {
+            description: sql`excluded.description`,
+            modifiedAt: sql`excluded.modified_at`,
+            width: sql`excluded.width`,
+            height: sql`excluded.height`,
+            fileSize: sql`excluded.file_size`,
+          },
+        });
+    }
   },
 
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
