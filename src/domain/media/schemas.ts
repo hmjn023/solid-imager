@@ -243,6 +243,25 @@ export const downloadItemSchema = z.object({
   cookies: z.array(z.any()).optional(),
   userAgent: z.string().optional(),
   targetFilePath: z.string().optional(),
+  // Extended fields for rich metadata
+  tags: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.enum(["positive", "negative"]).default("positive"),
+        confidence: z.number().optional(),
+      })
+    )
+    .optional(),
+  authors: z
+    .array(
+      z.object({
+        name: z.string(),
+        accountId: z.string().optional().nullable(),
+      })
+    )
+    .optional(),
+  sourceUrl: z.string().url().optional(),
 });
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;

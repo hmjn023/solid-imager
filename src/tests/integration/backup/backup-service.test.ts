@@ -185,4 +185,69 @@ describe("BackupService Integration", () => {
     expect(restoredMedia?.urls).toHaveLength(1);
     expect(restoredMedia?.urls[0].url).toBe("https://example.com/restore");
   });
+
+  it("should handle author deduplication using accountId", async () => {
+    // Update source type to s3 to bypass fs.access check
+    await db
+      .update(mediaSources)
+      .set({ type: "s3" })
+      .where(eq(mediaSources.id, testSourceId));
+
+    // 1. Create an existing author with Account ID
+    await db
+      .insert(authors)
+      .values({ name: "Existing Name", accountId: "@existing" });
+
+    // 2. Create an existing author with Name only
+    await db.insert(authors).values({ name: "NameOnly" });
+
+    const items = [
+      {
+        filePath: "item1.png",
+        fileName: "item1.png",
+        mediaType: "image",
+        width: 100,
+        height: 100,
+        authors: [{ name: "Existing Name", accountId: "@existing" }], // Function match
+      },
+      {
+        filePath: "item2.png",
+        fileName: "item2.png",
+        mediaType: "image",
+        width: 100,
+        height: 100,
+        authors: [{ name: "New Author", accountId: "@new" }], // New creation
+      },
+      {
+        filePath: "item3.png",
+        fileName: "item3.png",
+        mediaType: "image",
+        width: 100,
+        height: 100,
+        authors: [{ name: "NameOnly", accountId: "@updated" }], // Should update existing
+      },
+    ];
+
+    // 3. Import
+    await BackupService.restoreSource(testSourceId, items);
+
+    // 4. Verify Authors
+    const allAuthors = await db.select().from(authors);
+
+    // Should have 3 authors total
+    expect(allAuthors.length).toBe(3);
+
+    const existingRef = allAuthors.find((a) => a.accountId === "@existing");
+    expect(existingRef).toBeDefined();
+    expect(existingRef?.name).toBe("Existing Name");
+
+    const newRef = allAuthors.find((a) => a.accountId === "@new");
+    expect(newRef).toBeDefined();
+    expect(newRef?.name).toBe("New Author");
+
+    const updatedRef = allAuthors.find((a) => a.name === "NameOnly");
+    expect(updatedRef).toBeDefined();
+    // This expects the update behavior to work
+    expect(updatedRef?.accountId).toBe("@updated");
+  });
 });

@@ -54,6 +54,12 @@ export function mapImportItemToDownloadItem(
     cookies: item.cookies,
     userAgent: item.userAgent,
     targetFilePath,
+    // Map new fields
+    tags: item.tags,
+    authors: item.author
+      ? [item.author] // Legacy single author to array
+      : [],
+    sourceUrl: item.sourceUrl,
   };
 }
 

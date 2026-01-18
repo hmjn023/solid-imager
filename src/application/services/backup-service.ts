@@ -200,7 +200,7 @@ export const BackupService = {
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
   async _restoreMasterData(validItems: any[]) {
     const tagNames = new Set<string>();
-    const authorNames = new Set<string>();
+    const authorMapData = new Map<string, string | null>();
     const projectNames = new Set<string>();
     const charNames = new Set<string>();
     const ipNames = new Set<string>();
@@ -218,7 +218,13 @@ export const BackupService = {
         // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const a of item.authors as any[]) {
           if (a.name) {
-            authorNames.add(a.name);
+            const currentId = a.accountId || a.account_id || null;
+            if (
+              !authorMapData.has(a.name) ||
+              (currentId && !authorMapData.get(a.name))
+            ) {
+              authorMapData.set(a.name, currentId);
+            }
           }
         }
       }
@@ -251,12 +257,8 @@ export const BackupService = {
     const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
       source: "restored",
     });
-    const authorMap = await this._ensureMasterData(
-      authors,
-      authors.name,
-      authorNames,
-      {}
-    );
+    const authorMap = await this._ensureAuthors(authorMapData);
+
     const projectMap = await this._ensureMasterData(
       projects,
       projects.name,
@@ -542,6 +544,54 @@ export const BackupService = {
 
     // biome-ignore lint/suspicious/noExplicitAny: dynamic
     return new Map(records.map((r: any) => [r.name, r.id]));
+  },
+
+  async _ensureAuthors(
+    authorsData: Map<string, string | null>
+  ): Promise<Map<string, string>> {
+    const result = new Map<string, string>();
+    if (authorsData.size === 0) {
+      return result;
+    }
+
+    // Process sequentially to ensure consistency
+    for (const [name, accountId] of authorsData.entries()) {
+      let existing = accountId
+        ? (
+            await db
+              .select()
+              .from(authors)
+              .where(eq(authors.accountId, accountId))
+              .limit(1)
+          )[0]
+        : undefined;
+
+      if (!existing) {
+        existing = (
+          await db.select().from(authors).where(eq(authors.name, name)).limit(1)
+        )[0];
+      }
+
+      if (existing) {
+        // If found (by ID or Name), apply updates if needed
+        if (accountId && !existing.accountId) {
+          await db
+            .update(authors)
+            .set({ accountId })
+            .where(eq(authors.id, existing.id));
+        }
+        result.set(name, existing.id);
+      } else {
+        // Create
+        const inserted = await db
+          .insert(authors)
+          .values({ name, accountId })
+          .returning();
+        result.set(name, inserted[0].id);
+      }
+    }
+
+    return result;
   },
 
   /**

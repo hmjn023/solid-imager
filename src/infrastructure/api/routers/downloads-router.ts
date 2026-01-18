@@ -3,7 +3,6 @@ import path from "node:path";
 import { os } from "@orpc/server";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { BackupService } from "~/application/services/backup-service";
 import {
   approveImportRequestSchema,
   bulkImportRequestSchema,
@@ -136,26 +135,7 @@ export const downloadsRouter = {
       };
     });
 
-    // 2. Convert to Backup Format for metadata import
-    const backupItems = itemsWithPaths.map((item) => {
-      return {
-        filePath: item._targetFilePath,
-        fileName: item._targetFileName,
-        description: item.description,
-        createdAt: item.timestamp,
-        modifiedAt: item.timestamp,
-        mediaType: "image", // Default
-        sourceUrls: [
-          item.imageUrl,
-          ...(item.sourceUrl ? [item.sourceUrl] : []),
-        ],
-        tags: item.tags,
-        authors: item.author ? [item.author] : [],
-      };
-    });
-
-    // 3. Import rich metadata (tags, authors etc)
-    await BackupService.importMetadata(input.mediaSourceId, backupItems);
+    // 2. Queue physical downloads directly (Metadata will be handled by registerMedia)
 
     // 4. Queue physical downloads
     const downloadItems = itemsWithPaths.map((item) =>

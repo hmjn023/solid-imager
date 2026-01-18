@@ -7,13 +7,15 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { eq } from "drizzle-orm";
 import type {
   AddMediaRequest,
   DownloadItem,
   Media,
-  NewAuthor,
 } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
+import { db } from "~/infrastructure/db";
+import { authors } from "~/infrastructure/db/schema";
 // import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 // import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls"; // Removed
 import type { Job } from "~/infrastructure/jobs/job-manager";
@@ -409,7 +411,11 @@ export async function processDownloadJob(
           ? new Date(item.timestamp)
           : metadata.createdAt,
         modifiedAt: metadata.modifiedAt,
-        sourceUrls: [item.imageUrl, ...(item.tweetUrl ? [item.tweetUrl] : [])],
+        sourceUrls: [
+          item.imageUrl,
+          ...(item.tweetUrl ? [item.tweetUrl] : []),
+          ...(item.sourceUrl ? [item.sourceUrl] : []),
+        ],
       };
 
       await registerMedia(newMedia, mediaSourceId, {
@@ -514,14 +520,69 @@ async function registerMedia(
     await MediaRepository.addUrls(insertedMedia.id, newMedia.sourceUrls);
   }
 
-  // Register Author
-  if (item.authorName) {
-    const newAuthor: NewAuthor = {
+  // Register Author(s)
+  // Support both legacy single author and new multiple authors array
+  const authorsToRegister = [];
+
+  if (item.authors && item.authors.length > 0) {
+    authorsToRegister.push(...item.authors);
+  } else if (item.authorName) {
+    authorsToRegister.push({
       name: item.authorName,
       accountId: item.authorId,
-    };
-    const author = await AuthorRepository.create(newAuthor);
-    await AuthorRepository.addMedia(insertedMedia.id, author.id);
+    });
+  }
+
+  for (const auth of authorsToRegister) {
+    // Robust Author Creation/Deduplication logic (similar to BackupService)
+    if (auth.accountId) {
+      // 1. Try find by Account ID
+      let existing = await db.query.authors.findFirst({
+        where: eq(authors.accountId, auth.accountId),
+      });
+
+      if (!existing) {
+        // 2. Try find by Name (if exists, update it with account ID)
+        existing = await db.query.authors.findFirst({
+          where: eq(authors.name, auth.name),
+        });
+
+        if (existing) {
+          // Found by name but has no ID, update it
+          if (!existing.accountId) {
+            await AuthorRepository.update(existing.id, {
+              accountId: auth.accountId,
+            });
+          }
+        } else {
+          // Not found, create new
+          existing = await AuthorRepository.create({
+            name: auth.name,
+            accountId: auth.accountId,
+          });
+        }
+      }
+      await AuthorRepository.addMedia(insertedMedia.id, existing.id);
+    } else {
+      // No Account ID, fallback to simple create (Repository handles name dup check)
+      const author = await AuthorRepository.create({
+        name: auth.name,
+        accountId: auth.accountId,
+      });
+      await AuthorRepository.addMedia(insertedMedia.id, author.id);
+    }
+  }
+
+  // Register Tags
+  if (item.tags && item.tags.length > 0) {
+    const { TagRepository } = await import(
+      "~/infrastructure/repositories/tag-repository"
+    );
+    await TagRepository.addTagsToMedia(
+      insertedMedia.id,
+      item.tags.map((t) => ({ name: t.name, type: t.type })),
+      "xtracter" // Source
+    );
   }
 
   // Queue thumbnail generation
