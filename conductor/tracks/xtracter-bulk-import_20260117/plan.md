@@ -7,7 +7,7 @@
 - [x] Task: Implement `downloads.preview` ORPC procedure. [b0c6769]
     - [ ] Sub-task: Write tests for `downloads-router.ts` (preview endpoint).
     - [ ] Sub-task: Implement handler to save data to `jobs` table with `pending_approval` status.
-- [ ] Task: Refactor `BackupService` to expose schema transformation logic.
+- [x] Task: Refactor `BackupService` to expose schema transformation logic. [b040527]
     - [ ] Sub-task: Extract schema validation/transformation logic for reusability.
 - [ ] Task: Conductor - User Manual Verification 'Backend Schema & API Implementation' (Protocol in workflow.md)
 

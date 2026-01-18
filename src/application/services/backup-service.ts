@@ -19,10 +19,7 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
-// ...
 import { getDriver } from "~/infrastructure/storage/factory";
-
-// const _IMAGES_PREFIX = /^images\//;
 
 /**
  * Validates that a path is relative and does not contain traversal segments.
@@ -32,8 +29,6 @@ function validateRelativePath(p: string): void {
     return;
   }
   const normalized = path.normalize(p);
-  // Check for absolute paths (start with /) or traversal (..)
-  // Note: path.isAbsolute check depends on OS, but we want to block starting with / anywhere basically for backups
   if (path.isAbsolute(p) || p.startsWith("/") || normalized.includes("..")) {
     throw new Error(`Invalid path in backup: ${p}`);
   }
@@ -43,17 +38,11 @@ function validateRelativePath(p: string): void {
  * Service for handling media source backups, restoration, and imports.
  */
 export const BackupService = {
-  // ... (restoreSource)
-
   /**
    * Restores media metadata from a JSON dump.
    * Optimized with Bulk Operations.
    */
-  async restoreSource(
-    mediaSourceId: string,
-    // biome-ignore lint/suspicious/noExplicitAny: complex dump
-    items: any[]
-  ) {
+  async restoreSource(mediaSourceId: string, items: unknown[]) {
     const mediaSource = await db.query.mediaSources.findFirst({
       where: eq(mediaSources.id, mediaSourceId),
     });
@@ -63,7 +52,10 @@ export const BackupService = {
     }
 
     const { validItems, skippedCount, errorMessages } =
-      await this._filterValidItems(items, mediaSource);
+      // biome-ignore lint/suspicious/noExplicitAny: complex structure
+      await this._filterValidItems(items as any[], mediaSource, {
+        skipFileCheck: false,
+      });
 
     if (validItems.length === 0) {
       return {
@@ -103,8 +95,70 @@ export const BackupService = {
     };
   },
 
-  // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  async _filterValidItems(items: any[], mediaSource: any) {
+  /**
+   * Imports rich metadata from a JSON list without requiring physical files to exist.
+   * Useful for pre-filling metadata for pending downloads.
+   */
+  async importMetadata(mediaSourceId: string, items: unknown[]) {
+    const mediaSource = await db.query.mediaSources.findFirst({
+      where: eq(mediaSources.id, mediaSourceId),
+    });
+
+    if (!mediaSource) {
+      throw new Error("Media source not found");
+    }
+
+    const { validItems, skippedCount, errorMessages } =
+      // biome-ignore lint/suspicious/noExplicitAny: complex structure
+      await this._filterValidItems(items as any[], mediaSource, {
+        skipFileCheck: true,
+      });
+
+    if (validItems.length === 0) {
+      return {
+        processed: 0,
+        skipped: skippedCount,
+        errors: errorMessages,
+      };
+    }
+
+    // Master Data Handling
+    const { tagMap, authorMap, projectMap, ipMap, charMap } =
+      await this._restoreMasterData(validItems);
+
+    // Media Handling (Creates or updates metadata)
+    await this._restoreMediaRecords(mediaSourceId, validItems);
+
+    const mediaPathToId = await this._mapMediaPathsToIds(
+      mediaSourceId,
+      validItems
+    );
+
+    // Relations Handling
+    await this._restoreRelations({
+      validItems,
+      mediaPathToId,
+      tagMap,
+      authorMap,
+      projectMap,
+      ipMap,
+      charMap,
+    });
+
+    return {
+      processed: validItems.length,
+      skipped: skippedCount,
+      errors: errorMessages,
+    };
+  },
+
+  async _filterValidItems(
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    items: any[],
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    mediaSource: any,
+    options: { skipFileCheck?: boolean } = {}
+  ) {
     const connectionInfo = mediaSource.connectionInfo as { path: string };
     const basePath = connectionInfo.path;
     const isLocal = mediaSource.type === "local";
@@ -128,7 +182,7 @@ export const BackupService = {
         continue;
       }
 
-      if (isLocal) {
+      if (isLocal && !options.skipFileCheck) {
         const fullPath = path.join(basePath, item.filePath);
         try {
           await fs.access(fullPath);
@@ -153,7 +207,7 @@ export const BackupService = {
 
     for (const item of validItems) {
       if (item.tags) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const t of item.tags as any[]) {
           if (t.name) {
             tagNames.add(t.name);
@@ -161,7 +215,7 @@ export const BackupService = {
         }
       }
       if (item.authors) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const a of item.authors as any[]) {
           if (a.name) {
             authorNames.add(a.name);
@@ -169,7 +223,7 @@ export const BackupService = {
         }
       }
       if (item.projects) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const p of item.projects as any[]) {
           if (p.name) {
             projectNames.add(p.name);
@@ -177,7 +231,7 @@ export const BackupService = {
         }
       }
       if (item.characters) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const c of item.characters as any[]) {
           if (c.name) {
             charNames.add(c.name);
@@ -185,7 +239,7 @@ export const BackupService = {
         }
       }
       if (item.ips) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const i of item.ips as any[]) {
           if (i.name) {
             ipNames.add(i.name);
@@ -259,7 +313,6 @@ export const BackupService = {
 
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
   async _mapMediaPathsToIds(mediaSourceId: string, validItems: any[]) {
-    // Parameter limit avoidance: Split validItems into chunks
     const ChunkSize = 10_000;
     const storedMedias: { id: string; filePath: string }[] = [];
 
@@ -322,7 +375,7 @@ export const BackupService = {
       }
 
       if (item.tags) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const t of item.tags as any[]) {
           const tagId = t.name ? tagMap.get(t.name) : undefined;
           if (tagId) {
@@ -340,7 +393,7 @@ export const BackupService = {
       }
 
       if (item.authors) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const a of item.authors as any[]) {
           const authorId = a.name ? authorMap.get(a.name) : undefined;
           if (authorId) {
@@ -350,7 +403,7 @@ export const BackupService = {
       }
 
       if (item.projects) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const p of item.projects as any[]) {
           const projectId = p.name ? projectMap.get(p.name) : undefined;
           if (projectId) {
@@ -360,7 +413,7 @@ export const BackupService = {
       }
 
       if (item.ips) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const i of item.ips as any[]) {
           const ipId = i.name ? ipMap.get(i.name) : undefined;
           if (ipId) {
@@ -370,7 +423,7 @@ export const BackupService = {
       }
 
       if (item.characters) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
+        // biome-ignore lint/suspicious/noExplicitAny: dynamic
         for (const c of item.characters as any[]) {
           const charId = c.name ? charMap.get(c.name) : undefined;
           if (charId) {
@@ -455,12 +508,12 @@ export const BackupService = {
   },
 
   async _ensureMasterData(
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic
     table: any,
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic
     nameColumn: any,
     names: Set<string>,
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic
     defaults: any
   ): Promise<Map<string, string>> {
     const nameList = Array.from(names);
@@ -468,19 +521,17 @@ export const BackupService = {
       return new Map();
     }
 
-    // Bulk Insert
     await db
       .insert(table)
       .values(nameList.map((name) => ({ name, ...defaults })))
       .onConflictDoNothing();
 
-    // Fetch IDs
     const records = await db
       .select({ id: table.id, name: nameColumn })
       .from(table)
       .where(inArray(nameColumn, nameList));
 
-    // biome-ignore lint/suspicious/noExplicitAny: dynamic record
+    // biome-ignore lint/suspicious/noExplicitAny: dynamic
     return new Map(records.map((r: any) => [r.name, r.id]));
   },
 
@@ -496,7 +547,6 @@ export const BackupService = {
       throw new Error("Media source not found");
     }
 
-    // Open ZIP from file path using unzipper
     const directory = await Open.file(zipFilePath);
 
     const dumpFile = directory.files.find((f) => f.path === "dump.json");
@@ -513,7 +563,6 @@ export const BackupService = {
 
     const driver = getDriver(mediaSource);
 
-    // Process files
     for (const item of dumpData) {
       if (item.filePath) {
         try {
@@ -534,8 +583,6 @@ export const BackupService = {
       }
     }
 
-    // Process metadata using bulk restore logic
-    // This reuses the optimized batch insertion logic from restoreSource
     const restoreResult = await this.restoreSource(mediaSourceId, dumpData);
 
     return {
@@ -552,7 +599,6 @@ export const BackupService = {
    * Returns a JSON object or a ReadableStream for ZIP download.
    */
   async createDump(mediaSourceId: string, mode: "json" | "zip" = "json") {
-    // 1. Fetch Media Source Info (needed for Driver)
     const mediaSource = await db.query.mediaSources.findFirst({
       where: eq(mediaSources.id, mediaSourceId),
     });
@@ -562,16 +608,6 @@ export const BackupService = {
     }
 
     if (mode === "json") {
-      // Legacy full-load for JSON mode (use with caution on large datasets)
-      // Reuse the logic via a helper or simple query if needed, but for now duplicate
-      // or keep the existing query structure but non-chunked?
-      // To avoid code duplication, we could use the chunked iterator to build the array.
-
-      // We can just query all at once for JSON mode as before, assuming JSON mode is for smaller debug exports.
-      // Or better, forbid JSON mode for large datasets?
-      // Let's stick to the previous implementation for JSON mode for now to minimize risk,
-      // but we need to re-implement the query since I am replacing the method.
-
       const mediaList = await db.query.medias.findMany({
         where: eq(medias.mediaSourceId, mediaSourceId),
         with: {
@@ -587,7 +623,6 @@ export const BackupService = {
       return this._transformMediaList(mediaList);
     }
 
-    // ZIP Mode: Streaming Implementation
     const driver = getDriver(mediaSource);
     const archiver = (await import("archiver")).default;
     const { PassThrough, Readable } = await import("node:stream");
@@ -600,12 +635,11 @@ export const BackupService = {
       zlib: { level: 9 },
     });
 
-    // Cleanup function references
     let tempJsonPath: string | null = null;
     const cleanup = async () => {
       if (tempJsonPath) {
         try {
-          await fsSync.promises.unlink(tempJsonPath); // Use fsSync.promises for async unlink
+          await fsSync.promises.unlink(tempJsonPath);
         } catch (_e) {
           // ignore
         }
@@ -616,13 +650,9 @@ export const BackupService = {
       await cleanup();
     });
 
-    // Ensure cleanup on ambiguous close/end if possible, or reliance on end triggers.
-    // Ideally we hook into the stream completion, but for response streams, the server handles it.
-    // We can clean up when archiving is finalized.
-
     archive.pipe(passThrough);
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Streaming logic is complex
+    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: legacy logic
     (async () => {
       let jsonStream: import("node:fs").WriteStream | undefined;
       try {
@@ -650,7 +680,7 @@ export const BackupService = {
               ips: { with: { ip: true } },
               projects: { with: { project: true } },
             },
-            orderBy: medias.id, // Ensure stable ordering
+            orderBy: medias.id,
           });
 
           if (mediaList.length < limit) {
@@ -659,12 +689,10 @@ export const BackupService = {
           offset += limit;
 
           if (mediaList.length === 0 && isFirst) {
-            // If no items at all, write empty array
             hasMore = false;
             break;
           }
           if (mediaList.length === 0) {
-            // No more items, but some were processed
             hasMore = false;
             break;
           }
@@ -672,14 +700,12 @@ export const BackupService = {
           const transformedItems = this._transformMediaList(mediaList);
 
           for (const item of transformedItems) {
-            // Write JSON
             if (!isFirst) {
               jsonStream.write(",\n");
             }
             jsonStream.write(JSON.stringify(item, null, 2));
             isFirst = false;
 
-            // Add image to archive
             if (item.filePath) {
               try {
                 const buffer = await driver.get(item.filePath);
@@ -697,23 +723,14 @@ export const BackupService = {
           jsonStream?.on("error", reject);
         });
 
-        // Append the complete JSON dump file
         archive.append(fsSync.createReadStream(tempJsonPath), {
           name: "dump.json",
         });
       } catch (_err) {
-        // Can't easily signal error to downstream if headers sent, but we can abort archive
         archive.abort();
         jsonStream?.destroy();
       } finally {
         await archive.finalize();
-        // We can delete the temp file after finalization (which means it's been read into the zip stream?)
-        // Wait, archiver reads the file *during* pipe. We must not delete it until archive emits 'end' or we are sure.
-        // Actually, we can just let OS temp cleanup handle it or try to delete after a delay?
-        // Safer: Delete it in the 'end' event of the *passThrough* stream or archive.
-        // But since this is a background async function, we can await the stream finish?
-        // For now, we will just start the cleanup with a small delay or rely on implicit cleanup.
-        // A better way is:
         passThrough.on("close", cleanup);
         passThrough.on("end", cleanup);
       }
@@ -722,50 +739,43 @@ export const BackupService = {
     return Readable.toWeb(passThrough) as ReadableStream;
   },
 
-  // Helper to transform media list to dump format
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
   _transformMediaList(mediaList: any[]) {
-    // biome-ignore lint/suspicious/noExplicitAny: explicit any needed
+    // biome-ignore lint/suspicious/noExplicitAny: map item
     return mediaList.map((media: any) => {
-      // Extract tags
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: mt
       const simpleTags = media.tags.map((mt: any) => ({
         name: mt.tag.name,
         type: mt.tagType,
         confidence: mt.confidence,
       }));
 
-      // Extract authors
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: ma
       const simpleAuthors = media.authors.map((ma: any) => ({
         name: ma.author.name,
         accountId: ma.author.accountId,
       }));
 
-      // Extract characters
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: mc
       const simpleCharacters = media.characters.map((mc: any) => ({
         name: mc.character.name,
         description: mc.character.description,
         confidence: mc.confidence,
       }));
 
-      // Extract IPs
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: mi
       const simpleIps = media.ips.map((mi: any) => ({
         name: mi.ip.name,
         description: mi.ip.description,
       }));
 
-      // Extract Projects
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: mp
       const simpleProjects = media.projects.map((mp: any) => ({
         name: mp.project.name,
         description: mp.project.description,
       }));
 
-      // Extract source URLs
-      // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+      // biome-ignore lint/suspicious/noExplicitAny: u
       const sourceUrls = media.urls.map((u: any) => u.url);
 
       return {
@@ -780,11 +790,7 @@ export const BackupService = {
         createdAt: media.createdAt,
         modifiedAt: media.modifiedAt,
         indexedAt: media.indexedAt,
-
-        // Essential metadata
         sourceUrls,
-
-        // AI Generation Info
         generationInfo: media.generationInfo
           ? {
               prompt: media.generationInfo.prompt,
@@ -798,7 +804,6 @@ export const BackupService = {
               metadata: media.generationInfo.metadata,
             }
           : null,
-
         tags: simpleTags,
         authors: simpleAuthors,
         characters: simpleCharacters,
@@ -807,6 +812,4 @@ export const BackupService = {
       };
     });
   },
-
-  // Helper methods for Restore (processRestoreItem, restoreMediaRecord etc. removed as they are deprecated)
 };
