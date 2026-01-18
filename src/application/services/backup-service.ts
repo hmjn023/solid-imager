@@ -127,7 +127,7 @@ export const BackupService = {
       await this._restoreMasterData(validItems);
 
     // Media Handling (Creates or updates metadata)
-    await this._restoreMediaRecords(mediaSourceId, validItems);
+    await this._restoreMediaRecords(mediaSourceId, validItems, "pending");
 
     const mediaPathToId = await this._mapMediaPathsToIds(
       mediaSourceId,
@@ -278,7 +278,12 @@ export const BackupService = {
   },
 
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  async _restoreMediaRecords(mediaSourceId: string, validItems: any[]) {
+  async _restoreMediaRecords(
+    mediaSourceId: string,
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    validItems: any[],
+    defaultStatus: "active" | "pending" = "active"
+  ) {
     const mediaValues = validItems.map((item) => ({
       mediaSourceId,
       filePath: item.filePath,
@@ -293,7 +298,7 @@ export const BackupService = {
       createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
       modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
       indexedAt: new Date(),
-      status: "active" as const,
+      status: defaultStatus,
     }));
 
     await db

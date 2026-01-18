@@ -704,7 +704,10 @@ export class MediaServiceImpl {
       const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, t);
       if (copyResult.deferred) {
         accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
-        // We omit individual media-copied event for move context
+        const otherEvents = copyResult.deferred.sse.filter(
+          (e) => e.event !== "media-copied"
+        );
+        accumulatedDeferred.sse.push(...otherEvents);
       }
 
       // 2. Delete Original if Copy Successful

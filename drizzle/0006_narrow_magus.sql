@@ -1,0 +1,1 @@
+ALTER TYPE "public"."media_organization_status" ADD VALUE 'pending';

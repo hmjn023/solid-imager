@@ -502,6 +502,7 @@ async function registerMedia(
         mediaType: newMedia.mediaType,
         modifiedAt: newMedia.modifiedAt,
         createdAt: newMedia.createdAt,
+        status: "active",
       });
     } else {
       throw error;

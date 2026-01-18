@@ -50,6 +50,7 @@ export const updateMediaRequestSchema = z.object({
     .int()
     .positive("File size must be a positive integer")
     .optional(),
+  status: z.enum(["active", "archived", "deleted", "pending"]).optional(),
   createdAt: z.coerce.date().optional(),
   modifiedAt: z.coerce.date().optional(),
   updatedAt: z.coerce.date().optional(), // Keeping updatedAt for BC if needed, but modifiedAt is primary
@@ -133,7 +134,7 @@ export const mediaSchema = z.object({
   createdAt: z.coerce.date(),
   modifiedAt: z.coerce.date(),
   indexedAt: z.coerce.date(),
-  status: z.enum(["active", "archived", "deleted"]),
+  status: z.enum(["active", "archived", "deleted", "pending"]),
 });
 
 export type Media = z.infer<typeof mediaSchema>;

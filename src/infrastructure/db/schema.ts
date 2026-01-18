@@ -38,6 +38,7 @@ export const mediaOrganizationStatusEnum = pgEnum("media_organization_status", [
   "active",
   "archived",
   "deleted",
+  "pending",
 ]);
 /**
  * Enum for media synchronization status.

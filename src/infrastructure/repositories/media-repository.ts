@@ -256,6 +256,9 @@ export const MediaRepository: IMediaRepository = {
         dbUpdates.createdAt = updates.createdAt;
       }
 
+      if (updates.status !== undefined) {
+        dbUpdates.status = updates.status;
+      }
       dbUpdates.modifiedAt = updates.modifiedAt || new Date();
 
       const result = await client

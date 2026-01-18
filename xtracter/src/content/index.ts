@@ -100,21 +100,18 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
 
 function extractMetadataFromUrl(): Partial<ImportItem> {
     const url = new URL(window.location.href);
-    const pathParts = url.pathname.split('/').filter(p => p);
-
+    const match = url.pathname.match(/^\/([^/]+)\/status\/(\d+)/);
     let authorId = '';
     let tweetUrl = window.location.href;
 
-    // pathParts check: ['username', 'status', '1234567890', 'photo', '1']
-    if (pathParts.length >= 3 && pathParts[1] === 'status') {
-        authorId = '@' + pathParts[0];
-        // Remove /photo/1, /video/1 to reconstruct base Tweet URL
-        tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[2]}`;
+    if (match) {
+        authorId = '@' + match[1];
+        tweetUrl = `${url.origin}/${match[1]}/status/${match[2]}`;
     }
 
-    return { 
-        author: { name: '', accountId: authorId }, 
-        sourceUrl: tweetUrl 
+    return {
+        author: { name: '', accountId: authorId },
+        sourceUrl: tweetUrl
     };
 }
 

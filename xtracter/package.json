@@ -13,7 +13,8 @@
     "@types/chrome": "^0.0.268",
     "@types/node": "^20.11.24",
     "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "zod": "^3.22.4"
   },
   "dependencies": {}
 }
