@@ -232,13 +232,94 @@ export const mediaDetailsSchema = mediaSchema.extend({
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
 
 // Download schemas for bulk image download from JSON
-export const downloadItemSchema = z.object({
-  imageUrl: z.string().url("Invalid image URL"),
-  tweetUrl: z.string().url("Invalid tweet URL").optional(),
-  tweetText: z.string().optional(),
-  timestamp: z.coerce.date().optional(),
-  authorName: z.string().optional(),
-  authorId: z.string().optional(),
+
+/**
+ * Schema representing a single item in the backup dump.
+ * This is the base schema for data exchange and restoration.
+ */
+export const mediaDumpItemSchema = z.object({
+  // Basic Info
+  id: z.string().optional(), // Ignored/Generated on import
+  filePath: z.string().optional(),
+  fileName: z.string().optional(),
+  description: z.string().nullable().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  fileSize: z.number().optional(),
+  mediaType: z.enum(["image", "video", "audio"]).optional(),
+  createdAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
+
+  // Relations
+  sourceUrls: z.array(z.string().url()).optional(),
+  authors: z
+    .array(
+      z.object({
+        name: z.string(),
+        accountId: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  tags: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.enum(["positive", "negative"]).optional(),
+      })
+    )
+    .optional(),
+  characters: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  ips: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  projects: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  // Flexible generation info to accommodate various dump formats or partial data
+  generationInfo: z
+    .object({
+      prompt: z.string().nullable().optional(),
+      negativePrompt: z.string().nullable().optional(),
+      modelName: z.string().optional(),
+      seed: z.number().optional(),
+      steps: z.number().optional(),
+      cfgScale: z.number().optional(),
+      aiGenerated: z.boolean().optional(),
+      workflow: z.any().nullable().optional(),
+      metadata: z.any().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+
+export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;
+
+/**
+ * Schema for items to be downloaded via the xtracter extension.
+ * Extends the dump schema with download-specific technical fields.
+ */
+export const downloadItemSchema = mediaDumpItemSchema.extend({
+  // Specific required fields for download
+  targetUrl: z.string().url("Invalid target URL"), // The actual URL to download (e.g., image source)
+
+  // Technical options
   cookies: z.array(z.any()).optional(),
   userAgent: z.string().optional(),
 });
