@@ -1,6 +1,7 @@
 import { createResource, createSignal, For, Show } from "solid-js";
 import { toast } from "solid-toast";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { Z_INDEX } from "~/lib/constants/z-index";
 import { Button } from "./ui/button";
 
 type ImportPreviewModalProps = {
@@ -86,7 +87,10 @@ export default function ImportPreviewModal(props: ImportPreviewModalProps) {
 
   return (
     <Show when={props.isOpen}>
-      <div class="fixed inset-0 z-[60] flex items-start justify-center bg-black bg-opacity-50 p-4 pt-20">
+      <div
+        class="fixed inset-0 flex items-start justify-center bg-black bg-opacity-50 p-4 pt-20"
+        style={{ "z-index": Z_INDEX.modal }}
+      >
         <div class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-lg bg-white shadow-xl">
           <div class="flex items-center justify-between border-b p-4">
             <h2 class="font-bold text-xl">Import Preview</h2>

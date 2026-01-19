@@ -235,7 +235,8 @@ describe("BackupService Integration", () => {
     const allAuthors = await db.select().from(authors);
 
     // Should have 3 authors total
-    expect(allAuthors.length).toBe(3);
+    const ExpectedAuthorCount = 3;
+    expect(allAuthors.length).toBe(ExpectedAuthorCount);
 
     const existingRef = allAuthors.find((a) => a.accountId === "@existing");
     expect(existingRef).toBeDefined();

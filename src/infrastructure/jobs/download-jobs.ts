@@ -7,15 +7,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { eq } from "drizzle-orm";
 import type {
   AddMediaRequest,
   DownloadItem,
   Media,
 } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
-import { db } from "~/infrastructure/db";
-import { authors } from "~/infrastructure/db/schema";
 // import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
 // import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls"; // Removed
 import type { Job } from "~/infrastructure/jobs/job-manager";
@@ -522,7 +519,8 @@ async function registerMedia(
 
   // Register Author(s)
   // Support both legacy single author and new multiple authors array
-  const authorsToRegister = [];
+  const authorsToRegister: Array<{ name: string; accountId?: string | null }> =
+    [];
 
   if (item.authors && item.authors.length > 0) {
     authorsToRegister.push(...item.authors);
@@ -534,43 +532,12 @@ async function registerMedia(
   }
 
   for (const auth of authorsToRegister) {
-    // Robust Author Creation/Deduplication logic (similar to BackupService)
-    if (auth.accountId) {
-      // 1. Try find by Account ID
-      let existing = await db.query.authors.findFirst({
-        where: eq(authors.accountId, auth.accountId),
-      });
-
-      if (!existing) {
-        // 2. Try find by Name (if exists, update it with account ID)
-        existing = await db.query.authors.findFirst({
-          where: eq(authors.name, auth.name),
-        });
-
-        if (existing) {
-          // Found by name but has no ID, update it
-          if (!existing.accountId) {
-            await AuthorRepository.update(existing.id, {
-              accountId: auth.accountId,
-            });
-          }
-        } else {
-          // Not found, create new
-          existing = await AuthorRepository.create({
-            name: auth.name,
-            accountId: auth.accountId,
-          });
-        }
-      }
-      await AuthorRepository.addMedia(insertedMedia.id, existing.id);
-    } else {
-      // No Account ID, fallback to simple create (Repository handles name dup check)
-      const author = await AuthorRepository.create({
-        name: auth.name,
-        accountId: auth.accountId,
-      });
-      await AuthorRepository.addMedia(insertedMedia.id, author.id);
-    }
+    // AuthorRepository.create handles deduplication and race conditions via onConflictDoUpdate
+    const author = await AuthorRepository.create({
+      name: auth.name,
+      accountId: auth.accountId,
+    });
+    await AuthorRepository.addMedia(insertedMedia.id, author.id);
   }
 
   // Register Tags
@@ -622,32 +589,43 @@ export async function queueDownloadJobs(
   const connectionInfo = mediaSource.connectionInfo as { path: string };
   const basePath = connectionInfo.path;
 
-  // Process downloads sequentially to avoid overwhelming the system
-  for (const item of items) {
-    try {
-      await processDownloadJob(
-        {
-          mediaId: "", // Will be set after download
-          sourcePath: basePath,
-          type: "downloadImage",
-          payload: {
-            imageUrl: item.imageUrl,
-            sourceUrl: item.imageUrl,
-            description: formatMetadataAsMarkdown(item),
-            createdAt: item.timestamp ? new Date(item.timestamp) : new Date(),
-          },
+  // Queue downloads in background without blocking API response
+  // Use Promise.allSettled to process all items in parallel with error isolation
+  const downloadPromises = items.map((item) =>
+    processDownloadJob(
+      {
+        mediaId: "", // Will be set after download
+        sourcePath: basePath,
+        type: "downloadImage",
+        payload: {
+          imageUrl: item.imageUrl,
+          sourceUrl: item.imageUrl,
+          description: formatMetadataAsMarkdown(item),
+          createdAt: item.timestamp ? new Date(item.timestamp) : new Date(),
         },
-        mediaSourceId,
-        item
-      );
-    } catch (error) {
+      },
+      mediaSourceId,
+      item
+    ).catch((error) => {
       logger.error(
         { err: error, url: item.imageUrl },
         "Failed to download item"
       );
-      // Continue with next item even if one fails
-    }
-  }
+      // Return error for tracking, but don't throw
+      return error;
+    })
+  );
 
+  // Execute all downloads in background without awaiting
+  Promise.allSettled(downloadPromises).then((results) => {
+    const succeeded = results.filter((r) => r.status === "fulfilled").length;
+    const failed = results.filter((r) => r.status === "rejected").length;
+    logger.info(
+      { total: items.length, succeeded, failed },
+      "Bulk download completed"
+    );
+  });
+
+  // Return immediately with the number of queued items
   return items.length;
 }

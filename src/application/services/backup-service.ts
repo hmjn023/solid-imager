@@ -279,7 +279,6 @@ export const BackupService = {
     return { tagMap, authorMap, projectMap, ipMap, charMap };
   },
 
-  // biome-ignore lint/suspicious/noExplicitAny: complex structure
   async _restoreMediaRecords(
     mediaSourceId: string,
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
@@ -317,6 +316,7 @@ export const BackupService = {
             width: sql`excluded.width`,
             height: sql`excluded.height`,
             fileSize: sql`excluded.file_size`,
+            status: sql`excluded.status`,
           },
         });
     }
@@ -546,6 +546,7 @@ export const BackupService = {
     return new Map(records.map((r: any) => [r.name, r.id]));
   },
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: bulk author processing logic
   async _ensureAuthors(
     authorsData: Map<string, string | null>
   ): Promise<Map<string, string>> {
@@ -554,41 +555,86 @@ export const BackupService = {
       return result;
     }
 
-    // Process sequentially to ensure consistency
+    // Step 1: Bulk search for existing authors by accountId and name
+    const accountIds = Array.from(authorsData.values()).filter(
+      (id): id is string => !!id
+    );
+    const names = Array.from(authorsData.keys());
+
+    const existingByAccountId =
+      accountIds.length > 0
+        ? await db
+            .select()
+            .from(authors)
+            .where(inArray(authors.accountId, accountIds))
+        : [];
+
+    const existingByName = await db
+      .select()
+      .from(authors)
+      .where(inArray(authors.name, names));
+
+    // Build lookup maps
+    const byAccountId = new Map(
+      existingByAccountId
+        .filter((a) => a.accountId !== null)
+        .map((a) => [a.accountId as string, a])
+    );
+    const byName = new Map(existingByName.map((a) => [a.name, a]));
+
+    // Step 2: Determine which authors need to be created
+    const toCreate: { name: string; accountId: string | null }[] = [];
+    const toUpdate: { id: string; accountId: string }[] = [];
+
     for (const [name, accountId] of authorsData.entries()) {
-      let existing = accountId
-        ? (
-            await db
-              .select()
-              .from(authors)
-              .where(eq(authors.accountId, accountId))
-              .limit(1)
-          )[0]
-        : undefined;
+      let existing = accountId ? byAccountId.get(accountId) : undefined;
 
       if (!existing) {
-        existing = (
-          await db.select().from(authors).where(eq(authors.name, name)).limit(1)
-        )[0];
+        existing = byName.get(name);
       }
 
       if (existing) {
-        // If found (by ID or Name), apply updates if needed
+        // If found by name but missing accountId, mark for update
         if (accountId && !existing.accountId) {
-          await db
-            .update(authors)
-            .set({ accountId })
-            .where(eq(authors.id, existing.id));
+          toUpdate.push({ id: existing.id, accountId });
         }
         result.set(name, existing.id);
       } else {
-        // Create
-        const inserted = await db
-          .insert(authors)
-          .values({ name, accountId })
-          .returning();
-        result.set(name, inserted[0].id);
+        toCreate.push({ name, accountId });
       }
+    }
+
+    // Step 3: Bulk insert new authors
+    if (toCreate.length > 0) {
+      // Use onConflictDoNothing since we don't have unique constraints
+      // Then fetch the inserted/existing records
+      await db.insert(authors).values(toCreate).onConflictDoNothing();
+
+      // Fetch all authors that were just created or already existed
+      const createdNames = toCreate.map((a) => a.name);
+      const inserted = await db
+        .select()
+        .from(authors)
+        .where(inArray(authors.name, createdNames));
+
+      for (const author of inserted) {
+        result.set(author.name, author.id);
+      }
+    }
+
+    // Step 4: Bulk update existing authors with missing accountId
+    if (toUpdate.length > 0) {
+      // Note: Drizzle doesn't have a native bulk update with different values per row
+      // For now, we'll do individual updates, but this is still better than the original
+      // sequential approach since we've already reduced DB round trips significantly
+      await Promise.all(
+        toUpdate.map((u) =>
+          db
+            .update(authors)
+            .set({ accountId: u.accountId, updatedAt: new Date() })
+            .where(eq(authors.id, u.id))
+        )
+      );
     }
 
     return result;

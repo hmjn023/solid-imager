@@ -6,6 +6,7 @@ import { z } from "zod";
 import {
   approveImportRequestSchema,
   bulkImportRequestSchema,
+  type importItemSchema,
   mapImportItemToDownloadItem,
 } from "~/domain/media/import-schemas";
 import { db } from "~/infrastructure/db";
@@ -109,9 +110,9 @@ export const downloadsRouter = {
     }
 
     const payload = job.payload as z.infer<typeof bulkImportRequestSchema>;
-    const selectedItems = input.selectedIndices.map(
-      (idx) => payload.items[idx]
-    );
+    const selectedItems = input.selectedIndices
+      .map((idx) => payload.items[idx])
+      .filter((item): item is z.infer<typeof importItemSchema> => !!item);
 
     // 1. Prepare items with fixed Paths
     const itemsWithPaths = selectedItems.map((item, _index) => {
