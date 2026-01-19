@@ -99,7 +99,10 @@ describe("processDownloadJob", () => {
       expect.objectContaining({
         description: "Test Description",
         mediaSourceId: "source-1",
-        sourceUrls: ["https://x.com/user/status/123"],
+        sourceUrls: [
+          "https://example.com/image.jpg",
+          "https://x.com/user/status/123",
+        ],
       })
     );
     expect(AuthorRepository.create).toHaveBeenCalledWith({

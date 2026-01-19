@@ -189,9 +189,14 @@ function extractMetadata(article: HTMLElement | null, element: HTMLElement, medi
         });
     }
 
+    const sourceUrls = [tweetUrl];
+    if (mediaType === 'IMAGE') {
+        sourceUrls.unshift(targetUrl);
+    }
+
     return {
         targetUrl,
-        sourceUrls: [tweetUrl],
+        sourceUrls,
         description: tweetText,
         createdAt: timestamp,
         authors,

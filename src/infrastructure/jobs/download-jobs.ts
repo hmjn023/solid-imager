@@ -273,7 +273,9 @@ async function handleYtDlpDownload(
         fileSize: fileMeta.size,
         createdAt: resolveCreatedAt(item, metadata, fileMeta),
         modifiedAt: fileMeta.modifiedAt,
-        sourceUrls: item.sourceUrls ?? [item.targetUrl],
+        sourceUrls: Array.from(
+          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
+        ),
       };
 
       await registerMedia(newMedia, mediaSourceId, item, basePath);
@@ -359,7 +361,9 @@ export async function processDownloadJob(
           ? new Date(item.createdAt)
           : metadata.createdAt,
         modifiedAt: metadata.modifiedAt,
-        sourceUrls: item.sourceUrls ?? [item.targetUrl],
+        sourceUrls: Array.from(
+          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
+        ),
       };
 
       await registerMedia(newMedia, mediaSourceId, item, basePath);
