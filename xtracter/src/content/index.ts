@@ -1,5 +1,4 @@
-// ... existing imports ...
-import { TweetMetadata } from '../types';
+import { TweetMetadata, Author } from '../types';
 
 console.log('xtracter content script loaded');
 
@@ -31,7 +30,6 @@ function createButtonContainer(metadata: TweetMetadata, type: 'IMAGE' | 'VIDEO' 
 }
 
 function createButton(text: string, bgColor: string, onClick: () => void): HTMLButtonElement {
-    // ... existing createButton implementation ...
     const button = document.createElement('button');
     button.innerText = text;
     button.style.backgroundColor = bgColor;
@@ -64,10 +62,14 @@ function createButton(text: string, bgColor: string, onClick: () => void): HTMLB
 
 function handleAction(metadata: TweetMetadata, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
     console.log(`Action ${type} triggered:`, metadata);
+    
+    // For videos, we rely on server-side yt-dlp which needs cookies for best results,
+    // though for public tweets it might work without.
+    // The previous implementation fetched cookies for videos. We'll keep that.
+    const tweetUrl = metadata.sourceUrls && metadata.sourceUrls.length > 0 ? metadata.sourceUrls[0] : metadata.targetUrl;
 
     if (mediaType === 'VIDEO') {
-        // Fetch cookies for video downloads to handle auth
-        chrome.runtime.sendMessage({ type: 'GET_COOKIES', url: metadata.tweetUrl }, (cookies) => {
+        chrome.runtime.sendMessage({ type: 'GET_COOKIES', url: tweetUrl }, (cookies) => {
             if (cookies) {
                 metadata.cookies = cookies;
             }
@@ -98,7 +100,7 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
     return null;
 }
 
-function extractMetadataFromUrl(): Partial<TweetMetadata> {
+function extractMetadataFromUrl(): { authorId: string, tweetUrl: string } {
     const url = new URL(window.location.href);
     const pathParts = url.pathname.split('/').filter(p => p);
 
@@ -161,29 +163,38 @@ function extractMetadata(article: HTMLElement | null, element: HTMLElement, medi
         if (urlMetadata.tweetUrl) tweetUrl = urlMetadata.tweetUrl;
     }
 
-    let imageUrl: string;
+    let targetUrl: string;
 
     if (mediaType === 'VIDEO') {
-        imageUrl = tweetUrl;
+        // For video, targetUrl is the tweet URL (processed by yt-dlp on server)
+        targetUrl = tweetUrl;
     } else {
+        // For image, targetUrl is the direct image URL
         try {
             const img = element as HTMLImageElement;
             const url = new URL(img.src);
             url.searchParams.set('name', 'orig');
-            imageUrl = url.toString();
+            targetUrl = url.toString();
         } catch (e) {
             console.error('Failed to parse image URL:', (element as HTMLImageElement).src, e);
-            imageUrl = (element as HTMLImageElement).src;
+            targetUrl = (element as HTMLImageElement).src;
         }
     }
 
+    const authors: Author[] = [];
+    if (authorName || authorId) {
+        authors.push({
+            name: authorName || authorId, // fallback name to ID if name missing
+            accountId: authorId
+        });
+    }
+
     return {
-        imageUrl,
-        tweetUrl,
-        tweetText,
-        timestamp,
-        authorName,
-        authorId,
+        targetUrl,
+        sourceUrls: [tweetUrl],
+        description: tweetText,
+        createdAt: timestamp,
+        authors,
         userAgent: navigator.userAgent
     };
 }
@@ -211,17 +222,11 @@ function processMedia() {
         if (container) {
             // Extract metadata first
             const tweetArticle = findTweetArticle(imageElement);
-            if (!tweetArticle) {
-                // If finding article fails, we still try to extract from URL in extractMetadata
-                // But logging it might be useful
-                // console.warn('Could not find tweet article for image, falling back to URL extraction');
-            }
-
             const metadata = extractMetadata(tweetArticle, imageElement, 'IMAGE');
 
             // Store metadata for bulk export
-            if (metadata.imageUrl && !processedMetadata.has(metadata.imageUrl)) {
-                processedMetadata.set(metadata.imageUrl, metadata);
+            if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
+                processedMetadata.set(metadata.targetUrl, metadata);
             }
 
             const style = window.getComputedStyle(container);
@@ -235,20 +240,12 @@ function processMedia() {
     });
 
     // Process Videos/GIFs
-    // Twitter videos are usually in div[data-testid="videoComponent"] or have a specific structure.
-    // They often have a poster image or video element.
     const videoComponents = document.querySelectorAll('div[data-testid="videoComponent"]');
     videoComponents.forEach((videoComponent) => {
-        // Find a suitable container to attach the button to.
-        // Usually the videoComponent itself or a child wrapper.
-        // We need to make sure we don't break the player UI.
         const container = videoComponent.parentElement;
         if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) return;
-
-        // Check if there is already a processed marker inside (to avoid double processing if we query differently)
         if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) return;
 
-        // Extract metadata first
         const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
         const metadata = extractMetadata(tweetArticle, container as HTMLElement, 'VIDEO');
 
@@ -260,8 +257,6 @@ function processMedia() {
         container.classList.add(PROCESSED_VIDEO_CLASS);
 
         const btnContainer = createButtonContainer(metadata, 'VIDEO');
-
-        // Adjust position for video
         btnContainer.style.top = '10px';
         btnContainer.style.right = '10px';
 
