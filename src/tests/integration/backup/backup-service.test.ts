@@ -143,7 +143,7 @@ describe("BackupService Integration", () => {
       projects: [{ name: "Restore Project" }],
       characters: [{ name: "Restore Character" }],
       ips: [{ name: "Restore IP" }],
-      authors: [{ name: "Restore Author" }],
+      authors: [{ name: "Restore Author", accountId: "test_account_123" }],
       sourceUrls: ["https://example.com/restore"],
     };
 
@@ -181,6 +181,7 @@ describe("BackupService Integration", () => {
 
     expect(restoredMedia?.authors).toHaveLength(1);
     expect(restoredMedia?.authors[0].author.name).toBe("Restore Author");
+    expect(restoredMedia?.authors[0].author.accountId).toBe("test_account_123");
 
     expect(restoredMedia?.urls).toHaveLength(1);
     expect(restoredMedia?.urls[0].url).toBe("https://example.com/restore");

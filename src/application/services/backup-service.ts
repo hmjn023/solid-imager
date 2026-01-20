@@ -146,7 +146,7 @@ export const BackupService = {
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
   async _restoreMasterData(validItems: MediaDumpItem[]) {
     const tagNames = new Set<string>();
-    const authorNames = new Set<string>();
+    const authorData = new Map<string, { accountId?: string | null }>();
     const projectNames = new Set<string>();
     const charNames = new Set<string>();
     const ipNames = new Set<string>();
@@ -161,8 +161,9 @@ export const BackupService = {
       }
       if (item.authors) {
         for (const a of item.authors) {
-          if (a.name) {
-            authorNames.add(a.name);
+          // Preserve accountId if available
+          if (a.name && (!authorData.has(a.name) || a.accountId)) {
+            authorData.set(a.name, { accountId: a.accountId });
           }
         }
       }
@@ -192,11 +193,10 @@ export const BackupService = {
     const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
       source: "restored",
     });
-    const authorMap = await this._ensureMasterData(
+    const authorMap = await this._ensureMasterDataWithExtras(
       authors,
       authors.name,
-      authorNames,
-      {}
+      authorData
     );
     const projectMap = await this._ensureMasterData(
       projects,
@@ -490,6 +490,90 @@ export const BackupService = {
 
     // biome-ignore lint/suspicious/noExplicitAny: dynamic record
     return new Map(records.map((r: any) => [r.name, r.id]));
+  },
+
+  /**
+   * Ensures master data with extra fields (specifically for authors with accountId).
+   * Authors table does NOT have unique constraint on name, so we need to handle this carefully.
+   */
+  async _ensureMasterDataWithExtras(
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    table: any,
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    nameColumn: any,
+    dataMap: Map<string, { accountId?: string | null }>
+  ): Promise<Map<string, string>> {
+    if (dataMap.size === 0) {
+      return new Map();
+    }
+
+    const entries = Array.from(dataMap.entries());
+    const nameList = entries.map(([name]) => name);
+
+    // First, find existing authors by name
+    const existingRecords = await db
+      .select({ id: table.id, name: nameColumn, accountId: table.accountId })
+      .from(table)
+      .where(inArray(nameColumn, nameList));
+
+    const existingByName = new Map<
+      string,
+      { id: string; accountId: string | null }
+    >();
+    for (const r of existingRecords) {
+      // Keep first one found for each name
+      if (!existingByName.has(r.name)) {
+        existingByName.set(r.name, { id: r.id, accountId: r.accountId });
+      }
+    }
+
+    // Update existing authors with new accountId if provided
+    // Note: Update ALL authors with matching name (handles duplicates)
+    for (const [name, data] of entries) {
+      const existing = existingByName.get(name);
+      if (existing && data.accountId && existing.accountId !== data.accountId) {
+        await db
+          .update(table)
+          .set({ accountId: data.accountId })
+          .where(eq(nameColumn, name));
+      }
+    }
+
+    // Insert new authors that don't exist
+    const newEntries = entries.filter(([name]) => !existingByName.has(name));
+    if (newEntries.length > 0) {
+      await db.insert(table).values(
+        newEntries.map(([name, data]) => ({
+          name,
+          accountId: data.accountId || null,
+        }))
+      );
+
+      // Fetch the newly inserted records
+      const newRecords = await db
+        .select({ id: table.id, name: nameColumn })
+        .from(table)
+        .where(
+          inArray(
+            nameColumn,
+            newEntries.map(([name]) => name)
+          )
+        );
+
+      for (const r of newRecords) {
+        if (!existingByName.has(r.name)) {
+          existingByName.set(r.name, { id: r.id, accountId: null });
+        }
+      }
+    }
+
+    // Return map of name -> id
+    return new Map(
+      Array.from(existingByName.entries()).map(([name, data]) => [
+        name,
+        data.id,
+      ])
+    );
   },
 
   /**
