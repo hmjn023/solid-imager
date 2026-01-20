@@ -2,7 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Open } from "unzipper";
-import type { MediaDumpItem } from "~/domain/media/schemas";
+import {
+  type MediaDumpItem,
+  mediaDumpItemSchema,
+} from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import {
   authors,
@@ -115,14 +118,24 @@ export const BackupService = {
     let skippedCount = 0;
 
     for (const item of items) {
-      // Basic structure check
-      if (!(item.filePath && item.fileName)) {
+      // Zod Validation
+      const result = mediaDumpItemSchema.safeParse(item);
+      if (!result.success) {
+        skippedCount++;
+        errorMessages.push(`Validation failed: ${result.error.message}`);
+        continue;
+      }
+
+      const validItem = result.data;
+
+      // Ensure filePath and fileName
+      if (!(validItem.filePath && validItem.fileName)) {
         skippedCount++;
         continue;
       }
 
       try {
-        validateRelativePath(item.filePath);
+        validateRelativePath(validItem.filePath);
       } catch (e) {
         skippedCount++;
         errorMessages.push((e as Error).message);
@@ -130,7 +143,7 @@ export const BackupService = {
       }
 
       if (isLocal) {
-        const fullPath = path.join(basePath, item.filePath);
+        const fullPath = path.join(basePath, validItem.filePath);
         try {
           await fs.access(fullPath);
         } catch {
@@ -138,7 +151,7 @@ export const BackupService = {
           continue;
         }
       }
-      validItems.push(item as MediaDumpItem);
+      validItems.push(validItem);
     }
     return { validItems, skippedCount, errorMessages };
   },
