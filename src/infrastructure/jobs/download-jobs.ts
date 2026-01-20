@@ -145,7 +145,7 @@ async function downloadWithYtDlp(
     );
   }
 
-  const template = "% (id)s.%(ext)s";
+  const template = "%(id)s.%(ext)s";
   const args = [
     "--no-simulate",
     "--print-json",
