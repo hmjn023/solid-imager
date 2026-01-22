@@ -23,6 +23,7 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
+import { queueGenerationJobs } from "~/infrastructure/jobs/media-registration";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 // const _IMAGES_PREFIX = /^images\//;
@@ -98,6 +99,21 @@ export const BackupService = {
       projectMap,
       ipMap,
       charMap,
+    });
+
+    // Queue generation jobs (thumbnails, etc.)
+    // Skip metadata extraction to preserve restored metadata
+    const restoredItems = Array.from(mediaPathToId.entries()).map(
+      ([filePath, id]) => ({ id, filePath })
+    );
+
+    // Dynamic import to avoid circular dependency potentially, or just standard import
+    // Using standard import as we are in application layer using infrastructure
+    queueGenerationJobs({
+      mediaSourceId,
+      items: restoredItems,
+      basePath: (mediaSource.connectionInfo as { path: string }).path,
+      skipMetadataExtraction: true,
     });
 
     return {

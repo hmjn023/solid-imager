@@ -7,22 +7,12 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type {
-  AddMediaRequest,
-  DownloadItem,
-  Media,
-  NewAuthor,
-} from "~/domain/media/schemas";
+import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
 import type { Job } from "~/infrastructure/jobs/job-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import { registerMediaWithJobs } from "~/infrastructure/jobs/media-registration";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
@@ -395,64 +385,13 @@ async function registerMedia(
   item: DownloadItem,
   basePath: string
 ) {
-  let insertedMedia: Media;
-  try {
-    insertedMedia = await MediaRepository.create(newMedia);
-  } catch (error) {
-    // Handle race condition with FileWatcherService
-    const existing = await MediaRepository.findByPath(
-      mediaSourceId,
-      newMedia.filePath
-    );
-    if (existing) {
-      insertedMedia = existing;
-      // Update description if we have one and existing doesn't (or overwrite)
-      if (newMedia.description) {
-        await MediaRepository.update(existing.id, {
-          description: newMedia.description,
-        });
-      }
-    } else {
-      throw error;
-    }
-  }
-
-  // Register URLs
-  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(insertedMedia.id, newMedia.sourceUrls);
-  }
-
-  // Register Authors
-  if (item.authors && item.authors.length > 0) {
-    for (const authorData of item.authors) {
-      const newAuthor: NewAuthor = {
-        name: authorData.name,
-        accountId: authorData.accountId,
-      };
-      const author = await AuthorRepository.create(newAuthor);
-      await AuthorRepository.addMedia(insertedMedia.id, author.id);
-    }
-  }
-
-  // Queue thumbnail generation
-  addJobsToQueue(mediaSourceId, [
-    {
-      mediaId: insertedMedia.id,
-      sourcePath: basePath, // Use passed basePath
-      type: "thumbnail",
-    },
-  ]);
-
-  startJobQueue(mediaSourceId, async (thumbnailJob) => {
-    const { processMediaJob } = await import(
-      "~/infrastructure/jobs/thumbnails"
-    );
-    await processMediaJob(thumbnailJob, mediaSourceId);
-  });
-
-  // Notify success
-  SseManager.sendEvent(mediaSourceId, "media-added", {
-    mediaId: insertedMedia.id,
+  // Use centralized registration function
+  // This ensures both thumbnail and extractTags jobs are queued
+  await registerMediaWithJobs({
+    mediaSourceId,
+    basePath,
+    newMedia,
+    authors: item.authors,
   });
 }
 

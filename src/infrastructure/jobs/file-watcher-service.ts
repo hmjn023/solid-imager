@@ -4,16 +4,13 @@
 
 import path from "node:path";
 import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+  registerMediaWithJobs,
+  updateMediaWithJobs,
+} from "~/infrastructure/jobs/media-registration";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
-import { processMediaJob } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
@@ -69,59 +66,23 @@ async function handleFileAdded(
       mediaType = "audio";
     }
 
-    // Create media entry
-    const media = await MediaRepository.create({
+    // Register media with jobs using centralized function
+    await registerMediaWithJobs({
       mediaSourceId,
-      filePath: relativePath,
-      fileName: path.basename(relativePath),
-      mediaType,
-      width: fileMetadata.width,
-      height: fileMetadata.height,
-      fileSize: fileMetadata.size,
-      description: null,
-      createdAt: fileMetadata.createdAt,
-      modifiedAt: fileMetadata.modifiedAt,
+      basePath,
+      newMedia: {
+        mediaSourceId,
+        filePath: relativePath,
+        fileName: path.basename(relativePath),
+        mediaType,
+        width: fileMetadata.width,
+        height: fileMetadata.height,
+        fileSize: fileMetadata.size,
+        description: null,
+        createdAt: fileMetadata.createdAt,
+        modifiedAt: fileMetadata.modifiedAt,
+      },
     });
-
-    // Queue thumbnail generation
-    addJobsToQueue(mediaSourceId, [
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "thumbnail" as const,
-      },
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "extractTags" as const,
-      },
-    ]);
-    startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
-
-    // Extract metadata in the background
-    try {
-      const metadata = await ImageProcessor.extractMetadata(fullPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
-          media.id,
-          metadata.tags,
-          "comfyui_workflow"
-        );
-      }
-    } catch (_e) {
-      // Ignore extraction errors
-    }
   } catch (error) {
     logger.error(
       { err: error, mediaSourceId, relativePath },
@@ -196,57 +157,18 @@ async function handleFileChanged(
 
     // Update metadata
     const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
-    await MediaRepository.update(media.id, {
-      width: fileMetadata.width,
-      height: fileMetadata.height,
-      fileSize: fileMetadata.size,
-      modifiedAt: fileMetadata.modifiedAt,
-    });
 
-    // Regenerate thumbnail
-    addJobsToQueue(mediaSourceId, [
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "thumbnail" as const,
-      },
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "extractTags" as const,
-      },
-    ]);
-    startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
-
-    // Re-extract metadata
-    try {
-      const metadata = await ImageProcessor.extractMetadata(fullPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
-          media.id,
-          metadata.tags,
-          "comfyui_workflow"
-        );
-      }
-    } catch (_e) {
-      // Ignore extraction errors
-    }
-
-    // Notify
-    SseManager.sendEvent(mediaSourceId, "media-changed", {
+    // Update media with jobs using centralized function
+    await updateMediaWithJobs({
+      mediaSourceId,
       mediaId: media.id,
-      filePath: media.filePath,
+      basePath,
+      updates: {
+        width: fileMetadata.width,
+        height: fileMetadata.height,
+        fileSize: fileMetadata.size,
+        modifiedAt: fileMetadata.modifiedAt,
+      },
     });
   } catch (error) {
     logger.error(

@@ -109,6 +109,14 @@ export async function processMediaJob(
 
   if (job.type === "thumbnail") {
     await generateThumbnail(media, job.sourcePath, mediaSourceId);
+    if (job.options?.skipMetadataExtraction) {
+      // Notify clients that the thumbnail is ready (even if metadata extraction was skipped)
+      SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
+        mediaId: media.id,
+      });
+      return;
+    }
+
     const mediaPath = path.join(job.sourcePath, media.filePath);
     try {
       const metadata = await ImageProcessor.extractMetadata(mediaPath);

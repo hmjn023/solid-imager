@@ -17,6 +17,9 @@ export type Job = {
     description?: string;
     createdAt?: Date;
   };
+  options?: {
+    skipMetadataExtraction?: boolean;
+  };
 };
 
 /**
