@@ -509,6 +509,7 @@ export const BackupService = {
    * Ensures master data with extra fields (specifically for authors with accountId).
    * Authors table does NOT have unique constraint on name, so we need to handle this carefully.
    */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: logic is slightly complex due to accountId priority
   async _ensureMasterDataWithExtras(
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     table: any,
@@ -534,8 +535,9 @@ export const BackupService = {
       { id: string; accountId: string | null }
     >();
     for (const r of existingRecords) {
-      // Keep first one found for each name
-      if (!existingByName.has(r.name)) {
+      const existing = existingByName.get(r.name);
+      // Prioritize entry with an accountId, or just take the first one if none have it yet.
+      if (!existing || (!existing.accountId && r.accountId)) {
         existingByName.set(r.name, { id: r.id, accountId: r.accountId });
       }
     }
@@ -564,7 +566,7 @@ export const BackupService = {
 
       // Fetch the newly inserted records
       const newRecords = await db
-        .select({ id: table.id, name: nameColumn })
+        .select({ id: table.id, name: nameColumn, accountId: table.accountId })
         .from(table)
         .where(
           inArray(
@@ -575,7 +577,7 @@ export const BackupService = {
 
       for (const r of newRecords) {
         if (!existingByName.has(r.name)) {
-          existingByName.set(r.name, { id: r.id, accountId: null });
+          existingByName.set(r.name, { id: r.id, accountId: r.accountId });
         }
       }
     }
