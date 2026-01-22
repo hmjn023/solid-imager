@@ -67,26 +67,6 @@ export type UpdateMediaWithJobsParams = {
 };
 
 /**
- * Registers new media in the database and queues thumbnail and tag extraction jobs.
- *
- * This function centralizes the media registration workflow to ensure consistency
- * across different entry points (file watcher, downloads, manual uploads).
- *
- * Flow:
- * 1. Create media record in database
- * 2. Register source URLs (if provided)
- * 3. Register authors (if provided)
- * 4. Queue thumbnail and extractTags jobs
- * 5. Start job queue processing
- * 6. Send SSE notification
- *
- * Note: Metadata extraction is handled by the thumbnail job (processMediaJob),
- * not in this function, to avoid duplication.
- *
- * @param params - Registration parameters
- * @returns The registered media record
- */
-/**
  * Helper function to create or find existing media record
  */
 async function createOrFindMedia(
