@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "serena": {
+      "command": "serena-mcp-server",
+      "args": []
+    },
+    "context7": {
+      "command": "context7-mcp",
+      "args": []
+    }
+  }
+}
