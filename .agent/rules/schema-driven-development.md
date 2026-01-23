@@ -1,5 +1,7 @@
 ---
-trigger: always_on
+trigger: glob
+glob: "src/domain/**/schemas.ts"
+description: Schema-Driven Development (SDD) における、Zodスキーマの定義と型導出のルール。ドメインモデルやAPIスキーマを定義する際に参照してください。
 ---
 ### Schema-Driven Development (SDD) with Zod
 

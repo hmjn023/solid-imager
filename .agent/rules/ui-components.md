@@ -1,5 +1,7 @@
 ---
-trigger: always_on
+trigger: glob
+glob: "src/components/**/*.{tsx,jsx}"
+description: solid-ui (shadcn/ui port) コンポーネントの追加方法や使用方法に関するルール。UIコンポーネントを新規作成または変更する際に参照してください。
 ---
 ### UIコンポーネント (solid-ui)
 

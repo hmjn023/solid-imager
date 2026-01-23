@@ -1,5 +1,6 @@
 ---
 trigger: always_on
+description: インポートエイリアスの使用
 ---
 ### インポートエイリアス
 
