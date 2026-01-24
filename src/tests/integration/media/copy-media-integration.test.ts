@@ -19,10 +19,10 @@ import {
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
+import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 // Mocks
