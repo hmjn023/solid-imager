@@ -73,6 +73,8 @@ export async function registerAndProcess(
   }
 
   // Step 1: Create media record (synchronous)
+  // Use createdAt from context if provided (e.g., original post date from xtracter),
+  // falling back to file metadata
   const media = await MediaRepository.create({
     mediaSourceId,
     filePath: relativePath,
@@ -82,7 +84,7 @@ export async function registerAndProcess(
     height: fileMetadata.height,
     fileSize: fileMetadata.size,
     description: contextMetadata?.description ?? null,
-    createdAt: fileMetadata.createdAt,
+    createdAt: contextMetadata?.createdAt ?? fileMetadata.createdAt,
     modifiedAt: fileMetadata.modifiedAt,
   });
 
@@ -134,7 +136,7 @@ async function registerContextMetadata(
           name: author.name,
           accountId: author.accountId ?? null,
         });
-        await AuthorRepository.addMedia(createdAuthor.id, mediaId);
+        await AuthorRepository.addMedia(mediaId, createdAuthor.id);
       } catch (e) {
         logger.warn({ err: e, author }, "Failed to register author");
       }

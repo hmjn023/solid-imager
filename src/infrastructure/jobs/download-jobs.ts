@@ -437,6 +437,7 @@ async function registerMedia(
       newMedia.filePath,
       {
         description: newMedia.description ?? undefined,
+        createdAt: newMedia.createdAt,
         sourceUrls: newMedia.sourceUrls,
         authors: item.authors?.map((a) => ({
           name: a.name,

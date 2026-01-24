@@ -244,6 +244,7 @@ export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
  */
 export const mediaMetadataContextSchema = z.object({
   description: z.string().nullable().optional(),
+  createdAt: z.coerce.date().optional(), // Original creation date (e.g., from social media post)
   sourceUrls: z.array(z.string().url()).optional(),
   authors: z
     .array(
