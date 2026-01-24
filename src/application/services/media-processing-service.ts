@@ -1,15 +1,19 @@
 /**
  * MediaProcessingService - Unified entry point for media registration and processing
- *
- * This service consolidates the scattered media processing logic from:
- * - download-jobs.ts (downloads)
- * - file-watcher-service.ts (file system monitoring)
- * - media-service.ts (manual uploads)
- * - backup-service.ts (imports)
  */
 
 import path from "node:path";
+// Registry for backward compatibility proxy
+import { services } from "~/application/registry";
 import type { Media, MediaMetadataContext } from "~/domain/media/schemas";
+// Repository Interfaces
+import type { IAuthorRepository } from "~/domain/repositories/author-repository";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
+import type { IMediaRepository } from "~/domain/repositories/media-repository";
+import type { IProjectRepository } from "~/domain/repositories/project-repository";
+import type { SourceRepository } from "~/domain/repositories/source-repository";
+import type { TagRepository } from "~/domain/repositories/tag-repository";
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import {
   addJobsToQueue,
@@ -19,325 +23,308 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-// Repository instances
-const characterRepo = new DrizzleCharacterRepository();
+export class MediaProcessingServiceImpl {
+  private readonly sourceRepo: SourceRepository;
+  private readonly mediaRepo: IMediaRepository;
+  private readonly tagRepo: TagRepository;
+  private readonly authorRepo: IAuthorRepository;
+  private readonly characterRepo: CharacterRepository;
+  private readonly ipRepo: IIpRepository;
+  private readonly projectRepo: IProjectRepository;
 
-// Configuration: Auto-tagging is disabled by default until config system is implemented
-const ENABLE_AUTO_TAGGING = false;
-
-const sourceRepo = new DrizzleSourceRepository();
-
-/**
- * Unified entry point for media registration and processing.
- *
- * Synchronous operations (for immediate UX feedback):
- * - DB record creation
- * - Author, SourceURL, Tag, etc. registration (from contextMetadata)
- *
- * Asynchronous operations (queued as processMedia job):
- * - Metadata extraction (Width/Height, Exif, ComfyUI info)
- * - Thumbnail generation
- * - AI tagging (when enabled)
- *
- * @param mediaSourceId - The source ID
- * @param relativePath - Relative path from source root
- * @param contextMetadata - Optional initial metadata from external context
- * @returns The created Media record
- */
-export async function registerAndProcess(
-  mediaSourceId: string,
-  relativePath: string,
-  contextMetadata?: Partial<MediaMetadataContext>
-): Promise<Media> {
-  const source = await sourceRepo.findById(mediaSourceId);
-  if (!source || source.type !== "local") {
-    throw new Error(`Source not found or not a local source: ${mediaSourceId}`);
+  // biome-ignore lint/nursery/useMaxParams: DI requires multiple repositories
+  constructor(
+    sourceRepo: SourceRepository,
+    mediaRepo: IMediaRepository,
+    tagRepo: TagRepository,
+    authorRepo: IAuthorRepository,
+    characterRepo: CharacterRepository,
+    ipRepo: IIpRepository,
+    projectRepo: IProjectRepository
+    // ImageProcessor, SseManager, JobManager are currently static/modules,
+    // keeping them as imports for now as per scope, or inject if they have interfaces
+  ) {
+    this.sourceRepo = sourceRepo;
+    this.mediaRepo = mediaRepo;
+    this.tagRepo = tagRepo;
+    this.authorRepo = authorRepo;
+    this.characterRepo = characterRepo;
+    this.ipRepo = ipRepo;
+    this.projectRepo = projectRepo;
   }
 
-  const basePath = (source.connectionInfo as { path: string }).path;
-  const fullPath = path.join(basePath, relativePath);
+  // Configuration check (could be injected config service)
+  private readonly enableAutoTagging = false;
 
-  // Get file metadata
-  const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
+  /**
+   * Unified entry point for media registration and processing.
+   */
+  async registerAndProcess(
+    mediaSourceId: string,
+    relativePath: string,
+    contextMetadata?: Partial<MediaMetadataContext>
+  ): Promise<Media> {
+    const source = await this.sourceRepo.findById(mediaSourceId);
+    if (!source || source.type !== "local") {
+      throw new Error(
+        `Source not found or not a local source: ${mediaSourceId}`
+      );
+    }
 
-  // Determine media type from extension
-  const ext = path.extname(relativePath).toLowerCase();
-  let mediaType: "image" | "video" | "audio" = "image";
-  if ([".mp4", ".webm", ".mov"].includes(ext)) {
-    mediaType = "video";
-  } else if ([".mp3", ".wav"].includes(ext)) {
-    mediaType = "audio";
-  }
+    const basePath = (source.connectionInfo as { path: string }).path;
+    const fullPath = path.join(basePath, relativePath);
 
-  // Step 1: Create media record (synchronous)
-  // Use createdAt from context if provided (e.g., original post date from xtracter),
-  // falling back to file metadata
-  const media = await MediaRepository.create({
-    mediaSourceId,
-    filePath: relativePath,
-    fileName: path.basename(relativePath),
-    mediaType,
-    width: fileMetadata.width,
-    height: fileMetadata.height,
-    fileSize: fileMetadata.size,
-    description: contextMetadata?.description ?? null,
-    createdAt: contextMetadata?.createdAt ?? fileMetadata.createdAt,
-    modifiedAt: fileMetadata.modifiedAt,
-  });
+    // Get file metadata
+    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
 
-  // Step 2: Register related data from context (synchronous)
-  if (contextMetadata) {
-    await registerContextMetadata(media.id, contextMetadata);
-  }
+    // Determine media type
+    const ext = path.extname(relativePath).toLowerCase();
+    let mediaType: "image" | "video" | "audio" = "image";
+    if ([".mp4", ".webm", ".mov"].includes(ext)) {
+      mediaType = "video";
+    } else if ([".mp3", ".wav"].includes(ext)) {
+      mediaType = "audio";
+    }
 
-  // Step 3: Queue processMedia job (asynchronous)
-  addJobsToQueue(mediaSourceId, [
-    {
+    // Step 1: Create media record
+    const media = await this.mediaRepo.create({
+      mediaSourceId,
+      filePath: relativePath,
+      fileName: path.basename(relativePath),
+      mediaType,
+      width: fileMetadata.width,
+      height: fileMetadata.height,
+      fileSize: fileMetadata.size,
+      description: contextMetadata?.description ?? null,
+      createdAt: contextMetadata?.createdAt ?? fileMetadata.createdAt,
+      modifiedAt: fileMetadata.modifiedAt,
+    });
+
+    // Step 2: Register related data
+    if (contextMetadata) {
+      await this.registerContextMetadata(media.id, contextMetadata);
+    }
+
+    // Step 3: Queue processMedia job
+    addJobsToQueue(mediaSourceId, [
+      {
+        mediaId: media.id,
+        sourcePath: basePath,
+        type: "processMedia" as const,
+      },
+    ]);
+    startJobQueue(mediaSourceId, (job) =>
+      this.executeProcessMediaJob(job, mediaSourceId)
+    );
+
+    // Notify clients
+    SseManager.sendEvent(mediaSourceId, "media-added", {
       mediaId: media.id,
-      sourcePath: basePath,
-      type: "processMedia" as const,
-    },
-  ]);
-  startJobQueue(mediaSourceId, (job) =>
-    executeProcessMediaJob(job, mediaSourceId)
-  );
+      filePath: media.filePath,
+    });
 
-  // Notify clients
-  SseManager.sendEvent(mediaSourceId, "media-added", {
-    mediaId: media.id,
-    filePath: media.filePath,
-  });
-
-  return media;
-}
-
-/**
- * Helper: Register authors for a media item
- */
-async function registerAuthors(
-  mediaId: string,
-  authors: NonNullable<MediaMetadataContext["authors"]>
-): Promise<void> {
-  for (const author of authors) {
-    try {
-      const createdAuthor = await AuthorRepository.create({
-        name: author.name,
-        accountId: author.accountId ?? null,
-      });
-      await AuthorRepository.addMedia(mediaId, createdAuthor.id);
-    } catch (e) {
-      logger.warn({ err: e, author }, "Failed to register author");
-    }
+    return media;
   }
-}
 
-/**
- * Helper: Register characters for a media item
- */
-async function registerCharacters(
-  mediaId: string,
-  characters: NonNullable<MediaMetadataContext["characters"]>
-): Promise<void> {
-  for (const charData of characters) {
-    try {
-      const created = await characterRepo.create({
-        name: charData.name,
-        description: charData.description ?? "",
-      });
-      await characterRepo.addToMedia(mediaId, created.id);
-    } catch (e) {
+  /**
+   * Executes the processMedia job.
+   */
+  async executeProcessMediaJob(job: Job, mediaSourceId: string): Promise<void> {
+    if (job.type !== "processMedia") {
+      return;
+    }
+
+    const media = await this.mediaRepo.findById(job.mediaId);
+    if (!media) {
       logger.warn(
-        { err: e, character: charData },
-        "Failed to register character"
+        { mediaId: job.mediaId },
+        "Media not found for processMedia job"
       );
+      return;
     }
-  }
-}
 
-/**
- * Helper: Register IPs for a media item
- */
-async function registerIps(
-  mediaId: string,
-  ipsData: NonNullable<MediaMetadataContext["ips"]>
-): Promise<void> {
-  for (const ipData of ipsData) {
-    try {
-      const created = await IpRepository.create({
-        name: ipData.name,
-        description: ipData.description ?? "",
-      });
-      await IpRepository.addMedia(mediaId, created.id);
-    } catch (e) {
-      logger.warn({ err: e, ip: ipData }, "Failed to register IP");
-    }
-  }
-}
+    const mediaPath = path.join(job.sourcePath, media.filePath);
 
-/**
- * Helper: Register projects for a media item
- */
-async function registerProjects(
-  mediaId: string,
-  projectsData: NonNullable<MediaMetadataContext["projects"]>
-): Promise<void> {
-  for (const projData of projectsData) {
-    try {
-      const created = await ProjectRepository.create({
-        name: projData.name,
-        description: projData.description ?? "",
-      });
-      await ProjectRepository.addMedia(mediaId, created.id);
-    } catch (e) {
-      logger.warn({ err: e, project: projData }, "Failed to register project");
-    }
-  }
-}
+    // Step 1: Metadata extraction
+    if (!job.payload?.skipMetadataExtraction) {
+      try {
+        const metadata = await ImageProcessor.extractMetadata(mediaPath);
 
-/**
- * Registers context metadata (authors, URLs, tags, etc.) for a media item.
- * This is called synchronously during registerAndProcess for immediate UX feedback.
- */
-async function registerContextMetadata(
-  mediaId: string,
-  context: Partial<MediaMetadataContext>
-): Promise<void> {
-  // Register source URLs
-  if (context.sourceUrls && context.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(mediaId, context.sourceUrls);
-  }
-
-  // Register authors
-  if (context.authors && context.authors.length > 0) {
-    await registerAuthors(mediaId, context.authors);
-  }
-
-  // Register tags
-  if (context.tags && context.tags.length > 0) {
-    await TagRepository.addTagsToMedia(
-      mediaId,
-      context.tags.map((t) => ({
-        name: t.name,
-        type: (t.type ?? "positive") as "positive" | "negative",
-      })),
-      "user_provided"
-    );
-  }
-
-  // Register characters
-  if (context.characters && context.characters.length > 0) {
-    await registerCharacters(mediaId, context.characters);
-  }
-
-  // Register IPs
-  if (context.ips && context.ips.length > 0) {
-    await registerIps(mediaId, context.ips);
-  }
-
-  // Register projects
-  if (context.projects && context.projects.length > 0) {
-    await registerProjects(mediaId, context.projects);
-  }
-}
-
-/**
- * Executes the processMedia job.
- * Each step is executed independently - individual failures do not stop the entire job.
- *
- * @param job - The job to process
- * @param mediaSourceId - The source ID
- */
-export async function executeProcessMediaJob(
-  job: Job,
-  mediaSourceId: string
-): Promise<void> {
-  // Only handle processMedia jobs
-  if (job.type !== "processMedia") {
-    return;
-  }
-
-  const media = await MediaRepository.findById(job.mediaId);
-  if (!media) {
-    logger.warn(
-      { mediaId: job.mediaId },
-      "Media not found for processMedia job"
-    );
-    return;
-  }
-
-  const mediaPath = path.join(job.sourcePath, media.filePath);
-
-  // Step 1: Metadata extraction (failure does not affect thumbnail generation)
-  // Note: Width/height are already extracted by LocalMediaStorage.getFileMetadata
-  // ImageProcessor.extractMetadata extracts ComfyUI workflow data and tags
-  // Skip if requested (e.g. during restoration)
-  if (!job.payload?.skipMetadataExtraction) {
-    try {
-      const metadata = await ImageProcessor.extractMetadata(mediaPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags from workflow
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
+        await this.mediaRepo.upsertGenerationInfo(
           media.id,
-          metadata.tags,
-          "comfyui_workflow"
+          typeof metadata.prompt === "object"
+            ? JSON.stringify(metadata.prompt)
+            : (metadata.prompt as string | null),
+          metadata.workflow as object | null
+        );
+
+        if (metadata.tags.length > 0) {
+          await this.tagRepo.addTagsToMedia(
+            media.id,
+            metadata.tags,
+            "comfyui_workflow"
+          );
+        }
+      } catch (e) {
+        logger.warn(
+          { err: e, mediaId: job.mediaId },
+          "Metadata extraction failed, continuing..."
         );
       }
+    }
+
+    // Step 2: Thumbnail generation
+    try {
+      await generateThumbnail(media, job.sourcePath, mediaSourceId);
+      SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
+        mediaId: media.id,
+      });
     } catch (e) {
-      logger.warn(
+      logger.error(
         { err: e, mediaId: job.mediaId },
-        "Metadata extraction failed, continuing..."
+        "Thumbnail generation failed"
       );
+    }
+
+    // Step 3: AI tagging
+    if (this.enableAutoTagging && !job.payload?.skipMetadataExtraction) {
+      try {
+        logger.info({ mediaId: job.mediaId }, "AI tagging not yet implemented");
+      } catch (e) {
+        logger.warn(
+          { err: e, mediaId: job.mediaId },
+          "AI tagging failed, skipping"
+        );
+      }
     }
   }
 
-  // Step 2: Thumbnail generation (failure affects UI but media registration succeeds)
-  try {
-    await generateThumbnail(media, job.sourcePath, mediaSourceId);
-    SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
-      mediaId: media.id,
-    });
-  } catch (e) {
-    logger.error(
-      { err: e, mediaId: job.mediaId },
-      "Thumbnail generation failed"
-    );
+  private async registerContextMetadata(
+    mediaId: string,
+    context: Partial<MediaMetadataContext>
+  ): Promise<void> {
+    if (context.sourceUrls?.length) {
+      await this.mediaRepo.addUrls(mediaId, context.sourceUrls);
+    }
+
+    if (context.authors?.length) {
+      await this.registerAuthors(mediaId, context.authors);
+    }
+
+    if (context.tags?.length) {
+      await this.tagRepo.addTagsToMedia(
+        mediaId,
+        context.tags.map((t) => ({
+          name: t.name,
+          type: (t.type ?? "positive") as "positive" | "negative",
+        })),
+        "user_provided"
+      );
+    }
+
+    if (context.characters?.length) {
+      await this.registerCharacters(mediaId, context.characters);
+    }
+
+    if (context.ips?.length) {
+      await this.registerIps(mediaId, context.ips);
+    }
+
+    if (context.projects?.length) {
+      await this.registerProjects(mediaId, context.projects);
+    }
   }
 
-  // Step 3: AI tagging (optional, controlled by config)
-  if (ENABLE_AUTO_TAGGING && !job.payload?.skipMetadataExtraction) {
-    try {
-      // Placeholder for AI tagging implementation
-      // await extractAiTags(mediaPath, job.mediaId);
-      logger.info({ mediaId: job.mediaId }, "AI tagging not yet implemented");
-    } catch (e) {
-      logger.warn(
-        { err: e, mediaId: job.mediaId },
-        "AI tagging failed, skipping"
-      );
+  private async registerAuthors(
+    mediaId: string,
+    authors: NonNullable<MediaMetadataContext["authors"]>
+  ): Promise<void> {
+    for (const author of authors) {
+      try {
+        const createdAuthor = await this.authorRepo.create({
+          name: author.name,
+          accountId: author.accountId ?? null,
+        });
+        await this.authorRepo.addMedia(mediaId, createdAuthor.id);
+      } catch (e) {
+        logger.warn({ err: e, author }, "Failed to register author");
+      }
+    }
+  }
+
+  private async registerCharacters(
+    mediaId: string,
+    characters: NonNullable<MediaMetadataContext["characters"]>
+  ): Promise<void> {
+    for (const charData of characters) {
+      try {
+        const created = await this.characterRepo.create({
+          name: charData.name,
+          description: charData.description ?? "",
+        });
+        await this.characterRepo.addToMedia(mediaId, created.id);
+      } catch (e) {
+        logger.warn(
+          { err: e, character: charData },
+          "Failed to register character"
+        );
+      }
+    }
+  }
+
+  private async registerIps(
+    mediaId: string,
+    ipsData: NonNullable<MediaMetadataContext["ips"]>
+  ): Promise<void> {
+    for (const ipData of ipsData) {
+      try {
+        const created = await this.ipRepo.create({
+          name: ipData.name,
+          description: ipData.description ?? "",
+        });
+        await this.ipRepo.addMedia(mediaId, created.id);
+      } catch (e) {
+        logger.warn({ err: e, ip: ipData }, "Failed to register IP");
+      }
+    }
+  }
+
+  private async registerProjects(
+    mediaId: string,
+    projectsData: NonNullable<MediaMetadataContext["projects"]>
+  ): Promise<void> {
+    for (const projData of projectsData) {
+      try {
+        const created = await this.projectRepo.create({
+          name: projData.name,
+          description: projData.description ?? "",
+        });
+        await this.projectRepo.addMedia(mediaId, created.id);
+      } catch (e) {
+        logger.warn(
+          { err: e, project: projData },
+          "Failed to register project"
+        );
+      }
     }
   }
 }
 
+// Backward compatibility proxy
 export const MediaProcessingService = {
-  registerAndProcess,
-  executeProcessMediaJob,
+  registerAndProcess: (
+    mediaSourceId: string,
+    relativePath: string,
+    contextMetadata?: Partial<MediaMetadataContext>
+  ) =>
+    services
+      .getMediaProcessingService()
+      .registerAndProcess(mediaSourceId, relativePath, contextMetadata),
+
+  executeProcessMediaJob: (job: Job, mediaSourceId: string) =>
+    services
+      .getMediaProcessingService()
+      .executeProcessMediaJob(job, mediaSourceId),
 };

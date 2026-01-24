@@ -332,7 +332,7 @@ export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;
  * Schema for items to be downloaded via the xtracter extension.
  * Extends the dump schema with download-specific technical fields.
  */
-export const downloadItemSchema = mediaDumpItemSchema.extend({
+export const downloadItemSchema = mediaMetadataContextSchema.extend({
   // Specific required fields for download
   targetUrl: z.string().url("Invalid target URL"), // The actual URL to download (e.g., image source)
 

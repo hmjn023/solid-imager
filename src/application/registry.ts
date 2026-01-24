@@ -1,3 +1,4 @@
+import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
@@ -21,6 +22,7 @@ export class ServiceRegistry {
   private projectRepository?: IProjectRepository;
   private characterRepository?: CharacterRepository;
   private ipRepository?: IIpRepository;
+  private mediaProcessingService?: MediaProcessingServiceImpl;
 
   private constructor() {}
 
@@ -141,6 +143,21 @@ export class ServiceRegistry {
     return this.ipRepository;
   }
 
+  getMediaProcessingService(): MediaProcessingServiceImpl {
+    if (!this.mediaProcessingService) {
+      this.mediaProcessingService = new MediaProcessingServiceImpl(
+        this.getSourceRepository(),
+        this.getMediaRepository(),
+        this.getTagRepository(),
+        this.getAuthorRepository(),
+        this.getCharacterRepository(),
+        this.getIpRepository(),
+        this.getProjectRepository()
+      );
+    }
+    return this.mediaProcessingService;
+  }
+
   // Helper for testing to reset the registry
   async reset(): Promise<void> {
     this.mediaRepository = undefined;
@@ -153,6 +170,7 @@ export class ServiceRegistry {
     this.projectRepository = undefined;
     this.characterRepository = undefined;
     this.ipRepository = undefined;
+    this.mediaProcessingService = undefined;
 
     // Reset service singletons that might hold references to old repositories
     const { resetMediaService } = await import("./services/media-service");
