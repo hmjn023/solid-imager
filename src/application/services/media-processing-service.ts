@@ -20,10 +20,16 @@ import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+
+// Repository instances
+const characterRepo = new DrizzleCharacterRepository();
 
 // Configuration: Auto-tagging is disabled by default until config system is implemented
 const ENABLE_AUTO_TAGGING = false;
@@ -115,6 +121,89 @@ export async function registerAndProcess(
 }
 
 /**
+ * Helper: Register authors for a media item
+ */
+async function registerAuthors(
+  mediaId: string,
+  authors: NonNullable<MediaMetadataContext["authors"]>
+): Promise<void> {
+  for (const author of authors) {
+    try {
+      const createdAuthor = await AuthorRepository.create({
+        name: author.name,
+        accountId: author.accountId ?? null,
+      });
+      await AuthorRepository.addMedia(mediaId, createdAuthor.id);
+    } catch (e) {
+      logger.warn({ err: e, author }, "Failed to register author");
+    }
+  }
+}
+
+/**
+ * Helper: Register characters for a media item
+ */
+async function registerCharacters(
+  mediaId: string,
+  characters: NonNullable<MediaMetadataContext["characters"]>
+): Promise<void> {
+  for (const charData of characters) {
+    try {
+      const created = await characterRepo.create({
+        name: charData.name,
+        description: charData.description ?? "",
+      });
+      await characterRepo.addToMedia(mediaId, created.id);
+    } catch (e) {
+      logger.warn(
+        { err: e, character: charData },
+        "Failed to register character"
+      );
+    }
+  }
+}
+
+/**
+ * Helper: Register IPs for a media item
+ */
+async function registerIps(
+  mediaId: string,
+  ipsData: NonNullable<MediaMetadataContext["ips"]>
+): Promise<void> {
+  for (const ipData of ipsData) {
+    try {
+      const created = await IpRepository.create({
+        name: ipData.name,
+        description: ipData.description ?? "",
+      });
+      await IpRepository.addMedia(mediaId, created.id);
+    } catch (e) {
+      logger.warn({ err: e, ip: ipData }, "Failed to register IP");
+    }
+  }
+}
+
+/**
+ * Helper: Register projects for a media item
+ */
+async function registerProjects(
+  mediaId: string,
+  projectsData: NonNullable<MediaMetadataContext["projects"]>
+): Promise<void> {
+  for (const projData of projectsData) {
+    try {
+      const created = await ProjectRepository.create({
+        name: projData.name,
+        description: projData.description ?? "",
+      });
+      await ProjectRepository.addMedia(mediaId, created.id);
+    } catch (e) {
+      logger.warn({ err: e, project: projData }, "Failed to register project");
+    }
+  }
+}
+
+/**
  * Registers context metadata (authors, URLs, tags, etc.) for a media item.
  * This is called synchronously during registerAndProcess for immediate UX feedback.
  */
@@ -128,19 +217,8 @@ async function registerContextMetadata(
   }
 
   // Register authors
-  // AuthorRepository.create handles deduplication by accountId or name
   if (context.authors && context.authors.length > 0) {
-    for (const author of context.authors) {
-      try {
-        const createdAuthor = await AuthorRepository.create({
-          name: author.name,
-          accountId: author.accountId ?? null,
-        });
-        await AuthorRepository.addMedia(mediaId, createdAuthor.id);
-      } catch (e) {
-        logger.warn({ err: e, author }, "Failed to register author");
-      }
-    }
+    await registerAuthors(mediaId, context.authors);
   }
 
   // Register tags
@@ -152,7 +230,20 @@ async function registerContextMetadata(
     );
   }
 
-  // TODO: Register characters, IPs, projects when needed
+  // Register characters
+  if (context.characters && context.characters.length > 0) {
+    await registerCharacters(mediaId, context.characters);
+  }
+
+  // Register IPs
+  if (context.ips && context.ips.length > 0) {
+    await registerIps(mediaId, context.ips);
+  }
+
+  // Register projects
+  if (context.projects && context.projects.length > 0) {
+    await registerProjects(mediaId, context.projects);
+  }
 }
 
 /**
