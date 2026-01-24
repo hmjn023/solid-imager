@@ -642,7 +642,7 @@ export class MediaServiceImpl {
       {
         mediaId: newMediaEntry.id,
         sourcePath,
-        type: "thumbnail",
+        type: "processMedia" as const,
       },
     ];
 
