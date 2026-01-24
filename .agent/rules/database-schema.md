@@ -1,6 +1,6 @@
 ---
 trigger: glob
-glob: "src/infrastructure/db/schema.ts"
+globs: src/infrastructure/db/schema.ts
 description: データベースのスキーマ定義を変更する際の手順と、マイグレーションの生成・適用方法。DBスキーマを変更する作業時に参照してください。
 ---
 ### データベーススキーマの変更

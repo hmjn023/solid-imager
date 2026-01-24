@@ -1,6 +1,6 @@
 ---
 trigger: glob
-glob: "xtracter/**/*"
+globs: xtracter/**/*
 description: ブラウザ拡張機能 (xtracter) の開発における作業ディレクトリと依存関係のルール。拡張機能のコードを変更する際に参照してください。
 ---
 ### ブラウザ拡張機能 (xtracter)

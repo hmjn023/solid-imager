@@ -1,6 +1,6 @@
 ---
 trigger: glob
-glob: "src/infrastructure/api/**/*.ts"
+globs: src/infrastructure/api/**/*.ts
 description: APIレスポンスにおける機密情報の取り扱いと、Safe DTOの使用に関するセキュリティルール。APIの戻り値を実装する際に参照してください。
 ---
 ### APIレスポンスのセキュリティ

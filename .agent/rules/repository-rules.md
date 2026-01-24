@@ -1,6 +1,6 @@
 ---
 trigger: glob
-glob: "src/infrastructure/repositories/**/*.ts"
+globs: src/infrastructure/repositories/**/*.ts
 description: リポジトリ層の実装におけるデータマッピングのルール。データベースアクセスを行うコードを実装する際に参照してください。
 ---
 ### リポジトリのルール (Explicit Mapping)

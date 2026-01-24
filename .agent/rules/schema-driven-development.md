@@ -1,8 +1,9 @@
 ---
 trigger: glob
-glob: "src/domain/**/schemas.ts"
 description: Schema-Driven Development (SDD) における、Zodスキーマの定義と型導出のルール。ドメインモデルやAPIスキーマを定義する際に参照してください。
+globs: src/domain/**/schemas.ts
 ---
+
 ### Schema-Driven Development (SDD) with Zod
 
 -   **Single Source of Truth:** データ構造（APIのRequest/Response、ドメインモデルなど）の定義は、関連する`schemas.ts`ファイルにZodスキーマとして記述することを唯一の正とします。

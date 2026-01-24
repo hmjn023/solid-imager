@@ -1,6 +1,6 @@
 ---
 trigger: glob
-glob: "src/**/*.{ts,tsx}"
+globs: src/**/*.{ts,tsx}
 description: oRPCを用いたAPIエンドポイントの実装、ルーター定義、クライアント側からの呼び出し方法に関するルール。APIの実装や変更を行う際に参照してください。
 ---
 ### API開発 (oRPC)
