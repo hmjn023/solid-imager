@@ -310,6 +310,30 @@ export class MediaProcessingServiceImpl {
       }
     }
   }
+
+  /**
+   * Adds context metadata to an existing media item.
+   * This is useful when metadata becomes available after initial registration (e.g., from download).
+   */
+  async addContextMetadataToExistingMedia(
+    mediaId: string,
+    context: Partial<MediaMetadataContext>
+  ): Promise<void> {
+    const media = await this.mediaRepo.findById(mediaId);
+    if (!media) {
+      throw new Error(`Media not found: ${mediaId}`);
+    }
+
+    // Update description if provided
+    if (context.description) {
+      await this.mediaRepo.update(mediaId, {
+        description: context.description,
+      });
+    }
+
+    // Register related data using the shared private method
+    await this.registerContextMetadata(mediaId, context);
+  }
 }
 
 // Backward compatibility proxy
@@ -327,4 +351,12 @@ export const MediaProcessingService = {
     services
       .getMediaProcessingService()
       .executeProcessMediaJob(job, mediaSourceId),
+
+  addContextMetadataToExistingMedia: (
+    mediaId: string,
+    context: Partial<MediaMetadataContext>
+  ) =>
+    services
+      .getMediaProcessingService()
+      .addContextMetadataToExistingMedia(mediaId, context),
 };

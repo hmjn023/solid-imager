@@ -12,12 +12,10 @@ import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils
 import type { Job } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-const sourceRepo = new DrizzleSourceRepository();
 const execFileAsync = promisify(execFile);
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/; // Corrected escaping for regex
 
@@ -291,6 +289,7 @@ export async function processDownloadJob(
 ): Promise<void> {
   logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
 
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     const error = "Media source not found or not a local source";
@@ -390,28 +389,23 @@ async function updateExistingMediaWithMetadata(
   newMedia: AddMediaRequest,
   item: DownloadItem
 ): Promise<void> {
-  // Update description if we have one
-  if (newMedia.description) {
-    await MediaRepository.update(mediaId, {
-      description: newMedia.description,
-    });
-  }
+  const { MediaProcessingService } = await import(
+    "~/application/services/media-processing-service"
+  );
 
-  // Register URLs for existing media
-  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(mediaId, newMedia.sourceUrls);
-  }
-
-  // Register Authors for existing media
-  if (item.authors && item.authors.length > 0) {
-    for (const authorData of item.authors) {
-      const author = await AuthorRepository.create({
-        name: authorData.name,
-        accountId: authorData.accountId,
-      });
-      await AuthorRepository.addMedia(mediaId, author.id);
-    }
-  }
+  await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
+    description: newMedia.description ?? undefined,
+    sourceUrls: newMedia.sourceUrls,
+    authors: item.authors?.map((a) => ({
+      name: a.name,
+      accountId: a.accountId ?? null,
+    })),
+    // We can also update other metadata if needed, consistent with registerMedia
+    tags: item.tags,
+    characters: item.characters,
+    ips: item.ips,
+    projects: item.projects,
+  });
 
   SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
   logger.info(
@@ -481,6 +475,7 @@ export async function queueDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ): Promise<number> {
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Media source not found or not a local source");
