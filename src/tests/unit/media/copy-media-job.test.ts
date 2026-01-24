@@ -15,13 +15,8 @@ import {
   projects,
 } from "~/infrastructure/db/schema";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
@@ -104,11 +99,26 @@ describe("Reproduction: Copy Media Job Type", () => {
     services.reset();
     services.registerMediaRepository(MediaRepository);
     services.registerSourceRepository(new DrizzleSourceRepository());
-    services.registerTagRepository(TagRepository);
-    services.registerAuthorRepository(AuthorRepository);
-    services.registerProjectRepository(ProjectRepository);
-    services.registerCharacterRepository(new DrizzleCharacterRepository());
-    services.registerIpRepository(IpRepository);
+    services.registerTagRepository({
+      addTagsToMedia: vi.fn(),
+    } as any);
+    services.registerAuthorRepository({
+      addMediaBulk: vi.fn(),
+      create: vi.fn(),
+      addMedia: vi.fn(),
+    } as any);
+    services.registerProjectRepository({
+      findByMediaId: vi.fn().mockResolvedValue([]),
+      addMediaBulk: vi.fn(),
+    } as any);
+    services.registerCharacterRepository({
+      findByMediaId: vi.fn().mockResolvedValue([]),
+      addToMediaBulk: vi.fn(),
+    } as any);
+    services.registerIpRepository({
+      findByMediaId: vi.fn().mockResolvedValue([]),
+      addMediaBulk: vi.fn(),
+    } as any);
     services.registerStorageService(mockStorageService as any);
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
@@ -126,20 +136,29 @@ describe("Reproduction: Copy Media Job Type", () => {
     await db.delete(mediaSources);
 
     // Create Sources
-    await db.insert(mediaSources).values([
-      {
-        id: sourceSourceId,
-        name: "Source Source",
-        type: "local",
-        connectionInfo: { path: "/source" },
-      },
-      {
-        id: targetSourceId,
-        name: "Target Source",
-        type: "local",
-        connectionInfo: { path: "/target" },
-      },
-    ]);
+    // Create Sources (Mocked Repository)
+    const mockSourceRepository = {
+      findById: vi.fn((id) => {
+        if (id === sourceSourceId) {
+          return {
+            id: sourceSourceId,
+            name: "Source Source",
+            type: "local",
+            connectionInfo: { path: "/source" },
+          };
+        }
+        if (id === targetSourceId) {
+          return {
+            id: targetSourceId,
+            name: "Target Source",
+            type: "local",
+            connectionInfo: { path: "/target" },
+          };
+        }
+        return null;
+      }),
+    };
+    services.registerSourceRepository(mockSourceRepository as any);
   });
 
   afterEach(() => {
@@ -148,18 +167,32 @@ describe("Reproduction: Copy Media Job Type", () => {
 
   it("should trigger generateThumbnail by using processMedia job type", async () => {
     // 1. Prepare Source Media
-    const [sourceMedia] = await db
-      .insert(medias)
-      .values({
-        mediaSourceId: sourceSourceId,
-        filePath: "/source/file.png",
-        fileName: "file.png",
-        mediaType: "image",
-        width: 800,
-        height: 600,
-        fileSize: 1024,
-      })
-      .returning();
+    // 1. Prepare Source Media
+    const sourceMedia = {
+      id: "123e4567-e89b-42d3-a456-426614174000",
+      mediaSourceId: sourceSourceId,
+      filePath: "/source/file.png",
+      fileName: "file.png",
+      mediaType: "image",
+      width: 800,
+      height: 600,
+      fileSize: 1024,
+    };
+
+    // Mock MediaRepository.findById (used by MediaService.copyMedia)
+    // Note: MediaService.copyMedia calls this.mediaRepository.findById(mediaId)
+    const mockMediaRepository = {
+      findById: vi.fn().mockResolvedValue(sourceMedia),
+      create: vi.fn().mockResolvedValue({
+        ...sourceMedia,
+        id: "123e4567-e89b-42d3-a456-426614174001",
+        mediaSourceId: targetSourceId,
+      }),
+      getAuthors: vi.fn().mockResolvedValue([]),
+      getUrls: vi.fn().mockResolvedValue([]),
+      // Add other methods if needed
+    };
+    services.registerMediaRepository(mockMediaRepository as any);
 
     // 2. Execute Copy
     const result = await MediaService.copyMedia(sourceMedia.id, targetSourceId);

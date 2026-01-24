@@ -3,16 +3,30 @@ import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 // Hoisted mocks
-const mockFindById = vi.fn();
-const mockGetFileMetadata = vi.fn();
-const mockMediaRegisterAndProcess = vi.fn();
-const mockMediaAddContextMetadata = vi.fn();
-const mockMediaCreate = vi.fn();
-const mockMediaUpdate = vi.fn();
-const mockMediaAddUrls = vi.fn();
-const mockMediaFindByPath = vi.fn();
-const mockAuthorCreate = vi.fn();
-const mockAuthorAddMedia = vi.fn();
+// Hoisted mocks
+const {
+  mockFindById,
+  mockGetFileMetadata,
+  mockMediaRegisterAndProcess,
+  mockMediaAddContextMetadata,
+  mockMediaCreate,
+  mockMediaUpdate,
+  mockMediaAddUrls,
+  mockMediaFindByPath,
+  mockAuthorCreate,
+  mockAuthorAddMedia,
+} = vi.hoisted(() => ({
+  mockFindById: vi.fn(),
+  mockGetFileMetadata: vi.fn(),
+  mockMediaRegisterAndProcess: vi.fn(),
+  mockMediaAddContextMetadata: vi.fn(),
+  mockMediaCreate: vi.fn(),
+  mockMediaUpdate: vi.fn(),
+  mockMediaAddUrls: vi.fn(),
+  mockMediaFindByPath: vi.fn(),
+  mockAuthorCreate: vi.fn(),
+  mockAuthorAddMedia: vi.fn(),
+}));
 
 // Mocks
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
