@@ -1,13 +1,16 @@
+import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
+import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository";
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
+import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 export class ServiceRegistry {
   private static instance: ServiceRegistry;
@@ -21,6 +24,9 @@ export class ServiceRegistry {
   private projectRepository?: IProjectRepository;
   private characterRepository?: CharacterRepository;
   private ipRepository?: IIpRepository;
+  private jobRepository?: IJobRepository;
+  private jobWorker?: JobWorker;
+  private mediaProcessingService?: MediaProcessingServiceImpl;
 
   private constructor() {}
 
@@ -69,6 +75,14 @@ export class ServiceRegistry {
 
   registerIpRepository(repo: IIpRepository): void {
     this.ipRepository = repo;
+  }
+
+  registerJobRepository(repo: IJobRepository): void {
+    this.jobRepository = repo;
+  }
+
+  registerJobWorker(worker: JobWorker): void {
+    this.jobWorker = worker;
   }
 
   getMediaRepository(): IMediaRepository {
@@ -141,6 +155,36 @@ export class ServiceRegistry {
     return this.ipRepository;
   }
 
+  getJobRepository(): IJobRepository {
+    if (!this.jobRepository) {
+      throw new Error("JobRepository has not been registered.");
+    }
+    return this.jobRepository;
+  }
+
+  getJobWorker(): JobWorker {
+    if (!this.jobWorker) {
+      throw new Error("JobWorker has not been registered.");
+    }
+    return this.jobWorker;
+  }
+
+  getMediaProcessingService(): MediaProcessingServiceImpl {
+    if (!this.mediaProcessingService) {
+      this.mediaProcessingService = new MediaProcessingServiceImpl(
+        this.getSourceRepository(),
+        this.getMediaRepository(),
+        this.getTagRepository(),
+        this.getAuthorRepository(),
+        this.getCharacterRepository(),
+        this.getIpRepository(),
+        this.getProjectRepository(),
+        this.getJobRepository()
+      );
+    }
+    return this.mediaProcessingService;
+  }
+
   // Helper for testing to reset the registry
   async reset(): Promise<void> {
     this.mediaRepository = undefined;
@@ -153,6 +197,9 @@ export class ServiceRegistry {
     this.projectRepository = undefined;
     this.characterRepository = undefined;
     this.ipRepository = undefined;
+    this.jobRepository = undefined;
+    this.jobWorker = undefined;
+    this.mediaProcessingService = undefined;
 
     // Reset service singletons that might hold references to old repositories
     const { resetMediaService } = await import("./services/media-service");

@@ -1,5 +1,7 @@
 ---
-trigger: always_on
+trigger: glob
+globs: src/infrastructure/db/schema.ts
+description: データベースのスキーマ定義を変更する際の手順と、マイグレーションの生成・適用方法。DBスキーマを変更する作業時に参照してください。
 ---
 ### データベーススキーマの変更
 

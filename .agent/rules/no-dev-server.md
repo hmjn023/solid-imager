@@ -1,5 +1,6 @@
 ---
 trigger: always_on
+description: 開発サーバー不使用のルール
 ---
 ### 開発サーバーの不使用
 

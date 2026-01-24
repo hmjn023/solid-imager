@@ -1,17 +1,76 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+
+// Hoisted mocks
+// Hoisted mocks
+const {
+  mockFindById,
+  mockGetFileMetadata,
+  mockMediaRegisterAndProcess,
+  mockMediaAddContextMetadata,
+  mockMediaCreate,
+  mockMediaUpdate,
+  mockMediaAddUrls,
+  mockMediaFindByPath,
+  mockAuthorCreate,
+  mockAuthorAddMedia,
+} = vi.hoisted(() => ({
+  mockFindById: vi.fn(),
+  mockGetFileMetadata: vi.fn(),
+  mockMediaRegisterAndProcess: vi.fn(),
+  mockMediaAddContextMetadata: vi.fn(),
+  mockMediaCreate: vi.fn(),
+  mockMediaUpdate: vi.fn(),
+  mockMediaAddUrls: vi.fn(),
+  mockMediaFindByPath: vi.fn(),
+  mockAuthorCreate: vi.fn(),
+  mockAuthorAddMedia: vi.fn(),
+}));
 
 // Mocks
-vi.mock("~/infrastructure/repositories/source-repository");
-vi.mock("~/infrastructure/repositories/media-repository");
-vi.mock("~/infrastructure/repositories/author-repository");
-vi.mock("~/infrastructure/storage/local-media-storage");
-vi.mock("~/infrastructure/jobs/job-manager");
-vi.mock("~/infrastructure/jobs/sse-manager");
+vi.mock("~/infrastructure/repositories/source-repository", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  DrizzleSourceRepository: class {
+    findById = mockFindById;
+  },
+}));
+vi.mock("~/infrastructure/repositories/media-repository", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  MediaRepository: {
+    create: mockMediaCreate,
+    update: mockMediaUpdate,
+    addUrls: mockMediaAddUrls,
+    findByPath: mockMediaFindByPath,
+  },
+}));
+vi.mock("~/infrastructure/repositories/author-repository", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  AuthorRepository: {
+    create: mockAuthorCreate,
+    addMedia: mockAuthorAddMedia,
+  },
+}));
+vi.mock("~/infrastructure/storage/local-media-storage", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  LocalMediaStorage: {
+    getFileMetadata: mockGetFileMetadata,
+  },
+}));
+// job-manager mock removed
+vi.mock("~/infrastructure/jobs/sse-manager", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  SseManager: {
+    sendEvent: vi.fn(),
+  },
+}));
+vi.mock("~/application/services/media-processing-service", () => ({
+  // biome-ignore lint/style/useNamingConvention: Mocking module export
+  MediaProcessingService: {
+    registerAndProcess: mockMediaRegisterAndProcess,
+    addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
+  },
+}));
 vi.mock("node:fs/promises", () => ({
   default: {
     mkdir: vi.fn(),
@@ -29,8 +88,11 @@ vi.mock("node:child_process", () => ({
 const fetchMock = vi.fn();
 global.fetch = fetchMock;
 
+// Regex for download filename pattern (moved to top level for performance)
+const DOWNLOAD_FILENAME_PATTERN = /^download-\d+-image\.jpg$/;
+
 describe("processDownloadJob", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
     fetchMock.mockResolvedValue({
       ok: true,
@@ -38,7 +100,7 @@ describe("processDownloadJob", () => {
     });
 
     // Default mocks
-    vi.mocked(DrizzleSourceRepository.prototype.findById).mockResolvedValue({
+    mockFindById.mockResolvedValue({
       id: "source-1",
       name: "Local Source",
       type: "local",
@@ -48,7 +110,7 @@ describe("processDownloadJob", () => {
       description: null,
     });
 
-    vi.mocked(LocalMediaStorage.getFileMetadata).mockResolvedValue({
+    mockGetFileMetadata.mockResolvedValue({
       size: 1000,
       createdAt: new Date(),
       modifiedAt: new Date(),
@@ -56,7 +118,7 @@ describe("processDownloadJob", () => {
       height: 600,
     });
 
-    vi.mocked(MediaRepository.create).mockResolvedValue({
+    mockMediaRegisterAndProcess.mockResolvedValue({
       id: "media-1",
       mediaSourceId: "source-1",
       filePath: "file.jpg",
@@ -72,16 +134,41 @@ describe("processDownloadJob", () => {
       status: "active",
     });
 
-    vi.mocked(AuthorRepository.create).mockResolvedValue({
+    mockMediaCreate.mockResolvedValue({
+      id: "media-1",
+      mediaSourceId: "source-1",
+      filePath: "file.jpg",
+      fileName: "file.jpg",
+      mediaType: "image",
+      width: 800,
+      height: 600,
+      fileSize: 1000,
+      description: null,
+      createdAt: new Date(),
+      modifiedAt: new Date(),
+      indexedAt: new Date(),
+      status: "active",
+    });
+
+    mockAuthorCreate.mockResolvedValue({
       id: "author-1",
       name: "Author",
       accountId: "@author",
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    const { services } = await import("~/application/registry");
+    services.getJobRepository = vi.fn().mockReturnValue({
+      create: vi.fn(),
+    });
   });
 
-  it("should process a direct image download", async () => {
+  it("should process a direct image download via MediaProcessingService", async () => {
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
     const item = {
       targetUrl: "https://example.com/image.jpg",
       description: "Test Description",
@@ -89,38 +176,98 @@ describe("processDownloadJob", () => {
       authors: [{ name: "User", accountId: "@user" }],
     };
 
-    await processDownloadJob({} as any, "source-1", item);
+    const job = {
+      id: "job-1",
+      mediaSourceId: "source-1",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
+
+    await processDownloadJob(job);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/image.jpg",
       expect.any(Object)
     );
-    expect(MediaRepository.create).toHaveBeenCalledWith(
+
+    // Verify MediaProcessingService.registerAndProcess was called with correct context
+    expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
+      "source-1",
+      expect.stringMatching(DOWNLOAD_FILENAME_PATTERN),
       expect.objectContaining({
         description: "Test Description",
-        mediaSourceId: "source-1",
-        sourceUrls: [
+        sourceUrls: expect.arrayContaining([
           "https://example.com/image.jpg",
           "https://x.com/user/status/123",
-        ],
+        ]),
+        authors: [{ name: "User", accountId: "@user" }],
       })
     );
-    expect(AuthorRepository.create).toHaveBeenCalledWith({
-      name: "User",
-      accountId: "@user",
-    });
   });
 
   it("should use description if provided", async () => {
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
     const item = {
       targetUrl: "https://example.com/image.png",
       description: "My Description",
     };
-    await processDownloadJob({} as any, "source-1", item);
+    const job = {
+      id: "job-2",
+      mediaSourceId: "source-1",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
 
-    expect(MediaRepository.create).toHaveBeenCalledWith(
+    await processDownloadJob(job);
+
+    expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
+      "source-1",
+      expect.any(String),
       expect.objectContaining({
         description: "My Description",
+      })
+    );
+  });
+
+  it("should update existing media metadata if file already exists", async () => {
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
+    // Simulate file existing -> registerAndProcess throws -> catch block searches media -> updates
+    const error = new Error("File already exists");
+    mockMediaRegisterAndProcess.mockRejectedValueOnce(error);
+
+    mockMediaFindByPath.mockResolvedValueOnce({
+      id: "existing-media-id",
+    } as any);
+
+    const item = {
+      targetUrl: "https://example.com/duplicate.jpg",
+      description: "Updated Description",
+      authors: [{ name: "New Author", accountId: "@new" }],
+    };
+
+    const job = {
+      id: "job-3",
+      mediaSourceId: "source-1",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
+
+    await processDownloadJob(job);
+
+    expect(MediaRepository.findByPath).toHaveBeenCalled();
+    expect(
+      MediaProcessingService.addContextMetadataToExistingMedia
+    ).toHaveBeenCalledWith(
+      "existing-media-id",
+      expect.objectContaining({
+        description: "Updated Description",
+        authors: [{ name: "New Author", accountId: "@new" }],
       })
     );
   });

@@ -7,26 +7,16 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type {
-  AddMediaRequest,
-  DownloadItem,
-  Media,
-  NewAuthor,
-} from "~/domain/media/schemas";
+import { services } from "~/application/registry";
+import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
-import type { Job } from "~/infrastructure/jobs/job-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-const sourceRepo = new DrizzleSourceRepository();
 const execFileAsync = promisify(execFile);
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/; // Corrected escaping for regex
 
@@ -288,18 +278,54 @@ async function handleYtDlpDownload(
       url: item.targetUrl,
       error: error instanceof Error ? error.message : String(error),
     });
-
     throw error;
   }
 }
 
-export async function processDownloadJob(
-  _job: Job,
-  mediaSourceId: string,
-  item: DownloadItem
-): Promise<void> {
+/**
+ * Extracts and normalizes a DownloadItem from a job payload.
+ * Handles backward compatibility mapping.
+ */
+function getDownloadItemFromJob(job: Job): DownloadItem {
+  if (!job.payload) {
+    return {} as DownloadItem;
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: Payload cast
+  const payload = job.payload as any;
+  const item = { ...payload } as unknown as DownloadItem;
+
+  if (!item.targetUrl && payload?.imageUrl) {
+    item.targetUrl = payload.imageUrl;
+  }
+
+  if (!item.description && payload?.description) {
+    item.description = payload.description;
+  }
+
+  if (!item.sourceUrls) {
+    item.sourceUrls = payload?.sourceUrl ? [payload.sourceUrl] : [];
+  }
+
+  return item;
+}
+
+export async function processDownloadJob(job: Job): Promise<void> {
+  const mediaSourceId = job.mediaSourceId;
+  if (!mediaSourceId) {
+    logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
+    return;
+  }
+  // Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
+  const item = getDownloadItemFromJob(job);
+
+  if (!item.targetUrl) {
+    logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
+    return;
+  }
+
   logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
 
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     const error = "Media source not found or not a local source";
@@ -389,15 +415,76 @@ export async function processDownloadJob(
   }
 }
 
+/**
+ * Helper to update existing media with download metadata when media already exists
+ * (handles race condition with FileWatcherService)
+ */
+async function updateExistingMediaWithMetadata(
+  mediaId: string,
+  mediaSourceId: string,
+  newMedia: AddMediaRequest,
+  item: DownloadItem
+): Promise<void> {
+  const { MediaProcessingService } = await import(
+    "~/application/services/media-processing-service"
+  );
+
+  await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
+    description: newMedia.description ?? undefined,
+    sourceUrls: newMedia.sourceUrls,
+    authors: item.authors?.map((a) => ({
+      name: a.name,
+      accountId: a.accountId ?? null,
+    })),
+    // We can also update other metadata if needed, consistent with registerMedia
+    tags: item.tags,
+    characters: item.characters,
+    ips: item.ips,
+    projects: item.projects,
+  });
+
+  SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
+  logger.info(
+    { mediaId },
+    "[DownloadJob] Existing media updated with download metadata"
+  );
+}
+
 async function registerMedia(
   newMedia: AddMediaRequest,
   mediaSourceId: string,
   item: DownloadItem,
-  basePath: string
+  _basePath: string
 ) {
-  let insertedMedia: Media;
   try {
-    insertedMedia = await MediaRepository.create(newMedia);
+    // Use MediaProcessingService for unified registration and processing
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
+    const insertedMedia = await MediaProcessingService.registerAndProcess(
+      mediaSourceId,
+      newMedia.filePath,
+      {
+        description: newMedia.description ?? undefined,
+        createdAt: newMedia.createdAt,
+        sourceUrls: newMedia.sourceUrls,
+        authors: item.authors?.map((a) => ({
+          name: a.name,
+          accountId: a.accountId ?? null,
+        })),
+        tags: item.tags,
+        characters: item.characters,
+        ips: item.ips,
+        projects: item.projects,
+        generationInfo: item.generationInfo,
+      }
+    );
+
+    logger.info(
+      { mediaId: insertedMedia.id, filePath: newMedia.filePath },
+      "[DownloadJob] Media registered via MediaProcessingService"
+    );
   } catch (error) {
     // Handle race condition with FileWatcherService
     const existing = await MediaRepository.findByPath(
@@ -405,55 +492,16 @@ async function registerMedia(
       newMedia.filePath
     );
     if (existing) {
-      insertedMedia = existing;
-      // Update description if we have one and existing doesn't (or overwrite)
-      if (newMedia.description) {
-        await MediaRepository.update(existing.id, {
-          description: newMedia.description,
-        });
-      }
+      await updateExistingMediaWithMetadata(
+        existing.id,
+        mediaSourceId,
+        newMedia,
+        item
+      );
     } else {
       throw error;
     }
   }
-
-  // Register URLs
-  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(insertedMedia.id, newMedia.sourceUrls);
-  }
-
-  // Register Authors
-  if (item.authors && item.authors.length > 0) {
-    for (const authorData of item.authors) {
-      const newAuthor: NewAuthor = {
-        name: authorData.name,
-        accountId: authorData.accountId,
-      };
-      const author = await AuthorRepository.create(newAuthor);
-      await AuthorRepository.addMedia(insertedMedia.id, author.id);
-    }
-  }
-
-  // Queue thumbnail generation
-  addJobsToQueue(mediaSourceId, [
-    {
-      mediaId: insertedMedia.id,
-      sourcePath: basePath, // Use passed basePath
-      type: "thumbnail",
-    },
-  ]);
-
-  startJobQueue(mediaSourceId, async (thumbnailJob) => {
-    const { processMediaJob } = await import(
-      "~/infrastructure/jobs/thumbnails"
-    );
-    await processMediaJob(thumbnailJob, mediaSourceId);
-  });
-
-  // Notify success
-  SseManager.sendEvent(mediaSourceId, "media-added", {
-    mediaId: insertedMedia.id,
-  });
 }
 
 /**
@@ -463,41 +511,33 @@ export async function queueDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ): Promise<number> {
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Media source not found or not a local source");
   }
 
   const connectionInfo = mediaSource.connectionInfo as { path: string };
-  const basePath = connectionInfo.path;
+  const _basePath = connectionInfo.path;
 
-  // Process downloads sequentially to avoid overwhelming the system
+  const repo = services.getJobRepository();
+
   for (const item of items) {
-    try {
-      await processDownloadJob(
-        {
-          mediaId: "", // Will be set after download
-          sourcePath: basePath,
-          type: "downloadImage",
-          payload: {
-            // Backward compatibility payload construction, though logic uses `item`
-            imageUrl: item.targetUrl,
-            sourceUrl: item.targetUrl,
-            description: formatMetadataAsMarkdown(item),
-            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          },
-        },
-        mediaSourceId,
-        item
-      );
-    } catch (error) {
-      logger.error(
-        { err: error, url: item.targetUrl },
-        "Failed to download item"
-      );
-      // Continue with next item even if one fails
-    }
+    await repo.create({
+      type: "downloadImage",
+      mediaSourceId,
+      payload: {
+        ...item,
+        // Backward compatibility fields
+        imageUrl: item.targetUrl,
+        sourceUrl: item.targetUrl,
+        description: item.description ?? formatMetadataAsMarkdown(item),
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+      },
+    });
   }
+
+  // Jobs are picked up by the worker automatically.
 
   return items.length;
 }

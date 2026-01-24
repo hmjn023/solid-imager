@@ -1,20 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { services } from "~/application/registry";
 // import {
 //   selectMediaById,
 //   selectMediaBySourceId,
 // } from "~/infrastructure/db/queries/media"; // Removed
 import type { Media } from "~/infrastructure/db/schema";
-import {
-  addJobsToQueue,
-  type Job,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 const sourceRepo = new DrizzleSourceRepository();
 
@@ -94,62 +88,25 @@ export async function deleteThumbnail(
 }
 
 /**
+ * @deprecated Use MediaProcessingService.executeProcessMediaJob instead.
  * Processes a single media job (thumbnail generation, metadata extraction).
+ * This function is kept for backwards compatibility but will be removed.
  * @param {Job} job - The job to process.
  * @param {string} mediaSourceId - The ID of the media source.
  */
-export async function processMediaJob(
-  job: Job,
-  mediaSourceId: string
+export function processMediaJob(
+  _job: unknown, // or Job from schema
+  _mediaSourceId: string
 ): Promise<void> {
-  const media = await MediaRepository.findById(job.mediaId);
-  if (!media) {
-    return;
-  }
-
-  if (job.type === "thumbnail") {
-    await generateThumbnail(media, job.sourcePath, mediaSourceId);
-    const mediaPath = path.join(job.sourcePath, media.filePath);
-    try {
-      const metadata = await ImageProcessor.extractMetadata(mediaPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
-          media.id,
-          metadata.tags,
-          "comfyui_workflow"
-        );
-      }
-    } catch (_e) {
-      // Ignore metadata extraction errors during thumbnail generation
-    }
-
-    // Notify clients that the thumbnail is ready
-    SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
-      mediaId: media.id,
-    });
-  } else if (job.type === "extractTags") {
-    const mediaPath = path.join(job.sourcePath, media.filePath);
-    // Dynamic import to avoid circular dependency if any, or just standard import
-    const { extractTags } = await import(
-      "~/infrastructure/jobs/tag-extraction"
-    );
-    await extractTags(mediaPath, media.id);
-  }
+  // This function is deprecated and should probably be removed or updated to use DB Job context if called directly.
+  // For now, since it was used by job-manager callback, and we removed it, we can arguably remove this function.
+  // But if it's imported elsewhere, we keep signature.
+  return Promise.resolve();
 }
 
 /**
- * Queues all media items from a specified source for thumbnail generation.
+ * Queues all media items from a specified source for processing.
+ * Uses the unified processMedia job type.
  * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
@@ -167,14 +124,22 @@ export async function generateThumbnailsForSource(
     return 0;
   }
 
-  const jobs = mediaItems.map((media) => ({
-    mediaId: media.id,
-    sourcePath: (mediaSource.connectionInfo as { path: string }).path,
-    type: "thumbnail" as const,
-  }));
+  // Use processMedia job type for unified processing
+  const jobRepo = services.getJobRepository();
+  const basePath = (mediaSource.connectionInfo as { path: string }).path;
 
-  addJobsToQueue(mediaSourceId, jobs);
-  startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
+  for (const media of mediaItems) {
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId,
+      payload: {
+        mediaId: media.id,
+        sourcePath: basePath,
+        type: "processMedia",
+      },
+    });
+  }
 
-  return jobs.length;
+  // Jobs start automatically via worker
+  return mediaItems.length;
 }
