@@ -32,7 +32,7 @@ export type Job = {
      */
     skipMetadataExtraction?: boolean;
     downloadItem?: import("~/domain/media/schemas").DownloadItem;
-  };
+  } & Partial<import("~/domain/media/schemas").DownloadItem>;
 };
 
 /**

@@ -174,7 +174,14 @@ describe("processDownloadJob", () => {
       authors: [{ name: "User", accountId: "@user" }],
     };
 
-    await processDownloadJob({} as any, "source-1", item);
+    const job = {
+      mediaId: "job-1",
+      sourcePath: "",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
+
+    await processDownloadJob(job, "source-1");
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/image.jpg",
@@ -205,7 +212,14 @@ describe("processDownloadJob", () => {
       targetUrl: "https://example.com/image.png",
       description: "My Description",
     };
-    await processDownloadJob({} as any, "source-1", item);
+    const job = {
+      mediaId: "job-2",
+      sourcePath: "",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
+
+    await processDownloadJob(job, "source-1");
 
     expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
       "source-1",
@@ -235,7 +249,14 @@ describe("processDownloadJob", () => {
       authors: [{ name: "New Author", accountId: "@new" }],
     };
 
-    await processDownloadJob({} as any, "source-1", item);
+    const job = {
+      mediaId: "job-3",
+      sourcePath: "",
+      type: "downloadImage",
+      payload: { ...item },
+    } as any;
+
+    await processDownloadJob(job, "source-1");
 
     expect(MediaRepository.findByPath).toHaveBeenCalled();
     expect(

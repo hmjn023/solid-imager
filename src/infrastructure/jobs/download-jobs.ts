@@ -281,26 +281,41 @@ async function handleYtDlpDownload(
       url: item.targetUrl,
       error: error instanceof Error ? error.message : String(error),
     });
-
     throw error;
   }
 }
 
+/**
+ * Extracts and normalizes a DownloadItem from a job payload.
+ * Handles backward compatibility mapping.
+ */
+function getDownloadItemFromJob(job: Job): DownloadItem {
+  if (!job.payload) {
+    return {} as DownloadItem;
+  }
+  const item = { ...job.payload } as unknown as DownloadItem;
+
+  if (!item.targetUrl && job.payload?.imageUrl) {
+    item.targetUrl = job.payload.imageUrl;
+  }
+
+  if (!item.description && job.payload?.description) {
+    item.description = job.payload.description;
+  }
+
+  if (!item.sourceUrls) {
+    item.sourceUrls = job.payload?.sourceUrl ? [job.payload.sourceUrl] : [];
+  }
+
+  return item;
+}
+
 export async function processDownloadJob(
   job: Job,
-  mediaSourceId: string,
-  explicitItem?: DownloadItem
+  mediaSourceId: string
 ): Promise<void> {
-  // Extract item from job payload or use explicit item (backward compatibility/direct call)
-  const item: DownloadItem =
-    explicitItem ||
-    job.payload?.downloadItem ||
-    ({
-      targetUrl: job.payload?.imageUrl || "",
-      description: job.payload?.description,
-      createdAt: job.payload?.createdAt,
-      sourceUrls: job.payload?.sourceUrl ? [job.payload.sourceUrl] : [],
-    } as DownloadItem);
+  // Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
+  const item = getDownloadItemFromJob(job);
 
   if (!item.targetUrl) {
     logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
@@ -509,12 +524,12 @@ export async function queueDownloadJobs(
     sourcePath: basePath,
     type: "downloadImage",
     payload: {
-      downloadItem: item,
+      ...item,
       // Backward compatibility fields
       imageUrl: item.targetUrl,
       sourceUrl: item.targetUrl,
-      description: item.description || undefined,
-      createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
+      description: item.description ?? formatMetadataAsMarkdown(item),
+      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
     },
   }));
 
