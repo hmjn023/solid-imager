@@ -31,6 +31,7 @@ export type Job = {
      * Useful for restoration jobs where metadata is already populated.
      */
     skipMetadataExtraction?: boolean;
+    downloadItem?: import("~/domain/media/schemas").DownloadItem;
   };
 };
 

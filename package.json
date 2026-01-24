@@ -5,7 +5,7 @@
     "xtracter"
   ],
   "scripts": {
-    "dev": "vinxi dev",
+    "dev": "bun run vinxi dev",
     "build": "bun --bun run vinxi build",
     "start": "bun --bun run vinxi start",
     "db:generate": "drizzle-kit generate",

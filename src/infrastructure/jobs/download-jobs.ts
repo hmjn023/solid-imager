@@ -9,7 +9,11 @@ import path from "node:path";
 import { promisify } from "node:util";
 import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
-import type { Job } from "~/infrastructure/jobs/job-manager";
+import {
+  addJobsToQueue,
+  type Job,
+  startJobQueue,
+} from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -283,10 +287,26 @@ async function handleYtDlpDownload(
 }
 
 export async function processDownloadJob(
-  _job: Job,
+  job: Job,
   mediaSourceId: string,
-  item: DownloadItem
+  explicitItem?: DownloadItem
 ): Promise<void> {
+  // Extract item from job payload or use explicit item (backward compatibility/direct call)
+  const item: DownloadItem =
+    explicitItem ||
+    job.payload?.downloadItem ||
+    ({
+      targetUrl: job.payload?.imageUrl || "",
+      description: job.payload?.description,
+      createdAt: job.payload?.createdAt,
+      sourceUrls: job.payload?.sourceUrl ? [job.payload.sourceUrl] : [],
+    } as DownloadItem);
+
+  if (!item.targetUrl) {
+    logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
+    return;
+  }
+
   logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
 
   const sourceRepo = new DrizzleSourceRepository();
@@ -484,33 +504,27 @@ export async function queueDownloadJobs(
   const connectionInfo = mediaSource.connectionInfo as { path: string };
   const basePath = connectionInfo.path;
 
-  // Process downloads sequentially to avoid overwhelming the system
-  for (const item of items) {
-    try {
-      await processDownloadJob(
-        {
-          mediaId: "", // Will be set after download
-          sourcePath: basePath,
-          type: "downloadImage",
-          payload: {
-            // Backward compatibility payload construction, though logic uses `item`
-            imageUrl: item.targetUrl,
-            sourceUrl: item.targetUrl,
-            description: formatMetadataAsMarkdown(item),
-            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          },
-        },
-        mediaSourceId,
-        item
-      );
-    } catch (error) {
-      logger.error(
-        { err: error, url: item.targetUrl },
-        "Failed to download item"
-      );
-      // Continue with next item even if one fails
-    }
-  }
+  const jobs: Job[] = items.map((item) => ({
+    mediaId: "", // Will be set after download
+    sourcePath: basePath,
+    type: "downloadImage",
+    payload: {
+      downloadItem: item,
+      // Backward compatibility fields
+      imageUrl: item.targetUrl,
+      sourceUrl: item.targetUrl,
+      description: item.description || undefined,
+      createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
+    },
+  }));
+
+  addJobsToQueue(mediaSourceId, jobs);
+
+  // Start processing immediately
+  const { processJob } = await import(
+    "~/application/services/job-dispatch-service"
+  );
+  startJobQueue(mediaSourceId, (job) => processJob(job, mediaSourceId));
 
   return items.length;
 }

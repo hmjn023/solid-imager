@@ -5,6 +5,12 @@
 
 import path from "node:path";
 import { services } from "~/application/registry"; // Default registry
+import {
+  type DeferredActions,
+  type DeferredSse,
+  executeDeferredActions,
+  processJob,
+} from "~/application/services/job-dispatch-service";
 import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -60,42 +66,6 @@ const WEBP_SUBTYPE = Buffer.from("57454250", "hex"); // WEBP
 const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
-
-type DeferredJobs = {
-  mediaSourceId: string;
-  jobs: Job[];
-};
-
-type DeferredSse = {
-  mediaSourceId: string;
-  event: string;
-  // biome-ignore lint/suspicious/noExplicitAny: SSE payload is flexible
-  payload: any;
-};
-
-type DeferredActions = {
-  jobs: DeferredJobs[];
-  sse: DeferredSse[];
-};
-
-async function executeDeferredActions(actions: DeferredActions) {
-  if (actions.jobs.length > 0) {
-    const { MediaProcessingService } = await import(
-      "~/application/services/media-processing-service"
-    );
-    for (const item of actions.jobs) {
-      addJobsToQueue(item.mediaSourceId, item.jobs);
-      startJobQueue(item.mediaSourceId, (job) =>
-        MediaProcessingService.executeProcessMediaJob(job, item.mediaSourceId)
-      );
-    }
-  }
-  if (actions.sse.length > 0) {
-    for (const item of actions.sse) {
-      SseManager.sendEvent(item.mediaSourceId, item.event, item.payload);
-    }
-  }
-}
 
 export async function validateFileSignature(
   file: File,
@@ -157,6 +127,13 @@ export class MediaServiceImpl {
     this.projectRepository = projectRepository;
     this.characterRepository = characterRepository;
     this.ipRepository = ipRepository;
+  }
+
+  /**
+   * Starts processing jobs for the given source using the unified processor.
+   */
+  startProcessing(mediaSourceId: string) {
+    startJobQueue(mediaSourceId, (job) => processJob(job, mediaSourceId));
   }
 
   /**
@@ -266,12 +243,7 @@ export class MediaServiceImpl {
       },
     ]);
 
-    const { MediaProcessingService } = await import(
-      "~/application/services/media-processing-service"
-    );
-    startJobQueue(validatedSourceId, (job) =>
-      MediaProcessingService.executeProcessMediaJob(job, validatedSourceId)
-    );
+    this.startProcessing(validatedSourceId);
 
     return {
       success: true,
@@ -419,13 +391,8 @@ export class MediaServiceImpl {
         type: "processMedia" as const,
       }));
 
-      const { MediaProcessingService } = await import(
-        "~/application/services/media-processing-service"
-      );
       addJobsToQueue(validatedSourceId, jobs);
-      startJobQueue(validatedSourceId, (job) =>
-        MediaProcessingService.executeProcessMediaJob(job, validatedSourceId)
-      );
+      this.startProcessing(validatedSourceId);
     }
   }
 
@@ -679,16 +646,8 @@ export class MediaServiceImpl {
     }
 
     // Execute immediately if no transaction
-    const { MediaProcessingService } = await import(
-      "~/application/services/media-processing-service"
-    );
     addJobsToQueue(validatedTargetSourceId, jobs);
-    startJobQueue(validatedTargetSourceId, (job) =>
-      MediaProcessingService.executeProcessMediaJob(
-        job,
-        validatedTargetSourceId
-      )
-    );
+    this.startProcessing(validatedTargetSourceId);
 
     SseManager.notifyMediaCopied(
       sourceMediaId,
