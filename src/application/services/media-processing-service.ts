@@ -4,7 +4,7 @@
 
 import path from "node:path";
 // Registry for backward compatibility proxy
-import { services } from "~/application/registry";
+
 import type { Media, MediaMetadataContext } from "~/domain/media/schemas";
 // Repository Interfaces
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
@@ -225,6 +225,7 @@ export class MediaProcessingServiceImpl {
         context.tags.map((t) => ({
           name: t.name,
           type: (t.type ?? "positive") as "positive" | "negative",
+          confidence: t.confidence,
         })),
         "user_provided"
       );
@@ -270,7 +271,11 @@ export class MediaProcessingServiceImpl {
           name: charData.name,
           description: charData.description ?? "",
         });
-        await this.characterRepo.addToMedia(mediaId, created.id);
+        await this.characterRepo.addToMedia(
+          mediaId,
+          created.id,
+          charData.confidence
+        );
       } catch (e) {
         logger.warn(
           { err: e, character: charData },
@@ -344,27 +349,29 @@ export class MediaProcessingServiceImpl {
 
 // Backward compatibility proxy
 export const MediaProcessingService = {
-  registerAndProcess: (
+  registerAndProcess: async (
     mediaSourceId: string,
     relativePath: string,
     contextMetadata?: Partial<MediaMetadataContext>
-  ) =>
-    services
+  ) => {
+    const { services } = await import("~/application/registry");
+    return services
       .getMediaProcessingService()
-      .registerAndProcess(mediaSourceId, relativePath, contextMetadata),
+      .registerAndProcess(mediaSourceId, relativePath, contextMetadata);
+  },
 
-  executeProcessMediaJob: (job: Job) =>
-    services.getMediaProcessingService().executeProcessMediaJob(job),
-  // Proxy signature mismatch with implementation if implementation removed mediaSourceId arg
-  // But we are changing the implementation.
-  // The proxy is used by JobManager callbacks (which we removed) AND JobDispatchService?
-  // I should update the proxy too to match implementation
+  executeProcessMediaJob: async (job: Job) => {
+    const { services } = await import("~/application/registry");
+    return services.getMediaProcessingService().executeProcessMediaJob(job);
+  },
 
-  addContextMetadataToExistingMedia: (
+  addContextMetadataToExistingMedia: async (
     mediaId: string,
     context: Partial<MediaMetadataContext>
-  ) =>
-    services
+  ) => {
+    const { services } = await import("~/application/registry");
+    return services
       .getMediaProcessingService()
-      .addContextMetadataToExistingMedia(mediaId, context),
+      .addContextMetadataToExistingMedia(mediaId, context);
+  },
 };

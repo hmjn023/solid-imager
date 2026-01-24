@@ -27,6 +27,9 @@ const mockProjectRepo = {
   create: vi.fn(),
   addMedia: vi.fn(),
 };
+const mockJobRepo = {
+  create: vi.fn(),
+};
 
 describe("MediaProcessingService", () => {
   let service: MediaProcessingServiceImpl;
@@ -39,7 +42,8 @@ describe("MediaProcessingService", () => {
       mockAuthorRepo as any,
       mockCharacterRepo as any,
       mockIpRepo as any,
-      mockProjectRepo as any
+      mockProjectRepo as any,
+      mockJobRepo as any
     );
   });
 

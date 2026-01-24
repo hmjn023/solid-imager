@@ -1,4 +1,4 @@
-import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
+import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
@@ -169,18 +169,13 @@ export class ServiceRegistry {
     return this.jobWorker;
   }
 
+  registerMediaProcessingService(service: MediaProcessingServiceImpl): void {
+    this.mediaProcessingService = service;
+  }
+
   getMediaProcessingService(): MediaProcessingServiceImpl {
     if (!this.mediaProcessingService) {
-      this.mediaProcessingService = new MediaProcessingServiceImpl(
-        this.getSourceRepository(),
-        this.getMediaRepository(),
-        this.getTagRepository(),
-        this.getAuthorRepository(),
-        this.getCharacterRepository(),
-        this.getIpRepository(),
-        this.getProjectRepository(),
-        this.getJobRepository()
-      );
+      throw new Error("MediaProcessingService has not been registered.");
     }
     return this.mediaProcessingService;
   }

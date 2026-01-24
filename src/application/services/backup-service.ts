@@ -386,7 +386,7 @@ export const BackupService = {
               tagType: (t.type === "positive" || t.type === "negative"
                 ? t.type
                 : "positive") as "positive" | "negative",
-              // confidence: t.confidence || null, // Not in schema yet, but db supports it
+              confidence: t.confidence ?? null,
               source: "restored",
             });
           }
@@ -427,7 +427,7 @@ export const BackupService = {
             mediaCharsData.push({
               mediaId,
               characterId: charId,
-              // confidence: c.confidence || null, // Not in schema yet
+              confidence: c.confidence ?? null,
               source: "restored",
             });
           }
@@ -838,7 +838,7 @@ export const BackupService = {
       const simpleTags = media.tags.map((mt: any) => ({
         name: mt.tag.name,
         type: mt.tagType,
-        // confidence: mt.confidence, // Not in schema
+        confidence: mt.confidence,
       }));
 
       // Extract authors
@@ -853,7 +853,7 @@ export const BackupService = {
       const simpleCharacters = media.characters.map((mc: any) => ({
         name: mc.character.name,
         description: mc.character.description,
-        // confidence: mc.confidence, // Not in schema
+        confidence: mc.confidence,
       }));
 
       // Extract IPs

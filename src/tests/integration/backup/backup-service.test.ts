@@ -12,6 +12,7 @@ import {
   mediaProjects,
   mediaSources,
   medias,
+  mediaTags,
   mediaUrls,
   projects,
   tags,
@@ -27,6 +28,10 @@ vi.mock("~/infrastructure/storage/factory", () => ({
 
 describe("BackupService Integration", () => {
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
+  const CONFIDENCE_TAG = 0.85;
+  const CONFIDENCE_CHAR = 0.92;
+  const CONFIDENCE_RESTORE_TAG = 0.77;
+  const CONFIDENCE_RESTORE_CHAR = 0.88;
 
   beforeEach(async () => {
     // Clean DB
@@ -70,6 +75,17 @@ describe("BackupService Integration", () => {
       })
       .returning();
 
+    const [tag] = await db
+      .insert(tags)
+      .values({ name: "Dump Tag" })
+      .returning();
+    await db.insert(mediaTags).values({
+      mediaId: media.id,
+      tagId: tag.id,
+      tagType: "positive",
+      confidence: CONFIDENCE_TAG,
+    });
+
     const [project] = await db
       .insert(projects)
       .values({ name: "Dump Project" })
@@ -88,9 +104,11 @@ describe("BackupService Integration", () => {
       .insert(mediaProjects)
       .values({ mediaId: media.id, projectId: project.id });
     await db.insert(mediaIps).values({ mediaId: media.id, ipId: ip.id });
-    await db
-      .insert(mediaCharacters)
-      .values({ mediaId: media.id, characterId: character.id });
+    await db.insert(mediaCharacters).values({
+      mediaId: media.id,
+      characterId: character.id,
+      confidence: CONFIDENCE_CHAR,
+    });
     await db
       .insert(mediaAuthors)
       .values({ mediaId: media.id, authorId: author.id });
@@ -107,11 +125,16 @@ describe("BackupService Integration", () => {
 
     expect(item.filePath).toBe("test.png");
 
+    expect(item.tags).toHaveLength(1);
+    expect(item.tags[0].name).toBe("Dump Tag");
+    expect(item.tags[0].confidence).toBe(CONFIDENCE_TAG);
+
     expect(item.projects).toHaveLength(1);
     expect(item.projects[0].name).toBe("Dump Project");
 
     expect(item.characters).toHaveLength(1);
     expect(item.characters[0].name).toBe("Dump Character");
+    expect(item.characters[0].confidence).toBe(CONFIDENCE_CHAR);
 
     expect(item.ips).toHaveLength(1);
     expect(item.ips[0].name).toBe("Dump IP");
@@ -140,8 +163,11 @@ describe("BackupService Integration", () => {
       fileSize: 2048,
       createdAt: new Date().toISOString(),
       modifiedAt: new Date().toISOString(),
+      tags: [{ name: "Restore Tag", confidence: CONFIDENCE_RESTORE_TAG }],
       projects: [{ name: "Restore Project" }],
-      characters: [{ name: "Restore Character" }],
+      characters: [
+        { name: "Restore Character", confidence: CONFIDENCE_RESTORE_CHAR },
+      ],
       ips: [{ name: "Restore IP" }],
       authors: [{ name: "Restore Author", accountId: "test_account_123" }],
       sourceUrls: ["https://example.com/restore"],
@@ -159,8 +185,9 @@ describe("BackupService Integration", () => {
     const restoredMedia = await db.query.medias.findFirst({
       where: eq(medias.filePath, "restore.png"),
       with: {
+        tags: true,
         projects: { with: { project: true } },
-        characters: { with: { character: true } },
+        characters: true,
         ips: { with: { ip: true } },
         authors: { with: { author: true } },
         urls: true,
@@ -168,13 +195,14 @@ describe("BackupService Integration", () => {
     });
 
     expect(restoredMedia).toBeDefined();
+    expect(restoredMedia?.tags).toHaveLength(1);
+    expect(restoredMedia?.tags[0].confidence).toBe(CONFIDENCE_RESTORE_TAG);
+
     expect(restoredMedia?.projects).toHaveLength(1);
     expect(restoredMedia?.projects[0].project.name).toBe("Restore Project");
 
     expect(restoredMedia?.characters).toHaveLength(1);
-    expect(restoredMedia?.characters[0].character.name).toBe(
-      "Restore Character"
-    );
+    expect(restoredMedia?.characters[0].confidence).toBe(CONFIDENCE_RESTORE_CHAR);
 
     expect(restoredMedia?.ips).toHaveLength(1);
     expect(restoredMedia?.ips[0].ip.name).toBe("Restore IP");

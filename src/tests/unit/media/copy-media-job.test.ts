@@ -190,7 +190,7 @@ describe("Reproduction: Copy Media Job Type", () => {
       }),
       getAuthors: vi.fn().mockResolvedValue([]),
       getUrls: vi.fn().mockResolvedValue([]),
-      // Add other methods if needed
+      upsertGenerationInfo: vi.fn(),
     };
     services.registerMediaRepository(mockMediaRepository as any);
 

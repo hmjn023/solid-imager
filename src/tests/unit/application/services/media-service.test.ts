@@ -11,11 +11,40 @@ import type { TagRepository } from "~/domain/repositories/tag-repository";
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
 
-vi.mock("~/application/registry", () => ({
-  services: {
+vi.mock("~/application/registry", () => {
+  const mockServices = {
     getJobRepository: vi.fn(),
-  },
-}));
+    registerMediaRepository: vi.fn(),
+    registerSourceRepository: vi.fn(),
+    registerTagRepository: vi.fn(),
+    registerAuthorRepository: vi.fn(),
+    registerProjectRepository: vi.fn(),
+    registerCharacterRepository: vi.fn(),
+    registerIpRepository: vi.fn(),
+    registerJobRepository: vi.fn(),
+    registerStorageService: vi.fn(),
+    registerImageProcessor: vi.fn(),
+    registerAiClient: vi.fn(),
+    registerJobWorker: vi.fn(),
+    registerMediaProcessingService: vi.fn(),
+    getMediaRepository: vi.fn(),
+    getSourceRepository: vi.fn(),
+    getTagRepository: vi.fn(),
+    getAuthorRepository: vi.fn(),
+    getCharacterRepository: vi.fn(),
+    getIpRepository: vi.fn(),
+    getProjectRepository: vi.fn(),
+    getStorageService: vi.fn(),
+    getImageProcessor: vi.fn(),
+  };
+  return {
+    services: mockServices,
+    // biome-ignore lint/style/useNamingConvention: Mocking PascalCase export
+    ServiceRegistry: {
+      getInstance: () => mockServices,
+    },
+  };
+});
 
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
 const MEDIA_SOURCE_NOT_FOUND_REGEX = /media source.*not found/i;

@@ -1,5 +1,6 @@
 import { services } from "~/application/registry";
 import { processJob } from "~/application/services/job-dispatch-service";
+import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { pythonClient } from "~/infrastructure/ai/python-client";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -33,5 +34,20 @@ export function bootstrap() {
 
   const jobWorker = new JobWorker(jobRepo, processJob);
   services.registerJobWorker(jobWorker);
+
+  // Register MediaProcessingService (Implementation)
+  services.registerMediaProcessingService(
+    new MediaProcessingServiceImpl(
+      services.getSourceRepository(),
+      services.getMediaRepository(),
+      services.getTagRepository(),
+      services.getAuthorRepository(),
+      services.getCharacterRepository(),
+      services.getIpRepository(),
+      services.getProjectRepository(),
+      jobRepo
+    )
+  );
+
   jobWorker.start(); // Auto-start the worker for now
 }

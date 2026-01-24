@@ -890,7 +890,7 @@ export class MediaServiceImpl {
     if (sourceCharacters.length > 0) {
       await this.characterRepository.addToMediaBulk(
         newMediaId,
-        sourceCharacters.map((c) => c.id),
+        sourceCharacters.map((c) => ({ id: c.id })),
         tx
       );
     }
