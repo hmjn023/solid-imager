@@ -11,6 +11,12 @@ import type { TagRepository } from "~/domain/repositories/tag-repository";
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
 
+vi.mock("~/application/registry", () => ({
+  services: {
+    getJobRepository: vi.fn(),
+  },
+}));
+
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
 const MEDIA_SOURCE_NOT_FOUND_REGEX = /media source.*not found/i;
 
@@ -25,8 +31,15 @@ describe("MediaService Unit Tests", () => {
   let mockProjectRepository: IProjectRepository;
   let mockCharacterRepository: CharacterRepository;
   let mockIpRepository: IIpRepository;
+  let mockJobRepository: { create: Mock };
 
-  beforeEach(() => {
+  beforeEach(async () => {
+    vi.resetAllMocks();
+    // Mock registry
+    const { services } = await import("~/application/registry");
+    mockJobRepository = { create: vi.fn() };
+    services.getJobRepository = vi.fn().mockReturnValue(mockJobRepository);
+
     // Create mocks for all dependencies
     mockMediaRepository = {
       findById: vi.fn(),
