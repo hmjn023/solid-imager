@@ -6,8 +6,8 @@
   ],
   "scripts": {
     "dev": "vinxi dev",
-    "build": "vinxi build",
-    "start": "vinxi start",
+    "build": "bun --bun run vinxi build",
+    "start": "bun --bun run vinxi start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
