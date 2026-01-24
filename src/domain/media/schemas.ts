@@ -231,26 +231,19 @@ export const mediaDetailsSchema = mediaSchema.extend({
 
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
 
-// Download schemas for bulk image download from JSON
+// ============================================================================
+// Base Schema: MediaMetadataContext
+// Pure metadata without file information. Used as common interface for
+// MediaProcessingService across all media registration flows.
+// ============================================================================
 
 /**
- * Schema representing a single item in the backup dump.
- * This is the base schema for data exchange and restoration.
+ * Base schema for media metadata context.
+ * Contains only relational/contextual data, no physical file information.
+ * This is the common interface used by MediaProcessingService.
  */
-export const mediaDumpItemSchema = z.object({
-  // Basic Info
-  id: z.string().optional(), // Ignored/Generated on import
-  filePath: z.string().optional(),
-  fileName: z.string().optional(),
+export const mediaMetadataContextSchema = z.object({
   description: z.string().nullable().optional(),
-  width: z.number().optional(),
-  height: z.number().optional(),
-  fileSize: z.number().optional(),
-  mediaType: z.enum(["image", "video", "audio"]).optional(),
-  createdAt: z.coerce.date().optional(),
-  modifiedAt: z.coerce.date().optional(),
-
-  // Relations
   sourceUrls: z.array(z.string().url()).optional(),
   authors: z
     .array(
@@ -292,7 +285,6 @@ export const mediaDumpItemSchema = z.object({
       })
     )
     .optional(),
-  // Flexible generation info to accommodate various dump formats or partial data
   generationInfo: z
     .object({
       prompt: z.string().nullable().optional(),
@@ -307,6 +299,30 @@ export const mediaDumpItemSchema = z.object({
     })
     .nullable()
     .optional(),
+});
+
+export type MediaMetadataContext = z.infer<typeof mediaMetadataContextSchema>;
+
+// ============================================================================
+// Backup/Restore Schema: MediaDumpItem
+// Extends MediaMetadataContext with physical file information.
+// ============================================================================
+
+/**
+ * Schema representing a single item in the backup dump.
+ * Extends MediaMetadataContext with file-specific information.
+ */
+export const mediaDumpItemSchema = mediaMetadataContextSchema.extend({
+  // Basic file info (ignored/generated on import for most fields)
+  id: z.string().optional(),
+  filePath: z.string().optional(),
+  fileName: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  fileSize: z.number().optional(),
+  mediaType: z.enum(["image", "video", "audio"]).optional(),
+  createdAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
 });
 
 export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;

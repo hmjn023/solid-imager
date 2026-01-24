@@ -257,14 +257,20 @@ export class MediaServiceImpl {
       ]);
     }
 
-    // 4. Trigger Jobs
+    // 4. Trigger processMedia Job (unified processing)
     addJobsToQueue(validatedSourceId, [
-      { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
-      { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
+      {
+        mediaId: insertedMedia.id,
+        sourcePath: basePath,
+        type: "processMedia" as const,
+      },
     ]);
 
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
     startJobQueue(validatedSourceId, (job) =>
-      processMediaJob(job, validatedSourceId)
+      MediaProcessingService.executeProcessMediaJob(job, validatedSourceId)
     );
 
     return {
@@ -406,15 +412,19 @@ export class MediaServiceImpl {
     }
 
     if (newMediaItems.length > 0) {
+      // Use processMedia job type for unified processing
       const jobs = newMediaItems.map((item) => ({
         mediaId: item.id,
         sourcePath: directoryPath,
-        type: "thumbnail" as const,
+        type: "processMedia" as const,
       }));
 
+      const { MediaProcessingService } = await import(
+        "~/application/services/media-processing-service"
+      );
       addJobsToQueue(validatedSourceId, jobs);
       startJobQueue(validatedSourceId, (job) =>
-        processMediaJob(job, validatedSourceId)
+        MediaProcessingService.executeProcessMediaJob(job, validatedSourceId)
       );
     }
   }

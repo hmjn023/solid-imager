@@ -7,18 +7,9 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type {
-  AddMediaRequest,
-  DownloadItem,
-  Media,
-  NewAuthor,
-} from "~/domain/media/schemas";
+import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
 import type { Job } from "~/infrastructure/jobs/job-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
@@ -389,15 +380,80 @@ export async function processDownloadJob(
   }
 }
 
+/**
+ * Helper to update existing media with download metadata when media already exists
+ * (handles race condition with FileWatcherService)
+ */
+async function updateExistingMediaWithMetadata(
+  mediaId: string,
+  mediaSourceId: string,
+  newMedia: AddMediaRequest,
+  item: DownloadItem
+): Promise<void> {
+  // Update description if we have one
+  if (newMedia.description) {
+    await MediaRepository.update(mediaId, {
+      description: newMedia.description,
+    });
+  }
+
+  // Register URLs for existing media
+  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
+    await MediaRepository.addUrls(mediaId, newMedia.sourceUrls);
+  }
+
+  // Register Authors for existing media
+  if (item.authors && item.authors.length > 0) {
+    for (const authorData of item.authors) {
+      const author = await AuthorRepository.create({
+        name: authorData.name,
+        accountId: authorData.accountId,
+      });
+      await AuthorRepository.addMedia(mediaId, author.id);
+    }
+  }
+
+  SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
+  logger.info(
+    { mediaId },
+    "[DownloadJob] Existing media updated with download metadata"
+  );
+}
+
 async function registerMedia(
   newMedia: AddMediaRequest,
   mediaSourceId: string,
   item: DownloadItem,
-  basePath: string
+  _basePath: string
 ) {
-  let insertedMedia: Media;
   try {
-    insertedMedia = await MediaRepository.create(newMedia);
+    // Use MediaProcessingService for unified registration and processing
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
+    const insertedMedia = await MediaProcessingService.registerAndProcess(
+      mediaSourceId,
+      newMedia.filePath,
+      {
+        description: newMedia.description ?? undefined,
+        sourceUrls: newMedia.sourceUrls,
+        authors: item.authors?.map((a) => ({
+          name: a.name,
+          accountId: a.accountId ?? null,
+        })),
+        tags: item.tags,
+        characters: item.characters,
+        ips: item.ips,
+        projects: item.projects,
+        generationInfo: item.generationInfo,
+      }
+    );
+
+    logger.info(
+      { mediaId: insertedMedia.id, filePath: newMedia.filePath },
+      "[DownloadJob] Media registered via MediaProcessingService"
+    );
   } catch (error) {
     // Handle race condition with FileWatcherService
     const existing = await MediaRepository.findByPath(
@@ -405,55 +461,16 @@ async function registerMedia(
       newMedia.filePath
     );
     if (existing) {
-      insertedMedia = existing;
-      // Update description if we have one and existing doesn't (or overwrite)
-      if (newMedia.description) {
-        await MediaRepository.update(existing.id, {
-          description: newMedia.description,
-        });
-      }
+      await updateExistingMediaWithMetadata(
+        existing.id,
+        mediaSourceId,
+        newMedia,
+        item
+      );
     } else {
       throw error;
     }
   }
-
-  // Register URLs
-  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(insertedMedia.id, newMedia.sourceUrls);
-  }
-
-  // Register Authors
-  if (item.authors && item.authors.length > 0) {
-    for (const authorData of item.authors) {
-      const newAuthor: NewAuthor = {
-        name: authorData.name,
-        accountId: authorData.accountId,
-      };
-      const author = await AuthorRepository.create(newAuthor);
-      await AuthorRepository.addMedia(insertedMedia.id, author.id);
-    }
-  }
-
-  // Queue thumbnail generation
-  addJobsToQueue(mediaSourceId, [
-    {
-      mediaId: insertedMedia.id,
-      sourcePath: basePath, // Use passed basePath
-      type: "thumbnail",
-    },
-  ]);
-
-  startJobQueue(mediaSourceId, async (thumbnailJob) => {
-    const { processMediaJob } = await import(
-      "~/infrastructure/jobs/thumbnails"
-    );
-    await processMediaJob(thumbnailJob, mediaSourceId);
-  });
-
-  // Notify success
-  SseManager.sendEvent(mediaSourceId, "media-added", {
-    mediaId: insertedMedia.id,
-  });
 }
 
 /**

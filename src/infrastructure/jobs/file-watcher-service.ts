@@ -1,54 +1,44 @@
 /**
  * FileWatcherService - Manages file system monitoring for media sources
+ *
+ * Refactored to use MediaProcessingService as the unified entry point.
  */
 
 import path from "node:path";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
-import { processMediaJob } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
 
+// Supported file extensions for media detection
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
+const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov"];
+const AUDIO_EXTENSIONS = [".mp3", ".wav"];
+const ALL_MEDIA_EXTENSIONS = [
+  ...IMAGE_EXTENSIONS,
+  ...VIDEO_EXTENSIONS,
+  ...AUDIO_EXTENSIONS,
+];
+
 /**
  * Handles file addition events from the file system watcher.
- * Registers the new media in the database and queues thumbnail generation.
+ * Uses MediaProcessingService for unified registration and job queuing.
  */
 async function handleFileAdded(
   mediaSourceId: string,
   relativePath: string
 ): Promise<void> {
   try {
-    const source = await sourceRepo.findById(mediaSourceId);
-    if (!source || source.type !== "local") {
-      return;
-    }
-
-    const basePath = (source.connectionInfo as { path: string }).path;
-    const fullPath = path.join(basePath, relativePath);
-
-    // Check if file is an image
+    // Check if file is a supported media type
     const ext = path.extname(relativePath).toLowerCase();
-    const imageExtensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
-    // Simple video/audio check could be added here similar to MediaService
-    if (
-      !(
-        imageExtensions.includes(ext) ||
-        [".mp4", ".webm", ".mov", ".mp3", ".wav"].includes(ext)
-      )
-    ) {
+    if (!ALL_MEDIA_EXTENSIONS.includes(ext)) {
       return;
     }
 
-    // Check if media already exists
+    // Check if media already exists (to avoid duplicates from rapid events)
     const existing = await MediaRepository.findByPath(
       mediaSourceId,
       relativePath
@@ -57,71 +47,12 @@ async function handleFileAdded(
       return;
     }
 
-    // Extract metadata
-    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
-
-    // Determine type
-    let mediaType: "image" | "video" | "audio" = "image";
-    if ([".mp4", ".webm", ".mov"].includes(ext)) {
-      mediaType = "video";
-    }
-    if ([".mp3", ".wav"].includes(ext)) {
-      mediaType = "audio";
-    }
-
-    // Create media entry
-    const media = await MediaRepository.create({
+    // Use MediaProcessingService for unified registration and processing
+    await MediaProcessingService.registerAndProcess(
       mediaSourceId,
-      filePath: relativePath,
-      fileName: path.basename(relativePath),
-      mediaType,
-      width: fileMetadata.width,
-      height: fileMetadata.height,
-      fileSize: fileMetadata.size,
-      description: null,
-      createdAt: fileMetadata.createdAt,
-      modifiedAt: fileMetadata.modifiedAt,
-    });
-
-    // Queue thumbnail generation
-    addJobsToQueue(mediaSourceId, [
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "thumbnail" as const,
-      },
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "extractTags" as const,
-      },
-    ]);
-    startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
-
-    // Extract metadata in the background
-    try {
-      const metadata = await ImageProcessor.extractMetadata(fullPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
-          media.id,
-          metadata.tags,
-          "comfyui_workflow"
-        );
-      }
-    } catch (_e) {
-      // Ignore extraction errors
-    }
+      relativePath
+      // No context metadata for file watcher - metadata is extracted by the job
+    );
   } catch (error) {
     logger.error(
       { err: error, mediaSourceId, relativePath },
@@ -170,7 +101,7 @@ async function handleFileDeleted(
 
 /**
  * Handles file change events from the file system watcher.
- * Updates the media metadata and regenerates the thumbnail.
+ * Updates the media metadata and queues reprocessing.
  */
 async function handleFileChanged(
   mediaSourceId: string,
@@ -194,7 +125,10 @@ async function handleFileChanged(
       return;
     }
 
-    // Update metadata
+    // Update file metadata (size, dimensions, mtime)
+    const { LocalMediaStorage } = await import(
+      "~/infrastructure/storage/local-media-storage"
+    );
     const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
     await MediaRepository.update(media.id, {
       width: fileMetadata.width,
@@ -203,45 +137,20 @@ async function handleFileChanged(
       modifiedAt: fileMetadata.modifiedAt,
     });
 
-    // Regenerate thumbnail
+    // Queue processMedia job for thumbnail regeneration and metadata re-extraction
+    const { addJobsToQueue, startJobQueue } = await import(
+      "~/infrastructure/jobs/job-manager"
+    );
     addJobsToQueue(mediaSourceId, [
       {
         mediaId: media.id,
         sourcePath: basePath,
-        type: "thumbnail" as const,
-      },
-      {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "extractTags" as const,
+        type: "processMedia" as const,
       },
     ]);
-    startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
-
-    // Re-extract metadata
-    try {
-      const metadata = await ImageProcessor.extractMetadata(fullPath);
-
-      // Store generation info
-      await MediaRepository.upsertGenerationInfo(
-        media.id,
-        typeof metadata.prompt === "object"
-          ? JSON.stringify(metadata.prompt)
-          : (metadata.prompt as string | null),
-        metadata.workflow as object | null
-      );
-
-      // Store tags
-      if (metadata.tags.length > 0) {
-        await TagRepository.addTagsToMedia(
-          media.id,
-          metadata.tags,
-          "comfyui_workflow"
-        );
-      }
-    } catch (_e) {
-      // Ignore extraction errors
-    }
+    startJobQueue(mediaSourceId, (job) =>
+      MediaProcessingService.executeProcessMediaJob(job, mediaSourceId)
+    );
 
     // Notify
     SseManager.sendEvent(mediaSourceId, "media-changed", {

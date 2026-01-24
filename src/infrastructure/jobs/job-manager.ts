@@ -4,13 +4,23 @@ import { SseManager } from "./sse-manager";
  * Represents a single background job.
  * @property {string} mediaId - The ID of the media item for the job.
  * @property {string} sourcePath - The source path of the media file.
- * @property {'thumbnail' | 'extractTags' | 'downloadImage'} type - The type of job to perform.
+ * @property {string} type - The type of job to perform.
+ *   - 'processMedia': Unified job type (recommended). Handles metadata extraction,
+ *     thumbnail generation, and optional AI tagging in a single job.
+ *   - 'thumbnail': @deprecated Use 'processMedia' instead.
+ *   - 'extractTags': @deprecated Use 'processMedia' instead.
+ *   - 'downloadImage': @deprecated Use 'processMedia' instead.
  * @property {object} [payload] - Optional payload for the job (e.g., download metadata).
  */
 export type Job = {
   mediaId: string;
   sourcePath: string;
-  type: "thumbnail" | "extractTags" | "downloadImage";
+  /**
+   * The type of job. Use 'processMedia' for unified processing.
+   * @deprecated 'thumbnail', 'extractTags', 'downloadImage' are deprecated.
+   * Use 'processMedia' with MediaProcessingService.executeProcessMediaJob instead.
+   */
+  type: "processMedia" | "thumbnail" | "extractTags" | "downloadImage";
   payload?: {
     imageUrl?: string;
     sourceUrl?: string;
