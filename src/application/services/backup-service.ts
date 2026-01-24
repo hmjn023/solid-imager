@@ -100,6 +100,36 @@ export const BackupService = {
       charMap,
     });
 
+    // Trigger thumbnail generation (skip metadata extraction to preserve restored data)
+    if (mediaSource.type === "local") {
+      const mediaIds = Array.from(mediaPathToId.values());
+      if (mediaIds.length > 0) {
+        const { MediaProcessingService } = await import(
+          "~/application/services/media-processing-service"
+        );
+        const { addJobsToQueue, startJobQueue } = await import(
+          "~/infrastructure/jobs/job-manager"
+        );
+
+        const connectionInfo = mediaSource.connectionInfo as { path: string };
+        const basePath = connectionInfo.path;
+
+        const jobs = mediaIds.map((id) => ({
+          mediaId: id,
+          sourcePath: basePath,
+          type: "processMedia" as const,
+          payload: {
+            skipMetadataExtraction: true,
+          },
+        }));
+
+        addJobsToQueue(mediaSourceId, jobs);
+        startJobQueue(mediaSourceId, (job) =>
+          MediaProcessingService.executeProcessMediaJob(job, mediaSourceId)
+        );
+      }
+    }
+
     return {
       processed: validItems.length,
       skipped: skippedCount,

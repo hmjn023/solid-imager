@@ -225,7 +225,10 @@ async function registerContextMetadata(
   if (context.tags && context.tags.length > 0) {
     await TagRepository.addTagsToMedia(
       mediaId,
-      context.tags.map((t) => ({ name: t.name, type: t.type ?? "positive" })),
+      context.tags.map((t) => ({
+        name: t.name,
+        type: (t.type ?? "positive") as "positive" | "negative",
+      })),
       "user_provided"
     );
   }
@@ -276,31 +279,34 @@ export async function executeProcessMediaJob(
   // Step 1: Metadata extraction (failure does not affect thumbnail generation)
   // Note: Width/height are already extracted by LocalMediaStorage.getFileMetadata
   // ImageProcessor.extractMetadata extracts ComfyUI workflow data and tags
-  try {
-    const metadata = await ImageProcessor.extractMetadata(mediaPath);
+  // Skip if requested (e.g. during restoration)
+  if (!job.payload?.skipMetadataExtraction) {
+    try {
+      const metadata = await ImageProcessor.extractMetadata(mediaPath);
 
-    // Store generation info
-    await MediaRepository.upsertGenerationInfo(
-      media.id,
-      typeof metadata.prompt === "object"
-        ? JSON.stringify(metadata.prompt)
-        : (metadata.prompt as string | null),
-      metadata.workflow as object | null
-    );
-
-    // Store tags from workflow
-    if (metadata.tags.length > 0) {
-      await TagRepository.addTagsToMedia(
+      // Store generation info
+      await MediaRepository.upsertGenerationInfo(
         media.id,
-        metadata.tags,
-        "comfyui_workflow"
+        typeof metadata.prompt === "object"
+          ? JSON.stringify(metadata.prompt)
+          : (metadata.prompt as string | null),
+        metadata.workflow as object | null
+      );
+
+      // Store tags from workflow
+      if (metadata.tags.length > 0) {
+        await TagRepository.addTagsToMedia(
+          media.id,
+          metadata.tags,
+          "comfyui_workflow"
+        );
+      }
+    } catch (e) {
+      logger.warn(
+        { err: e, mediaId: job.mediaId },
+        "Metadata extraction failed, continuing..."
       );
     }
-  } catch (e) {
-    logger.warn(
-      { err: e, mediaId: job.mediaId },
-      "Metadata extraction failed, continuing..."
-    );
   }
 
   // Step 2: Thumbnail generation (failure affects UI but media registration succeeds)
@@ -317,7 +323,7 @@ export async function executeProcessMediaJob(
   }
 
   // Step 3: AI tagging (optional, controlled by config)
-  if (ENABLE_AUTO_TAGGING) {
+  if (ENABLE_AUTO_TAGGING && !job.payload?.skipMetadataExtraction) {
     try {
       // Placeholder for AI tagging implementation
       // await extractAiTags(mediaPath, job.mediaId);

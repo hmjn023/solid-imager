@@ -26,6 +26,11 @@ export type Job = {
     sourceUrl?: string;
     description?: string;
     createdAt?: Date;
+    /**
+     * If true, skips metadata extraction and AI tagging.
+     * Useful for restoration jobs where metadata is already populated.
+     */
+    skipMetadataExtraction?: boolean;
   };
 };
 
