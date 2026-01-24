@@ -94,7 +94,9 @@ export async function deleteThumbnail(
 }
 
 /**
+ * @deprecated Use MediaProcessingService.executeProcessMediaJob instead.
  * Processes a single media job (thumbnail generation, metadata extraction).
+ * This function is kept for backwards compatibility but will be removed.
  * @param {Job} job - The job to process.
  * @param {string} mediaSourceId - The ID of the media source.
  */
@@ -149,7 +151,8 @@ export async function processMediaJob(
 }
 
 /**
- * Queues all media items from a specified source for thumbnail generation.
+ * Queues all media items from a specified source for processing.
+ * Uses the unified processMedia job type.
  * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
@@ -167,14 +170,21 @@ export async function generateThumbnailsForSource(
     return 0;
   }
 
+  // Use processMedia job type for unified processing
   const jobs = mediaItems.map((media) => ({
     mediaId: media.id,
     sourcePath: (mediaSource.connectionInfo as { path: string }).path,
-    type: "thumbnail" as const,
+    type: "processMedia" as const,
   }));
 
+  const { MediaProcessingService } = await import(
+    "~/application/services/media-processing-service"
+  );
+
   addJobsToQueue(mediaSourceId, jobs);
-  startJobQueue(mediaSourceId, (job) => processMediaJob(job, mediaSourceId));
+  startJobQueue(mediaSourceId, (job) =>
+    MediaProcessingService.executeProcessMediaJob(job, mediaSourceId)
+  );
 
   return jobs.length;
 }

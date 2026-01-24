@@ -42,10 +42,7 @@ import {
   startJobQueue,
 } from "~/infrastructure/jobs/job-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
-import {
-  deleteThumbnail,
-  processMediaJob,
-} from "~/infrastructure/jobs/thumbnails";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
 const SIGNATURES = {
   png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -81,12 +78,15 @@ type DeferredActions = {
   sse: DeferredSse[];
 };
 
-function executeDeferredActions(actions: DeferredActions) {
+async function executeDeferredActions(actions: DeferredActions) {
   if (actions.jobs.length > 0) {
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
     for (const item of actions.jobs) {
       addJobsToQueue(item.mediaSourceId, item.jobs);
       startJobQueue(item.mediaSourceId, (job) =>
-        processMediaJob(job, item.mediaSourceId)
+        MediaProcessingService.executeProcessMediaJob(job, item.mediaSourceId)
       );
     }
   }
@@ -679,9 +679,15 @@ export class MediaServiceImpl {
     }
 
     // Execute immediately if no transaction
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
     addJobsToQueue(validatedTargetSourceId, jobs);
     startJobQueue(validatedTargetSourceId, (job) =>
-      processMediaJob(job, validatedTargetSourceId)
+      MediaProcessingService.executeProcessMediaJob(
+        job,
+        validatedTargetSourceId
+      )
     );
 
     SseManager.notifyMediaCopied(
