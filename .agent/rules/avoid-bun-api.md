@@ -1,5 +1,6 @@
 ---
 trigger: always_on
+description: Bun固有APIの使用回避
 ---
 ### Bun固有APIの回避
 

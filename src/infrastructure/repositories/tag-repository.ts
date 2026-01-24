@@ -1,4 +1,4 @@
-import { eq, type InferSelectModel, inArray } from "drizzle-orm";
+import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
@@ -195,7 +195,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
   async addTagsToMedia(
     mediaId: string,
-    tagsToInsert: { name: string; type: "positive" | "negative" }[],
+    tagsToInsert: {
+      name: string;
+      type: "positive" | "negative";
+      confidence?: number;
+    }[],
     source = "manual",
     tx?: Transaction
   ): Promise<void> {
@@ -242,6 +246,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
             mediaId,
             tagId: foundTag.id,
             tagType: tagToInsert.type,
+            confidence: tagToInsert.confidence ?? null,
             source,
           };
         });
@@ -250,7 +255,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
           await (t as unknown as TransactionClient)
             .insert(mediaTags)
             .values(mediaTagsToInsert)
-            .onConflictDoNothing();
+            .onConflictDoUpdate({
+              target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
+              set: {
+                confidence: sql`excluded.confidence`,
+              },
+            });
         }
       };
 

@@ -25,6 +25,7 @@ export type CharacterRepository = {
   addToMedia(
     mediaId: string,
     characterId: string,
+    confidence?: number,
     tx?: Transaction
   ): Promise<void>;
   removeFromMedia(
@@ -34,7 +35,7 @@ export type CharacterRepository = {
   ): Promise<void>;
   addToMediaBulk(
     mediaId: string,
-    characterIds: string[],
+    characters: { id: string; confidence?: number }[],
     tx?: Transaction
   ): Promise<void>;
 };

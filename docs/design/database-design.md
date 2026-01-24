@@ -295,6 +295,7 @@ erDiagram
 | `media_sync_status` | `synced`, `pending`, `failed` | メディアの同期状態 |
 | `media_type` | `image`, `video`, `audio` | メディアの主要なコンテンツタイプ |
 | `job_status` | `pending`, `in_progress`, `completed`, `failed` | バックグラウンドジョブの状態 |
+| `job_type` | `processMedia` | ジョブの種類（統合されたメディア処理ジョブ） |
 | `media_relation_type` | `variant`, `version`, `page`, `derivative`, `edit`, `source` | メディア間の関連付けの種類 |
 | `tag_type` | `positive`, `negative` | タグが肯定的か否定的か |
 

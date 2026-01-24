@@ -231,14 +231,114 @@ export const mediaDetailsSchema = mediaSchema.extend({
 
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
 
-// Download schemas for bulk image download from JSON
-export const downloadItemSchema = z.object({
-  imageUrl: z.string().url("Invalid image URL"),
-  tweetUrl: z.string().url("Invalid tweet URL").optional(),
-  tweetText: z.string().optional(),
-  timestamp: z.coerce.date().optional(),
-  authorName: z.string().optional(),
-  authorId: z.string().optional(),
+// ============================================================================
+// Base Schema: MediaMetadataContext
+// Pure metadata without file information. Used as common interface for
+// MediaProcessingService across all media registration flows.
+// ============================================================================
+
+/**
+ * Base schema for media metadata context.
+ * Contains only relational/contextual data, no physical file information.
+ * This is the common interface used by MediaProcessingService.
+ */
+export const mediaMetadataContextSchema = z.object({
+  description: z.string().nullable().optional(),
+  createdAt: z.coerce.date().optional(), // Original creation date (e.g., from social media post)
+  sourceUrls: z.array(z.string().url()).optional(),
+  authors: z
+    .array(
+      z.object({
+        name: z.string(),
+        accountId: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  tags: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.enum(["positive", "negative"]).optional(),
+        confidence: z.number().optional(),
+      })
+    )
+    .optional(),
+  characters: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+        confidence: z.number().optional(),
+      })
+    )
+    .optional(),
+  ips: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  projects: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  generationInfo: z
+    .object({
+      prompt: z.string().nullable().optional(),
+      negativePrompt: z.string().nullable().optional(),
+      modelName: z.string().optional(),
+      seed: z.number().optional(),
+      steps: z.number().optional(),
+      cfgScale: z.number().optional(),
+      aiGenerated: z.boolean().optional(),
+      workflow: z.any().nullable().optional(),
+      metadata: z.any().nullable().optional(),
+    })
+    .nullable()
+    .optional(),
+});
+
+export type MediaMetadataContext = z.infer<typeof mediaMetadataContextSchema>;
+
+// ============================================================================
+// Backup/Restore Schema: MediaDumpItem
+// Extends MediaMetadataContext with physical file information.
+// ============================================================================
+
+/**
+ * Schema representing a single item in the backup dump.
+ * Extends MediaMetadataContext with file-specific information.
+ */
+export const mediaDumpItemSchema = mediaMetadataContextSchema.extend({
+  // Basic file info (ignored/generated on import for most fields)
+  id: z.string().optional(),
+  filePath: z.string().optional(),
+  fileName: z.string().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  fileSize: z.number().optional(),
+  mediaType: z.enum(["image", "video", "audio"]).optional(),
+  createdAt: z.coerce.date().optional(),
+  modifiedAt: z.coerce.date().optional(),
+});
+
+export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;
+
+/**
+ * Schema for items to be downloaded via the xtracter extension.
+ * Extends the dump schema with download-specific technical fields.
+ */
+export const downloadItemSchema = mediaMetadataContextSchema.extend({
+  // Specific required fields for download
+  targetUrl: z.string().url("Invalid target URL"), // The actual URL to download (e.g., image source)
+
+  // Technical options
   cookies: z.array(z.any()).optional(),
   userAgent: z.string().optional(),
 });

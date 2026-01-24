@@ -1,13 +1,27 @@
-export interface TweetMetadata {
-    imageUrl: string;
-    tweetUrl: string;
-    tweetText: string;
-    timestamp: string;
-    authorName: string;
-    authorId: string;
+export interface Author {
+    name: string;
+    accountId?: string | null;
+}
+
+export interface DownloadItem {
+    // Required for download
+    targetUrl: string;
+    
+    // Metadata
+    description?: string | null;
+    createdAt?: string; // ISO string
+    
+    // Relations
+    sourceUrls?: string[];
+    authors?: Author[];
+    
+    // Technical
     cookies?: any[];
     userAgent?: string;
 }
+
+// Alias for backward compatibility during refactor, or we can just replace usage.
+export type TweetMetadata = DownloadItem;
 
 export interface DownloadMessage {
     type: 'DOWNLOAD';

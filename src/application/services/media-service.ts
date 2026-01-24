@@ -5,6 +5,11 @@
 
 import path from "node:path";
 import { services } from "~/application/registry"; // Default registry
+import {
+  type DeferredActions,
+  type DeferredSse,
+  executeDeferredActions,
+} from "~/application/services/job-dispatch-service";
 import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -36,15 +41,10 @@ import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/ta
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+// import { SseManager } from "~/infrastructure/jobs/sse-manager";
+// keeping SseManager if used elsewhere
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
-import {
-  deleteThumbnail,
-  processMediaJob,
-} from "~/infrastructure/jobs/thumbnails";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
 const SIGNATURES = {
   png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -123,6 +123,14 @@ export class MediaServiceImpl {
     this.projectRepository = projectRepository;
     this.characterRepository = characterRepository;
     this.ipRepository = ipRepository;
+  }
+
+  /**
+   * Starts processing jobs for the given source using the unified processor.
+   * @deprecated Worker now handles this automatically.
+   */
+  startProcessing(_mediaSourceId: string) {
+    // No-op: JobWorker is handling this globally.
   }
 
   /**
@@ -223,15 +231,20 @@ export class MediaServiceImpl {
       ]);
     }
 
-    // 4. Trigger Jobs
-    addJobsToQueue(validatedSourceId, [
-      { mediaId: insertedMedia.id, sourcePath: basePath, type: "thumbnail" },
-      { mediaId: insertedMedia.id, sourcePath: basePath, type: "extractTags" },
-    ]);
+    // 4. Trigger processMedia Job (unified processing)
+    // 4. Trigger processMedia Job (unified processing)
+    const jobRepo = services.getJobRepository();
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId: validatedSourceId,
+      payload: {
+        mediaId: insertedMedia.id,
+        sourcePath: basePath,
+        type: "processMedia",
+      },
+    });
 
-    startJobQueue(validatedSourceId, (job) =>
-      processMediaJob(job, validatedSourceId)
-    );
+    this.startProcessing(validatedSourceId);
 
     return {
       success: true,
@@ -372,16 +385,22 @@ export class MediaServiceImpl {
     }
 
     if (newMediaItems.length > 0) {
-      const jobs = newMediaItems.map((item) => ({
-        mediaId: item.id,
-        sourcePath: directoryPath,
-        type: "thumbnail" as const,
-      }));
+      // Use processMedia job type for unified processing
+      const jobRepo = services.getJobRepository();
 
-      addJobsToQueue(validatedSourceId, jobs);
-      startJobQueue(validatedSourceId, (job) =>
-        processMediaJob(job, validatedSourceId)
-      );
+      for (const item of newMediaItems) {
+        await jobRepo.create({
+          type: "processMedia",
+          mediaSourceId: validatedSourceId,
+          payload: {
+            mediaId: item.id,
+            sourcePath: directoryPath,
+            type: "processMedia",
+          },
+        });
+      }
+
+      // this.startProcessing(validatedSourceId);
     }
   }
 
@@ -524,7 +543,7 @@ export class MediaServiceImpl {
     sourceMediaId: string,
     targetSourceId: string,
     tx?: Transaction
-  ): Promise<{ success: boolean; media: Media }> {
+  ): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
     const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
     const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
 
@@ -592,20 +611,74 @@ export class MediaServiceImpl {
     // 4. Copy Metadata
     await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
 
-    // 5. Start Thumbnail Generation for New Media
+    // 5. Prepare Deferred Actions (Jobs + Notifications)
     const sourcePath = targetConnection.path;
-    await addJobsToQueue(validatedTargetSourceId, [
+    // Construct DB Job DTO (DeferredJob)
+    const deferredJob: import("~/application/services/job-dispatch-service").DeferredJob =
       {
         mediaId: newMediaEntry.id,
         sourcePath,
-        type: "thumbnail",
-      },
-    ]);
-    startJobQueue(validatedTargetSourceId, (job) =>
-      processMediaJob(job, validatedTargetSourceId)
-    );
+        type: "processMedia",
+        payload: {
+          mediaId: newMediaEntry.id,
+          sourcePath,
+          type: "processMedia",
+        },
+      };
 
-    // Notify via SSE
+    const deferredActions: DeferredActions = {
+      jobs: [
+        {
+          mediaSourceId: validatedTargetSourceId,
+          jobs: [deferredJob],
+        },
+      ],
+      sse: [], // Will be handled differently if no tx
+    };
+
+    // Note: notifyMediaCopied is a static helper that might not fit easily into DeferredSse structure
+    // without duplicating its logic. SseManager.notifyMediaCopied sends "media-copied".
+    // Let's replicate the event structure.
+    const sseEvent: DeferredSse = {
+      mediaSourceId: validatedTargetSourceId,
+      event: "media-copied",
+      payload: {
+        sourceMediaId,
+        media: newMediaEntry,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    if (tx) {
+      deferredActions.sse.push(sseEvent);
+      return {
+        success: true,
+        media: newMediaEntry,
+        deferred: deferredActions,
+      };
+    }
+
+    // Execute immediately if no transaction
+    // Execute immediately if no transaction
+    // addJobsToQueue(validatedTargetSourceId, jobs);
+    // this.startProcessing(validatedTargetSourceId);
+    // Use executeDeferredActions implementation logic directly or call it?
+    // Since we returned a deferred action object in other branch, here we should arguably EXECUTE it.
+    // Or just invoke jobRepo directly.
+
+    // Note: jobs type was old Job[], now deferredJob is DeferredJob.
+    // Let's use jobRepo directly.
+    const jobRepo = services.getJobRepository();
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId: validatedTargetSourceId,
+      payload: {
+        mediaId: newMediaEntry.id,
+        sourcePath,
+        type: "processMedia",
+      },
+    });
+
     SseManager.notifyMediaCopied(
       sourceMediaId,
       validatedTargetSourceId,
@@ -625,36 +698,80 @@ export class MediaServiceImpl {
     sourceMediaId: string,
     targetSourceId: string,
     tx?: Transaction
-  ): Promise<{ success: boolean; media: Media }> {
+  ): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
     const execute = async (t: Transaction) => {
+      const accumulatedDeferred: DeferredActions = {
+        jobs: [],
+        sse: [],
+      };
+
       // 1. Copy
-      const result = await this.copyMedia(sourceMediaId, targetSourceId, t);
+      const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, t);
+      if (copyResult.deferred) {
+        accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
+        // We omit individual media-copied event for move context
+      }
 
       // 2. Delete Original if Copy Successful
-      if (result.success) {
+      if (copyResult.success) {
         const sourceMedia = await this.mediaRepository.findById(
           sourceMediaId,
           t
         );
         if (sourceMedia) {
-          await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId, t);
-
-          // Notify via SSE
-          SseManager.notifyMediaMoved(
+          const deleteResult = await this.deleteMedia(
             sourceMedia.mediaSourceId,
-            targetSourceId,
             sourceMediaId,
-            result.media
+            t
           );
+          if (deleteResult) {
+            accumulatedDeferred.jobs.push(...deleteResult.jobs);
+            // We omit individual media-deleted event for move context
+          }
+
+          // Replicate SseManager.notifyMediaMoved logic but deferred
+          const sseEventSource: DeferredSse = {
+            mediaSourceId: sourceMedia.mediaSourceId,
+            event: "media-moved",
+            payload: {
+              type: "source",
+              mediaId: sourceMediaId,
+              targetId: targetSourceId,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          const sseEventTarget: DeferredSse = {
+            mediaSourceId: targetSourceId,
+            event: "media-moved",
+            payload: {
+              type: "target",
+              media: copyResult.media,
+              sourceId: sourceMedia.mediaSourceId,
+              timestamp: new Date().toISOString(),
+            },
+          };
+          accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
         }
       }
-      return result;
+      return {
+        ...copyResult,
+        deferred: accumulatedDeferred,
+      };
     };
 
     if (tx) {
       return await execute(tx);
     }
-    return await DrizzleTransactionManager.transaction(execute);
+
+    // Top-level transaction
+    const result = await DrizzleTransactionManager.transaction(execute);
+
+    // Execute deferred actions after commit
+    if (result.deferred) {
+      executeDeferredActions(result.deferred);
+    }
+
+    return result;
   }
 
   /**
@@ -664,7 +781,7 @@ export class MediaServiceImpl {
     mediaSourceId: string,
     mediaId: string,
     tx?: Transaction
-  ): Promise<void> {
+  ): Promise<DeferredActions | undefined> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
@@ -701,11 +818,29 @@ export class MediaServiceImpl {
       }
     }
 
-    // Notify via SSE
-    SseManager.sendEvent(validatedSourceId, "media-deleted", {
-      filePath: media.filePath,
-      timestamp: new Date().toISOString(),
-    });
+    // Prepare Deferred Notification
+    const sseEvent: DeferredSse = {
+      mediaSourceId: validatedSourceId,
+      event: "media-deleted",
+      payload: {
+        filePath: media.filePath,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    if (tx) {
+      return {
+        jobs: [],
+        sse: [sseEvent],
+      };
+    }
+
+    // Notify via SSE immediately
+    SseManager.sendEvent(
+      sseEvent.mediaSourceId,
+      sseEvent.event,
+      sseEvent.payload
+    );
   }
 
   /**
@@ -755,7 +890,7 @@ export class MediaServiceImpl {
     if (sourceCharacters.length > 0) {
       await this.characterRepository.addToMediaBulk(
         newMediaId,
-        sourceCharacters.map((c) => c.id),
+        sourceCharacters.map((c) => ({ id: c.id })),
         tx
       );
     }

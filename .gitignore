@@ -12,6 +12,7 @@ app.config.timestamp_*.js
 
 # dependencies
 **/node_modules/
+backups/**
 
 # IDEs and editors
 /.idea
@@ -33,7 +34,6 @@ requirements/.obsidian/**
 
 
 .claude/
-.gemini/
 .serena/
 .specify/
 CALUDE.md

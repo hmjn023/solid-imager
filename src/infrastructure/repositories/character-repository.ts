@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import type {
   Character,
   NewCharacter,
@@ -162,25 +162,25 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async addToMedia(
     mediaId: string,
     characterId: string,
+    confidence?: number,
     tx?: Transaction
   ): Promise<void> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      await client.insert(mediaCharacters).values({
-        mediaId,
-        characterId,
-      });
+      await client
+        .insert(mediaCharacters)
+        .values({
+          mediaId,
+          characterId,
+          confidence: confidence ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [mediaCharacters.mediaId, mediaCharacters.characterId],
+          set: {
+            confidence: sql`excluded.confidence`,
+          },
+        });
     } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        (error as { code: string }).code === "23505"
-      ) {
-        // Already associated, ignore or throw?
-        // Service layer usually expects this to be idempotent or fail silently if it's already there
-        return;
-      }
       throw new UnexpectedError(
         `Failed to add character ${characterId} to media ${mediaId}`,
         error
@@ -212,11 +212,11 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   }
   async addToMediaBulk(
     mediaId: string,
-    characterIds: string[],
+    charactersData: { id: string; confidence?: number }[],
     tx?: Transaction
   ): Promise<void> {
     const client = (tx as unknown as TransactionClient) || db;
-    if (characterIds.length === 0) {
+    if (charactersData.length === 0) {
       return;
     }
 
@@ -224,12 +224,18 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       await client
         .insert(mediaCharacters)
         .values(
-          characterIds.map((characterId) => ({
+          charactersData.map((char) => ({
             mediaId,
-            characterId,
+            characterId: char.id,
+            confidence: char.confidence ?? null,
           }))
         )
-        .onConflictDoNothing();
+        .onConflictDoUpdate({
+          target: [mediaCharacters.mediaId, mediaCharacters.characterId],
+          set: {
+            confidence: sql`excluded.confidence`,
+          },
+        });
     } catch (error) {
       throw new UnexpectedError(
         `Failed to bulk add characters to media ${mediaId}`,

@@ -20,7 +20,11 @@ export type TagRepository = {
   findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;
   addTagsToMedia(
     mediaId: string,
-    tags: { name: string; type: "positive" | "negative" }[],
+    tags: {
+      name: string;
+      type: "positive" | "negative";
+      confidence?: number;
+    }[],
     source?: string,
     tx?: Transaction
   ): Promise<void>;

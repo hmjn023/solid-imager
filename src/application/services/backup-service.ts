@@ -2,6 +2,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { Open } from "unzipper";
+import {
+  type MediaDumpItem,
+  mediaDumpItemSchema,
+} from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import {
   authors,
@@ -19,7 +23,6 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
-// ...
 import { getDriver } from "~/infrastructure/storage/factory";
 
 // const _IMAGES_PREFIX = /^images\//;
@@ -51,7 +54,7 @@ export const BackupService = {
    */
   async restoreSource(
     mediaSourceId: string,
-    // biome-ignore lint/suspicious/noExplicitAny: complex dump
+    // biome-ignore lint/suspicious/noExplicitAny: complex dump structure but partially typed
     items: any[]
   ) {
     const mediaSource = await db.query.mediaSources.findFirst({
@@ -62,6 +65,7 @@ export const BackupService = {
       throw new Error("Media source not found");
     }
 
+    // Cast items to MediaDumpItem[] essentially, but validation happens inside filter
     const { validItems, skippedCount, errorMessages } =
       await this._filterValidItems(items, mediaSource);
 
@@ -96,6 +100,33 @@ export const BackupService = {
       charMap,
     });
 
+    // Trigger thumbnail generation (skip metadata extraction to preserve restored data)
+    if (mediaSource.type === "local") {
+      const mediaIds = Array.from(mediaPathToId.values());
+      const { services } = await import("~/application/registry");
+
+      if (mediaIds.length > 0) {
+        const jobRepo = services.getJobRepository();
+
+        const connectionInfo = mediaSource.connectionInfo as { path: string };
+        const basePath = connectionInfo.path;
+
+        for (const id of mediaIds) {
+          await jobRepo.create({
+            type: "processMedia",
+            mediaSourceId,
+            payload: {
+              mediaId: id,
+              sourcePath: basePath,
+              type: "processMedia", // optional
+              skipMetadataExtraction: true,
+            },
+          });
+        }
+        // Worker handles it automatically
+      }
+    }
+
     return {
       processed: validItems.length,
       skipped: skippedCount,
@@ -109,19 +140,29 @@ export const BackupService = {
     const basePath = connectionInfo.path;
     const isLocal = mediaSource.type === "local";
 
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
-    const validItems: any[] = [];
+    const validItems: MediaDumpItem[] = [];
     const errorMessages: string[] = [];
     let skippedCount = 0;
 
     for (const item of items) {
-      if (!(item.filePath && item.fileName)) {
+      // Zod Validation
+      const result = mediaDumpItemSchema.safeParse(item);
+      if (!result.success) {
+        skippedCount++;
+        errorMessages.push(`Validation failed: ${result.error.message}`);
+        continue;
+      }
+
+      const validItem = result.data;
+
+      // Ensure filePath and fileName
+      if (!(validItem.filePath && validItem.fileName)) {
         skippedCount++;
         continue;
       }
 
       try {
-        validateRelativePath(item.filePath);
+        validateRelativePath(validItem.filePath);
       } catch (e) {
         skippedCount++;
         errorMessages.push((e as Error).message);
@@ -129,7 +170,7 @@ export const BackupService = {
       }
 
       if (isLocal) {
-        const fullPath = path.join(basePath, item.filePath);
+        const fullPath = path.join(basePath, validItem.filePath);
         try {
           await fs.access(fullPath);
         } catch {
@@ -137,56 +178,51 @@ export const BackupService = {
           continue;
         }
       }
-      validItems.push(item);
+      validItems.push(validItem);
     }
     return { validItems, skippedCount, errorMessages };
   },
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
-  // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  async _restoreMasterData(validItems: any[]) {
+  async _restoreMasterData(validItems: MediaDumpItem[]) {
     const tagNames = new Set<string>();
-    const authorNames = new Set<string>();
+    const authorData = new Map<string, { accountId?: string | null }>();
     const projectNames = new Set<string>();
     const charNames = new Set<string>();
     const ipNames = new Set<string>();
 
     for (const item of validItems) {
       if (item.tags) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const t of item.tags as any[]) {
+        for (const t of item.tags) {
           if (t.name) {
             tagNames.add(t.name);
           }
         }
       }
       if (item.authors) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const a of item.authors as any[]) {
-          if (a.name) {
-            authorNames.add(a.name);
+        for (const a of item.authors) {
+          // Preserve accountId if available
+          if (a.name && (!authorData.has(a.name) || a.accountId)) {
+            authorData.set(a.name, { accountId: a.accountId });
           }
         }
       }
       if (item.projects) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const p of item.projects as any[]) {
+        for (const p of item.projects) {
           if (p.name) {
             projectNames.add(p.name);
           }
         }
       }
       if (item.characters) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const c of item.characters as any[]) {
+        for (const c of item.characters) {
           if (c.name) {
             charNames.add(c.name);
           }
         }
       }
       if (item.ips) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const i of item.ips as any[]) {
+        for (const i of item.ips) {
           if (i.name) {
             ipNames.add(i.name);
           }
@@ -197,11 +233,10 @@ export const BackupService = {
     const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
       source: "restored",
     });
-    const authorMap = await this._ensureMasterData(
+    const authorMap = await this._ensureMasterDataWithExtras(
       authors,
       authors.name,
-      authorNames,
-      {}
+      authorData
     );
     const projectMap = await this._ensureMasterData(
       projects,
@@ -223,12 +258,16 @@ export const BackupService = {
     return { tagMap, authorMap, projectMap, ipMap, charMap };
   },
 
-  // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  async _restoreMediaRecords(mediaSourceId: string, validItems: any[]) {
+  async _restoreMediaRecords(
+    mediaSourceId: string,
+    validItems: MediaDumpItem[]
+  ) {
     const mediaValues = validItems.map((item) => ({
       mediaSourceId,
-      filePath: item.filePath,
-      fileName: item.fileName,
+      // biome-ignore lint/style/noNonNullAssertion: Filtered in _filterValidItems
+      filePath: item.filePath!,
+      // biome-ignore lint/style/noNonNullAssertion: Filtered in _filterValidItems
+      fileName: item.fileName!,
       description: item.description || null,
       width: item.width ?? 0,
       height: item.height ?? 0,
@@ -242,36 +281,50 @@ export const BackupService = {
       status: "active" as const,
     }));
 
-    await db
-      .insert(medias)
-      .values(mediaValues)
-      .onConflictDoUpdate({
-        target: [medias.mediaSourceId, medias.filePath],
-        set: {
-          description: sql`excluded.description`,
-          modifiedAt: sql`excluded.modified_at`,
-          width: sql`excluded.width`,
-          height: sql`excluded.height`,
-          fileSize: sql`excluded.file_size`,
-        },
-      });
+    // Batch insert is limited by parameter count, so we might need chunking if validItems is huge
+    // Assuming reasonable size or caller handles chunking. For safety, let's chunk.
+    const ChunkSize = 1000;
+    for (let i = 0; i < mediaValues.length; i += ChunkSize) {
+      const chunk = mediaValues.slice(i, i + ChunkSize);
+      await db
+        .insert(medias)
+        .values(chunk)
+        .onConflictDoUpdate({
+          target: [medias.mediaSourceId, medias.filePath],
+          set: {
+            description: sql`excluded.description`,
+            modifiedAt: sql`excluded.modified_at`,
+            width: sql`excluded.width`,
+            height: sql`excluded.height`,
+            fileSize: sql`excluded.file_size`,
+          },
+        });
+    }
   },
 
-  // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  async _mapMediaPathsToIds(mediaSourceId: string, validItems: any[]) {
+  async _mapMediaPathsToIds(
+    mediaSourceId: string,
+    validItems: MediaDumpItem[]
+  ) {
     // Parameter limit avoidance: Split validItems into chunks
     const ChunkSize = 10_000;
     const storedMedias: { id: string; filePath: string }[] = [];
 
     for (let i = 0; i < validItems.length; i += ChunkSize) {
       const chunk = validItems.slice(i, i + ChunkSize);
+      // We need to filter out items with undefined filePath (though filtered before)
+      const filePaths = chunk
+        .map((item) => item.filePath)
+        .filter((p): p is string => !!p);
+
+      if (filePaths.length === 0) {
+        continue;
+      }
+
       const chunkResults = await db.query.medias.findMany({
         where: and(
           eq(medias.mediaSourceId, mediaSourceId),
-          inArray(
-            medias.filePath,
-            chunk.map((item) => item.filePath)
-          )
+          inArray(medias.filePath, filePaths)
         ),
         columns: { id: true, filePath: true },
       });
@@ -291,8 +344,7 @@ export const BackupService = {
     ipMap,
     charMap,
   }: {
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
-    validItems: any[];
+    validItems: MediaDumpItem[];
     mediaPathToId: Map<string, string>;
     tagMap: Map<string, string>;
     authorMap: Map<string, string>;
@@ -300,7 +352,7 @@ export const BackupService = {
     ipMap: Map<string, string>;
     charMap: Map<string, string>;
   }) {
-    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure for db insert
     const mediaTagsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaAuthorsData: any[] = [];
@@ -316,14 +368,16 @@ export const BackupService = {
     const mediaGenInfoData: any[] = [];
 
     for (const item of validItems) {
+      if (!item.filePath) {
+        continue;
+      }
       const mediaId = mediaPathToId.get(item.filePath);
       if (!mediaId) {
         continue;
       }
 
       if (item.tags) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const t of item.tags as any[]) {
+        for (const t of item.tags) {
           const tagId = t.name ? tagMap.get(t.name) : undefined;
           if (tagId) {
             mediaTagsData.push({
@@ -332,7 +386,7 @@ export const BackupService = {
               tagType: (t.type === "positive" || t.type === "negative"
                 ? t.type
                 : "positive") as "positive" | "negative",
-              confidence: t.confidence || null,
+              confidence: t.confidence ?? null,
               source: "restored",
             });
           }
@@ -340,8 +394,7 @@ export const BackupService = {
       }
 
       if (item.authors) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const a of item.authors as any[]) {
+        for (const a of item.authors) {
           const authorId = a.name ? authorMap.get(a.name) : undefined;
           if (authorId) {
             mediaAuthorsData.push({ mediaId, authorId });
@@ -350,8 +403,7 @@ export const BackupService = {
       }
 
       if (item.projects) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const p of item.projects as any[]) {
+        for (const p of item.projects) {
           const projectId = p.name ? projectMap.get(p.name) : undefined;
           if (projectId) {
             mediaProjectsData.push({ mediaId, projectId });
@@ -360,8 +412,7 @@ export const BackupService = {
       }
 
       if (item.ips) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const i of item.ips as any[]) {
+        for (const i of item.ips) {
           const ipId = i.name ? ipMap.get(i.name) : undefined;
           if (ipId) {
             mediaIpsData.push({ mediaId, ipId, source: "restored" });
@@ -370,14 +421,13 @@ export const BackupService = {
       }
 
       if (item.characters) {
-        // biome-ignore lint/suspicious/noExplicitAny: dynamic item
-        for (const c of item.characters as any[]) {
+        for (const c of item.characters) {
           const charId = c.name ? charMap.get(c.name) : undefined;
           if (charId) {
             mediaCharsData.push({
               mediaId,
               characterId: charId,
-              confidence: c.confidence || null,
+              confidence: c.confidence ?? null,
               source: "restored",
             });
           }
@@ -385,13 +435,13 @@ export const BackupService = {
       }
 
       if (item.sourceUrls) {
-        for (const url of item.sourceUrls as string[]) {
+        for (const url of item.sourceUrls) {
           mediaUrlsData.push({ mediaId, url });
         }
       }
 
       if (item.generationInfo) {
-        const { mediaId: _, ...info } = item.generationInfo;
+        const info = item.generationInfo;
         mediaGenInfoData.push({
           mediaId,
           ...info,
@@ -418,39 +468,37 @@ export const BackupService = {
         .where(inArray(mediaGenerationInfo.mediaId, mediaIds));
     }
 
+    // biome-ignore lint/suspicious/noExplicitAny: generic table and data
+    const insertChunked = async (table: any, data: any[]) => {
+      const BatchSize = 1000;
+      for (let i = 0; i < data.length; i += BatchSize) {
+        await db
+          .insert(table)
+          .values(data.slice(i, i + BatchSize))
+          .onConflictDoNothing();
+      }
+    };
+
     if (mediaTagsData.length) {
-      await db.insert(mediaTags).values(mediaTagsData).onConflictDoNothing();
+      await insertChunked(mediaTags, mediaTagsData);
     }
     if (mediaAuthorsData.length) {
-      await db
-        .insert(mediaAuthors)
-        .values(mediaAuthorsData)
-        .onConflictDoNothing();
+      await insertChunked(mediaAuthors, mediaAuthorsData);
     }
     if (mediaProjectsData.length) {
-      await db
-        .insert(mediaProjects)
-        .values(mediaProjectsData)
-        .onConflictDoNothing();
+      await insertChunked(mediaProjects, mediaProjectsData);
     }
     if (mediaCharsData.length) {
-      await db
-        .insert(mediaCharacters)
-        .values(mediaCharsData)
-        .onConflictDoNothing();
+      await insertChunked(mediaCharacters, mediaCharsData);
     }
     if (mediaIpsData.length) {
-      await db.insert(mediaIps).values(mediaIpsData).onConflictDoNothing();
+      await insertChunked(mediaIps, mediaIpsData);
     }
     if (mediaUrlsData.length) {
-      await db.insert(mediaUrls).values(mediaUrlsData).onConflictDoNothing();
+      await insertChunked(mediaUrls, mediaUrlsData);
     }
-
     if (mediaGenInfoData.length) {
-      await db
-        .insert(mediaGenerationInfo)
-        .values(mediaGenInfoData)
-        .onConflictDoNothing();
+      await insertChunked(mediaGenerationInfo, mediaGenInfoData);
     }
   },
 
@@ -482,6 +530,92 @@ export const BackupService = {
 
     // biome-ignore lint/suspicious/noExplicitAny: dynamic record
     return new Map(records.map((r: any) => [r.name, r.id]));
+  },
+
+  /**
+   * Ensures master data with extra fields (specifically for authors with accountId).
+   * Authors table does NOT have unique constraint on name, so we need to handle this carefully.
+   */
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: logic is slightly complex due to accountId priority
+  async _ensureMasterDataWithExtras(
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    table: any,
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    nameColumn: any,
+    dataMap: Map<string, { accountId?: string | null }>
+  ): Promise<Map<string, string>> {
+    if (dataMap.size === 0) {
+      return new Map();
+    }
+
+    const entries = Array.from(dataMap.entries());
+    const nameList = entries.map(([name]) => name);
+
+    // First, find existing authors by name
+    const existingRecords = await db
+      .select({ id: table.id, name: nameColumn, accountId: table.accountId })
+      .from(table)
+      .where(inArray(nameColumn, nameList));
+
+    const existingByName = new Map<
+      string,
+      { id: string; accountId: string | null }
+    >();
+    for (const r of existingRecords) {
+      const existing = existingByName.get(r.name);
+      // Prioritize entry with an accountId, or just take the first one if none have it yet.
+      if (!existing || (!existing.accountId && r.accountId)) {
+        existingByName.set(r.name, { id: r.id, accountId: r.accountId });
+      }
+    }
+
+    // Update existing authors with new accountId if provided
+    // Note: Update ALL authors with matching name (handles duplicates)
+    for (const [name, data] of entries) {
+      const existing = existingByName.get(name);
+      if (existing && data.accountId && existing.accountId !== data.accountId) {
+        await db
+          .update(table)
+          .set({ accountId: data.accountId })
+          .where(eq(nameColumn, name));
+      }
+    }
+
+    // Insert new authors that don't exist
+    const newEntries = entries.filter(([name]) => !existingByName.has(name));
+    if (newEntries.length > 0) {
+      await db.insert(table).values(
+        newEntries.map(([name, data]) => ({
+          name,
+          accountId: data.accountId || null,
+        }))
+      );
+
+      // Fetch the newly inserted records
+      const newRecords = await db
+        .select({ id: table.id, name: nameColumn, accountId: table.accountId })
+        .from(table)
+        .where(
+          inArray(
+            nameColumn,
+            newEntries.map(([name]) => name)
+          )
+        );
+
+      for (const r of newRecords) {
+        if (!existingByName.has(r.name)) {
+          existingByName.set(r.name, { id: r.id, accountId: r.accountId });
+        }
+      }
+    }
+
+    // Return map of name -> id
+    return new Map(
+      Array.from(existingByName.entries()).map(([name, data]) => [
+        name,
+        data.id,
+      ])
+    );
   },
 
   /**
@@ -562,16 +696,6 @@ export const BackupService = {
     }
 
     if (mode === "json") {
-      // Legacy full-load for JSON mode (use with caution on large datasets)
-      // Reuse the logic via a helper or simple query if needed, but for now duplicate
-      // or keep the existing query structure but non-chunked?
-      // To avoid code duplication, we could use the chunked iterator to build the array.
-
-      // We can just query all at once for JSON mode as before, assuming JSON mode is for smaller debug exports.
-      // Or better, forbid JSON mode for large datasets?
-      // Let's stick to the previous implementation for JSON mode for now to minimize risk,
-      // but we need to re-implement the query since I am replacing the method.
-
       const mediaList = await db.query.medias.findMany({
         where: eq(medias.mediaSourceId, mediaSourceId),
         with: {
@@ -600,12 +724,11 @@ export const BackupService = {
       zlib: { level: 9 },
     });
 
-    // Cleanup function references
     let tempJsonPath: string | null = null;
     const cleanup = async () => {
       if (tempJsonPath) {
         try {
-          await fsSync.promises.unlink(tempJsonPath); // Use fsSync.promises for async unlink
+          await fsSync.promises.unlink(tempJsonPath);
         } catch (_e) {
           // ignore
         }
@@ -615,10 +738,6 @@ export const BackupService = {
     archive.on("error", async (_err: unknown) => {
       await cleanup();
     });
-
-    // Ensure cleanup on ambiguous close/end if possible, or reliance on end triggers.
-    // Ideally we hook into the stream completion, but for response streams, the server handles it.
-    // We can clean up when archiving is finalized.
 
     archive.pipe(passThrough);
 
@@ -659,12 +778,10 @@ export const BackupService = {
           offset += limit;
 
           if (mediaList.length === 0 && isFirst) {
-            // If no items at all, write empty array
             hasMore = false;
             break;
           }
           if (mediaList.length === 0) {
-            // No more items, but some were processed
             hasMore = false;
             break;
           }
@@ -672,14 +789,12 @@ export const BackupService = {
           const transformedItems = this._transformMediaList(mediaList);
 
           for (const item of transformedItems) {
-            // Write JSON
             if (!isFirst) {
               jsonStream.write(",\n");
             }
             jsonStream.write(JSON.stringify(item, null, 2));
             isFirst = false;
 
-            // Add image to archive
             if (item.filePath) {
               try {
                 const buffer = await driver.get(item.filePath);
@@ -697,23 +812,14 @@ export const BackupService = {
           jsonStream?.on("error", reject);
         });
 
-        // Append the complete JSON dump file
         archive.append(fsSync.createReadStream(tempJsonPath), {
           name: "dump.json",
         });
       } catch (_err) {
-        // Can't easily signal error to downstream if headers sent, but we can abort archive
         archive.abort();
         jsonStream?.destroy();
       } finally {
         await archive.finalize();
-        // We can delete the temp file after finalization (which means it's been read into the zip stream?)
-        // Wait, archiver reads the file *during* pipe. We must not delete it until archive emits 'end' or we are sure.
-        // Actually, we can just let OS temp cleanup handle it or try to delete after a delay?
-        // Safer: Delete it in the 'end' event of the *passThrough* stream or archive.
-        // But since this is a background async function, we can await the stream finish?
-        // For now, we will just start the cleanup with a small delay or rely on implicit cleanup.
-        // A better way is:
         passThrough.on("close", cleanup);
         passThrough.on("end", cleanup);
       }
@@ -724,7 +830,7 @@ export const BackupService = {
 
   // Helper to transform media list to dump format
   // biome-ignore lint/suspicious/noExplicitAny: complex structure
-  _transformMediaList(mediaList: any[]) {
+  _transformMediaList(mediaList: any[]): MediaDumpItem[] {
     // biome-ignore lint/suspicious/noExplicitAny: explicit any needed
     return mediaList.map((media: any) => {
       // Extract tags
@@ -779,7 +885,7 @@ export const BackupService = {
         mediaType: media.mediaType,
         createdAt: media.createdAt,
         modifiedAt: media.modifiedAt,
-        indexedAt: media.indexedAt,
+        // indexedAt: media.indexedAt, // Not in schema
 
         // Essential metadata
         sourceUrls,
@@ -807,6 +913,4 @@ export const BackupService = {
       };
     });
   },
-
-  // Helper methods for Restore (processRestoreItem, restoreMediaRecord etc. removed as they are deprecated)
 };

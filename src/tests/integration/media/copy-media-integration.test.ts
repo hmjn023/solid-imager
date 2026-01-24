@@ -7,6 +7,7 @@ import {
   authors,
   characters,
   ips,
+  jobs,
   mediaAuthors,
   mediaCharacters,
   mediaIps,
@@ -18,6 +19,7 @@ import {
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
+import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -66,6 +68,7 @@ describe("MediaService - Copy Media Integration", () => {
     services.registerProjectRepository(ProjectRepository);
     services.registerCharacterRepository(new DrizzleCharacterRepository());
     services.registerIpRepository(IpRepository);
+    services.registerJobRepository(new JobRepository());
     services.registerStorageService(mockStorageService as any);
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
@@ -81,6 +84,7 @@ describe("MediaService - Copy Media Integration", () => {
     await db.delete(ips);
     await db.delete(authors);
     await db.delete(mediaSources);
+    await db.delete(jobs);
 
     // Create Sources
     await db.insert(mediaSources).values([

@@ -7,32 +7,20 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import type {
-  AddMediaRequest,
-  DownloadItem,
-  Media,
-  NewAuthor,
-} from "~/domain/media/schemas";
+import { services } from "~/application/registry";
+import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
-// import { selectMediaSourceById } from "~/infrastructure/db/queries/media-sources"; // Removed
-// import { insertMediaUrls } from "~/infrastructure/db/queries/media-urls"; // Removed
-import type { Job } from "~/infrastructure/jobs/job-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-const sourceRepo = new DrizzleSourceRepository();
 const execFileAsync = promisify(execFile);
-const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
+const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/; // Corrected escaping for regex
 
-const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
+const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/; // Corrected escaping for regex
 // biome-ignore lint/style/noMagicNumbers: Buffer size calculation
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
 
@@ -155,8 +143,6 @@ async function downloadWithYtDlp(
     outputDir,
     "-o",
     template,
-    // Twitter specific: ensure we get the best quality
-    // "--format", "bestvideo+bestaudio/best", // default usually works well
     url,
   ];
 
@@ -174,27 +160,16 @@ async function downloadWithYtDlp(
       maxBuffer: MAX_BUFFER,
     });
 
-    // yt-dlp may output multiple JSON objects (one per line) if it downloads multiple files (e.g. playlist, or multiple media in one tweet)
-    // However, for single tweet URL, it might just be one.
-    // We split by newline and parse each non-empty line.
     const results: { filePath: string; metadata: YtDlpOutput }[] = [];
     const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
 
     for (const line of lines) {
       try {
         const data = JSON.parse(line) as YtDlpOutput;
-        // filename in JSON might be absolute or relative depending on version,
-        // but since we set paths, it usually returns the final path or we construct it.
-        // Actually --print-json output 'filename' key is mostly the destination path.
-
         let finalPath = data.filename;
         if (!path.isAbsolute(finalPath)) {
           finalPath = path.join(outputDir, finalPath);
         }
-
-        // We need the path relative to the source root for the DB
-        // But here we return full path or just the filename?
-        // Let's return the full path and handle relative path calculation in the caller.
         results.push({ filePath: finalPath, metadata: data });
       } catch (e) {
         logger.warn({ err: e }, "Failed to parse yt-dlp JSON line");
@@ -206,7 +181,6 @@ async function downloadWithYtDlp(
     logger.error({ err: error }, "yt-dlp execution failed");
     throw new Error(`yt-dlp failed: ${error}`);
   } finally {
-    // Clean up cookie file
     if (cookieFilePath) {
       // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
       fs.unlink(cookieFilePath).catch(() => {});
@@ -218,7 +192,7 @@ async function downloadWithYtDlp(
  * Formats download metadata as Markdown for the description field.
  */
 function formatMetadataAsMarkdown(item: DownloadItem): string {
-  return item.tweetText || "";
+  return item.description || "";
 }
 
 /**
@@ -229,8 +203,8 @@ function resolveCreatedAt(
   metadata: YtDlpOutput,
   fileMeta: { createdAt: Date }
 ): Date {
-  if (item.timestamp) {
-    return new Date(item.timestamp);
+  if (item.createdAt) {
+    return new Date(item.createdAt);
   }
   if (metadata.upload_date) {
     return new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
@@ -246,11 +220,11 @@ async function handleYtDlpDownload(
   basePath: string
 ) {
   // Use yt-dlp
-  logger.info({ url: item.imageUrl }, "[DownloadJob] Using yt-dlp");
+  logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
   try {
     const results = await downloadWithYtDlp(
-      item.imageUrl,
+      item.targetUrl,
       basePath,
       item.cookies,
       item.userAgent
@@ -283,13 +257,15 @@ async function handleYtDlpDownload(
         filePath: relativePath,
         fileName: path.basename(filePath),
         mediaType,
-        description: item.tweetText || metadata.description || metadata.title,
+        description: item.description || metadata.description || metadata.title,
         width: metadata.width || fileMeta.width || 0,
         height: metadata.height || fileMeta.height || 0,
         fileSize: fileMeta.size,
         createdAt: resolveCreatedAt(item, metadata, fileMeta),
         modifiedAt: fileMeta.modifiedAt,
-        sourceUrls: [item.imageUrl], // The tweet URL
+        sourceUrls: Array.from(
+          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
+        ),
       };
 
       await registerMedia(newMedia, mediaSourceId, item, basePath);
@@ -299,27 +275,63 @@ async function handleYtDlpDownload(
 
     // Notify frontend via SSE
     SseManager.sendEvent(mediaSourceId, "download-error", {
-      url: item.imageUrl,
+      url: item.targetUrl,
       error: error instanceof Error ? error.message : String(error),
     });
-
     throw error;
   }
 }
 
-export async function processDownloadJob(
-  _job: Job,
-  mediaSourceId: string,
-  item: DownloadItem
-): Promise<void> {
-  logger.info({ url: item.imageUrl }, "[DownloadJob] Starting download job");
+/**
+ * Extracts and normalizes a DownloadItem from a job payload.
+ * Handles backward compatibility mapping.
+ */
+function getDownloadItemFromJob(job: Job): DownloadItem {
+  if (!job.payload) {
+    return {} as DownloadItem;
+  }
+  // biome-ignore lint/suspicious/noExplicitAny: Payload cast
+  const payload = job.payload as any;
+  const item = { ...payload } as unknown as DownloadItem;
 
+  if (!item.targetUrl && payload?.imageUrl) {
+    item.targetUrl = payload.imageUrl;
+  }
+
+  if (!item.description && payload?.description) {
+    item.description = payload.description;
+  }
+
+  if (!item.sourceUrls) {
+    item.sourceUrls = payload?.sourceUrl ? [payload.sourceUrl] : [];
+  }
+
+  return item;
+}
+
+export async function processDownloadJob(job: Job): Promise<void> {
+  const mediaSourceId = job.mediaSourceId;
+  if (!mediaSourceId) {
+    logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
+    return;
+  }
+  // Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
+  const item = getDownloadItemFromJob(job);
+
+  if (!item.targetUrl) {
+    logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
+    return;
+  }
+
+  logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
+
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     const error = "Media source not found or not a local source";
     logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
     SseManager.sendEvent(mediaSourceId, "download-error", {
-      url: item.imageUrl,
+      url: item.targetUrl,
       error,
     });
     throw new Error(error);
@@ -329,16 +341,8 @@ export async function processDownloadJob(
   const basePath = connectionInfo.path;
 
   // Decision: Direct download or yt-dlp?
-  // If use yt-dlp for everything, it might be safer but slower.
-  // Existing logic handles direct images.
-  // We'll use yt-dlp if it's NOT a generic direct image URL, OR if it looks like a tweet URL.
-
-  // Note: xtracter currently sends direct image links for images.
-  // For videos, we plan to make it send the tweet URL.
-  // So: if URL looks like a tweet (x.com/status/...), use yt-dlp.
-  //     if URL ends in extension, use direct download.
-
-  const isTwitterPost = item.imageUrl.match(TWITTER_URL_REGEX);
+  // Use regex to detect Twitter URLs which might need yt-dlp if target is the tweet link
+  const isTwitterPost = item.targetUrl.match(TWITTER_URL_REGEX);
 
   logger.info(
     { isTwitterPost: !!isTwitterPost },
@@ -354,14 +358,14 @@ export async function processDownloadJob(
 
       // Traditional Direct Image Download
       // Generate filename from URL
-      const urlPath = new URL(item.imageUrl).pathname;
+      const urlPath = new URL(item.targetUrl).pathname;
       const originalFilename = path.basename(urlPath);
       const filename = `download-${Date.now()}-${originalFilename}`;
       const filePath = filename;
       const fullPath = path.join(basePath, filePath);
 
       // Download the image
-      await downloadImage(item.imageUrl, fullPath);
+      await downloadImage(item.targetUrl, fullPath);
 
       // Get file metadata
       const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
@@ -379,29 +383,31 @@ export async function processDownloadJob(
         width: metadata.width,
         height: metadata.height,
         fileSize: metadata.size,
-        createdAt: item.timestamp
-          ? new Date(item.timestamp)
+        createdAt: item.createdAt
+          ? new Date(item.createdAt)
           : metadata.createdAt,
         modifiedAt: metadata.modifiedAt,
-        sourceUrls: [item.imageUrl, ...(item.tweetUrl ? [item.tweetUrl] : [])],
+        sourceUrls: Array.from(
+          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
+        ),
       };
 
       await registerMedia(newMedia, mediaSourceId, item, basePath);
     }
 
     logger.info(
-      { url: item.imageUrl },
+      { url: item.targetUrl },
       "[DownloadJob] Download completed successfully"
     );
   } catch (error) {
     logger.error(
-      { err: error, url: item.imageUrl },
+      { err: error, url: item.targetUrl },
       "[DownloadJob] Download failed"
     );
 
     // Notify frontend via SSE
     SseManager.sendEvent(mediaSourceId, "download-error", {
-      url: item.imageUrl,
+      url: item.targetUrl,
       error: error instanceof Error ? error.message : String(error),
     });
 
@@ -409,15 +415,76 @@ export async function processDownloadJob(
   }
 }
 
+/**
+ * Helper to update existing media with download metadata when media already exists
+ * (handles race condition with FileWatcherService)
+ */
+async function updateExistingMediaWithMetadata(
+  mediaId: string,
+  mediaSourceId: string,
+  newMedia: AddMediaRequest,
+  item: DownloadItem
+): Promise<void> {
+  const { MediaProcessingService } = await import(
+    "~/application/services/media-processing-service"
+  );
+
+  await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
+    description: newMedia.description ?? undefined,
+    sourceUrls: newMedia.sourceUrls,
+    authors: item.authors?.map((a) => ({
+      name: a.name,
+      accountId: a.accountId ?? null,
+    })),
+    // We can also update other metadata if needed, consistent with registerMedia
+    tags: item.tags,
+    characters: item.characters,
+    ips: item.ips,
+    projects: item.projects,
+  });
+
+  SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
+  logger.info(
+    { mediaId },
+    "[DownloadJob] Existing media updated with download metadata"
+  );
+}
+
 async function registerMedia(
   newMedia: AddMediaRequest,
   mediaSourceId: string,
   item: DownloadItem,
-  basePath: string
+  _basePath: string
 ) {
-  let insertedMedia: Media;
   try {
-    insertedMedia = await MediaRepository.create(newMedia);
+    // Use MediaProcessingService for unified registration and processing
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+
+    const insertedMedia = await MediaProcessingService.registerAndProcess(
+      mediaSourceId,
+      newMedia.filePath,
+      {
+        description: newMedia.description ?? undefined,
+        createdAt: newMedia.createdAt,
+        sourceUrls: newMedia.sourceUrls,
+        authors: item.authors?.map((a) => ({
+          name: a.name,
+          accountId: a.accountId ?? null,
+        })),
+        tags: item.tags,
+        characters: item.characters,
+        ips: item.ips,
+        projects: item.projects,
+        generationInfo: item.generationInfo,
+      }
+    );
+
+    logger.info(
+      { mediaId: insertedMedia.id, filePath: newMedia.filePath },
+      "[DownloadJob] Media registered via MediaProcessingService"
+    );
   } catch (error) {
     // Handle race condition with FileWatcherService
     const existing = await MediaRepository.findByPath(
@@ -425,53 +492,16 @@ async function registerMedia(
       newMedia.filePath
     );
     if (existing) {
-      insertedMedia = existing;
-      // Update description if we have one and existing doesn't (or overwrite)
-      if (newMedia.description) {
-        await MediaRepository.update(existing.id, {
-          description: newMedia.description,
-        });
-      }
+      await updateExistingMediaWithMetadata(
+        existing.id,
+        mediaSourceId,
+        newMedia,
+        item
+      );
     } else {
       throw error;
     }
   }
-
-  // Register URLs
-  if (newMedia.sourceUrls && newMedia.sourceUrls.length > 0) {
-    await MediaRepository.addUrls(insertedMedia.id, newMedia.sourceUrls);
-  }
-
-  // Register Author
-  if (item.authorName) {
-    const newAuthor: NewAuthor = {
-      name: item.authorName,
-      accountId: item.authorId,
-    };
-    const author = await AuthorRepository.create(newAuthor);
-    await AuthorRepository.addMedia(insertedMedia.id, author.id);
-  }
-
-  // Queue thumbnail generation
-  addJobsToQueue(mediaSourceId, [
-    {
-      mediaId: insertedMedia.id,
-      sourcePath: basePath, // Use passed basePath
-      type: "thumbnail",
-    },
-  ]);
-
-  startJobQueue(mediaSourceId, async (thumbnailJob) => {
-    const { processMediaJob } = await import(
-      "~/infrastructure/jobs/thumbnails"
-    );
-    await processMediaJob(thumbnailJob, mediaSourceId);
-  });
-
-  // Notify success
-  SseManager.sendEvent(mediaSourceId, "media-added", {
-    mediaId: insertedMedia.id,
-  });
 }
 
 /**
@@ -481,40 +511,33 @@ export async function queueDownloadJobs(
   mediaSourceId: string,
   items: DownloadItem[]
 ): Promise<number> {
+  const sourceRepo = new DrizzleSourceRepository();
   const mediaSource = await sourceRepo.findById(mediaSourceId);
   if (!mediaSource || mediaSource.type !== "local") {
     throw new Error("Media source not found or not a local source");
   }
 
   const connectionInfo = mediaSource.connectionInfo as { path: string };
-  const basePath = connectionInfo.path;
+  const _basePath = connectionInfo.path;
 
-  // Process downloads sequentially to avoid overwhelming the system
+  const repo = services.getJobRepository();
+
   for (const item of items) {
-    try {
-      await processDownloadJob(
-        {
-          mediaId: "", // Will be set after download
-          sourcePath: basePath,
-          type: "downloadImage",
-          payload: {
-            imageUrl: item.imageUrl,
-            sourceUrl: item.imageUrl,
-            description: formatMetadataAsMarkdown(item),
-            createdAt: item.timestamp ? new Date(item.timestamp) : new Date(),
-          },
-        },
-        mediaSourceId,
-        item
-      );
-    } catch (error) {
-      logger.error(
-        { err: error, url: item.imageUrl },
-        "Failed to download item"
-      );
-      // Continue with next item even if one fails
-    }
+    await repo.create({
+      type: "downloadImage",
+      mediaSourceId,
+      payload: {
+        ...item,
+        // Backward compatibility fields
+        imageUrl: item.targetUrl,
+        sourceUrl: item.targetUrl,
+        description: item.description ?? formatMetadataAsMarkdown(item),
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+      },
+    });
   }
+
+  // Jobs are picked up by the worker automatically.
 
   return items.length;
 }

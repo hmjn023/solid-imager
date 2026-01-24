@@ -47,25 +47,12 @@ async function retryWithBackoff<T>(
 // Fetch sources from API
 async function getMediaSources(): Promise<SafeMediaSource[]> {
     try {
-        // console.log('[xtracter] Fetching media sources...');
-
         const sources = await retryWithBackoff(async () => {
             const client = await getClient();
             return await client.sources.list();
         });
-
-        // console.log(`[xtracter] Successfully fetched ${sources.length} media sources`);
         return sources as SafeMediaSource[];
     } catch (error) {
-        if (error instanceof APIError) {
-            // console.error(
-            //     `[xtracter] Failed to fetch media sources: ${error.message}`,
-            //     `\nError code: ${error.code}`,
-            //     error.originalError
-            // );
-        } else {
-            // console.error('[xtracter] Unexpected error fetching media sources:', error);
-        }
         return [];
     }
 }
@@ -78,8 +65,7 @@ async function getTargetSourceId(): Promise<string | null> {
         return result.selectedSourceId;
     }
 
-    // 2. Fallback: Try to find 'twitter' or use the first one (and save it?)
-    // For now, let's just dynamic fetch if nothing is saved, but don't save it automatically to avoid confusion
+    // 2. Fallback
     const sources = await getMediaSources();
     const twitterSource = sources.find(s => s.name === 'twitter');
     if (twitterSource?.id) return twitterSource.id;
@@ -94,7 +80,6 @@ async function postDownloads(items: TweetMetadata[]) {
         const errorMsg = 'No valid media source found (and none selected in settings)';
         console.error(`[xtracter] ${errorMsg}`);
 
-        // ユーザーに通知
         chrome.notifications.create({
             type: 'basic',
             iconUrl: 'icon.png',
@@ -107,8 +92,8 @@ async function postDownloads(items: TweetMetadata[]) {
     try {
         console.log(`[xtracter] Posting ${items.length} downloads to source ${mediaSourceId}...`);
         console.log(`[xtracter] Items:`, items.map(item => ({
-            imageUrl: item.imageUrl,
-            tweetUrl: item.tweetUrl,
+            targetUrl: item.targetUrl,
+            sourceUrls: item.sourceUrls,
             hasCookies: !!item.cookies,
             hasUserAgent: !!item.userAgent,
         })));
@@ -117,20 +102,12 @@ async function postDownloads(items: TweetMetadata[]) {
             const client = await getClient();
             return await client.downloads.start({
                 mediaSourceId,
-                items: items.map(item => ({
-                    ...item,
-                    tweetUrl: item.tweetUrl || undefined,
-                    tweetText: item.tweetText || undefined,
-                    timestamp: item.timestamp || undefined,
-                    authorName: item.authorName || undefined,
-                    authorId: item.authorId || undefined,
-                }))
+                items: items
             });
         });
 
         console.log('[xtracter] Download job queued successfully:', result);
 
-        // 成功通知
         chrome.notifications.create({
             type: 'basic',
             iconUrl: 'icon.png',
@@ -146,7 +123,6 @@ async function postDownloads(items: TweetMetadata[]) {
                 error.originalError
             );
 
-            // エラー通知
             chrome.notifications.create({
                 type: 'basic',
                 iconUrl: 'icon.png',
@@ -237,17 +213,16 @@ chrome.runtime.onMessage.addListener((message: ExtendedMessage, _sender, sendRes
 
     // Handle Content Script Requests
     if (isDownloadMessage(message)) {
-        // ... existing download logic ...
-        const { imageUrl, authorId, timestamp } = message.data;
+        const { targetUrl, authors, createdAt } = message.data;
+        const authorId = authors && authors.length > 0 && authors[0].accountId ? authors[0].accountId : 'unknown';
         const safeAuthorId = authorId.replace(/[^a-zA-Z0-9@_-]/g, '');
-        const safeTimestamp = new Date(timestamp).getTime();
+        const safeTimestamp = createdAt ? new Date(createdAt).getTime() : Date.now();
         const filenameBase = `xtracter/${safeAuthorId}_${safeTimestamp}`;
         chrome.downloads.download({
-            url: imageUrl,
+            url: targetUrl,
             filename: `${filenameBase}.png`
         });
     } else if (isDownloadBulkMessage(message)) {
-        // ... existing bulk download logic ...
         const now = new Date();
         const dateStr = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
         const filename = `xtracter/xtracter-${dateStr}.json`;
