@@ -57,10 +57,7 @@ vi.mock("~/infrastructure/storage/local-media-storage", () => ({
     getFileMetadata: mockGetFileMetadata,
   },
 }));
-vi.mock("~/infrastructure/jobs/job-manager", () => ({
-  addJobsToQueue: vi.fn(),
-  startJobQueue: vi.fn(),
-}));
+// job-manager mock removed
 vi.mock("~/infrastructure/jobs/sse-manager", () => ({
   // biome-ignore lint/style/useNamingConvention: Mocking class export
   SseManager: {
@@ -95,7 +92,7 @@ global.fetch = fetchMock;
 const DOWNLOAD_FILENAME_PATTERN = /^download-\d+-image\.jpg$/;
 
 describe("processDownloadJob", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.resetAllMocks();
     fetchMock.mockResolvedValue({
       ok: true,
@@ -160,6 +157,11 @@ describe("processDownloadJob", () => {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
+
+    const { services } = await import("~/application/registry");
+    services.getJobRepository = vi.fn().mockReturnValue({
+      create: vi.fn(),
+    });
   });
 
   it("should process a direct image download via MediaProcessingService", async () => {
@@ -175,13 +177,13 @@ describe("processDownloadJob", () => {
     };
 
     const job = {
-      mediaId: "job-1",
-      sourcePath: "",
+      id: "job-1",
+      mediaSourceId: "source-1",
       type: "downloadImage",
       payload: { ...item },
     } as any;
 
-    await processDownloadJob(job, "source-1");
+    await processDownloadJob(job);
 
     expect(fetchMock).toHaveBeenCalledWith(
       "https://example.com/image.jpg",
@@ -213,13 +215,13 @@ describe("processDownloadJob", () => {
       description: "My Description",
     };
     const job = {
-      mediaId: "job-2",
-      sourcePath: "",
+      id: "job-2",
+      mediaSourceId: "source-1",
       type: "downloadImage",
       payload: { ...item },
     } as any;
 
-    await processDownloadJob(job, "source-1");
+    await processDownloadJob(job);
 
     expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
       "source-1",
@@ -250,13 +252,13 @@ describe("processDownloadJob", () => {
     };
 
     const job = {
-      mediaId: "job-3",
-      sourcePath: "",
+      id: "job-3",
+      mediaSourceId: "source-1",
       type: "downloadImage",
       payload: { ...item },
     } as any;
 
-    await processDownloadJob(job, "source-1");
+    await processDownloadJob(job);
 
     expect(MediaRepository.findByPath).toHaveBeenCalled();
     expect(

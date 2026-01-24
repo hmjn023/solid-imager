@@ -5,6 +5,7 @@
  */
 
 import path from "node:path";
+import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
@@ -138,19 +139,16 @@ async function handleFileChanged(
     });
 
     // Queue processMedia job for thumbnail regeneration and metadata re-extraction
-    const { addJobsToQueue, startJobQueue } = await import(
-      "~/infrastructure/jobs/job-manager"
-    );
-    addJobsToQueue(mediaSourceId, [
-      {
+    const jobRepo = services.getJobRepository();
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId,
+      payload: {
         mediaId: media.id,
         sourcePath: basePath,
-        type: "processMedia" as const,
+        type: "processMedia",
       },
-    ]);
-    startJobQueue(mediaSourceId, (job) =>
-      MediaProcessingService.executeProcessMediaJob(job, mediaSourceId)
-    );
+    });
 
     // Notify
     SseManager.sendEvent(mediaSourceId, "media-changed", {

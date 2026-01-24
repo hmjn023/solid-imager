@@ -9,7 +9,6 @@ import {
   type DeferredActions,
   type DeferredSse,
   executeDeferredActions,
-  processJob,
 } from "~/application/services/job-dispatch-service";
 import { ResourceNotFoundError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
@@ -42,11 +41,8 @@ import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/ta
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import type { IStorageService } from "~/domain/services/storage-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
-import {
-  addJobsToQueue,
-  type Job,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+// import { SseManager } from "~/infrastructure/jobs/sse-manager";
+// keeping SseManager if used elsewhere
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 
@@ -131,9 +127,10 @@ export class MediaServiceImpl {
 
   /**
    * Starts processing jobs for the given source using the unified processor.
+   * @deprecated Worker now handles this automatically.
    */
-  startProcessing(mediaSourceId: string) {
-    startJobQueue(mediaSourceId, (job) => processJob(job, mediaSourceId));
+  startProcessing(_mediaSourceId: string) {
+    // No-op: JobWorker is handling this globally.
   }
 
   /**
@@ -235,13 +232,17 @@ export class MediaServiceImpl {
     }
 
     // 4. Trigger processMedia Job (unified processing)
-    addJobsToQueue(validatedSourceId, [
-      {
+    // 4. Trigger processMedia Job (unified processing)
+    const jobRepo = services.getJobRepository();
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId: validatedSourceId,
+      payload: {
         mediaId: insertedMedia.id,
         sourcePath: basePath,
-        type: "processMedia" as const,
+        type: "processMedia",
       },
-    ]);
+    });
 
     this.startProcessing(validatedSourceId);
 
@@ -385,14 +386,21 @@ export class MediaServiceImpl {
 
     if (newMediaItems.length > 0) {
       // Use processMedia job type for unified processing
-      const jobs = newMediaItems.map((item) => ({
-        mediaId: item.id,
-        sourcePath: directoryPath,
-        type: "processMedia" as const,
-      }));
+      const jobRepo = services.getJobRepository();
 
-      addJobsToQueue(validatedSourceId, jobs);
-      this.startProcessing(validatedSourceId);
+      for (const item of newMediaItems) {
+        await jobRepo.create({
+          type: "processMedia",
+          mediaSourceId: validatedSourceId,
+          payload: {
+            mediaId: item.id,
+            sourcePath: directoryPath,
+            type: "processMedia",
+          },
+        });
+      }
+
+      // this.startProcessing(validatedSourceId);
     }
   }
 
@@ -605,19 +613,24 @@ export class MediaServiceImpl {
 
     // 5. Prepare Deferred Actions (Jobs + Notifications)
     const sourcePath = targetConnection.path;
-    const jobs: Job[] = [
+    // Construct DB Job DTO (DeferredJob)
+    const deferredJob: import("~/application/services/job-dispatch-service").DeferredJob =
       {
         mediaId: newMediaEntry.id,
         sourcePath,
-        type: "processMedia" as const,
-      },
-    ];
+        type: "processMedia",
+        payload: {
+          mediaId: newMediaEntry.id,
+          sourcePath,
+          type: "processMedia",
+        },
+      };
 
     const deferredActions: DeferredActions = {
       jobs: [
         {
           mediaSourceId: validatedTargetSourceId,
-          jobs,
+          jobs: [deferredJob],
         },
       ],
       sse: [], // Will be handled differently if no tx
@@ -646,8 +659,25 @@ export class MediaServiceImpl {
     }
 
     // Execute immediately if no transaction
-    addJobsToQueue(validatedTargetSourceId, jobs);
-    this.startProcessing(validatedTargetSourceId);
+    // Execute immediately if no transaction
+    // addJobsToQueue(validatedTargetSourceId, jobs);
+    // this.startProcessing(validatedTargetSourceId);
+    // Use executeDeferredActions implementation logic directly or call it?
+    // Since we returned a deferred action object in other branch, here we should arguably EXECUTE it.
+    // Or just invoke jobRepo directly.
+
+    // Note: jobs type was old Job[], now deferredJob is DeferredJob.
+    // Let's use jobRepo directly.
+    const jobRepo = services.getJobRepository();
+    await jobRepo.create({
+      type: "processMedia",
+      mediaSourceId: validatedTargetSourceId,
+      payload: {
+        mediaId: newMediaEntry.id,
+        sourcePath,
+        type: "processMedia",
+      },
+    });
 
     SseManager.notifyMediaCopied(
       sourceMediaId,

@@ -7,13 +7,10 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
+import { services } from "~/application/registry";
 import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
-import {
-  addJobsToQueue,
-  type Job,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -293,27 +290,31 @@ function getDownloadItemFromJob(job: Job): DownloadItem {
   if (!job.payload) {
     return {} as DownloadItem;
   }
-  const item = { ...job.payload } as unknown as DownloadItem;
+  // biome-ignore lint/suspicious/noExplicitAny: Payload cast
+  const payload = job.payload as any;
+  const item = { ...payload } as unknown as DownloadItem;
 
-  if (!item.targetUrl && job.payload?.imageUrl) {
-    item.targetUrl = job.payload.imageUrl;
+  if (!item.targetUrl && payload?.imageUrl) {
+    item.targetUrl = payload.imageUrl;
   }
 
-  if (!item.description && job.payload?.description) {
-    item.description = job.payload.description;
+  if (!item.description && payload?.description) {
+    item.description = payload.description;
   }
 
   if (!item.sourceUrls) {
-    item.sourceUrls = job.payload?.sourceUrl ? [job.payload.sourceUrl] : [];
+    item.sourceUrls = payload?.sourceUrl ? [payload.sourceUrl] : [];
   }
 
   return item;
 }
 
-export async function processDownloadJob(
-  job: Job,
-  mediaSourceId: string
-): Promise<void> {
+export async function processDownloadJob(job: Job): Promise<void> {
+  const mediaSourceId = job.mediaSourceId;
+  if (!mediaSourceId) {
+    logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
+    return;
+  }
   // Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
   const item = getDownloadItemFromJob(job);
 
@@ -517,29 +518,26 @@ export async function queueDownloadJobs(
   }
 
   const connectionInfo = mediaSource.connectionInfo as { path: string };
-  const basePath = connectionInfo.path;
+  const _basePath = connectionInfo.path;
 
-  const jobs: Job[] = items.map((item) => ({
-    mediaId: "", // Will be set after download
-    sourcePath: basePath,
-    type: "downloadImage",
-    payload: {
-      ...item,
-      // Backward compatibility fields
-      imageUrl: item.targetUrl,
-      sourceUrl: item.targetUrl,
-      description: item.description ?? formatMetadataAsMarkdown(item),
-      createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-    },
-  }));
+  const repo = services.getJobRepository();
 
-  addJobsToQueue(mediaSourceId, jobs);
+  for (const item of items) {
+    await repo.create({
+      type: "downloadImage",
+      mediaSourceId,
+      payload: {
+        ...item,
+        // Backward compatibility fields
+        imageUrl: item.targetUrl,
+        sourceUrl: item.targetUrl,
+        description: item.description ?? formatMetadataAsMarkdown(item),
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+      },
+    });
+  }
 
-  // Start processing immediately
-  const { processJob } = await import(
-    "~/application/services/job-dispatch-service"
-  );
-  startJobQueue(mediaSourceId, (job) => processJob(job, mediaSourceId));
+  // Jobs are picked up by the worker automatically.
 
   return items.length;
 }

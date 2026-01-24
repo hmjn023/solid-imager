@@ -20,20 +20,11 @@ import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-re
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
-let capturedProcessor: ((job: any) => Promise<void>) | null = null;
+let _capturedProcessor: ((job: any) => Promise<void>) | null = null;
 
 // Mock Job Manager
-vi.mock("~/infrastructure/jobs/job-manager", () => ({
-  addJobsToQueue: vi.fn((_sourceId, jobs) => {
-    capturedJobs.push(...jobs);
-  }),
-  startJobQueue: vi.fn((_sourceId, processor) => {
-    capturedProcessor = processor;
-  }),
-  getJobStats: vi.fn(() => ({ status: "idle" })),
-  // biome-ignore lint/style/useNamingConvention: Mocking PascalCase export
-  SseManager: { sendEvent: vi.fn() }, // Mock SseManager inside job-manager export
-}));
+// Mock JobManager (Removed)
+// We mock JobRepository via services in beforeEach
 
 // Mock Thumbnails
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
@@ -93,7 +84,7 @@ describe("Reproduction: Copy Media Job Type", () => {
   beforeEach(async () => {
     // Reset Captures
     capturedJobs = [];
-    capturedProcessor = null;
+    _capturedProcessor = null;
 
     // Reset registry and register services
     services.reset();
@@ -159,6 +150,15 @@ describe("Reproduction: Copy Media Job Type", () => {
       }),
     };
     services.registerSourceRepository(mockSourceRepository as any);
+
+    // Mock JobRepository
+    const mockJobRepo = {
+      create: vi.fn((job) => {
+        capturedJobs.push(job);
+        return Promise.resolve({ ...job, id: "job-id" });
+      }),
+    };
+    services.registerJobRepository(mockJobRepo as any);
   });
 
   afterEach(() => {
@@ -208,10 +208,17 @@ describe("Reproduction: Copy Media Job Type", () => {
     // If the job type is wrong ("thumbnail"), the processor will skip it.
 
     // 4. Manually trigger the processor
-    expect(capturedProcessor).toBeTruthy();
-    if (capturedProcessor) {
-      await capturedProcessor(job);
-    }
+    // Since we don't capture processor via startJobQueue anymore, we must call executeProcessMediaJob directly
+    // or rely on the fact that MediaService calls jobRepo.create.
+    // The test logic wants to verify that "If the job type is correct, generateThumbnail is called".
+    // So we can manually invoke MediaProcessingService.executeProcessMediaJob(job)
+
+    // But failing to see MediaProcessingService being used?
+    // MediaService.copyMedia calls jobRepo.create.
+    const { MediaProcessingService } = await import(
+      "~/application/services/media-processing-service"
+    );
+    await MediaProcessingService.executeProcessMediaJob(job);
 
     // 5. Assert generateThumbnail was called
     // If job type is "thumbnail", executeProcessMediaJob will return early and this will FAIL.

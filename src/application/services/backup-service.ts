@@ -103,30 +103,27 @@ export const BackupService = {
     // Trigger thumbnail generation (skip metadata extraction to preserve restored data)
     if (mediaSource.type === "local") {
       const mediaIds = Array.from(mediaPathToId.values());
+      const { services } = await import("~/application/registry");
+
       if (mediaIds.length > 0) {
-        const { MediaProcessingService } = await import(
-          "~/application/services/media-processing-service"
-        );
-        const { addJobsToQueue, startJobQueue } = await import(
-          "~/infrastructure/jobs/job-manager"
-        );
+        const jobRepo = services.getJobRepository();
 
         const connectionInfo = mediaSource.connectionInfo as { path: string };
         const basePath = connectionInfo.path;
 
-        const jobs = mediaIds.map((id) => ({
-          mediaId: id,
-          sourcePath: basePath,
-          type: "processMedia" as const,
-          payload: {
-            skipMetadataExtraction: true,
-          },
-        }));
-
-        addJobsToQueue(mediaSourceId, jobs);
-        startJobQueue(mediaSourceId, (job) =>
-          MediaProcessingService.executeProcessMediaJob(job, mediaSourceId)
-        );
+        for (const id of mediaIds) {
+          await jobRepo.create({
+            type: "processMedia",
+            mediaSourceId,
+            payload: {
+              mediaId: id,
+              sourcePath: basePath,
+              type: "processMedia", // optional
+              skipMetadataExtraction: true,
+            },
+          });
+        }
+        // Worker handles it automatically
       }
     }
 

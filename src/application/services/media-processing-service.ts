@@ -10,15 +10,12 @@ import type { Media, MediaMetadataContext } from "~/domain/media/schemas";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
+import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import type { IProjectRepository } from "~/domain/repositories/project-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository } from "~/domain/repositories/tag-repository";
-import type { Job } from "~/infrastructure/jobs/job-manager";
-import {
-  addJobsToQueue,
-  startJobQueue,
-} from "~/infrastructure/jobs/job-manager";
+import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
@@ -33,6 +30,7 @@ export class MediaProcessingServiceImpl {
   private readonly characterRepo: CharacterRepository;
   private readonly ipRepo: IIpRepository;
   private readonly projectRepo: IProjectRepository;
+  private readonly jobRepo: IJobRepository;
 
   // biome-ignore lint/nursery/useMaxParams: DI requires multiple repositories
   constructor(
@@ -42,7 +40,8 @@ export class MediaProcessingServiceImpl {
     authorRepo: IAuthorRepository,
     characterRepo: CharacterRepository,
     ipRepo: IIpRepository,
-    projectRepo: IProjectRepository
+    projectRepo: IProjectRepository,
+    jobRepo: IJobRepository
     // ImageProcessor, SseManager, JobManager are currently static/modules,
     // keeping them as imports for now as per scope, or inject if they have interfaces
   ) {
@@ -53,6 +52,7 @@ export class MediaProcessingServiceImpl {
     this.characterRepo = characterRepo;
     this.ipRepo = ipRepo;
     this.projectRepo = projectRepo;
+    this.jobRepo = jobRepo;
   }
 
   // Configuration check (could be injected config service)
@@ -108,16 +108,15 @@ export class MediaProcessingServiceImpl {
     }
 
     // Step 3: Queue processMedia job
-    addJobsToQueue(mediaSourceId, [
-      {
+    await this.jobRepo.create({
+      type: "processMedia",
+      mediaSourceId,
+      payload: {
         mediaId: media.id,
         sourcePath: basePath,
-        type: "processMedia" as const,
+        type: "processMedia",
       },
-    ]);
-    startJobQueue(mediaSourceId, (job) =>
-      this.executeProcessMediaJob(job, mediaSourceId)
-    );
+    });
 
     // Notify clients
     SseManager.sendEvent(mediaSourceId, "media-added", {
@@ -131,24 +130,37 @@ export class MediaProcessingServiceImpl {
   /**
    * Executes the processMedia job.
    */
-  async executeProcessMediaJob(job: Job, mediaSourceId: string): Promise<void> {
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Refactor legacy logic later
+  async executeProcessMediaJob(job: Job): Promise<void> {
     if (job.type !== "processMedia") {
       return;
     }
 
-    const media = await this.mediaRepo.findById(job.mediaId);
-    if (!media) {
-      logger.warn(
-        { mediaId: job.mediaId },
-        "Media not found for processMedia job"
-      );
+    // biome-ignore lint/suspicious/noExplicitAny: Payload structure known for this job type
+    const payload = job.payload as any;
+    const mediaId = payload?.mediaId;
+
+    if (!mediaId) {
+      logger.error({ jobId: job.id }, "Missing mediaId in job payload");
       return;
     }
 
-    const mediaPath = path.join(job.sourcePath, media.filePath);
+    const media = await this.mediaRepo.findById(mediaId);
+    if (!media) {
+      logger.warn({ mediaId }, "Media not found for processMedia job");
+      return;
+    }
+
+    const mediaPath = path.join(payload.sourcePath, media.filePath);
+
+    const mediaSourceId = job.mediaSourceId;
+    if (!mediaSourceId) {
+      logger.error({ jobId: job.id }, "Missing mediaSourceId in job");
+      return;
+    }
 
     // Step 1: Metadata extraction
-    if (!job.payload?.skipMetadataExtraction) {
+    if (!payload?.skipMetadataExtraction) {
       try {
         const metadata = await ImageProcessor.extractMetadata(mediaPath);
 
@@ -169,7 +181,7 @@ export class MediaProcessingServiceImpl {
         }
       } catch (e) {
         logger.warn(
-          { err: e, mediaId: job.mediaId },
+          { err: e, mediaId },
           "Metadata extraction failed, continuing..."
         );
       }
@@ -177,26 +189,20 @@ export class MediaProcessingServiceImpl {
 
     // Step 2: Thumbnail generation
     try {
-      await generateThumbnail(media, job.sourcePath, mediaSourceId);
+      await generateThumbnail(media, payload.sourcePath, mediaSourceId);
       SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
         mediaId: media.id,
       });
     } catch (e) {
-      logger.error(
-        { err: e, mediaId: job.mediaId },
-        "Thumbnail generation failed"
-      );
+      logger.error({ err: e, mediaId }, "Thumbnail generation failed");
     }
 
     // Step 3: AI tagging
-    if (this.enableAutoTagging && !job.payload?.skipMetadataExtraction) {
+    if (this.enableAutoTagging && !payload?.skipMetadataExtraction) {
       try {
-        logger.info({ mediaId: job.mediaId }, "AI tagging not yet implemented");
+        logger.info({ mediaId }, "AI tagging not yet implemented");
       } catch (e) {
-        logger.warn(
-          { err: e, mediaId: job.mediaId },
-          "AI tagging failed, skipping"
-        );
+        logger.warn({ err: e, mediaId }, "AI tagging failed, skipping");
       }
     }
   }
@@ -347,10 +353,12 @@ export const MediaProcessingService = {
       .getMediaProcessingService()
       .registerAndProcess(mediaSourceId, relativePath, contextMetadata),
 
-  executeProcessMediaJob: (job: Job, mediaSourceId: string) =>
-    services
-      .getMediaProcessingService()
-      .executeProcessMediaJob(job, mediaSourceId),
+  executeProcessMediaJob: (job: Job) =>
+    services.getMediaProcessingService().executeProcessMediaJob(job),
+  // Proxy signature mismatch with implementation if implementation removed mediaSourceId arg
+  // But we are changing the implementation.
+  // The proxy is used by JobManager callbacks (which we removed) AND JobDispatchService?
+  // I should update the proxy too to match implementation
 
   addContextMetadataToExistingMedia: (
     mediaId: string,
