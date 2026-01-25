@@ -336,7 +336,13 @@ export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;
  */
 export const downloadItemSchema = mediaMetadataContextSchema.extend({
   // Specific required fields for download
-  targetUrl: z.string().url("Invalid target URL"), // The actual URL to download (e.g., image source)
+  // Optional because restore items (from backup) might not have it,
+  // but required for actual download jobs (validated in handler).
+  targetUrl: z.string().url("Invalid target URL").optional(),
+
+  // Restore fields
+  filePath: z.string().optional(),
+  fileName: z.string().optional(),
 
   // Technical options
   cookies: z.array(z.any()).optional(),

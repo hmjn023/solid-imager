@@ -3,6 +3,7 @@ import { categoriesRouter } from "~/infrastructure/api/routers/categories-router
 import { charactersRouter } from "~/infrastructure/api/routers/characters-router";
 import { directoriesRouter } from "~/infrastructure/api/routers/directories-router";
 import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
+import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
@@ -28,6 +29,7 @@ export const appRouter = {
   directories: directoriesRouter,
   ai: aiRouter,
   utils: utilsRouter,
+  imports: importsRouter,
 };
 
 export type AppRouter = typeof appRouter;
