@@ -6,6 +6,17 @@ import {
   Show,
 } from "solid-js";
 import { Portal } from "solid-js/web";
+import { toast } from "solid-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 type Props = {
@@ -19,6 +30,7 @@ export default function ImportReviewModal(props: Props) {
     new Set()
   );
   const [selectedSourceId, setSelectedSourceId] = createSignal<string>("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 
   const [pendingJobs, { refetch: refetchJobs }] = createResource(async () => {
     try {
@@ -88,29 +100,28 @@ export default function ImportReviewModal(props: Props) {
       props.onImportCompleted();
       props.onClose();
     } catch (e) {
-      // biome-ignore lint/suspicious/noAlert: User interaction
-      alert(`Failed to process imports: ${(e as Error).message}`);
+      toast.error(`Failed to process imports: ${(e as Error).message}`);
     }
   };
 
-  const handleCancelSelected = async () => {
+  const handleCancelSelected = () => {
+    if (selectedJobIds().size === 0) {
+      return;
+    }
+    setIsDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
     const jobIds = Array.from(selectedJobIds());
-    if (jobIds.length === 0) {
-      return;
-    }
-
-    // biome-ignore lint/suspicious/noAlert: User interaction
-    if (!confirm(`Delete ${jobIds.length} requests?`)) {
-      return;
-    }
-
     try {
       await orpc.imports.cancel({ jobIds });
       refetchJobs();
       setSelectedJobIds(new Set<string>());
+      toast.success("Requests deleted");
     } catch (_e) {
-      // biome-ignore lint/suspicious/noAlert: User interaction
-      alert("Failed to cancel imports");
+      toast.error("Failed to cancel imports");
+    } finally {
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -241,6 +252,30 @@ export default function ImportReviewModal(props: Props) {
           </div>
         </div>
       </Portal>
+
+      <AlertDialog
+        onOpenChange={setIsDeleteDialogOpen}
+        open={isDeleteDialogOpen()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedJobIds().size} import requests. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Show>
   );
 }
