@@ -6,6 +6,7 @@ import {
   Show,
 } from "solid-js";
 import { isServer } from "solid-js/web";
+import { toast } from "solid-toast";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import ImportReviewModal from "./import-review-modal";
 
@@ -20,6 +21,9 @@ export default function PendingDownloadsIndicator() {
       const jobs = await orpc.imports.listPending();
       return jobs.length;
     } catch (_e) {
+      if (!isServer) {
+        toast.error("Failed to check inbox");
+      }
       return 0;
     }
   };
@@ -45,7 +49,9 @@ export default function PendingDownloadsIndicator() {
           handleImportEvent(msg.event, refetch);
         }
       } catch (_err) {
-        // Ignore errors
+        if (!ac.signal.aborted) {
+          toast.error("Connection to inbox lost");
+        }
       }
     };
 

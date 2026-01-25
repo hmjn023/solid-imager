@@ -1,4 +1,4 @@
-import { MediaSource, TweetMetadata, DownloadItem } from '../types';
+import { MediaSource, TweetMetadata } from '../types';
 import { testConnection, getClient } from '../api';
 
 const apiUrlInput = document.getElementById('api-url') as HTMLInputElement;
