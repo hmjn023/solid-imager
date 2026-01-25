@@ -1,6 +1,7 @@
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
 import { categoriesRouter } from "~/infrastructure/api/routers/categories-router";
 import { charactersRouter } from "~/infrastructure/api/routers/characters-router";
+import { configRouter } from "~/infrastructure/api/routers/config-router";
 import { directoriesRouter } from "~/infrastructure/api/routers/directories-router";
 import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
@@ -30,6 +31,7 @@ export const appRouter = {
   ai: aiRouter,
   utils: utilsRouter,
   imports: importsRouter,
+  config: configRouter,
 };
 
 export type AppRouter = typeof appRouter;

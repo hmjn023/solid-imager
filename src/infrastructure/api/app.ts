@@ -10,7 +10,6 @@ import { bootstrap } from "~/infrastructure/bootstrap";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { openApiTags } from "./openapi-tags";
-import { configRouter } from "./routers/config-router";
 
 // Initialize services (DI)
 bootstrap();
@@ -110,8 +109,6 @@ export const app = new Elysia()
 
     return spec;
   })
-  // Config API
-  .use(configRouter)
   // Media Content
   .get(
     "/api/sources/:mediaSourceId/:mediaId",
