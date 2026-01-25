@@ -46,6 +46,37 @@ function validateRelativePath(p: string): void {
  * Service for handling media source backups, restoration, and imports.
  */
 export const BackupService = {
+  /**
+   * Finds a local media source that contains the given relative file path.
+   * Used for determining if an import item should be restored or downloaded.
+   */
+  async findMediaSourceForFile(filePath: string): Promise<string | null> {
+    try {
+      validateRelativePath(filePath);
+    } catch {
+      return null;
+    }
+
+    const localSources = await db.query.mediaSources.findMany({
+      where: eq(mediaSources.type, "local"),
+    });
+
+    for (const source of localSources) {
+      const connectionInfo = source.connectionInfo as { path: string };
+      const basePath = connectionInfo.path;
+      const fullPath = path.join(basePath, filePath);
+
+      try {
+        await fs.access(fullPath);
+        return source.id;
+      } catch {
+        // File does not exist in this source, continue
+      }
+    }
+
+    return null;
+  },
+
   // ... (restoreSource)
 
   /**

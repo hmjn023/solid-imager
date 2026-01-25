@@ -20,16 +20,14 @@ describe("downloadItemSchema", () => {
     expect(result.success).toBe(true);
   });
 
-  it("should fail if targetUrl is missing", () => {
-    const invalidItem = {
+  it("should allow missing targetUrl (for restore scenarios)", () => {
+    const backupItem = {
       sourceUrls: ["https://example.com/tweet"],
+      filePath: "images/123.jpg"
     };
 
-    const result = downloadItemSchema.safeParse(invalidItem);
-    expect(result.success).toBe(false);
-    if (!result.success) {
-      expect(result.error.issues[0].path).toContain("targetUrl");
-    }
+    const result = downloadItemSchema.safeParse(backupItem);
+    expect(result.success).toBe(true);
   });
 
   it("should fail if targetUrl is not a valid URL", () => {

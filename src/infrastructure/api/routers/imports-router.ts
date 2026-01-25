@@ -8,6 +8,116 @@ import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 /**
+ * Helper to classify items into Restore (file exists) and Import (URL available)
+ */
+async function classifyBulkAddItems(
+  items: z.infer<typeof downloadItemSchema>[],
+  // biome-ignore lint/suspicious/noExplicitAny: dynamic import type
+  BackupService: any
+) {
+  const restoreGroups = new Map<string, z.infer<typeof downloadItemSchema>[]>();
+  const importItems: z.infer<typeof downloadItemSchema>[] = [];
+  let skippedCount = 0;
+
+  for (const item of items) {
+    let handled = false;
+
+    // Check for local file existence (Restore)
+    if (item.filePath) {
+      const sourceId = await BackupService.findMediaSourceForFile(
+        item.filePath
+      );
+      if (sourceId) {
+        const group = restoreGroups.get(sourceId) || [];
+        group.push(item);
+        restoreGroups.set(sourceId, group);
+        handled = true;
+      }
+    }
+
+    if (handled) {
+      continue;
+    }
+
+    // Fallback: Check for URL (Import)
+    if (!item.targetUrl && item.sourceUrls && item.sourceUrls.length > 0) {
+      item.targetUrl = item.sourceUrls[0];
+    }
+
+    if (item.targetUrl) {
+      importItems.push(item);
+    } else {
+      skippedCount++;
+    }
+  }
+
+  return { restoreGroups, importItems, skippedCount };
+}
+
+/**
+ * Bulk add handler logic.
+ * Exported for testing purposes.
+ */
+export const bulkAddHandler = async ({
+  input,
+}: {
+  input: { items: z.infer<typeof downloadItemSchema>[] };
+}) => {
+  const { items } = input;
+  if (items.length === 0) {
+    return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
+  }
+
+  const { BackupService } = await import(
+    "~/application/services/backup-service"
+  );
+
+  const classification = await classifyBulkAddItems(items, BackupService);
+  const { restoreGroups, importItems } = classification;
+  let { skippedCount } = classification;
+
+  let restoredCount = 0;
+  let addedCount = 0;
+
+  // 2. Execute Restore
+  for (const [sourceId, group] of restoreGroups) {
+    try {
+      const result = await BackupService.restoreSource(sourceId, group);
+      restoredCount += result.processed;
+      skippedCount += result.skipped;
+    } catch (_e) {
+      // If restore fails for a source, count as skipped? Or log error?
+      // Current implementation in BackupService usually handles safe partial restore.
+    }
+  }
+
+  // 3. Create Import Jobs
+  if (importItems.length > 0) {
+    const jobValues = importItems.map((item) => ({
+      type: "import_request",
+      status: "pending" as const,
+      // biome-ignore lint/style/noNonNullAssertion: Checked above
+      payload: { ...item, targetUrl: item.targetUrl! },
+      updatedAt: new Date(),
+    }));
+
+    // Chunking inserts
+    const ChunkSize = 100;
+    for (let i = 0; i < jobValues.length; i += ChunkSize) {
+      const chunk = jobValues.slice(i, i + ChunkSize);
+      await db.insert(jobs).values(chunk);
+    }
+    addedCount = importItems.length;
+
+    SseManager.sendEvent("global-imports", "import-request:created", {
+      count: addedCount,
+    });
+  }
+
+  return { addedCount, skippedCount, restoredCount };
+};
+
+/**
  * Imports Router Implementation
  */
 export const importsRouter = {
@@ -17,44 +127,7 @@ export const importsRouter = {
    */
   bulkAdd: os
     .input(z.object({ items: z.array(downloadItemSchema) }))
-    .handler(async ({ input }) => {
-      const { items } = input;
-      if (items.length === 0) {
-        return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
-      }
-
-      // 1. Duplicate Check Skipped (as requested by user)
-      // The requirement for duplicate URL checking has been removed.
-      // All incoming items are treated as new requests.
-
-      const itemsToProcess = items;
-      const skippedCount = 0;
-      let addedCount = 0;
-
-      // 2. Create Import Jobs
-      if (itemsToProcess.length > 0) {
-        const jobValues = itemsToProcess.map((item) => ({
-          type: "import_request",
-          status: "pending" as const,
-          payload: item,
-          updatedAt: new Date(),
-        }));
-
-        // Chunking inserts
-        const ChunkSize = 100;
-        for (let i = 0; i < jobValues.length; i += ChunkSize) {
-          const chunk = jobValues.slice(i, i + ChunkSize);
-          await db.insert(jobs).values(chunk);
-        }
-        addedCount = itemsToProcess.length;
-
-        SseManager.sendEvent("global-imports", "import-request:created", {
-          count: addedCount,
-        });
-      }
-
-      return { addedCount, skippedCount, restoredCount: 0 };
-    }),
+    .handler(bulkAddHandler),
 
   /**
    * List pending import requests.
