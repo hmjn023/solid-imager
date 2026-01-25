@@ -1,3 +1,4 @@
+import type { ConfigServiceImpl } from "~/application/services/config-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
@@ -27,6 +28,7 @@ export class ServiceRegistry {
   private jobRepository?: IJobRepository;
   private jobWorker?: JobWorker;
   private mediaProcessingService?: MediaProcessingServiceImpl;
+  private configService?: ConfigServiceImpl;
 
   private constructor() {}
 
@@ -180,6 +182,17 @@ export class ServiceRegistry {
     return this.mediaProcessingService;
   }
 
+  registerConfigService(service: ConfigServiceImpl): void {
+    this.configService = service;
+  }
+
+  getConfigService(): ConfigServiceImpl {
+    if (!this.configService) {
+      throw new Error("ConfigService has not been registered.");
+    }
+    return this.configService;
+  }
+
   // Helper for testing to reset the registry
   async reset(): Promise<void> {
     this.mediaRepository = undefined;
@@ -195,6 +208,7 @@ export class ServiceRegistry {
     this.jobRepository = undefined;
     this.jobWorker = undefined;
     this.mediaProcessingService = undefined;
+    this.configService = undefined;
 
     // Reset service singletons that might hold references to old repositories
     const { resetMediaService } = await import("./services/media-service");

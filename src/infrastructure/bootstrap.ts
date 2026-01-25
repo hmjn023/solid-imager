@@ -1,4 +1,5 @@
 import { services } from "~/application/registry";
+import { ConfigServiceImpl } from "~/application/services/config-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { pythonClient } from "~/infrastructure/ai/python-client";
@@ -15,6 +16,11 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 export function bootstrap() {
+  // Initialize and load configuration
+  const configService = new ConfigServiceImpl();
+  configService.load();
+  services.registerConfigService(configService);
+
   // Register Repositories
   services.registerMediaRepository(MediaRepository);
   services.registerSourceRepository(new DrizzleSourceRepository());
@@ -33,6 +39,10 @@ export function bootstrap() {
   services.registerAiClient(pythonClient);
 
   const jobWorker = new JobWorker(jobRepo, processJob);
+  // Initialize worker with current config and subscribe to changes
+  jobWorker.updateConfig(configService.get());
+  configService.onChange((config) => jobWorker.updateConfig(config));
+
   services.registerJobWorker(jobWorker);
 
   // Register MediaProcessingService (Implementation)
