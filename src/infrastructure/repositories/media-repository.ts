@@ -491,7 +491,13 @@ export const MediaRepository: IMediaRepository = {
         mediaId,
         url,
       }));
-      const results = await client.insert(mediaUrls).values(values).returning();
+      const results = await client
+        .insert(mediaUrls)
+        .values(values)
+        .onConflictDoNothing({
+          target: [mediaUrls.mediaId, mediaUrls.url],
+        })
+        .returning();
       return results.map(mapToMediaUrl);
     } catch (error) {
       throw new UnexpectedError("Failed to insert media URLs", error);

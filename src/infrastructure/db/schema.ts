@@ -727,7 +727,11 @@ export const mediaUrls = pgTable(
   },
   (table) => ({
     mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
-    urlIndex: uniqueIndex("idx_media_urls_url_unique").on(table.url),
+    urlIndex: index("idx_media_urls_url").on(table.url),
+    mediaIdUrlUnique: uniqueIndex("idx_media_urls_media_id_url_unique").on(
+      table.mediaId,
+      table.url
+    ),
   })
 );
 

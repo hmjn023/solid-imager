@@ -5,7 +5,6 @@ import { downloadItemSchema } from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 /**
  * Imports Router Implementation
@@ -23,31 +22,12 @@ export const importsRouter = {
         return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
       }
 
-      // 1. Duplicate Check
-      // Extract all sourceUrls from all items
-      const allSourceUrls = items
-        .flatMap((i) => i.sourceUrls || [])
-        .filter(Boolean);
-      const targetUrls = items.map((i) => i.targetUrl).filter(Boolean);
+      // 1. Duplicate Check Skipped (as requested by user)
+      // We allow duplicates in the import queue. The user can filter them in the UI or
+      // existing media handling logic will take care of them during actual processing if needed.
 
-      const urlsToCheck = [...new Set([...allSourceUrls, ...targetUrls])];
-
-      const existingUrls = await MediaRepository.findExistingUrls(urlsToCheck);
-      const existingUrlSet = new Set(existingUrls);
-
-      const itemsToProcess = items.filter((item) => {
-        // If targetUrl exists in DB, skip
-        if (existingUrlSet.has(item.targetUrl)) {
-          return false;
-        }
-        // If any sourceUrl exists in DB, skip
-        if (item.sourceUrls?.some((url) => existingUrlSet.has(url))) {
-          return false;
-        }
-        return true;
-      });
-
-      const skippedCount = items.length - itemsToProcess.length;
+      const itemsToProcess = items;
+      const skippedCount = 0;
       let addedCount = 0;
 
       // 2. Create Import Jobs

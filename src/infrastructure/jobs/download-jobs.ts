@@ -189,6 +189,56 @@ async function downloadWithYtDlp(
 }
 
 /**
+ * Fetches metadata using yt-dlp without downloading the file.
+ */
+async function fetchMetadataWithYtDlp(
+  url: string,
+  cookies?: Cookie[],
+  userAgent?: string
+): Promise<YtDlpOutput | null> {
+  // Verify yt-dlp is available
+  try {
+    await execFileAsync("yt-dlp", ["--version"]);
+  } catch (_e) {
+    logger.warn({}, "yt-dlp not found, skipping metadata fetch");
+    return null;
+  }
+
+  const args = ["--simulate", "--print-json", url];
+
+  if (userAgent) {
+    args.push("--user-agent", userAgent);
+  }
+
+  const cookieFilePath = await createNetscapeCookieFile(cookies || []);
+  if (cookieFilePath) {
+    args.push("--cookies", cookieFilePath);
+  }
+
+  try {
+    // biome-ignore lint/style/noMagicNumbers: Timeout for metadata fetch
+    const { stdout } = await execFileAsync("yt-dlp", args, {
+      maxBuffer: MAX_BUFFER,
+      timeout: 30_000,
+    });
+
+    const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+    if (lines.length > 0) {
+      return JSON.parse(lines[0]) as YtDlpOutput;
+    }
+    return null;
+  } catch (error) {
+    logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
+    return null;
+  } finally {
+    if (cookieFilePath) {
+      // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
+      fs.unlink(cookieFilePath).catch(() => {});
+    }
+  }
+}
+
+/**
  * Formats download metadata as Markdown for the description field.
  */
 function formatMetadataAsMarkdown(item: DownloadItem): string {
@@ -283,6 +333,104 @@ async function handleYtDlpDownload(
 }
 
 /**
+ * Handles direct image download (non-twitter)
+ */
+async function handleDirectImageDownload(
+  item: DownloadItem,
+  mediaSourceId: string,
+  basePath: string
+) {
+  logger.info({}, "[DownloadJob] Using direct image download method");
+
+  // Generate filename from URL
+  const urlPath = new URL(item.targetUrl).pathname;
+  const originalFilename = path.basename(urlPath);
+  const filename = `download-${Date.now()}-${originalFilename}`;
+  const filePath = filename;
+  const fullPath = path.join(basePath, filePath);
+
+  try {
+    // Download the image
+    await downloadImage(item.targetUrl, fullPath);
+
+    // Get file metadata
+    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
+
+    let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
+
+    // If createdAt is missing, try to fetch from source URL (e.g. Tweet URL)
+    if (!createdAt) {
+      const tweetUrl = item.sourceUrls?.find((u) => u.match(TWITTER_URL_REGEX));
+      if (tweetUrl) {
+        logger.info(
+          { tweetUrl },
+          "[DownloadJob] Attempting to fetch metadata from source URL for timestamp"
+        );
+        const meta = await fetchMetadataWithYtDlp(
+          tweetUrl,
+          item.cookies,
+          item.userAgent
+        );
+        if (meta?.upload_date) {
+          createdAt = new Date(
+            meta.upload_date.replace(DATE_REGEX, "$1-$2-$3")
+          );
+          logger.info(
+            { createdAt },
+            "[DownloadJob] Resolved createdAt from source URL"
+          );
+        }
+      }
+    }
+
+    // Fallback to file creation time
+    if (!createdAt) {
+      createdAt = fileMetadata.createdAt;
+    }
+
+    // Determine media type using getMediaType
+    const mediaType = getMediaTypeFromExtension(fullPath);
+
+    // Create media entry
+    const newMedia: AddMediaRequest = {
+      mediaSourceId,
+      filePath,
+      fileName: filename,
+      mediaType,
+      description: formatMetadataAsMarkdown(item),
+      width: fileMetadata.width,
+      height: fileMetadata.height,
+      fileSize: fileMetadata.size,
+      createdAt,
+      modifiedAt: fileMetadata.modifiedAt,
+      sourceUrls: Array.from(
+        new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
+      ),
+    };
+
+    await registerMedia(newMedia, mediaSourceId, item, basePath);
+
+    logger.info(
+      { url: item.targetUrl },
+      "[DownloadJob] Download completed successfully"
+    );
+  } catch (error) {
+    logger.error(
+      { err: error, url: item.targetUrl },
+      "[DownloadJob] Download failed"
+    );
+
+    // Notify frontend via SSE
+    SseManager.sendEvent(mediaSourceId, "download-error", {
+      url: item.targetUrl,
+      error: error instanceof Error ? error.message : String(error),
+    });
+
+    throw error;
+  }
+}
+
+/**
  * Extracts and normalizes a DownloadItem from a job payload.
  * Handles backward compatibility mapping.
  */
@@ -354,63 +502,18 @@ export async function processDownloadJob(job: Job): Promise<void> {
       logger.info({}, "[DownloadJob] Using yt-dlp download method");
       await handleYtDlpDownload(item, mediaSourceId, basePath);
     } else {
-      logger.info({}, "[DownloadJob] Using direct image download method");
-
-      // Traditional Direct Image Download
-      // Generate filename from URL
-      const urlPath = new URL(item.targetUrl).pathname;
-      const originalFilename = path.basename(urlPath);
-      const filename = `download-${Date.now()}-${originalFilename}`;
-      const filePath = filename;
-      const fullPath = path.join(basePath, filePath);
-
-      // Download the image
-      await downloadImage(item.targetUrl, fullPath);
-
-      // Get file metadata
-      const metadata = await LocalMediaStorage.getFileMetadata(fullPath);
-
-      // Determine media type using getMediaType
-      const mediaType = getMediaTypeFromExtension(fullPath);
-
-      // Create media entry
-      const newMedia: AddMediaRequest = {
-        mediaSourceId,
-        filePath,
-        fileName: filename,
-        mediaType,
-        description: formatMetadataAsMarkdown(item),
-        width: metadata.width,
-        height: metadata.height,
-        fileSize: metadata.size,
-        createdAt: item.createdAt
-          ? new Date(item.createdAt)
-          : metadata.createdAt,
-        modifiedAt: metadata.modifiedAt,
-        sourceUrls: Array.from(
-          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
-        ),
-      };
-
-      await registerMedia(newMedia, mediaSourceId, item, basePath);
+      await handleDirectImageDownload(item, mediaSourceId, basePath);
     }
-
-    logger.info(
-      { url: item.targetUrl },
-      "[DownloadJob] Download completed successfully"
-    );
   } catch (error) {
     logger.error(
       { err: error, url: item.targetUrl },
-      "[DownloadJob] Download failed"
+      "[DownloadJob] Job execution failed"
     );
-
     // Notify frontend via SSE
     SseManager.sendEvent(mediaSourceId, "download-error", {
       url: item.targetUrl,
       error: error instanceof Error ? error.message : String(error),
     });
-
     throw error;
   }
 }
@@ -529,7 +632,7 @@ export async function queueDownloadJobs(
         imageUrl: item.targetUrl,
         sourceUrl: item.targetUrl,
         description: item.description ?? formatMetadataAsMarkdown(item),
-        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+        createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
       },
     });
   }
