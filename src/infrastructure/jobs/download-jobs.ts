@@ -216,7 +216,6 @@ async function fetchMetadataWithYtDlp(
   }
 
   try {
-    // biome-ignore lint/style/noMagicNumbers: Timeout for metadata fetch
     const { stdout } = await execFileAsync("yt-dlp", args, {
       maxBuffer: MAX_BUFFER,
       timeout: 30_000,
