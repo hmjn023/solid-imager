@@ -9,8 +9,6 @@ import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import ImportReviewModal from "./import-review-modal";
 
-const POLL_INTERVAL = 10_000;
-
 export default function PendingDownloadsIndicator() {
   const [isModalOpen, setIsModalOpen] = createSignal(false);
 
@@ -28,15 +26,34 @@ export default function PendingDownloadsIndicator() {
 
   const [pendingCount, { refetch }] = createResource(fetchPendingCount);
 
-  // Poll every 10 seconds? or 30s?
-  // Since we don't have socket, polling is easiest.
-  let interval: ReturnType<typeof setInterval>;
   onMount(() => {
-    interval = setInterval(() => refetch(), POLL_INTERVAL);
-  });
+    if (isServer) {
+      return;
+    }
 
-  onCleanup(() => {
-    clearInterval(interval);
+    const ac = new AbortController();
+    const startEventStream = async () => {
+      try {
+        const stream = await orpc.imports.events(undefined, {
+          signal: ac.signal,
+        });
+
+        for await (const msg of stream) {
+          if (ac.signal.aborted) {
+            break;
+          }
+          handleImportEvent(msg.event, refetch);
+        }
+      } catch (_err) {
+        // Ignore errors
+      }
+    };
+
+    startEventStream();
+
+    onCleanup(() => {
+      ac.abort();
+    });
   });
 
   return (
@@ -68,4 +85,14 @@ export default function PendingDownloadsIndicator() {
       />
     </>
   );
+}
+
+function handleImportEvent(event: string, refetch: () => void) {
+  if (
+    event === "import-request:created" ||
+    event === "import-request:processed" ||
+    event === "import-request:deleted"
+  ) {
+    refetch();
+  }
 }

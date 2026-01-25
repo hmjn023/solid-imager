@@ -1,5 +1,16 @@
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
+import { toast } from "solid-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Card,
@@ -53,7 +64,9 @@ type Entity = Project | Ip | Character;
 export default function ManagerPage() {
   const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
   const [editingItem, setEditingItem] = createSignal<Entity | null>(null);
+  const [itemToDelete, setItemToDelete] = createSignal<Entity | null>(null);
   const [formData, setFormData] = createSignal<{
     name: string;
     description: string;
@@ -156,6 +169,30 @@ export default function ManagerPage() {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    const item = itemToDelete();
+    if (!item) {
+      return;
+    }
+
+    try {
+      if (activeTab() === "projects") {
+        await deleteProject(item.id);
+      } else if (activeTab() === "ips") {
+        await deleteIp(item.id);
+      } else if (activeTab() === "characters") {
+        await deleteCharacter(item.id);
+      }
+      invalidateQueries();
+      toast.success("Deleted successfully");
+    } catch (e) {
+      toast.error(`Failed to delete: ${(e as Error).message}`);
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setItemToDelete(null);
+    }
+  };
+
   return (
     <div class="container mx-auto p-8">
       <div class="mb-8 flex items-center justify-between">
@@ -231,19 +268,8 @@ export default function ManagerPage() {
                   </Button>
                   <Button
                     onClick={() => {
-                      if (
-                        // biome-ignore lint/suspicious/noAlert: Simple confirmation
-                        !confirm("Are you sure you want to delete this item?")
-                      ) {
-                        return;
-                      }
-                      if (activeTab() === "projects") {
-                        deleteProject(item.id).then(invalidateQueries);
-                      } else if (activeTab() === "ips") {
-                        deleteIp(item.id).then(invalidateQueries);
-                      } else if (activeTab() === "characters") {
-                        deleteCharacter(item.id).then(invalidateQueries);
-                      }
+                      setItemToDelete(item);
+                      setIsDeleteDialogOpen(true);
                     }}
                     size="sm"
                     variant="destructive"
@@ -335,6 +361,30 @@ export default function ManagerPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        onOpenChange={setIsDeleteDialogOpen}
+        open={isDeleteDialogOpen()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the{" "}
+              {activeTab().slice(0, -1)} and remove it from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

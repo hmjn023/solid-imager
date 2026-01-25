@@ -71,9 +71,6 @@ type DownloadItem = {
     *   Solid Imagerのダウンローダーは、URLパターンから自動的に `yt-dlp` の使用を判断する。
 *   **Source URL:** `sourceUrls` には常に「投稿ページ（ツイート）のURL」を含める。重複チェックは主にこれを用いる。
 
-## 重複チェック仕様
-*   `imports.bulkAdd` 受信時、`sourceUrls` に含まれるURLが既に `media_urls` テーブルに存在する場合、そのアイテムは**自動的にスキップ**する（インポートキューに入れない）。
-
 ## 実装タスク
 
 ### 1. Solid Imager (Backend)
@@ -112,9 +109,7 @@ type DownloadItem = {
     *   **入力**: `z.object({ items: z.array(downloadItemSchema) })`
     *   **ロジック**:
         1.  `items` を反復処理。
-        2.  **重複チェック**: `sourceUrls` を抽出し、`media_urls` テーブルを照会してURLが既に存在するか確認。
-            *   存在する場合: そのアイテムをスキップ。
-        3.  **アクション判定**:
+        2.  **アクション判定**:
             *   `filePath` が存在し、かつディスク上に実ファイルがある場合:
                 *   アクション: **復元 (Restore)**。
                 *   ロジック: `BackupService.restoreItem()` (または既存ファイルのメタデータ登録ロジック) を呼び出し。

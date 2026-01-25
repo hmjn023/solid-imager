@@ -593,8 +593,7 @@ export const MediaRepository: IMediaRepository = {
     if (urls.length === 0) {
       return [];
     }
-    const client = (tx as unknown as TransactionClient) || db; // No try-catch here as unexpected error wrapper is not strictly needed for this simple query, but let's be consistent if needed.
-    // However, I'll stick to simple implementation.
+    const client = (tx as unknown as TransactionClient) || db;
     try {
       const results = await client
         .select({ url: mediaUrls.url })

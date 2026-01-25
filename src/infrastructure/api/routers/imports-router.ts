@@ -5,6 +5,7 @@ import { downloadItemSchema } from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 /**
  * Imports Router Implementation
@@ -23,8 +24,8 @@ export const importsRouter = {
       }
 
       // 1. Duplicate Check Skipped (as requested by user)
-      // We allow duplicates in the import queue. The user can filter them in the UI or
-      // existing media handling logic will take care of them during actual processing if needed.
+      // The requirement for duplicate URL checking has been removed.
+      // All incoming items are treated as new requests.
 
       const itemsToProcess = items;
       const skippedCount = 0;
@@ -46,6 +47,10 @@ export const importsRouter = {
           await db.insert(jobs).values(chunk);
         }
         addedCount = itemsToProcess.length;
+
+        SseManager.sendEvent("global-imports", "import-request:created", {
+          count: addedCount,
+        });
       }
 
       return { addedCount, skippedCount, restoredCount: 0 };
@@ -104,6 +109,10 @@ export const importsRouter = {
         .set({ status: "completed", updatedAt: new Date() })
         .where(inArray(jobs.id, jobIds));
 
+      SseManager.sendEvent("global-imports", "import-request:processed", {
+        processedCount: itemsToDownload.length,
+      });
+
       return { success: true, processedCount: itemsToDownload.length };
     }),
 
@@ -123,6 +132,66 @@ export const importsRouter = {
       }
 
       await db.delete(jobs).where(inArray(jobs.id, jobIds));
+      SseManager.sendEvent("global-imports", "import-request:deleted", {
+        jobIds,
+      });
       return { success: true };
     }),
+
+  /**
+   * Real-time events stream for imports
+   */
+  events: os.handler(async function* ({ signal }) {
+    // Yield initial connection event
+    yield { event: "connected", data: "connected" };
+
+    // Queue for events
+    // biome-ignore lint/suspicious/noExplicitAny: SSE payload
+    const queue: { event: string; data: any }[] = [];
+    let resolve: (() => void) | null = null;
+
+    const mediaSourceId = "global-imports";
+
+    // biome-ignore lint/suspicious/noExplicitAny: SSE payload is dynamic
+    const onEvent = (payload: { event: string; data: any }) => {
+      queue.push(payload);
+      if (resolve) {
+        resolve();
+        resolve = null;
+      }
+    };
+
+    const eventName = `event:${mediaSourceId}`;
+    SseManager.emitter.on(eventName, onEvent);
+
+    try {
+      while (!signal?.aborted) {
+        if (queue.length === 0) {
+          await new Promise<void>((r) => {
+            const onAbort = () => {
+              r();
+            };
+            if (signal) {
+              signal.addEventListener("abort", onAbort, { once: true });
+            }
+            resolve = () => {
+              if (signal) {
+                signal.removeEventListener("abort", onAbort);
+              }
+              r();
+            };
+          });
+        }
+
+        while (queue.length > 0) {
+          const item = queue.shift();
+          if (item) {
+            yield item;
+          }
+        }
+      }
+    } finally {
+      SseManager.emitter.off(eventName, onEvent);
+    }
+  }),
 };

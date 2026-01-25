@@ -1,4 +1,4 @@
-import { MediaSource, TweetMetadata } from '../types';
+import { MediaSource, TweetMetadata, DownloadItem } from '../types';
 import { testConnection, getClient } from '../api';
 
 const apiUrlInput = document.getElementById('api-url') as HTMLInputElement;
@@ -196,7 +196,7 @@ bulkUploadBtn.addEventListener('click', async () => {
         // 3. Call API
         const client = await getClient();
         const result = await client.imports.bulkAdd({
-            items: metadata as any[] // Explicit cast for now as types might need sync
+            items: metadata
         });
 
         uploadStatusDiv.textContent = `Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`;
