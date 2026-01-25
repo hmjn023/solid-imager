@@ -1,12 +1,14 @@
-import { MediaSource } from '../types';
-import { testConnection } from '../api';
+import { MediaSource, TweetMetadata } from '../types';
+import { testConnection, getClient } from '../api';
 
 const apiUrlInput = document.getElementById('api-url') as HTMLInputElement;
 const select = document.getElementById('source-select') as HTMLSelectElement;
 const saveBtn = document.getElementById('save-btn') as HTMLButtonElement;
 const exportBtn = document.getElementById('export-btn') as HTMLButtonElement;
+const bulkUploadBtn = document.getElementById('bulk-upload-btn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const exportStatusDiv = document.getElementById('export-status') as HTMLDivElement;
+const uploadStatusDiv = document.getElementById('upload-status') as HTMLDivElement;
 
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 
@@ -153,6 +155,59 @@ exportBtn.addEventListener('click', async () => {
         console.error(error);
         exportStatusDiv.textContent = 'Failed. Are you on X.com?';
         exportStatusDiv.className = 'error';
+    }
+});
+
+bulkUploadBtn.addEventListener('click', async () => {
+    try {
+        uploadStatusDiv.textContent = 'Fetching metadata...';
+        uploadStatusDiv.className = '';
+
+        // 1. Get Metadata from Active Tab
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        const activeTab = tabs[0];
+        if (!activeTab?.id) {
+            throw new Error('No active tab found');
+        }
+
+        const metadata = await new Promise<TweetMetadata[]>((resolve, reject) => {
+            chrome.tabs.sendMessage(activeTab.id!, { type: 'GET_METADATA' }, (response) => {
+                if (chrome.runtime.lastError) {
+                    reject(chrome.runtime.lastError);
+                } else {
+                    resolve(response || []);
+                }
+            });
+        });
+
+        if (!metadata || metadata.length === 0) {
+            uploadStatusDiv.textContent = 'No media found on this page.';
+            uploadStatusDiv.className = 'error';
+            return;
+        }
+
+        uploadStatusDiv.textContent = `Uploading ${metadata.length} items...`;
+
+        // 2. Map TweetMetadata to DownloadItem
+        // TweetMetadata matches DownloadItem mostly, but let's be safe or just cast if compatible.
+        // DownloadItem requires targetUrl. TweetMetadata has it.
+        // DownloadItem has authors[], TweetMetadata has authors[].
+
+        // 3. Call API
+        const client = await getClient();
+        const result = await client.imports.bulkAdd({
+            items: metadata
+        });
+
+        uploadStatusDiv.textContent = `Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`;
+        uploadStatusDiv.className = 'success';
+
+    } catch (error) {
+        console.error('Bulk upload failed:', error);
+        let msg = 'Upload failed.';
+        if (error instanceof Error) msg += ` ${error.message}`;
+        uploadStatusDiv.textContent = msg;
+        uploadStatusDiv.className = 'error';
     }
 });
 

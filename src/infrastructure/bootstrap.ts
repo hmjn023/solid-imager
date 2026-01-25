@@ -49,5 +49,14 @@ export function bootstrap() {
     )
   );
 
-  jobWorker.start(); // Auto-start the worker for now
+  // Singleton management for JobWorker to prevent duplicates during HMR
+  // biome-ignore lint/suspicious/noExplicitAny: Global augmentation
+  const globalAny = globalThis as any;
+  if (globalAny.__JOB_WORKER__) {
+    // console.log("[Bootstrap] Stopping existing JobWorker...");
+    globalAny.__JOB_WORKER__.stop();
+  }
+
+  globalAny.__JOB_WORKER__ = jobWorker;
+  jobWorker.start();
 }

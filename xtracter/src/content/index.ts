@@ -62,7 +62,7 @@ function createButton(text: string, bgColor: string, onClick: () => void): HTMLB
 
 function handleAction(metadata: TweetMetadata, type: 'DOWNLOAD' | 'POST_DOWNLOAD', mediaType: 'IMAGE' | 'VIDEO') {
     console.log(`Action ${type} triggered:`, metadata);
-    
+
     // For videos, we rely on server-side yt-dlp which needs cookies for best results,
     // though for public tweets it might work without.
     // The previous implementation fetched cookies for videos. We'll keep that.
@@ -253,6 +253,11 @@ function processMedia() {
 
         const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
         const metadata = extractMetadata(tweetArticle, container as HTMLElement, 'VIDEO');
+
+        // Store metadata for bulk export
+        if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
+            processedMetadata.set(metadata.targetUrl, metadata);
+        }
 
         const style = window.getComputedStyle(container);
         if (style.position === 'static') {

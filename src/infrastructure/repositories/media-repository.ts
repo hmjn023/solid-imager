@@ -1,4 +1,4 @@
-import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { and, eq, type InferSelectModel, inArray } from "drizzle-orm";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -491,7 +491,13 @@ export const MediaRepository: IMediaRepository = {
         mediaId,
         url,
       }));
-      const results = await client.insert(mediaUrls).values(values).returning();
+      const results = await client
+        .insert(mediaUrls)
+        .values(values)
+        .onConflictDoNothing({
+          target: [mediaUrls.mediaId, mediaUrls.url],
+        })
+        .returning();
       return results.map(mapToMediaUrl);
     } catch (error) {
       throw new UnexpectedError("Failed to insert media URLs", error);
@@ -581,5 +587,21 @@ export const MediaRepository: IMediaRepository = {
     // If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
     // Assuming it returns something schema-compliant for now, but strictly we should check.
     return results.map(mapToMedia);
+  },
+
+  async findExistingUrls(urls: string[], tx?: Transaction): Promise<string[]> {
+    if (urls.length === 0) {
+      return [];
+    }
+    const client = (tx as unknown as TransactionClient) || db;
+    try {
+      const results = await client
+        .select({ url: mediaUrls.url })
+        .from(mediaUrls)
+        .where(inArray(mediaUrls.url, urls));
+      return results.map((r) => r.url);
+    } catch (error) {
+      throw new UnexpectedError("Failed to check existing URLs", error);
+    }
   },
 };

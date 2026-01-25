@@ -77,4 +77,5 @@ export type IMediaRepository = {
     params: { query?: string; tags?: string[] },
     tx?: Transaction
   ): Promise<Media[]>;
+  findExistingUrls(urls: string[], tx?: Transaction): Promise<string[]>;
 };

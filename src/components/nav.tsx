@@ -1,6 +1,7 @@
 import { useLocation } from "@solidjs/router";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
+import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
 
 /**
  * Navigation component that displays a list of links and highlights the active link based on the current route.
@@ -92,7 +93,9 @@ export default function Nav() {
               </a>
             </li>
           </ul>
-          <div class="ml-auto flex items-center gap-2" id="nav-actions" />
+          <div class="ml-auto flex items-center gap-2" id="nav-actions">
+            <PendingDownloadsIndicator />
+          </div>
         </div>
       </nav>
       {/* Spacer to prevent content from hiding behind the fixed header */}

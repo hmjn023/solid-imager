@@ -70,6 +70,8 @@ vi.mock("~/application/services/media-processing-service", () => ({
     registerAndProcess: mockMediaRegisterAndProcess,
     addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
   },
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  MediaProcessingServiceImpl: class {},
 }));
 vi.mock("node:fs/promises", () => ({
   default: {
@@ -89,7 +91,7 @@ const fetchMock = vi.fn();
 global.fetch = fetchMock;
 
 // Regex for download filename pattern (moved to top level for performance)
-const DOWNLOAD_FILENAME_PATTERN = /^download-\d+-image\.jpg$/;
+const DOWNLOAD_FILENAME_PATTERN = /^download-[a-f0-9]{12}-image\.jpg$/;
 
 describe("processDownloadJob", () => {
   beforeEach(async () => {
