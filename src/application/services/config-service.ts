@@ -43,7 +43,6 @@ export class ConfigServiceImpl {
         }
       } else {
         logger.info("config.json not found, creating default");
-        this.saveToDisk(defaultAppConfig); // synchronous write? no, saveToDisk is async usually.
         // For init, we can write sync.
         fs.writeFileSync(
           this.configPath,
@@ -106,7 +105,7 @@ export class ConfigServiceImpl {
     const result = AppConfigSchema.safeParse(merged);
     if (!result.success) {
       throw new Error(
-        `Invalid configuration update: ${JSON.stringify(result.error)}`
+        `Invalid configuration update: ${JSON.stringify(result.error.format())}`
       );
     }
 
@@ -198,11 +197,7 @@ export class ConfigServiceImpl {
 
       // Find matching key in schemaRef (case-insensitive)
       const keys = Object.keys(schemaRef || {});
-      const _exactKey = keys.find(
-        (k) =>
-          k.toUpperCase() === part.toUpperCase() ||
-          k.toUpperCase() === part.replace(/_/g, "").toUpperCase()
-      );
+
       // Try to match "BASE_URL" to "baseUrl". Remove underscores from both sides?
       // "BASE_URL" -> "BASEURL". "baseUrl" -> "BASEURL". Match.
 

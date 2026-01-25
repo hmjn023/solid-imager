@@ -6,8 +6,11 @@ export const configRouter = new Elysia({ prefix: "/api/config" })
   .get("/", () => services.getConfigService().get())
   .post("/", async ({ body, set }) => {
     try {
-      // biome-ignore lint/suspicious/noExplicitAny: Config update payload is validated by service
-      const updated = await services.getConfigService().update(body as any);
+      const updated = await services
+        .getConfigService()
+        .update(
+          body as Partial<import("~/domain/config/config-schema").AppConfig>
+        );
       return updated;
     } catch (error) {
       logger.error({ err: error }, "Failed to update config");
