@@ -23,7 +23,7 @@ describe("downloadItemSchema", () => {
   it("should allow missing targetUrl (for restore scenarios)", () => {
     const backupItem = {
       sourceUrls: ["https://example.com/tweet"],
-      filePath: "images/123.jpg"
+      filePath: "images/123.jpg",
     };
 
     const result = downloadItemSchema.safeParse(backupItem);

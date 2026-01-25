@@ -268,6 +268,10 @@ async function handleYtDlpDownload(
   mediaSourceId: string,
   basePath: string
 ) {
+  if (!item.targetUrl) {
+    throw new Error("Missing targetUrl for yt-dlp download");
+  }
+
   // Use yt-dlp
   logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
@@ -339,6 +343,10 @@ async function handleDirectImageDownload(
   mediaSourceId: string,
   basePath: string
 ) {
+  if (!item.targetUrl) {
+    throw new Error("Missing targetUrl for direct download");
+  }
+
   logger.info({}, "[DownloadJob] Using direct image download method");
 
   // Generate filename from URL
