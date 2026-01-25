@@ -1,4 +1,4 @@
-import { and, eq, type InferSelectModel } from "drizzle-orm";
+import { and, eq, type InferSelectModel, inArray } from "drizzle-orm";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -581,5 +581,22 @@ export const MediaRepository: IMediaRepository = {
     // If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
     // Assuming it returns something schema-compliant for now, but strictly we should check.
     return results.map(mapToMedia);
+  },
+
+  async findExistingUrls(urls: string[], tx?: Transaction): Promise<string[]> {
+    if (urls.length === 0) {
+      return [];
+    }
+    const client = (tx as unknown as TransactionClient) || db; // No try-catch here as unexpected error wrapper is not strictly needed for this simple query, but let's be consistent if needed.
+    // However, I'll stick to simple implementation.
+    try {
+      const results = await client
+        .select({ url: mediaUrls.url })
+        .from(mediaUrls)
+        .where(inArray(mediaUrls.url, urls));
+      return results.map((r) => r.url);
+    } catch (error) {
+      throw new UnexpectedError("Failed to check existing URLs", error);
+    }
   },
 };

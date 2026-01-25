@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, ne } from "drizzle-orm";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -18,7 +18,7 @@ export class JobRepository implements IJobRepository {
     return db
       .select()
       .from(jobs)
-      .where(eq(jobs.status, "pending"))
+      .where(and(eq(jobs.status, "pending"), ne(jobs.type, "import_request")))
       .orderBy(asc(jobs.createdAt))
       .limit(limit);
   }

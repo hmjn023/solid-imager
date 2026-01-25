@@ -1,22 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
-import { db } from "~/infrastructure/db/index";
-import {
-  authors,
-  characters,
-  ips,
-  mediaAuthors,
-  mediaCharacters,
-  mediaIps,
-  mediaProjects,
-  mediaSources,
-  medias,
-  projects,
-} from "~/infrastructure/db/schema";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
@@ -88,46 +74,26 @@ describe("Reproduction: Copy Media Job Type", () => {
 
     // Reset registry and register services
     services.reset();
-    services.registerMediaRepository(MediaRepository);
-    services.registerSourceRepository(new DrizzleSourceRepository());
-    services.registerTagRepository({
-      addTagsToMedia: vi.fn(),
-    } as any);
-    services.registerAuthorRepository({
+    // Define Mocks
+    const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
+    const mockAuthorRepo = {
       addMediaBulk: vi.fn(),
       create: vi.fn(),
       addMedia: vi.fn(),
-    } as any);
-    services.registerProjectRepository({
+    } as any;
+    const mockProjectRepo = {
       findByMediaId: vi.fn().mockResolvedValue([]),
       addMediaBulk: vi.fn(),
-    } as any);
-    services.registerCharacterRepository({
+    } as any;
+    const mockCharRepo = {
       findByMediaId: vi.fn().mockResolvedValue([]),
       addToMediaBulk: vi.fn(),
-    } as any);
-    services.registerIpRepository({
+    } as any;
+    const mockIpRepo = {
       findByMediaId: vi.fn().mockResolvedValue([]),
       addMediaBulk: vi.fn(),
-    } as any);
-    services.registerStorageService(mockStorageService as any);
-    services.registerImageProcessor(mockImageProcessor as any);
-    services.registerAiClient(mockAiClient as any);
+    } as any;
 
-    // Clean DB
-    await db.delete(mediaProjects);
-    await db.delete(mediaCharacters);
-    await db.delete(mediaIps);
-    await db.delete(mediaAuthors);
-    await db.delete(medias);
-    await db.delete(projects);
-    await db.delete(characters);
-    await db.delete(ips);
-    await db.delete(authors);
-    await db.delete(mediaSources);
-
-    // Create Sources
-    // Create Sources (Mocked Repository)
     const mockSourceRepository = {
       findById: vi.fn((id) => {
         if (id === sourceSourceId) {
@@ -149,16 +115,44 @@ describe("Reproduction: Copy Media Job Type", () => {
         return null;
       }),
     };
-    services.registerSourceRepository(mockSourceRepository as any);
 
-    // Mock JobRepository
     const mockJobRepo = {
       create: vi.fn((job) => {
         capturedJobs.push(job);
         return Promise.resolve({ ...job, id: "job-id" });
       }),
     };
+
+    // Register Repositories
+    services.registerSourceRepository(mockSourceRepository as any);
     services.registerJobRepository(mockJobRepo as any);
+    services.registerTagRepository(mockTagRepo);
+    services.registerAuthorRepository(mockAuthorRepo);
+    services.registerProjectRepository(mockProjectRepo);
+    services.registerCharacterRepository(mockCharRepo);
+    services.registerIpRepository(mockIpRepo);
+
+    // Register Services
+    services.registerMediaRepository(MediaRepository);
+    services.registerStorageService(mockStorageService as any);
+    services.registerImageProcessor(mockImageProcessor as any);
+    services.registerAiClient(mockAiClient as any);
+
+    // Instantiate and Register MediaProcessingService
+    const { MediaProcessingServiceImpl } = await import(
+      "~/application/services/media-processing-service"
+    );
+    const mediaProcessingService = new MediaProcessingServiceImpl(
+      mockSourceRepository as any,
+      MediaRepository, // This is the class/static mock wrapper? Let's check imports. It's imported as class/object.
+      mockTagRepo,
+      mockAuthorRepo,
+      mockCharRepo,
+      mockIpRepo,
+      mockProjectRepo,
+      mockJobRepo as any
+    );
+    services.registerMediaProcessingService(mediaProcessingService);
   });
 
   afterEach(() => {

@@ -3,24 +3,38 @@
 xtracterのjsonを吐き出す機能と同様の方法でタイムライン上にあるメディアを検知し、一括でxtracterでsolid-imagerに転送
 solid-imager側でモーダルでメディアのプレビューを表示し、受け入れるメディアを選択しソースに取り込む
 
-## データフロー
+## アーキテクチャとデータフロー
+
+Clean Architectureに基づき、ビジネスロジックは `ImportService` に集約する。
 
 1.  **Xtracter (Extension)**
-    *   ページ上のメディア情報（画像および**動画**）を収集し、`DownloadItem` 形式のリストを作成。
+    *   ページ上のメディア情報（画像および**動画**、可能であればサムネイルURLも）を収集し、`DownloadItem` 形式のリストを作成。
     *   API `POST /api/rpc/imports.bulkAdd` に送信。
+    *   *セキュリティ考慮*: Origin `chrome-extension://...` からのCORSリクエストを許可する必要がある。
+
 2.  **Solid Imager (Backend)**
-    *   受け取った各アイテムについて、処理種別を自動判定。
-        *   **A. 復元 (Restore):** `filePath` があり、かつサーバー上に実ファイルが存在する場合 → メタデータ復元処理を実行（既存のBackupServiceロジック）。
-        *   **B. ダウンロード (Import/Download):** 上記以外で `targetUrl` がある場合 → `jobs` テーブルに `type: 'import_request'` として保存。ステータス `pending`。
-    *   SSEでクライアントに「インポート待ち」通知を送信。
+    *   **Router**: `importsRouter` がリクエストを受け、`ImportService.bulkAdd` を呼び出す。
+    *   **ImportService**:
+        *   受け取った各アイテムについて、処理種別を自動判定。
+            *   **A. 復元 (Restore):** `filePath` があり、かつサーバー上に実ファイルが存在する場合 → `BackupService` のロジックを再利用してメタデータ復元。
+                *   *セキュリティ考慮*: `filePath` に対するパストラバーサルチェック (`validateRelativePath`) を必須とする。
+            *   **B. ダウンロード (Import/Download):** 上記以外で `targetUrl` がある場合 → `jobs` テーブルに `type: 'import_request'` として保存。ステータス `pending`。
+        *   **永続化戦略**: 一括リクエスト全体を1つの親ジョブ、またはアイテム毎の個別ジョブとして管理。ここでは**アイテム毎のジョブ**とし、`source_id` 等でグルーピング可能な設計とする（あるいは一時テーブル/KVS的な利用）。
+        *   **通知**: `SseManager` でクライアントに「インポート待ち」通知を送信。
+
 3.  **Solid Imager (Frontend)**
     *   ヘッダーの「インポート待ち」インジケータが更新。
     *   ユーザーが承認モーダルを開き、プレビュー画像を確認して選択。
+        *   *動画対応*: 動画の場合、`thumbnailUrl` があればそれを表示。なければプレースホルダー。
     *   承認されたアイテムを `POST /api/rpc/imports.process` に送信。
+
 4.  **Solid Imager (Backend - Processing)**
-    *   承認されたアイテムに対して `queueDownloadJobs` を実行。
-    *   動画URL (`targetUrl`) の場合、サーバー側の `yt-dlp` 連携により自動的に動画として処理される。
-    *   元の `import_request` ジョブを `completed` に更新。
+    *   **ImportService**:
+        *   承認されたアイテムIDリストを受け取る。
+        *   対象の `import_request` ジョブを取得。
+        *   `queueDownloadJobs` (または `JobDispatchService`) を経由してダウンロードジョブ (`downloadImage` / `downloadVideo`) を発行。
+        *   動画URL (`targetUrl`) の場合、サーバー側の `yt-dlp` 連携により自動的に動画として処理される。
+        *   元の `import_request` ジョブを `completed` に更新（または削除）。
 
 ## スキーマ定義
 

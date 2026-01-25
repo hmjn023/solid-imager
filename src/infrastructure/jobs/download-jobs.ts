@@ -517,9 +517,6 @@ export async function queueDownloadJobs(
     throw new Error("Media source not found or not a local source");
   }
 
-  const connectionInfo = mediaSource.connectionInfo as { path: string };
-  const _basePath = connectionInfo.path;
-
   const repo = services.getJobRepository();
 
   for (const item of items) {

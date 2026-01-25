@@ -70,6 +70,8 @@ vi.mock("~/application/services/media-processing-service", () => ({
     registerAndProcess: mockMediaRegisterAndProcess,
     addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
   },
+  // biome-ignore lint/style/useNamingConvention: Mocking class export
+  MediaProcessingServiceImpl: class {},
 }));
 vi.mock("node:fs/promises", () => ({
   default: {

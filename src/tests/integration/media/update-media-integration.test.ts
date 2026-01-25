@@ -40,8 +40,7 @@ describe("updateMedia Integration", () => {
     services.registerAiClient(pythonClient);
   });
   let testMediaId: string;
-  // const testSourceId = "b0000000-0000-0000-0000-000000000000";
-  const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
+  const testSourceId = crypto.randomUUID();
   const initialMediaData = {
     mediaSourceId: testSourceId,
     filePath: `/ test / path / initial_image - ${Date.now()}.png`,
