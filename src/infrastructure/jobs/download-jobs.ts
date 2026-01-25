@@ -23,6 +23,7 @@ const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/; // Corrected escaping for regex
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/; // Corrected escaping for regex
 // biome-ignore lint/style/noMagicNumbers: Buffer size calculation
 const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+const URL_HASH_LENGTH = 12;
 
 /**
  * Downloads an image from a URL and saves it to the specified path.
@@ -352,7 +353,13 @@ async function handleDirectImageDownload(
   // Generate filename from URL
   const urlPath = new URL(item.targetUrl).pathname;
   const originalFilename = path.basename(urlPath);
-  const filename = `download-${Date.now()}-${originalFilename}`;
+
+  const { createHash } = await import("node:crypto");
+  const urlHash = createHash("md5")
+    .update(item.targetUrl)
+    .digest("hex")
+    .slice(0, URL_HASH_LENGTH);
+  const filename = `download-${urlHash}-${originalFilename}`;
   const filePath = filename;
   const fullPath = path.join(basePath, filePath);
 
