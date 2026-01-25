@@ -41,18 +41,23 @@ export default function PendingDownloadsIndicator() {
 
   return (
     <>
-      <Show when={(pendingCount() ?? 0) > 0}>
-        <button
-          class="flex items-center gap-1 rounded bg-sky-600 px-3 py-1.5 font-bold text-white text-xs transition-colors hover:bg-sky-500"
-          onClick={() => setIsModalOpen(true)}
-          type="button"
-        >
-          <span>Inbox</span>
+      <button
+        class={`flex items-center gap-1 rounded px-3 py-1.5 font-bold text-xs transition-colors ${
+          (pendingCount() ?? 0) > 0
+            ? "bg-sky-600 text-white hover:bg-sky-500"
+            : "cursor-default bg-gray-700 text-gray-400"
+        }`}
+        disabled={(pendingCount() ?? 0) === 0}
+        onClick={() => setIsModalOpen(true)}
+        type="button"
+      >
+        <span>Inbox</span>
+        <Show when={(pendingCount() ?? 0) > 0}>
           <span class="rounded bg-white px-1.5 py-0.5 text-sky-700">
             {pendingCount()}
           </span>
-        </button>
-      </Show>
+        </Show>
+      </button>
 
       <ImportReviewModal
         isOpen={isModalOpen()}
