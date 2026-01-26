@@ -66,18 +66,20 @@ export const TagExtractionConfigSchema = z.object({
 });
 const defaultTagExtractionConfig = TagExtractionConfigSchema.parse({});
 
+const DEFAULT_EXTENSIONS = {
+  image: [".jpg", ".jpeg", ".png", ".webp"],
+  video: [".mp4", ".webm", ".mov"],
+  audio: [".mp3", ".wav"],
+};
+
 export const MediaConfigSchema = z.object({
   supportedExtensions: z
     .object({
-      image: z.array(z.string()).default([".jpg", ".jpeg", ".png", ".webp"]),
-      video: z.array(z.string()).default([".mp4", ".webm", ".mov"]),
-      audio: z.array(z.string()).default([".mp3", ".wav"]),
+      image: z.array(z.string()).default(DEFAULT_EXTENSIONS.image),
+      video: z.array(z.string()).default(DEFAULT_EXTENSIONS.video),
+      audio: z.array(z.string()).default(DEFAULT_EXTENSIONS.audio),
     })
-    .default({
-      image: [".jpg", ".jpeg", ".png", ".webp"],
-      video: [".mp4", ".webm", ".mov"],
-      audio: [".mp3", ".wav"],
-    }),
+    .default(DEFAULT_EXTENSIONS),
   tagExtraction: TagExtractionConfigSchema.default(defaultTagExtractionConfig),
 });
 const defaultMediaConfig = MediaConfigSchema.parse({});
