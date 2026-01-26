@@ -44,8 +44,9 @@ export class JobWorker {
     this.pollIntervalMs = config.jobs.pollIntervalMs;
 
     if (
-      oldConcurrency !== this.concurrency ||
-      oldPollInterval !== this.pollIntervalMs
+      (oldConcurrency !== this.concurrency ||
+        oldPollInterval !== this.pollIntervalMs) &&
+      this.isRunning
     ) {
       logger.info(
         {

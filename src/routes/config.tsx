@@ -45,11 +45,7 @@ function ConfigForm(props: { data: AppConfig }) {
         <h1 class="font-bold text-3xl">Settings</h1>
         <Button
           disabled={form.state.isSubmitting || !form.state.isDirty}
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            form.handleSubmit();
-          }}
+          onClick={() => form.handleSubmit()}
         >
           {form.state.isSubmitting ? "Saving..." : "Save Changes"}
         </Button>
@@ -76,9 +72,14 @@ function ConfigForm(props: { data: AppConfig }) {
                     <Input
                       id={field().name}
                       onBlur={field().handleBlur}
-                      onInput={(e) =>
-                        field().handleChange(Number(e.target.value))
-                      }
+                      onInput={(e) => {
+                        const val = e.target.value;
+                        field().handleChange(
+                          (val === ""
+                            ? undefined
+                            : Number(val)) as unknown as number
+                        );
+                      }}
                       type="number"
                       value={(field().state.value as number) ?? ""}
                     />
@@ -101,9 +102,14 @@ function ConfigForm(props: { data: AppConfig }) {
                     <Input
                       id={field().name}
                       onBlur={field().handleBlur}
-                      onInput={(e) =>
-                        field().handleChange(Number(e.target.value))
-                      }
+                      onInput={(e) => {
+                        const val = e.target.value;
+                        field().handleChange(
+                          (val === ""
+                            ? undefined
+                            : Number(val)) as unknown as number
+                        );
+                      }}
                       type="number"
                       value={(field().state.value as number) ?? ""}
                     />
@@ -160,9 +166,14 @@ function ConfigForm(props: { data: AppConfig }) {
                     <Input
                       id={field().name}
                       onBlur={field().handleBlur}
-                      onInput={(e) =>
-                        field().handleChange(Number(e.target.value))
-                      }
+                      onInput={(e) => {
+                        const val = e.target.value;
+                        field().handleChange(
+                          (val === ""
+                            ? undefined
+                            : Number(val)) as unknown as number
+                        );
+                      }}
                       type="number"
                       value={(field().state.value as number) ?? ""}
                     />
@@ -200,9 +211,14 @@ function ConfigForm(props: { data: AppConfig }) {
                       <Input
                         id={field().name}
                         onBlur={field().handleBlur}
-                        onInput={(e) =>
-                          field().handleChange(Number(e.target.value))
-                        }
+                        onInput={(e) => {
+                          const val = e.target.value;
+                          field().handleChange(
+                            (val === ""
+                              ? undefined
+                              : Number(val)) as unknown as number
+                          );
+                        }}
                         type="number"
                         value={(field().state.value as number) ?? ""}
                       />
@@ -218,9 +234,14 @@ function ConfigForm(props: { data: AppConfig }) {
                       <Input
                         id={field().name}
                         onBlur={field().handleBlur}
-                        onInput={(e) =>
-                          field().handleChange(Number(e.target.value))
-                        }
+                        onInput={(e) => {
+                          const val = e.target.value;
+                          field().handleChange(
+                            (val === ""
+                              ? undefined
+                              : Number(val)) as unknown as number
+                          );
+                        }}
                         type="number"
                         value={(field().state.value as number) ?? ""}
                       />

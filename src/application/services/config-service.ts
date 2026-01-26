@@ -34,12 +34,15 @@ export class ConfigServiceImpl {
           const raw = fs.readFileSync(this.configPath, "utf-8");
           fileContent = JSON.parse(raw);
         } catch (error) {
-          logger.error(
-            { err: error },
-            "Failed to parse config.json, using defaults"
+          logger.fatal(
+            { err: error, path: this.configPath },
+            "Failed to parse config.json. The file might be corrupted."
           );
-          // If parse fails, we might want to stop or backup?
-          // For now, we proceed with empty (so defaults apply) but log error.
+          throw new Error(
+            `Configuration file at ${this.configPath} is corrupted: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          );
         }
       } else {
         logger.info("config.json not found, creating default");
@@ -146,93 +149,57 @@ export class ConfigServiceImpl {
     await fsPromises.rename(tempPath, this.configPath);
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex mapping logic
   private getEnvOverrides(): Record<string, unknown> {
     const overrides: Record<string, unknown> = {};
     const prefix = "CONFIG_";
 
-    for (const [key, value] of Object.entries(process.env)) {
-      if (key.startsWith(prefix) && value !== undefined) {
-        const configPath = key.substring(prefix.length).split("_");
-        // Convert path parts to camelCase if needed?
-        // Spec says: CONFIG_AI_BASE_URL -> ai.baseUrl
-        // So we need to map UPPER_CASE parts to camelCase keys potentially?
-        // OR we rely on loose matching?
-        // "jobs.concurrency" -> JOBS_CONCURRENCY.
-        // "media.tagExtraction" -> MEDIA_TAGEXTRACTION ?
-        // Usually env vars are uppercase. We need a strategy to map them to camelCase properties.
-        // Strategy: lower case and check if it matches?
-        // Or assume the user knows the casing? Env vars usually uppercase.
-        // Let's implement a smart mapper:
-        // 1. lowercase the part.
-        // 2. see if it matches a key in the current node of schema/defaults?
-        // Actually, just creating the object structure is enough, but we need correct keys.
-        // "JOBS" -> "jobs". "CONCURRENCY" -> "concurrency". "BASE_URL" -> "baseUrl" (problematic).
-        // "BASEURL" -> "baseUrl"?
+    for (const [envKey, envValue] of Object.entries(process.env)) {
+      if (!envKey.startsWith(prefix) || envValue === undefined) {
+        continue;
+      }
 
-        // "POLLINTERVALMS" -> "pollIntervalMs"
+      // biome-ignore lint/suspicious/noExplicitAny: traversing setup
+      let currentSchemaNode = defaultAppConfig as any;
+      // biome-ignore lint/suspicious/noExplicitAny: overrides construction
+      let currentOverrideNode = overrides as any;
+      // CONFIG_AI_BASE_URL -> AIBASEURL
+      let remainingKey = envKey
+        .substring(prefix.length)
+        .toUpperCase()
+        .replace(/_/g, "");
 
-        // This is tricky without a mapping definition.
-        // I'll try to match against defaultAppConfig keys case-insensitively.
+      while (remainingKey.length > 0) {
+        const keys = Object.keys(currentSchemaNode || {});
+        // 現在のノードのキーから、remainingKey の先頭と一致するものを探す
+        const matchingKey = keys.find((k) =>
+          remainingKey.startsWith(k.toUpperCase())
+        );
 
-        this.setDeepValue(overrides, configPath, value);
+        if (!matchingKey) {
+          break;
+        }
+
+        if (remainingKey.length === matchingKey.length) {
+          // リーフノードに到達
+          try {
+            currentOverrideNode[matchingKey] = JSON.parse(envValue);
+          } catch {
+            currentOverrideNode[matchingKey] = envValue;
+          }
+          break;
+        }
+
+        // 次の階層へ
+        remainingKey = remainingKey.substring(matchingKey.length);
+        if (!currentOverrideNode[matchingKey]) {
+          currentOverrideNode[matchingKey] = {};
+        }
+        currentOverrideNode = currentOverrideNode[matchingKey];
+        currentSchemaNode = currentSchemaNode[matchingKey];
       }
     }
     return overrides;
-  }
-
-  // biome-ignore lint/suspicious/noExplicitAny: Recursively traversing config object needs any
-  private setDeepValue(obj: any, pathParts: string[], value: string) {
-    let current = obj;
-    // We need to match keys against the schema structure to get correct casing.
-    // This is a bit complex.
-    // Simpler approach: build a normalized tree from env vars, and then map it?
-
-    // Let's look at `defaultAppConfig` structure to resolve keys.
-    // biome-ignore lint/suspicious/noExplicitAny: Default config reference
-    let schemaRef: any = defaultAppConfig;
-
-    for (let i = 0; i < pathParts.length; i++) {
-      const part = pathParts[i];
-      const isLast = i === pathParts.length - 1;
-
-      // Find matching key in schemaRef (case-insensitive)
-      const keys = Object.keys(schemaRef || {});
-
-      // Try to match "BASE_URL" to "baseUrl". Remove underscores from both sides?
-      // "BASE_URL" -> "BASEURL". "baseUrl" -> "BASEURL". Match.
-
-      const matchingKey = keys.find((k) => {
-        const kNorm = k.toUpperCase().replace(/_/g, "");
-        const pNorm = part.toUpperCase().replace(/_/g, "");
-        return kNorm === pNorm;
-      });
-
-      if (!matchingKey) {
-        // If we can't find a matching key in default config, we skip or add as is?
-        // If it's a new key not in defaults (e.g. strict schema might reject it), we might want to skip.
-        // But let's assume valid config.
-        // If we can't match, we stop to avoid garbage.
-        return;
-      }
-
-      if (isLast) {
-        // Parse value
-        // biome-ignore lint/suspicious/noExplicitAny: JSON.parse returns any
-        let parsedValue: any = value;
-        try {
-          parsedValue = JSON.parse(value);
-        } catch {
-          // keep as string
-        }
-        current[matchingKey] = parsedValue;
-      } else {
-        if (!current[matchingKey]) {
-          current[matchingKey] = {};
-        }
-        current = current[matchingKey];
-        schemaRef = schemaRef[matchingKey];
-      }
-    }
   }
 
   // Helper for deep merge
