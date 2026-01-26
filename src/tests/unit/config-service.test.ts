@@ -94,8 +94,6 @@ describe("ConfigService", () => {
     service.onChange(listener);
 
     // Partial update
-    // biome-ignore lint/suspicious/noExplicitAny: testing partial
-    // biome-ignore lint/style/noMagicNumbers: Test value
     const newConfig = await service.update({ jobs: { concurrency: 5 } } as any);
 
     // biome-ignore lint/style/noMagicNumbers: Test assertion
@@ -103,7 +101,6 @@ describe("ConfigService", () => {
     // Listener should receive full updated config
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
-        // biome-ignore lint/style/noMagicNumbers: Test assertion
         jobs: expect.objectContaining({ concurrency: 5 }),
       })
     );

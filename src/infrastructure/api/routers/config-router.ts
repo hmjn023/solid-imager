@@ -2,19 +2,15 @@ import { os } from "@orpc/server";
 import { services } from "~/application/registry";
 import { AppConfigSchema } from "~/domain/config/config-schema";
 
-export const configRouter = os.router({
+export const configRouter = {
   get: os
-    .contract({
-      output: AppConfigSchema,
-    })
+    .output(AppConfigSchema)
     .handler(async () => services.getConfigService().get()),
 
   update: os
-    .contract({
-      input: AppConfigSchema.deepPartial(),
-      output: AppConfigSchema,
-    })
+    .input(AppConfigSchema.partial())
+    .output(AppConfigSchema)
     .handler(
       async ({ input }) => await services.getConfigService().update(input)
     ),
-});
+};
