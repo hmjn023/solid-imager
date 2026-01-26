@@ -44,7 +44,7 @@ function ConfigForm(props: { data: AppConfig }) {
       <div class="mb-6 flex items-center justify-between">
         <h1 class="font-bold text-3xl">Settings</h1>
         <Button
-          disabled={form.state.isSubmitting || !form.state.isDirty}
+          disabled={form.state.isSubmitting}
           onClick={() => form.handleSubmit()}
         >
           {form.state.isSubmitting ? "Saving..." : "Save Changes"}
