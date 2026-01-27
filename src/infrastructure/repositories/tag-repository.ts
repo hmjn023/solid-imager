@@ -255,13 +255,45 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         });
 
         if (mediaTagsToInsert.length > 0) {
+          // Priority: comfyui_workflow > manual > AI
+          // Update source and confidence ONLY if the new source has higher or equal priority
+          // or if the current source is lower priority.
+          // Since we can't easily express "if new is manual and old is AI" in a single static SQL statement
+          // without extensive CASE WHENs that depend on the input row's source (which is constant per batch here but conceptually row-dependent),
+          // we use a CASE statement.
+
+          // Logic:
+          // If existing is comfyui_workflow: NEVER update (unless new is also comfyui_workflow, then update confidence)
+          // If existing is manual: Update if new is comfyui_workflow.
+          // If existing is AI: Update if new is anything (manual, comfyui, or AI update).
+
+          // However, `source` argument is constant for the whole batch.
+          // We can simplify the logic based on the *input* source.
+
+          let sourceUpdateSql = sql`excluded.source`;
+          let confidenceUpdateSql = sql`excluded.confidence`;
+
+          if (source === "AI") {
+            // Only update if current is 'AI' (or implicitly if it didn't exist, which insert handles)
+            // If current is 'manual' or 'comfyui_workflow', DO NOT update.
+            sourceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
+            confidenceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
+          } else if (source === "manual") {
+            // Update if current is 'AI' or 'manual'.
+            // If current is 'comfyui_workflow', DO NOT update.
+            sourceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.source ELSE media_tags.source END`;
+            confidenceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_tags.confidence END`;
+          }
+          // If source is 'comfyui_workflow', it overrides everything (default behavior of upsert is fine, or we can be explicit)
+
           await (t as unknown as TransactionClient)
             .insert(mediaTags)
             .values(mediaTagsToInsert)
             .onConflictDoUpdate({
               target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
               set: {
-                confidence: sql`excluded.confidence`,
+                confidence: confidenceUpdateSql,
+                source: sourceUpdateSql,
               },
             });
         }

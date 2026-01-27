@@ -415,7 +415,21 @@ export default function MediaSidebar(props: MediaSidebarProps) {
           <h2 class="font-semibold text-lg">Positive Tags</h2>
           <div class="flex flex-wrap gap-2">
             <For each={positiveTags()}>
-              {(tag) => <Badge>{tag.name}</Badge>}
+              {(tag) => {
+                let badgeClass = "";
+                if (tag.source === "AI") {
+                  badgeClass =
+                    "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+                } else if (tag.source === "comfyui_workflow") {
+                  badgeClass =
+                    "bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+                }
+                return (
+                  <Badge class={badgeClass} title={`Source: ${tag.source}`}>
+                    {tag.name}
+                  </Badge>
+                );
+              }}
             </For>
           </div>
         </div>
@@ -426,7 +440,25 @@ export default function MediaSidebar(props: MediaSidebarProps) {
           <h2 class="font-semibold text-lg">Negative Tags</h2>
           <div class="flex flex-wrap gap-2">
             <For each={negativeTags()}>
-              {(tag) => <Badge variant="destructive">{tag.name}</Badge>}
+              {(tag) => {
+                let badgeClass = "";
+                if (tag.source === "AI") {
+                  badgeClass =
+                    "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
+                } else if (tag.source === "comfyui_workflow") {
+                  badgeClass =
+                    "bg-green-50 text-green-800 hover:bg-green-100 border-green-200 border";
+                }
+                return (
+                  <Badge
+                    class={badgeClass}
+                    title={`Source: ${tag.source}`}
+                    variant="destructive"
+                  >
+                    {tag.name}
+                  </Badge>
+                );
+              }}
             </For>
           </div>
         </div>
