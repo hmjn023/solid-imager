@@ -9,12 +9,17 @@ import {
 } from "~/domain/tagging/schemas";
 
 export class PythonClient implements IAiClient {
-  private readonly baseUrl: string;
-  private readonly timeoutMs: number;
+  private baseUrl: string;
+  private timeoutMs: number;
 
   constructor(baseUrl = "http://localhost:8000", timeoutMs = 30_000) {
     this.baseUrl = baseUrl;
     this.timeoutMs = timeoutMs;
+  }
+
+  updateConfig(config: { baseUrl: string; timeoutMs: number }) {
+    this.baseUrl = config.baseUrl;
+    this.timeoutMs = config.timeoutMs;
   }
 
   getBaseUrl(): string {

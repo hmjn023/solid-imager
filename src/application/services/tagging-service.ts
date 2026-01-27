@@ -6,7 +6,6 @@ import type {
   CcipFeatureResponse,
   TaggingResponse,
 } from "~/domain/tagging/schemas";
-import type { PythonClient } from "~/infrastructure/ai/python-client";
 import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
@@ -116,7 +115,8 @@ export class TaggingService {
    * Path-based API only works when AI service can access the file system
    */
   private isAiServiceLocal(): boolean {
-    const baseUrl = (this.aiClient as PythonClient).getBaseUrl?.();
+    const client = this.aiClient as unknown as { getBaseUrl?: () => string };
+    const baseUrl = client.getBaseUrl?.();
     if (!baseUrl) {
       return true; // Fallback: assume local
     }

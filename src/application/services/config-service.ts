@@ -171,8 +171,9 @@ export class ConfigServiceImpl {
 
       while (remainingKey.length > 0) {
         const keys = Object.keys(currentSchemaNode || {});
-        // 現在のノードのキーから、remainingKey の先頭と一致するものを探す
-        const matchingKey = keys.find((k) =>
+        // Sort keys by length (descending) to match the longest key first (avoid prefix collisions)
+        const sortedKeys = keys.sort((a, b) => b.length - a.length);
+        const matchingKey = sortedKeys.find((k) =>
           remainingKey.startsWith(k.toUpperCase())
         );
 

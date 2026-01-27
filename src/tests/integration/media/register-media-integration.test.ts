@@ -100,7 +100,7 @@ describe("registerExistingMedia Integration", () => {
     // Verify thumbnail generation (wait for background job)
     // Note: Using the default thumbnailDir from config which is ".thumbnails"
     const thumbnailPath = path.join(
-      ".thumbnails",
+      ".cache/thumbnails",
       mediaSource.id,
       `${mediaList[0].id}.webp`
     );

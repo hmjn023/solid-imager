@@ -5,15 +5,18 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, beforeEach, vi } from "vitest";
 
-// Mock logger module to include updateLogLevel
-vi.mock("~/infrastructure/logger", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("~/infrastructure/logger")>();
-  return {
-    ...actual,
-    updateLogLevel: vi.fn(),
-  };
-});
+// Mock logger module
+vi.mock("~/infrastructure/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    warn: vi.fn(),
+    trace: vi.fn(),
+  },
+  updateLogLevel: vi.fn(),
+}));
 
 // サービス登録を全テスト開始前に行う
 beforeAll(async () => {
