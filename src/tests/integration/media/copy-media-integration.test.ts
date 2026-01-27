@@ -73,6 +73,45 @@ describe("MediaService - Copy Media Integration", () => {
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
 
+    // Mock ConfigService
+    const mockConfigService = {
+      get: vi.fn().mockReturnValue({
+        jobs: {
+          concurrency: 3,
+          pollIntervalMs: 1000,
+          enableAutoTagging: false,
+        },
+        ai: {
+          baseUrl: "http://localhost:8000",
+          timeoutMs: 30_000,
+        },
+        storage: {
+          thumbnailDir: ".cache/thumbnails",
+          thumbnailSize: 512,
+          thumbnailQuality: 80,
+        },
+        media: {
+          supportedExtensions: {
+            image: [".jpg", ".jpeg", ".png", ".webp"],
+            video: [".mp4", ".webm", ".mov"],
+            audio: [".mp3", ".wav"],
+          },
+          tagExtraction: {
+            comfyui: {
+              positiveNodeTypes: ["CLIPTextEncode"],
+              negativeKeywords: ["negative"],
+              negativeTags: ["lowres"],
+            },
+          },
+        },
+        logging: {
+          level: "info",
+        },
+      }),
+      onChange: vi.fn(),
+    };
+    services.registerConfigService(mockConfigService as any);
+
     // Clean DB
     await db.delete(mediaProjects);
     await db.delete(mediaCharacters);

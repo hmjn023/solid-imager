@@ -12,11 +12,29 @@ import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-re
 
 const sourceRepo = new DrizzleSourceRepository();
 
+const DEFAULT_THUMBNAIL_DIR = ".cache/thumbnails";
 const DEFAULT_THUMBNAIL_SIZE = 512;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
 
+/**
+ * Gets storage config with safe fallback for tests or when ConfigService is not registered
+ */
+function getStorageConfig() {
+  try {
+    return services.getConfigService().get().storage;
+  } catch {
+    // Fallback for tests or when ConfigService is not registered
+    return {
+      thumbnailDir: DEFAULT_THUMBNAIL_DIR,
+      thumbnailSize: DEFAULT_THUMBNAIL_SIZE,
+      thumbnailQuality: DEFAULT_THUMBNAIL_QUALITY,
+    };
+  }
+}
+
 export function getSourceCacheDir(mediaSourceId: string): string {
-  return path.join(".cache/thumbnails", mediaSourceId);
+  const storageConfig = getStorageConfig();
+  return path.join(storageConfig.thumbnailDir, mediaSourceId);
 }
 
 /**
@@ -57,8 +75,9 @@ export async function generateThumbnail(
 ): Promise<void> {
   await ensureCacheDir(mediaSourceId);
 
-  const size = DEFAULT_THUMBNAIL_SIZE;
-  const quality = DEFAULT_THUMBNAIL_QUALITY;
+  const storageConfig = getStorageConfig();
+  const size = storageConfig.thumbnailSize;
+  const quality = storageConfig.thumbnailQuality;
 
   const inputPath = path.join(sourcePath, media.filePath);
   const outputPath = getThumbnailPath(mediaSourceId, media.id);

@@ -92,6 +92,9 @@ export default function Nav() {
                 Docs
               </a>
             </li>
+            <li class={`border-b-2 ${active("/config")} mx-1.5 sm:mx-6`}>
+              <a href="/config">Settings</a>
+            </li>
           </ul>
           <div class="ml-auto flex items-center gap-2" id="nav-actions">
             <PendingDownloadsIndicator />

@@ -5,6 +5,19 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, beforeEach, vi } from "vitest";
 
+// Mock logger module
+vi.mock("~/infrastructure/logger", () => ({
+  logger: {
+    info: vi.fn(),
+    debug: vi.fn(),
+    error: vi.fn(),
+    fatal: vi.fn(),
+    warn: vi.fn(),
+    trace: vi.fn(),
+  },
+  updateLogLevel: vi.fn(),
+}));
+
 // サービス登録を全テスト開始前に行う
 beforeAll(async () => {
   const { bootstrap } = await import("~/infrastructure/bootstrap");

@@ -47,13 +47,18 @@ export class TaggingService {
       throw new Error("Media source not found");
     }
 
-    if (mediaSource.type === "local") {
+    // Check if AI service is accessible locally (can use path-based API)
+    // If AI service is on remote host, we must send the file buffer
+    const canUsePathApi = this.isAiServiceLocal();
+
+    if (mediaSource.type === "local" && canUsePathApi) {
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);
       return await this.aiClient.tagImageByPath(fullPath);
     }
-    // Fallback for non-local sources (fetch content and send buffer)
-    // This might be slow but it works
+    // Send file buffer when:
+    // - AI service is remote (can't access local paths)
+    // - Media source is not local
     const { buffer } = await MediaService.getMediaContent(
       mediaSourceId,
       mediaId
@@ -79,7 +84,10 @@ export class TaggingService {
       throw new Error("Media source not found");
     }
 
-    if (mediaSource.type === "local") {
+    // Check if AI service is accessible locally (can use path-based API)
+    const canUsePathApi = this.isAiServiceLocal();
+
+    if (mediaSource.type === "local" && canUsePathApi) {
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);
       return await this.aiClient.extractCcipFeatureByPath(fullPath);
@@ -100,6 +108,31 @@ export class TaggingService {
       feature2
     );
     return result.difference;
+  }
+
+  /**
+   * Check if AI service is running on localhost
+   * Path-based API only works when AI service can access the file system
+   */
+  private isAiServiceLocal(): boolean {
+    const client = this.aiClient as unknown as { getBaseUrl?: () => string };
+    const baseUrl = client.getBaseUrl?.();
+    if (!baseUrl) {
+      return true; // Fallback: assume local
+    }
+
+    try {
+      const url = new URL(baseUrl);
+      const host = url.hostname.toLowerCase();
+      return (
+        host === "localhost" ||
+        host === "127.0.0.1" ||
+        host === "::1" ||
+        host === "0.0.0.0"
+      );
+    } catch {
+      return true; // Fallback: assume local if URL parsing fails
+    }
   }
 }
 

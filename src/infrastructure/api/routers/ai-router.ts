@@ -6,6 +6,7 @@ import {
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
 } from "~/domain/tagging/schemas";
+import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {
   tag: os
@@ -16,17 +17,22 @@ export const aiRouter = {
       ])
     )
     .handler(async ({ input }) => {
-      if ("file" in input) {
-        const buffer = await input.file.arrayBuffer();
-        return await taggingService.getTags(buffer);
-      }
+      try {
+        if ("file" in input) {
+          const buffer = await input.file.arrayBuffer();
+          return await taggingService.getTags(buffer);
+        }
 
-      const { mediaSourceId, mediaId } = input;
-      if (!(mediaSourceId && mediaId)) {
-        throw new Error("mediaSourceId and mediaId are required");
-      }
+        const { mediaSourceId, mediaId } = input;
+        if (!(mediaSourceId && mediaId)) {
+          throw new Error("mediaSourceId and mediaId are required");
+        }
 
-      return await taggingService.getTagsForMedia(mediaSourceId, mediaId);
+        return await taggingService.getTagsForMedia(mediaSourceId, mediaId);
+      } catch (error) {
+        logger.error({ err: error, input }, "AI tagging failed");
+        throw error;
+      }
     }),
 
   ccipFeature: os

@@ -1,3 +1,4 @@
+import type { AppConfig } from "~/domain/config/config-schema";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
@@ -5,8 +6,8 @@ import { logger } from "~/infrastructure/logger";
 export class JobWorker {
   private isRunning = false;
   private timeoutId: NodeJS.Timeout | null = null;
-  private readonly pollIntervalMs = 1000;
-  private readonly concurrency = 3;
+  private pollIntervalMs = 1000;
+  private concurrency = 3;
   private activeJobs = 0;
 
   private readonly jobRepo: IJobRepository;
@@ -33,6 +34,28 @@ export class JobWorker {
       this.timeoutId = null;
     }
     logger.info("Job processing worker stopped");
+  }
+
+  updateConfig(config: AppConfig) {
+    const oldConcurrency = this.concurrency;
+    const oldPollInterval = this.pollIntervalMs;
+
+    this.concurrency = config.jobs.concurrency;
+    this.pollIntervalMs = config.jobs.pollIntervalMs;
+
+    if (
+      (oldConcurrency !== this.concurrency ||
+        oldPollInterval !== this.pollIntervalMs) &&
+      this.isRunning
+    ) {
+      logger.info(
+        {
+          concurrency: this.concurrency,
+          pollIntervalMs: this.pollIntervalMs,
+        },
+        "JobWorker config updated"
+      );
+    }
   }
 
   private async poll() {

@@ -5,6 +5,7 @@
 import path from "node:path";
 // Registry for backward compatibility proxy
 
+import type { ConfigServiceImpl } from "~/application/services/config-service";
 import type { Media, MediaMetadataContext } from "~/domain/media/schemas";
 // Repository Interfaces
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
@@ -31,6 +32,7 @@ export class MediaProcessingServiceImpl {
   private readonly ipRepo: IIpRepository;
   private readonly projectRepo: IProjectRepository;
   private readonly jobRepo: IJobRepository;
+  private readonly configService: ConfigServiceImpl;
 
   // biome-ignore lint/nursery/useMaxParams: DI requires multiple repositories
   constructor(
@@ -41,9 +43,8 @@ export class MediaProcessingServiceImpl {
     characterRepo: CharacterRepository,
     ipRepo: IIpRepository,
     projectRepo: IProjectRepository,
-    jobRepo: IJobRepository
-    // ImageProcessor, SseManager, JobManager are currently static/modules,
-    // keeping them as imports for now as per scope, or inject if they have interfaces
+    jobRepo: IJobRepository,
+    configService: ConfigServiceImpl
   ) {
     this.sourceRepo = sourceRepo;
     this.mediaRepo = mediaRepo;
@@ -53,10 +54,12 @@ export class MediaProcessingServiceImpl {
     this.ipRepo = ipRepo;
     this.projectRepo = projectRepo;
     this.jobRepo = jobRepo;
+    this.configService = configService;
   }
 
-  // Configuration check (could be injected config service)
-  private readonly enableAutoTagging = false;
+  private get enableAutoTagging(): boolean {
+    return this.configService.get().jobs.enableAutoTagging;
+  }
 
   /**
    * Unified entry point for media registration and processing.
@@ -81,10 +84,11 @@ export class MediaProcessingServiceImpl {
 
     // Determine media type
     const ext = path.extname(relativePath).toLowerCase();
+    const extensions = this.configService.get().media.supportedExtensions;
     let mediaType: "image" | "video" | "audio" = "image";
-    if ([".mp4", ".webm", ".mov"].includes(ext)) {
+    if (extensions.video.includes(ext)) {
       mediaType = "video";
-    } else if ([".mp3", ".wav"].includes(ext)) {
+    } else if (extensions.audio.includes(ext)) {
       mediaType = "audio";
     }
 
