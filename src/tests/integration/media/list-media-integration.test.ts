@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
-import { pythonClient } from "~/infrastructure/ai/python-client";
+import { PythonClient } from "~/infrastructure/ai/python-client";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
@@ -64,7 +64,7 @@ describe("listMedia Integration", () => {
     services.registerProjectRepository(ProjectRepository);
     services.registerCharacterRepository(new DrizzleCharacterRepository());
     services.registerIpRepository(IpRepository);
-    services.registerAiClient(pythonClient);
+    services.registerAiClient(new PythonClient());
 
     await db.delete(medias);
 

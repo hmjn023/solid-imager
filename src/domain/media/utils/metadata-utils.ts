@@ -1,15 +1,21 @@
 import type { ExtractedData } from "~/domain/media/schemas";
-import { extractTagsFromWorkflow } from "~/domain/tags/extractor";
+import {
+  extractTagsFromWorkflow,
+  type TagExtractionOptions,
+} from "~/domain/tags/extractor";
 import { type Workflow, workflowSchema } from "~/domain/tags/schemas";
 
-function parseWorkflowAndExtractTags(text: string): {
+function parseWorkflowAndExtractTags(
+  text: string,
+  options?: TagExtractionOptions
+): {
   parsed: Workflow | null;
   tags: ExtractedData["tags"];
 } {
   const tags: ExtractedData["tags"] = [];
   try {
     const parsed = workflowSchema.parse(JSON.parse(text));
-    const extracted = extractTagsFromWorkflow(parsed);
+    const extracted = extractTagsFromWorkflow(parsed, options);
     if (extracted) {
       for (const t of extracted.positiveTags) {
         tags.push({ name: t.name, type: "positive" as const });
@@ -24,10 +30,13 @@ function parseWorkflowAndExtractTags(text: string): {
   }
 }
 
-function processCommentChunk(chunk: {
-  keyword: string;
-  text: string;
-}): Partial<ExtractedData> {
+function processCommentChunk(
+  chunk: {
+    keyword: string;
+    text: string;
+  },
+  options?: TagExtractionOptions
+): Partial<ExtractedData> {
   // InvokeAI prompt format is a JSON object containing the prompt itself.
   if (chunk.keyword === "prompt") {
     try {
@@ -35,7 +44,7 @@ function processCommentChunk(chunk: {
       const parsed = JSON.parse(chunk.text);
       if (typeof parsed === "object" && parsed !== null && "nodes" in parsed) {
         // This looks like a ComfyUI workflow embedded in a prompt
-        const { tags } = parseWorkflowAndExtractTags(chunk.text);
+        const { tags } = parseWorkflowAndExtractTags(chunk.text, options);
         return { prompt: chunk.text, tags };
       }
       return { prompt: chunk.text, tags: [] };
@@ -46,7 +55,7 @@ function processCommentChunk(chunk: {
   }
 
   if (chunk.keyword === "workflow") {
-    const { parsed, tags } = parseWorkflowAndExtractTags(chunk.text);
+    const { parsed, tags } = parseWorkflowAndExtractTags(chunk.text, options);
     return { workflow: parsed, tags };
   }
 
@@ -54,7 +63,8 @@ function processCommentChunk(chunk: {
 }
 
 export function extractDataFromComments(
-  comments: { keyword: string; text: string }[]
+  comments: { keyword: string; text: string }[],
+  options?: TagExtractionOptions
 ): ExtractedData {
   const finalData: ExtractedData = {
     tags: [],
@@ -63,7 +73,7 @@ export function extractDataFromComments(
   };
 
   for (const chunk of comments) {
-    const processedChunk = processCommentChunk(chunk);
+    const processedChunk = processCommentChunk(chunk, options);
     if (processedChunk.tags) {
       finalData.tags.push(...processedChunk.tags);
     }

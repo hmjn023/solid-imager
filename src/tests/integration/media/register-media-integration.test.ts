@@ -98,8 +98,9 @@ describe("registerExistingMedia Integration", () => {
     expect(mediaList[0].height).toBe(ExpectedHeight);
 
     // Verify thumbnail generation (wait for background job)
+    // Note: Using the default thumbnailDir from config which is ".thumbnails"
     const thumbnailPath = path.join(
-      ".cache/thumbnails",
+      ".thumbnails",
       mediaSource.id,
       `${mediaList[0].id}.webp`
     );

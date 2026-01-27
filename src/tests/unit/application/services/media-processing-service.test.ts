@@ -31,6 +31,24 @@ const mockJobRepo = {
   create: vi.fn(),
 };
 
+const mockConfigService = {
+  get: vi.fn().mockReturnValue({
+    jobs: {
+      concurrency: 3,
+      pollIntervalMs: 1000,
+      enableAutoTagging: false,
+    },
+    media: {
+      supportedExtensions: {
+        image: [".jpg", ".jpeg", ".png", ".webp"],
+        video: [".mp4", ".webm", ".mov"],
+        audio: [".mp3", ".wav"],
+      },
+    },
+  }),
+  onChange: vi.fn(),
+};
+
 describe("MediaProcessingService", () => {
   let service: MediaProcessingServiceImpl;
 
@@ -43,7 +61,8 @@ describe("MediaProcessingService", () => {
       mockCharacterRepo as any,
       mockIpRepo as any,
       mockProjectRepo as any,
-      mockJobRepo as any
+      mockJobRepo as any,
+      mockConfigService as any
     );
   });
 

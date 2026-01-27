@@ -138,6 +138,45 @@ describe("Reproduction: Copy Media Job Type", () => {
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
 
+    // Mock ConfigService
+    const mockConfigService = {
+      get: vi.fn().mockReturnValue({
+        jobs: {
+          concurrency: 3,
+          pollIntervalMs: 1000,
+          enableAutoTagging: false,
+        },
+        ai: {
+          baseUrl: "http://localhost:8000",
+          timeoutMs: 30_000,
+        },
+        storage: {
+          thumbnailDir: ".cache/thumbnails",
+          thumbnailSize: 512,
+          thumbnailQuality: 80,
+        },
+        media: {
+          supportedExtensions: {
+            image: [".jpg", ".jpeg", ".png", ".webp"],
+            video: [".mp4", ".webm", ".mov"],
+            audio: [".mp3", ".wav"],
+          },
+          tagExtraction: {
+            comfyui: {
+              positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
+              negativeKeywords: ["negative"],
+              negativeTags: ["lowres"],
+            },
+          },
+        },
+        logging: {
+          level: "info",
+        },
+      }),
+      onChange: vi.fn(),
+    };
+    services.registerConfigService(mockConfigService as any);
+
     // Instantiate and Register MediaProcessingService
     const { MediaProcessingServiceImpl } = await import(
       "~/application/services/media-processing-service"
@@ -150,7 +189,8 @@ describe("Reproduction: Copy Media Job Type", () => {
       mockCharRepo,
       mockIpRepo,
       mockProjectRepo,
-      mockJobRepo as any
+      mockJobRepo as any,
+      mockConfigService as any
     );
     services.registerMediaProcessingService(mediaProcessingService);
   });

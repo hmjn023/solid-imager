@@ -10,14 +10,22 @@ import {
 
 export class PythonClient implements IAiClient {
   private readonly baseUrl: string;
+  private readonly timeoutMs: number;
 
-  constructor(baseUrl = "http://localhost:8000") {
+  constructor(baseUrl = "http://localhost:8000", timeoutMs = 30_000) {
     this.baseUrl = baseUrl;
+    this.timeoutMs = timeoutMs;
+  }
+
+  private createAbortSignal(): AbortSignal {
+    return AbortSignal.timeout(this.timeoutMs);
   }
 
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`);
+      const response = await fetch(`${this.baseUrl}/health`, {
+        signal: this.createAbortSignal(),
+      });
       return response.ok;
     } catch {
       return false;
@@ -31,6 +39,7 @@ export class PythonClient implements IAiClient {
     const response = await fetch(`${this.baseUrl}/tag`, {
       method: "POST",
       body: formData,
+      signal: this.createAbortSignal(),
     });
 
     if (!response.ok) {
@@ -48,6 +57,7 @@ export class PythonClient implements IAiClient {
     const response = await fetch(`${this.baseUrl}/tag`, {
       method: "POST",
       body: formData,
+      signal: this.createAbortSignal(),
     });
 
     if (!response.ok) {
@@ -67,6 +77,7 @@ export class PythonClient implements IAiClient {
     const response = await fetch(`${this.baseUrl}/ccip/feature`, {
       method: "POST",
       body: formData,
+      signal: this.createAbortSignal(),
     });
 
     if (!response.ok) {
@@ -84,6 +95,7 @@ export class PythonClient implements IAiClient {
     const response = await fetch(`${this.baseUrl}/ccip/feature`, {
       method: "POST",
       body: formData,
+      signal: this.createAbortSignal(),
     });
 
     if (!response.ok) {
@@ -106,6 +118,7 @@ export class PythonClient implements IAiClient {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ feature1, feature2 }),
+      signal: this.createAbortSignal(),
     });
 
     if (!response.ok) {
@@ -118,5 +131,3 @@ export class PythonClient implements IAiClient {
     return ccipDifferenceResponseSchema.parse(data);
   }
 }
-
-export const pythonClient = new PythonClient();

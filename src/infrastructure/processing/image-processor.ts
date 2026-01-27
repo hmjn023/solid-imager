@@ -10,6 +10,7 @@ import sharp from "sharp";
 // Default cache is too aggressive for development environment
 sharp.cache({ memory: 100, items: 200, files: 20 });
 
+import { services } from "~/application/registry";
 import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "~/domain/services/image-processor";
@@ -188,7 +189,33 @@ export class LocalImageProcessor implements IImageProcessor {
         }
       }
 
-      const { tags, prompt, workflow } = extractDataFromComments(comments);
+      // Get tag extraction options from config with fallback
+      let tagExtractionOptions: {
+        positiveNodeTypes: string[];
+        negativeKeywords: string[];
+        negativeTags: string[];
+      };
+      try {
+        const tagExtractionConfig = services.getConfigService().get().media
+          .tagExtraction.comfyui;
+        tagExtractionOptions = {
+          positiveNodeTypes: tagExtractionConfig.positiveNodeTypes,
+          negativeKeywords: tagExtractionConfig.negativeKeywords,
+          negativeTags: tagExtractionConfig.negativeTags,
+        };
+      } catch {
+        // Fallback for tests or when ConfigService is not registered
+        tagExtractionOptions = {
+          positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
+          negativeKeywords: ["negative"],
+          negativeTags: ["lowres"],
+        };
+      }
+
+      const { tags, prompt, workflow } = extractDataFromComments(
+        comments,
+        tagExtractionOptions
+      );
       return { tags, prompt, workflow };
     } catch (error) {
       logger.error(
