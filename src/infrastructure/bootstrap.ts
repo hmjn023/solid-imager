@@ -1,8 +1,10 @@
 import { services } from "~/application/registry";
+import { ConfigServiceImpl } from "~/application/services/config-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import { pythonClient } from "~/infrastructure/ai/python-client";
+import { PythonClient } from "~/infrastructure/ai/python-client";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
@@ -14,7 +16,27 @@ import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-re
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
+export let isBootstrapped = false;
+
 export function bootstrap() {
+  if (isBootstrapped) {
+    return;
+  }
+  isBootstrapped = true;
+
+  // Initialize and load configuration
+  const configService = new ConfigServiceImpl();
+  configService.load();
+  services.registerConfigService(configService);
+
+  const config = configService.get();
+
+  // Initialize log level from config and subscribe to changes
+  updateLogLevel(config.logging.level);
+  configService.onChange((newConfig) =>
+    updateLogLevel(newConfig.logging.level)
+  );
+
   // Register Repositories
   services.registerMediaRepository(MediaRepository);
   services.registerSourceRepository(new DrizzleSourceRepository());
@@ -30,9 +52,19 @@ export function bootstrap() {
   // Register Services
   services.registerStorageService(LocalMediaStorage);
   services.registerImageProcessor(ImageProcessor);
+
+  // Initialize PythonClient with config values
+  const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
   services.registerAiClient(pythonClient);
+  configService.onChange((newConfig) =>
+    pythonClient.updateConfig(newConfig.ai)
+  );
 
   const jobWorker = new JobWorker(jobRepo, processJob);
+  // Initialize worker with current config and subscribe to changes
+  jobWorker.updateConfig(configService.get());
+  configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
+
   services.registerJobWorker(jobWorker);
 
   // Register MediaProcessingService (Implementation)
@@ -45,7 +77,8 @@ export function bootstrap() {
       services.getCharacterRepository(),
       services.getIpRepository(),
       services.getProjectRepository(),
-      jobRepo
+      jobRepo,
+      configService
     )
   );
 

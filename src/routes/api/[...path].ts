@@ -6,11 +6,13 @@ import { app } from "~/infrastructure/api/app";
  * すべての /api/* リクエストを Elysia に委譲
  */
 export async function GET(event: APIEvent) {
-  return await app.handle(event.request);
+  const res = await app.handle(event.request);
+  return res;
 }
 
 export async function POST(event: APIEvent) {
-  return await app.handle(event.request);
+  const res = await app.handle(event.request);
+  return res;
 }
 
 export async function PUT(event: APIEvent) {

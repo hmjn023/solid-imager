@@ -12,7 +12,7 @@ import {
 } from "vitest";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
-import { pythonClient } from "~/infrastructure/ai/python-client";
+import { PythonClient } from "~/infrastructure/ai/python-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
@@ -57,7 +57,7 @@ describe("getMediaDetails", () => {
     services.registerProjectRepository(ProjectRepository);
     services.registerCharacterRepository(new DrizzleCharacterRepository());
     services.registerIpRepository(IpRepository);
-    services.registerAiClient(pythonClient);
+    services.registerAiClient(new PythonClient());
 
     // Dynamically import dependencies
     const pgliteModule = await import("@electric-sql/pglite");

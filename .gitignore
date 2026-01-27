@@ -48,3 +48,6 @@ test-results/
 __pycache__/
 *.pyc
 public/docs/
+
+# Config
+config.json

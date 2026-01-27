@@ -14,3 +14,11 @@ export const logger = pino({
       }
     : undefined,
 });
+
+/**
+ * Updates the log level dynamically.
+ * @param level - The new log level (trace, debug, info, warn, error, fatal)
+ */
+export function updateLogLevel(level: string): void {
+  logger.level = level;
+}
