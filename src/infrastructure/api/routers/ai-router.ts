@@ -1,7 +1,9 @@
 import { os } from "@orpc/server";
 import { z } from "zod";
+import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import {
+  batchTaggingRequestSchema,
   ccipDifferenceRequestSchema,
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
@@ -65,4 +67,15 @@ export const aiRouter = {
       async ({ input }) =>
         await taggingService.getCcipDifference(input.feature1, input.feature2)
     ),
+
+  batchTagging: os
+    .input(batchTaggingRequestSchema)
+    .handler(async ({ input }) => {
+      const jobRepo = services.getJobRepository();
+      await jobRepo.create({
+        type: "bulk_tagging_dispatch",
+        payload: input,
+      });
+      return { success: true, message: "Batch tagging started" };
+    }),
 };

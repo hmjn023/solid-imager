@@ -1,0 +1,1 @@
+ALTER TABLE "media_ips" ADD COLUMN "confidence" real;

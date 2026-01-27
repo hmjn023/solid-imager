@@ -43,6 +43,7 @@ type MediaTagResult = {
   createdAt: Date;
   updatedAt: Date;
   type: "positive" | "negative";
+  confidence: number | null;
 };
 
 function mapToMediaTag(row: MediaTagResult): MediaTag {
@@ -57,6 +58,7 @@ function mapToMediaTag(row: MediaTagResult): MediaTag {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     type: row.type,
+    confidence: row.confidence,
   };
 }
 
@@ -174,11 +176,12 @@ export class DrizzleTagRepository implements TagRepositoryDef {
           description: tags.description,
           attribute: tags.attribute,
           color: tags.color,
-          source: tags.source,
+          source: mediaTags.source,
           authorId: tags.authorId,
           createdAt: tags.createdAt,
           updatedAt: tags.updatedAt,
           type: mediaTags.tagType,
+          confidence: mediaTags.confidence,
         })
         .from(mediaTags)
         .innerJoin(tags, eq(mediaTags.tagId, tags.id))

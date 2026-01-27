@@ -1,7 +1,10 @@
 import path from "node:path";
 import { services } from "~/application/registry";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
+import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository";
 import type {
   CcipFeatureResponse,
   TaggingResponse,
@@ -13,10 +16,23 @@ import { MediaService } from "./media-service";
 export class TaggingService {
   private readonly aiClient: IAiClient;
   private readonly sourceRepo: SourceRepository;
+  private readonly tagRepo: TagRepositoryDef;
+  private readonly characterRepo: CharacterRepository;
+  private readonly ipRepo: IIpRepository;
 
-  constructor(aiClient: IAiClient, sourceRepo: SourceRepository) {
+  // biome-ignore lint/nursery/useMaxParams: Dependency injection
+  constructor(
+    aiClient: IAiClient,
+    sourceRepo: SourceRepository,
+    tagRepo: TagRepositoryDef,
+    characterRepo: CharacterRepository,
+    ipRepo: IIpRepository
+  ) {
     this.aiClient = aiClient;
     this.sourceRepo = sourceRepo;
+    this.tagRepo = tagRepo;
+    this.characterRepo = characterRepo;
+    this.ipRepo = ipRepo;
   }
 
   async isServiceAvailable(): Promise<boolean> {
@@ -27,9 +43,11 @@ export class TaggingService {
     return await this.aiClient.tagImage(imageBuffer);
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
   async getTagsForMedia(
     mediaSourceId: string,
-    mediaId: string
+    mediaId: string,
+    options?: { skipCache?: boolean }
   ): Promise<TaggingResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
     if (media.mediaType !== "image") {
@@ -41,11 +59,65 @@ export class TaggingService {
         ips_mapping: {},
       };
     }
+
+    // 1. Check Cache (DB)
+    if (!options?.skipCache) {
+      const existingTags = await this.tagRepo.findByMediaId(mediaId);
+      const aiTags = existingTags.filter((t) => t.source === "AI");
+
+      if (aiTags.length > 0) {
+        const aiCharacters = (
+          await this.characterRepo.getMediaCharacters(mediaId)
+        ).filter((c) => c.associationSource === "AI");
+        const aiIps = (await this.ipRepo.getMediaIps(mediaId)).filter(
+          (i) => i.associationSource === "AI"
+        );
+
+        // Reconstruct response
+        const response: TaggingResponse = {
+          general: {},
+          character: {},
+          ips: aiIps.map((i) => i.name),
+          // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+          ips_mapping: {},
+        };
+
+        for (const tag of aiTags) {
+          // biome-ignore lint/style/noMagicNumbers: Default confidence
+          response.general[tag.name] = tag.confidence ?? 1.0;
+        }
+        for (const char of aiCharacters) {
+          // biome-ignore lint/style/noMagicNumbers: Default confidence
+          response.character[char.name] = char.confidence ?? 1.0;
+        }
+
+        // ips_mapping: We need to know which IP a character belongs to.
+        const ipMap = new Map<string, string>(); // id -> name
+        for (const ip of aiIps) {
+          ipMap.set(ip.id, ip.name);
+          response.ips_mapping[ip.name] = [];
+        }
+
+        for (const char of aiCharacters) {
+          if (char.ipId && ipMap.has(char.ipId)) {
+            const ipName = ipMap.get(char.ipId);
+            if (ipName) {
+              response.ips_mapping[ipName].push(char.name);
+            }
+          }
+        }
+
+        return response;
+      }
+    }
+
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
       throw new Error("Media source not found");
     }
+
+    let response: TaggingResponse;
 
     // Check if AI service is accessible locally (can use path-based API)
     // If AI service is on remote host, we must send the file buffer
@@ -54,16 +126,88 @@ export class TaggingService {
     if (mediaSource.type === "local" && canUsePathApi) {
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);
-      return await this.aiClient.tagImageByPath(fullPath);
+      response = await this.aiClient.tagImageByPath(fullPath);
+    } else {
+      // Send file buffer when:
+      // - AI service is remote (can't access local paths)
+      // - Media source is not local
+      const { buffer } = await MediaService.getMediaContent(
+        mediaSourceId,
+        mediaId
+      );
+      response = await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
     }
-    // Send file buffer when:
-    // - AI service is remote (can't access local paths)
-    // - Media source is not local
-    const { buffer } = await MediaService.getMediaContent(
-      mediaSourceId,
-      mediaId
+
+    // Save to DB
+    await this.saveTags(mediaId, response);
+
+    return response;
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
+  private async saveTags(
+    mediaId: string,
+    response: TaggingResponse
+  ): Promise<void> {
+    // 1. Tags
+    const tagsToInsert = Object.entries(response.general).map(
+      ([name, confidence]) => ({
+        name,
+        type: "positive" as const,
+        confidence,
+      })
     );
-    return await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
+    await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
+
+    // 2. IPs
+    const ipNameIdMap = new Map<string, string>();
+
+    for (const ipName of response.ips) {
+      let ip = await this.ipRepo.findByName(ipName);
+      if (!ip) {
+        try {
+          ip = await this.ipRepo.create({ name: ipName, source: "AI" });
+        } catch (_e) {
+          ip = await this.ipRepo.findByName(ipName);
+        }
+      }
+      if (ip) {
+        ipNameIdMap.set(ipName, ip.id);
+        // biome-ignore lint/style/noMagicNumbers: Default confidence
+        await this.ipRepo.addMedia(mediaId, ip.id, 1.0, "AI");
+      }
+    }
+
+    // 3. Characters
+    // ips_mapping: { ipName: [charName] }
+    const charToIpMap = new Map<string, string>(); // charName -> ipId
+    for (const [ipName, charNames] of Object.entries(response.ips_mapping)) {
+      const ipId = ipNameIdMap.get(ipName);
+      if (ipId) {
+        for (const charName of charNames) {
+          charToIpMap.set(charName, ipId);
+        }
+      }
+    }
+
+    for (const [charName, confidence] of Object.entries(response.character)) {
+      const ipId = charToIpMap.get(charName) ?? undefined;
+      let char = await this.characterRepo.findByName(charName);
+      if (!char) {
+        try {
+          char = await this.characterRepo.create({
+            name: charName,
+            ipId, // Link to IP if known
+            source: "AI",
+          });
+        } catch (_e) {
+          char = await this.characterRepo.findByName(charName);
+        }
+      }
+      if (char) {
+        await this.characterRepo.addToMedia(mediaId, char.id, confidence, "AI");
+      }
+    }
   }
 
   async getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
@@ -142,7 +286,10 @@ const getTaggingService = () => {
   if (!_taggingService) {
     _taggingService = new TaggingService(
       services.getAiClient(),
-      services.getSourceRepository()
+      services.getSourceRepository(),
+      services.getTagRepository(),
+      services.getCharacterRepository(),
+      services.getIpRepository()
     );
   }
   return _taggingService;
