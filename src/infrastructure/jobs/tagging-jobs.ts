@@ -5,9 +5,19 @@ import { db } from "~/infrastructure/db";
 import { type Job, medias, mediaTags } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
+type AutoTaggingJobPayload = {
+  mediaId: string;
+  mediaSourceId: string;
+  force?: boolean;
+};
+
+type BulkTaggingDispatchJobPayload = {
+  force?: boolean;
+  batchSize?: number;
+};
+
 export async function processAutoTaggingJob(job: Job): Promise<void> {
-  // biome-ignore lint/suspicious/noExplicitAny: Payload type
-  const payload = job.payload as any;
+  const payload = job.payload as AutoTaggingJobPayload;
   const { mediaId, mediaSourceId, force } = payload;
 
   if (!(mediaId && mediaSourceId)) {
@@ -25,8 +35,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 }
 
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
-  // biome-ignore lint/suspicious/noExplicitAny: Payload type
-  const payload = job.payload as any;
+  const payload = job.payload as BulkTaggingDispatchJobPayload;
   const force = payload?.force ?? false;
   // biome-ignore lint/style/noMagicNumbers: Default batch size
   const batchSize = payload?.batchSize ?? 1000;

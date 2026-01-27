@@ -5,6 +5,7 @@ import type { CharacterRepository } from "~/domain/repositories/character-reposi
 import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository";
+import { DEFAULT_MANUAL_CONFIDENCE } from "~/domain/tagging/constants";
 import type {
   CcipFeatureResponse,
   TaggingResponse,
@@ -83,12 +84,12 @@ export class TaggingService {
         };
 
         for (const tag of aiTags) {
-          // biome-ignore lint/style/noMagicNumbers: Default confidence
-          response.general[tag.name] = tag.confidence ?? 1.0;
+          response.general[tag.name] =
+            tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
         }
         for (const char of aiCharacters) {
-          // biome-ignore lint/style/noMagicNumbers: Default confidence
-          response.character[char.name] = char.confidence ?? 1.0;
+          response.character[char.name] =
+            char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
         }
 
         // ips_mapping: We need to know which IP a character belongs to.
@@ -173,8 +174,12 @@ export class TaggingService {
       }
       if (ip) {
         ipNameIdMap.set(ipName, ip.id);
-        // biome-ignore lint/style/noMagicNumbers: Default confidence
-        await this.ipRepo.addMedia(mediaId, ip.id, 1.0, "AI");
+        await this.ipRepo.addMedia(
+          mediaId,
+          ip.id,
+          DEFAULT_MANUAL_CONFIDENCE,
+          "AI"
+        );
       }
     }
 
