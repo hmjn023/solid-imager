@@ -148,6 +148,18 @@ export const IpRepository: IIpRepository = {
     tx?: Transaction
   ): Promise<void> {
     const client = (tx as unknown as TransactionClient) || db;
+
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.confidence ELSE media_ips.confidence END`;
+    } else if (source === "manual") {
+      sourceUpdateSql = sql`excluded.source`;
+      confidenceUpdateSql = sql`excluded.confidence`;
+    }
+
     await client
       .insert(mediaIps)
       .values({
@@ -159,7 +171,8 @@ export const IpRepository: IIpRepository = {
       .onConflictDoUpdate({
         target: [mediaIps.mediaId, mediaIps.ipId],
         set: {
-          confidence: sql`excluded.confidence`,
+          confidence: confidenceUpdateSql,
+          source: sourceUpdateSql,
         },
       });
   },
@@ -190,6 +203,14 @@ export const IpRepository: IIpRepository = {
       return;
     }
 
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.confidence ELSE media_ips.confidence END`;
+    }
+
     await client
       .insert(mediaIps)
       .values(
@@ -203,7 +224,8 @@ export const IpRepository: IIpRepository = {
       .onConflictDoUpdate({
         target: [mediaIps.mediaId, mediaIps.ipId],
         set: {
-          confidence: sql`excluded.confidence`,
+          confidence: confidenceUpdateSql,
+          source: sourceUpdateSql,
         },
       });
   },

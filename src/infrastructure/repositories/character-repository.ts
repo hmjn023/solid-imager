@@ -227,6 +227,21 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   ): Promise<void> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
+
+      let sourceUpdateSql = sql`excluded.source`;
+      let confidenceUpdateSql = sql`excluded.confidence`;
+
+      if (source === "AI") {
+        // Only update if current is 'AI'
+        sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
+        confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
+      } else if (source === "manual") {
+        // Update if current is 'AI' or 'manual' (always update basically, unless we have higher prio than manual which we don't for chars yet)
+        // Assuming manual is highest priority for characters for now.
+        sourceUpdateSql = sql`excluded.source`;
+        confidenceUpdateSql = sql`excluded.confidence`;
+      }
+
       await client
         .insert(mediaCharacters)
         .values({
@@ -238,7 +253,8 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         .onConflictDoUpdate({
           target: [mediaCharacters.mediaId, mediaCharacters.characterId],
           set: {
-            confidence: sql`excluded.confidence`,
+            confidence: confidenceUpdateSql,
+            source: sourceUpdateSql,
           },
         });
     } catch (error: unknown) {
@@ -282,6 +298,14 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       return;
     }
 
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
+    }
+
     try {
       await client
         .insert(mediaCharacters)
@@ -296,7 +320,8 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         .onConflictDoUpdate({
           target: [mediaCharacters.mediaId, mediaCharacters.characterId],
           set: {
-            confidence: sql`excluded.confidence`,
+            confidence: confidenceUpdateSql,
+            source: sourceUpdateSql,
           },
         });
     } catch (error) {
