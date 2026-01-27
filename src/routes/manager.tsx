@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { Checkbox } from "~/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -51,14 +52,16 @@ import {
   fetchAllIps,
   updateIp,
 } from "~/infrastructure/api-clients/ips-api";
+import { client } from "~/infrastructure/api-clients/orpc-client";
 import {
   createProject,
   deleteProject,
   fetchAllProjects,
   updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import { fetchSources } from "~/infrastructure/api-clients/sources-api";
 
-type EntityType = "projects" | "ips" | "characters";
+type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
 
 export default function ManagerPage() {
@@ -73,6 +76,13 @@ export default function ManagerPage() {
     ipId?: string;
   }>({ name: "", description: "" });
 
+  // Tagging State
+  const [selectedSourceId, setSelectedSourceId] = createSignal<
+    string | undefined
+  >(undefined);
+  const [forceRetag, setForceRetag] = createSignal(false);
+  const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
+
   const queryClient = useQueryClient();
 
   const projects = createQuery(() => ({
@@ -86,6 +96,10 @@ export default function ManagerPage() {
   const characters = createQuery(() => ({
     queryKey: ["allCharacters"],
     queryFn: fetchAllCharacters,
+  }));
+  const sources = createQuery(() => ({
+    queryKey: ["allSources"],
+    queryFn: fetchSources,
   }));
 
   const invalidateQueries = () => {
@@ -193,6 +207,26 @@ export default function ManagerPage() {
     }
   };
 
+  const handleStartBatchTagging = async () => {
+    try {
+      setTaggingStatus("Starting...");
+      const result = await client.ai.batchTagging({
+        force: forceRetag(),
+        mediaSourceId: selectedSourceId(),
+      });
+      if (result.success) {
+        toast.success(result.message);
+        setTaggingStatus("Batch tagging started successfully.");
+      } else {
+        toast.error("Failed to start batch tagging.");
+        setTaggingStatus("Failed to start batch tagging.");
+      }
+    } catch (e) {
+      toast.error(`Error: ${(e as Error).message}`);
+      setTaggingStatus(`Error: ${(e as Error).message}`);
+    }
+  };
+
   return (
     <div class="container mx-auto p-8">
       <div class="mb-8 flex items-center justify-between">
@@ -234,54 +268,133 @@ export default function ManagerPage() {
         >
           Characters
         </button>
+        <button
+          class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+            activeTab() === "tagging"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+          onClick={() => setActiveTab("tagging")}
+          type="button"
+        >
+          Batch Tagging
+        </button>
       </div>
 
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <For each={getActiveItems()}>
-          {(item) => (
-            <Card>
-              <CardHeader>
-                <CardTitle>{item.name}</CardTitle>
-                <Show when={item.description}>
-                  <CardDescription>{item.description}</CardDescription>
-                </Show>
-                <Show
-                  when={
-                    activeTab() === "characters" && (item as Character).ipId
+      <Show when={activeTab() === "tagging"}>
+        <div class="max-w-xl space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Batch AI Tagging</CardTitle>
+              <CardDescription>
+                Analyze and tag images across your media sources using AI.
+              </CardDescription>
+            </CardHeader>
+            <CardContent class="space-y-4">
+              <div class="grid gap-2">
+                <Label>Target Media Source (Optional)</Label>
+                <Select
+                  onChange={(value) => setSelectedSourceId(value?.id)}
+                  options={sources.data || []}
+                  optionTextValue="name"
+                  optionValue="id"
+                  placeholder="All Sources"
+                  value={
+                    selectedSourceId()
+                      ? sources.data?.find((s) => s.id === selectedSourceId())
+                      : undefined
                   }
                 >
-                  <CardDescription>
-                    IP:{" "}
-                    {ips.data?.find((ip) => ip.id === (item as Character).ipId)
-                      ?.name || "Unknown"}
-                  </CardDescription>
-                </Show>
-              </CardHeader>
-              <CardContent>
-                <div class="flex justify-end space-x-2">
-                  <Button
-                    onClick={() => openEditDialog(item)}
-                    size="sm"
-                    variant="outline"
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      setItemToDelete(item);
-                      setIsDeleteDialogOpen(true);
-                    }}
-                    size="sm"
-                    variant="destructive"
-                  >
-                    Delete
-                  </Button>
+                  <SelectTrigger>
+                    <SelectValue>
+                      {(state) => state.selectedOption()?.name || "All Sources"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent />
+                </Select>
+                <p class="text-muted-foreground text-xs">
+                  Leave empty to process all sources.
+                </p>
+              </div>
+
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  checked={forceRetag()}
+                  id="force-retag"
+                  onChange={setForceRetag}
+                />
+                <Label for="force-retag">Force Re-tagging</Label>
+              </div>
+              <p class="text-muted-foreground text-xs">
+                If checked, existing AI tags will be ignored and images will be
+                re-analyzed.
+              </p>
+
+              <div class="pt-2">
+                <Button onClick={handleStartBatchTagging}>
+                  Start Batch Tagging
+                </Button>
+              </div>
+
+              <Show when={taggingStatus()}>
+                <div class="mt-4 rounded bg-gray-100 p-2 text-sm">
+                  {taggingStatus()}
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </For>
-      </div>
+              </Show>
+            </CardContent>
+          </Card>
+        </div>
+      </Show>
+
+      <Show when={activeTab() !== "tagging"}>
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <For each={getActiveItems()}>
+            {(item) => (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{item.name}</CardTitle>
+                  <Show when={item.description}>
+                    <CardDescription>{item.description}</CardDescription>
+                  </Show>
+                  <Show
+                    when={
+                      activeTab() === "characters" && (item as Character).ipId
+                    }
+                  >
+                    <CardDescription>
+                      IP:{" "}
+                      {ips.data?.find(
+                        (ip) => ip.id === (item as Character).ipId
+                      )?.name || "Unknown"}
+                    </CardDescription>
+                  </Show>
+                </CardHeader>
+                <CardContent>
+                  <div class="flex justify-end space-x-2">
+                    <Button
+                      onClick={() => openEditDialog(item)}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setItemToDelete(item);
+                        setIsDeleteDialogOpen(true);
+                      }}
+                      size="sm"
+                      variant="destructive"
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </For>
+        </div>
+      </Show>
 
       <Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen()}>
         <DialogContent>

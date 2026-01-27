@@ -14,6 +14,7 @@ type AutoTaggingJobPayload = {
 type BulkTaggingDispatchJobPayload = {
   force?: boolean;
   batchSize?: number;
+  mediaSourceId?: string;
 };
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
@@ -39,13 +40,15 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
   const force = payload?.force ?? false;
   // biome-ignore lint/style/noMagicNumbers: Default batch size
   const batchSize = payload?.batchSize ?? 1000;
+  const mediaSourceId = payload?.mediaSourceId;
 
   const jobRepo = services.getJobRepository();
 
   // Find images
-  // Logic: media_type = 'image' AND (force OR NOT EXISTS(AI tags))
+  // Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT EXISTS(AI tags))
   const whereClause = and(
     eq(medias.mediaType, "image"),
+    mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
     force
       ? undefined
       : notExists(
