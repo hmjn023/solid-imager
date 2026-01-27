@@ -29,7 +29,7 @@ export const AiConfigSchema = z.object({
 });
 const defaultAiConfig = AiConfigSchema.parse({});
 
-const DEFAULT_THUMB_DIR = "./.cache/thumbnails";
+const DEFAULT_THUMB_DIR = ".cache/thumbnails";
 const DEFAULT_THUMB_SIZE = 512;
 const DEFAULT_THUMB_QUALITY = 80;
 const MIN_THUMB_SIZE = 64;

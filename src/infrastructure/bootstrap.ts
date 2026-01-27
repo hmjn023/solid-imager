@@ -16,7 +16,14 @@ import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-re
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
+export let isBootstrapped = false;
+
 export function bootstrap() {
+  if (isBootstrapped) {
+    return;
+  }
+  isBootstrapped = true;
+
   // Initialize and load configuration
   const configService = new ConfigServiceImpl();
   configService.load();

@@ -11,7 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
-    "ai:start": "uv run uvicorn src-python.main:app --reload --port 8000",
+    "ai:start": "uv run uvicorn src-python.main:app --reload --host 0.0.0.0 --port 8000",
     "db:push": "drizzle-kit push",
     "db:drop": "drizzle-kit drop",
     "db:dump": "bun scripts/dump-db.ts",

@@ -9,9 +9,11 @@ vi.mock("node:fs/promises");
 vi.mock("~/infrastructure/logger", () => ({
   logger: {
     info: vi.fn(),
+    debug: vi.fn(),
     error: vi.fn(),
     fatal: vi.fn(),
   },
+  updateLogLevel: vi.fn(),
 }));
 
 describe("ConfigService", () => {

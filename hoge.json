@@ -1,0 +1,56 @@
+{
+  "version": "1.0.0",
+  "jobs": {
+    "concurrency": 3,
+    "pollIntervalMs": 1000,
+    "enableAutoTagging": true
+  },
+  "ai": {
+    "baseUrl": "http://192.168.1.100:8000",
+    "timeoutMs": 30000
+  },
+  "storage": {
+    "thumbnailDir": ".cache/thumbnails",
+    "thumbnailSize": 256,
+    "thumbnailQuality": 80
+  },
+  "media": {
+    "supportedExtensions": {
+      "image": [
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp"
+      ],
+      "video": [
+        ".mp4",
+        ".webm",
+        ".mov"
+      ],
+      "audio": [
+        ".mp3",
+        ".wav",
+        ".ogg"
+      ]
+    },
+    "tagExtraction": {
+      "comfyui": {
+        "positiveNodeTypes": [
+          "CLIPTextEncode"
+        ],
+        "negativeKeywords": [
+          "low quality",
+          "worst quality"
+        ],
+        "negativeTags": [
+          "lowres",
+          "bad anatomy"
+        ]
+      }
+    }
+  },
+  "logging": {
+    "level": "info"
+  }
+}

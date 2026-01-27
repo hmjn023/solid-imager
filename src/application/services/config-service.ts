@@ -80,7 +80,7 @@ export class ConfigServiceImpl {
         );
       }
 
-      logger.info({ config: this.config }, "Configuration loaded");
+      logger.debug({ config: this.config }, "Configuration loaded");
     } catch (error) {
       logger.fatal({ err: error }, "Failed to load configuration");
       throw error;

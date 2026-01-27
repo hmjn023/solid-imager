@@ -4,6 +4,10 @@ import { createHandler, StartServer } from "@solidjs/start/server";
 // Initialize file system monitoring on server startup
 if (typeof window === "undefined") {
   // Server-side only
+  import("~/infrastructure/bootstrap").then(({ bootstrap }) => {
+    bootstrap();
+  });
+
   import("~/infrastructure/jobs/file-watcher-service")
     .then((module) => {
       module.FileWatcherService.startMonitoringAll().catch((_error) => {
