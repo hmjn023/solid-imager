@@ -7,7 +7,8 @@ import { beforeAll, beforeEach, vi } from "vitest";
 
 // Mock logger module to include updateLogLevel
 vi.mock("~/infrastructure/logger", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("~/infrastructure/logger")>();
+  const actual =
+    await importOriginal<typeof import("~/infrastructure/logger")>();
   return {
     ...actual,
     updateLogLevel: vi.fn(),

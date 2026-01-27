@@ -17,6 +17,10 @@ export class PythonClient implements IAiClient {
     this.timeoutMs = timeoutMs;
   }
 
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   private createAbortSignal(): AbortSignal {
     return AbortSignal.timeout(this.timeoutMs);
   }
