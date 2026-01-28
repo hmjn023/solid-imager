@@ -187,13 +187,19 @@ export class TaggingService {
     }
 
     // 3. Characters
-    // ips_mapping: { ipName: [charName] }
+    // ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
     const charToIpMap = new Map<string, string>(); // charName -> ipId
-    for (const [ipName, charNames] of Object.entries(response.ips_mapping)) {
-      const ipId = ipNameIdMap.get(ipName);
-      if (ipId) {
-        for (const charName of charNames) {
+
+    for (const [charName, linkedIpNames] of Object.entries(
+      response.ips_mapping
+    )) {
+      // Find the first linked IP that exists in our DB map
+      // (Currently we only support 1 IP per character in the DB schema)
+      for (const linkedIpName of linkedIpNames) {
+        const ipId = ipNameIdMap.get(linkedIpName);
+        if (ipId) {
           charToIpMap.set(charName, ipId);
+          break; // Use the first matching IP
         }
       }
     }
