@@ -161,9 +161,13 @@ export class TaggingService {
     await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
 
     // 2. IPs
+    const ipNames = response.ips;
     const ipNameIdMap = new Map<string, string>();
+    const ipsToLink: { id: string; confidence?: number }[] = [];
 
-    for (const ipName of response.ips) {
+    // Process IPs sequentially to handle potential creations (bulk create/find not fully supported by repo yet without refactor)
+    // TODO: Refactor IpRepository to support findOrCreateBulk for true bulk performance
+    for (const ipName of ipNames) {
       let ip = await this.ipRepo.findByName(ipName);
       if (!ip) {
         try {
@@ -174,8 +178,12 @@ export class TaggingService {
       }
       if (ip) {
         ipNameIdMap.set(ipName, ip.id);
-        await this.ipRepo.addMedia(mediaId, ip.id, undefined, "AI");
+        ipsToLink.push({ id: ip.id });
       }
+    }
+
+    if (ipsToLink.length > 0) {
+      await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI");
     }
 
     // 3. Characters
@@ -190,9 +198,14 @@ export class TaggingService {
       }
     }
 
+    const charsToLink: { id: string; confidence: number }[] = [];
+
+    // Process Characters sequentially for creation/update
+    // TODO: Refactor CharacterRepository to support bulk operations
     for (const [charName, confidence] of Object.entries(response.character)) {
       const ipId = charToIpMap.get(charName) ?? undefined;
       let char = await this.characterRepo.findByName(charName);
+
       if (!char) {
         try {
           char = await this.characterRepo.create({
@@ -203,10 +216,22 @@ export class TaggingService {
         } catch (_e) {
           char = await this.characterRepo.findByName(charName);
         }
+      } else if (!char.ipId && ipId) {
+        // Link orphaned character to detected IP
+        try {
+          await this.characterRepo.update(char.id, { ipId });
+        } catch (_e) {
+          // Ignore update errors (e.g. race conditions)
+        }
       }
+
       if (char) {
-        await this.characterRepo.addToMedia(mediaId, char.id, confidence, "AI");
+        charsToLink.push({ id: char.id, confidence });
       }
+    }
+
+    if (charsToLink.length > 0) {
+      await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
     }
   }
 
