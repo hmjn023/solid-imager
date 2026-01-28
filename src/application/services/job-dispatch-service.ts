@@ -36,7 +36,7 @@ export type DeferredActions = {
 // Helper for unified job processing (Called by JobWorker)
 export async function processJob(job: DbJob) {
   const mediaSourceId = job.mediaSourceId;
-  if (!mediaSourceId) {
+  if (!mediaSourceId && job.type !== "bulk_tagging_dispatch") {
     throw new Error(`Job ${job.id} missing mediaSourceId`);
   }
 

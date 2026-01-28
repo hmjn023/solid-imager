@@ -74,6 +74,7 @@ export const aiRouter = {
       const jobRepo = services.getJobRepository();
       await jobRepo.create({
         type: "bulk_tagging_dispatch",
+        mediaSourceId: input.mediaSourceId, // Optional but good for tracking if provided
         payload: input,
       });
       return { success: true, message: "Batch tagging started" };
