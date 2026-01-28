@@ -11,6 +11,7 @@ export const newCharacterSchema = z.object({
   name: z.string().min(1),
   ipId: z.string().uuid().optional(),
   description: z.string().optional(),
+  source: z.string().optional(),
 });
 
 export const updateCharacterSchema = newCharacterSchema.partial();

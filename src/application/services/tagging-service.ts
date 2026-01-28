@@ -1,7 +1,11 @@
 import path from "node:path";
 import { services } from "~/application/registry";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
+import type { CharacterRepository } from "~/domain/repositories/character-repository";
+import type { IIpRepository } from "~/domain/repositories/ip-repository";
 import type { SourceRepository } from "~/domain/repositories/source-repository";
+import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository";
+import { DEFAULT_MANUAL_CONFIDENCE } from "~/domain/tagging/constants";
 import type {
   CcipFeatureResponse,
   TaggingResponse,
@@ -10,13 +14,28 @@ import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
+import { ResourceConflictError } from "~/domain/errors";
+
 export class TaggingService {
   private readonly aiClient: IAiClient;
   private readonly sourceRepo: SourceRepository;
+  private readonly tagRepo: TagRepositoryDef;
+  private readonly characterRepo: CharacterRepository;
+  private readonly ipRepo: IIpRepository;
 
-  constructor(aiClient: IAiClient, sourceRepo: SourceRepository) {
+  // biome-ignore lint/nursery/useMaxParams: Dependency injection
+  constructor(
+    aiClient: IAiClient,
+    sourceRepo: SourceRepository,
+    tagRepo: TagRepositoryDef,
+    characterRepo: CharacterRepository,
+    ipRepo: IIpRepository
+  ) {
     this.aiClient = aiClient;
     this.sourceRepo = sourceRepo;
+    this.tagRepo = tagRepo;
+    this.characterRepo = characterRepo;
+    this.ipRepo = ipRepo;
   }
 
   async isServiceAvailable(): Promise<boolean> {
@@ -27,9 +46,11 @@ export class TaggingService {
     return await this.aiClient.tagImage(imageBuffer);
   }
 
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
   async getTagsForMedia(
     mediaSourceId: string,
-    mediaId: string
+    mediaId: string,
+    options?: { skipCache?: boolean }
   ): Promise<TaggingResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
     if (media.mediaType !== "image") {
@@ -41,11 +62,64 @@ export class TaggingService {
         ips_mapping: {},
       };
     }
+
+    // 1. Check Cache (DB)
+    if (!options?.skipCache) {
+      const existingTags = await this.tagRepo.findByMediaId(mediaId);
+      const aiTags = existingTags.filter((t) => t.source === "AI");
+
+      if (aiTags.length > 0) {
+        const aiCharacters = (
+          await this.characterRepo.getMediaCharacters(mediaId)
+        ).filter((c) => c.associationSource === "AI");
+        const aiIps = (await this.ipRepo.getMediaIps(mediaId)).filter(
+          (i) => i.associationSource === "AI"
+        );
+
+        // Reconstruct response
+        const response: TaggingResponse = {
+          general: {},
+          character: {},
+          ips: aiIps.map((i) => i.name),
+          // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+          ips_mapping: {},
+        };
+
+        for (const tag of aiTags) {
+          response.general[tag.name] =
+            tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+        }
+        for (const char of aiCharacters) {
+          response.character[char.name] =
+            char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+        }
+
+        // ips_mapping: We need to know which IP a character belongs to.
+        const ipMap = new Map<string, string>(); // id -> name
+        for (const ip of aiIps) {
+          ipMap.set(ip.id, ip.name);
+        }
+
+        for (const char of aiCharacters) {
+          if (char.ipId && ipMap.has(char.ipId)) {
+            const ipName = ipMap.get(char.ipId);
+            if (ipName) {
+              response.ips_mapping[char.name] = [ipName];
+            }
+          }
+        }
+
+        return response;
+      }
+    }
+
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
       throw new Error("Media source not found");
     }
+
+    let response: TaggingResponse;
 
     // Check if AI service is accessible locally (can use path-based API)
     // If AI service is on remote host, we must send the file buffer
@@ -54,16 +128,130 @@ export class TaggingService {
     if (mediaSource.type === "local" && canUsePathApi) {
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);
-      return await this.aiClient.tagImageByPath(fullPath);
+      response = await this.aiClient.tagImageByPath(fullPath);
+    } else {
+      // Send file buffer when:
+      // - AI service is remote (can't access local paths)
+      // - Media source is not local
+      const { buffer } = await MediaService.getMediaContent(
+        mediaSourceId,
+        mediaId
+      );
+      response = await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
     }
-    // Send file buffer when:
-    // - AI service is remote (can't access local paths)
-    // - Media source is not local
-    const { buffer } = await MediaService.getMediaContent(
-      mediaSourceId,
-      mediaId
+
+    // Save to DB
+    await this.saveTags(mediaId, response);
+
+    return response;
+  }
+
+  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
+  private async saveTags(
+    mediaId: string,
+    response: TaggingResponse
+  ): Promise<void> {
+    // 1. Tags
+    const tagsToInsert = Object.entries(response.general).map(
+      ([name, confidence]) => ({
+        name,
+        type: "positive" as const,
+        confidence,
+      })
     );
-    return await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
+    await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
+
+    // 2. IPs
+    const ipNames = response.ips;
+    const ipNameIdMap = new Map<string, string>();
+    const ipsToLink: { id: string; confidence?: number }[] = [];
+
+    // Process IPs sequentially to handle potential creations (bulk create/find not fully supported by repo yet without refactor)
+    // TODO: Refactor IpRepository to support findOrCreateBulk for true bulk performance
+    for (const ipName of ipNames) {
+      let ip = await this.ipRepo.findByName(ipName);
+      if (!ip) {
+        try {
+          ip = await this.ipRepo.create({ name: ipName, source: "AI" });
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            ip = await this.ipRepo.findByName(ipName);
+          } else {
+            throw e;
+          }
+        }
+      }
+      if (ip) {
+        ipNameIdMap.set(ipName, ip.id);
+        ipsToLink.push({ id: ip.id });
+      }
+    }
+
+    if (ipsToLink.length > 0) {
+      await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI");
+    }
+
+    // 3. Characters
+    // ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
+    const charToIpMap = new Map<string, string>(); // charName -> ipId
+
+    for (const [charName, linkedIpNames] of Object.entries(
+      response.ips_mapping
+    )) {
+      // Find the first linked IP that exists in our DB map
+      // (Currently we only support 1 IP per character in the DB schema)
+      for (const linkedIpName of linkedIpNames) {
+        const ipId = ipNameIdMap.get(linkedIpName);
+        if (ipId) {
+          charToIpMap.set(charName, ipId);
+          break; // Use the first matching IP
+        }
+      }
+    }
+
+    const charsToLink: { id: string; confidence: number }[] = [];
+
+    // Process Characters sequentially for creation/update
+    // TODO: Refactor CharacterRepository to support bulk operations
+    for (const [charName, confidence] of Object.entries(response.character)) {
+      const ipId = charToIpMap.get(charName) ?? undefined;
+      let char = await this.characterRepo.findByName(charName);
+
+      if (!char) {
+        try {
+          char = await this.characterRepo.create({
+            name: charName,
+            ipId, // Link to IP if known
+            source: "AI",
+          });
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            char = await this.characterRepo.findByName(charName);
+          } else {
+            throw e;
+          }
+        }
+      } else if (!char.ipId && ipId) {
+        // Link orphaned character to detected IP
+        try {
+          await this.characterRepo.update(char.id, { ipId });
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            // Ignore conflict during update (e.g. race condition where another process updated it)
+          } else {
+            throw e;
+          }
+        }
+      }
+
+      if (char) {
+        charsToLink.push({ id: char.id, confidence });
+      }
+    }
+
+    if (charsToLink.length > 0) {
+      await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
+    }
   }
 
   async getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
@@ -142,7 +330,10 @@ const getTaggingService = () => {
   if (!_taggingService) {
     _taggingService = new TaggingService(
       services.getAiClient(),
-      services.getSourceRepository()
+      services.getSourceRepository(),
+      services.getTagRepository(),
+      services.getCharacterRepository(),
+      services.getIpRepository()
     );
   }
   return _taggingService;

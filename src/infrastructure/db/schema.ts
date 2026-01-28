@@ -493,6 +493,8 @@ export const mediaIps = pgTable(
     ipId: uuid("ip_id")
       .notNull()
       .references(() => ips.id, { onDelete: "cascade" }),
+    /** AIがIPを抽出した際の信頼度スコア (0.0-1.0)。手動の場合はNULL */
+    confidence: real("confidence"),
     /** メディアへのIP付与の起源 (manual, ai_generatedなど) */
     source: text("source").notNull().default("manual"),
   },

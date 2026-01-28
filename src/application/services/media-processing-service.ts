@@ -204,7 +204,10 @@ export class MediaProcessingServiceImpl {
     // Step 3: AI tagging
     if (this.enableAutoTagging && !payload?.skipMetadataExtraction) {
       try {
-        logger.info({ mediaId }, "AI tagging not yet implemented");
+        const { taggingService } = await import(
+          "~/application/services/tagging-service"
+        );
+        await taggingService.getTagsForMedia(mediaSourceId, mediaId);
       } catch (e) {
         logger.warn({ err: e, mediaId }, "AI tagging failed, skipping");
       }

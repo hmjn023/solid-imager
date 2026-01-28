@@ -891,6 +891,7 @@ export class MediaServiceImpl {
       await this.characterRepository.addToMediaBulk(
         newMediaId,
         sourceCharacters.map((c) => ({ id: c.id })),
+        "manual", // source
         tx
       );
     }
@@ -900,7 +901,8 @@ export class MediaServiceImpl {
     if (sourceIps.length > 0) {
       await this.ipRepository.addMediaBulk(
         newMediaId,
-        sourceIps.map((i) => i.id),
+        sourceIps.map((i) => ({ id: i.id })),
+        "manual", // source
         tx
       );
     }

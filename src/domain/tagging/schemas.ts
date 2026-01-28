@@ -39,3 +39,9 @@ export const ccipDifferenceRequestSchema = z.object({
   feature1: z.array(z.number()),
   feature2: z.array(z.number()),
 });
+
+export const batchTaggingRequestSchema = z.object({
+  force: z.boolean().optional(),
+  batchSize: z.number().optional(),
+  mediaSourceId: z.string().optional(),
+});
