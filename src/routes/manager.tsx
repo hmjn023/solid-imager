@@ -52,14 +52,14 @@ import {
   fetchAllIps,
   updateIp,
 } from "~/infrastructure/api-clients/ips-api";
-import { client } from "~/infrastructure/api-clients/orpc-client";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
   createProject,
   deleteProject,
   fetchAllProjects,
   updateProject,
 } from "~/infrastructure/api-clients/projects-api";
-import { fetchSources } from "~/infrastructure/api-clients/sources-api";
+import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
 type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
@@ -99,7 +99,7 @@ export default function ManagerPage() {
   }));
   const sources = createQuery(() => ({
     queryKey: ["allSources"],
-    queryFn: fetchSources,
+    queryFn: fetchMediaSources,
   }));
 
   const invalidateQueries = () => {
@@ -210,7 +210,7 @@ export default function ManagerPage() {
   const handleStartBatchTagging = async () => {
     try {
       setTaggingStatus("Starting...");
-      const result = await client.ai.batchTagging({
+      const result = await orpc.ai.batchTagging({
         force: forceRetag(),
         mediaSourceId: selectedSourceId(),
       });
@@ -294,20 +294,34 @@ export default function ManagerPage() {
               <div class="grid gap-2">
                 <Label>Target Media Source (Optional)</Label>
                 <Select
-                  onChange={(value) => setSelectedSourceId(value?.id)}
-                  options={sources.data || []}
+                  itemComponent={(props) => (
+                    <SelectItem item={props.item}>
+                      {props.item.rawValue.name}
+                    </SelectItem>
+                  )}
+                  onChange={(val) => setSelectedSourceId(val?.id || "")}
+                  options={Array.isArray(sources.data) ? sources.data : []}
                   optionTextValue="name"
                   optionValue="id"
                   placeholder="All Sources"
                   value={
                     selectedSourceId()
-                      ? sources.data?.find((s) => s.id === selectedSourceId())
-                      : undefined
+                      ? (Array.isArray(sources.data) ? sources.data : []).find(
+                          (s) => s.id === selectedSourceId()
+                        )
+                      : null
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue>
-                      {(state) => state.selectedOption()?.name || "All Sources"}
+                    <SelectValue<unknown>>
+                      {(state) => {
+                        const option = state.selectedOption();
+                        return option &&
+                          typeof option === "object" &&
+                          "name" in option
+                          ? (option as { name: string }).name
+                          : "All Sources";
+                      }}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent />
@@ -444,21 +458,30 @@ export default function ManagerPage() {
                       </SelectItem>
                     )}
                     onChange={(value) =>
-                      setFormData({ ...formData(), ipId: value?.id })
+                      setFormData({ ...formData(), ipId: value?.id || "" })
                     }
-                    options={ips.data || []}
+                    options={Array.isArray(ips.data) ? ips.data : []}
                     optionTextValue="name"
                     optionValue="id"
                     placeholder="Select an IP"
                     value={
                       formData().ipId
-                        ? ips.data?.find((ip) => ip.id === formData().ipId)
-                        : undefined
+                        ? (Array.isArray(ips.data) ? ips.data : []).find(
+                            (ip) => ip.id === formData().ipId
+                          )
+                        : null
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue<Ip>>
-                        {(state) => state.selectedOption()?.name}
+                      <SelectValue<unknown>>
+                        {(state) => {
+                          const option = state.selectedOption();
+                          return option &&
+                            typeof option === "object" &&
+                            "name" in option
+                            ? (option as { name: string }).name
+                            : "Select an IP";
+                        }}
                       </SelectValue>
                     </SelectTrigger>
                     <SelectContent />
