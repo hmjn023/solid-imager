@@ -98,14 +98,13 @@ export class TaggingService {
         const ipMap = new Map<string, string>(); // id -> name
         for (const ip of aiIps) {
           ipMap.set(ip.id, ip.name);
-          response.ips_mapping[ip.name] = [];
         }
 
         for (const char of aiCharacters) {
           if (char.ipId && ipMap.has(char.ipId)) {
             const ipName = ipMap.get(char.ipId);
             if (ipName) {
-              response.ips_mapping[ipName].push(char.name);
+              response.ips_mapping[char.name] = [ipName];
             }
           }
         }

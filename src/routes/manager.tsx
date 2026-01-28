@@ -465,7 +465,7 @@ export default function ManagerPage() {
                       </SelectItem>
                     )}
                     onChange={(value) =>
-                      setFormData({ ...formData(), ipId: value?.id || "" })
+                      setFormData({ ...formData(), ipId: value?.id })
                     }
                     options={Array.isArray(ips.data) ? ips.data : []}
                     optionTextValue="name"
