@@ -13,14 +13,14 @@ export function fetchAllCharacters() {
 export function createCharacter(data: {
   name: string;
   description?: string;
-  ipId?: string;
+  ipIds?: string[];
 }) {
   return orpc.characters.create(data);
 }
 
 export function updateCharacter(
   id: string,
-  data: { name?: string; description?: string; ipId?: string }
+  data: { name?: string; description?: string; ipIds?: string[] }
 ) {
   return orpc.characters.update({ id, data });
 }

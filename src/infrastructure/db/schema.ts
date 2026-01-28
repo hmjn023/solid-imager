@@ -380,10 +380,6 @@ export const characters = pgTable(
     id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
     /** キャラクター名 */
     name: text("name").notNull(),
-    /** どのIP(作品)に属しているか */
-    ipId: uuid("ip_id").references(() => ips.id, {
-      onDelete: "set null",
-    }),
     /** キャラクターの説明 */
     description: text("description").default(""),
     /** キャラクターの起源 (manual, ai_generatedなど) */
@@ -396,8 +392,34 @@ export const characters = pgTable(
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => ({
-    nameIpIdUnique: unique("name_ipId_unique").on(table.name, table.ipId),
-    ipIdIndex: index("idx_characters_ip_id").on(table.ipId),
+    nameUnique: unique("characters_name_unique").on(table.name),
+  })
+);
+
+/**
+ * Schema for the character_ips join table.
+ * Represents the many-to-many relationship between characters and IPs.
+ */
+export const characterIps = pgTable(
+  "character_ips",
+  {
+    /** キャラクターID */
+    characterId: uuid("character_id")
+      .notNull()
+      .references(() => characters.id, { onDelete: "cascade" }),
+    /** IP(作品)ID */
+    ipId: uuid("ip_id")
+      .notNull()
+      .references(() => ips.id, { onDelete: "cascade" }),
+    /** 起源 (manual, ai_generatedなど) */
+    source: text("source").notNull().default("manual"),
+  },
+  (table) => ({
+    pk: primaryKey({ columns: [table.characterId, table.ipId] }),
+    ipIdCharacterIdIndex: index("idx_character_ips_ip_id_character_id").on(
+      table.ipId,
+      table.characterId
+    ),
   })
 );
 
@@ -1010,24 +1032,37 @@ export const ipsRelations = relations(ips, ({ many }) => ({
   /** IPに属するメディア */
 
   media: many(mediaIps),
-  /** IPに属するキャラクター */
+  /** IPに属するキャラクター (中間テーブル経由) */
 
-  characters: many(characters),
+  characters: many(characterIps),
 }));
 
 /**
  * Defines the relations for the characters table.
  */
-export const charactersRelations = relations(characters, ({ one, many }) => ({
-  /** キャラクターが属するIP */
+export const charactersRelations = relations(characters, ({ many }) => ({
+  /** キャラクターが属するIP (中間テーブル経由) */
 
-  ip: one(ips, {
-    fields: [characters.ipId],
-    references: [ips.id],
-  }),
+  ips: many(characterIps),
   /** キャラクターが含まれるメディア */
 
   media: many(mediaCharacters),
+}));
+
+/**
+ * Defines the relations for the character_ips join table.
+ */
+export const characterIpsRelations = relations(characterIps, ({ one }) => ({
+  /** 中間テーブルが参照するキャラクター */
+  character: one(characters, {
+    fields: [characterIps.characterId],
+    references: [characters.id],
+  }),
+  /** 中間テーブルが参照するIP */
+  ip: one(ips, {
+    fields: [characterIps.ipId],
+    references: [ips.id],
+  }),
 }));
 
 /**
@@ -1324,6 +1359,15 @@ export type Character = InferSelectModel<typeof characters>;
  * Type definition for inserting a new character into the database.
  */
 export type NewCharacter = InferInsertModel<typeof characters>;
+
+/**
+ * Type definition for selecting a character IP relationship from the database.
+ */
+export type CharacterIp = InferSelectModel<typeof characterIps>;
+/**
+ * Type definition for inserting a new character IP relationship into the database.
+ */
+export type NewCharacterIp = InferInsertModel<typeof characterIps>;
 
 /**
  * Type definition for selecting a media character relationship from the database.

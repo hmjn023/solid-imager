@@ -25,6 +25,16 @@ import {
   CheckboxLabel,
 } from "~/components/ui/checkbox";
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxControl,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemLabel,
+  ComboboxTrigger,
+} from "~/components/ui/combobox";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -77,7 +87,7 @@ export default function ManagerPage() {
   const [formData, setFormData] = createSignal<{
     name: string;
     description: string;
-    ipId?: string;
+    ipIds?: string[];
   }>({ name: "", description: "" });
 
   // Tagging State
@@ -158,15 +168,16 @@ export default function ManagerPage() {
 
   const openEditDialog = (item: Entity) => {
     setEditingItem(item);
-    const initialData: { name: string; description: string; ipId?: string } = {
-      name: item.name,
-      description: item.description || "",
-    };
+    const initialData: { name: string; description: string; ipIds?: string[] } =
+      {
+        name: item.name,
+        description: item.description || "",
+      };
 
     if (activeTab() === "characters") {
       const char = item as Character;
-      if (char.ipId) {
-        initialData.ipId = char.ipId;
+      if (char.ips) {
+        initialData.ipIds = char.ips.map((ip) => ip.id);
       }
     }
 
@@ -379,14 +390,14 @@ export default function ManagerPage() {
                   </Show>
                   <Show
                     when={
-                      activeTab() === "characters" && (item as Character).ipId
+                      activeTab() === "characters" &&
+                      (item as Character).ips &&
+                      (item as Character).ips?.length > 0
                     }
                   >
                     <CardDescription>
-                      IP:{" "}
-                      {ips.data?.find(
-                        (ip) => ip.id === (item as Character).ipId
-                      )?.name || "Unknown"}
+                      IPs:{" "}
+                      {(item as Character).ips.map((ip) => ip.name).join(", ")}
                     </CardDescription>
                   </Show>
                 </CardHeader>
@@ -456,43 +467,42 @@ export default function ManagerPage() {
             </div>
             <Show when={activeTab() === "characters"}>
               <div class="grid grid-cols-4 items-center gap-4">
-                <Label class="text-right">IP</Label>
+                <Label class="text-right">IPs</Label>
                 <div class="col-span-3">
-                  <Select
-                    itemComponent={(props) => (
-                      <SelectItem item={props.item}>
-                        {props.item.rawValue.name}
-                      </SelectItem>
-                    )}
-                    onChange={(value) =>
-                      setFormData({ ...formData(), ipId: value?.id })
-                    }
+                  <Combobox
                     options={Array.isArray(ips.data) ? ips.data : []}
-                    optionTextValue="name"
                     optionValue="id"
-                    placeholder="Select an IP"
+                    optionTextValue="name"
+                    optionLabel="name"
+                    multiple
                     value={
-                      formData().ipId
-                        ? (Array.isArray(ips.data) ? ips.data : []).find(
-                            (ip) => ip.id === formData().ipId
+                      Array.isArray(ips.data)
+                        ? ips.data.filter((ip) =>
+                            formData().ipIds?.includes(ip.id)
                           )
-                        : null
+                        : []
                     }
+                    onChange={(values) =>
+                      setFormData({
+                        ...formData(),
+                        ipIds: values.map((v) => v.id),
+                      })
+                    }
+                    itemComponent={(props) => (
+                      <ComboboxItem item={props.item}>
+                        <ComboboxItemLabel>
+                          {props.item.rawValue.name}
+                        </ComboboxItemLabel>
+                        <ComboboxItemIndicator />
+                      </ComboboxItem>
+                    )}
                   >
-                    <SelectTrigger>
-                      <SelectValue<unknown>>
-                        {(state) => {
-                          const option = state.selectedOption();
-                          return option &&
-                            typeof option === "object" &&
-                            "name" in option
-                            ? (option as { name: string }).name
-                            : "Select an IP";
-                        }}
-                      </SelectValue>
-                    </SelectTrigger>
-                    <SelectContent />
-                  </Select>
+                    <ComboboxControl>
+                      <ComboboxInput placeholder="Select IPs..." />
+                      <ComboboxTrigger />
+                    </ComboboxControl>
+                    <ComboboxContent />
+                  </Combobox>
                 </div>
               </div>
             </Show>

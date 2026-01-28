@@ -12,13 +12,28 @@ import {
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { characters, mediaCharacters } from "~/infrastructure/db/schema";
+import {
+  characterIps,
+  characters,
+  mediaCharacters,
+} from "~/infrastructure/db/schema";
 
 export class DrizzleCharacterRepository implements CharacterRepository {
   async findAll(): Promise<Character[]> {
     try {
-      const results = await db.select().from(characters);
-      return results as Character[];
+      const results = await db.query.characters.findMany({
+        with: {
+          ips: {
+            with: {
+              ip: true,
+            },
+          },
+        },
+      });
+      return results.map((r) => ({
+        ...r,
+        ips: r.ips.map((i) => i.ip),
+      }));
     } catch (error) {
       throw new UnexpectedError("Failed to select characters", error);
     }
@@ -27,14 +42,23 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async findById(id: string, tx?: Transaction): Promise<Character | null> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const result = await client
-        .select()
-        .from(characters)
-        .where(eq(characters.id, id));
-      if (result.length === 0) {
+      const result = await client.query.characters.findFirst({
+        where: eq(characters.id, id),
+        with: {
+          ips: {
+            with: {
+              ip: true,
+            },
+          },
+        },
+      });
+      if (!result) {
         return null;
       }
-      return result[0] as Character;
+      return {
+        ...result,
+        ips: result.ips.map((i) => i.ip),
+      };
     } catch (error) {
       throw new UnexpectedError(
         `Failed to select character by ID: ${id}`,
@@ -46,14 +70,23 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async findByName(name: string, tx?: Transaction): Promise<Character | null> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const result = await client
-        .select()
-        .from(characters)
-        .where(eq(characters.name, name));
-      if (result.length === 0) {
+      const result = await client.query.characters.findFirst({
+        where: eq(characters.name, name),
+        with: {
+          ips: {
+            with: {
+              ip: true,
+            },
+          },
+        },
+      });
+      if (!result) {
         return null;
       }
-      return result[0] as Character;
+      return {
+        ...result,
+        ips: result.ips.map((i) => i.ip),
+      };
     } catch (error) {
       throw new UnexpectedError(
         `Failed to select character by name: ${name}`,
@@ -65,14 +98,28 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const result = await client
+      const { ipIds, ...charData } = character;
+
+      const [insertedChar] = await client
         .insert(characters)
         .values({
-          ...character,
-          description: character.description ?? "",
+          ...charData,
+          description: charData.description ?? "",
         })
         .returning();
-      return result[0] as Character;
+
+      if (ipIds && ipIds.length > 0) {
+        await client.insert(characterIps).values(
+          ipIds.map((ipId) => ({
+            characterId: insertedChar.id,
+            ipId,
+            source: character.source || "manual",
+          }))
+        );
+      }
+
+      // Re-fetch to return full object with IPs
+      return (await this.findById(insertedChar.id, tx)) as Character;
     } catch (error: unknown) {
       if (
         error &&
@@ -81,7 +128,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         (error as { code: string }).code === "23505"
       ) {
         throw new ResourceConflictError(
-          "Character with this name already exists in this IP"
+          "Character with this name already exists"
         );
       }
       throw new UnexpectedError("Failed to insert character", error);
@@ -95,19 +142,42 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   ): Promise<Character> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const result = await client
-        .update(characters)
-        .set({
-          ...character,
-          updatedAt: new Date(),
-        })
-        .where(eq(characters.id, id))
-        .returning();
+      const { ipIds, ...charData } = character;
 
-      if (result.length === 0) {
-        throw new ResourceNotFoundError("Character", id);
+      if (Object.keys(charData).length > 0) {
+        const result = await client
+          .update(characters)
+          .set({
+            ...charData,
+            updatedAt: new Date(),
+          })
+          .where(eq(characters.id, id))
+          .returning();
+
+        if (result.length === 0) {
+          throw new ResourceNotFoundError("Character", id);
+        }
       }
-      return result[0] as Character;
+
+      if (ipIds !== undefined) {
+        // Delete old IPs
+        await client
+          .delete(characterIps)
+          .where(eq(characterIps.characterId, id));
+
+        // Insert new IPs
+        if (ipIds.length > 0) {
+          await client.insert(characterIps).values(
+            ipIds.map((ipId) => ({
+              characterId: id,
+              ipId,
+              source: "manual",
+            }))
+          );
+        }
+      }
+
+      return (await this.findById(id, tx)) as Character;
     } catch (error) {
       if (error instanceof ResourceNotFoundError) {
         throw error;
@@ -119,7 +189,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         (error as { code: string }).code === "23505"
       ) {
         throw new ResourceConflictError(
-          "Character with this name already exists in this IP"
+          "Character with this name already exists"
         );
       }
       throw new UnexpectedError(
@@ -154,22 +224,26 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async findByMediaId(mediaId: string, tx?: Transaction): Promise<Character[]> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const results = await client
-        .select({
-          id: characters.id,
-          name: characters.name,
-          description: characters.description,
-          ipId: characters.ipId,
-          createdAt: characters.createdAt,
-          updatedAt: characters.updatedAt,
-        })
-        .from(characters)
-        .innerJoin(
-          mediaCharacters,
-          eq(characters.id, mediaCharacters.characterId)
-        )
-        .where(eq(mediaCharacters.mediaId, mediaId));
-      return results as Character[];
+      // Use query builder to get relations
+      const results = await client.query.mediaCharacters.findMany({
+        where: eq(mediaCharacters.mediaId, mediaId),
+        with: {
+          character: {
+            with: {
+              ips: {
+                with: {
+                  ip: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return results.map((r) => ({
+        ...r.character,
+        ips: r.character.ips.map((i) => i.ip),
+      }));
     } catch (error) {
       throw new UnexpectedError(
         `Failed to find characters for media: ${mediaId}`,
@@ -186,29 +260,27 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   > {
     try {
       const client = (tx as unknown as TransactionClient) || db;
-      const results = await client
-        .select({
-          id: characters.id,
-          name: characters.name,
-          description: characters.description,
-          ipId: characters.ipId,
-          createdAt: characters.createdAt,
-          updatedAt: characters.updatedAt,
-          source: characters.source,
-          aliases: characters.aliases,
-          confidence: mediaCharacters.confidence,
-          associationSource: mediaCharacters.source,
-        })
-        .from(characters)
-        .innerJoin(
-          mediaCharacters,
-          eq(characters.id, mediaCharacters.characterId)
-        )
-        .where(eq(mediaCharacters.mediaId, mediaId));
-      return results as (Character & {
-        confidence: number | null;
-        associationSource: string;
-      })[];
+      const results = await client.query.mediaCharacters.findMany({
+        where: eq(mediaCharacters.mediaId, mediaId),
+        with: {
+          character: {
+            with: {
+              ips: {
+                with: {
+                  ip: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      return results.map((r) => ({
+        ...r.character,
+        ips: r.character.ips.map((i) => i.ip),
+        confidence: r.confidence,
+        associationSource: r.source,
+      }));
     } catch (error) {
       throw new UnexpectedError(
         `Failed to find media characters for media: ${mediaId}`,

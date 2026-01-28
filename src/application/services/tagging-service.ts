@@ -101,11 +101,17 @@ export class TaggingService {
         }
 
         for (const char of aiCharacters) {
-          if (char.ipId && ipMap.has(char.ipId)) {
-            const ipName = ipMap.get(char.ipId);
-            if (ipName) {
-              response.ips_mapping[char.name] = [ipName];
+          const matchedIpNames: string[] = [];
+          for (const charIp of char.ips) {
+            if (ipMap.has(charIp.id)) {
+              const ipName = ipMap.get(charIp.id);
+              if (ipName) {
+                matchedIpNames.push(ipName);
+              }
             }
+          }
+          if (matchedIpNames.length > 0) {
+            response.ips_mapping[char.name] = matchedIpNames;
           }
         }
 
@@ -193,19 +199,20 @@ export class TaggingService {
 
     // 3. Characters
     // ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
-    const charToIpMap = new Map<string, string>(); // charName -> ipId
+    const charToIpIdsMap = new Map<string, string[]>(); // charName -> ipIds[]
 
     for (const [charName, linkedIpNames] of Object.entries(
       response.ips_mapping
     )) {
-      // Find the first linked IP that exists in our DB map
-      // (Currently we only support 1 IP per character in the DB schema)
+      const ipIds: string[] = [];
       for (const linkedIpName of linkedIpNames) {
         const ipId = ipNameIdMap.get(linkedIpName);
         if (ipId) {
-          charToIpMap.set(charName, ipId);
-          break; // Use the first matching IP
+          ipIds.push(ipId);
         }
+      }
+      if (ipIds.length > 0) {
+        charToIpIdsMap.set(charName, ipIds);
       }
     }
 
@@ -214,14 +221,14 @@ export class TaggingService {
     // Process Characters sequentially for creation/update
     // TODO: Refactor CharacterRepository to support bulk operations
     for (const [charName, confidence] of Object.entries(response.character)) {
-      const ipId = charToIpMap.get(charName) ?? undefined;
+      const ipIds = charToIpIdsMap.get(charName) ?? [];
       let char = await this.characterRepo.findByName(charName);
 
       if (!char) {
         try {
           char = await this.characterRepo.create({
             name: charName,
-            ipId, // Link to IP if known
+            ipIds, // Link to IPs if known
             source: "AI",
           });
         } catch (e) {
@@ -231,15 +238,30 @@ export class TaggingService {
             throw e;
           }
         }
-      } else if (!char.ipId && ipId) {
-        // Link orphaned character to detected IP
+      } else if (char.ips.length === 0 && ipIds.length > 0) {
+        // Link orphaned character (no IPs) to detected IPs
         try {
-          await this.characterRepo.update(char.id, { ipId });
+          await this.characterRepo.update(char.id, { ipIds });
         } catch (e) {
           if (e instanceof ResourceConflictError) {
-            // Ignore conflict during update (e.g. race condition where another process updated it)
+            // Ignore conflict during update
           } else {
             throw e;
+          }
+        }
+      } else if (ipIds.length > 0) {
+        // Character has existing IPs. We should check if we need to append new ones.
+        // We only append new ones, never remove existing ones for AI updates on existing chars
+        const existingIpIds = new Set(char.ips.map((i) => i.id));
+        const newIpIds = ipIds.filter((id) => !existingIpIds.has(id));
+
+        if (newIpIds.length > 0) {
+          try {
+            await this.characterRepo.update(char.id, {
+              ipIds: [...existingIpIds, ...newIpIds],
+            });
+          } catch (e) {
+            // Ignore conflict
           }
         }
       }

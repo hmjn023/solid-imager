@@ -9,6 +9,7 @@ import {
 import { db } from "~/infrastructure/db";
 import {
   authors,
+  characterIps,
   characters,
   ips,
   mediaAuthors,
@@ -392,6 +393,8 @@ export const BackupService = {
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaCharsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const characterIpsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaIpsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaUrlsData: any[] = [];
@@ -461,6 +464,19 @@ export const BackupService = {
               confidence: c.confidence ?? null,
               source: "restored",
             });
+
+            if (c.linkedIps && Array.isArray(c.linkedIps)) {
+              for (const ipName of c.linkedIps) {
+                const ipId = ipName ? ipMap.get(ipName) : undefined;
+                if (ipId) {
+                  characterIpsData.push({
+                    characterId: charId,
+                    ipId,
+                    source: "restored",
+                  });
+                }
+              }
+            }
           }
         }
       }
@@ -521,6 +537,9 @@ export const BackupService = {
     }
     if (mediaCharsData.length) {
       await insertChunked(mediaCharacters, mediaCharsData);
+    }
+    if (characterIpsData.length) {
+      await insertChunked(characterIps, characterIpsData);
     }
     if (mediaIpsData.length) {
       await insertChunked(mediaIps, mediaIpsData);
@@ -734,7 +753,9 @@ export const BackupService = {
           urls: true,
           tags: { with: { tag: true } },
           authors: { with: { author: true } },
-          characters: { with: { character: true } },
+          characters: {
+            with: { character: { with: { ips: { with: { ip: true } } } } },
+          },
           ips: { with: { ip: true } },
           projects: { with: { project: true } },
         },
@@ -796,7 +817,9 @@ export const BackupService = {
               urls: true,
               tags: { with: { tag: true } },
               authors: { with: { author: true } },
-              characters: { with: { character: true } },
+              characters: {
+                with: { character: { with: { ips: { with: { ip: true } } } } },
+              },
               ips: { with: { ip: true } },
               projects: { with: { project: true } },
             },
@@ -885,6 +908,7 @@ export const BackupService = {
         name: mc.character.name,
         description: mc.character.description,
         confidence: mc.confidence,
+        linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
       }));
 
       // Extract IPs
