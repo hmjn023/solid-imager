@@ -176,6 +176,7 @@ export const tagSchema = z.object({
   createdAt: z.coerce.date(),
   updatedAt: z.coerce.date(),
   type: z.enum(["positive", "negative"]), // from mediaTags
+  confidence: z.number().nullable().optional(), // from mediaTags
 });
 export type MediaTag = z.infer<typeof tagSchema>;
 

@@ -98,6 +98,8 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
     tags: row.tags.map((mt) => ({
       ...mt.tag,
       type: mt.tagType,
+      source: mt.source,
+      confidence: mt.confidence,
     })),
     generationInfo: row.generationInfo
       ? {

@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
@@ -28,6 +28,12 @@ export const IpRepository: IIpRepository = {
   async findById(id: string, tx?: Transaction): Promise<Ip | null> {
     const client = (tx as unknown as TransactionClient) || db;
     const result = await client.select().from(ips).where(eq(ips.id, id));
+    return result[0] ? mapToDomain(result[0]) : null;
+  },
+
+  async findByName(name: string, tx?: Transaction): Promise<Ip | null> {
+    const client = (tx as unknown as TransactionClient) || db;
+    const result = await client.select().from(ips).where(eq(ips.name, name));
     return result[0] ? mapToDomain(result[0]) : null;
   },
 
@@ -104,13 +110,71 @@ export const IpRepository: IIpRepository = {
     );
   },
 
+  async getMediaIps(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<
+    (Ip & { confidence: number | null; associationSource: string })[]
+  > {
+    const client = (tx as unknown as TransactionClient) || db;
+    const result = await client
+      .select({
+        id: ips.id,
+        name: ips.name,
+        description: ips.description,
+        source: ips.source,
+        createdAt: ips.createdAt,
+        updatedAt: ips.updatedAt,
+        confidence: mediaIps.confidence,
+        associationSource: mediaIps.source,
+      })
+      .from(ips)
+      .innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
+      .where(eq(mediaIps.mediaId, mediaId));
+
+    return result.map((i) => ({
+      ...i,
+      createdAt: i.createdAt || new Date(),
+      updatedAt: i.updatedAt || new Date(),
+    }));
+  },
+
+  // biome-ignore lint/nursery/useMaxParams: Repo method
   async addMedia(
     mediaId: string,
     ipId: string,
+    confidence?: number,
+    source = "manual",
     tx?: Transaction
   ): Promise<void> {
     const client = (tx as unknown as TransactionClient) || db;
-    await client.insert(mediaIps).values({ mediaId, ipId }).returning();
+
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.confidence ELSE media_ips.confidence END`;
+    } else if (source === "manual") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source IN ('AI', 'manual') THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_ips.confidence END`;
+    }
+
+    await client
+      .insert(mediaIps)
+      .values({
+        mediaId,
+        ipId,
+        confidence: confidence ?? null,
+        source,
+      })
+      .onConflictDoUpdate({
+        target: [mediaIps.mediaId, mediaIps.ipId],
+        set: {
+          confidence: confidenceUpdateSql,
+          source: sourceUpdateSql,
+        },
+      });
   },
 
   async removeMedia(
@@ -130,22 +194,42 @@ export const IpRepository: IIpRepository = {
   },
   async addMediaBulk(
     mediaId: string,
-    ipIds: string[],
+    ipsData: { id: string; confidence?: number }[],
+    source = "manual",
     tx?: Transaction
   ): Promise<void> {
     const client = (tx as unknown as TransactionClient) || db;
-    if (ipIds.length === 0) {
+    if (ipsData.length === 0) {
       return;
+    }
+
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source = 'AI' THEN excluded.confidence ELSE media_ips.confidence END`;
+    } else if (source === "manual") {
+      sourceUpdateSql = sql`CASE WHEN media_ips.source IN ('AI', 'manual') THEN excluded.source ELSE media_ips.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_ips.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_ips.confidence END`;
     }
 
     await client
       .insert(mediaIps)
       .values(
-        ipIds.map((ipId) => ({
+        ipsData.map((data) => ({
           mediaId,
-          ipId,
+          ipId: data.id,
+          confidence: data.confidence ?? null,
+          source,
         }))
       )
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: [mediaIps.mediaId, mediaIps.ipId],
+        set: {
+          confidence: confidenceUpdateSql,
+          source: sourceUpdateSql,
+        },
+      });
   },
 };

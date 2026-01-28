@@ -43,6 +43,25 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
+  async findByName(name: string, tx?: Transaction): Promise<Character | null> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const result = await client
+        .select()
+        .from(characters)
+        .where(eq(characters.name, name));
+      if (result.length === 0) {
+        return null;
+      }
+      return result[0] as Character;
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to select character by name: ${name}`,
+        error
+      );
+    }
+  }
+
   async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
@@ -159,25 +178,83 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     }
   }
 
+  async getMediaCharacters(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<
+    (Character & { confidence: number | null; associationSource: string })[]
+  > {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const results = await client
+        .select({
+          id: characters.id,
+          name: characters.name,
+          description: characters.description,
+          ipId: characters.ipId,
+          createdAt: characters.createdAt,
+          updatedAt: characters.updatedAt,
+          source: characters.source,
+          aliases: characters.aliases,
+          confidence: mediaCharacters.confidence,
+          associationSource: mediaCharacters.source,
+        })
+        .from(characters)
+        .innerJoin(
+          mediaCharacters,
+          eq(characters.id, mediaCharacters.characterId)
+        )
+        .where(eq(mediaCharacters.mediaId, mediaId));
+      return results as (Character & {
+        confidence: number | null;
+        associationSource: string;
+      })[];
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to find media characters for media: ${mediaId}`,
+        error
+      );
+    }
+  }
+
+  // biome-ignore lint/nursery/useMaxParams: Repo method
   async addToMedia(
     mediaId: string,
     characterId: string,
     confidence?: number,
+    source = "manual",
     tx?: Transaction
   ): Promise<void> {
     try {
       const client = (tx as unknown as TransactionClient) || db;
+
+      let sourceUpdateSql = sql`excluded.source`;
+      let confidenceUpdateSql = sql`excluded.confidence`;
+
+      if (source === "AI") {
+        // Only update if current is 'AI'
+        sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
+        confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
+      } else if (source === "manual") {
+        // Update if current is 'AI' or 'manual' (always update basically, unless we have higher prio than manual which we don't for chars yet)
+        // Assuming manual is highest priority for characters for now.
+        sourceUpdateSql = sql`excluded.source`;
+        confidenceUpdateSql = sql`excluded.confidence`;
+      }
+
       await client
         .insert(mediaCharacters)
         .values({
           mediaId,
           characterId,
           confidence: confidence ?? null,
+          source,
         })
         .onConflictDoUpdate({
           target: [mediaCharacters.mediaId, mediaCharacters.characterId],
           set: {
-            confidence: sql`excluded.confidence`,
+            confidence: confidenceUpdateSql,
+            source: sourceUpdateSql,
           },
         });
     } catch (error: unknown) {
@@ -213,11 +290,23 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   async addToMediaBulk(
     mediaId: string,
     charactersData: { id: string; confidence?: number }[],
+    source = "manual",
     tx?: Transaction
   ): Promise<void> {
     const client = (tx as unknown as TransactionClient) || db;
     if (charactersData.length === 0) {
       return;
+    }
+
+    let sourceUpdateSql = sql`excluded.source`;
+    let confidenceUpdateSql = sql`excluded.confidence`;
+
+    if (source === "AI") {
+      sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
+    } else if (source === "manual") {
+      sourceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.source ELSE media_characters.source END`;
+      confidenceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_characters.confidence END`;
     }
 
     try {
@@ -228,12 +317,14 @@ export class DrizzleCharacterRepository implements CharacterRepository {
             mediaId,
             characterId: char.id,
             confidence: char.confidence ?? null,
+            source,
           }))
         )
         .onConflictDoUpdate({
           target: [mediaCharacters.mediaId, mediaCharacters.characterId],
           set: {
-            confidence: sql`excluded.confidence`,
+            confidence: confidenceUpdateSql,
+            source: sourceUpdateSql,
           },
         });
     } catch (error) {

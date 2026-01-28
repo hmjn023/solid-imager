@@ -1,6 +1,10 @@
 import { services } from "~/application/registry";
 import type { Job as DbJob } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import {
+  processAutoTaggingJob,
+  processBulkTaggingDispatchJob,
+} from "~/infrastructure/jobs/tagging-jobs";
 import { logger } from "~/infrastructure/logger";
 
 export type DeferredJob = {
@@ -32,7 +36,7 @@ export type DeferredActions = {
 // Helper for unified job processing (Called by JobWorker)
 export async function processJob(job: DbJob) {
   const mediaSourceId = job.mediaSourceId;
-  if (!mediaSourceId) {
+  if (!mediaSourceId && job.type !== "bulk_tagging_dispatch") {
     throw new Error(`Job ${job.id} missing mediaSourceId`);
   }
 
@@ -46,6 +50,10 @@ export async function processJob(job: DbJob) {
       "~/infrastructure/jobs/download-jobs"
     );
     await processDownloadJob(job);
+  } else if (job.type === "auto_tagging") {
+    await processAutoTaggingJob(job);
+  } else if (job.type === "bulk_tagging_dispatch") {
+    await processBulkTaggingDispatchJob(job);
   } else {
     logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
   }
