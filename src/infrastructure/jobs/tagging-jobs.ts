@@ -48,6 +48,11 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
   const batchSize = payload?.batchSize ?? 1000;
   const mediaSourceId = payload?.mediaSourceId;
 
+  logger.info(
+    { jobId: job.id, mediaSourceId, force, batchSize },
+    "Starting bulk tagging dispatch job"
+  );
+
   const jobRepo = services.getJobRepository();
 
   // Find images
@@ -107,6 +112,12 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
       .offset(offset);
 
     if (results.length === 0) {
+      if (processedCount === 0) {
+        logger.info(
+          { jobId: job.id, mediaSourceId, force },
+          "No matching images found for bulk tagging"
+        );
+      }
       break;
     }
 
