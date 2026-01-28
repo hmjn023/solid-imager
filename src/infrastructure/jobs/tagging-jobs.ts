@@ -2,7 +2,13 @@ import { and, asc, eq, notExists } from "drizzle-orm";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
-import { type Job, medias, mediaTags } from "~/infrastructure/db/schema";
+import {
+  type Job,
+  mediaCharacters,
+  mediaIps,
+  medias,
+  mediaTags,
+} from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
 type AutoTaggingJobPayload = {
@@ -45,19 +51,43 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
   const jobRepo = services.getJobRepository();
 
   // Find images
-  // Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT EXISTS(AI tags))
+  // Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
   const whereClause = and(
     eq(medias.mediaType, "image"),
     mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
     force
       ? undefined
-      : notExists(
-          db
-            .select()
-            .from(mediaTags)
-            .where(
-              and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI"))
-            )
+      : and(
+          notExists(
+            db
+              .select()
+              .from(mediaTags)
+              .where(
+                and(
+                  eq(mediaTags.mediaId, medias.id),
+                  eq(mediaTags.source, "AI")
+                )
+              )
+          ),
+          notExists(
+            db
+              .select()
+              .from(mediaCharacters)
+              .where(
+                and(
+                  eq(mediaCharacters.mediaId, medias.id),
+                  eq(mediaCharacters.source, "AI")
+                )
+              )
+          ),
+          notExists(
+            db
+              .select()
+              .from(mediaIps)
+              .where(
+                and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI"))
+              )
+          )
         )
   );
 

@@ -174,12 +174,7 @@ export class TaggingService {
       }
       if (ip) {
         ipNameIdMap.set(ipName, ip.id);
-        await this.ipRepo.addMedia(
-          mediaId,
-          ip.id,
-          DEFAULT_MANUAL_CONFIDENCE,
-          "AI"
-        );
+        await this.ipRepo.addMedia(mediaId, ip.id, undefined, "AI");
       }
     }
 
