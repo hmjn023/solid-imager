@@ -14,6 +14,8 @@ import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
+import { ResourceConflictError } from "~/domain/errors";
+
 export class TaggingService {
   private readonly aiClient: IAiClient;
   private readonly sourceRepo: SourceRepository;
@@ -172,8 +174,12 @@ export class TaggingService {
       if (!ip) {
         try {
           ip = await this.ipRepo.create({ name: ipName, source: "AI" });
-        } catch (_e) {
-          ip = await this.ipRepo.findByName(ipName);
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            ip = await this.ipRepo.findByName(ipName);
+          } else {
+            throw e;
+          }
         }
       }
       if (ip) {
@@ -219,15 +225,23 @@ export class TaggingService {
             ipId, // Link to IP if known
             source: "AI",
           });
-        } catch (_e) {
-          char = await this.characterRepo.findByName(charName);
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            char = await this.characterRepo.findByName(charName);
+          } else {
+            throw e;
+          }
         }
       } else if (!char.ipId && ipId) {
         // Link orphaned character to detected IP
         try {
           await this.characterRepo.update(char.id, { ipId });
-        } catch (_e) {
-          // Ignore update errors (e.g. race conditions)
+        } catch (e) {
+          if (e instanceof ResourceConflictError) {
+            // Ignore conflict during update (e.g. race condition where another process updated it)
+          } else {
+            throw e;
+          }
         }
       }
 

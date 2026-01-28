@@ -236,10 +236,9 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
         confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
       } else if (source === "manual") {
-        // Update if current is 'AI' or 'manual' (always update basically, unless we have higher prio than manual which we don't for chars yet)
-        // Assuming manual is highest priority for characters for now.
-        sourceUpdateSql = sql`excluded.source`;
-        confidenceUpdateSql = sql`excluded.confidence`;
+        // Update if current is 'AI' or 'manual'.
+        sourceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.source ELSE media_characters.source END`;
+        confidenceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_characters.confidence END`;
       }
 
       await client

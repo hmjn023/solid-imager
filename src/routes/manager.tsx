@@ -303,7 +303,7 @@ export default function ManagerPage() {
                       {props.item.rawValue.name}
                     </SelectItem>
                   )}
-                  onChange={(val) => setSelectedSourceId(val?.id || "")}
+                  onChange={(val) => setSelectedSourceId(val?.id)}
                   options={Array.isArray(sources.data) ? sources.data : []}
                   optionTextValue="name"
                   optionValue="id"
