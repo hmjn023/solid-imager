@@ -19,7 +19,11 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
+import {
+  Checkbox,
+  CheckboxControl,
+  CheckboxLabel,
+} from "~/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -334,10 +338,13 @@ export default function ManagerPage() {
               <div class="flex items-center space-x-2">
                 <Checkbox
                   checked={forceRetag()}
+                  class="flex items-center space-x-2"
                   id="force-retag"
                   onChange={setForceRetag}
-                />
-                <Label for="force-retag">Force Re-tagging</Label>
+                >
+                  <CheckboxControl />
+                  <CheckboxLabel>Force Re-tagging</CheckboxLabel>
+                </Checkbox>
               </div>
               <p class="text-muted-foreground text-xs">
                 If checked, existing AI tags will be ignored and images will be
