@@ -175,29 +175,23 @@ describe("BackupService", () => {
         charMap,
       });
 
-      // Filter calls for each table
-      const insertCalls = (db.insert as any).mock.calls;
-
-      const tagsData: any[] = [];
-      const charsData: any[] = [];
-      const ipsData: any[] = [];
-
-      insertCalls.forEach((args: any[], index: number) => {
-          const table = args[0];
-          const valuesCall = mockValues.mock.calls[index];
-          if (!valuesCall) {
-              return;
+      // Helper to extract values for a specific table in a robust way
+      const getValuesForTable = (tableSchema: any) => {
+        const values: any[] = [];
+        (db.insert as any).mock.calls.forEach((insertArgs: any[], index: number) => {
+          if (insertArgs[0] === tableSchema) {
+            const valuesCall = mockValues.mock.calls[index];
+            if (valuesCall) {
+              values.push(...valuesCall[0]);
+            }
           }
-          const values = valuesCall[0];
+        });
+        return values;
+      };
 
-          if (table === mediaTags) {
-              tagsData.push(...values);
-          } else if (table === mediaCharacters) {
-              charsData.push(...values);
-          } else if (table === mediaIps) {
-              ipsData.push(...values);
-          }
-      });
+      const tagsData = getValuesForTable(mediaTags);
+      const charsData = getValuesForTable(mediaCharacters);
+      const ipsData = getValuesForTable(mediaIps);
 
       const expectedTagsCount = 3;
       const expectedCharsCount = 2;
