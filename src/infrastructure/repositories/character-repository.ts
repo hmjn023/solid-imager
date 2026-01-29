@@ -141,19 +141,30 @@ export class DrizzleCharacterRepository implements CharacterRepository {
     tx?: Transaction
   ): Promise<Character> {
     try {
-      const client = (tx as unknown as TransactionClient) || db;
-      const { ipIds, ...charData } = character;
+      const operation = async (client: TransactionClient) => {
+        const { ipIds, ...charData } = character;
 
-      await this._validateAndUpdateCharacter({
-        id,
-        charData,
-        ipIds,
-        client,
-        tx,
-      });
-      await this._updateCharacterIps(id, ipIds, client);
+        await this._validateAndUpdateCharacter({
+          id,
+          charData,
+          ipIds,
+          client,
+          tx: tx ?? (client as unknown as Transaction),
+        });
+        await this._updateCharacterIps(id, ipIds, character.source, client);
 
-      return (await this.findById(id, tx)) as Character;
+        return (await this.findById(
+          id,
+          tx ?? (client as unknown as Transaction)
+        )) as Character;
+      };
+
+      if (tx) {
+        return await operation(tx as unknown as TransactionClient);
+      }
+      return await db.transaction((innerTx) =>
+        operation(innerTx as unknown as TransactionClient)
+      );
     } catch (error) {
       if (error instanceof ResourceNotFoundError) {
         throw error;
@@ -211,24 +222,21 @@ export class DrizzleCharacterRepository implements CharacterRepository {
   private async _updateCharacterIps(
     id: string,
     ipIds: string[] | undefined,
+    source: string | undefined,
     client: TransactionClient
   ): Promise<void> {
     if (ipIds !== undefined) {
-      await client.transaction(async (innerTx) => {
-        await innerTx
-          .delete(characterIps)
-          .where(eq(characterIps.characterId, id));
+      await client.delete(characterIps).where(eq(characterIps.characterId, id));
 
-        if (ipIds.length > 0) {
-          await innerTx.insert(characterIps).values(
-            ipIds.map((ipId) => ({
-              characterId: id,
-              ipId,
-              source: "manual",
-            }))
-          );
-        }
-      });
+      if (ipIds.length > 0) {
+        await client.insert(characterIps).values(
+          ipIds.map((ipId) => ({
+            characterId: id,
+            ipId,
+            source: source || "manual",
+          }))
+        );
+      }
     }
   }
 
