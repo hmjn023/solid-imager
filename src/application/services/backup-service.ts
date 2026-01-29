@@ -461,6 +461,9 @@ export const BackupService = {
         }
       }
 
+      // Collect media IP names for character-IP inference
+      const mediaIpNames = item.ips?.map((i) => i.name).filter(Boolean) || [];
+
       if (item.characters) {
         for (const c of item.characters) {
           const charId = c.name ? charMap.get(c.name) : undefined;
@@ -472,16 +475,23 @@ export const BackupService = {
               source: "restored",
             });
 
-            if (c.linkedIps && Array.isArray(c.linkedIps)) {
-              for (const ipName of c.linkedIps) {
-                const ipId = ipName ? ipMap.get(ipName) : undefined;
-                if (ipId) {
-                  characterIpsData.push({
-                    characterId: charId,
-                    ipId,
-                    source: "restored",
-                  });
-                }
+            // Determine which IPs to link to this character
+            // Priority: 1) linkedIps from JSON, 2) infer from media's IPs
+            const ipNamesToLink =
+              c.linkedIps &&
+              Array.isArray(c.linkedIps) &&
+              c.linkedIps.length > 0
+                ? c.linkedIps
+                : mediaIpNames;
+
+            for (const ipName of ipNamesToLink) {
+              const ipId = ipName ? ipMap.get(ipName) : undefined;
+              if (ipId) {
+                characterIpsData.push({
+                  characterId: charId,
+                  ipId,
+                  source: "restored",
+                });
               }
             }
           }

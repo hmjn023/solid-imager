@@ -218,4 +218,86 @@ describe("BackupService Integration", () => {
     expect(restoredMedia?.urls).toHaveLength(1);
     expect(restoredMedia?.urls[0].url).toBe("https://example.com/restore");
   });
+
+  it("should infer character-IP relationships from media when linkedIps is not provided", async () => {
+    // Update source type to s3 to bypass fs.access check
+    await db
+      .update(mediaSources)
+      .set({ type: "s3" })
+      .where(eq(mediaSources.id, testSourceId));
+
+    // 1. Prepare dump item with character but no linkedIps
+    const dumpItem = {
+      filePath: "infer-test.png",
+      fileName: "infer-test.png",
+      mediaType: "image",
+      width: 300,
+      height: 300,
+      fileSize: 3072,
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      characters: [{ name: "Inferred Character" }],
+      ips: [{ name: "Inferred IP 1" }, { name: "Inferred IP 2" }],
+    };
+
+    // 2. Execute Restore
+    const result = await BackupService.restoreSource(testSourceId, [dumpItem]);
+
+    expect(result.processed).toBe(1);
+    expect(result.errors).toHaveLength(0);
+
+    // 3. Verify character-IP relationships were inferred from media
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.name, "Inferred Character"),
+      with: { ips: { with: { ip: true } } },
+    });
+
+    expect(character).toBeDefined();
+    expect(character?.ips).toHaveLength(2);
+    const ipNames = character?.ips.map((ci) => ci.ip.name).sort();
+    expect(ipNames).toEqual(["Inferred IP 1", "Inferred IP 2"]);
+  });
+
+  it("should prioritize linkedIps over media IPs when both are present", async () => {
+    // Update source type to s3 to bypass fs.access check
+    await db
+      .update(mediaSources)
+      .set({ type: "s3" })
+      .where(eq(mediaSources.id, testSourceId));
+
+    // 1. Prepare dump item with both linkedIps and media IPs
+    const dumpItem = {
+      filePath: "priority-test.png",
+      fileName: "priority-test.png",
+      mediaType: "image",
+      width: 400,
+      height: 400,
+      fileSize: 4096,
+      createdAt: new Date().toISOString(),
+      modifiedAt: new Date().toISOString(),
+      characters: [
+        {
+          name: "Priority Character",
+          linkedIps: ["Specific IP"], // Should use this
+        },
+      ],
+      ips: [{ name: "Specific IP" }, { name: "Other IP" }], // Should ignore "Other IP"
+    };
+
+    // 2. Execute Restore
+    const result = await BackupService.restoreSource(testSourceId, [dumpItem]);
+
+    expect(result.processed).toBe(1);
+    expect(result.errors).toHaveLength(0);
+
+    // 3. Verify only linkedIps were used
+    const character = await db.query.characters.findFirst({
+      where: eq(characters.name, "Priority Character"),
+      with: { ips: { with: { ip: true } } },
+    });
+
+    expect(character).toBeDefined();
+    expect(character?.ips).toHaveLength(1);
+    expect(character?.ips[0].ip.name).toBe("Specific IP");
+  });
 });
