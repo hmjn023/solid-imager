@@ -144,38 +144,14 @@ export class DrizzleCharacterRepository implements CharacterRepository {
       const client = (tx as unknown as TransactionClient) || db;
       const { ipIds, ...charData } = character;
 
-      if (Object.keys(charData).length > 0) {
-        const result = await client
-          .update(characters)
-          .set({
-            ...charData,
-            updatedAt: new Date(),
-          })
-          .where(eq(characters.id, id))
-          .returning();
-
-        if (result.length === 0) {
-          throw new ResourceNotFoundError("Character", id);
-        }
-      }
-
-      if (ipIds !== undefined) {
-        // Delete old IPs
-        await client
-          .delete(characterIps)
-          .where(eq(characterIps.characterId, id));
-
-        // Insert new IPs
-        if (ipIds.length > 0) {
-          await client.insert(characterIps).values(
-            ipIds.map((ipId) => ({
-              characterId: id,
-              ipId,
-              source: "manual",
-            }))
-          );
-        }
-      }
+      await this._validateAndUpdateCharacter({
+        id,
+        charData,
+        ipIds,
+        client,
+        tx,
+      });
+      await this._updateCharacterIps(id, ipIds, client);
 
       return (await this.findById(id, tx)) as Character;
     } catch (error) {
@@ -196,6 +172,63 @@ export class DrizzleCharacterRepository implements CharacterRepository {
         `Failed to update character with ID: ${id}`,
         error
       );
+    }
+  }
+
+  private async _validateAndUpdateCharacter(options: {
+    id: string;
+    charData: Partial<UpdateCharacter>;
+    ipIds: string[] | undefined;
+    client: TransactionClient;
+    tx?: Transaction;
+  }): Promise<void> {
+    const { id, charData, ipIds, client, tx } = options;
+    if (Object.keys(charData).length > 0 || ipIds !== undefined) {
+      if (Object.keys(charData).length === 0) {
+        const exists = await this.findById(id, tx);
+        if (!exists) {
+          throw new ResourceNotFoundError("Character", id);
+        }
+      }
+
+      if (Object.keys(charData).length > 0) {
+        const result = await client
+          .update(characters)
+          .set({
+            ...charData,
+            updatedAt: new Date(),
+          })
+          .where(eq(characters.id, id))
+          .returning();
+
+        if (result.length === 0) {
+          throw new ResourceNotFoundError("Character", id);
+        }
+      }
+    }
+  }
+
+  private async _updateCharacterIps(
+    id: string,
+    ipIds: string[] | undefined,
+    client: TransactionClient
+  ): Promise<void> {
+    if (ipIds !== undefined) {
+      await client.transaction(async (innerTx) => {
+        await innerTx
+          .delete(characterIps)
+          .where(eq(characterIps.characterId, id));
+
+        if (ipIds.length > 0) {
+          await innerTx.insert(characterIps).values(
+            ipIds.map((ipId) => ({
+              characterId: id,
+              ipId,
+              source: "manual",
+            }))
+          );
+        }
+      });
     }
   }
 

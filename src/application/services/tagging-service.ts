@@ -260,7 +260,7 @@ export class TaggingService {
             await this.characterRepo.update(char.id, {
               ipIds: [...existingIpIds, ...newIpIds],
             });
-          } catch (e) {
+          } catch (_e) {
             // Ignore conflict
           }
         }

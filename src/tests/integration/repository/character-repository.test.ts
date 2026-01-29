@@ -27,8 +27,14 @@ describe("CharacterRepository Multi-IP Support", () => {
 
   it("should create a character linked to multiple IPs", async () => {
     // 1. Create IPs
-    const [ip1] = await db.insert(ips).values({ name: "Fate/Zero" }).returning();
-    const [ip2] = await db.insert(ips).values({ name: "Fate/stay night" }).returning();
+    const [ip1] = await db
+      .insert(ips)
+      .values({ name: "Fate/Zero" })
+      .returning();
+    const [ip2] = await db
+      .insert(ips)
+      .values({ name: "Fate/stay night" })
+      .returning();
 
     // 2. Create Character
     const char = await repo.create({
@@ -96,11 +102,14 @@ describe("CharacterRepository Multi-IP Support", () => {
     });
 
     const updatedChar = await repo.update(char.id, {
-        ipIds: [],
+      ipIds: [],
     });
 
     expect(updatedChar.ips).toHaveLength(0);
-    const links = await db.select().from(characterIps).where(eq(characterIps.characterId, char.id));
+    const links = await db
+      .select()
+      .from(characterIps)
+      .where(eq(characterIps.characterId, char.id));
     expect(links).toHaveLength(0);
   });
 });

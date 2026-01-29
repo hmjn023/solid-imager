@@ -4,6 +4,7 @@ import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
   authors,
+  characterIps,
   characters,
   ips,
   mediaAuthors,
@@ -93,8 +94,11 @@ describe("BackupService Integration", () => {
     const [ip] = await db.insert(ips).values({ name: "Dump IP" }).returning();
     const [character] = await db
       .insert(characters)
-      .values({ name: "Dump Character", ipId: ip.id })
+      .values({ name: "Dump Character" })
       .returning();
+    await db
+      .insert(characterIps)
+      .values({ characterId: character.id, ipId: ip.id, source: "manual" });
     const [author] = await db
       .insert(authors)
       .values({ name: "Dump Author" })

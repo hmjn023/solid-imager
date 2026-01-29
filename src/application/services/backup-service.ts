@@ -251,6 +251,13 @@ export const BackupService = {
           if (c.name) {
             charNames.add(c.name);
           }
+          if (c.linkedIps && Array.isArray(c.linkedIps)) {
+            for (const ipName of c.linkedIps) {
+              if (ipName) {
+                ipNames.add(ipName);
+              }
+            }
+          }
         }
       }
       if (item.ips) {
@@ -908,6 +915,7 @@ export const BackupService = {
         name: mc.character.name,
         description: mc.character.description,
         confidence: mc.confidence,
+        // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
         linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
       }));
 

@@ -196,7 +196,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     }
 
     const ipIds = new Set(currentIps.map((ip) => ip.id));
-    return allChars.filter((char) => char.ipId && ipIds.has(char.ipId));
+    return allChars.filter((char) => char.ips.some((ip) => ipIds.has(ip.id)));
   });
 
   const handleAddCharacter = async (characterId: string) => {
@@ -209,12 +209,14 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       queryKey: ["charactersForMedia", props.media.id],
     });
 
-    // Auto-assign IP if the character belongs to one
+    // Auto-assign IPs if the character belongs to any
     const character = allCharacters.data?.find((c) => c.id === characterId);
-    if (character?.ipId) {
+    if (character?.ips && character.ips.length > 0) {
       const currentIpIds = new Set((ips.data || []).map((ip) => ip.id));
-      if (!currentIpIds.has(character.ipId)) {
-        await handleAddIp(character.ipId);
+      for (const charIp of character.ips) {
+        if (!currentIpIds.has(charIp.id)) {
+          await handleAddIp(charIp.id);
+        }
       }
     }
   };

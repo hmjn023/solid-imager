@@ -270,6 +270,7 @@ export const mediaMetadataContextSchema = z.object({
         name: z.string(),
         description: z.string().nullable().optional(),
         confidence: z.number().optional(),
+        linkedIps: z.array(z.string()).optional(),
       })
     )
     .optional(),
