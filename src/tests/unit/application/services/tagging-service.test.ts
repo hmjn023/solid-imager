@@ -125,11 +125,11 @@ describe("TaggingService", () => {
       "AI"
     );
 
-    // Verify character creation included the ipId
+    // Verify character creation included the ipIds
     expect(mockCharacterRepo.create).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "HatsuneMiku",
-        ipId: "ip-vocaloid", // Crucial: Character should be linked to IP
+        ipIds: ["ip-vocaloid"], // Crucial: Character should be linked to IP
         source: "AI",
       })
     );

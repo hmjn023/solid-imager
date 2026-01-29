@@ -5,6 +5,7 @@ import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import {
   authors,
+  characterIps,
   characters,
   ips,
   jobs,
@@ -170,8 +171,11 @@ describe("MediaService - Copy Media Integration", () => {
     const [ip] = await db.insert(ips).values({ name: "Test IP" }).returning();
     const [character] = await db
       .insert(characters)
-      .values({ name: "Test Character", ipId: ip.id })
+      .values({ name: "Test Character" })
       .returning();
+    await db
+      .insert(characterIps)
+      .values({ characterId: character.id, ipId: ip.id, source: "manual" });
 
     // Link Metadata to Source Media
     await db
@@ -239,8 +243,11 @@ describe("MediaService - Copy Media Integration", () => {
     const [ip] = await db.insert(ips).values({ name: "Move IP" }).returning();
     const [character] = await db
       .insert(characters)
-      .values({ name: "Move Character", ipId: ip.id })
+      .values({ name: "Move Character" })
       .returning();
+    await db
+      .insert(characterIps)
+      .values({ characterId: character.id, ipId: ip.id, source: "manual" });
 
     // Link Metadata to Source Media
     await db
