@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { BackupService } from "~/application/services/backup-service";
+import type { MediaDumpItem } from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import {
   mediaTags,
@@ -130,7 +131,7 @@ describe("BackupService", () => {
 
   describe("_restoreRelations", () => {
     it("should restore source and confidence for relations", async () => {
-      const validItems = [
+      const validItems: MediaDumpItem[] = [
         {
           filePath: "media1.jpg",
           tags: [
@@ -165,7 +166,7 @@ describe("BackupService", () => {
       ]);
 
       await BackupService._restoreRelations({
-        validItems: validItems as any,
+        validItems,
         mediaPathToId,
         tagMap,
         authorMap: new Map(),
