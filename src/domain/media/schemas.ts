@@ -261,6 +261,7 @@ export const mediaMetadataContextSchema = z.object({
         name: z.string(),
         type: z.enum(["positive", "negative"]).optional(),
         confidence: z.number().optional(),
+        source: z.string().optional(),
       })
     )
     .optional(),
@@ -271,6 +272,7 @@ export const mediaMetadataContextSchema = z.object({
         description: z.string().nullable().optional(),
         confidence: z.number().optional(),
         linkedIps: z.array(z.string()).optional(),
+        source: z.string().optional(),
       })
     )
     .optional(),
@@ -279,6 +281,8 @@ export const mediaMetadataContextSchema = z.object({
       z.object({
         name: z.string(),
         description: z.string().nullable().optional(),
+        confidence: z.number().optional(),
+        source: z.string().optional(),
       })
     )
     .optional(),
