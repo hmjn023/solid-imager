@@ -1,31 +1,90 @@
-/**
- * EventService - SSE機能
- * Feature 4: SSE機能
- */
+import { EventEmitter } from "node:events";
+import type { APIEvent } from "solid-start/api";
 
-/**
- * Provides services for Server-Sent Events (SSE) functionalities,
- * primarily for real-time monitoring of file system changes and thumbnail generation progress.
- */
-export const EventService = {
-  /**
-   * Starts SSE monitoring for a specific media source.
-   * This typically involves setting up a file system watcher (e.g., chokidar) for local sources.
-   * @param {string} _mediaSourceId - The ID of the media source to monitor.
-   * @returns {any} A stream or mechanism to receive real-time events.
-   */
-  startSseMonitoring(_mediaSourceId: string) {
-    // TODO: Start chokidar file system monitoring for local sources
-    throw new Error("Not implemented");
-  },
-
-  /**
-   * Retrieves an SSE stream for real-time updates on thumbnail generation progress.
-   * @param {string} _mediaSourceId - The ID of the media source for which to get progress events.
-   * @returns {any} An SSE stream providing thumbnail progress updates.
-   */
-  getThumbnailProgressEvents(_mediaSourceId: string) {
-    // TODO: Get SSE stream for thumbnail generation progress
-    throw new Error("Not implemented");
-  },
+// Define event types
+type MediaUpdatePayload = {
+  mediaId: string;
 };
+
+type EventMap = {
+  "media:updated": MediaUpdatePayload;
+};
+
+// Strongly-typed EventEmitter
+class TypedEventEmitter<T extends Record<string, any>> {
+  private emitter = new EventEmitter();
+
+  constructor() {
+    // Disable listener limit to prevent MaxListenersExceededWarning
+    this.emitter.setMaxListeners(0);
+  }
+
+  on<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
+    this.emitter.on(eventName as string, listener);
+  }
+
+  off<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
+    this.emitter.off(eventName as string, listener);
+  }
+
+  emit<K extends keyof T>(eventName: K, payload: T[K]) {
+    this.emitter.emit(eventName as string, payload);
+  }
+}
+
+class EventService {
+  private static instance: EventService;
+  private readonly emitter = new TypedEventEmitter<EventMap>();
+
+  // Singleton pattern
+  public static getInstance(): EventService {
+    if (!EventService.instance) {
+      EventService.instance = new EventService();
+    }
+    return EventService.instance;
+  }
+
+  /**
+   * Creates a Server-Sent Events (SSE) stream.
+   * @param {APIEvent} event - The API event object from the request.
+   * @returns {Response} A response object with the SSE stream.
+   */
+  createSseStream(event: APIEvent): Response {
+    const stream = new ReadableStream({
+      start: (controller) => {
+        const handler = (payload: MediaUpdatePayload) => {
+          const data = JSON.stringify(payload);
+          controller.enqueue(`data: ${data}\n\n`);
+        };
+
+        this.emitter.on("media:updated", handler);
+
+        // Clean up on client disconnect
+        event.request.signal.addEventListener("abort", () => {
+          this.emitter.off("media:updated", handler);
+          controller.close();
+        });
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  }
+
+  /**
+   * Sends an SSE event to all connected clients.
+   * @param {K} eventName - The name of the event.
+   * @param {T[K]} payload - The data to send with the event.
+   */
+  sendSseEvent<K extends keyof EventMap>(eventName: K, payload: EventMap[K]) {
+    this.emitter.emit(eventName, payload);
+  }
+}
+
+// Export a singleton instance
+export const eventService = EventService.getInstance();

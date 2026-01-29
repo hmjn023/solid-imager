@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Match, Switch } from "solid-js";
+import { Match, Switch, onCleanup, onMount } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
 import type { UUID } from "~/domain/shared/schemas";
@@ -22,6 +22,25 @@ export default function Media() {
       queryKey: ["mediaDetails", mediaSourceId, mediaId],
     });
   };
+
+  onMount(() => {
+    const eventSource = new EventSource("/api/events");
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.mediaId === mediaId) {
+          handleUpdate();
+        }
+      } catch (error) {
+        console.error("Failed to parse SSE message:", error);
+      }
+    };
+
+    onCleanup(() => {
+      eventSource.close();
+    });
+  });
 
   return (
     <div class="container mx-auto p-4">
