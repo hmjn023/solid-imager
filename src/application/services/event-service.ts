@@ -1,5 +1,4 @@
 import { EventEmitter } from "node:events";
-import { createMocks } from "solid-start/node_modules/http-mocks";
 import type { APIEvent } from "solid-start/api";
 
 // Define event types
@@ -14,6 +13,11 @@ type EventMap = {
 // Strongly-typed EventEmitter
 class TypedEventEmitter<T extends Record<string, any>> {
   private emitter = new EventEmitter();
+
+  constructor() {
+    // Disable listener limit to prevent MaxListenersExceededWarning
+    this.emitter.setMaxListeners(0);
+  }
 
   on<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
     this.emitter.on(eventName as string, listener);
