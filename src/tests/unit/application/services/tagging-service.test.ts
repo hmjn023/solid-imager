@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi, afterEach, afterAll } from "vitest";
 import { TaggingService } from "~/application/services/tagging-service";
 import type { IAiClient } from "~/domain/interfaces/ai-client";
 import type { CharacterRepository } from "~/domain/repositories/character-repository";

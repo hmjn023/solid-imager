@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi, beforeAll, afterAll } from "vitest";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
 // Mock definitions

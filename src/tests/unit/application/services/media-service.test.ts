@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi, afterEach, afterAll, Mock } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
 import type { MediaDetails } from "~/domain/media/schemas";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
