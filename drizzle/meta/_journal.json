@@ -57,6 +57,13 @@
       "when": 1769527302323,
       "tag": "0007_amused_nightshade",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1769640493975,
+      "tag": "0008_old_nightcrawler",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import {
 import { db } from "~/infrastructure/db";
 import {
   authors,
+  characterIps,
   characters,
   ips,
   mediaAuthors,
@@ -250,6 +251,13 @@ export const BackupService = {
           if (c.name) {
             charNames.add(c.name);
           }
+          if (c.linkedIps && Array.isArray(c.linkedIps)) {
+            for (const ipName of c.linkedIps) {
+              if (ipName) {
+                ipNames.add(ipName);
+              }
+            }
+          }
         }
       }
       if (item.ips) {
@@ -392,6 +400,8 @@ export const BackupService = {
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaCharsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
+    const characterIpsData: any[] = [];
+    // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaIpsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaUrlsData: any[] = [];
@@ -451,6 +461,9 @@ export const BackupService = {
         }
       }
 
+      // Collect media IP names for character-IP inference
+      const mediaIpNames = item.ips?.map((i) => i.name).filter(Boolean) || [];
+
       if (item.characters) {
         for (const c of item.characters) {
           const charId = c.name ? charMap.get(c.name) : undefined;
@@ -461,6 +474,26 @@ export const BackupService = {
               confidence: c.confidence ?? null,
               source: "restored",
             });
+
+            // Determine which IPs to link to this character
+            // Priority: 1) linkedIps from JSON, 2) infer from media's IPs
+            const ipNamesToLink =
+              c.linkedIps &&
+              Array.isArray(c.linkedIps) &&
+              c.linkedIps.length > 0
+                ? c.linkedIps
+                : mediaIpNames;
+
+            for (const ipName of ipNamesToLink) {
+              const ipId = ipName ? ipMap.get(ipName) : undefined;
+              if (ipId) {
+                characterIpsData.push({
+                  characterId: charId,
+                  ipId,
+                  source: "restored",
+                });
+              }
+            }
           }
         }
       }
@@ -521,6 +554,9 @@ export const BackupService = {
     }
     if (mediaCharsData.length) {
       await insertChunked(mediaCharacters, mediaCharsData);
+    }
+    if (characterIpsData.length) {
+      await insertChunked(characterIps, characterIpsData);
     }
     if (mediaIpsData.length) {
       await insertChunked(mediaIps, mediaIpsData);
@@ -734,7 +770,9 @@ export const BackupService = {
           urls: true,
           tags: { with: { tag: true } },
           authors: { with: { author: true } },
-          characters: { with: { character: true } },
+          characters: {
+            with: { character: { with: { ips: { with: { ip: true } } } } },
+          },
           ips: { with: { ip: true } },
           projects: { with: { project: true } },
         },
@@ -796,7 +834,9 @@ export const BackupService = {
               urls: true,
               tags: { with: { tag: true } },
               authors: { with: { author: true } },
-              characters: { with: { character: true } },
+              characters: {
+                with: { character: { with: { ips: { with: { ip: true } } } } },
+              },
               ips: { with: { ip: true } },
               projects: { with: { project: true } },
             },
@@ -885,6 +925,8 @@ export const BackupService = {
         name: mc.character.name,
         description: mc.character.description,
         confidence: mc.confidence,
+        // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
+        linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
       }));
 
       // Extract IPs
