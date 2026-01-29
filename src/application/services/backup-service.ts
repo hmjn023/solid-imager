@@ -428,7 +428,7 @@ export const BackupService = {
                 ? t.type
                 : "positive") as "positive" | "negative",
               confidence: t.confidence ?? null,
-              source: "restored",
+              source: t.source || "restored",
             });
           }
         }
@@ -456,7 +456,12 @@ export const BackupService = {
         for (const i of item.ips) {
           const ipId = i.name ? ipMap.get(i.name) : undefined;
           if (ipId) {
-            mediaIpsData.push({ mediaId, ipId, source: "restored" });
+            mediaIpsData.push({
+              mediaId,
+              ipId,
+              confidence: i.confidence ?? null,
+              source: i.source || "restored",
+            });
           }
         }
       }
@@ -472,7 +477,7 @@ export const BackupService = {
               mediaId,
               characterId: charId,
               confidence: c.confidence ?? null,
-              source: "restored",
+              source: c.source || "restored",
             });
 
             // Determine which IPs to link to this character
@@ -910,6 +915,7 @@ export const BackupService = {
         name: mt.tag.name,
         type: mt.tagType,
         confidence: mt.confidence,
+        source: mt.source,
       }));
 
       // Extract authors
@@ -927,6 +933,7 @@ export const BackupService = {
         confidence: mc.confidence,
         // biome-ignore lint/suspicious/noExplicitAny: inferrence failing
         linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
+        source: mc.source,
       }));
 
       // Extract IPs
@@ -934,6 +941,8 @@ export const BackupService = {
       const simpleIps = media.ips.map((mi: any) => ({
         name: mi.ip.name,
         description: mi.ip.description,
+        confidence: mi.confidence,
+        source: mi.source,
       }));
 
       // Extract Projects
