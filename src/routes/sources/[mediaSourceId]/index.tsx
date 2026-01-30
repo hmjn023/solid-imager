@@ -220,7 +220,7 @@ export default function MediaListPage() {
           mediaQuery.fetchNextPage();
         }
       },
-      { threshold: 0.5 }
+      { threshold: 0.5, rootMargin: "1000px" }
     );
 
     if (loadMoreRef) {
