@@ -20,7 +20,7 @@ export const JobsConfigSchema = z.object({
 const defaultJobsConfig = JobsConfigSchema.parse({});
 
 const DEFAULT_AI_BASE_URL = "http://localhost:8000";
-const DEFAULT_AI_TIMEOUT = 30_000;
+const DEFAULT_AI_TIMEOUT = 120_000;
 const MIN_AI_TIMEOUT = 1000;
 
 export const AiConfigSchema = z.object({
