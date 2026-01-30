@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, expect, it, vi, afterEach, afterAll, Mock } from "vitest";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
 import type { MediaDetails } from "~/domain/media/schemas";
 import type { IAuthorRepository } from "~/domain/repositories/author-repository";
@@ -170,6 +170,8 @@ describe("MediaService Unit Tests", () => {
         generationInfo: null,
         authors: [],
         urls: [],
+        characters: [],
+        ips: [],
       };
 
       // Setup repository responses

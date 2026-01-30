@@ -10,14 +10,12 @@ import {
   addCharacterToMedia,
   createCharacter,
   fetchAllCharacters,
-  fetchCharactersForMedia,
   removeCharacterFromMedia,
 } from "~/infrastructure/api-clients/characters-api";
 import {
   addIpToMedia,
   createIp,
   fetchAllIps,
-  fetchIpsForMedia,
   removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
 import { updateMedia } from "~/infrastructure/api-clients/media-api";
@@ -31,6 +29,7 @@ import {
 
 type MediaSidebarProps = {
   media: MediaDetails;
+  isUpdating?: boolean;
   onUpdate?: () => void;
 };
 
@@ -121,18 +120,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
     queryKey: ["allProjects"],
     queryFn: fetchAllProjects,
   }));
-  const ips = createQuery(() => ({
-    queryKey: ["ipsForMedia", props.media.id],
-    queryFn: () => fetchIpsForMedia(props.media.mediaSourceId, props.media.id),
-  }));
   const allIps = createQuery(() => ({
     queryKey: ["allIps"],
     queryFn: fetchAllIps,
-  }));
-  const characters = createQuery(() => ({
-    queryKey: ["charactersForMedia", props.media.id],
-    queryFn: () =>
-      fetchCharactersForMedia(props.media.mediaSourceId, props.media.id),
   }));
   const allCharacters = createQuery(() => ({
     queryKey: ["allCharacters"],
@@ -169,16 +159,12 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
   const handleAddIp = async (ipId: string) => {
     await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
-    queryClient.invalidateQueries({
-      queryKey: ["ipsForMedia", props.media.id],
-    });
+    props.onUpdate?.();
   };
 
   const handleRemoveIp = async (ipId: string) => {
     await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
-    queryClient.invalidateQueries({
-      queryKey: ["ipsForMedia", props.media.id],
-    });
+    props.onUpdate?.();
   };
 
   const handleCreateIp = async (name: string) => {
@@ -188,7 +174,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
   };
 
   const availableCharacters = createMemo(() => {
-    const currentIps = ips.data || [];
+    const currentIps = props.media.ips || [];
     const allChars = allCharacters.data || [];
 
     if (currentIps.length === 0) {
@@ -205,14 +191,12 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       characterId
     );
-    queryClient.invalidateQueries({
-      queryKey: ["charactersForMedia", props.media.id],
-    });
+    props.onUpdate?.();
 
     // Auto-assign IPs if the character belongs to any
     const character = allCharacters.data?.find((c) => c.id === characterId);
     if (character?.ips && character.ips.length > 0) {
-      const currentIpIds = new Set((ips.data || []).map((ip) => ip.id));
+      const currentIpIds = new Set((props.media.ips || []).map((ip) => ip.id));
       for (const charIp of character.ips) {
         if (!currentIpIds.has(charIp.id)) {
           await handleAddIp(charIp.id);
@@ -227,9 +211,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       props.media.id,
       characterId
     );
-    queryClient.invalidateQueries({
-      queryKey: ["charactersForMedia", props.media.id],
-    });
+    props.onUpdate?.();
   };
 
   const handleCreateCharacter = async (name: string) => {
@@ -383,7 +365,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       <div class="space-y-4">
         <AssociationManager
           availableItems={allProjects.data || []}
-          isLoading={projects.isLoading}
+          isLoading={projects.isLoading || props.isUpdating}
           items={projects.data || []}
           onAdd={handleAddProject}
           onCreate={handleCreateProject}
@@ -393,8 +375,8 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
         <AssociationManager
           availableItems={allIps.data || []}
-          isLoading={ips.isLoading}
-          items={ips.data || []}
+          isLoading={props.isUpdating}
+          items={props.media.ips || []}
           onAdd={handleAddIp}
           onCreate={handleCreateIp}
           onRemove={handleRemoveIp}
@@ -403,8 +385,8 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
         <AssociationManager
           availableItems={availableCharacters()}
-          isLoading={characters.isLoading}
-          items={characters.data || []}
+          isLoading={props.isUpdating}
+          items={props.media.characters || []}
           onAdd={handleAddCharacter}
           onCreate={handleCreateCharacter}
           onRemove={handleRemoveCharacter}
