@@ -139,17 +139,13 @@ async function downloadWithYtDlp(
       ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
       ...(userAgent && { userAgent }),
       ...(cookieFilePath && { cookies: cookieFilePath }),
+      // biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
     } as any);
 
-    // youtube-dl-exec output handling for printJson: true (returns stdout string)
-    // Cast to unknown then string, as library types might imply object
-    const stdout = result as unknown as string;
+    // output handling
+    const outputs = parseYtDlpOutput(result);
 
-    // Parse line by line (each line is a JSON object for a downloaded file)
-    const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
-
-    return lines.map((line) => {
-      const metadata = JSON.parse(line) as YtDlpOutput;
+    return outputs.map((metadata) => {
       let finalPath = metadata.filename || metadata._filename || "";
       if (finalPath && !path.isAbsolute(finalPath)) {
         finalPath = path.join(outputDir, finalPath);
@@ -175,6 +171,28 @@ async function downloadWithYtDlp(
   }
 }
 
+function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
+  let outputs: YtDlpOutput[] = [];
+
+  if (typeof result === "string") {
+    const lines = (result as string)
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+    outputs = lines.map((line) => JSON.parse(line));
+  } else if (Array.isArray(result)) {
+    outputs = result as unknown as YtDlpOutput[];
+  } else if (typeof result === "object" && result !== null) {
+    outputs = [result as unknown as YtDlpOutput];
+  } else {
+    logger.warn(
+      { resultType: typeof result, result },
+      "Unexpected yt-dlp output type"
+    );
+    throw new Error(`Unexpected yt-dlp output type: ${typeof result}`);
+  }
+  return outputs;
+}
+
 /**
  * Fetches metadata using yt-dlp without downloading the file.
  */
@@ -192,6 +210,7 @@ async function fetchMetadataWithYtDlp(
       ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
       ...(userAgent && { userAgent }),
       ...(cookieFilePath && { cookies: cookieFilePath }),
+      // biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
     } as any);
 
     return result as unknown as YtDlpOutput;
