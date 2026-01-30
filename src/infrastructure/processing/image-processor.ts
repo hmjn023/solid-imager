@@ -15,6 +15,10 @@ import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import { logger } from "~/infrastructure/logger";
+import {
+  checkFfmpegAvailable,
+  getFfmpeg,
+} from "~/infrastructure/utils/ffmpeg";
 
 const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
@@ -45,15 +49,7 @@ export class LocalImageProcessor implements IImageProcessor {
 
       // Verify ffmpeg availability
       if (isFfmpegAvailable === undefined) {
-        try {
-          const { execFile } = await import("node:child_process");
-          const { promisify } = await import("node:util");
-          const execFileAsync = promisify(execFile);
-          await execFileAsync("ffmpeg", ["-version"]);
-          isFfmpegAvailable = true;
-        } catch (_e) {
-          isFfmpegAvailable = false;
-        }
+        isFfmpegAvailable = await checkFfmpegAvailable();
       }
 
       if (!isFfmpegAvailable) {
@@ -66,7 +62,7 @@ export class LocalImageProcessor implements IImageProcessor {
         );
       }
 
-      const ffmpeg = (await import("fluent-ffmpeg")).default;
+      const ffmpeg = getFfmpeg();
       const os = (await import("node:os")).default;
       const fs = (await import("node:fs/promises")).default;
 
@@ -109,7 +105,7 @@ export class LocalImageProcessor implements IImageProcessor {
       } finally {
         // Clean up temp file
         // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
-        fs.unlink(tempScreenshot).catch(() => {});
+        fs.unlink(tempScreenshot).catch(() => { });
       }
       return;
     }
@@ -239,7 +235,7 @@ export class LocalImageProcessor implements IImageProcessor {
 
     // Handle videos
     if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
-      const ffmpeg = (await import("fluent-ffmpeg")).default;
+      const ffmpeg = getFfmpeg();
       return new Promise((resolve, reject) => {
         ffmpeg.ffprobe(mediaPath, (err, probeData) => {
           if (err) {
