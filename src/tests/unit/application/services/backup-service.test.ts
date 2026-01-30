@@ -1,11 +1,11 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackupService } from "~/application/services/backup-service";
 import type { MediaDumpItem } from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import {
-  mediaTags,
   mediaCharacters,
   mediaIps,
+  mediaTags,
 } from "~/infrastructure/db/schema";
 
 const { mockValues, mockDelete, mockFindMany } = vi.hoisted(() => ({
@@ -178,14 +178,16 @@ describe("BackupService", () => {
       // Helper to extract values for a specific table in a robust way
       const getValuesForTable = (tableSchema: any) => {
         const values: any[] = [];
-        (db.insert as any).mock.calls.forEach((insertArgs: any[], index: number) => {
-          if (insertArgs[0] === tableSchema) {
-            const valuesCall = mockValues.mock.calls[index];
-            if (valuesCall) {
-              values.push(...valuesCall[0]);
+        (db.insert as any).mock.calls.forEach(
+          (insertArgs: any[], index: number) => {
+            if (insertArgs[0] === tableSchema) {
+              const valuesCall = mockValues.mock.calls[index] as any[];
+              if (valuesCall?.[0]) {
+                values.push(...(valuesCall[0] as any[]));
+              }
             }
           }
-        });
+        );
         return values;
       };
 
@@ -199,48 +201,61 @@ describe("BackupService", () => {
 
       // Assert Tags
       expect(tagsData).toHaveLength(expectedTagsCount);
-      expect(tagsData).toContainEqual(expect.objectContaining({
+      expect(tagsData).toContainEqual(
+        expect.objectContaining({
           tagId: "tag-1-uuid",
           confidence: 0.9,
-          source: "AI"
-      }));
-      expect(tagsData).toContainEqual(expect.objectContaining({
+          source: "AI",
+        })
+      );
+      expect(tagsData).toContainEqual(
+        expect.objectContaining({
           tagId: "tag-2-uuid",
           confidence: null,
-          source: "manual"
-      }));
-       expect(tagsData).toContainEqual(expect.objectContaining({
+          source: "manual",
+        })
+      );
+      expect(tagsData).toContainEqual(
+        expect.objectContaining({
           tagId: "tag-3-uuid",
           confidence: null,
-          source: "restored" // Default
-      }));
+          source: "restored", // Default
+        })
+      );
 
       // Assert Characters
       expect(charsData).toHaveLength(expectedCharsCount);
-      expect(charsData).toContainEqual(expect.objectContaining({
+      expect(charsData).toContainEqual(
+        expect.objectContaining({
           characterId: "char-1-uuid",
           confidence: 0.85,
-          source: "AI"
-      }));
-      expect(charsData).toContainEqual(expect.objectContaining({
+          source: "AI",
+        })
+      );
+      expect(charsData).toContainEqual(
+        expect.objectContaining({
           characterId: "char-2-uuid",
           confidence: null,
-          source: "restored" // Default
-      }));
+          source: "restored", // Default
+        })
+      );
 
       // Assert IPs
       expect(ipsData).toHaveLength(expectedIpsCount);
-      expect(ipsData).toContainEqual(expect.objectContaining({
+      expect(ipsData).toContainEqual(
+        expect.objectContaining({
           ipId: "ip-1-uuid",
           confidence: 0.75,
-          source: "AI"
-      }));
-      expect(ipsData).toContainEqual(expect.objectContaining({
+          source: "AI",
+        })
+      );
+      expect(ipsData).toContainEqual(
+        expect.objectContaining({
           ipId: "ip-2-uuid",
           confidence: null,
-          source: "restored" // Default
-      }));
-
+          source: "restored", // Default
+        })
+      );
     });
   });
 });

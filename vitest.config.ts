@@ -1,24 +1,31 @@
-
 import path from "node:path";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-    // @ts-ignore: Vite version mismatch in Vitest/Vinxi
-    plugins: [tsconfigPaths()],
-    test: {
-        alias: {
-            "~": path.resolve(__dirname, "./src"),
-        },
-        environment: "node",
-        globals: true,
-        setupFiles: ["./src/tests/setup-unit.ts"],
-        include: [
-            'src/tests/unit/**/*.test.ts',
-            'src/tests/api/**/*.test.ts',
-            'src/tests/routes/**/*.test.ts',
-            'src/tests/integration/**/*.test.ts',
-        ],
-        exclude: ['node_modules/**'],
+  // @ts-ignore: Vite version mismatch in Vitest/Vinxi
+  plugins: [tsconfigPaths()],
+  test: {
+    alias: {
+      "~": path.resolve(__dirname, "./src"),
     },
+    environment: "node",
+    globals: true,
+    setupFiles: ["./src/tests/setup.ts"],
+    exclude: ['**/*.spec.ts', 'src/tests/e2e/**', 'node_modules/**'],
+    // 統合テストを順次実行（実際のDBを使用するため）
+    sequence: {
+      hooks: 'stack',
+    },
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true,
+      },
+    },
+    // テスト環境では必ずPGliteを使用
+    env: {
+      DB_HOST: 'pglite',
+    },
+  },
 });

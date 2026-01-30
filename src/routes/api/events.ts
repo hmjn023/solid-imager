@@ -1,6 +1,6 @@
-import { type APIEvent, eventHandler } from "solid-start/api";
+import type { APIEvent } from "@solidjs/start/server";
 import { eventService } from "~/application/services/event-service";
 
-export const GET = eventHandler(async (event: APIEvent) => {
+export function GET(event: APIEvent) {
   return eventService.createSseStream(event);
-});
+}

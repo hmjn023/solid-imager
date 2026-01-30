@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { APIEvent } from "solid-start/api";
+import type { APIEvent } from "@solidjs/start/server";
 
 // Define event types
 type MediaUpdatePayload = {
@@ -11,8 +11,9 @@ type EventMap = {
 };
 
 // Strongly-typed EventEmitter
+// biome-ignore lint/suspicious/noExplicitAny: Generic event map requires any
 class TypedEventEmitter<T extends Record<string, any>> {
-  private emitter = new EventEmitter();
+  private readonly emitter = new EventEmitter();
 
   constructor() {
     // Disable listener limit to prevent MaxListenersExceededWarning
@@ -34,10 +35,11 @@ class TypedEventEmitter<T extends Record<string, any>> {
 
 class EventService {
   private static instance: EventService;
+  // biome-ignore lint/suspicious/noExplicitAny: Generic event map requires any
   private readonly emitter = new TypedEventEmitter<EventMap>();
 
   // Singleton pattern
-  public static getInstance(): EventService {
+  static getInstance(): EventService {
     if (!EventService.instance) {
       EventService.instance = new EventService();
     }
@@ -71,6 +73,7 @@ class EventService {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
+        // biome-ignore lint/style/useNamingConvention: HTTP header standard
         Connection: "keep-alive",
       },
     });
