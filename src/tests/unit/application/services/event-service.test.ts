@@ -83,9 +83,10 @@ describe("EventService", () => {
     // biome-ignore lint/suspicious/noExplicitAny: Mocking APIEvent
     eventService.createSseStream(mockEvent as any);
 
-    if (startCallback) {
-      startCallback(mockController);
+    if (!startCallback) {
+      throw new Error("startCallback is not defined");
     }
+    startCallback(mockController);
 
     // Emit event
     eventService.sendSseEvent("media:updated", { mediaId: "foo" });
