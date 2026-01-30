@@ -55,8 +55,17 @@ class EventService {
     const stream = new ReadableStream({
       start: (controller) => {
         const handler = (payload: MediaUpdatePayload) => {
-          const data = JSON.stringify(payload);
-          controller.enqueue(`data: ${data}\n\n`);
+          if (event.request.signal.aborted) {
+            return;
+          }
+          try {
+            const data = JSON.stringify(payload);
+            controller.enqueue(`data: ${data}\n\n`);
+          } catch (_error) {
+            // Controller might be closed or errored
+            // Remove listener to prevent future errors
+            this.emitter.off("media:updated", handler);
+          }
         };
 
         this.emitter.on("media:updated", handler);
