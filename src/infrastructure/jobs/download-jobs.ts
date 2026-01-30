@@ -134,16 +134,22 @@ async function downloadWithYtDlp(
       printJson: true,
       paths: outputDir,
       output: template,
+      format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      mergeOutputFormat: "mp4",
       ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
       ...(userAgent && { userAgent }),
       ...(cookieFilePath && { cookies: cookieFilePath }),
-    });
+    } as any);
 
-    // result can be a single object or array depending on the URL
-    const outputs = Array.isArray(result) ? result : [result];
+    // youtube-dl-exec output handling for printJson: true (returns stdout string)
+    // Cast to unknown then string, as library types might imply object
+    const stdout = result as unknown as string;
 
-    return outputs.map((data) => {
-      const metadata = data as unknown as YtDlpOutput;
+    // Parse line by line (each line is a JSON object for a downloaded file)
+    const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+
+    return lines.map((line) => {
+      const metadata = JSON.parse(line) as YtDlpOutput;
       let finalPath = metadata.filename || metadata._filename || "";
       if (finalPath && !path.isAbsolute(finalPath)) {
         finalPath = path.join(outputDir, finalPath);
@@ -186,7 +192,7 @@ async function fetchMetadataWithYtDlp(
       ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
       ...(userAgent && { userAgent }),
       ...(cookieFilePath && { cookies: cookieFilePath }),
-    });
+    } as any);
 
     return result as unknown as YtDlpOutput;
   } catch (error) {
