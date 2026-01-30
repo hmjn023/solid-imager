@@ -18,8 +18,12 @@ import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   type authors,
+  type characters,
+  type ips,
   type mediaAuthors,
+  type mediaCharacters,
   mediaGenerationInfo,
+  type mediaIps,
   medias,
   type mediaTags,
   mediaUrls,
@@ -90,6 +94,12 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
     author: InferSelectModel<typeof authors>;
   })[];
   urls: InferSelectModel<typeof mediaUrls>[];
+  characters: (InferSelectModel<typeof mediaCharacters> & {
+    character: InferSelectModel<typeof characters>;
+  })[];
+  ips: (InferSelectModel<typeof mediaIps> & {
+    ip: InferSelectModel<typeof ips>;
+  })[];
 };
 
 function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
@@ -113,6 +123,16 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
       : null,
     authors: row.authors.map((ma) => ma.author),
     urls: row.urls.map(mapToMediaUrl),
+    characters: row.characters.map((mc) => ({
+      ...mc.character,
+      confidence: mc.confidence,
+      linkSource: mc.source,
+    })),
+    ips: row.ips.map((mi) => ({
+      ...mi.ip,
+      confidence: mi.confidence,
+      linkSource: mi.source,
+    })),
   };
 }
 
@@ -409,6 +429,16 @@ export const MediaRepository: IMediaRepository = {
             },
           },
           urls: true,
+          characters: {
+            with: {
+              character: true,
+            },
+          },
+          ips: {
+            with: {
+              ip: true,
+            },
+          },
         },
       });
 

@@ -178,7 +178,33 @@ export const tagSchema = z.object({
   type: z.enum(["positive", "negative"]), // from mediaTags
   confidence: z.number().nullable().optional(), // from mediaTags
 });
+// ...existing code...
 export type MediaTag = z.infer<typeof tagSchema>;
+
+export const characterSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  source: z.string(),
+  aliases: z.any().nullable().optional(), // jsonb
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  confidence: z.number().nullable().optional(), // from mediaCharacters
+  linkSource: z.string().optional(), // from mediaCharacters source
+});
+export type MediaCharacter = z.infer<typeof characterSchema>;
+
+export const ipSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  description: z.string().nullable(),
+  source: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  confidence: z.number().nullable().optional(), // from mediaIps
+  linkSource: z.string().optional(), // from mediaIps source
+});
+export type MediaIp = z.infer<typeof ipSchema>;
 
 export const mediaGenerationInfoSchema = z.object({
   mediaId: z.uuid({ version: "v4" }),
@@ -228,6 +254,8 @@ export const mediaDetailsSchema = mediaSchema.extend({
   generationInfo: mediaGenerationInfoSchema.nullable(),
   authors: z.array(authorSchema),
   urls: z.array(mediaUrlSchema),
+  characters: z.array(characterSchema),
+  ips: z.array(ipSchema),
 });
 
 export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
