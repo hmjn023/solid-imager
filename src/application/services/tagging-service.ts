@@ -10,6 +10,7 @@ import type {
   CcipFeatureResponse,
   TaggingResponse,
 } from "~/domain/tagging/schemas";
+import { eventService } from "./event-service";
 import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
@@ -274,6 +275,9 @@ export class TaggingService {
     if (charsToLink.length > 0) {
       await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
     }
+
+    // Notify clients of the update
+    eventService.sendSseEvent("media:updated", { mediaId });
   }
 
   async getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
