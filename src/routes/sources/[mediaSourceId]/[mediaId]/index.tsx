@@ -1,6 +1,6 @@
 import { useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Match, Switch, onCleanup, onMount } from "solid-js";
+import { Match, onCleanup, onMount, Switch } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
 import type { UUID } from "~/domain/shared/schemas";
@@ -32,8 +32,8 @@ export default function Media() {
         if (data.mediaId === mediaId) {
           handleUpdate();
         }
-      } catch (error) {
-        console.error("Failed to parse SSE message:", error);
+      } catch {
+        // Ignore JSON parse errors for non-matching events
       }
     };
 
@@ -58,7 +58,11 @@ export default function Media() {
                 <MediaViewer media={details()} />
               </div>
               <div class="w-full shrink-0 lg:w-96">
-                <MediaSidebar media={details()} onUpdate={handleUpdate} />
+                <MediaSidebar
+                  isUpdating={mediaDetails.isRefetching}
+                  media={details()}
+                  onUpdate={handleUpdate}
+                />
               </div>
             </div>
           )}

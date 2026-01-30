@@ -29,6 +29,7 @@ import {
 
 type MediaSidebarProps = {
   media: MediaDetails;
+  isUpdating?: boolean;
   onUpdate?: () => void;
 };
 
@@ -364,7 +365,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
       <div class="space-y-4">
         <AssociationManager
           availableItems={allProjects.data || []}
-          isLoading={projects.isLoading}
+          isLoading={projects.isLoading || props.isUpdating}
           items={projects.data || []}
           onAdd={handleAddProject}
           onCreate={handleCreateProject}
@@ -374,7 +375,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
         <AssociationManager
           availableItems={allIps.data || []}
-          isLoading={false}
+          isLoading={props.isUpdating}
           items={props.media.ips || []}
           onAdd={handleAddIp}
           onCreate={handleCreateIp}
@@ -384,7 +385,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
         <AssociationManager
           availableItems={availableCharacters()}
-          isLoading={false}
+          isLoading={props.isUpdating}
           items={props.media.characters || []}
           onAdd={handleAddCharacter}
           onCreate={handleCreateCharacter}
