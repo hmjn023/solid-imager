@@ -12,6 +12,7 @@
 *   **再帰的構造**: 条件の中に条件グループを含められるようにする。
 *   **多様な演算子**: 単純な一致だけでなく、包含、除外、範囲指定などをサポートする。
 *   **バックエンド対応**: 新しいクエリ構造を受け取り、効率的なSQLを生成する。
+*   **セキュリティ**: SQLインジェクションを防止し、安全なクエリ構築を行う。
 
 ## 設計詳細
 
@@ -66,6 +67,8 @@ export const filterTargetSchema = z.enum([
 ]);
 
 // 単一の検索条件ノード
+// 注意: operator と value の整合性はアプリケーション層で検証する
+// 例: isEmpty/isNotEmpty の場合は value を無視、in/notIn の場合は配列を期待
 export const searchCriterionSchema = z.object({
   type: z.literal("criterion"),
   target: filterTargetSchema,
@@ -86,6 +89,7 @@ export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
   z.object({
     type: z.literal("group"),
     operator: z.enum(["and", "or"]),
+    // children が空の場合、このグループは条件なしとして扱われる（無視される）
     children: z.array(z.union([searchGroupSchema, searchCriterionSchema])),
     negate: z.boolean().default(false).optional(),
   })
@@ -157,6 +161,12 @@ function buildSearchQuery(node: SearchNode): SQL | undefined {
     return node.negate ? not(condition) : condition;
   }
 }
+
+// LIKE検索時の特殊文字エスケープ
+function escapeLikePattern(value: string): string {
+  return value.replace(/[%_\\]/g, (char) => `\\${char}`);
+}
+}
 ```
 
 ### 3. API (Media Router)
@@ -164,8 +174,67 @@ function buildSearchQuery(node: SearchNode): SQL | undefined {
 既存の `media.search` エンドポイント (`src/infrastructure/api/routers/media-router.ts`) は、自動的に新しい `MediaSearchRequest` スキーマを受け入れるようになる（スキーマ定義を参照しているため）。
 実装側はリポジトリの変更により自動的に新ロジックが適用される。
 
+### 4. `keyword` 全文検索の詳細
+
+`target: "keyword"` の場合、以下のカラムを OR 結合で検索する：
+- `medias.file_name`
+- `medias.file_path`
+- `medias.description`
+- `prompts.content` (関連する ComfyUI/生成プロンプト)
+
+```typescript
+if (node.target === "keyword") {
+  const pattern = `%${escapeLikePattern(node.value as string)}%`;
+  condition = or(
+    like(medias.fileName, pattern),
+    like(medias.filePath, pattern),
+    like(medias.description, pattern),
+    sql`EXISTS (
+      SELECT 1 FROM ${prompts}
+      WHERE ${prompts.mediaId} = ${medias.id}
+        AND ${prompts.content} LIKE ${pattern}
+    )`
+  );
+}
+```
+
+### 5. パフォーマンス考慮事項
+
+*   **ネスト深度制限**: アプリケーション層で条件のネスト深度を最大10段階に制限する。これを超える場合はバリデーションエラーを返す。
+*   **条件数制限**: 1リクエストあたりの総条件数（`criterion` ノード数）を最大100に制限する。
+*   **クエリプランの監視**: 本番運用開始後、`EXPLAIN ANALYZE` で定期的にクエリプランを確認し、必要に応じてインデックスを追加する。
+
+### 6. セキュリティ考慮事項
+
+*   **LIKE パターンのエスケープ**: `%`, `_`, `\` をエスケープして SQLインジェクションを防止（上記 `escapeLikePattern` 関数）。
+*   **パラメータ化クエリ**: Drizzle ORM のプレースホルダを使用し、値を直接 SQL 文字列に埋め込まない。
+
+### 7. 移行ガイド（フロントエンド）
+
+既存の検索APIリクエスト形式は破棄される。フロントエンドは以下の手順で移行する：
+
+1.  既存のフィルタパラメータ (`tags`, `ips`, `q` など) を使用している箇所を特定する。
+2.  各パラメータを新しい `condition` 構造に変換するヘルパー関数を作成する。
+    ```typescript
+    // 例: 既存の tags パラメータを新形式に変換
+    function migrateTagsFilter(tags: string[]): SearchGroup {
+      return {
+        type: "group",
+        operator: "and",
+        children: tags.map(tag => ({
+          type: "criterion",
+          target: "tag",
+          operator: "equals",
+          value: tag,
+        })),
+      };
+    }
+    ```
+3.  段階的に新APIに移行し、動作確認後に古いコードを削除する。
+
 ## タスク手順
 
 1.  **Schema Update**: `src/domain/media/schemas.ts` を更新し、新しい検索スキーマを定義する。
 2.  **Repository Update**: `src/infrastructure/db/repositories/media-repository.ts` にクエリビルダロジックを実装し、`search` メソッドを更新する。
-3.  **Frontend Update**: フロントエンドからのAPI呼び出し部分を一時的に修正するか、動作確認用の簡易スクリプトでAPIの疎通を確認する。（本格的なUI対応は別途実施）
+3.  **Validation Layer**: ネスト深度・条件数の制限を検証するバリデーション関数を追加する。
+4.  **Frontend Update**: フロントエンドからのAPI呼び出し部分を一時的に修正するか、動作確認用の簡易スクリプトでAPIの疎通を確認する。（本格的なUI対応は別途実施）

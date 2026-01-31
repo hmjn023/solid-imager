@@ -10,6 +10,7 @@
 *   **Current Stateの永続化**: ユーザーが現在操作している検索条件を "current" プリセットとして常に保存し、リロード後も復元できるようにする。
 *   **プリセット保存**: よく使う検索条件に名前を付けて保存し、後から呼び出せるようにする。
 *   **URL非依存**: 複雑な検索条件をURLパラメータに含めるのは困難であるため、URLにはプリセットの状態を含めず、内部状態として管理する。
+*   **シングルユーザー前提**: 本アプリケーションはシングルユーザー利用を想定しており、プリセットは全てグローバルに共有される。
 
 ## 設計詳細
 
@@ -26,6 +27,7 @@ export const presets = pgTable("presets", {
   /** プリセット名 (例: "current", "Favorites 2024") */
   // ユニーク制約により、同じ名前のプリセットは作成できない
   // "current" はシステム予約的な扱いとなる
+  // 名前制約: 1〜100文字、空文字不可
   name: text("name").notNull().unique(),
   
   /** フィルター条件 (MediaSearchRequest) */
@@ -34,6 +36,9 @@ export const presets = pgTable("presets", {
   /** 作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+// システム予約プリセット名（削除不可）
+export const RESERVED_PRESET_NAMES = ["current"] as const;
 ```
 
 ### 2. API設計 (oRPC - Presets Router)
@@ -46,39 +51,46 @@ export const presets = pgTable("presets", {
 #### エンドポイント定義
 
 ```typescript
+// プリセット名のバリデーションスキーマ
+const presetNameSchema = z.string().min(1, "プリセット名は必須です").max(100, "プリセット名は100文字以内です");
+
 export const presetsRouter = {
-  // 全プリセット一覧取得
+  // 全プリセット一覧取得（作成日時降順）
   list: os.handler(async () => {
-    // return db.select().from(presets)
+    // return db.select().from(presets).orderBy(desc(presets.createdAt))
   }),
   
   // 名前による取得 ("current" の取得に使用)
-  getByName: os.input(z.object({ name: z.string() })).handler(async ({ input }) => {
+  getByName: os.input(z.object({ name: presetNameSchema })).handler(async ({ input }) => {
      // 指定された名前のプリセットを返す
-     // 存在しない場合は null または エラー (フロントエンドの制御方針による)
+     // 存在しない場合は null を返す（フロントエンドで初期化処理を行う）
   }),
   
   // プリセット作成 ("名前を付けて保存")
   // "current" が存在しない場合の初期作成にも使用
   create: os.input(z.object({ 
-    name: z.string(), 
+    name: presetNameSchema, 
     value: mediaSearchRequestSchema 
   })).handler(async ({ input }) => {
+    // 名前の重複チェックは DB のユニーク制約で行う
+    // 重複時は適切なエラーメッセージを返す
     // insert into presets ...
   }),
 
-  // プリセット更新
+  // プリセット更新（IDまたは名前のいずれか一方で指定）
   // "current" の状態同期や、既存プリセットの編集に使用
-  update: os.input(z.object({ 
-    id: z.number().optional(), 
-    name: z.string().optional(), // 名前で指定して更新する場合
-    value: mediaSearchRequestSchema 
-  })).handler(async ({ input }) => {
-    // update presets set value = input.value where ...
+  update: os.input(z.union([
+    z.object({ id: z.number(), value: mediaSearchRequestSchema }),
+    z.object({ name: presetNameSchema, value: mediaSearchRequestSchema }),
+  ])).handler(async ({ input }) => {
+    // update presets set value = input.value where id = ... or name = ...
   }),
   
   // プリセット削除
+  // 注意: "current" などの予約プリセットは削除不可
   delete: os.input(z.object({ id: z.number() })).handler(async ({ input }) => {
+    // 削除対象が予約プリセットかチェック
+    // if (RESERVED_PRESET_NAMES.includes(preset.name)) throw new Error("システムプリセットは削除できません")
     // delete from presets where id = ...
   })
 };
@@ -109,8 +121,32 @@ export const presetsRouter = {
 3.  Storeの値をその `value` で上書き。
 4.  **重要**: 同時に `presets.update({ name: "current", value: newValue })` も行い、"current" も同期させる。
 
+## エッジケース対応
+
+### バリデーション失敗時のフォールバック
+
+DB上の `value` が現在のスキーマ (`MediaSearchRequest`) と互換性がない場合の対応：
+
+1.  `getByName` / `list` でプリセットを読み込む際、`value` を `mediaSearchRequestSchema.safeParse()` で検証する。
+2.  検証失敗時は、該当プリセットの `value` を `null` として返し、フロントエンドでデフォルト条件にフォールバックさせる。
+3.  ログに警告を出力し、管理者に通知する。
+
+```typescript
+const result = mediaSearchRequestSchema.safeParse(preset.value);
+if (!result.success) {
+  logger.warn(`プリセット "${preset.name}" のパースに失敗: ${result.error.message}`);
+  return { ...preset, value: null };
+}
+return { ...preset, value: result.data };
+```
+
+### "current" プリセットの自動作成
+
+アプリケーション起動時またはDB初期化時に "current" プリセットが存在しない場合、デフォルト値で自動作成する。
+
 ## タスク手順
 
 1.  **Presets Router Implementation**: `src/infrastructure/api/routers/presets-router.ts` を実装し、`appRouter` に登録する。
-2.  **Frontend State Management**: フロントエンド（SolidJS）で検索条件のStoreを実装し、上記のフロー（初期化、更新同期）を組み込む。
-3.  **UI Implementation**: 検索条件保存モーダル、プリセット一覧表示、ロード機能のUIを実装する。
+2.  **Validation & Error Handling**: スキーマ検証失敗時のフォールバック処理を実装する。
+3.  **Frontend State Management**: フロントエンド（SolidJS）で検索条件のStoreを実装し、上記のフロー（初期化、更新同期）を組み込む。
+4.  **UI Implementation**: 検索条件保存モーダル、プリセット一覧表示、ロード機能のUIを実装する。
