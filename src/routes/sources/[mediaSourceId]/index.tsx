@@ -17,7 +17,7 @@ import { isServer, Portal } from "solid-js/web";
 import { toast } from "solid-toast";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { PresetManager } from "~/components/media/preset-manager";
+
 import { ProSearchBuilder } from "~/components/media/pro-search-builder";
 import { ProSearchDialog } from "~/components/media/pro-search-dialog";
 import { SearchFilters } from "~/components/media/search-filters";
@@ -816,8 +816,6 @@ export default function MediaListPage() {
                   </Button>
                 </div>
 
-                <PresetManager class="w-full flex-col items-stretch" />
-
                 <SortControls
                   onSortByChange={(val) => setSearchState("sortBy", val)}
                   onSortOrderChange={(val) => setSearchState("sortOrder", val)}
@@ -889,8 +887,6 @@ export default function MediaListPage() {
                 </Button>
               </div>
             </div>
-
-            <PresetManager />
 
             <SortControls
               onSortByChange={(val) => setSearchState("sortBy", val)}

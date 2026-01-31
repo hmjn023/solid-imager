@@ -33,7 +33,10 @@ import { loadPreset, searchState } from "~/domain/search/store";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { cn } from "~/presentation/utils/cn";
 
-export function PresetManager(props: { class?: string }) {
+export function PresetManager(props: {
+  class?: string;
+  onAction?: () => void;
+}) {
   const [data, { refetch }] = createResource(PresetClient.list);
 
   // existing "current" preset should be hidden from UI
@@ -81,6 +84,7 @@ export function PresetManager(props: { class?: string }) {
       setIsSaveDialogOpen(false);
       setNewPresetName("");
       refetch();
+      props.onAction?.();
     } catch (_e) {
       // Ignore error
     }
@@ -122,6 +126,7 @@ export function PresetManager(props: { class?: string }) {
     const preset = presets()?.find((p: Preset) => p.id === Number(id));
     if (preset) {
       loadPreset(preset);
+      props.onAction?.();
     }
   };
 
@@ -251,13 +256,13 @@ export function PresetManager(props: { class?: string }) {
         {/* Delete Button (Only shows when selected) */}
         <Show when={selectedPresetId()}>
           <Button
-            class="text-red-500 hover:bg-red-100/50 hover:text-red-600"
+            class="hover:border-red-200 hover:bg-red-50"
             onClick={() => confirmDelete(Number(selectedPresetId()))}
             size="icon"
             title="プリセット削除"
-            variant="ghost"
+            variant="outline"
           >
-            <span class="i-lucide-trash-2 h-4 w-4" />
+            <span class="i-lucide-trash-2 h-4 w-4 text-red-500" />
           </Button>
         </Show>
       </div>
