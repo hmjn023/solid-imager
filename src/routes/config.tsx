@@ -95,6 +95,36 @@ function ConfigForm(props: { data: AppConfig }) {
                 )}
               </form.Field>
 
+              <form.Field name="jobs.aiConcurrency">
+                {(field) => (
+                  <div class="space-y-2">
+                    <Label for={field().name}>AI Concurrency</Label>
+                    <Input
+                      id={field().name}
+                      onBlur={field().handleBlur}
+                      onInput={(e) => {
+                        const val = e.target.value;
+                        field().handleChange(
+                          (val === ""
+                            ? undefined
+                            : Number(val)) as unknown as number
+                        );
+                      }}
+                      type="number"
+                      value={(field().state.value as number) ?? ""}
+                    />
+                    <Show when={field().state.meta.errors.length}>
+                      <div class="text-red-500 text-sm">
+                        {field().state.meta.errors[0]}
+                      </div>
+                    </Show>
+                    <div class="text-muted-foreground text-xs">
+                      Number of concurrent AI tagging jobs.
+                    </div>
+                  </div>
+                )}
+              </form.Field>
+
               <form.Field name="jobs.pollIntervalMs">
                 {(field) => (
                   <div class="space-y-2">
