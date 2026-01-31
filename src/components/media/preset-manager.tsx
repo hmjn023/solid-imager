@@ -1,4 +1,14 @@
 import { createResource, createSignal, Show } from "solid-js";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "~/components/ui/alert-dialog";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -30,6 +40,11 @@ export function PresetManager(props: { class?: string }) {
   const presets = () => data()?.filter((p) => p.name !== "current");
 
   const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
+
+  // For Delete Confirmation
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+  const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
+
   const [newPresetName, setNewPresetName] = createSignal("");
   const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
     null
@@ -61,16 +76,31 @@ export function PresetManager(props: { class?: string }) {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    // biome-ignore lint/suspicious/noAlert: simple confirmation is sufficient here
-    if (!window.confirm("本当に削除しますか？")) {
+  const confirmDelete = (id: number) => {
+    setPresetToDelete(id);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const executeDelete = async () => {
+    const id = presetToDelete();
+    if (!id) {
       return;
     }
+
     try {
       await PresetClient.delete(id);
+
+      // If deleted preset was selected, clear selection
+      if (selectedPresetId() === String(id)) {
+        setSelectedPresetId(null);
+      }
+
       refetch();
     } catch (_e) {
       // Ignore error
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setPresetToDelete(null);
     }
   };
 
@@ -85,40 +115,89 @@ export function PresetManager(props: { class?: string }) {
     }
   };
 
+  const handleClearSelection = () => {
+    setSelectedPresetId(null);
+  };
+
   return (
     <div class={cn("flex flex-col gap-2", props.class)}>
-      <Select
-        itemComponent={(itemProps) => {
-          const preset = presets()?.find(
-            (p: Preset) =>
-              String(p.id) === (itemProps.item as { rawValue: string }).rawValue
-          );
-          return (
-            <SelectItem item={itemProps.item}>
-              <div class="flex w-full items-center justify-between gap-2">
-                <span>{preset?.name}</span>
-              </div>
-            </SelectItem>
-          );
-        }}
-        onChange={setSelectedPresetId}
-        options={presets()?.map((p: Preset) => String(p.id)) || []}
-        placeholder="プリセットを選択..."
-        value={selectedPresetId()}
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        onOpenChange={setIsDeleteDialogOpen}
+        open={isDeleteDialogOpen()}
       >
-        <SelectTrigger class="w-full">
-          <SelectValue<string>>
-            {(state) => {
-              const preset = presets()?.find(
-                (p: Preset) =>
-                  String(p.id) === (state.selectedOption() as string)
-              );
-              return preset ? preset.name : "プリセットを選択...";
-            }}
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent />
-      </Select>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>プリセットの削除</AlertDialogTitle>
+            <AlertDialogDescription>
+              本当にこのプリセットを削除しますか？この操作は取り消せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              class="bg-red-500 hover:bg-red-600"
+              onClick={executeDelete}
+            >
+              削除する
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <div class="flex items-center gap-2">
+        <Select
+          itemComponent={(itemProps) => {
+            const preset = presets()?.find(
+              (p: Preset) =>
+                String(p.id) ===
+                (itemProps.item as { rawValue: string }).rawValue
+            );
+            return (
+              <SelectItem
+                class="flex w-full justify-between gap-2"
+                item={itemProps.item}
+              >
+                <span>{preset?.name}</span>
+                {/* Delete button inside item requires stopPropagation to avoid selecting while deleting? 
+                     Actually simpler to put delete button next to Load if selected? 
+                     User said: "Is there no way to remove AFTER selecting?" - implying deselect.
+                  */}
+              </SelectItem>
+            );
+          }}
+          onChange={setSelectedPresetId}
+          options={presets()?.map((p: Preset) => String(p.id)) || []}
+          placeholder="プリセットを選択..."
+          value={selectedPresetId()}
+        >
+          <SelectTrigger class="w-full">
+            <SelectValue<string>>
+              {(state) => {
+                const preset = presets()?.find(
+                  (p: Preset) =>
+                    String(p.id) === (state.selectedOption() as string)
+                );
+                return preset ? preset.name : "プリセットを選択...";
+              }}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
+
+        {/* Clear Selection Button */}
+        <Show when={selectedPresetId()}>
+          <Button
+            class="h-10 w-10 shrink-0"
+            onClick={handleClearSelection}
+            size="icon"
+            title="選択解除"
+            variant="ghost"
+          >
+            <span class="i-lucide-x h-4 w-4" />
+          </Button>
+        </Show>
+      </div>
 
       <div class="flex w-full items-center gap-2">
         <Button
@@ -157,14 +236,16 @@ export function PresetManager(props: { class?: string }) {
           </DialogContent>
         </Dialog>
 
+        {/* Delete Button (Only shows when selected) */}
         <Show when={selectedPresetId()}>
           <Button
-            class="text-red-500"
-            onClick={() => handleDelete(Number(selectedPresetId()))}
+            class="text-red-500 hover:bg-red-100/50 hover:text-red-600"
+            onClick={() => confirmDelete(Number(selectedPresetId()))}
             size="icon"
+            title="プリセット削除"
             variant="ghost"
           >
-            ×
+            <span class="i-lucide-trash-2 h-4 w-4" />
           </Button>
         </Show>
       </div>
