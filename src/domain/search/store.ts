@@ -1,5 +1,9 @@
 import { createStore } from "solid-js/store";
-import type { Preset, SearchGroup } from "~/domain/media/schemas";
+import type {
+  Preset,
+  SearchCriterion,
+  SearchGroup,
+} from "~/domain/media/schemas";
 
 export type SearchState = {
   // Modes
@@ -59,24 +63,97 @@ export const resetSearchState = () => {
 };
 
 export const loadPreset = (preset: Preset) => {
-  setSearchState({
-    mode: "pro", // プリセット読み込み時はProモードとする（将来的に解析してSimpleに戻すことも可）
-    activePresetId: preset.id,
-    advancedCondition: preset.value,
-    // Reset simple filters to avoid confusion, or keep them as is?
-    // Clearing them implies switching contexts completely.
+  const simpleState = restoreFromSearchGroup(preset.value);
+
+  if (simpleState) {
+    setSearchState({
+      mode: "simple",
+      activePresetId: preset.id,
+      advancedCondition: null,
+      ...simpleState,
+    });
+  } else {
+    setSearchState({
+      mode: "pro",
+      activePresetId: preset.id,
+      advancedCondition: preset.value,
+      // Reset simple filters
+      searchQuery: "",
+      selectedTags: [],
+      excludeTags: [],
+      selectedProjects: [],
+      selectedIps: [],
+      selectedCharacters: [],
+    });
+  }
+};
+
+/**
+ * Tries to map a SearchGroup back to simple search state.
+ * Returns null if the condition cannot be represented in simple mode.
+ */
+const restoreFromSearchGroup = (
+  group: SearchGroup
+): Partial<SearchState> | null => {
+  // Simple mode is always a top-level AND group
+  if (group.operator !== "and") {
+    return null;
+  }
+
+  const state: Partial<SearchState> = {
     searchQuery: "",
     selectedTags: [],
     excludeTags: [],
     selectedProjects: [],
     selectedIps: [],
     selectedCharacters: [],
-  });
+    tagMode: "and",
+  };
+
+  for (const child of group.children) {
+    if (child.type === "group") {
+      return null;
+    }
+
+    if (!applyCriterionToState(state, child)) {
+      return null;
+    }
+  }
+
+  return state;
 };
 
-/**
- * Constructs the SearchGroup based on current mode and filters.
- */
+const applyCriterionToState = (
+  state: Partial<SearchState>,
+  criterion: SearchCriterion
+): boolean => {
+  const { target, operator, value, negate } = criterion;
+
+  if (target === "fileName" && operator === "contains" && !negate) {
+    state.searchQuery = value as string;
+    return true;
+  }
+
+  if (operator !== "equals") {
+    return false;
+  }
+
+  const targetMap: Record<string, string[] | undefined> = {
+    tag: negate ? state.excludeTags : state.selectedTags,
+    project: negate ? undefined : state.selectedProjects,
+    ip: negate ? undefined : state.selectedIps,
+    character: negate ? undefined : state.selectedCharacters,
+  };
+
+  const list = targetMap[target];
+  if (list) {
+    list.push(value as string);
+    return true;
+  }
+
+  return false;
+};
+
 /**
  * Constructs the SearchGroup based on current mode and filters.
  */

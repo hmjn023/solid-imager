@@ -60,24 +60,10 @@ const DEFAULT_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-// import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
-// import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
+
 import { searchMediaInDirectory } from "./media-repository-utils";
 
 type DbMedia = InferSelectModel<typeof medias>;
-
-/**
- * Splits a comma-separated string into an array of strings.
- */
-function _splitAndTrim(value: string | undefined): string[] | undefined {
-  if (!value) {
-    return;
-  }
-  return value
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
 
 function mapToMedia(dbMedia: DbMedia): Media {
   return {
@@ -720,13 +706,19 @@ function getColumnForTarget(target: string): AnyColumn | undefined {
 }
 
 function buildSearchQuery(
-  node: SearchGroup | SearchCriterion
+  node: SearchGroup | SearchCriterion,
+  depth = 0
 ): SQL | undefined {
+  const MaxDepth = 10;
+  if (depth > MaxDepth) {
+    throw new Error(`Search condition nesting too deep (max ${MaxDepth})`);
+  }
+
   if (node.type === "group") {
     // biome-ignore lint/suspicious/noExplicitAny: complex type recursion
     const children = node.children as any[];
     const conditions = children
-      .map((child) => buildSearchQuery(child))
+      .map((child) => buildSearchQuery(child, depth + 1))
       .filter((c): c is SQL => c !== undefined);
 
     if (conditions.length === 0) {
