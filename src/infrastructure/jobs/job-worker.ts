@@ -15,7 +15,7 @@ export class JobWorker {
   private readonly jobRepo: IJobRepository;
   private readonly processor: (job: Job) => Promise<void>;
 
-  private readonly aiJobTypes = ["auto_tagging"];
+  private readonly aiJobTypes = new Set(["auto_tagging"]);
 
   constructor(jobRepo: IJobRepository, processor: (job: Job) => Promise<void>) {
     this.jobRepo = jobRepo;
