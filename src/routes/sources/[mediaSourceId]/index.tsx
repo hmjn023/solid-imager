@@ -20,6 +20,7 @@ import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { PresetManager } from "~/components/media/preset-manager";
 import { ProSearchBuilder } from "~/components/media/pro-search-builder";
 import { SearchFilters } from "~/components/media/search-filters";
+import { SortControls } from "~/components/media/sort-controls";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -812,6 +813,13 @@ export default function MediaListPage() {
 
                 <PresetManager class="w-full flex-col items-stretch" />
 
+                <SortControls
+                  onSortByChange={(val) => setSearchState("sortBy", val)}
+                  onSortOrderChange={(val) => setSearchState("sortOrder", val)}
+                  sortBy={searchState.sortBy}
+                  sortOrder={searchState.sortOrder}
+                />
+
                 {searchState.mode === "simple" ? (
                   <SearchFilters
                     characters={allCharacters.data}
@@ -878,6 +886,13 @@ export default function MediaListPage() {
             </div>
 
             <PresetManager />
+
+            <SortControls
+              onSortByChange={(val) => setSearchState("sortBy", val)}
+              onSortOrderChange={(val) => setSearchState("sortOrder", val)}
+              sortBy={searchState.sortBy}
+              sortOrder={searchState.sortOrder}
+            />
 
             {searchState.mode === "simple" ? (
               <SearchFilters
