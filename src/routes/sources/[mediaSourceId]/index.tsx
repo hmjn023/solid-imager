@@ -19,6 +19,7 @@ import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { PresetManager } from "~/components/media/preset-manager";
 import { ProSearchBuilder } from "~/components/media/pro-search-builder";
+import { ProSearchDialog } from "~/components/media/pro-search-dialog";
 import { SearchFilters } from "~/components/media/search-filters";
 import { SortControls } from "~/components/media/sort-controls";
 import { Button } from "~/components/ui/button";
@@ -906,10 +907,11 @@ export default function MediaListPage() {
               />
             ) : (
               <div class="space-y-4">
-                <ProSearchBuilder
+                <ProSearchDialog
                   characters={allCharacters.data}
                   ips={allIps.data}
                   onChange={(val) => setSearchState("advancedCondition", val)}
+                  onSearch={handleSearch}
                   projects={allProjects.data}
                   tags={tags.data}
                   value={searchState.advancedCondition || null}
