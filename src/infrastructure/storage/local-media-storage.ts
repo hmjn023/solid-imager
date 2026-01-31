@@ -168,7 +168,8 @@ export const LocalMediaStorage: IStorageService = {
 
     // Video formats
     if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
-      const ffmpeg = (await import("fluent-ffmpeg")).default;
+      const { getFfmpeg } = await import("~/infrastructure/utils/ffmpeg");
+      const ffmpeg = getFfmpeg();
 
       return new Promise<{
         width: number;

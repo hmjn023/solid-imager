@@ -10,7 +10,7 @@ describe("EventService", () => {
     };
 
     // Capture the start callback
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking controller
+
     let startCallback: ((controller: any) => void) | undefined;
 
     // Mock global ReadableStream
@@ -33,7 +33,7 @@ describe("EventService", () => {
     const mockEvent = { request: mockRequest };
 
     // 1. Create Stream
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking APIEvent
+
     eventService.createSseStream(mockEvent as any);
 
     if (!startCallback) {
@@ -61,7 +61,6 @@ describe("EventService", () => {
       close: vi.fn(),
     };
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking controller
     let startCallback: ((controller: any) => void) | undefined;
 
     const MockReadableStream = vi.fn((strategies) => {
@@ -80,7 +79,6 @@ describe("EventService", () => {
     };
     const mockEvent = { request: { signal: mockSignal } };
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking APIEvent
     eventService.createSseStream(mockEvent as any);
 
     if (!startCallback) {
@@ -105,7 +103,6 @@ describe("EventService", () => {
       close: vi.fn(),
     };
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking controller
     let startCallback: ((controller: any) => void) | undefined;
     const MockReadableStream = vi.fn((strategies) => {
       startCallback = strategies.start;
@@ -123,7 +120,6 @@ describe("EventService", () => {
     };
     const mockEvent = { request: { signal: mockSignal } };
 
-    // biome-ignore lint/suspicious/noExplicitAny: Mocking APIEvent
     eventService.createSseStream(mockEvent as any);
 
     if (!startCallback) {

@@ -2,11 +2,11 @@
  * Download Jobs - Handles downloading images from URLs
  */
 
-import { execFile } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
+import ffmpegPath from "ffmpeg-static";
+import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
 import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
@@ -14,16 +14,15 @@ import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Added
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
 
-const execFileAsync = promisify(execFile);
-const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/; // Corrected escaping for regex
-
-const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/; // Corrected escaping for regex
-// biome-ignore lint/style/noMagicNumbers: Buffer size calculation
-const MAX_BUFFER = 10 * 1024 * 1024; // 10MB
+const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
+const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
 const URL_HASH_LENGTH = 12;
+
+// ffmpeg-static may return null on unsupported platforms
+const resolvedFfmpegPath = ffmpegPath ?? undefined;
 
 /**
  * Downloads an image from a URL and saves it to the specified path.
@@ -116,7 +115,7 @@ async function createNetscapeCookieFile(
 }
 
 /**
- * Downloads video/media using yt-dlp
+ * Downloads video/media using yt-dlp via youtube-dl-exec
  */
 async function downloadWithYtDlp(
   url: string,
@@ -124,69 +123,82 @@ async function downloadWithYtDlp(
   cookies?: Cookie[],
   userAgent?: string
 ): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
-  // Ensure output directory exists
   await fs.mkdir(outputDir, { recursive: true });
 
-  // Verify yt-dlp is available
-  try {
-    await execFileAsync("yt-dlp", ["--version"]);
-  } catch (_e) {
-    throw new Error(
-      "yt-dlp binary not found or not executable. Please ensure it is installed and in your PATH."
-    );
-  }
-
   const template = "%(id)s.%(ext)s";
-  const args = [
-    "--no-simulate",
-    "--print-json",
-    "--paths",
-    outputDir,
-    "-o",
-    template,
-    url,
-  ];
-
-  if (userAgent) {
-    args.push("--user-agent", userAgent);
-  }
-
   const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-  if (cookieFilePath) {
-    args.push("--cookies", cookieFilePath);
-  }
 
   try {
-    const { stdout } = await execFileAsync("yt-dlp", args, {
-      maxBuffer: MAX_BUFFER,
-    });
+    const result = await youtubedl(url, {
+      noSimulate: true,
+      printJson: true,
+      paths: outputDir,
+      output: template,
+      format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
+      mergeOutputFormat: "mp4",
+      ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+      ...(userAgent && { userAgent }),
+      ...(cookieFilePath && { cookies: cookieFilePath }),
+      // biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
+    } as any);
 
-    const results: { filePath: string; metadata: YtDlpOutput }[] = [];
-    const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
+    // output handling
+    const outputs = parseYtDlpOutput(result);
 
-    for (const line of lines) {
-      try {
-        const data = JSON.parse(line) as YtDlpOutput;
-        let finalPath = data.filename;
-        if (!path.isAbsolute(finalPath)) {
-          finalPath = path.join(outputDir, finalPath);
-        }
-        results.push({ filePath: finalPath, metadata: data });
-      } catch (e) {
-        logger.warn({ err: e }, "Failed to parse yt-dlp JSON line");
+    return outputs.map((metadata) => {
+      let finalPath = metadata.filename || metadata._filename || "";
+      if (finalPath && !path.isAbsolute(finalPath)) {
+        finalPath = path.join(outputDir, finalPath);
       }
-    }
-
-    return results;
+      return { filePath: finalPath, metadata };
+    });
   } catch (error) {
-    logger.error({ err: error }, "yt-dlp execution failed");
+    // youtube-dl-exec errors include stderr
+    if (error instanceof Error && "stderr" in error) {
+      logger.error(
+        { stderr: (error as Error & { stderr: string }).stderr },
+        "yt-dlp execution failed"
+      );
+    } else {
+      logger.error({ err: error }, "yt-dlp execution failed");
+    }
     throw new Error(`yt-dlp failed: ${error}`);
   } finally {
     if (cookieFilePath) {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
-      fs.unlink(cookieFilePath).catch(() => {});
+      fs.unlink(cookieFilePath).catch((err) =>
+        logger.warn({ err }, "Failed to clean up cookie file")
+      );
     }
   }
+}
+
+function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
+  let outputs: YtDlpOutput[] = [];
+
+  if (typeof result === "string") {
+    const lines = (result as string)
+      .split("\n")
+      .filter((line) => line.trim().length > 0);
+    outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
+      try {
+        acc.push(JSON.parse(line));
+      } catch (e) {
+        logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
+      }
+      return acc;
+    }, []);
+  } else if (Array.isArray(result)) {
+    outputs = result as unknown as YtDlpOutput[];
+  } else if (typeof result === "object" && result !== null) {
+    outputs = [result as unknown as YtDlpOutput];
+  } else {
+    logger.warn(
+      { resultType: typeof result, result },
+      "Unexpected yt-dlp output type"
+    );
+    throw new Error(`Unexpected yt-dlp output type: ${typeof result}`);
+  }
+  return outputs;
 }
 
 /**
@@ -197,43 +209,27 @@ async function fetchMetadataWithYtDlp(
   cookies?: Cookie[],
   userAgent?: string
 ): Promise<YtDlpOutput | null> {
-  // Verify yt-dlp is available
-  try {
-    await execFileAsync("yt-dlp", ["--version"]);
-  } catch (_e) {
-    logger.warn({}, "yt-dlp not found, skipping metadata fetch");
-    return null;
-  }
-
-  const args = ["--simulate", "--print-json", url];
-
-  if (userAgent) {
-    args.push("--user-agent", userAgent);
-  }
-
   const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-  if (cookieFilePath) {
-    args.push("--cookies", cookieFilePath);
-  }
 
   try {
-    const { stdout } = await execFileAsync("yt-dlp", args, {
-      maxBuffer: MAX_BUFFER,
-      timeout: 30_000,
-    });
+    const result = await youtubedl(url, {
+      dumpSingleJson: true,
+      noDownload: true,
+      ...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+      ...(userAgent && { userAgent }),
+      ...(cookieFilePath && { cookies: cookieFilePath }),
+      // biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
+    } as any);
 
-    const lines = stdout.split("\n").filter((line) => line.trim().length > 0);
-    if (lines.length > 0) {
-      return JSON.parse(lines[0]) as YtDlpOutput;
-    }
-    return null;
+    return result as unknown as YtDlpOutput;
   } catch (error) {
     logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
     return null;
   } finally {
     if (cookieFilePath) {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
-      fs.unlink(cookieFilePath).catch(() => {});
+      fs.unlink(cookieFilePath).catch((err) =>
+        logger.warn({ err }, "Failed to clean up cookie file")
+      );
     }
   }
 }
