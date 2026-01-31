@@ -204,12 +204,16 @@ export class MediaProcessingServiceImpl {
     // Step 3: AI tagging
     if (this.enableAutoTagging && !payload?.skipMetadataExtraction) {
       try {
-        const { taggingService } = await import(
-          "~/application/services/tagging-service"
-        );
-        await taggingService.getTagsForMedia(mediaSourceId, mediaId);
+        await this.jobRepo.create({
+          type: "auto_tagging",
+          mediaSourceId,
+          payload: {
+            mediaId: media.id,
+            mediaSourceId,
+          },
+        });
       } catch (e) {
-        logger.warn({ err: e, mediaId }, "AI tagging failed, skipping");
+        logger.warn({ err: e, mediaId }, "Failed to queue AI tagging job");
       }
     }
   }

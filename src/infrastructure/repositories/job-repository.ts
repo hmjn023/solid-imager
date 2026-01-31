@@ -1,4 +1,4 @@
-import { and, asc, eq, ne } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, notInArray } from "drizzle-orm";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -14,11 +14,27 @@ export class JobRepository implements IJobRepository {
     return job || null;
   }
 
-  findPending(limit: number): Promise<Job[]> {
+  findPending(
+    limit: number,
+    options?: { excludeTypes?: string[]; includeTypes?: string[] }
+  ): Promise<Job[]> {
+    const conditions = [
+      eq(jobs.status, "pending"),
+      ne(jobs.type, "import_request"),
+    ];
+
+    if (options?.excludeTypes?.length) {
+      conditions.push(notInArray(jobs.type, options.excludeTypes));
+    }
+
+    if (options?.includeTypes?.length) {
+      conditions.push(inArray(jobs.type, options.includeTypes));
+    }
+
     return db
       .select()
       .from(jobs)
-      .where(and(eq(jobs.status, "pending"), ne(jobs.type, "import_request")))
+      .where(and(...conditions))
       .orderBy(asc(jobs.createdAt))
       .limit(limit);
   }

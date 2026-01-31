@@ -39,8 +39,7 @@ export class ConfigServiceImpl {
             "Failed to parse config.json. The file might be corrupted."
           );
           throw new Error(
-            `Configuration file at ${this.configPath} is corrupted: ${
-              error instanceof Error ? error.message : String(error)
+            `Configuration file at ${this.configPath} is corrupted: ${error instanceof Error ? error.message : String(error)
             }`
           );
         }
@@ -73,6 +72,8 @@ export class ConfigServiceImpl {
         // But if we pass wrong types, it fails.
         // Let's try to parse the fileContent + overrides.
         // Ideally we should stop if config is explicitly wrong.
+        // But the requirement says "Use Default" or "Stop".
+        // I'll throw to be safe if it's completely broken.
         // But the requirement says "Use Default" or "Stop".
         // I'll throw to be safe if it's completely broken.
         throw new Error(

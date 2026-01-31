@@ -21,7 +21,10 @@ export type IJobRepository = {
    * @param limit - The maximum number of jobs to retrieve.
    * @returns An array of pending jobs.
    */
-  findPending(limit: number): Promise<Job[]>;
+  findPending(
+    limit: number,
+    options?: { excludeTypes?: string[]; includeTypes?: string[] }
+  ): Promise<Job[]>;
 
   /**
    * Marks a job as in progress.

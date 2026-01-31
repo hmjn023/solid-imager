@@ -8,10 +8,14 @@ export class JobWorker {
   private timeoutId: NodeJS.Timeout | null = null;
   private pollIntervalMs = 1000;
   private concurrency = 3;
+  private aiConcurrency = 1;
   private activeJobs = 0;
+  private activeAiJobs = 0;
 
   private readonly jobRepo: IJobRepository;
   private readonly processor: (job: Job) => Promise<void>;
+
+  private readonly aiJobTypes = ["auto_tagging"];
 
   constructor(jobRepo: IJobRepository, processor: (job: Job) => Promise<void>) {
     this.jobRepo = jobRepo;
@@ -38,19 +42,23 @@ export class JobWorker {
 
   updateConfig(config: AppConfig) {
     const oldConcurrency = this.concurrency;
+    const oldAiConcurrency = this.aiConcurrency;
     const oldPollInterval = this.pollIntervalMs;
 
     this.concurrency = config.jobs.concurrency;
+    this.aiConcurrency = config.jobs.aiConcurrency;
     this.pollIntervalMs = config.jobs.pollIntervalMs;
 
     if (
       (oldConcurrency !== this.concurrency ||
+        oldAiConcurrency !== this.aiConcurrency ||
         oldPollInterval !== this.pollIntervalMs) &&
       this.isRunning
     ) {
       logger.info(
         {
           concurrency: this.concurrency,
+          aiConcurrency: this.aiConcurrency,
           pollIntervalMs: this.pollIntervalMs,
         },
         "JobWorker config updated"
@@ -64,24 +72,29 @@ export class JobWorker {
     }
 
     try {
-      if (this.activeJobs < this.concurrency) {
-        const slots = this.concurrency - this.activeJobs;
+      // 1. Poll AI Jobs
+      if (this.activeAiJobs < this.aiConcurrency) {
+        const slots = this.aiConcurrency - this.activeAiJobs;
         if (slots > 0) {
-          const jobs = await this.jobRepo.findPending(slots);
-          // Mark them as in-progress immediately upon fetching to avoid double processing?
-          // or rely on single consumer for now.
-          // For now, processJob marks them. Ideally finding should lock them or mark them.
-          // Since we are single instance for now, it's okay.
-          // If we were multi-instance, we'd need 'UPDATE ... RETURNING' or similar in findPending.
-          // Current findPending just looks for 'pending'.
-
-          // To be safer, we should probably handle them one by one or ensure findPending is atomic for multi-instance,
-          // but for this task, a simple loop is sufficient start.
-
+          const jobs = await this.jobRepo.findPending(slots, {
+            includeTypes: this.aiJobTypes,
+          });
           for (const job of jobs) {
-            // We fire and forget the processJob (it's async), but we increment activeJobs synchronously.
-            // Wait, processJob is async. If we await it inside the loop, we are serial processing the batch.
-            // We want parallel processing within the batch.
+            this.processJob(job);
+          }
+        }
+      }
+
+      // 2. Poll Other Jobs
+      // "concurrency" is treated as the limit for NON-AI jobs in this independent pool model
+      const activeOtherJobs = this.activeJobs - this.activeAiJobs;
+      if (activeOtherJobs < this.concurrency) {
+        const slots = this.concurrency - activeOtherJobs;
+        if (slots > 0) {
+          const jobs = await this.jobRepo.findPending(slots, {
+            excludeTypes: this.aiJobTypes,
+          });
+          for (const job of jobs) {
             this.processJob(job);
           }
         }
@@ -97,13 +110,14 @@ export class JobWorker {
 
   private async processJob(job: Job) {
     this.activeJobs++;
+    const isAiJob = this.aiJobTypes.includes(job.type);
+    if (isAiJob) {
+      this.activeAiJobs++;
+    }
+
     try {
-      // It's possible another worker picked it up if we had multiple workers.
-      // But assuming single worker for now.
       await this.jobRepo.markAsInProgress(job.id);
-
       await this.processor(job);
-
       await this.jobRepo.markAsCompleted(job.id, { success: true });
     } catch (error) {
       const errorMessage =
@@ -112,6 +126,9 @@ export class JobWorker {
       await this.jobRepo.markAsFailed(job.id, errorMessage);
     } finally {
       this.activeJobs--;
+      if (isAiJob) {
+        this.activeAiJobs--;
+      }
     }
   }
 }

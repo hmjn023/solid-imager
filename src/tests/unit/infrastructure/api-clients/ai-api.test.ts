@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeAll, afterAll, afterEach, beforeEach } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { fetchAiTags } from "~/infrastructure/api-clients/ai-api";
 
 // Mock the orpc client
