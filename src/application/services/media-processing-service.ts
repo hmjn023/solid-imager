@@ -202,7 +202,11 @@ export class MediaProcessingServiceImpl {
     }
 
     // Step 3: AI tagging
-    if (this.enableAutoTagging && !payload?.skipMetadataExtraction) {
+    if (
+      this.enableAutoTagging &&
+      !payload?.skipMetadataExtraction &&
+      media.mediaType === "image"
+    ) {
       try {
         const { taggingService } = await import(
           "~/application/services/tagging-service"
