@@ -125,48 +125,63 @@ function GroupBuilder(props: {
       )}
     >
       <CardContent class="space-y-4 p-4">
-        <div class="flex items-center gap-2">
-          <Select
-            itemComponent={(itemProps) => (
-              <SelectItem item={itemProps.item}>
-                {itemProps.item.rawValue.toUpperCase()}
-              </SelectItem>
-            )}
-            onChange={(val) =>
-              props.onChange({ ...props.group, operator: val as "and" | "or" })
-            }
-            options={["and", "or"]}
-            value={props.group.operator}
-          >
-            <SelectTrigger class="w-24">
-              <SelectValue<string>>
-                {(state) => state.selectedOption().toUpperCase()}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent />
-          </Select>
-          <span class="text-muted-foreground text-sm">条件グループ</span>
-          <div class="flex-1" />
-          <Button
-            onClick={() => addChild("criterion")}
-            size="sm"
-            variant="outline"
-          >
-            + 条件
-          </Button>
-          <Button onClick={() => addChild("group")} size="sm" variant="outline">
-            + グループ
-          </Button>
-          {!props.isRoot && (
-            <Button
-              class="text-red-500"
-              onClick={props.onRemove}
-              size="sm"
-              variant="ghost"
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-2">
+            <Select
+              itemComponent={(itemProps) => (
+                <SelectItem item={itemProps.item}>
+                  {itemProps.item.rawValue.toUpperCase()}
+                </SelectItem>
+              )}
+              onChange={(val) => {
+                if (val)
+                  props.onChange({ ...props.group, operator: val as any });
+              }}
+              options={["and", "or"]}
+              value={props.group.operator}
             >
-              削除
-            </Button>
-          )}
+              <SelectTrigger class="w-24">
+                <SelectValue<string>>
+                  {(state) => state.selectedOption().toUpperCase()}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent />
+            </Select>
+            <span class="text-muted-foreground text-sm whitespace-nowrap">
+              条件グループ
+            </span>
+          </div>
+
+          <div class="flex flex-col gap-2 w-full">
+            <div class="flex gap-2">
+              <Button
+                class="flex-1"
+                onClick={() => addChild("criterion")}
+                size="sm"
+                variant="outline"
+              >
+                + 条件
+              </Button>
+              <Button
+                class="flex-1"
+                onClick={() => addChild("group")}
+                size="sm"
+                variant="outline"
+              >
+                + グループ
+              </Button>
+            </div>
+            {!props.isRoot && (
+              <Button
+                class="text-red-500 w-full"
+                onClick={props.onRemove}
+                size="sm"
+                variant="ghost"
+              >
+                削除
+              </Button>
+            )}
+          </div>
         </div>
 
         <div class="space-y-2 border-border border-l pl-4">
@@ -208,18 +223,20 @@ function CriterionBuilder(props: {
   onRemove: () => void;
 }) {
   return (
-    <div class="flex items-center gap-2 rounded-md bg-muted/20 p-2">
+    <div class="flex flex-col gap-2 rounded-md bg-muted/20 p-2">
       <Select
         itemComponent={(itemProps) => (
           <SelectItem item={itemProps.item}>
             {TARGET_LABELS[itemProps.item.rawValue]}
           </SelectItem>
         )}
-        onChange={(val) => props.onChange({ ...props.criterion, target: val })}
+        onChange={(val) => {
+          if (val) props.onChange({ ...props.criterion, target: val as any });
+        }}
         options={Object.keys(TARGET_LABELS)}
         value={props.criterion.target}
       >
-        <SelectTrigger class="w-40">
+        <SelectTrigger class="w-full">
           <SelectValue<string>>
             {(state) => TARGET_LABELS[state.selectedOption()]}
           </SelectValue>
@@ -233,13 +250,13 @@ function CriterionBuilder(props: {
             {OPERATOR_LABELS[itemProps.item.rawValue]}
           </SelectItem>
         )}
-        onChange={(val) =>
-          props.onChange({ ...props.criterion, operator: val })
-        }
+        onChange={(val) => {
+          if (val) props.onChange({ ...props.criterion, operator: val as any });
+        }}
         options={Object.keys(OPERATOR_LABELS)}
         value={props.criterion.operator}
       >
-        <SelectTrigger class="w-40">
+        <SelectTrigger class="w-full">
           <SelectValue<string>>
             {(state) => OPERATOR_LABELS[state.selectedOption()]}
           </SelectValue>
@@ -248,7 +265,7 @@ function CriterionBuilder(props: {
       </Select>
 
       <Input
-        class="flex-1"
+        class="w-full"
         onInput={(e) =>
           props.onChange({ ...props.criterion, value: e.currentTarget.value })
         }
@@ -257,12 +274,11 @@ function CriterionBuilder(props: {
       />
 
       <Button
-        class="text-red-500"
+        class="text-red-500 w-full"
         onClick={props.onRemove}
-        size="icon"
         variant="ghost"
       >
-        ×
+        削除
       </Button>
     </div>
   );

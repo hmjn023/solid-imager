@@ -81,7 +81,7 @@ export function PresetManager(props: { class?: string }) {
   };
 
   return (
-    <div class={cn("flex items-center gap-2", props.class)}>
+    <div class={cn("flex flex-col gap-2", props.class)}>
       <Select
         itemComponent={(itemProps) => {
           const preset = presets()?.find(
@@ -101,7 +101,7 @@ export function PresetManager(props: { class?: string }) {
         placeholder="プリセットを選択..."
         value={selectedPresetId()}
       >
-        <SelectTrigger class="w-[200px]">
+        <SelectTrigger class="w-full">
           <SelectValue<string>>
             {(state) => {
               const preset = presets()?.find(
@@ -115,50 +115,54 @@ export function PresetManager(props: { class?: string }) {
         <SelectContent />
       </Select>
 
-      <Button
-        disabled={!selectedPresetId()}
-        onClick={handleLoad}
-        variant="outline"
-      >
-        読込
-      </Button>
-
-      <Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
-        <DialogTrigger as={Button} variant="secondary">
-          保存
-        </DialogTrigger>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>現在の検索条件を保存</DialogTitle>
-            <DialogDescription>
-              現在の検索条件に名前を付けて保存します。
-            </DialogDescription>
-          </DialogHeader>
-          <div class="grid gap-4 py-4">
-            <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">名前</Label>
-              <Input
-                class="col-span-3"
-                onInput={(e) => setNewPresetName(e.currentTarget.value)}
-                value={newPresetName()}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={handleSave}>保存する</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Show when={selectedPresetId()}>
+      <div class="flex items-center gap-2 w-full">
         <Button
-          class="text-red-500"
-          onClick={() => handleDelete(Number(selectedPresetId()))}
-          variant="ghost"
+          class="flex-1"
+          disabled={!selectedPresetId()}
+          onClick={handleLoad}
+          variant="outline"
         >
-          削除
+          読込
         </Button>
-      </Show>
+
+        <Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
+          <DialogTrigger as={Button} class="flex-1" variant="secondary">
+            保存
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>現在の検索条件を保存</DialogTitle>
+              <DialogDescription>
+                現在の検索条件に名前を付けて保存します。
+              </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-4 py-4">
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right">名前</Label>
+                <Input
+                  class="col-span-3"
+                  onInput={(e) => setNewPresetName(e.currentTarget.value)}
+                  value={newPresetName()}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSave}>保存する</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Show when={selectedPresetId()}>
+          <Button
+            class="text-red-500"
+            onClick={() => handleDelete(Number(selectedPresetId()))}
+            size="icon"
+            variant="ghost"
+          >
+            ×
+          </Button>
+        </Show>
+      </div>
     </div>
   );
 }
