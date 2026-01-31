@@ -1,4 +1,4 @@
-import { createMemo, Index, Show } from "solid-js";
+import { createMemo, Index, Match, Show, Switch } from "solid-js";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
 import {
@@ -399,93 +399,89 @@ function CriterionBuilder(props: {
         <SelectContent />
       </Select>
 
-      <Show
-        fallback={
-          <Input
-            class="w-full"
-            onInput={(e) =>
-              props.onChange({
-                ...props.criterion,
-                value: e.currentTarget.value,
-              })
-            }
-            placeholder="値..."
-            value={props.criterion.value as string}
-          />
-        }
-        when={props.criterion.operator === "equals" && autocompleteItems()}
-      >
-        <Combobox
-          itemComponent={(itemProps) => (
-            <ComboboxItem item={itemProps.item}>
-              <ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
-            </ComboboxItem>
-          )}
-          onChange={(
-            val: { name: string; accountId?: string | null } | null
-          ) => {
-            if (val) {
-              props.onChange({ ...props.criterion, value: val.name });
-            }
-          }}
-          optionLabel={(item) =>
-            props.criterion.target === "author"
-              ? getAuthorLabel(item as Author)
-              : (item as { name: string }).name
-          }
-          options={autocompleteItems() || []}
-          optionTextValue={(item) =>
-            props.criterion.target === "author"
-              ? getAuthorLabel(item as Author)
-              : (item as { name: string }).name
-          }
-          optionValue={(item: { name: string }) => item.name}
-          placeholder="検索..."
-          triggerMode="focus"
-          value={(autocompleteItems() || []).find(
-            (i) => i.name === props.criterion.value
-          )}
+      <Switch>
+        {/* Case 1: Autocomplete available for "equals" */}
+        <Match
+          when={props.criterion.operator === "equals" && autocompleteItems()}
         >
-          <ComboboxControl>
-            <ComboboxInput />
-          </ComboboxControl>
-          <ComboboxContent class="max-h-[300px]" />
-        </Combobox>
-      </Show>
-
-      <Show
-        when={
-          ["in", "notIn"].includes(props.criterion.operator) &&
-          !autocompleteItems()
-        }
-      >
-        <div class="space-y-1">
-          <Input
-            class="w-full"
-            onInput={(e) =>
-              props.onChange({
-                ...props.criterion,
-                value: e.currentTarget.value
-                  .split(",")
-                  .map((v) => v.trim())
-                  .filter((v) => v !== ""),
-              })
+          <Combobox
+            itemComponent={(itemProps) => (
+              <ComboboxItem item={itemProps.item}>
+                <ComboboxItemLabel>
+                  {itemProps.item.textValue}
+                </ComboboxItemLabel>
+              </ComboboxItem>
+            )}
+            onChange={(
+              val: { name: string; accountId?: string | null } | null
+            ) => {
+              if (val) {
+                props.onChange({ ...props.criterion, value: val.name });
+              }
+            }}
+            optionLabel={(item) =>
+              props.criterion.target === "author"
+                ? getAuthorLabel(item as Author)
+                : (item as { name: string }).name
             }
-            placeholder="値をカンマ区切りで入力 (例: val1, val2)"
-            value={
-              Array.isArray(props.criterion.value)
-                ? props.criterion.value.join(", ")
-                : ""
+            options={autocompleteItems() || []}
+            optionTextValue={(item) =>
+              props.criterion.target === "author"
+                ? getAuthorLabel(item as Author)
+                : (item as { name: string }).name
             }
-          />
-          <p class="text-muted-foreground text-xs">
-            カンマ区切りで複数の値を指定できます
-          </p>
-        </div>
-      </Show>
+            optionValue={(item: { name: string }) => item.name}
+            placeholder="検索..."
+            triggerMode="focus"
+            value={(autocompleteItems() || []).find(
+              (i) => i.name === props.criterion.value
+            )}
+          >
+            <ComboboxControl>
+              <ComboboxInput />
+            </ComboboxControl>
+            <ComboboxContent class="max-h-[300px]" />
+          </Combobox>
+        </Match>
 
-      <Show
-        fallback={
+        {/* Case 2: Multi-value input for in/notIn operators */}
+        <Match when={["in", "notIn"].includes(props.criterion.operator)}>
+          <div class="space-y-1">
+            <Input
+              class="w-full"
+              onInput={(e) =>
+                props.onChange({
+                  ...props.criterion,
+                  value: e.currentTarget.value
+                    .split(",")
+                    .map((v) => v.trim())
+                    .filter((v) => v !== ""),
+                })
+              }
+              placeholder="値をカンマ区切りで入力 (例: val1, val2)"
+              value={
+                Array.isArray(props.criterion.value)
+                  ? props.criterion.value.join(", ")
+                  : ""
+              }
+            />
+            <p class="text-muted-foreground text-xs">
+              カンマ区切りで複数の値を指定できます
+            </p>
+          </div>
+        </Match>
+
+        {/* Case 3: No input needed for emptiness checks */}
+        <Match
+          when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}
+        >
+          <div class="rounded-md border border-dashed p-2 text-center text-muted-foreground text-xs italic">
+            この条件に値は不要です
+          </div>
+        </Match>
+
+        {/* Default: Generic Input */}
+        <Match when={true}>
           <Input
             class="w-full"
             onInput={(e) =>
@@ -498,22 +494,11 @@ function CriterionBuilder(props: {
             value={
               (Array.isArray(props.criterion.value)
                 ? props.criterion.value.join(", ")
-                : props.criterion.value) as string
+                : (props.criterion.value ?? "")) as string
             }
           />
-        }
-        when={
-          (props.criterion.operator === "equals" && autocompleteItems()) ||
-          ["in", "notIn"].includes(props.criterion.operator)
-        }
-      >
-        <Show
-          when={props.criterion.operator === "equals" && autocompleteItems()}
-        >
-          {/* Handled by the very first Show block above - rendering nothing here to avoid duplication or using a fragment if needed */}
-          <div />
-        </Show>
-      </Show>
+        </Match>
+      </Switch>
 
       <Button
         class="w-full text-red-500"
