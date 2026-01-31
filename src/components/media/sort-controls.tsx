@@ -8,10 +8,12 @@ import {
 } from "~/components/ui/select";
 import { cn } from "~/presentation/utils/cn";
 
+type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
+
 type SortControlsProps = {
-  sortBy: "date" | "name" | "size";
+  sortBy: SortOption;
   sortOrder: "asc" | "desc";
-  onSortByChange: (value: "date" | "name" | "size") => void;
+  onSortByChange: (value: SortOption) => void;
   onSortOrderChange: (value: "asc" | "desc") => void;
   className?: string;
 };
@@ -30,6 +32,12 @@ export function SortControls(props: SortControlsProps) {
               if (value === "name") {
                 return "ファイル名";
               }
+              if (value === "rating") {
+                return "評価";
+              }
+              if (value === "viewCount") {
+                return "閲覧数";
+              }
               return "サイズ";
             };
             return (
@@ -38,8 +46,10 @@ export function SortControls(props: SortControlsProps) {
               </SelectItem>
             );
           }}
-          onChange={(value) => props.onSortByChange(value || "date")}
-          options={["date", "name", "size"]}
+          onChange={(value) =>
+            props.onSortByChange((value as SortOption) || "date")
+          }
+          options={["date", "name", "size", "rating", "viewCount"]}
           placeholder="項目"
           value={props.sortBy}
         >
@@ -52,6 +62,12 @@ export function SortControls(props: SortControlsProps) {
                 }
                 if (value === "name") {
                   return "ファイル名";
+                }
+                if (value === "rating") {
+                  return "評価";
+                }
+                if (value === "viewCount") {
+                  return "閲覧数";
                 }
                 return "サイズ";
               }}

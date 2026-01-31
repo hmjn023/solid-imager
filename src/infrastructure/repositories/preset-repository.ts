@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, type InferSelectModel } from "drizzle-orm";
 import type {
   CreatePresetRequest,
   Preset,
@@ -12,7 +12,7 @@ import { presets } from "~/infrastructure/db/schema";
 export class DrizzlePresetRepository implements PresetRepository {
   async list(): Promise<Preset[]> {
     const results = await db.select().from(presets).orderBy(presets.id);
-    return results.map(this.mapToEntity);
+    return results.map((row) => this.mapToEntity(row));
   }
 
   async get(id: number): Promise<Preset | null> {
@@ -39,6 +39,9 @@ export class DrizzlePresetRepository implements PresetRepository {
       .values({
         name: data.name,
         value: data.value,
+        sort: data.sort,
+        order: data.order,
+        mode: data.mode,
       })
       .returning();
     return this.mapToEntity(results[0]);
@@ -50,6 +53,9 @@ export class DrizzlePresetRepository implements PresetRepository {
       .set({
         ...(data.name !== undefined ? { name: data.name } : {}),
         ...(data.value !== undefined ? { value: data.value } : {}),
+        ...(data.sort !== undefined ? { sort: data.sort } : {}),
+        ...(data.order !== undefined ? { order: data.order } : {}),
+        ...(data.mode !== undefined ? { mode: data.mode } : {}),
       })
       .where(eq(presets.id, id))
       .returning();
@@ -64,12 +70,14 @@ export class DrizzlePresetRepository implements PresetRepository {
     return results.length > 0;
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Drizzle returns generic objects
-  private mapToEntity(row: any): Preset {
+  private mapToEntity(row: InferSelectModel<typeof presets>): Preset {
     return {
       id: row.id,
       name: row.name,
       value: row.value as SearchGroup,
+      sort: row.sort as Preset["sort"],
+      order: row.order as Preset["order"],
+      mode: row.mode as Preset["mode"],
       createdAt: row.createdAt,
     };
   }

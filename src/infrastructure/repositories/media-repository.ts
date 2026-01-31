@@ -341,86 +341,19 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Searches for media based on criteria using recursive query builder.
    */
-  async search(
+  search(
     mediaSourceId: string,
     params: MediaSearchRequest,
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
-    const client = (tx as unknown as TransactionClient) || db;
-
-    const conditions: SQL[] = [eq(medias.mediaSourceId, mediaSourceId)];
-
-    if (params.condition) {
-      const searchCondition = buildSearchQuery(params.condition);
-      if (searchCondition) {
-        conditions.push(searchCondition);
-      }
-    }
-
-    const whereClause = and(...conditions);
-
-    // Sort logic
-    const orderBy = getOrderByClause(params.sort, params.order);
-
-    const result = await client
-      .select({
-        media: medias,
-      })
-      .from(medias)
-      .where(whereClause)
-      .limit(params.limit ?? DEFAULT_LIMIT)
-      .offset(params.offset ?? DEFAULT_OFFSET)
-      .orderBy(orderBy);
-
-    // Total count query (efficient)
-    const countResult = await client
-      .select({ count: sql<number>`count(*)` })
-      .from(medias)
-      .where(whereClause);
-
-    const total = Number(countResult[0]?.count ?? 0);
-
-    return mediaSearchResponseSchema.parse({
-      media: result.map((row) => mapToMedia(row.media)),
-      total,
-    });
+    return executeSearch(params, mediaSourceId, tx);
   },
 
-  async globalSearch(
+  globalSearch(
     params: MediaSearchRequest,
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
-    const client = (tx as unknown as TransactionClient) || db;
-
-    let whereClause: SQL | undefined;
-
-    if (params.condition) {
-      whereClause = buildSearchQuery(params.condition);
-    }
-
-    const orderBy = getOrderByClause(params.sort, params.order);
-
-    const result = await client
-      .select({
-        media: medias,
-      })
-      .from(medias)
-      .where(whereClause)
-      .limit(params.limit ?? DEFAULT_LIMIT)
-      .offset(params.offset ?? DEFAULT_OFFSET)
-      .orderBy(orderBy);
-
-    const countResult = await client
-      .select({ count: sql<number>`count(*)` })
-      .from(medias)
-      .where(whereClause);
-
-    const total = Number(countResult[0]?.count ?? 0);
-
-    return mediaSearchResponseSchema.parse({
-      media: result.map((row) => mapToMedia(row.media)),
-      total,
-    });
+    return executeSearch(params, undefined, tx);
   },
 
   /**
@@ -1060,14 +993,70 @@ function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
     case "date":
       return direction(medias.createdAt);
     case "rating":
-      return direction(
-        sql`(SELECT rating FROM ${mediaDetails} WHERE ${mediaDetails.mediaId} = ${medias.id})`
-      );
+      return direction(mediaDetails.rating);
     case "viewCount":
-      return direction(
-        sql`(SELECT view_count FROM ${mediaDetails} WHERE ${mediaDetails.mediaId} = ${medias.id})`
-      );
+      return direction(mediaDetails.viewCount);
     default:
       return direction(medias.createdAt);
   }
+}
+
+async function executeSearch(
+  params: MediaSearchRequest,
+  mediaSourceId?: string,
+  tx?: Transaction
+): Promise<MediaSearchResponse> {
+  const client = (tx as unknown as TransactionClient) || db;
+
+  const conditions: SQL[] = [];
+  if (mediaSourceId) {
+    conditions.push(eq(medias.mediaSourceId, mediaSourceId));
+  }
+
+  if (params.condition) {
+    const searchCondition = buildSearchQuery(params.condition);
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Optimized sort: Join only if sorting by detail fields
+  const needsDetailsJoin = ["rating", "viewCount"].includes(params.sort ?? "");
+
+  let query = client
+    .select({
+      media: medias,
+    })
+    .from(medias);
+
+  if (needsDetailsJoin) {
+    query = query.leftJoin(
+      mediaDetails,
+      eq(mediaDetails.mediaId, medias.id)
+      // biome-ignore lint/suspicious/noExplicitAny: complex Drizzle query builder types
+    ) as any;
+  }
+
+  const orderBy = getOrderByClause(params.sort, params.order);
+
+  const result = await query
+    .where(whereClause)
+    .limit(params.limit ?? DEFAULT_LIMIT)
+    .offset(params.offset ?? DEFAULT_OFFSET)
+    .orderBy(orderBy);
+
+  // Total count query
+  const countResult = await client
+    .select({ count: sql<number>`count(*)` })
+    .from(medias)
+    .where(whereClause);
+
+  const total = Number(countResult[0]?.count ?? 0);
+
+  return mediaSearchResponseSchema.parse({
+    media: result.map((row) => mapToMedia(row.media)),
+    total,
+  });
 }

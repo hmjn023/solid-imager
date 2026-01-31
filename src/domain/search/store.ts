@@ -29,7 +29,7 @@ export type SearchState = {
   offset: number;
 
   // Sorting
-  sortBy: "date" | "name" | "size";
+  sortBy: "date" | "name" | "size" | "rating" | "viewCount";
   sortOrder: "asc" | "desc";
 
   // Scroll Position
@@ -71,7 +71,47 @@ export const loadPreset = (preset: Preset) => {
     sortOrder: (preset.order as SearchState["sortOrder"]) || "desc",
   };
 
-  if (simpleState) {
+  if (preset.mode) {
+    if (preset.mode === "simple" && simpleState) {
+      setSearchState({
+        mode: "simple",
+        activePresetId: preset.id,
+        advancedCondition: null,
+        ...simpleState,
+        ...sortState,
+      });
+    } else {
+      setSearchState({
+        mode: "pro",
+        activePresetId: preset.id,
+        advancedCondition: preset.value,
+        // Reset simple filters
+        searchQuery: "",
+        selectedTags: [],
+        excludeTags: [],
+        selectedProjects: [],
+        selectedIps: [],
+        selectedCharacters: [],
+        selectedAuthors: [],
+        ...sortState,
+      });
+    }
+    return;
+  }
+
+  // Fallback for older presets without mode:
+  // Respect current mode if the preset can be represented in it,
+  // or default to simple if it's a simple-compatible preset and we are in simple mode.
+  if (searchState.mode === "pro") {
+    setSearchState({
+      mode: "pro",
+      activePresetId: preset.id,
+      advancedCondition: preset.value,
+      // No need to reset simple filters as they are not used in pro view,
+      // but keeping it clean or syncing might be good.
+      ...sortState,
+    });
+  } else if (simpleState) {
     setSearchState({
       mode: "simple",
       activePresetId: preset.id,
@@ -80,18 +120,11 @@ export const loadPreset = (preset: Preset) => {
       ...sortState,
     });
   } else {
+    // If not simple compatible and we are in simple mode, MUST switch to pro
     setSearchState({
       mode: "pro",
       activePresetId: preset.id,
       advancedCondition: preset.value,
-      // Reset simple filters
-      searchQuery: "",
-      selectedTags: [],
-      excludeTags: [],
-      selectedProjects: [],
-      selectedIps: [],
-      selectedCharacters: [],
-      selectedAuthors: [],
       ...sortState,
     });
   }

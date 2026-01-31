@@ -453,6 +453,68 @@ function CriterionBuilder(props: {
         </Combobox>
       </Show>
 
+      <Show
+        when={
+          ["in", "notIn"].includes(props.criterion.operator) &&
+          !autocompleteItems()
+        }
+      >
+        <div class="space-y-1">
+          <Input
+            class="w-full"
+            onInput={(e) =>
+              props.onChange({
+                ...props.criterion,
+                value: e.currentTarget.value
+                  .split(",")
+                  .map((v) => v.trim())
+                  .filter((v) => v !== ""),
+              })
+            }
+            placeholder="値をカンマ区切りで入力 (例: val1, val2)"
+            value={
+              Array.isArray(props.criterion.value)
+                ? props.criterion.value.join(", ")
+                : ""
+            }
+          />
+          <p class="text-muted-foreground text-xs">
+            カンマ区切りで複数の値を指定できます
+          </p>
+        </div>
+      </Show>
+
+      <Show
+        fallback={
+          <Input
+            class="w-full"
+            onInput={(e) =>
+              props.onChange({
+                ...props.criterion,
+                value: e.currentTarget.value,
+              })
+            }
+            placeholder="値..."
+            value={
+              (Array.isArray(props.criterion.value)
+                ? props.criterion.value.join(", ")
+                : props.criterion.value) as string
+            }
+          />
+        }
+        when={
+          (props.criterion.operator === "equals" && autocompleteItems()) ||
+          ["in", "notIn"].includes(props.criterion.operator)
+        }
+      >
+        <Show
+          when={props.criterion.operator === "equals" && autocompleteItems()}
+        >
+          {/* Handled by the very first Show block above - rendering nothing here to avoid duplication or using a fragment if needed */}
+          <div />
+        </Show>
+      </Show>
+
       <Button
         class="w-full text-red-500"
         onClick={props.onRemove}

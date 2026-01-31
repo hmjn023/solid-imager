@@ -10,6 +10,7 @@ export const PresetClient = {
     value: SearchGroup;
     sort?: "name" | "date" | "rating" | "viewCount" | "size";
     order?: "asc" | "desc";
+    mode?: "simple" | "pro";
   }) => await orpc.presets.create(data),
   update: async (
     id: number,
@@ -18,6 +19,7 @@ export const PresetClient = {
       value?: SearchGroup;
       sort?: "name" | "date" | "rating" | "viewCount" | "size";
       order?: "asc" | "desc";
+      mode?: "simple" | "pro";
     }
   ) => await orpc.presets.update({ id, data }),
   delete: async (id: number) => await orpc.presets.delete({ id }),

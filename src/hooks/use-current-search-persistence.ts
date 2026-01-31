@@ -104,6 +104,7 @@ export function useCurrentSearchPersistence() {
       value: condition,
       sort: searchState.sortBy,
       order: searchState.sortOrder,
+      mode: searchState.mode,
     };
 
     try {

@@ -503,6 +503,7 @@ export const presetSchema = z.object({
   value: searchGroupSchema,
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  mode: z.enum(["simple", "pro"]).optional(),
   createdAt: z.coerce.date(),
 });
 
@@ -513,6 +514,7 @@ export const createPresetRequestSchema = z.object({
   value: searchGroupSchema,
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  mode: z.enum(["simple", "pro"]).optional(),
 });
 
 export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
@@ -522,6 +524,7 @@ export const updatePresetRequestSchema = z.object({
   value: searchGroupSchema.optional(),
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  mode: z.enum(["simple", "pro"]).optional(),
 });
 
 export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;

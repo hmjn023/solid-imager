@@ -28,7 +28,7 @@ export type SearchFilterState = {
   selectedIps: string[];
   selectedCharacters: string[];
   selectedAuthors: string[];
-  sortBy: "date" | "name" | "size";
+  sortBy: "date" | "name" | "size" | "rating" | "viewCount";
   sortOrder: "asc" | "desc";
 };
 

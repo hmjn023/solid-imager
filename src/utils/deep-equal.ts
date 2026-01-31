@@ -7,6 +7,10 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return true;
   }
 
+  if (a instanceof Date && b instanceof Date) {
+    return a.getTime() === b.getTime();
+  }
+
   if (
     typeof a !== "object" ||
     a === null ||

@@ -85,6 +85,7 @@ export function PresetManager(props: {
         value: condition,
         sort: searchState.sortBy,
         order: searchState.sortOrder,
+        mode: searchState.mode,
       });
       setIsSaveDialogOpen(false);
       setNewPresetName("");

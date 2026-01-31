@@ -877,6 +877,12 @@ export const presets = pgTable("presets", {
   name: text("name").notNull().unique(),
   /** フィルター条件をJSON形式で保存 */
   value: jsonb("value").notNull(),
+  /** ソート項目 */
+  sort: text("sort"),
+  /** ソート順 */
+  order: text("order"),
+  /** 検索モード ("simple" または "pro") */
+  mode: text("mode"),
   /** 作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
