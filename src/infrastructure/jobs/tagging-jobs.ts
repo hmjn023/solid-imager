@@ -13,7 +13,6 @@ import { logger } from "~/infrastructure/logger";
 
 type AutoTaggingJobPayload = {
   mediaId: string;
-  mediaSourceId: string;
   force?: boolean;
 };
 
@@ -25,7 +24,8 @@ type BulkTaggingDispatchJobPayload = {
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
   const payload = job.payload as AutoTaggingJobPayload;
-  const { mediaId, mediaSourceId, force } = payload;
+  const { mediaId, force } = payload;
+  const { mediaSourceId } = job;
 
   if (!(mediaId && mediaSourceId)) {
     throw new Error("Missing mediaId or mediaSourceId");

@@ -18,6 +18,12 @@ export class JobRepository implements IJobRepository {
     limit: number,
     options?: { excludeTypes?: string[]; includeTypes?: string[] }
   ): Promise<Job[]> {
+    if (options?.excludeTypes?.length && options?.includeTypes?.length) {
+      throw new Error(
+        "Cannot use excludeTypes and includeTypes simultaneously."
+      );
+    }
+
     const conditions = [
       eq(jobs.status, "pending"),
       ne(jobs.type, "import_request"),

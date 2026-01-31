@@ -209,7 +209,6 @@ export class MediaProcessingServiceImpl {
           mediaSourceId,
           payload: {
             mediaId: media.id,
-            mediaSourceId,
           },
         });
       } catch (e) {

@@ -77,7 +77,7 @@ export class JobWorker {
         const slots = this.aiConcurrency - this.activeAiJobs;
         if (slots > 0) {
           const jobs = await this.jobRepo.findPending(slots, {
-            includeTypes: this.aiJobTypes,
+            includeTypes: Array.from(this.aiJobTypes),
           });
           for (const job of jobs) {
             this.processJob(job);
@@ -92,7 +92,7 @@ export class JobWorker {
         const slots = this.concurrency - activeOtherJobs;
         if (slots > 0) {
           const jobs = await this.jobRepo.findPending(slots, {
-            excludeTypes: this.aiJobTypes,
+            excludeTypes: Array.from(this.aiJobTypes),
           });
           for (const job of jobs) {
             this.processJob(job);
