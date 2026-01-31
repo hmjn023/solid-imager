@@ -11,6 +11,7 @@ export const JobsConfigSchema = z.object({
     .number()
     .min(MIN_JOBS_CONCURRENCY)
     .default(DEFAULT_JOBS_CONCURRENCY),
+  aiConcurrency: z.number().min(MIN_JOBS_CONCURRENCY).default(1),
   pollIntervalMs: z
     .number()
     .min(MIN_JOBS_POLL_INTERVAL)

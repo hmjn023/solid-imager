@@ -35,7 +35,7 @@ class TypedEventEmitter<T extends Record<string, any>> {
 
 class EventService {
   private static instance: EventService;
-  // biome-ignore lint/suspicious/noExplicitAny: Generic event map requires any
+
   private readonly emitter = new TypedEventEmitter<EventMap>();
 
   // Singleton pattern
