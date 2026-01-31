@@ -135,7 +135,7 @@ export function PresetManager(props: {
   };
 
   return (
-    <div class={cn("flex flex-col gap-2", props.class)}>
+    <div class={cn("flex w-full flex-col gap-2", props.class)}>
       {/* Delete Confirmation Dialog */}
       <AlertDialog
         onOpenChange={setIsDeleteDialogOpen}

@@ -41,7 +41,7 @@ export function ProSearchDialog(props: Props) {
         <div class="flex-1 overflow-y-auto p-1">
           <div class="mb-4 space-y-2 border-b pb-4">
             <h3 class="font-medium text-sm">プリセット</h3>
-            <PresetManager />
+            <PresetManager onAction={() => setOpen(false)} />
           </div>
           <ProSearchBuilder
             characters={props.characters}
