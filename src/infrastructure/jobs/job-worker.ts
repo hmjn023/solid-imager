@@ -110,7 +110,7 @@ export class JobWorker {
 
   private async processJob(job: Job) {
     this.activeJobs++;
-    const isAiJob = this.aiJobTypes.includes(job.type);
+    const isAiJob = this.aiJobTypes.has(job.type);
     if (isAiJob) {
       this.activeAiJobs++;
     }
