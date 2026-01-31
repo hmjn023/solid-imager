@@ -85,7 +85,7 @@ export const loadPreset = (preset: Preset) => {
         mode: "pro",
         activePresetId: preset.id,
         advancedCondition: preset.value,
-        // Reset simple filters
+        // Reset simple filters to keep it clean as we are in pro mode
         searchQuery: "",
         selectedTags: [],
         excludeTags: [],
@@ -101,14 +101,13 @@ export const loadPreset = (preset: Preset) => {
 
   // Fallback for older presets without mode:
   // Default to pro if the preset cannot be represented in simple mode.
-  // If it can be represented in simple mode, we use simple mode by default
-  // (unless we are already in pro mode and want to stay there).
-  if (simpleState && searchState.mode === "simple") {
+  if (simpleState) {
+    // If it can be represented in simple mode, we use the current mode of the UI
     setSearchState({
-      mode: "simple",
+      mode: searchState.mode,
       activePresetId: preset.id,
-      advancedCondition: null,
-      ...simpleState,
+      advancedCondition: searchState.mode === "pro" ? preset.value : null,
+      ...(searchState.mode === "simple" ? simpleState : {}),
       ...sortState,
     });
   } else {
