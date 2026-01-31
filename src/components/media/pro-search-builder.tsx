@@ -148,13 +148,13 @@ function GroupBuilder(props: {
   return (
     <Card
       class={cn(
-        "border-l-4",
+        "border-l-2", // Reduce border width
         props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500"
       )}
     >
-      <CardContent class="space-y-4 p-4">
+      <CardContent class="space-y-4 p-2 sm:p-4">
         <div class="flex flex-col gap-2">
-          <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Select
               itemComponent={(itemProps) => (
                 <SelectItem item={itemProps.item}>
@@ -170,22 +170,20 @@ function GroupBuilder(props: {
               options={["and", "or"]}
               value={props.group.operator}
             >
-              <SelectTrigger class="w-24">
+              <SelectTrigger class="w-20 sm:w-24">
                 <SelectValue<string>>
                   {(state) => state.selectedOption().toUpperCase()}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent />
             </Select>
-            <span class="whitespace-nowrap text-muted-foreground text-sm">
-              条件グループ
-            </span>
+            <span class="text-muted-foreground text-sm">条件グループ</span>
           </div>
 
           <div class="flex w-full flex-col gap-2">
-            <div class="flex gap-2">
+            <div class="flex flex-wrap gap-2">
               <Button
-                class="flex-1"
+                class="flex-1 whitespace-nowrap"
                 onClick={() => addChild("criterion")}
                 size="sm"
                 variant="outline"
@@ -193,7 +191,7 @@ function GroupBuilder(props: {
                 + 条件
               </Button>
               <Button
-                class="flex-1"
+                class="flex-1 whitespace-nowrap"
                 onClick={() => addChild("group")}
                 size="sm"
                 variant="outline"
@@ -214,7 +212,7 @@ function GroupBuilder(props: {
           </div>
         </div>
 
-        <div class="space-y-2 border-border border-l pl-4">
+        <div class="space-y-2 border-border border-l pl-2 sm:pl-4">
           <Index each={props.group.children}>
             {(child, index) => (
               <Show
