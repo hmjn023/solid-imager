@@ -12,13 +12,6 @@ import {
 } from "~/components/ui/combobox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { Project } from "~/domain/projects/schemas";
@@ -160,87 +153,6 @@ export function SearchFilters(props: SearchFiltersProps) {
         />
       </div>
 
-      {/* Tag Selection */}
-      <FilterSection
-        badgeVariant="default"
-        getItemKey={(tag) => tag.name}
-        getItemLabel={(tag) => tag.name}
-        items={props.tags}
-        label="タグ (含む)"
-        onRemove={(id) => removeTag(id)}
-        onSelect={(tag) => addTag(tag.name)}
-        placeholder="タグを検索..."
-        selectedItems={props.state.selectedTags}
-      />
-
-      {/* Tag Mode */}
-      <div class="space-y-2">
-        <Label>タグマッチモード</Label>
-        <Select
-          itemComponent={(itemProps) => (
-            <SelectItem item={itemProps.item}>
-              {itemProps.item.rawValue === "and"
-                ? "すべて含む (AND)"
-                : "いずれかを含む (OR)"}
-            </SelectItem>
-          )}
-          onChange={(value) => props.setState("tagMode", value || "and")}
-          options={["and", "or"]}
-          placeholder="モードを選択"
-          value={props.state.tagMode}
-        >
-          <SelectTrigger>
-            <SelectValue<string>>
-              {(state) =>
-                state.selectedOption() === "and"
-                  ? "すべて含む (AND)"
-                  : "いずれかを含む (OR)"
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent />
-        </Select>
-      </div>
-
-      {/* Exclude Tags */}
-      <FilterSection
-        badgeVariant="destructive"
-        getItemKey={(tag) => tag.name}
-        getItemLabel={(tag) => tag.name}
-        items={props.tags}
-        label="除外タグ"
-        onRemove={(id) => removeExcludeTag(id)}
-        onSelect={(tag) => addExcludeTag(tag.name)}
-        placeholder="除外タグを検索..."
-        selectedItems={props.state.excludeTags}
-      />
-
-      {/* Project Filter */}
-      <FilterSection
-        badgeVariant="secondary"
-        getItemDescription={(project) => project.description}
-        getItemKey={(project) => project.id}
-        getItemLabel={(project) => project.name}
-        items={props.projects}
-        label="プロジェクト"
-        onRemove={(name) =>
-          props.setState(
-            "selectedProjects",
-            props.state.selectedProjects.filter((pName) => pName !== name)
-          )
-        }
-        onSelect={(project) => {
-          if (!props.state.selectedProjects.includes(project.name)) {
-            props.setState("selectedProjects", [
-              ...props.state.selectedProjects,
-              project.name,
-            ]);
-          }
-        }}
-        placeholder="プロジェクトを検索..."
-        selectedItems={props.state.selectedProjects}
-      />
-
       {/* IP Filter */}
       <FilterSection
         badgeVariant="secondary"
@@ -291,6 +203,58 @@ export function SearchFilters(props: SearchFiltersProps) {
         }}
         placeholder="キャラクターを検索..."
         selectedItems={props.state.selectedCharacters}
+      />
+
+      {/* Tag Selection */}
+      <FilterSection
+        badgeVariant="default"
+        getItemKey={(tag) => tag.name}
+        getItemLabel={(tag) => tag.name}
+        items={props.tags}
+        label="タグ (すべて含む)"
+        onRemove={(id) => removeTag(id)}
+        onSelect={(tag) => addTag(tag.name)}
+        placeholder="タグを検索..."
+        selectedItems={props.state.selectedTags}
+      />
+
+      {/* Exclude Tags */}
+      <FilterSection
+        badgeVariant="destructive"
+        getItemKey={(tag) => tag.name}
+        getItemLabel={(tag) => tag.name}
+        items={props.tags}
+        label="除外タグ"
+        onRemove={(id) => removeExcludeTag(id)}
+        onSelect={(tag) => addExcludeTag(tag.name)}
+        placeholder="除外タグを検索..."
+        selectedItems={props.state.excludeTags}
+      />
+
+      {/* Project Filter */}
+      <FilterSection
+        badgeVariant="secondary"
+        getItemDescription={(project) => project.description}
+        getItemKey={(project) => project.id}
+        getItemLabel={(project) => project.name}
+        items={props.projects}
+        label="プロジェクト"
+        onRemove={(name) =>
+          props.setState(
+            "selectedProjects",
+            props.state.selectedProjects.filter((pName) => pName !== name)
+          )
+        }
+        onSelect={(project) => {
+          if (!props.state.selectedProjects.includes(project.name)) {
+            props.setState("selectedProjects", [
+              ...props.state.selectedProjects,
+              project.name,
+            ]);
+          }
+        }}
+        placeholder="プロジェクトを検索..."
+        selectedItems={props.state.selectedProjects}
       />
 
       {props.onSearch && (
