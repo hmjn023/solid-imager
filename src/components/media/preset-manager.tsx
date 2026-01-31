@@ -1,4 +1,4 @@
-import { createResource, createSignal, Show } from "solid-js";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import type { Preset } from "~/domain/media/schemas";
-import { loadPreset } from "~/domain/search/store";
+import { loadPreset, searchState } from "~/domain/search/store";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { cn } from "~/presentation/utils/cn";
 
@@ -49,6 +49,16 @@ export function PresetManager(props: { class?: string }) {
   const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
     null
   );
+
+  // Sync activePresetId from store to local selection
+  createEffect(() => {
+    const active = searchState.activePresetId;
+    if (active) {
+      setSelectedPresetId(String(active));
+    } else {
+      setSelectedPresetId(null);
+    }
+  });
 
   const handleSave = async () => {
     if (!newPresetName()) {

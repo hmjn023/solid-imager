@@ -3,6 +3,7 @@ import {
   getSearchCondition,
   loadPreset,
   searchState,
+  setSearchState,
 } from "~/domain/search/store";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { logger } from "~/infrastructure/logger";
@@ -20,7 +21,31 @@ export function useCurrentSearchPersistence() {
         const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
         if (current) {
           logger.info(`[AutoSave] Loaded current state: ${current.name}`);
-          loadPreset(current);
+
+          // Try to find a matching named preset to restore selection state
+          const allPresets = await PresetClient.list();
+          // Dynamic import to avoid circular dependencies if any, though utils is safe
+          const { deepEqual } = await import("~/utils/deep-equal");
+
+          const matchingPreset = allPresets.find(
+            (p) =>
+              p.name !== CURRENT_PRESET_NAME &&
+              deepEqual(p.value, current.value)
+          );
+
+          if (matchingPreset) {
+            logger.info(
+              `[AutoSave] Found matching preset: ${matchingPreset.name}`
+            );
+            loadPreset(matchingPreset);
+          } else {
+            loadPreset(current);
+            // current preset itself should not be "selected" in UI, so we might want to clear activePresetId
+            // But loadPreset sets activePresetId to current.id.
+            // We can manually reset it to null effectively treating it as "unsaved/custom" state
+            // preserving the loaded conditions.
+            setSearchState("activePresetId", null);
+          }
         } else {
           logger.info("[AutoSave] No current state found, creating default");
           // Create initial "current" preset with empty/default state
