@@ -23,6 +23,13 @@ export const presetsRouter = {
     .handler(async ({ input }) => await PresetService.get(input.id)),
 
   /**
+   * Get a preset by name
+   */
+  getByName: os
+    .input(z.object({ name: z.string() }))
+    .handler(async ({ input }) => await PresetService.getByName(input.name)),
+
+  /**
    * Create a new preset
    */
   create: os

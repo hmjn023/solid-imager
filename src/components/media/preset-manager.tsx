@@ -24,7 +24,11 @@ import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { cn } from "~/presentation/utils/cn";
 
 export function PresetManager(props: { class?: string }) {
-  const [presets, { refetch }] = createResource(PresetClient.list);
+  const [data, { refetch }] = createResource(PresetClient.list);
+
+  // existing "current" preset should be hidden from UI
+  const presets = () => data()?.filter((p) => p.name !== "current");
+
   const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
   const [newPresetName, setNewPresetName] = createSignal("");
   const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(

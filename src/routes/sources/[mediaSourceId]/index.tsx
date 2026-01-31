@@ -49,6 +49,7 @@ import {
 } from "~/domain/search/store";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
+import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
@@ -86,6 +87,9 @@ const buildSearchParams = (pageParam: number) => {
 export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
+
+  // Enable auto-save/restore of search conditions
+  useCurrentSearchPersistence();
 
   const mediaSourceId = () => params.mediaSourceId;
 

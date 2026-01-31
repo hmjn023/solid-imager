@@ -27,6 +27,10 @@ export const PresetService = {
     return preset;
   },
 
+  async getByName(name: string): Promise<Preset | null> {
+    return await repository.getByName(name);
+  },
+
   async create(data: CreatePresetRequest): Promise<Preset> {
     const existing = await repository.getByName(data.name);
     if (existing) {
