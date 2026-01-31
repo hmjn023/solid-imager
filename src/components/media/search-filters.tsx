@@ -165,7 +165,7 @@ export function SearchFilters(props: SearchFiltersProps) {
       <FilterSection
         badgeVariant="secondary"
         getItemDescription={(ip) => ip.description}
-        getItemKey={(ip) => ip.id}
+        getItemKey={(ip) => ip.name}
         getItemLabel={(ip) => ip.name}
         items={props.ips}
         label="IP"
