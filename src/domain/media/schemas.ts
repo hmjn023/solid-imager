@@ -225,15 +225,86 @@ export const mediaGenerationInfoSchema = z.object({
 export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
 // Search schemas
+export const filterOperatorSchema = z.enum([
+  "equals", // 完全一致
+  "contains", // 部分一致 (LIKE %val%)
+  "startsWith", // 前方一致 (LIKE val%)
+  "endsWith", // 後方一致 (LIKE %val)
+  "gt", // Greater than (>)
+  "gte", // Greater than or equal (>=)
+  "lt", // Less than (<)
+  "lte", // Less than or equal (<=)
+  "in", // 配列に含まれる (IN)
+  "notIn", // 配列に含まれない (NOT IN)
+  "isEmpty", // 空またはNULL
+  "isNotEmpty", // 空でない
+]);
+
+export const filterTargetSchema = z.enum([
+  "keyword", // 全文検索 (ファイル名, パス, 説明, プロンプト等)
+  "fileName",
+  "filePath",
+  "description",
+  "mediaType",
+  "width",
+  "height",
+  "fileSize",
+  "createdAt",
+  "rating",
+  "favorite",
+  "viewCount",
+  "aiGenerated",
+  // 関連テーブル
+  "tag", // タグ名またはID
+  "author", // 作者名またはID
+  "project", // プロジェクト名またはID
+  "ip", // IP名またはID
+  "character", // キャラクター名またはID
+  "folder", // ディレクトリパス (前方一致など)
+]);
+
+// 単一の検索条件ノード
+// 注意: operator と value の整合性はアプリケーション層で検証する
+// 例: isEmpty/isNotEmpty の場合は value を無視、in/notIn の場合は配列を期待
+export const searchCriterionSchema = z.object({
+  type: z.literal("criterion"),
+  target: filterTargetSchema,
+  operator: filterOperatorSchema.default("equals"),
+  value: z
+    .union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+      z.array(z.number()),
+    ])
+    .nullable(),
+  negate: z.boolean().default(false).optional(), // NOT条件
+});
+
+export type SearchCriterion = z.infer<typeof searchCriterionSchema>;
+
+// 条件グループノード (AND/OR)
+export type SearchGroup = {
+  type: "group";
+  operator: "and" | "or";
+  children: (SearchGroup | z.infer<typeof searchCriterionSchema>)[];
+  negate?: boolean;
+};
+
+export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
+  z.object({
+    type: z.literal("group"),
+    operator: z.enum(["and", "or"]),
+    // children が空の場合、このグループは条件なしとして扱われる（無視される）
+    children: z.array(z.union([searchGroupSchema, searchCriterionSchema])),
+    negate: z.boolean().default(false).optional(),
+  })
+);
+
 export const mediaSearchRequestSchema = z.object({
-  q: z.string().optional(),
-  tags: z.string().optional(), // comma-separated tag names
-  tagMode: z.enum(["and", "or"]).default("and"),
-  excludeTags: z.string().optional(), // comma-separated tag names
-  projects: z.string().optional(), // comma-separated project IDs
-  ips: z.string().optional(), // comma-separated IP IDs
-  characters: z.string().optional(), // comma-separated character IDs
-  sort: z.enum(["date", "name", "size"]).optional(), // size maps to fileSize
+  condition: searchGroupSchema.optional(),
+  sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).default("desc"),
   limit: z.coerce.number().int().positive().optional(),
   offset: z.coerce.number().int().nonnegative().default(0),
@@ -422,3 +493,29 @@ export type CopyMediaRequest = z.infer<typeof copyMediaRequestSchema>;
 export const moveMediaRequestSchema = copyMediaRequestSchema;
 
 export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;
+
+// Preset schemas
+export const presetSchema = z.object({
+  id: z.number().int(),
+  name: z.string().min(1, "Name is required"),
+  // Note: searchGroupSchema is lazy, so we use it directly.
+  // The database stores JSONB, so we validate it against the structure.
+  value: searchGroupSchema,
+  createdAt: z.coerce.date(),
+});
+
+export type Preset = z.infer<typeof presetSchema>;
+
+export const createPresetRequestSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  value: searchGroupSchema,
+});
+
+export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
+
+export const updatePresetRequestSchema = z.object({
+  name: z.string().min(1, "Name is required").optional(),
+  value: searchGroupSchema.optional(),
+});
+
+export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;

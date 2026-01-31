@@ -7,6 +7,7 @@ import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
+import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
@@ -32,6 +33,7 @@ export const appRouter = {
   utils: utilsRouter,
   imports: importsRouter,
   config: configRouter,
+  presets: presetsRouter,
 };
 
 export type AppRouter = typeof appRouter;

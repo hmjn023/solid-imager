@@ -223,17 +223,17 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(project) => project.name}
         items={props.projects}
         label="プロジェクト"
-        onRemove={(id) =>
+        onRemove={(name) =>
           props.setState(
             "selectedProjects",
-            props.state.selectedProjects.filter((pId) => pId !== id)
+            props.state.selectedProjects.filter((pName) => pName !== name)
           )
         }
         onSelect={(project) => {
-          if (!props.state.selectedProjects.includes(project.id)) {
+          if (!props.state.selectedProjects.includes(project.name)) {
             props.setState("selectedProjects", [
               ...props.state.selectedProjects,
-              project.id,
+              project.name,
             ]);
           }
         }}
@@ -249,15 +249,18 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(ip) => ip.name}
         items={props.ips}
         label="IP"
-        onRemove={(id) =>
+        onRemove={(name) =>
           props.setState(
             "selectedIps",
-            props.state.selectedIps.filter((iId) => iId !== id)
+            props.state.selectedIps.filter((iName) => iName !== name)
           )
         }
         onSelect={(ip) => {
-          if (!props.state.selectedIps.includes(ip.id)) {
-            props.setState("selectedIps", [...props.state.selectedIps, ip.id]);
+          if (!props.state.selectedIps.includes(ip.name)) {
+            props.setState("selectedIps", [
+              ...props.state.selectedIps,
+              ip.name,
+            ]);
           }
         }}
         placeholder="IPを検索..."
@@ -272,17 +275,17 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(char) => char.name}
         items={props.characters}
         label="キャラクター"
-        onRemove={(id) =>
+        onRemove={(name) =>
           props.setState(
             "selectedCharacters",
-            props.state.selectedCharacters.filter((cId) => cId !== id)
+            props.state.selectedCharacters.filter((cName) => cName !== name)
           )
         }
         onSelect={(char) => {
-          if (!props.state.selectedCharacters.includes(char.id)) {
+          if (!props.state.selectedCharacters.includes(char.name)) {
             props.setState("selectedCharacters", [
               ...props.state.selectedCharacters,
-              char.id,
+              char.name,
             ]);
           }
         }}

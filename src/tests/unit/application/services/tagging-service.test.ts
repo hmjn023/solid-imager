@@ -8,6 +8,7 @@ import type { TagRepository } from "~/domain/repositories/tag-repository";
 
 // biome-ignore lint/style/noMagicNumbers: Test data
 const MOCK_BUFFER_DATA = [1, 2, 3];
+const _NON_EXISTENT_ID = 999;
 
 // Mock MediaService
 vi.mock("~/application/services/media-service", () => ({
