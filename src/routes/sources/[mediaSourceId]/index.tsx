@@ -810,6 +810,7 @@ export default function MediaListPage() {
                     class="h-7 flex-1 text-xs"
                     onClick={() => setSearchMode("simple")}
                     size="sm"
+                    type="button"
                     variant={
                       searchState.mode === "simple" ? "default" : "ghost"
                     }
@@ -820,6 +821,7 @@ export default function MediaListPage() {
                     class="h-7 flex-1 text-xs"
                     onClick={() => setSearchMode("pro")}
                     size="sm"
+                    type="button"
                     variant={searchState.mode === "pro" ? "default" : "ghost"}
                   >
                     詳細検索
@@ -833,7 +835,7 @@ export default function MediaListPage() {
                   sortOrder={searchState.sortOrder}
                 />
 
-                {searchState.mode === "simple" ? (
+                <div classList={{ hidden: searchState.mode !== "simple" }}>
                   <SearchFilters
                     authors={allAuthors.data}
                     characters={allCharacters.data}
@@ -843,24 +845,24 @@ export default function MediaListPage() {
                     state={searchState}
                     tags={tags.data}
                   />
-                ) : (
-                  <div class="space-y-4">
-                    <ProSearchBuilder
-                      authors={allAuthors.data}
-                      characters={allCharacters.data}
-                      ips={allIps.data}
-                      onChange={(val) =>
-                        setSearchState("advancedCondition", val)
-                      }
-                      projects={allProjects.data}
-                      tags={tags.data}
-                      value={searchState.advancedCondition || null}
-                    />
-                    <Button class="w-full" onClick={handleSearch}>
-                      検索 (詳細)
-                    </Button>
-                  </div>
-                )}
+                </div>
+                <div
+                  class="space-y-4"
+                  classList={{ hidden: searchState.mode !== "pro" }}
+                >
+                  <ProSearchBuilder
+                    authors={allAuthors.data}
+                    characters={allCharacters.data}
+                    ips={allIps.data}
+                    onChange={(val) => setSearchState("advancedCondition", val)}
+                    projects={allProjects.data}
+                    tags={tags.data}
+                    value={searchState.advancedCondition || null}
+                  />
+                  <Button class="w-full" onClick={handleSearch} type="button">
+                    検索 (詳細)
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -885,6 +887,7 @@ export default function MediaListPage() {
                   class="h-7 text-xs"
                   onClick={() => setSearchMode("simple")}
                   size="sm"
+                  type="button"
                   variant={searchState.mode === "simple" ? "default" : "ghost"}
                 >
                   簡易検索
@@ -893,6 +896,7 @@ export default function MediaListPage() {
                   class="h-7 text-xs"
                   onClick={() => setSearchMode("pro")}
                   size="sm"
+                  type="button"
                   variant={searchState.mode === "pro" ? "default" : "ghost"}
                 >
                   詳細検索
@@ -907,7 +911,7 @@ export default function MediaListPage() {
               sortOrder={searchState.sortOrder}
             />
 
-            {searchState.mode === "simple" ? (
+            <div classList={{ hidden: searchState.mode !== "simple" }}>
               <SearchFilters
                 authors={allAuthors.data}
                 characters={allCharacters.data}
@@ -918,24 +922,26 @@ export default function MediaListPage() {
                 tags={tags.data}
                 usePopover={false}
               />
-            ) : (
-              <div class="space-y-4">
-                <PresetManager class="w-full flex-col items-stretch" />
-                <ProSearchDialog
-                  authors={allAuthors.data}
-                  characters={allCharacters.data}
-                  ips={allIps.data}
-                  onChange={(val) => setSearchState("advancedCondition", val)}
-                  onSearch={handleSearch}
-                  projects={allProjects.data}
-                  tags={tags.data}
-                  value={searchState.advancedCondition || null}
-                />
-                <Button class="w-full" onClick={handleSearch}>
-                  検索 (詳細)
-                </Button>
-              </div>
-            )}
+            </div>
+            <div
+              class="space-y-4"
+              classList={{ hidden: searchState.mode !== "pro" }}
+            >
+              <PresetManager class="w-full flex-col items-stretch" />
+              <ProSearchDialog
+                authors={allAuthors.data}
+                characters={allCharacters.data}
+                ips={allIps.data}
+                onChange={(val) => setSearchState("advancedCondition", val)}
+                onSearch={handleSearch}
+                projects={allProjects.data}
+                tags={tags.data}
+                value={searchState.advancedCondition || null}
+              />
+              <Button class="w-full" onClick={handleSearch} type="button">
+                検索 (詳細)
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
