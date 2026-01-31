@@ -738,60 +738,96 @@ function buildSearchQuery(
   return buildCriterionQuery(node);
 }
 
-function buildCriterionQuery(node: SearchCriterion): SQL | undefined {
-  const { target, operator, value } = node;
-
-  // Handle "keyword" (Full text search across multiple fields)
-  if (target === "keyword" && typeof value === "string") {
-    const pattern = `%${escapeLikePattern(value)}%`;
-    const finalCondition = or(
-      like(medias.fileName, pattern),
-      like(medias.filePath, pattern),
-      like(medias.description, pattern),
-      exists(
-        db
-          .select({ one: sql`1` })
-          .from(mediaGenerationInfo)
-          .where(
-            and(
-              eq(mediaGenerationInfo.mediaId, medias.id),
-              like(mediaGenerationInfo.prompt, pattern)
-            )
+function buildKeywordCondition(node: SearchCriterion): SQL | undefined {
+  const pattern = `%${escapeLikePattern(String(node.value))}%`;
+  const condition = or(
+    like(medias.fileName, pattern),
+    like(medias.filePath, pattern),
+    like(medias.description, pattern),
+    exists(
+      db
+        .select({ id: mediaGenerationInfo.mediaId })
+        .from(mediaGenerationInfo)
+        .where(
+          and(
+            eq(mediaGenerationInfo.mediaId, medias.id),
+            like(mediaGenerationInfo.prompt, pattern)
           )
-      )
-    );
-    if (!finalCondition) {
-      return;
-    }
+        )
+    )
+  );
+  if (!condition) {
+    return;
+  }
+  return node.negate ? not(condition) : condition;
+}
 
-    return node.negate ? not(finalCondition) : finalCondition;
+function buildRelationCondition(node: SearchCriterion): SQL | undefined {
+  const relationalTargets = [
+    "tag",
+    "project",
+    "ip",
+    "character",
+    "author",
+  ] as const;
+  return buildRelationQuery(
+    node.target as (typeof relationalTargets)[number],
+    node.operator,
+    node.value as string,
+    node.negate ?? false
+  );
+}
+
+function buildFolderCondition(node: SearchCriterion): SQL | undefined {
+  if (typeof node.value !== "string") {
+    return;
+  }
+  const folderPath = node.value.endsWith("/") ? node.value : `${node.value}/`;
+  const pattern = `${escapeLikePattern(folderPath)}%`;
+  const condition = like(medias.filePath, pattern);
+  return node.negate ? not(condition) : condition;
+}
+
+function buildCriterionQuery(node: SearchCriterion): SQL | undefined {
+  const { target } = node;
+
+  if (target === "keyword") {
+    return buildKeywordCondition(node);
   }
 
-  // Handle Relational Fields
-  if (["tag", "character", "ip", "author", "project"].includes(target)) {
-    return buildRelationQuery(target, operator, value, node.negate);
+  const relationalTargets = ["tag", "project", "ip", "character", "author"];
+  if (relationalTargets.includes(target)) {
+    return buildRelationCondition(node);
   }
 
-  // Handle Special "folder" target
-  if (target === "folder" && typeof value === "string") {
-    const folderPath = value.endsWith("/") ? value : `${value}/`;
-    const pattern = `${escapeLikePattern(folderPath)}%`;
-    const condition = like(medias.filePath, pattern);
-    return node.negate ? not(condition) : condition;
+  if (target === "folder") {
+    return buildFolderCondition(node);
   }
 
-  // Handle "rating", "favorite", "viewCount" (mediaDetails)
   if (["rating", "favorite", "viewCount"].includes(target)) {
-    return buildDetailsQuery(target, operator, value, node.negate);
+    return buildDetailsQuery(
+      target,
+      node.operator,
+      node.value,
+      node.negate ?? false
+    );
   }
 
-  // Handle "aiGenerated" (mediaGenerationInfo)
   if (target === "aiGenerated") {
-    return buildGenerationInfoQuery(target, operator, value, node.negate);
+    return buildGenerationInfoQuery(
+      target,
+      node.operator,
+      node.value,
+      node.negate ?? false
+    );
   }
 
-  // Handle Standard Columns (medias table)
-  return buildStandardQuery(target, operator, value, node.negate);
+  return buildStandardQuery(
+    target,
+    node.operator,
+    node.value,
+    node.negate ?? false
+  );
 }
 
 function buildStandardQuery(
@@ -813,86 +849,95 @@ function buildStandardQuery(
   return negate ? not(condition) : condition;
 }
 
-function buildRelationQuery(
-  target: string,
-  operator: string,
-  value: CriterionValue,
-  negate?: boolean
-): SQL | undefined {
+const buildRelationQuery = (
+  target: "tag" | "project" | "ip" | "character" | "author",
+  operator: SearchCriterion["operator"],
+  value: string | number | boolean,
+  negate: boolean
+): SQL | undefined => {
   let subquery: SQL | undefined;
 
-  if (target === "tag") {
-    subquery = exists(
-      db
-        .select({ one: sql`1` })
-        .from(mediaTags)
-        .innerJoin(tags, eq(mediaTags.tagId, tags.id))
-        .where(
-          and(
-            eq(mediaTags.mediaId, medias.id),
-            buildValueCondition(tags.name, operator, value)
+  switch (target) {
+    case "tag":
+      subquery = exists(
+        db
+          .select({ id: mediaTags.mediaId })
+          .from(mediaTags)
+          .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+          .where(
+            and(
+              eq(mediaTags.mediaId, medias.id),
+              buildValueCondition(tags.name, operator, value)
+            )
           )
-        )
-    );
-  } else if (target === "character") {
-    subquery = exists(
-      db
-        .select({ one: sql`1` })
-        .from(mediaCharacters)
-        .innerJoin(characters, eq(mediaCharacters.characterId, characters.id))
-        .where(
-          and(
-            eq(mediaCharacters.mediaId, medias.id),
-            buildValueCondition(characters.name, operator, value)
+      );
+      break;
+    case "project":
+      subquery = exists(
+        db
+          .select({ id: mediaProjects.mediaId })
+          .from(mediaProjects)
+          .innerJoin(projects, eq(mediaProjects.projectId, projects.id))
+          .where(
+            and(
+              eq(mediaProjects.mediaId, medias.id),
+              buildValueCondition(projects.name, operator, value)
+            )
           )
-        )
-    );
-  } else if (target === "ip") {
-    subquery = exists(
-      db
-        .select({ one: sql`1` })
-        .from(mediaIps)
-        .innerJoin(ips, eq(mediaIps.ipId, ips.id))
-        .where(
-          and(
-            eq(mediaIps.mediaId, medias.id),
-            buildValueCondition(ips.name, operator, value)
+      );
+      break;
+    case "ip":
+      subquery = exists(
+        db
+          .select({ id: mediaIps.mediaId })
+          .from(mediaIps)
+          .innerJoin(ips, eq(mediaIps.ipId, ips.id))
+          .where(
+            and(
+              eq(mediaIps.mediaId, medias.id),
+              buildValueCondition(ips.name, operator, value)
+            )
           )
-        )
-    );
-  } else if (target === "project") {
-    subquery = exists(
-      db
-        .select({ one: sql`1` })
-        .from(mediaProjects)
-        .innerJoin(projects, eq(mediaProjects.projectId, projects.id))
-        .where(
-          and(
-            eq(mediaProjects.mediaId, medias.id),
-            buildValueCondition(projects.name, operator, value)
+      );
+      break;
+    case "character":
+      subquery = exists(
+        db
+          .select({ id: mediaCharacters.mediaId })
+          .from(mediaCharacters)
+          .innerJoin(characters, eq(mediaCharacters.characterId, characters.id))
+          .where(
+            and(
+              eq(mediaCharacters.mediaId, medias.id),
+              buildValueCondition(characters.name, operator, value)
+            )
           )
-        )
-    );
-  } else if (target === "author") {
-    subquery = exists(
-      db
-        .select({ one: sql`1` })
-        .from(mediaAuthors)
-        .innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
-        .where(
-          and(
-            eq(mediaAuthors.mediaId, medias.id),
-            buildValueCondition(authors.name, operator, value)
+      );
+      break;
+    case "author":
+      subquery = exists(
+        db
+          .select({ id: mediaAuthors.mediaId })
+          .from(mediaAuthors)
+          .innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
+          .where(
+            and(
+              eq(mediaAuthors.mediaId, medias.id),
+              buildValueCondition(authors.name, operator, value)
+            )
           )
-        )
-    );
+      );
+      break;
+    default:
+      return;
   }
 
   if (!subquery) {
     return;
   }
+
   return negate ? not(subquery) : subquery;
-}
+};
 
 function buildDetailsQuery(
   target: string,

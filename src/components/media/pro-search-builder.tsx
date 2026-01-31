@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import type { Author } from "~/domain/authors/schemas";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { SearchCriterion, SearchGroup } from "~/domain/media/schemas";
@@ -67,6 +68,7 @@ type Props = {
   projects?: Project[];
   ips?: Ip[];
   characters?: Character[];
+  authors?: Author[];
 };
 
 export function ProSearchBuilder(props: Props) {
@@ -80,8 +82,6 @@ export function ProSearchBuilder(props: Props) {
       }
   );
 
-  // ...
-
   const updateRoot = (newGroup: SearchGroup) => {
     props.onChange(newGroup);
   };
@@ -89,6 +89,7 @@ export function ProSearchBuilder(props: Props) {
   return (
     <div class={cn("space-y-4", props.className)}>
       <GroupBuilder
+        authors={props.authors}
         characters={props.characters}
         depth={0}
         group={rootGroup()}
@@ -113,6 +114,7 @@ function GroupBuilder(props: {
   projects?: Project[];
   ips?: Ip[];
   characters?: Character[];
+  authors?: Author[];
 }) {
   const addChild = (type: "criterion" | "group") => {
     const newChildren = [...props.group.children];
@@ -135,7 +137,7 @@ function GroupBuilder(props: {
 
   const updateChild = (index: number, child: SearchGroup | SearchCriterion) => {
     const newChildren = [...props.group.children];
-    newChildren[index] = child;
+    newChildren.splice(index, 1, child);
     props.onChange({ ...props.group, children: newChildren });
   };
 
@@ -220,6 +222,7 @@ function GroupBuilder(props: {
               <Show
                 fallback={
                   <CriterionBuilder
+                    authors={props.authors}
                     characters={props.characters}
                     criterion={child() as SearchCriterion}
                     ips={props.ips}
@@ -232,6 +235,7 @@ function GroupBuilder(props: {
                 when={child().type === "group"}
               >
                 <GroupBuilder
+                  authors={props.authors}
                   characters={props.characters}
                   depth={props.depth + 1}
                   group={child() as SearchGroup}
@@ -272,11 +276,17 @@ function CriterionBuilder(props: {
   criterion: SearchCriterion;
   onChange: (c: SearchCriterion) => void;
   onRemove: () => void;
-  tags?: TagResponse[];
-  projects?: Project[];
-  ips?: Ip[];
   characters?: Character[];
+  authors?: Author[];
+  ips?: Ip[];
+  projects?: Project[];
+  tags?: TagResponse[];
 }) {
+  const getAuthorLabel = (author: Author) =>
+    author.accountId
+      ? `${author.name}: (twitter)${author.accountId}`
+      : author.name;
+
   // Helper to determine available items for autocomplete
   const autocompleteItems = createMemo(() => {
     switch (props.criterion.target) {
@@ -288,6 +298,8 @@ function CriterionBuilder(props: {
         return props.ips;
       case "character":
         return props.characters;
+      case "author":
+        return props.authors;
       default:
         return;
     }
@@ -320,7 +332,7 @@ function CriterionBuilder(props: {
     ) {
       return NUMERIC_OPERATORS;
     }
-    if (["tag", "project", "ip", "character"].includes(target)) {
+    if (["tag", "project", "ip", "character", "author"].includes(target)) {
       return RELATIONAL_OPERATORS;
     }
     if (["aiGenerated", "favorite", "isArchived"].includes(target)) {
@@ -422,14 +434,24 @@ function CriterionBuilder(props: {
               <ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
             </ComboboxItem>
           )}
-          onChange={(val: { name: string } | null) => {
+          onChange={(
+            val: { name: string; accountId?: string | null } | null
+          ) => {
             if (val) {
               props.onChange({ ...props.criterion, value: val.name });
             }
           }}
-          optionLabel={(item: { name: string }) => item.name}
+          optionLabel={(item) =>
+            props.criterion.target === "author"
+              ? getAuthorLabel(item as Author)
+              : (item as { name: string }).name
+          }
           options={autocompleteItems() || []}
-          optionTextValue={(item: { name: string }) => item.name}
+          optionTextValue={(item) =>
+            props.criterion.target === "author"
+              ? getAuthorLabel(item as Author)
+              : (item as { name: string }).name
+          }
           optionValue={(item: { name: string }) => item.name}
           placeholder="検索..."
           triggerMode="focus"

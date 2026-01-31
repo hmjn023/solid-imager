@@ -8,6 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
+import type { Author } from "~/domain/authors/schemas";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { SearchGroup } from "~/domain/media/schemas";
@@ -21,6 +22,7 @@ type Props = {
   projects?: Project[];
   ips?: Ip[];
   characters?: Character[];
+  authors?: Author[];
   value: SearchGroup | null;
   onChange: (value: SearchGroup | null) => void;
   onSearch: () => void;
@@ -40,6 +42,7 @@ export function ProSearchDialog(props: Props) {
         </DialogHeader>
         <div class="flex-1 overflow-y-auto p-1">
           <ProSearchBuilder
+            authors={props.authors}
             characters={props.characters}
             ips={props.ips}
             onChange={props.onChange}

@@ -1,4 +1,5 @@
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
+import { authorsRouter } from "~/infrastructure/api/routers/authors-router";
 import { categoriesRouter } from "~/infrastructure/api/routers/categories-router";
 import { charactersRouter } from "~/infrastructure/api/routers/characters-router";
 import { configRouter } from "~/infrastructure/api/routers/config-router";
@@ -30,6 +31,7 @@ export const appRouter = {
   downloads: downloadsRouter,
   directories: directoriesRouter,
   ai: aiRouter,
+  authors: authorsRouter,
   utils: utilsRouter,
   imports: importsRouter,
   config: configRouter,

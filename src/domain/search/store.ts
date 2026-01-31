@@ -19,6 +19,7 @@ export type SearchState = {
   selectedProjects: string[];
   selectedIps: string[];
   selectedCharacters: string[];
+  selectedAuthors: string[];
 
   // Filters (Pro Mode)
   advancedCondition: SearchGroup | null;
@@ -46,6 +47,7 @@ const defaultState: SearchState = {
   selectedProjects: [],
   selectedIps: [],
   selectedCharacters: [],
+  selectedAuthors: [],
   advancedCondition: null,
   limit: 20,
   offset: 0,
@@ -89,6 +91,7 @@ export const loadPreset = (preset: Preset) => {
       selectedProjects: [],
       selectedIps: [],
       selectedCharacters: [],
+      selectedAuthors: [],
       ...sortState,
     });
   }
@@ -113,6 +116,7 @@ const restoreFromSearchGroup = (
     selectedProjects: [],
     selectedIps: [],
     selectedCharacters: [],
+    selectedAuthors: [],
     tagMode: "and",
   };
 
@@ -149,6 +153,7 @@ const applyCriterionToState = (
     project: negate ? undefined : state.selectedProjects,
     ip: negate ? undefined : state.selectedIps,
     character: negate ? undefined : state.selectedCharacters,
+    author: negate ? undefined : state.selectedAuthors,
   };
 
   const list = targetMap[target];
@@ -186,6 +191,7 @@ export const getSearchCondition = (): SearchGroup | undefined => {
   addFilterConditions(conditions, "project", searchState.selectedProjects);
   addFilterConditions(conditions, "ip", searchState.selectedIps);
   addFilterConditions(conditions, "character", searchState.selectedCharacters);
+  addFilterConditions(conditions, "author", searchState.selectedAuthors);
 
   if (conditions.length === 0) {
     return;
@@ -228,7 +234,7 @@ const addTagConditions = (conditions: SearchGroup["children"]) => {
 
 const addFilterConditions = (
   conditions: SearchGroup["children"],
-  target: "project" | "ip" | "character",
+  target: "project" | "ip" | "character" | "author",
   values: string[]
 ) => {
   for (const value of values) {

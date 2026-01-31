@@ -12,6 +12,7 @@ import {
 } from "~/components/ui/combobox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import type { Author } from "~/domain/authors/schemas";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { Project } from "~/domain/projects/schemas";
@@ -26,6 +27,7 @@ export type SearchFilterState = {
   selectedProjects: string[];
   selectedIps: string[];
   selectedCharacters: string[];
+  selectedAuthors: string[];
   sortBy: "date" | "name" | "size";
   sortOrder: "asc" | "desc";
 };
@@ -37,6 +39,7 @@ type SearchFiltersProps = {
   projects: Project[] | undefined;
   ips: Ip[] | undefined;
   characters: Character[] | undefined;
+  authors: Author[] | undefined;
   onSearch?: () => void;
   className?: string;
   usePopover?: boolean;
@@ -112,6 +115,11 @@ function FilterSection<T>(props: {
     </div>
   );
 }
+
+const getAuthorLabel = (author: Author) =>
+  author.accountId
+    ? `${author.name}：(twitter)${author.accountId}`
+    : author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
   const addTag = (tagName: string) => {
@@ -229,6 +237,31 @@ export function SearchFilters(props: SearchFiltersProps) {
         onSelect={(tag) => addExcludeTag(tag.name)}
         placeholder="除外タグを検索..."
         selectedItems={props.state.excludeTags}
+      />
+
+      {/* Author Filter */}
+      <FilterSection
+        badgeVariant="secondary"
+        getItemKey={(author) => author.name}
+        getItemLabel={getAuthorLabel}
+        items={props.authors}
+        label="作者"
+        onRemove={(name) =>
+          props.setState(
+            "selectedAuthors",
+            props.state.selectedAuthors.filter((aName) => aName !== name)
+          )
+        }
+        onSelect={(author) => {
+          if (!props.state.selectedAuthors.includes(author.name)) {
+            props.setState("selectedAuthors", [
+              ...props.state.selectedAuthors,
+              author.name,
+            ]);
+          }
+        }}
+        placeholder="作者・IDを検索..."
+        selectedItems={props.state.selectedAuthors}
       />
 
       {/* Project Filter */}
