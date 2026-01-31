@@ -191,7 +191,7 @@ export function SearchFilters(props: SearchFiltersProps) {
       <FilterSection
         badgeVariant="secondary"
         getItemDescription={(char) => char.description}
-        getItemKey={(char) => char.id}
+        getItemKey={(char) => char.name}
         getItemLabel={(char) => char.name}
         items={props.characters}
         label="キャラクター"
