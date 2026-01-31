@@ -110,8 +110,8 @@ export default function MediaListPage() {
   // Optimize query key to only include relevant search parameters
   const searchParams = createMemo(() => ({
     condition: getSearchCondition(),
-    sortBy: searchState.sortBy,
-    sortOrder: searchState.sortOrder,
+    sort: searchState.sortBy,
+    order: searchState.sortOrder,
   }));
 
   const mediaQuery = createInfiniteQuery(() => ({
@@ -121,11 +121,8 @@ export default function MediaListPage() {
       if (!id) {
         throw new Error("Media source ID is required");
       }
-      const currentParams = searchParams();
       return searchMedia(id, {
-        condition: currentParams.condition,
-        sort: currentParams.sortBy,
-        order: currentParams.sortOrder,
+        ...searchParams(),
         limit: MEDIA_ITEMS_PER_PAGE,
         offset: pageParam as number,
       });
