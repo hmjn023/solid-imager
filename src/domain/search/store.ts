@@ -64,6 +64,10 @@ export const resetSearchState = () => {
 
 export const loadPreset = (preset: Preset) => {
   const simpleState = restoreFromSearchGroup(preset.value);
+  const sortState = {
+    sortBy: (preset.sort as SearchState["sortBy"]) || "date",
+    sortOrder: (preset.order as SearchState["sortOrder"]) || "desc",
+  };
 
   if (simpleState) {
     setSearchState({
@@ -71,6 +75,7 @@ export const loadPreset = (preset: Preset) => {
       activePresetId: preset.id,
       advancedCondition: null,
       ...simpleState,
+      ...sortState,
     });
   } else {
     setSearchState({
@@ -84,6 +89,7 @@ export const loadPreset = (preset: Preset) => {
       selectedProjects: [],
       selectedIps: [],
       selectedCharacters: [],
+      ...sortState,
     });
   }
 };
@@ -195,25 +201,13 @@ export const getSearchCondition = (): SearchGroup | undefined => {
 const addTagConditions = (conditions: SearchGroup["children"]) => {
   // Tags (Positive)
   if (searchState.selectedTags.length > 0) {
-    if (searchState.tagMode === "and") {
-      for (const tag of searchState.selectedTags) {
-        conditions.push({
-          type: "criterion",
-          target: "tag",
-          operator: "equals",
-          value: tag,
-        });
-      }
-    } else {
+    // Simple mode now always uses AND for tags.
+    for (const tag of searchState.selectedTags) {
       conditions.push({
-        type: "group",
-        operator: "or",
-        children: searchState.selectedTags.map((tag) => ({
-          type: "criterion",
-          target: "tag",
-          operator: "equals",
-          value: tag,
-        })),
+        type: "criterion",
+        target: "tag",
+        operator: "equals",
+        value: tag,
       });
     }
   }

@@ -1,4 +1,5 @@
 import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { toast } from "solid-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,7 +64,8 @@ export function PresetManager(props: {
     }
   });
 
-  const handleSave = async () => {
+  const handleSave = async (e: Event) => {
+    e.preventDefault();
     if (!newPresetName()) {
       return;
     }
@@ -73,6 +75,7 @@ export function PresetManager(props: {
     const condition = getSearchCondition();
 
     if (!condition) {
+      toast.error("検索条件がありません");
       return;
     }
 
@@ -80,13 +83,16 @@ export function PresetManager(props: {
       await PresetClient.create({
         name: newPresetName(),
         value: condition,
+        sort: searchState.sortBy,
+        order: searchState.sortOrder,
       });
       setIsSaveDialogOpen(false);
       setNewPresetName("");
-      refetch();
+      refetch(); // This is equivalent to loadPresets() in this context
+      toast.success("プリセットを保存しました");
       props.onAction?.();
     } catch (_e) {
-      // Ignore error
+      toast.error("プリセットの保存に失敗しました");
     }
   };
 

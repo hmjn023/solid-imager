@@ -163,8 +163,10 @@ function GroupBuilder(props: {
               )}
               onChange={(val) => {
                 if (val) {
-                  // biome-ignore lint/suspicious/noExplicitAny: dynamic operator assignment
-                  props.onChange({ ...props.group, operator: val as any });
+                  props.onChange({
+                    ...props.group,
+                    operator: val as SearchGroup["operator"],
+                  });
                 }
               }}
               options={["and", "or"]}
@@ -356,10 +358,8 @@ function CriterionBuilder(props: {
 
             props.onChange({
               ...props.criterion,
-              // biome-ignore lint/suspicious/noExplicitAny: dynamic target assignment
-              target: val as any,
-              // biome-ignore lint/suspicious/noExplicitAny: dynamic operator assignment
-              operator: newOp as any,
+              target: val as SearchCriterion["target"],
+              operator: newOp as SearchCriterion["operator"],
               value: "", // Clear value on target change to prevent incompatible types
             });
           }
@@ -383,8 +383,10 @@ function CriterionBuilder(props: {
         )}
         onChange={(val) => {
           if (val && val !== props.criterion.operator) {
-            // biome-ignore lint/suspicious/noExplicitAny: safe cast for UI selection
-            props.onChange({ ...props.criterion, operator: val as any });
+            props.onChange({
+              ...props.criterion,
+              operator: val as SearchCriterion["operator"],
+            });
           }
         }}
         options={validOperators()}
@@ -420,24 +422,19 @@ function CriterionBuilder(props: {
               <ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
             </ComboboxItem>
           )}
-          // biome-ignore lint/suspicious/noExplicitAny: generic combobox usage
-          onChange={(val: any) => {
+          onChange={(val: { name: string } | null) => {
             if (val) {
               props.onChange({ ...props.criterion, value: val.name });
             }
           }}
-          // biome-ignore lint/suspicious/noExplicitAny: generic combobox item
-          optionLabel={(item: any) => item.name}
+          optionLabel={(item: { name: string }) => item.name}
           options={autocompleteItems() || []}
-          // biome-ignore lint/suspicious/noExplicitAny: generic combobox item
-          optionTextValue={(item: any) => item.name}
-          // biome-ignore lint/suspicious/noExplicitAny: generic combobox item
-          optionValue={(item: any) => item.name}
+          optionTextValue={(item: { name: string }) => item.name}
+          optionValue={(item: { name: string }) => item.name}
           placeholder="検索..."
           triggerMode="focus"
           value={(autocompleteItems() || []).find(
-            // biome-ignore lint/suspicious/noExplicitAny: generic combobox item
-            (i: any) => i.name === props.criterion.value
+            (i) => i.name === props.criterion.value
           )}
         >
           <ComboboxControl>

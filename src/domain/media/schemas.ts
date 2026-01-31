@@ -501,6 +501,8 @@ export const presetSchema = z.object({
   // Note: searchGroupSchema is lazy, so we use it directly.
   // The database stores JSONB, so we validate it against the structure.
   value: searchGroupSchema,
+  sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
   createdAt: z.coerce.date(),
 });
 
@@ -509,6 +511,8 @@ export type Preset = z.infer<typeof presetSchema>;
 export const createPresetRequestSchema = z.object({
   name: z.string().min(1, "Name is required"),
   value: searchGroupSchema,
+  sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
@@ -516,6 +520,8 @@ export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
 export const updatePresetRequestSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
   value: searchGroupSchema.optional(),
+  sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
 });
 
 export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;
