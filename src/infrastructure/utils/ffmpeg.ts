@@ -6,9 +6,14 @@
 import ffmpegPath from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 
-// Set ffmpeg-static path if available
-if (ffmpegPath) {
-    ffmpeg.setFfmpegPath(ffmpegPath);
+let isInitialized = false;
+
+function initializeFfmpeg() {
+    if (isInitialized) return;
+    if (ffmpegPath) {
+        ffmpeg.setFfmpegPath(ffmpegPath);
+    }
+    isInitialized = true;
 }
 
 /**
@@ -31,9 +36,10 @@ export async function checkFfmpegAvailable(): Promise<boolean> {
 
 /**
  * Get configured ffmpeg instance
- * The ffmpeg path is already set via setFfmpegPath above
+ * The ffmpeg path is set on first call
  */
 export function getFfmpeg() {
+    initializeFfmpeg();
     return ffmpeg;
 }
 

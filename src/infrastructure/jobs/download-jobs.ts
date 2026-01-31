@@ -178,7 +178,14 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
     const lines = (result as string)
       .split("\n")
       .filter((line) => line.trim().length > 0);
-    outputs = lines.map((line) => JSON.parse(line));
+    outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
+      try {
+        acc.push(JSON.parse(line));
+      } catch (e) {
+        logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
+      }
+      return acc;
+    }, []);
   } else if (Array.isArray(result)) {
     outputs = result as unknown as YtDlpOutput[];
   } else if (typeof result === "object" && result !== null) {
