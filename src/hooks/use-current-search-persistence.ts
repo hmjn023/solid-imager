@@ -78,16 +78,8 @@ export function useCurrentSearchPersistence() {
       searchState.selectedIps,
       searchState.selectedCharacters,
       searchState.advancedCondition,
-      searchState.sortBy, // Sort is part of state but maybe not "value" in preset?
-      // Preset schema says 'value' is MediaSearchRequest... verifying schema.
-      // Wait, MediaSearchRequest usually includes sort/limit/offset too?
-      // Let's check schemas.ts. Preset.value is SearchGroup.
-      // If Preset.value is ONLY SearchGroup (filtering), then Sort/Limit might NOT be saved in Preset.
-      // The spec said "MediaSearchRequest" which includes sort?
-      // Docs said: "value: jsonb("value").notNull()" and "MediaSearchRequest".
-      // But implementation of PresetRepository uses `row.value as SearchGroup`.
-      // If it is SearchGroup, it only saves component filters.
-      // Let's check `src/domain/media/schemas.ts` to be sure.
+      searchState.sortBy,
+      searchState.sortOrder,
     ];
 
     if (isInitialLoad) {
@@ -108,18 +100,24 @@ export function useCurrentSearchPersistence() {
       children: [],
     };
 
+    const presetData = {
+      value: condition,
+      sort: searchState.sortBy,
+      order: searchState.sortOrder,
+    };
+
     try {
       // We need ID to update.
       // Optimization: Cache ID? Or just getByName every time?
       // getByName is safer for race conditions across tabs (though minimal risk for "current").
       const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
       if (current) {
-        await PresetClient.update(current.id, { value: condition });
+        await PresetClient.update(current.id, presetData);
         // logger.info("[AutoSave] Saved current state");
       } else {
         await PresetClient.create({
           name: CURRENT_PRESET_NAME,
-          value: condition,
+          ...presetData,
         });
       }
     } catch (e) {

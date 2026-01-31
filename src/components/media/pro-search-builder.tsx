@@ -305,8 +305,7 @@ function CriterionBuilder(props: {
     }
   });
 
-  const validOperators = () => {
-    const target = props.criterion.target;
+  const getValidOperators = (target: string) => {
     // Fast path checks using sets or direct includes
     if (
       [
@@ -352,21 +351,9 @@ function CriterionBuilder(props: {
         onChange={(val) => {
           if (val && val !== props.criterion.target) {
             // Recalculate valid operators for the new target
-            // We duplicate the logic here or just rely on the fact that we can pick a safe default
-            // For simplicity, default to "contains" for string/relational, "equals" for others
-            let newOp = "contains";
-            if (
-              [
-                "rating",
-                "viewCount",
-                "fileSize",
-                "createdAt",
-                "aiGenerated",
-                "favorite",
-              ].includes(val)
-            ) {
-              newOp = "equals";
-            }
+            const operators = getValidOperators(val);
+            // Default to the first valid operator
+            const newOp = operators[0] || "equals";
 
             props.onChange({
               ...props.criterion,
@@ -401,7 +388,7 @@ function CriterionBuilder(props: {
             });
           }
         }}
-        options={validOperators()}
+        options={getValidOperators(props.criterion.target)}
         value={props.criterion.operator}
       >
         <SelectTrigger class="w-full">

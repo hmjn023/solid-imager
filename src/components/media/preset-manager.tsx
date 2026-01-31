@@ -117,7 +117,7 @@ export function PresetManager(props: {
 
       refetch();
     } catch (_e) {
-      // Ignore error
+      toast.error("プリセットの削除に失敗しました");
     } finally {
       setIsDeleteDialogOpen(false);
       setPresetToDelete(null);
