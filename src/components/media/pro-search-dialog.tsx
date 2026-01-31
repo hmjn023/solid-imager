@@ -13,7 +13,7 @@ import type { Ip } from "~/domain/ips/schemas";
 import type { SearchGroup } from "~/domain/media/schemas";
 import type { Project } from "~/domain/projects/schemas";
 import type { TagResponse } from "~/domain/tags/schemas";
-import { PresetManager } from "./preset-manager";
+
 import { ProSearchBuilder } from "./pro-search-builder";
 
 type Props = {
@@ -39,10 +39,6 @@ export function ProSearchDialog(props: Props) {
           <DialogTitle>詳細検索条件の編集</DialogTitle>
         </DialogHeader>
         <div class="flex-1 overflow-y-auto p-1">
-          <div class="mb-4 space-y-2 border-b pb-4">
-            <h3 class="font-medium text-sm">プリセット</h3>
-            <PresetManager onAction={() => setOpen(false)} />
-          </div>
           <ProSearchBuilder
             characters={props.characters}
             ips={props.ips}
