@@ -23,6 +23,7 @@ import {
 import { searchState, setSearchState } from "~/domain/search/store";
 import type { SafeMediaSource } from "~/domain/sources/schemas";
 import type { TagResponse } from "~/domain/tags/schemas";
+import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
@@ -139,6 +140,10 @@ export default function Search() {
     queryKey: ["allCharacters"],
     queryFn: fetchAllCharacters,
   }));
+  const allAuthors = createQuery(() => ({
+    queryKey: ["allAuthors"],
+    queryFn: fetchAllAuthors,
+  }));
 
   // Search function
   const searchResults = createQuery(() => ({
@@ -212,6 +217,7 @@ export default function Search() {
                   sources={sources.data}
                 />
                 <SearchFilters
+                  authors={allAuthors.data}
                   characters={allCharacters.data}
                   ips={allIps.data}
                   onSearch={handleSearch}
@@ -246,6 +252,7 @@ export default function Search() {
               sources={sources.data}
             />
             <SearchFilters
+              authors={allAuthors.data}
               characters={allCharacters.data}
               ips={allIps.data}
               onSearch={handleSearch}

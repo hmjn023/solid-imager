@@ -12,13 +12,7 @@ import {
 } from "~/components/ui/combobox";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import type { Author } from "~/domain/authors/schemas";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
 import type { Project } from "~/domain/projects/schemas";
@@ -33,7 +27,8 @@ export type SearchFilterState = {
   selectedProjects: string[];
   selectedIps: string[];
   selectedCharacters: string[];
-  sortBy: "date" | "name" | "size";
+  selectedAuthors: string[];
+  sortBy: "date" | "name" | "size" | "rating" | "viewCount";
   sortOrder: "asc" | "desc";
 };
 
@@ -44,6 +39,7 @@ type SearchFiltersProps = {
   projects: Project[] | undefined;
   ips: Ip[] | undefined;
   characters: Character[] | undefined;
+  authors: Author[] | undefined;
   onSearch?: () => void;
   className?: string;
   usePopover?: boolean;
@@ -120,6 +116,11 @@ function FilterSection<T>(props: {
   );
 }
 
+const getAuthorLabel = (author: Author) =>
+  author.accountId
+    ? `${author.name}：(twitter)${author.accountId}`
+    : author.name;
+
 export function SearchFilters(props: SearchFiltersProps) {
   const addTag = (tagName: string) => {
     if (!props.state.selectedTags.includes(tagName)) {
@@ -160,47 +161,70 @@ export function SearchFilters(props: SearchFiltersProps) {
         />
       </div>
 
+      {/* IP Filter */}
+      <FilterSection
+        badgeVariant="secondary"
+        getItemDescription={(ip) => ip.description}
+        getItemKey={(ip) => ip.name}
+        getItemLabel={(ip) => ip.name}
+        items={props.ips}
+        label="IP"
+        onRemove={(name) =>
+          props.setState(
+            "selectedIps",
+            props.state.selectedIps.filter((iName) => iName !== name)
+          )
+        }
+        onSelect={(ip) => {
+          if (!props.state.selectedIps.includes(ip.name)) {
+            props.setState("selectedIps", [
+              ...props.state.selectedIps,
+              ip.name,
+            ]);
+          }
+        }}
+        placeholder="IPを検索..."
+        selectedItems={props.state.selectedIps}
+      />
+
+      {/* Character Filter */}
+      <FilterSection
+        badgeVariant="secondary"
+        getItemDescription={(char) => char.description}
+        getItemKey={(char) => char.name}
+        getItemLabel={(char) => char.name}
+        items={props.characters}
+        label="キャラクター"
+        onRemove={(name) =>
+          props.setState(
+            "selectedCharacters",
+            props.state.selectedCharacters.filter((cName) => cName !== name)
+          )
+        }
+        onSelect={(char) => {
+          if (!props.state.selectedCharacters.includes(char.name)) {
+            props.setState("selectedCharacters", [
+              ...props.state.selectedCharacters,
+              char.name,
+            ]);
+          }
+        }}
+        placeholder="キャラクターを検索..."
+        selectedItems={props.state.selectedCharacters}
+      />
+
       {/* Tag Selection */}
       <FilterSection
         badgeVariant="default"
         getItemKey={(tag) => tag.name}
         getItemLabel={(tag) => tag.name}
         items={props.tags}
-        label="タグ (含む)"
+        label="タグ (すべて含む)"
         onRemove={(id) => removeTag(id)}
         onSelect={(tag) => addTag(tag.name)}
         placeholder="タグを検索..."
         selectedItems={props.state.selectedTags}
       />
-
-      {/* Tag Mode */}
-      <div class="space-y-2">
-        <Label>タグマッチモード</Label>
-        <Select
-          itemComponent={(itemProps) => (
-            <SelectItem item={itemProps.item}>
-              {itemProps.item.rawValue === "and"
-                ? "すべて含む (AND)"
-                : "いずれかを含む (OR)"}
-            </SelectItem>
-          )}
-          onChange={(value) => props.setState("tagMode", value || "and")}
-          options={["and", "or"]}
-          placeholder="モードを選択"
-          value={props.state.tagMode}
-        >
-          <SelectTrigger>
-            <SelectValue<string>>
-              {(state) =>
-                state.selectedOption() === "and"
-                  ? "すべて含む (AND)"
-                  : "いずれかを含む (OR)"
-              }
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent />
-        </Select>
-      </div>
 
       {/* Exclude Tags */}
       <FilterSection
@@ -215,6 +239,31 @@ export function SearchFilters(props: SearchFiltersProps) {
         selectedItems={props.state.excludeTags}
       />
 
+      {/* Author Filter */}
+      <FilterSection
+        badgeVariant="secondary"
+        getItemKey={(author) => author.name}
+        getItemLabel={getAuthorLabel}
+        items={props.authors}
+        label="作者"
+        onRemove={(name) =>
+          props.setState(
+            "selectedAuthors",
+            props.state.selectedAuthors.filter((aName) => aName !== name)
+          )
+        }
+        onSelect={(author) => {
+          if (!props.state.selectedAuthors.includes(author.name)) {
+            props.setState("selectedAuthors", [
+              ...props.state.selectedAuthors,
+              author.name,
+            ]);
+          }
+        }}
+        placeholder="作者・IDを検索..."
+        selectedItems={props.state.selectedAuthors}
+      />
+
       {/* Project Filter */}
       <FilterSection
         badgeVariant="secondary"
@@ -223,137 +272,23 @@ export function SearchFilters(props: SearchFiltersProps) {
         getItemLabel={(project) => project.name}
         items={props.projects}
         label="プロジェクト"
-        onRemove={(id) =>
+        onRemove={(name) =>
           props.setState(
             "selectedProjects",
-            props.state.selectedProjects.filter((pId) => pId !== id)
+            props.state.selectedProjects.filter((pName) => pName !== name)
           )
         }
         onSelect={(project) => {
-          if (!props.state.selectedProjects.includes(project.id)) {
+          if (!props.state.selectedProjects.includes(project.name)) {
             props.setState("selectedProjects", [
               ...props.state.selectedProjects,
-              project.id,
+              project.name,
             ]);
           }
         }}
         placeholder="プロジェクトを検索..."
         selectedItems={props.state.selectedProjects}
       />
-
-      {/* IP Filter */}
-      <FilterSection
-        badgeVariant="secondary"
-        getItemDescription={(ip) => ip.description}
-        getItemKey={(ip) => ip.id}
-        getItemLabel={(ip) => ip.name}
-        items={props.ips}
-        label="IP"
-        onRemove={(id) =>
-          props.setState(
-            "selectedIps",
-            props.state.selectedIps.filter((iId) => iId !== id)
-          )
-        }
-        onSelect={(ip) => {
-          if (!props.state.selectedIps.includes(ip.id)) {
-            props.setState("selectedIps", [...props.state.selectedIps, ip.id]);
-          }
-        }}
-        placeholder="IPを検索..."
-        selectedItems={props.state.selectedIps}
-      />
-
-      {/* Character Filter */}
-      <FilterSection
-        badgeVariant="secondary"
-        getItemDescription={(char) => char.description}
-        getItemKey={(char) => char.id}
-        getItemLabel={(char) => char.name}
-        items={props.characters}
-        label="キャラクター"
-        onRemove={(id) =>
-          props.setState(
-            "selectedCharacters",
-            props.state.selectedCharacters.filter((cId) => cId !== id)
-          )
-        }
-        onSelect={(char) => {
-          if (!props.state.selectedCharacters.includes(char.id)) {
-            props.setState("selectedCharacters", [
-              ...props.state.selectedCharacters,
-              char.id,
-            ]);
-          }
-        }}
-        placeholder="キャラクターを検索..."
-        selectedItems={props.state.selectedCharacters}
-      />
-
-      {/* Sort Options */}
-      <div class="space-y-2">
-        <Label>ソート</Label>
-        <div class="grid grid-cols-2 gap-2">
-          <Select
-            itemComponent={(itemProps) => {
-              const getSortLabel = (value: string) => {
-                if (value === "date") {
-                  return "作成日";
-                }
-                if (value === "name") {
-                  return "ファイル名";
-                }
-                return "サイズ";
-              };
-              return (
-                <SelectItem item={itemProps.item}>
-                  {getSortLabel(itemProps.item.rawValue)}
-                </SelectItem>
-              );
-            }}
-            onChange={(value) => props.setState("sortBy", value || "date")}
-            options={["date", "name", "size"]}
-            placeholder="項目"
-            value={props.state.sortBy}
-          >
-            <SelectTrigger>
-              <SelectValue<string>>
-                {(state) => {
-                  const value = state.selectedOption();
-                  if (value === "date") {
-                    return "作成日";
-                  }
-                  if (value === "name") {
-                    return "ファイル名";
-                  }
-                  return "サイズ";
-                }}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent />
-          </Select>
-          <Select
-            itemComponent={(itemProps) => (
-              <SelectItem item={itemProps.item}>
-                {itemProps.item.rawValue === "asc" ? "昇順" : "降順"}
-              </SelectItem>
-            )}
-            onChange={(value) => props.setState("sortOrder", value || "desc")}
-            options={["asc", "desc"]}
-            placeholder="順序"
-            value={props.state.sortOrder}
-          >
-            <SelectTrigger>
-              <SelectValue<string>>
-                {(state) =>
-                  state.selectedOption() === "asc" ? "昇順" : "降順"
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent />
-          </Select>
-        </div>
-      </div>
 
       {props.onSearch && (
         <Button class="w-full" onClick={props.onSearch}>

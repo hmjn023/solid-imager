@@ -56,9 +56,19 @@ export class SearchServiceImpl {
     }
 
     const request: MediaSearchRequest = {
-      q: undefined,
-      tags: searchOptions.tags?.join(",") || undefined,
-      tagMode: "and",
+      condition:
+        searchOptions.tags && searchOptions.tags.length > 0
+          ? {
+              type: "group",
+              operator: "and",
+              children: searchOptions.tags.map((tag) => ({
+                type: "criterion",
+                target: "tag",
+                operator: "equals", // or "contains" depending on requirement, usually exact match for tags
+                value: tag,
+              })),
+            }
+          : undefined,
       sort,
       order: searchOptions.order || "desc",
       limit,

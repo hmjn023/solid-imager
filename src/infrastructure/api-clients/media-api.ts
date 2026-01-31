@@ -17,7 +17,6 @@ export async function fetchMediaList(sourceId: string) {
   const result = await orpc.media.search({
     sourceId,
     params: {
-      tagMode: "and",
       offset: 0,
       limit: 100, // Reasonable default
     },
@@ -43,7 +42,6 @@ export function fetchMediaListInfinite(
     limit,
     sort: "date",
     order: "desc",
-    tagMode: "and",
   });
 }
 
