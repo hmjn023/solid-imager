@@ -156,44 +156,46 @@ export function PresetManager(props: { class?: string }) {
       </AlertDialog>
 
       <div class="flex items-center gap-2">
-        <Select
-          itemComponent={(itemProps) => {
-            const preset = presets()?.find(
-              (p: Preset) =>
-                String(p.id) ===
-                (itemProps.item as { rawValue: string }).rawValue
-            );
-            return (
-              <SelectItem
-                class="flex w-full justify-between gap-2"
-                item={itemProps.item}
-              >
-                <span>{preset?.name}</span>
-                {/* Delete button inside item requires stopPropagation to avoid selecting while deleting? 
-                     Actually simpler to put delete button next to Load if selected? 
-                     User said: "Is there no way to remove AFTER selecting?" - implying deselect.
-                  */}
-              </SelectItem>
-            );
-          }}
-          onChange={setSelectedPresetId}
-          options={presets()?.map((p: Preset) => String(p.id)) || []}
-          placeholder="プリセットを選択..."
-          value={selectedPresetId()}
-        >
-          <SelectTrigger class="w-full">
-            <SelectValue<string>>
-              {(state) => {
-                const preset = presets()?.find(
-                  (p: Preset) =>
-                    String(p.id) === (state.selectedOption() as string)
-                );
-                return preset ? preset.name : "プリセットを選択...";
-              }}
-            </SelectValue>
-          </SelectTrigger>
-          <SelectContent />
-        </Select>
+        <div class="min-w-0 flex-1">
+          <Select
+            itemComponent={(itemProps) => {
+              const preset = presets()?.find(
+                (p: Preset) =>
+                  String(p.id) ===
+                  (itemProps.item as { rawValue: string }).rawValue
+              );
+              return (
+                <SelectItem
+                  class="flex w-full justify-between gap-2"
+                  item={itemProps.item}
+                >
+                  <span>{preset?.name}</span>
+                </SelectItem>
+              );
+            }}
+            onChange={setSelectedPresetId}
+            options={presets()?.map((p: Preset) => String(p.id)) || []}
+            placeholder="プリセットを選択..."
+            value={selectedPresetId()}
+          >
+            <SelectTrigger class="w-full">
+              <SelectValue<string>>
+                {(state) => {
+                  const preset = presets()?.find(
+                    (p: Preset) =>
+                      String(p.id) === (state.selectedOption() as string)
+                  );
+                  return (
+                    <span class="truncate">
+                      {preset ? preset.name : "プリセットを選択..."}
+                    </span>
+                  );
+                }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent />
+          </Select>
+        </div>
 
         {/* Clear Selection Button */}
         <Show when={selectedPresetId()}>
