@@ -7,6 +7,7 @@ import {
 } from "@tanstack/solid-query";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   onCleanup,
@@ -75,17 +76,6 @@ import { logger } from "~/infrastructure/logger";
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 
-const buildSearchParams = (pageParam: number) => {
-  const condition = getSearchCondition();
-  return {
-    condition,
-    sort: searchState.sortBy,
-    order: searchState.sortOrder,
-    limit: MEDIA_ITEMS_PER_PAGE,
-    offset: pageParam,
-  };
-};
-
 export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
@@ -117,14 +107,25 @@ export default function MediaListPage() {
     queryFn: fetchAllAuthors,
   }));
 
+  // Optimize query key to only include relevant search parameters
+  const searchParams = createMemo(() => ({
+    condition: getSearchCondition(),
+    sort: searchState.sortBy,
+    order: searchState.sortOrder,
+  }));
+
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", mediaSourceId(), { ...searchState }],
+    queryKey: ["media", mediaSourceId(), searchParams()],
     queryFn: ({ pageParam }) => {
       const id = mediaSourceId();
       if (!id) {
         throw new Error("Media source ID is required");
       }
-      return searchMedia(id, buildSearchParams(pageParam as number));
+      return searchMedia(id, {
+        ...searchParams(),
+        limit: MEDIA_ITEMS_PER_PAGE,
+        offset: pageParam as number,
+      });
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -806,6 +807,7 @@ export default function MediaListPage() {
                     class="h-7 flex-1 text-xs"
                     onClick={() => setSearchMode("simple")}
                     size="sm"
+                    type="button"
                     variant={
                       searchState.mode === "simple" ? "default" : "ghost"
                     }
@@ -816,6 +818,7 @@ export default function MediaListPage() {
                     class="h-7 flex-1 text-xs"
                     onClick={() => setSearchMode("pro")}
                     size="sm"
+                    type="button"
                     variant={searchState.mode === "pro" ? "default" : "ghost"}
                   >
                     詳細検索
@@ -829,7 +832,7 @@ export default function MediaListPage() {
                   sortOrder={searchState.sortOrder}
                 />
 
-                {searchState.mode === "simple" ? (
+                <div classList={{ hidden: searchState.mode !== "simple" }}>
                   <SearchFilters
                     authors={allAuthors.data}
                     characters={allCharacters.data}
@@ -839,24 +842,24 @@ export default function MediaListPage() {
                     state={searchState}
                     tags={tags.data}
                   />
-                ) : (
-                  <div class="space-y-4">
-                    <ProSearchBuilder
-                      authors={allAuthors.data}
-                      characters={allCharacters.data}
-                      ips={allIps.data}
-                      onChange={(val) =>
-                        setSearchState("advancedCondition", val)
-                      }
-                      projects={allProjects.data}
-                      tags={tags.data}
-                      value={searchState.advancedCondition || null}
-                    />
-                    <Button class="w-full" onClick={handleSearch}>
-                      検索 (詳細)
-                    </Button>
-                  </div>
-                )}
+                </div>
+                <div
+                  class="space-y-4"
+                  classList={{ hidden: searchState.mode !== "pro" }}
+                >
+                  <ProSearchBuilder
+                    authors={allAuthors.data}
+                    characters={allCharacters.data}
+                    ips={allIps.data}
+                    onChange={(val) => setSearchState("advancedCondition", val)}
+                    projects={allProjects.data}
+                    tags={tags.data}
+                    value={searchState.advancedCondition || null}
+                  />
+                  <Button class="w-full" onClick={handleSearch} type="button">
+                    検索 (詳細)
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
@@ -881,6 +884,7 @@ export default function MediaListPage() {
                   class="h-7 text-xs"
                   onClick={() => setSearchMode("simple")}
                   size="sm"
+                  type="button"
                   variant={searchState.mode === "simple" ? "default" : "ghost"}
                 >
                   簡易検索
@@ -889,6 +893,7 @@ export default function MediaListPage() {
                   class="h-7 text-xs"
                   onClick={() => setSearchMode("pro")}
                   size="sm"
+                  type="button"
                   variant={searchState.mode === "pro" ? "default" : "ghost"}
                 >
                   詳細検索
@@ -903,7 +908,7 @@ export default function MediaListPage() {
               sortOrder={searchState.sortOrder}
             />
 
-            {searchState.mode === "simple" ? (
+            <div classList={{ hidden: searchState.mode !== "simple" }}>
               <SearchFilters
                 authors={allAuthors.data}
                 characters={allCharacters.data}
@@ -914,31 +919,37 @@ export default function MediaListPage() {
                 tags={tags.data}
                 usePopover={false}
               />
-            ) : (
-              <div class="space-y-4">
-                <PresetManager class="w-full flex-col items-stretch" />
-                <ProSearchDialog
-                  authors={allAuthors.data}
-                  characters={allCharacters.data}
-                  ips={allIps.data}
-                  onChange={(val) => setSearchState("advancedCondition", val)}
-                  onSearch={handleSearch}
-                  projects={allProjects.data}
-                  tags={tags.data}
-                  value={searchState.advancedCondition || null}
-                />
-                <Button class="w-full" onClick={handleSearch}>
-                  検索 (詳細)
-                </Button>
-              </div>
-            )}
+            </div>
+            <div
+              class="space-y-4"
+              classList={{ hidden: searchState.mode !== "pro" }}
+            >
+              <PresetManager class="w-full flex-col items-stretch" />
+              <ProSearchDialog
+                authors={allAuthors.data}
+                characters={allCharacters.data}
+                ips={allIps.data}
+                onChange={(val) => setSearchState("advancedCondition", val)}
+                onSearch={handleSearch}
+                projects={allProjects.data}
+                tags={tags.data}
+                value={searchState.advancedCondition || null}
+              />
+              <Button class="w-full" onClick={handleSearch} type="button">
+                検索 (詳細)
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
         {/* Media Grid & Content */}
         <div class="flex flex-col gap-4">
-          <Show when={mediaQuery.isLoading}>
-            <div>Loading media...</div>
+          <Show when={mediaQuery.isPending && !mediaQuery.data}>
+            <div class="flex h-64 items-center justify-center">
+              <div class="animate-pulse text-lg text-muted-foreground">
+                Loading media...
+              </div>
+            </div>
           </Show>
 
           <Show when={mediaQuery.isError}>
