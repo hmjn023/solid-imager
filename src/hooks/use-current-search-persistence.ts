@@ -51,7 +51,8 @@ export function useCurrentSearchPersistence() {
           // Create initial "current" preset with empty/default state
           await PresetClient.create({
             name: CURRENT_PRESET_NAME,
-            value: { type: "group", operator: "and", children: [] }, // Default empty group
+            value: { type: "group", operator: "and", children: [] },
+            mode: "simple",
           });
         }
       } catch (e) {

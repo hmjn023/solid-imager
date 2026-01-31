@@ -45,6 +45,7 @@ import type { DownloadItem } from "~/domain/media/schemas";
 import {
   getSearchCondition,
   searchState,
+  setSearchMode,
   setSearchState,
 } from "~/domain/search/store";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
@@ -803,7 +804,7 @@ export default function MediaListPage() {
                 <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
                   <Button
                     class="h-7 flex-1 text-xs"
-                    onClick={() => setSearchState("mode", "simple")}
+                    onClick={() => setSearchMode("simple")}
                     size="sm"
                     variant={
                       searchState.mode === "simple" ? "default" : "ghost"
@@ -813,7 +814,7 @@ export default function MediaListPage() {
                   </Button>
                   <Button
                     class="h-7 flex-1 text-xs"
-                    onClick={() => setSearchState("mode", "pro")}
+                    onClick={() => setSearchMode("pro")}
                     size="sm"
                     variant={searchState.mode === "pro" ? "default" : "ghost"}
                   >
@@ -878,7 +879,7 @@ export default function MediaListPage() {
               <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
                 <Button
                   class="h-7 text-xs"
-                  onClick={() => setSearchState("mode", "simple")}
+                  onClick={() => setSearchMode("simple")}
                   size="sm"
                   variant={searchState.mode === "simple" ? "default" : "ghost"}
                 >
@@ -886,7 +887,7 @@ export default function MediaListPage() {
                 </Button>
                 <Button
                   class="h-7 text-xs"
-                  onClick={() => setSearchState("mode", "pro")}
+                  onClick={() => setSearchMode("pro")}
                   size="sm"
                   variant={searchState.mode === "pro" ? "default" : "ghost"}
                 >

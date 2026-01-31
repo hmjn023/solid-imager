@@ -100,18 +100,10 @@ export const loadPreset = (preset: Preset) => {
   }
 
   // Fallback for older presets without mode:
-  // Respect current mode if the preset can be represented in it,
-  // or default to simple if it's a simple-compatible preset and we are in simple mode.
-  if (searchState.mode === "pro") {
-    setSearchState({
-      mode: "pro",
-      activePresetId: preset.id,
-      advancedCondition: preset.value,
-      // No need to reset simple filters as they are not used in pro view,
-      // but keeping it clean or syncing might be good.
-      ...sortState,
-    });
-  } else if (simpleState) {
+  // Default to pro if the preset cannot be represented in simple mode.
+  // If it can be represented in simple mode, we use simple mode by default
+  // (unless we are already in pro mode and want to stay there).
+  if (simpleState && searchState.mode === "simple") {
     setSearchState({
       mode: "simple",
       activePresetId: preset.id,
@@ -120,13 +112,47 @@ export const loadPreset = (preset: Preset) => {
       ...sortState,
     });
   } else {
-    // If not simple compatible and we are in simple mode, MUST switch to pro
     setSearchState({
       mode: "pro",
       activePresetId: preset.id,
       advancedCondition: preset.value,
       ...sortState,
     });
+  }
+};
+
+/**
+ * Transitions between search modes while attempting to preserve conditions.
+ */
+export const setSearchMode = (mode: "simple" | "pro") => {
+  if (mode === searchState.mode) {
+    return;
+  }
+
+  if (mode === "pro") {
+    // Switching from simple to pro: populate advancedCondition from current simple filters
+    const condition = getSearchCondition();
+    setSearchState({
+      mode: "pro",
+      advancedCondition: condition || null,
+    });
+  } else {
+    // Switching from pro back to simple: try to restore filters from advancedCondition
+    const simpleStateFromPro = searchState.advancedCondition
+      ? restoreFromSearchGroup(searchState.advancedCondition)
+      : null;
+
+    if (simpleStateFromPro) {
+      setSearchState({
+        mode: "simple",
+        ...simpleStateFromPro,
+      });
+    } else {
+      // If cannot be restored perfectly, just switch mode and hope for the best/reset
+      setSearchState({
+        mode: "simple",
+      });
+    }
   }
 };
 
