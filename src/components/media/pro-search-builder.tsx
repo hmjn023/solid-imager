@@ -152,9 +152,9 @@ function GroupBuilder(props: {
         props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500"
       )}
     >
-      <CardContent class="space-y-2 p-1.5 sm:space-y-4 sm:p-4">
+      <CardContent class="space-y-4 p-2 sm:p-4">
         <div class="flex flex-col gap-2">
-          <div class="flex min-w-0 flex-wrap items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <Select
               itemComponent={(itemProps) => (
                 <SelectItem item={itemProps.item}>
@@ -170,38 +170,38 @@ function GroupBuilder(props: {
               options={["and", "or"]}
               value={props.group.operator}
             >
-              <SelectTrigger class="w-20 min-w-0 px-2 sm:w-24">
+              <SelectTrigger class="w-20 sm:w-24">
                 <SelectValue<string>>
                   {(state) => state.selectedOption().toUpperCase()}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent />
             </Select>
-            {/* Label removed to save space in deep nesting */}
+            <span class="text-muted-foreground text-sm">条件グループ</span>
           </div>
 
-          <div class="flex w-full min-w-0 flex-col gap-2">
-            <div class="flex flex-wrap gap-1 sm:gap-2">
+          <div class="flex w-full flex-col gap-2">
+            <div class="flex flex-wrap gap-2">
               <Button
-                class="min-w-0 flex-1 px-2 text-xs sm:text-sm"
+                class="flex-1 whitespace-nowrap"
                 onClick={() => addChild("criterion")}
                 size="sm"
                 variant="outline"
               >
-                +条件
+                + 条件
               </Button>
               <Button
-                class="min-w-0 flex-1 px-2 text-xs sm:text-sm"
+                class="flex-1 whitespace-nowrap"
                 onClick={() => addChild("group")}
                 size="sm"
                 variant="outline"
               >
-                +グループ
+                + グループ
               </Button>
             </div>
             {!props.isRoot && (
               <Button
-                class="h-7 w-full text-red-500 text-xs sm:text-sm"
+                class="w-full text-red-500"
                 onClick={props.onRemove}
                 size="sm"
                 variant="ghost"
@@ -212,7 +212,7 @@ function GroupBuilder(props: {
           </div>
         </div>
 
-        <div class="space-y-2 border-border border-l pl-1 sm:pl-4">
+        <div class="space-y-2 border-border border-l pl-2 sm:pl-4">
           <Index each={props.group.children}>
             {(child, index) => (
               <Show
