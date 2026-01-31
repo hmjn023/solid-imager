@@ -7,6 +7,7 @@ import {
 } from "@tanstack/solid-query";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   onCleanup,
@@ -75,17 +76,6 @@ import { logger } from "~/infrastructure/logger";
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 
-const buildSearchParams = (pageParam: number) => {
-  const condition = getSearchCondition();
-  return {
-    condition,
-    sort: searchState.sortBy,
-    order: searchState.sortOrder,
-    limit: MEDIA_ITEMS_PER_PAGE,
-    offset: pageParam,
-  };
-};
-
 export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
@@ -117,14 +107,28 @@ export default function MediaListPage() {
     queryFn: fetchAllAuthors,
   }));
 
+  // Optimize query key to only include relevant search parameters
+  const searchParams = createMemo(() => ({
+    condition: getSearchCondition(),
+    sortBy: searchState.sortBy,
+    sortOrder: searchState.sortOrder,
+  }));
+
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", mediaSourceId(), { ...searchState }],
+    queryKey: ["media", mediaSourceId(), searchParams()],
     queryFn: ({ pageParam }) => {
       const id = mediaSourceId();
       if (!id) {
         throw new Error("Media source ID is required");
       }
-      return searchMedia(id, buildSearchParams(pageParam as number));
+      const currentParams = searchParams();
+      return searchMedia(id, {
+        condition: currentParams.condition,
+        sort: currentParams.sortBy,
+        order: currentParams.sortOrder,
+        limit: MEDIA_ITEMS_PER_PAGE,
+        offset: pageParam as number,
+      });
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -937,8 +941,12 @@ export default function MediaListPage() {
 
         {/* Media Grid & Content */}
         <div class="flex flex-col gap-4">
-          <Show when={mediaQuery.isLoading}>
-            <div>Loading media...</div>
+          <Show when={mediaQuery.isPending && !mediaQuery.data}>
+            <div class="flex h-64 items-center justify-center">
+              <div class="animate-pulse text-lg text-muted-foreground">
+                Loading media...
+              </div>
+            </div>
           </Show>
 
           <Show when={mediaQuery.isError}>
