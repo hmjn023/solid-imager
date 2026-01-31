@@ -53,11 +53,12 @@ export function PresetManager(props: { class?: string }) {
       setNewPresetName("");
       refetch();
     } catch (_e) {
-      console.error("Failed to save preset", _e);
+      // Ignore error
     }
   };
 
   const handleDelete = async (id: number) => {
+    // biome-ignore lint/suspicious/noAlert: simple confirmation is sufficient here
     if (!window.confirm("本当に削除しますか？")) {
       return;
     }
@@ -65,7 +66,7 @@ export function PresetManager(props: { class?: string }) {
       await PresetClient.delete(id);
       refetch();
     } catch (_e) {
-      console.error("Failed to delete preset", _e);
+      // Ignore error
     }
   };
 
@@ -115,7 +116,7 @@ export function PresetManager(props: { class?: string }) {
         <SelectContent />
       </Select>
 
-      <div class="flex items-center gap-2 w-full">
+      <div class="flex w-full items-center gap-2">
         <Button
           class="flex-1"
           disabled={!selectedPresetId()}

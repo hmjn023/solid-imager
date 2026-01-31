@@ -735,6 +735,11 @@ function buildSearchQuery(
 
     const combined =
       node.operator === "and" ? and(...conditions) : or(...conditions);
+
+    if (!combined) {
+      return;
+    }
+
     return node.negate ? not(combined) : combined;
   }
 
@@ -763,6 +768,10 @@ function buildCriterionQuery(node: SearchCriterion): SQL | undefined {
           )
       )
     );
+    if (!finalCondition) {
+      return;
+    }
+
     return node.negate ? not(finalCondition) : finalCondition;
   }
 

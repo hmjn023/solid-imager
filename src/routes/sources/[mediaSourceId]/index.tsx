@@ -824,9 +824,13 @@ export default function MediaListPage() {
                 ) : (
                   <div class="space-y-4">
                     <ProSearchBuilder
+                      characters={allCharacters.data}
+                      ips={allIps.data}
                       onChange={(val) =>
                         setSearchState("advancedCondition", val)
                       }
+                      projects={allProjects.data}
+                      tags={tags.data}
                       value={searchState.advancedCondition || null}
                     />
                     <Button class="w-full" onClick={handleSearch}>
@@ -888,7 +892,11 @@ export default function MediaListPage() {
             ) : (
               <div class="space-y-4">
                 <ProSearchBuilder
+                  characters={allCharacters.data}
+                  ips={allIps.data}
                   onChange={(val) => setSearchState("advancedCondition", val)}
+                  projects={allProjects.data}
+                  tags={tags.data}
                   value={searchState.advancedCondition || null}
                 />
                 <Button class="w-full" onClick={handleSearch}>
