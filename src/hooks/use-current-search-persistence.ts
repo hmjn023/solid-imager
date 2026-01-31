@@ -37,7 +37,14 @@ export function useCurrentSearchPersistence() {
             logger.info(
               `[AutoSave] Found matching preset: ${matchingPreset.name}`
             );
-            loadPreset(matchingPreset);
+            // Even if we match a named preset, we should prioritize the exact UI state (mode, sort, order)
+            // stored in the "current" preset to ensure a perfect restoration.
+            loadPreset({
+              ...matchingPreset,
+              mode: current.mode,
+              sort: current.sort,
+              order: current.order,
+            });
           } else {
             loadPreset(current);
             // current preset itself should not be "selected" in UI, so we might want to clear activePresetId

@@ -71,7 +71,7 @@ export const loadPreset = (preset: Preset) => {
     sortOrder: (preset.order as SearchState["sortOrder"]) || "desc",
   };
 
-  if (preset.mode) {
+  if (preset.mode != null) {
     if (preset.mode === "simple" && simpleState) {
       setSearchState({
         mode: "simple",
@@ -103,11 +103,13 @@ export const loadPreset = (preset: Preset) => {
   // Default to pro if the preset cannot be represented in simple mode.
   if (simpleState) {
     // If it can be represented in simple mode, we use the current mode of the UI
+    // or default to simple if no mode is active.
+    const targetMode = searchState.mode || "simple";
     setSearchState({
-      mode: searchState.mode,
+      mode: targetMode,
       activePresetId: preset.id,
-      advancedCondition: searchState.mode === "pro" ? preset.value : null,
-      ...(searchState.mode === "simple" ? simpleState : {}),
+      advancedCondition: targetMode === "pro" ? preset.value : null,
+      ...(targetMode === "simple" ? simpleState : {}),
       ...sortState,
     });
   } else {
