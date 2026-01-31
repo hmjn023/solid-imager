@@ -1,4 +1,25 @@
-import { and, eq, type InferSelectModel, inArray } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  gt,
+  gte,
+  type InferSelectModel,
+  inArray,
+  isNotNull,
+  isNull,
+  like,
+  lt,
+  lte,
+  not,
+  notInArray,
+  or,
+  type SQL,
+  sql,
+} from "drizzle-orm";
+import type { z } from "zod";
 import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
 import type { Transaction } from "~/domain/interfaces/transaction-manager";
 import {
@@ -17,43 +38,32 @@ import {
 import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
-  type authors,
-  type characters,
-  type ips,
-  type mediaAuthors,
-  type mediaCharacters,
+  authors,
+  characters,
+  ips,
+  mediaAuthors,
+  mediaCharacters,
+  mediaDetails,
   mediaGenerationInfo,
-  type mediaIps,
+  mediaIps,
+  mediaProjects,
   medias,
-  type mediaTags,
+  mediaTags,
   mediaUrls,
   type NewMedia,
-  type tags,
+  projects,
+  tags,
 } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+
+const DEFAULT_LIMIT = 100;
+const DEFAULT_OFFSET = 0;
+
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-// import { selectMediaGenerationInfoById } from "~/infrastructure/db/queries/media-generation-info"; // Removed
-// import { selectMediaUrlsByMediaId } from "~/infrastructure/db/queries/media-urls"; // Removed
-import {
-  globalSearchMedia,
-  searchMediaInDirectory,
-  searchMedia as searchMediaQuery,
-} from "./media-repository-utils";
+
+import { searchMediaInDirectory } from "./media-repository-utils";
 
 type DbMedia = InferSelectModel<typeof medias>;
-
-/**
- * Splits a comma-separated string into an array of strings.
- */
-function splitAndTrim(value: string | undefined): string[] | undefined {
-  if (!value) {
-    return;
-  }
-  return value
-    .split(",")
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-}
 
 function mapToMedia(dbMedia: DbMedia): Media {
   return {
@@ -328,80 +338,22 @@ export const MediaRepository: IMediaRepository = {
   /**
    * Searches for media based on criteria.
    */
-  async search(
+  /**
+   * Searches for media based on criteria using recursive query builder.
+   */
+  search(
     mediaSourceId: string,
     params: MediaSearchRequest,
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
-    const client = (tx as unknown as TransactionClient) || db;
-    const tagsArray = splitAndTrim(params.tags);
-    const excludeTagsArray = splitAndTrim(params.excludeTags);
-    const projectsArray = splitAndTrim(params.projects);
-    const ipsArray = splitAndTrim(params.ips);
-    const charactersArray = splitAndTrim(params.characters);
-
-    // searchMediaQuery accepts client (which can be a transaction or the main db instance).
-    // Ensure we pass the correct client to maintain transaction integrity if provided.
-    const result = await searchMediaQuery(
-      mediaSourceId,
-      {
-        query: params.q,
-        tags: tagsArray,
-        tagMode: params.tagMode,
-        excludeTags: excludeTagsArray,
-        projects: projectsArray,
-        ips: ipsArray,
-        characters: charactersArray,
-        sort: params.sort,
-        order: params.order,
-        limit: params.limit,
-        offset: params.offset,
-      },
-      client
-    );
-
-    const mappedResult = {
-      // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here due to searchMediaQuery return type
-      media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
-      total: Number(result.total),
-    };
-    return mediaSearchResponseSchema.parse(mappedResult);
+    return executeSearch(params, mediaSourceId, tx);
   },
 
-  async globalSearch(
+  globalSearch(
     params: MediaSearchRequest,
     tx?: Transaction
   ): Promise<MediaSearchResponse> {
-    const client = (tx as unknown as TransactionClient) || db;
-    const tagsArray = splitAndTrim(params.tags);
-    const excludeTagsArray = splitAndTrim(params.excludeTags);
-    const projectsArray = splitAndTrim(params.projects);
-    const ipsArray = splitAndTrim(params.ips);
-    const charactersArray = splitAndTrim(params.characters);
-
-    const result = await globalSearchMedia(
-      {
-        query: params.q,
-        tags: tagsArray,
-        tagMode: params.tagMode,
-        excludeTags: excludeTagsArray,
-        projects: projectsArray,
-        ips: ipsArray,
-        characters: charactersArray,
-        sort: params.sort,
-        order: params.order,
-        limit: params.limit,
-        offset: params.offset,
-      },
-      client
-    );
-
-    const mappedResult = {
-      // biome-ignore lint/suspicious/noExplicitAny: Drizzle select result is not strictly typed here due to searchMediaQuery return type
-      media: result.media.map((m: any) => mapToMedia(m as DbMedia)),
-      total: Number(result.total),
-    };
-    return mediaSearchResponseSchema.parse(mappedResult);
+    return executeSearch(params, undefined, tx);
   },
 
   /**
@@ -637,3 +589,474 @@ export const MediaRepository: IMediaRepository = {
     }
   },
 };
+
+// ============================================================================
+// Query Builder Helpers
+// ============================================================================
+
+import type { AnyColumn } from "drizzle-orm";
+import type {
+  SearchGroup,
+  searchCriterionSchema,
+} from "~/domain/media/schemas";
+
+type SearchCriterion = z.infer<typeof searchCriterionSchema>;
+type CriterionValue = SearchCriterion["value"];
+
+function escapeLikePattern(value: string): string {
+  return value.replace(/[%_\\]/g, (char) => `\\${char}`);
+}
+
+function getColumnForTarget(target: string): AnyColumn | undefined {
+  switch (target) {
+    case "fileName":
+      return medias.fileName;
+    case "filePath":
+      return medias.filePath; // Also used for folder
+    case "description":
+      return medias.description;
+    case "mediaType":
+      return medias.mediaType;
+    case "width":
+      return medias.width;
+    case "height":
+      return medias.height;
+    case "fileSize":
+      return medias.fileSize;
+    case "createdAt":
+      return medias.createdAt;
+    case "rating":
+      return mediaDetails.rating;
+    case "favorite":
+      return mediaDetails.favorite;
+    case "viewCount":
+      return mediaDetails.viewCount;
+    case "aiGenerated":
+      return mediaGenerationInfo.aiGenerated;
+    default:
+      return;
+  }
+}
+
+function buildSearchQuery(
+  node: SearchGroup | SearchCriterion,
+  depth = 0
+): SQL | undefined {
+  const MaxDepth = 10;
+  if (depth > MaxDepth) {
+    throw new Error(`Search condition nesting too deep (max ${MaxDepth})`);
+  }
+
+  if (node.type === "group") {
+    // biome-ignore lint/suspicious/noExplicitAny: complex type recursion
+    const children = node.children as any[];
+    const conditions = children
+      .map((child) => buildSearchQuery(child, depth + 1))
+      .filter((c): c is SQL => c !== undefined);
+
+    if (conditions.length === 0) {
+      return;
+    }
+
+    const combined =
+      node.operator === "and" ? and(...conditions) : or(...conditions);
+
+    if (!combined) {
+      return;
+    }
+
+    return node.negate ? not(combined) : combined;
+  }
+
+  return buildCriterionQuery(node);
+}
+
+function buildKeywordCondition(node: SearchCriterion): SQL | undefined {
+  const pattern = `%${escapeLikePattern(String(node.value))}%`;
+  const condition = or(
+    like(medias.fileName, pattern),
+    like(medias.filePath, pattern),
+    like(medias.description, pattern),
+    exists(
+      db
+        .select({ id: mediaGenerationInfo.mediaId })
+        .from(mediaGenerationInfo)
+        .where(
+          and(
+            eq(mediaGenerationInfo.mediaId, medias.id),
+            like(mediaGenerationInfo.prompt, pattern)
+          )
+        )
+    )
+  );
+  if (!condition) {
+    return;
+  }
+  return node.negate ? not(condition) : condition;
+}
+
+function buildRelationCondition(node: SearchCriterion): SQL | undefined {
+  const relationalTargets = [
+    "tag",
+    "project",
+    "ip",
+    "character",
+    "author",
+  ] as const;
+  return buildRelationQuery(
+    node.target as (typeof relationalTargets)[number],
+    node.operator,
+    node.value as string,
+    node.negate ?? false
+  );
+}
+
+function buildFolderCondition(node: SearchCriterion): SQL | undefined {
+  if (typeof node.value !== "string") {
+    return;
+  }
+  const folderPath = node.value.endsWith("/") ? node.value : `${node.value}/`;
+  const pattern = `${escapeLikePattern(folderPath)}%`;
+  const condition = like(medias.filePath, pattern);
+  return node.negate ? not(condition) : condition;
+}
+
+function buildCriterionQuery(node: SearchCriterion): SQL | undefined {
+  const { target } = node;
+
+  if (target === "keyword") {
+    return buildKeywordCondition(node);
+  }
+
+  const relationalTargets = ["tag", "project", "ip", "character", "author"];
+  if (relationalTargets.includes(target)) {
+    return buildRelationCondition(node);
+  }
+
+  if (target === "folder") {
+    return buildFolderCondition(node);
+  }
+
+  if (["rating", "favorite", "viewCount"].includes(target)) {
+    return buildDetailsQuery(
+      target,
+      node.operator,
+      node.value,
+      node.negate ?? false
+    );
+  }
+
+  if (target === "aiGenerated") {
+    return buildGenerationInfoQuery(
+      target,
+      node.operator,
+      node.value,
+      node.negate ?? false
+    );
+  }
+
+  return buildStandardQuery(
+    target,
+    node.operator,
+    node.value,
+    node.negate ?? false
+  );
+}
+
+function buildStandardQuery(
+  target: string,
+  operator: string,
+  value: CriterionValue,
+  negate?: boolean
+): SQL | undefined {
+  const column = getColumnForTarget(target);
+  if (!column) {
+    return;
+  }
+
+  const condition = buildValueCondition(column, operator, value);
+  if (!condition) {
+    return;
+  }
+
+  return negate ? not(condition) : condition;
+}
+
+const buildRelationQuery = (
+  target: "tag" | "project" | "ip" | "character" | "author",
+  operator: SearchCriterion["operator"],
+  value: string | number | boolean,
+  negate: boolean
+): SQL | undefined => {
+  let subquery: SQL | undefined;
+
+  switch (target) {
+    case "tag":
+      subquery = exists(
+        db
+          .select({ id: mediaTags.mediaId })
+          .from(mediaTags)
+          .innerJoin(tags, eq(mediaTags.tagId, tags.id))
+          .where(
+            and(
+              eq(mediaTags.mediaId, medias.id),
+              buildValueCondition(tags.name, operator, value)
+            )
+          )
+      );
+      break;
+    case "project":
+      subquery = exists(
+        db
+          .select({ id: mediaProjects.mediaId })
+          .from(mediaProjects)
+          .innerJoin(projects, eq(mediaProjects.projectId, projects.id))
+          .where(
+            and(
+              eq(mediaProjects.mediaId, medias.id),
+              buildValueCondition(projects.name, operator, value)
+            )
+          )
+      );
+      break;
+    case "ip":
+      subquery = exists(
+        db
+          .select({ id: mediaIps.mediaId })
+          .from(mediaIps)
+          .innerJoin(ips, eq(mediaIps.ipId, ips.id))
+          .where(
+            and(
+              eq(mediaIps.mediaId, medias.id),
+              buildValueCondition(ips.name, operator, value)
+            )
+          )
+      );
+      break;
+    case "character":
+      subquery = exists(
+        db
+          .select({ id: mediaCharacters.mediaId })
+          .from(mediaCharacters)
+          .innerJoin(characters, eq(mediaCharacters.characterId, characters.id))
+          .where(
+            and(
+              eq(mediaCharacters.mediaId, medias.id),
+              buildValueCondition(characters.name, operator, value)
+            )
+          )
+      );
+      break;
+    case "author":
+      subquery = exists(
+        db
+          .select({ id: mediaAuthors.mediaId })
+          .from(mediaAuthors)
+          .innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
+          .where(
+            and(
+              eq(mediaAuthors.mediaId, medias.id),
+              buildValueCondition(authors.name, operator, value)
+            )
+          )
+      );
+      break;
+    default:
+      return;
+  }
+
+  if (!subquery) {
+    return;
+  }
+
+  return negate ? not(subquery) : subquery;
+};
+
+function buildDetailsQuery(
+  target: string,
+  operator: string,
+  value: CriterionValue,
+  negate?: boolean
+): SQL | undefined {
+  let column: AnyColumn | undefined;
+  if (target === "rating") {
+    column = mediaDetails.rating;
+  }
+  if (target === "favorite") {
+    column = mediaDetails.favorite;
+  }
+  if (target === "viewCount") {
+    column = mediaDetails.viewCount;
+  }
+
+  if (!column) {
+    return;
+  }
+
+  const condition = exists(
+    db
+      .select({ one: sql`1` })
+      .from(mediaDetails)
+      .where(
+        and(
+          eq(mediaDetails.mediaId, medias.id),
+          buildValueCondition(column, operator, value)
+        )
+      )
+  );
+
+  if (!condition) {
+    return;
+  }
+  return negate ? not(condition) : condition;
+}
+
+function buildGenerationInfoQuery(
+  _target: string,
+  operator: string,
+  value: CriterionValue,
+  negate?: boolean
+): SQL | undefined {
+  const column = mediaGenerationInfo.aiGenerated;
+  const condition = exists(
+    db
+      .select({ one: sql`1` })
+      .from(mediaGenerationInfo)
+      .where(
+        and(
+          eq(mediaGenerationInfo.mediaId, medias.id),
+          buildValueCondition(column, operator, value)
+        )
+      )
+  );
+
+  if (!condition) {
+    return;
+  }
+  return negate ? not(condition) : condition;
+}
+
+function buildValueCondition(
+  column: AnyColumn,
+  operator: string,
+  value: CriterionValue
+): SQL | undefined {
+  if (value === null && operator === "equals") {
+    return isNull(column);
+  }
+  if (value === null && operator !== "isEmpty" && operator !== "isNotEmpty") {
+    return;
+  }
+
+  switch (operator) {
+    case "equals":
+      return eq(column, value);
+    case "contains":
+      return like(column, `%${escapeLikePattern(String(value))}%`);
+    case "startsWith":
+      return like(column, `${escapeLikePattern(String(value))}%`);
+    case "endsWith":
+      return like(column, `%${escapeLikePattern(String(value))}`);
+    case "gt":
+      return gt(column, value);
+    case "gte":
+      return gte(column, value);
+    case "lt":
+      return lt(column, value);
+    case "lte":
+      return lte(column, value);
+    case "in":
+      return Array.isArray(value) ? inArray(column, value) : undefined;
+    case "notIn":
+      return Array.isArray(value) ? notInArray(column, value) : undefined;
+    case "isEmpty":
+      return isNull(column);
+    case "isNotEmpty":
+      return isNotNull(column);
+    default:
+      return;
+  }
+}
+
+function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
+  const direction = order === "asc" ? asc : desc;
+
+  if (!sort) {
+    return direction(medias.createdAt);
+  }
+
+  switch (sort) {
+    case "name":
+      return direction(medias.fileName);
+    case "size":
+      return direction(medias.fileSize);
+    case "date":
+      return direction(medias.createdAt);
+    case "rating":
+      return direction(mediaDetails.rating);
+    case "viewCount":
+      return direction(mediaDetails.viewCount);
+    default:
+      return direction(medias.createdAt);
+  }
+}
+
+async function executeSearch(
+  params: MediaSearchRequest,
+  mediaSourceId?: string,
+  tx?: Transaction
+): Promise<MediaSearchResponse> {
+  const client = (tx as unknown as TransactionClient) || db;
+
+  const conditions: SQL[] = [];
+  if (mediaSourceId) {
+    conditions.push(eq(medias.mediaSourceId, mediaSourceId));
+  }
+
+  if (params.condition) {
+    const searchCondition = buildSearchQuery(params.condition);
+    if (searchCondition) {
+      conditions.push(searchCondition);
+    }
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  // Optimized sort: Join only if sorting by detail fields
+  const needsDetailsJoin = ["rating", "viewCount"].includes(params.sort ?? "");
+
+  let query = client
+    .select({
+      media: medias,
+    })
+    .from(medias);
+
+  if (needsDetailsJoin) {
+    query = query.leftJoin(
+      mediaDetails,
+      eq(mediaDetails.mediaId, medias.id)
+      // biome-ignore lint/suspicious/noExplicitAny: complex Drizzle query builder types
+    ) as any;
+  }
+
+  const orderBy = getOrderByClause(params.sort, params.order);
+
+  const result = await query
+    .where(whereClause)
+    .limit(params.limit ?? DEFAULT_LIMIT)
+    .offset(params.offset ?? DEFAULT_OFFSET)
+    .orderBy(orderBy);
+
+  // Total count query
+  const countResult = await client
+    .select({ count: sql<number>`count(*)` })
+    .from(medias)
+    .where(whereClause);
+
+  const total = Number(countResult[0]?.count ?? 0);
+
+  return mediaSearchResponseSchema.parse({
+    media: result.map((row) => mapToMedia(row.media)),
+    total,
+  });
+}

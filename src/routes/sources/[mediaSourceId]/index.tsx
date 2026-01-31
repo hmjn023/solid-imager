@@ -13,15 +13,15 @@ import {
   onMount,
   Show,
 } from "solid-js";
-import { createStore } from "solid-js/store";
 import { isServer, Portal } from "solid-js/web";
 import { toast } from "solid-toast";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import {
-  type SearchFilterState,
-  SearchFilters,
-} from "~/components/media/search-filters";
+import { PresetManager } from "~/components/media/preset-manager";
+import { ProSearchBuilder } from "~/components/media/pro-search-builder";
+import { ProSearchDialog } from "~/components/media/pro-search-dialog";
+import { SearchFilters } from "~/components/media/search-filters";
+import { SortControls } from "~/components/media/sort-controls";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -42,8 +42,16 @@ import {
 } from "~/components/ui/dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import type { DownloadItem } from "~/domain/media/schemas";
+import {
+  getSearchCondition,
+  searchState,
+  setSearchMode,
+  setSearchState,
+} from "~/domain/search/store";
 import { getScrollPosition, setScrollPosition } from "~/domain/sources/store";
 import type { TagResponse } from "~/domain/tags/schemas";
+import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
+import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
@@ -67,46 +75,25 @@ import { logger } from "~/infrastructure/logger";
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 
-const buildSearchParams = (state: SearchFilterState, pageParam: number) => ({
-  q: state.searchQuery,
-  tags:
-    state.selectedTags.length > 0 ? state.selectedTags.join(",") : undefined,
-  excludeTags:
-    state.excludeTags.length > 0 ? state.excludeTags.join(",") : undefined,
-  tagMode: state.tagMode,
-  projects:
-    state.selectedProjects.length > 0
-      ? state.selectedProjects.join(",")
-      : undefined,
-  ips: state.selectedIps.length > 0 ? state.selectedIps.join(",") : undefined,
-  characters:
-    state.selectedCharacters.length > 0
-      ? state.selectedCharacters.join(",")
-      : undefined,
-  sort: state.sortBy,
-  order: state.sortOrder,
-  limit: MEDIA_ITEMS_PER_PAGE,
-  offset: pageParam,
-});
+const buildSearchParams = (pageParam: number) => {
+  const condition = getSearchCondition();
+  return {
+    condition,
+    sort: searchState.sortBy,
+    order: searchState.sortOrder,
+    limit: MEDIA_ITEMS_PER_PAGE,
+    offset: pageParam,
+  };
+};
 
 export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
 
-  const mediaSourceId = () => params.mediaSourceId;
+  // Enable auto-save/restore of search conditions
+  useCurrentSearchPersistence();
 
-  const [localSearchState, setLocalSearchState] =
-    createStore<SearchFilterState>({
-      searchQuery: "",
-      selectedTags: [],
-      excludeTags: [],
-      tagMode: "and",
-      selectedProjects: [],
-      selectedIps: [],
-      selectedCharacters: [],
-      sortBy: "date",
-      sortOrder: "desc",
-    });
+  const mediaSourceId = () => params.mediaSourceId;
 
   // Fetch filter data
   const tags = createQuery<TagResponse[]>(() => ({
@@ -125,18 +112,19 @@ export default function MediaListPage() {
     queryKey: ["allCharacters"],
     queryFn: fetchAllCharacters,
   }));
+  const allAuthors = createQuery(() => ({
+    queryKey: ["allAuthors"],
+    queryFn: fetchAllAuthors,
+  }));
 
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", mediaSourceId(), { ...localSearchState }],
+    queryKey: ["media", mediaSourceId(), { ...searchState }],
     queryFn: ({ pageParam }) => {
       const id = mediaSourceId();
       if (!id) {
         throw new Error("Media source ID is required");
       }
-      return searchMedia(
-        id,
-        buildSearchParams(localSearchState, pageParam as number)
-      );
+      return searchMedia(id, buildSearchParams(pageParam as number));
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, allPages) => {
@@ -151,6 +139,10 @@ export default function MediaListPage() {
     },
     placeholderData: keepPreviousData,
   }));
+
+  const handleSearch = () => {
+    window.scrollTo(0, 0);
+  };
 
   // Disable browser's default scroll restoration
   onMount(() => {
@@ -808,14 +800,64 @@ export default function MediaListPage() {
               <DialogHeader>
                 <DialogTitle>検索フィルター</DialogTitle>
               </DialogHeader>
-              <SearchFilters
-                characters={allCharacters.data}
-                ips={allIps.data}
-                projects={allProjects.data}
-                setState={setLocalSearchState}
-                state={localSearchState}
-                tags={tags.data}
-              />
+              <div class="space-y-4">
+                <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
+                  <Button
+                    class="h-7 flex-1 text-xs"
+                    onClick={() => setSearchMode("simple")}
+                    size="sm"
+                    variant={
+                      searchState.mode === "simple" ? "default" : "ghost"
+                    }
+                  >
+                    簡易検索
+                  </Button>
+                  <Button
+                    class="h-7 flex-1 text-xs"
+                    onClick={() => setSearchMode("pro")}
+                    size="sm"
+                    variant={searchState.mode === "pro" ? "default" : "ghost"}
+                  >
+                    詳細検索
+                  </Button>
+                </div>
+
+                <SortControls
+                  onSortByChange={(val) => setSearchState("sortBy", val)}
+                  onSortOrderChange={(val) => setSearchState("sortOrder", val)}
+                  sortBy={searchState.sortBy}
+                  sortOrder={searchState.sortOrder}
+                />
+
+                {searchState.mode === "simple" ? (
+                  <SearchFilters
+                    authors={allAuthors.data}
+                    characters={allCharacters.data}
+                    ips={allIps.data}
+                    projects={allProjects.data}
+                    setState={setSearchState}
+                    state={searchState}
+                    tags={tags.data}
+                  />
+                ) : (
+                  <div class="space-y-4">
+                    <ProSearchBuilder
+                      authors={allAuthors.data}
+                      characters={allCharacters.data}
+                      ips={allIps.data}
+                      onChange={(val) =>
+                        setSearchState("advancedCondition", val)
+                      }
+                      projects={allProjects.data}
+                      tags={tags.data}
+                      value={searchState.advancedCondition || null}
+                    />
+                    <Button class="w-full" onClick={handleSearch}>
+                      検索 (詳細)
+                    </Button>
+                  </div>
+                )}
+              </div>
             </DialogContent>
           </Dialog>
         </Portal>
@@ -832,15 +874,64 @@ export default function MediaListPage() {
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            <SearchFilters
-              characters={allCharacters.data}
-              ips={allIps.data}
-              projects={allProjects.data}
-              setState={setLocalSearchState}
-              state={localSearchState}
-              tags={tags.data}
-              usePopover={false}
+            {/* Mode Switcher & Presets */}
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
+                <Button
+                  class="h-7 text-xs"
+                  onClick={() => setSearchMode("simple")}
+                  size="sm"
+                  variant={searchState.mode === "simple" ? "default" : "ghost"}
+                >
+                  簡易検索
+                </Button>
+                <Button
+                  class="h-7 text-xs"
+                  onClick={() => setSearchMode("pro")}
+                  size="sm"
+                  variant={searchState.mode === "pro" ? "default" : "ghost"}
+                >
+                  詳細検索
+                </Button>
+              </div>
+            </div>
+
+            <SortControls
+              onSortByChange={(val) => setSearchState("sortBy", val)}
+              onSortOrderChange={(val) => setSearchState("sortOrder", val)}
+              sortBy={searchState.sortBy}
+              sortOrder={searchState.sortOrder}
             />
+
+            {searchState.mode === "simple" ? (
+              <SearchFilters
+                authors={allAuthors.data}
+                characters={allCharacters.data}
+                ips={allIps.data}
+                projects={allProjects.data}
+                setState={setSearchState}
+                state={searchState}
+                tags={tags.data}
+                usePopover={false}
+              />
+            ) : (
+              <div class="space-y-4">
+                <PresetManager class="w-full flex-col items-stretch" />
+                <ProSearchDialog
+                  authors={allAuthors.data}
+                  characters={allCharacters.data}
+                  ips={allIps.data}
+                  onChange={(val) => setSearchState("advancedCondition", val)}
+                  onSearch={handleSearch}
+                  projects={allProjects.data}
+                  tags={tags.data}
+                  value={searchState.advancedCondition || null}
+                />
+                <Button class="w-full" onClick={handleSearch}>
+                  検索 (詳細)
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 

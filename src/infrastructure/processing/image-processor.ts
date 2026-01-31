@@ -15,10 +15,7 @@ import type { ImageMetadataComment } from "~/domain/media/schemas";
 import { extractDataFromComments } from "~/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "~/domain/services/image-processor";
 import { logger } from "~/infrastructure/logger";
-import {
-  checkFfmpegAvailable,
-  getFfmpeg,
-} from "~/infrastructure/utils/ffmpeg";
+import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
 
 const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
