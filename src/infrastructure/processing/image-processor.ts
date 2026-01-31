@@ -104,8 +104,9 @@ export class LocalImageProcessor implements IImageProcessor {
         throw error;
       } finally {
         // Clean up temp file
-        // biome-ignore lint/suspicious/noEmptyBlockStatements: Safe ignore
-        fs.unlink(tempScreenshot).catch(() => { });
+        fs.unlink(tempScreenshot).catch((err) =>
+          logger.warn({ err }, "Failed to clean up temporary screenshot file")
+        );
       }
       return;
     }

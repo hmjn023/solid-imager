@@ -165,8 +165,9 @@ async function downloadWithYtDlp(
     throw new Error(`yt-dlp failed: ${error}`);
   } finally {
     if (cookieFilePath) {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Cleanup
-      fs.unlink(cookieFilePath).catch(() => { });
+      fs.unlink(cookieFilePath).catch((err) =>
+        logger.warn({ err }, "Failed to clean up cookie file")
+      );
     }
   }
 }
@@ -226,8 +227,9 @@ async function fetchMetadataWithYtDlp(
     return null;
   } finally {
     if (cookieFilePath) {
-      // biome-ignore lint/suspicious/noEmptyBlockStatements: Cleanup
-      fs.unlink(cookieFilePath).catch(() => { });
+      fs.unlink(cookieFilePath).catch((err) =>
+        logger.warn({ err }, "Failed to clean up cookie file")
+      );
     }
   }
 }
