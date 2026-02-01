@@ -18,7 +18,7 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { ConfigServiceImpl } from "~/application/services/config-service";
+import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -36,7 +36,7 @@ export class MediaProcessingServiceImpl {
   private readonly ipRepo: IIpRepository;
   private readonly projectRepo: IProjectRepository;
   private readonly jobRepo: IJobRepository;
-  private readonly configService: ConfigServiceImpl;
+  private readonly configService: ServerConfigService;
 
   // biome-ignore lint/nursery/useMaxParams: DI requires multiple repositories
   constructor(
@@ -48,7 +48,7 @@ export class MediaProcessingServiceImpl {
     ipRepo: IIpRepository,
     projectRepo: IProjectRepository,
     jobRepo: IJobRepository,
-    configService: ConfigServiceImpl
+    configService: ServerConfigService
   ) {
     this.sourceRepo = sourceRepo;
     this.mediaRepo = mediaRepo;
@@ -62,7 +62,7 @@ export class MediaProcessingServiceImpl {
   }
 
   private get enableAutoTagging(): boolean {
-    return this.configService.get().jobs.enableAutoTagging;
+    return this.configService.getConfig().jobs.enableAutoTagging;
   }
 
   /**
@@ -88,7 +88,7 @@ export class MediaProcessingServiceImpl {
 
     // Determine media type
     const ext = path.extname(relativePath).toLowerCase();
-    const extensions = this.configService.get().media.supportedExtensions;
+    const extensions = this.configService.getConfig().media.supportedExtensions;
     let mediaType: "image" | "video" | "audio" = "image";
     if (extensions.video.includes(ext)) {
       mediaType = "video";

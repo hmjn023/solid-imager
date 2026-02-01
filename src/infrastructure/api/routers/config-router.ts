@@ -5,12 +5,13 @@ import { services } from "~/application/registry";
 export const configRouter = {
   get: os
     .output(AppConfigSchema)
-    .handler(async () => services.getConfigService().get()),
+    .handler(async () => services.getConfigService().getConfig()),
 
   update: os
     .input(AppConfigSchema.partial())
     .output(AppConfigSchema)
-    .handler(
-      async ({ input }) => await services.getConfigService().update(input)
-    ),
+    .handler(async ({ input }) => {
+      await services.getConfigService().updateConfig(input);
+      return services.getConfigService().getConfig();
+    }),
 };

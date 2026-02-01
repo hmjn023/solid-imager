@@ -1,4 +1,4 @@
-import type { IMediaStorage } from "@solid-imager/core";
+import type { IConfigService, IMediaStorage } from "@solid-imager/core";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
@@ -8,7 +8,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { ConfigServiceImpl } from "~/application/services/config-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
@@ -28,7 +27,7 @@ export class ServiceRegistry {
   private jobRepository?: IJobRepository;
   private jobWorker?: JobWorker;
   private mediaProcessingService?: MediaProcessingServiceImpl;
-  private configService?: ConfigServiceImpl;
+  private configService?: IConfigService;
 
   private constructor() {}
 
@@ -103,7 +102,7 @@ export class ServiceRegistry {
 
   getMediaStorage(): IMediaStorage {
     if (!this.mediaStorage) {
-      throw new Error("StorageService has not been registered.");
+      throw new Error("MediaStorage has not been registered.");
     }
     return this.mediaStorage;
   }
@@ -182,11 +181,11 @@ export class ServiceRegistry {
     return this.mediaProcessingService;
   }
 
-  registerConfigService(service: ConfigServiceImpl): void {
+  registerConfigService(service: IConfigService): void {
     this.configService = service;
   }
 
-  getConfigService(): ConfigServiceImpl {
+  getConfigService(): IConfigService {
     if (!this.configService) {
       throw new Error("ConfigService has not been registered.");
     }

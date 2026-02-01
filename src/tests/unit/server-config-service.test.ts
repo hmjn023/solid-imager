@@ -2,18 +2,18 @@ import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ConfigServiceImpl } from "~/application/services/config-service";
+import { ServerConfigService } from "~/application/services/server-config-service";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
 
 describe("ConfigService", () => {
-  let service: ConfigServiceImpl;
+  let service: ServerConfigService;
 
   beforeEach(() => {
     vi.resetAllMocks();
     vi.unstubAllEnvs();
-    service = new ConfigServiceImpl();
+    service = new ServerConfigService();
   });
 
   afterEach(() => {
@@ -26,7 +26,7 @@ describe("ConfigService", () => {
 
     service.load();
 
-    expect(service.get()).toEqual(defaultAppConfig);
+    expect(service.getConfig()).toEqual(defaultAppConfig);
     // Should write defaults to disk
     expect(fs.writeFileSync).toHaveBeenCalled();
   });
@@ -41,7 +41,7 @@ describe("ConfigService", () => {
 
     service.load();
 
-    expect(service.get().jobs.concurrency).toBe(10);
+    expect(service.getConfig().jobs.concurrency).toBe(10);
   });
 
   it("should override config with environment variables", () => {
@@ -51,7 +51,7 @@ describe("ConfigService", () => {
     service.load();
 
     // biome-ignore lint/style/noMagicNumbers: Test assertion
-    expect(service.get().jobs.concurrency).toBe(50);
+    expect(service.getConfig().jobs.concurrency).toBe(50);
   });
 
   it("should handle nested env overrides", () => {
@@ -64,9 +64,9 @@ describe("ConfigService", () => {
 
     service.load();
 
-    expect(service.get().media.tagExtraction.comfyui.positiveNodeTypes).toEqual(
-      ["TestNode"]
-    );
+    expect(
+      service.getConfig().media.tagExtraction.comfyui.positiveNodeTypes
+    ).toEqual(["TestNode"]);
   });
 
   it("should ignore invalid env keys", () => {
@@ -76,7 +76,7 @@ describe("ConfigService", () => {
     service.load();
 
     // Should not throw and config should be default
-    expect(service.get()).toEqual(defaultAppConfig);
+    expect(service.getConfig()).toEqual(defaultAppConfig);
   });
 
   it("should update config and notify listeners", async () => {
@@ -87,10 +87,12 @@ describe("ConfigService", () => {
     service.onChange(listener);
 
     // Partial update
-    const newConfig = await service.update({ jobs: { concurrency: 5 } } as any);
-
-    // biome-ignore lint/style/noMagicNumbers: Test assertion
-    expect(newConfig.jobs.concurrency).toBe(5);
+    const UpdatedConcurrency = 5;
+    await service.updateConfig({
+      jobs: { concurrency: UpdatedConcurrency },
+    } as any);
+    const newConfig = service.getConfig();
+    expect(newConfig.jobs.concurrency).toBe(UpdatedConcurrency);
     // Listener should receive full updated config
     expect(listener).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -107,7 +109,7 @@ describe("ConfigService", () => {
 
     // Try setting invalid type (string for number)
     await expect(
-      service.update({ jobs: { concurrency: "invalid" } } as any)
+      service.updateConfig({ jobs: { concurrency: "invalid" } } as any)
     ).rejects.toThrow();
   });
 });

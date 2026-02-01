@@ -140,7 +140,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 
     // Mock ConfigService
     const mockConfigService = {
-      get: vi.fn().mockReturnValue({
+      getConfig: vi.fn().mockReturnValue({
         jobs: {
           concurrency: 3,
           pollIntervalMs: 1000,

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import type { IConfigService } from "@solid-imager/core";
 import {
   type AppConfig,
   AppConfigSchema,
@@ -10,7 +11,7 @@ import { logger } from "~/infrastructure/logger";
 
 type ConfigChangeListener = (config: AppConfig) => void;
 
-export class ConfigServiceImpl {
+export class ServerConfigService implements IConfigService {
   private config: AppConfig;
   private readonly configPath: string;
   private listeners: ConfigChangeListener[] = [];
@@ -68,13 +69,6 @@ export class ConfigServiceImpl {
           { errors: result.error.format() },
           "Invalid configuration detected. Using fallback/defaults where possible."
         );
-        // If validation fails, we can either throw or try to use what we have?
-        // Schema defines defaults, so if we pass partial object, it should fill in.
-        // But if we pass wrong types, it fails.
-        // Let's try to parse the fileContent + overrides.
-        // Ideally we should stop if config is explicitly wrong.
-        // But the requirement says "Use Default" or "Stop".
-        // I'll throw to be safe if it's completely broken.
         throw new Error(
           `Invalid configuration: ${JSON.stringify(result.error.format())}`
         );
@@ -87,24 +81,13 @@ export class ConfigServiceImpl {
     }
   }
 
-  get(): AppConfig {
+  getConfig(): AppConfig {
     return this.config;
   }
 
-  async update(newConfig: Partial<AppConfig>): Promise<AppConfig> {
-    // 1. Merge current + new
-    // We only allow updating what is passed.
-    // Note: This is a shallow merge at top level if we are not careful.
-    // We should probably allow deep update or just replace top-level sections.
-    // Spec says: "config.jsonをアトミックに書き換える"
-
-    // Let's assume the API passes the full config or a deep partial?
-    // Usually API sends JSON which maps to structure.
-
-    // Deep merge for update is safer.
+  async updateConfig(newConfig: Partial<AppConfig>): Promise<void> {
     const merged = this.deepMerge(this.config, newConfig);
 
-    // 2. Validate
     const result = AppConfigSchema.safeParse(merged);
     if (!result.success) {
       throw new Error(
@@ -114,16 +97,11 @@ export class ConfigServiceImpl {
 
     const validatedConfig = result.data;
 
-    // 3. Save to disk
     await this.saveToDisk(validatedConfig);
 
-    // 4. Update in-memory
     this.config = validatedConfig;
 
-    // 5. Notify listeners
     this.notifyListeners();
-
-    return this.config;
   }
 
   onChange(listener: ConfigChangeListener): () => void {
@@ -171,7 +149,6 @@ export class ConfigServiceImpl {
 
       while (remainingKey.length > 0) {
         const keys = Object.keys(currentSchemaNode || {});
-        // Sort keys by length (descending) to match the longest key first (avoid prefix collisions)
         const sortedKeys = keys.sort((a, b) => b.length - a.length);
         const matchingKey = sortedKeys.find((k) =>
           remainingKey.startsWith(k.toUpperCase())
@@ -182,7 +159,6 @@ export class ConfigServiceImpl {
         }
 
         if (remainingKey.length === matchingKey.length) {
-          // リーフノードに到達
           try {
             currentOverrideNode[matchingKey] = JSON.parse(envValue);
           } catch {
@@ -191,7 +167,6 @@ export class ConfigServiceImpl {
           break;
         }
 
-        // 次の階層へ
         remainingKey = remainingKey.substring(matchingKey.length);
         if (!currentOverrideNode[matchingKey]) {
           currentOverrideNode[matchingKey] = {};
@@ -203,7 +178,6 @@ export class ConfigServiceImpl {
     return overrides;
   }
 
-  // Helper for deep merge
   // biome-ignore lint/suspicious/noExplicitAny: Deep merge requires flexible types
   private deepMerge(target: any, source: any): any {
     if (
@@ -216,8 +190,6 @@ export class ConfigServiceImpl {
     }
 
     if (Array.isArray(source)) {
-      // For arrays, we usually replace logic or concat?
-      // Configuration usually expects replacement for arrays (e.g. extension lists).
       return source;
     }
 

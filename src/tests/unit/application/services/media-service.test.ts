@@ -77,7 +77,7 @@ describe("MediaService Unit Tests", () => {
       findByPath: vi.fn(),
       create: vi.fn(),
       upsert: vi.fn(),
-      update: vi.fn(),
+      updateConfig: vi.fn(),
       delete: vi.fn(),
       search: vi.fn(),
       findAllBySourceId: vi.fn(),

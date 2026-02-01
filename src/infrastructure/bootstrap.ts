@@ -1,7 +1,7 @@
 import { services } from "~/application/registry";
-import { ConfigServiceImpl } from "~/application/services/config-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
+import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { updateLogLevel } from "~/infrastructure/logger";
@@ -25,11 +25,11 @@ export function bootstrap() {
   isBootstrapped = true;
 
   // Initialize and load configuration
-  const configService = new ConfigServiceImpl();
+  const configService = new ServerConfigService();
   configService.load();
   services.registerConfigService(configService);
 
-  const config = configService.get();
+  const config = configService.getConfig();
 
   // Initialize log level from config and subscribe to changes
   updateLogLevel(config.logging.level);
@@ -62,7 +62,7 @@ export function bootstrap() {
 
   const jobWorker = new JobWorker(jobRepo, processJob);
   // Initialize worker with current config and subscribe to changes
-  jobWorker.updateConfig(configService.get());
+  jobWorker.updateConfig(configService.getConfig());
   configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
 
   services.registerJobWorker(jobWorker);

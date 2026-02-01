@@ -21,7 +21,7 @@ const DEFAULT_THUMBNAIL_QUALITY = 80;
  */
 function getStorageConfig() {
   try {
-    return services.getConfigService().get().storage;
+    return services.getConfigService().getConfig().storage;
   } catch {
     // Fallback for tests or when ConfigService is not registered
     return {

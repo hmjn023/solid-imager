@@ -190,8 +190,8 @@ export class LocalImageProcessor implements IImageProcessor {
         negativeTags: string[];
       };
       try {
-        const tagExtractionConfig = services.getConfigService().get().media
-          .tagExtraction.comfyui;
+        const tagExtractionConfig = services.getConfigService().getConfig()
+          .media.tagExtraction.comfyui;
         tagExtractionOptions = {
           positiveNodeTypes: tagExtractionConfig.positiveNodeTypes,
           negativeKeywords: tagExtractionConfig.negativeKeywords,
