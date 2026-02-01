@@ -30,15 +30,15 @@
     - [x] Subtask: Refactor configuration usage.
 - [x] Task: Conductor - User Manual Verification 'Abstraction Layer Implementation' (Protocol in workflow.md) <!-- 1ad9a25 -->
 
-## Phase 3: Monorepo Restructuring (The Big Move)
-- [~] Task: Prepare `apps/server` directory.
-    - [ ] Subtask: Move remaining `src` content to `apps/server/src`.
-    - [ ] Subtask: Move `package.json` (server specific) and configuration files.
-- [ ] Task: Update `tsconfig.json` paths and aliases for the new structure.
-- [ ] Task: Update `vite.config.ts` (or `app.config.ts`) to reflect new root and aliases.
-- [ ] Task: Fix all import paths in `apps/server` to correctly reference `packages/core` and internal modules.
-- [ ] Task: Update CI/CD configuration (if any) and local scripts in root `package.json` to trigger workspace scripts.
-- [ ] Task: Conductor - User Manual Verification 'Monorepo Restructuring' (Protocol in workflow.md)
+## Phase 3: Monorepo Restructuring (The Big Move) [checkpoint: f58d351]
+- [x] Task: Prepare `apps/server` directory. <!-- 8941ec5 -->
+    - [x] Subtask: Move remaining `src` content to `apps/server/src`.
+    - [x] Subtask: Move `package.json` (server specific) and configuration files.
+- [x] Task: Update `tsconfig.json` paths and aliases for the new structure. <!-- 8941ec5 -->
+- [x] Task: Update `vite.config.ts` (or `app.config.ts`) to reflect new root and aliases. <!-- 8941ec5 -->
+- [x] Task: Fix all import paths in `apps/server` to correctly reference `packages/core` and internal modules. <!-- 8941ec5 -->
+- [x] Task: Update CI/CD configuration (if any) and local scripts in root `package.json` to trigger workspace scripts. <!-- 8941ec5 -->
+- [x] Task: Conductor - User Manual Verification 'Monorepo Restructuring' (Protocol in workflow.md) <!-- f58d351 -->
 
 ## Phase 4: Documentation Update
 - [ ] Task: Update `AGENTS.md` to reflect the new monorepo structure, updated paths, and new coding rules.
