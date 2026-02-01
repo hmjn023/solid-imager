@@ -7,7 +7,7 @@ import {
   TweetMetadata,
 } from "../types";
 import { getClient, APIError } from "../api";
-import type { SafeMediaSource } from "../../apps/server/src/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 
 console.log("[xtracter] Background script loaded");
 
