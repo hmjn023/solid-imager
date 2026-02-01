@@ -6,12 +6,12 @@ export default defineConfig({
   vite: {
     resolve: {
       alias: {
-        "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
-        "@": path.resolve(__dirname, "../../packages/core/src"),
-        "~": path.resolve(__dirname, "./src"),
+        "@solid-imager/core": path.resolve(process.cwd(), "../../packages/core/src"),
+        "@": path.resolve(process.cwd(), "../../packages/core/src"),
+        "~": path.resolve(process.cwd(), "./src"),
       },
     },
-    // @ts-ignore: Vite version mismatch in Vinxi/SolidStart
+    // @ts-expect-error: Vite version mismatch in Vinxi/SolidStart
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm", "effect"],
