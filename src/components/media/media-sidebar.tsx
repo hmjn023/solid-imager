@@ -5,6 +5,7 @@ import { toast } from "solid-toast";
 import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
+import { ClipboardCopy } from "~/components/ui/clipboard-copy";
 import type { MediaDetails } from "~/domain/media/schemas";
 import {
   addCharacterToMedia,
@@ -411,6 +412,11 @@ export default function MediaSidebar(props: MediaSidebarProps) {
                 return (
                   <Badge class={badgeClass} title={`Source: ${tag.source}`}>
                     {tag.name}
+                    <ClipboardCopy
+                      class="ml-1.5 p-0.5"
+                      iconSize={12}
+                      text={tag.name}
+                    />
                   </Badge>
                 );
               }}
@@ -440,6 +446,11 @@ export default function MediaSidebar(props: MediaSidebarProps) {
                     variant="destructive"
                   >
                     {tag.name}
+                    <ClipboardCopy
+                      class="ml-1.5 p-0.5"
+                      iconSize={12}
+                      text={tag.name}
+                    />
                   </Badge>
                 );
               }}
@@ -458,7 +469,10 @@ export default function MediaSidebar(props: MediaSidebarProps) {
             <Collapsible.Content class="space-y-2 text-sm">
               <Show when={genInfo()?.prompt}>
                 <div>
-                  <span class="font-medium text-gray-600">Prompt:</span>
+                  <div class="mb-1 flex items-center justify-between">
+                    <span class="font-medium text-gray-600">Prompt:</span>
+                    <ClipboardCopy text={genInfo()?.prompt ?? ""} />
+                  </div>
                   <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
                     {genInfo()?.prompt}
                   </p>
@@ -466,9 +480,12 @@ export default function MediaSidebar(props: MediaSidebarProps) {
               </Show>
               <Show when={genInfo()?.negativePrompt}>
                 <div>
-                  <span class="font-medium text-gray-600">
-                    Negative Prompt:
-                  </span>
+                  <div class="mb-1 flex items-center justify-between">
+                    <span class="font-medium text-gray-600">
+                      Negative Prompt:
+                    </span>
+                    <ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
+                  </div>
                   <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
                     {genInfo()?.negativePrompt}
                   </p>
@@ -476,7 +493,16 @@ export default function MediaSidebar(props: MediaSidebarProps) {
               </Show>
               <Show when={genInfo()?.workflow}>
                 <div>
-                  <span class="font-medium text-gray-600">Workflow:</span>
+                  <div class="mb-1 flex items-center justify-between">
+                    <span class="font-medium text-gray-600">Workflow:</span>
+                    <ClipboardCopy
+                      text={
+                        genInfo()?.workflow
+                          ? JSON.stringify(genInfo()?.workflow)
+                          : ""
+                      }
+                    />
+                  </div>
                   <pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
                     {JSON.stringify(genInfo()?.workflow, null, 2)}
                   </pre>
