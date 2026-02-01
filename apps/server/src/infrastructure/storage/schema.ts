@@ -1,9 +1,9 @@
-import { z } from "zod";
 import type {
   LocalConnection,
   S3Connection,
   SftpConnection,
 } from "@solid-imager/core/domain/sources/schemas";
+import { z } from "zod";
 
 // すべての接続情報の方をまとめたUnion型
 export type ConnectionInfo = LocalConnection | SftpConnection | S3Connection;
