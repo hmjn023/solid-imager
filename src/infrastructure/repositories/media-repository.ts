@@ -14,6 +14,7 @@ import {
   lt,
   lte,
   not,
+  notExists,
   notInArray,
   or,
   type SQL,
@@ -586,6 +587,76 @@ export const MediaRepository: IMediaRepository = {
       return results.map((r) => r.url);
     } catch (error) {
       throw new UnexpectedError("Failed to check existing URLs", error);
+    }
+  },
+
+  async findTaggingCandidates(
+    options: {
+      mediaSourceId?: string;
+      force?: boolean;
+      limit?: number;
+      offset?: number;
+    },
+    tx?: Transaction
+  ): Promise<Media[]> {
+    const { mediaSourceId, force, limit = 1000, offset = 0 } = options;
+    const client = (tx as unknown as TransactionClient) || db;
+
+    // Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
+    const whereClause = and(
+      eq(medias.mediaType, "image"),
+      mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
+      force
+        ? undefined
+        : and(
+            notExists(
+              db
+                .select()
+                .from(mediaTags)
+                .where(
+                  and(
+                    eq(mediaTags.mediaId, medias.id),
+                    eq(mediaTags.source, "AI")
+                  )
+                )
+            ),
+            notExists(
+              db
+                .select()
+                .from(mediaCharacters)
+                .where(
+                  and(
+                    eq(mediaCharacters.mediaId, medias.id),
+                    eq(mediaCharacters.source, "AI")
+                  )
+                )
+            ),
+            notExists(
+              db
+                .select()
+                .from(mediaIps)
+                .where(
+                  and(
+                    eq(mediaIps.mediaId, medias.id),
+                    eq(mediaIps.source, "AI")
+                  )
+                )
+            )
+          )
+    );
+
+    try {
+      const results = await client
+        .select()
+        .from(medias)
+        .where(whereClause)
+        .orderBy(asc(medias.id))
+        .limit(limit)
+        .offset(offset);
+
+      return results.map(mapToMedia);
+    } catch (error) {
+      throw new UnexpectedError("Failed to find tagging candidates", error);
     }
   },
 };

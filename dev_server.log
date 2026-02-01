@@ -1,0 +1,25 @@
+$ mkdir -p ./.data/pglite && bun run db:migrate:pglite && bun run vinxi dev
+$ bun scripts/migrate-pglite.ts
+Using PGlite data directory: /app/.data/pglite
+Starting migration...
+Migration completed successfully.
+Database connection closed.
+vinxi v0.5.10
+vinxi starting dev server
+
+  ➜ Local:    http://localhost:3000/
+  ➜ Network:  use --host to expose
+
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:49 AM [vite] page reload vinxi/routes
+9:50:50 AM [vite] page reload vinxi/routes
+[2026-02-01 09:50:56.634 +0000] [32mINFO[39m (12810): [36mJob processing worker started[39m

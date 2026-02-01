@@ -79,4 +79,15 @@ export const aiRouter = {
       });
       return { success: true, message: "Batch tagging started" };
     }),
+
+  scanBatchTagging: os
+    .input(batchTaggingRequestSchema)
+    .handler(async ({ input }) => {
+      const mediaRepo = services.getMediaRepository();
+      const candidates = await mediaRepo.findTaggingCandidates({
+        force: input.force,
+        mediaSourceId: input.mediaSourceId,
+      });
+      return candidates;
+    }),
 };

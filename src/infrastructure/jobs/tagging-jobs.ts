@@ -1,5 +1,6 @@
-import { and, asc, eq, notExists } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists } from "drizzle-orm";
 import { services } from "~/application/registry";
+import { eventService } from "~/application/services/event-service";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
 import {
@@ -20,6 +21,7 @@ type BulkTaggingDispatchJobPayload = {
   force?: boolean;
   batchSize?: number;
   mediaSourceId?: string;
+  mediaIds?: string[];
 };
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
@@ -35,6 +37,10 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
     await taggingService.getTagsForMedia(mediaSourceId, mediaId, {
       skipCache: force,
     });
+    eventService.sendSseEvent("tagging:job-completed", {
+      mediaId,
+      jobId: job.id,
+    });
   } catch (error) {
     logger.error({ err: error, mediaId }, "Auto tagging failed");
     throw error;
@@ -47,101 +53,86 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
   // biome-ignore lint/style/noMagicNumbers: Default batch size
   const batchSize = payload?.batchSize ?? 1000;
   const mediaSourceId = payload?.mediaSourceId;
+  const { mediaIds } = payload;
 
   logger.info(
-    { jobId: job.id, mediaSourceId, force, batchSize },
+    {
+      jobId: job.id,
+      mediaSourceId,
+      force,
+      batchSize,
+      numMediaIds: mediaIds?.length,
+    },
     "Starting bulk tagging dispatch job"
   );
 
   const jobRepo = services.getJobRepository();
-
-  // Find images
-  // Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
-  const whereClause = and(
-    eq(medias.mediaType, "image"),
-    mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-    force
-      ? undefined
-      : and(
-          notExists(
-            db
-              .select()
-              .from(mediaTags)
-              .where(
-                and(
-                  eq(mediaTags.mediaId, medias.id),
-                  eq(mediaTags.source, "AI")
-                )
-              )
-          ),
-          notExists(
-            db
-              .select()
-              .from(mediaCharacters)
-              .where(
-                and(
-                  eq(mediaCharacters.mediaId, medias.id),
-                  eq(mediaCharacters.source, "AI")
-                )
-              )
-          ),
-          notExists(
-            db
-              .select()
-              .from(mediaIps)
-              .where(
-                and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI"))
-              )
-          )
-        )
-  );
-
-  let offset = 0;
+  const mediaRepo = services.getMediaRepository();
   let processedCount = 0;
 
-  while (true) {
-    const results = await db
-      .select({
-        id: medias.id,
-        mediaSourceId: medias.mediaSourceId,
-      })
+  if (mediaIds && mediaIds.length > 0) {
+    // Case 1: Specific media IDs are provided
+    const validMedia = await db
+      .select({ id: medias.id, mediaSourceId: medias.mediaSourceId })
       .from(medias)
-      .where(whereClause)
-      .orderBy(asc(medias.id))
-      .limit(batchSize)
-      .offset(offset);
+      .where(inArray(medias.id, mediaIds));
 
-    if (results.length === 0) {
-      if (processedCount === 0) {
-        logger.info(
-          { jobId: job.id, mediaSourceId, force },
-          "No matching images found for bulk tagging"
-        );
-      }
-      break;
-    }
+    eventService.sendSseEvent("tagging:batch-started", {
+      total: validMedia.length,
+      jobId: job.id,
+    });
 
-    // Create jobs
-    for (const row of results) {
+    for (const media of validMedia) {
       await jobRepo.create({
         type: "auto_tagging",
-        mediaSourceId: row.mediaSourceId,
+        mediaSourceId: media.mediaSourceId,
         payload: {
-          mediaId: row.id,
-          mediaSourceId: row.mediaSourceId,
+          mediaId: media.id,
           force,
         },
       });
+      processedCount++;
     }
+  } else {
+    // Case 2: No specific media IDs, find candidates
+    let offset = 0;
+    while (true) {
+      const candidates = await mediaRepo.findTaggingCandidates({
+        mediaSourceId,
+        force,
+        limit: batchSize,
+        offset,
+      });
 
-    processedCount += results.length;
-    offset += batchSize;
+      if (candidates.length === 0) {
+        if (processedCount === 0) {
+          logger.info(
+            { jobId: job.id, mediaSourceId, force },
+            "No matching images found for bulk tagging"
+          );
+        }
+        break;
+      }
 
-    // Log progress
-    logger.info(
-      { jobId: job.id, processedCount },
-      "Bulk tagging dispatch progress"
-    );
+      for (const candidate of candidates) {
+        await jobRepo.create({
+          type: "auto_tagging",
+          mediaSourceId: candidate.mediaSourceId,
+          payload: {
+            mediaId: candidate.id,
+            force,
+          },
+        });
+      }
+
+      processedCount += candidates.length;
+      offset += batchSize;
+
+      logger.info(
+        { jobId: job.id, processedCount },
+        "Bulk tagging dispatch progress"
+      );
+    }
   }
 
   logger.info(

@@ -1,5 +1,5 @@
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 import { toast } from "solid-toast";
 import {
   AlertDialog,
@@ -44,6 +44,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Progress } from "~/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -53,6 +54,7 @@ import {
 } from "~/components/ui/select";
 import type { Character } from "~/domain/characters/schemas";
 import type { Ip } from "~/domain/ips/schemas";
+import type { Media } from "~/domain/media/schemas";
 import type { Project } from "~/domain/projects/schemas";
 import {
   createCharacter,
@@ -96,6 +98,38 @@ export default function ManagerPage() {
   >(undefined);
   const [forceRetag, setForceRetag] = createSignal(false);
   const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
+  const [isScanning, setIsScanning] = createSignal(false);
+  const [isScanModalOpen, setIsScanModalOpen] = createSignal(false);
+  const [scannedMedia, setScannedMedia] = createSignal<Media[]>([]);
+  const [selectedMediaIds, setSelectedMediaIds] = createSignal<Set<string>>(
+    new Set()
+  );
+  const [batchTotal, setBatchTotal] = createSignal(0);
+  const [batchProgress, setBatchProgress] = createSignal(0);
+  const [batchJobId, setBatchJobId] = createSignal<string | null>(null);
+
+  onMount(() => {
+    const eventSource = new EventSource("/api/events");
+
+    eventSource.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === "tagging:batch-started") {
+        setBatchJobId(data.payload.jobId);
+        setBatchTotal(data.payload.total);
+        setBatchProgress(0);
+        setTaggingStatus(`Batch job ${data.payload.jobId} started...`);
+      } else if (data.type === "tagging:job-completed") {
+        if (data.payload.jobId === batchJobId()) {
+          setBatchProgress((p) => p + 1);
+        }
+      }
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  });
 
   const queryClient = useQueryClient();
 
@@ -222,12 +256,13 @@ export default function ManagerPage() {
     }
   };
 
-  const handleStartBatchTagging = async () => {
+  const handleStartBatchTagging = async (mediaIds?: string[]) => {
     try {
       setTaggingStatus("Starting...");
-      const result = await orpc.ai.batchTagging({
+      const result = await orpc.ai.batchTagging.mutate({
         force: forceRetag(),
         mediaSourceId: selectedSourceId(),
+        mediaIds,
       });
       if (result.success) {
         toast.success(result.message);
@@ -239,6 +274,26 @@ export default function ManagerPage() {
     } catch (e) {
       toast.error(`Error: ${(e as Error).message}`);
       setTaggingStatus(`Error: ${(e as Error).message}`);
+    }
+  };
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setTaggingStatus("Scanning for candidates...");
+    try {
+      const result = await orpc.ai.scanBatchTagging.query({
+        force: forceRetag(),
+        mediaSourceId: selectedSourceId(),
+      });
+      setScannedMedia(result);
+      setSelectedMediaIds(new Set(result.map((m) => m.id)));
+      setIsScanModalOpen(true);
+      setTaggingStatus(`${result.length} candidates found.`);
+    } catch (e) {
+      toast.error(`Scan failed: ${(e as Error).message}`);
+      setTaggingStatus(`Error during scan: ${(e as Error).message}`);
+    } finally {
+      setIsScanning(false);
     }
   };
 
@@ -364,15 +419,30 @@ export default function ManagerPage() {
                 re-analyzed.
               </p>
 
-              <div class="pt-2">
-                <Button onClick={handleStartBatchTagging}>
-                  Start Batch Tagging
+              <div class="flex items-center gap-2 pt-2">
+                <Button disabled={isScanning()} onClick={handleScan}>
+                  {isScanning() ? "Scanning..." : "Scan for Candidates"}
+                </Button>
+                <Button onClick={() => handleStartBatchTagging()}>
+                  Start Batch Tagging (All)
                 </Button>
               </div>
 
               <Show when={taggingStatus()}>
                 <div class="mt-4 rounded bg-gray-100 p-2 text-sm">
                   {taggingStatus()}
+                </div>
+              </Show>
+
+              <Show when={batchTotal() > 0}>
+                <div class="pt-4">
+                  <Progress value={(batchProgress() / batchTotal()) * 100} />
+                  <p class="text-muted-foreground mt-2 text-sm">
+                    {batchProgress()} / {batchTotal()} items tagged.
+                  </p>
+                  <Show when={batchProgress() === batchTotal()}>
+                    <p class="font-semibold text-green-600">Batch complete!</p>
+                  </Show>
                 </div>
               </Show>
             </CardContent>
@@ -538,6 +608,93 @@ export default function ManagerPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Scan Results Modal */}
+      <Dialog onOpenChange={setIsScanModalOpen} open={isScanModalOpen()}>
+        <DialogContent class="max-h-[80vh] max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Scanned Tagging Candidates</DialogTitle>
+            <DialogDescription>
+              Select the media items you want to include in the batch tagging
+              process.
+            </DialogDescription>
+          </DialogHeader>
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+              {selectedMediaIds().size} of {scannedMedia().length} selected
+            </div>
+            <div class="flex gap-2">
+              <Button
+                onClick={() =>
+                  setSelectedMediaIds(new Set(scannedMedia().map((m) => m.id)))
+                }
+                size="sm"
+                variant="outline"
+              >
+                Select All
+              </Button>
+              <Button
+                onClick={() => setSelectedMediaIds(new Set())}
+                size="sm"
+                variant="outline"
+              >
+                Deselect All
+              </Button>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4 overflow-y-auto p-1 md:grid-cols-4 lg:grid-cols-6">
+            <For each={scannedMedia()}>
+              {(media) => (
+                <div
+                  class="relative cursor-pointer rounded-lg border-2 border-transparent transition-all hover:border-blue-500"
+                  classList={{
+                    "!border-blue-600": selectedMediaIds().has(media.id),
+                  }}
+                  onClick={() =>
+                    setSelectedMediaIds((prev) => {
+                      const newSet = new Set(prev);
+                      if (newSet.has(media.id)) {
+                        newSet.delete(media.id);
+                      } else {
+                        newSet.add(media.id);
+                      }
+                      return newSet;
+                    })
+                  }
+                >
+                  <img
+                    alt={media.fileName}
+                    class="h-40 w-full rounded-md object-cover"
+                    src={`/api/thumbnails/${media.id}`}
+                  />
+                  <p class="mt-1 truncate text-xs text-center">
+                    {media.fileName}
+                  </p>
+                  <div class="absolute right-1 top-1">
+                    <Checkbox
+                      checked={selectedMediaIds().has(media.id)}
+                      class="h-5 w-5 rounded-full"
+                    />
+                  </div>
+                </div>
+              )}
+            </For>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => {
+                handleStartBatchTagging([...selectedMediaIds()]);
+                setIsScanModalOpen(false);
+              }}
+            >
+              Start Tagging ({selectedMediaIds().size} items)
+            </Button>
+            <Button onClick={() => setIsScanModalOpen(false)} variant="ghost">
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

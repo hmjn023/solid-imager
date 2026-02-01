@@ -78,4 +78,13 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<Media[]>;
   findExistingUrls(urls: string[], tx?: Transaction): Promise<string[]>;
+  findTaggingCandidates(
+    options: {
+      mediaSourceId?: string;
+      force?: boolean;
+      limit?: number;
+      offset?: number;
+    },
+    tx?: Transaction
+  ): Promise<Media[]>;
 };

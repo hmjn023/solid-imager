@@ -6,8 +6,20 @@ type MediaUpdatePayload = {
   mediaId: string;
 };
 
+type TaggingBatchStartedPayload = {
+  total: number;
+  jobId: string;
+};
+
+type TaggingJobCompletedPayload = {
+  mediaId: string;
+  jobId: string;
+};
+
 type EventMap = {
   "media:updated": MediaUpdatePayload;
+  "tagging:batch-started": TaggingBatchStartedPayload;
+  "tagging:job-completed": TaggingJobCompletedPayload;
 };
 
 // Strongly-typed EventEmitter
@@ -54,25 +66,36 @@ class EventService {
   createSseStream(event: APIEvent): Response {
     const stream = new ReadableStream({
       start: (controller) => {
-        const handler = (payload: MediaUpdatePayload) => {
-          if (event.request.signal.aborted) {
-            return;
-          }
-          try {
-            const data = JSON.stringify(payload);
-            controller.enqueue(`data: ${data}\n\n`);
-          } catch (_error) {
-            // Controller might be closed or errored
-            // Remove listener to prevent future errors
-            this.emitter.off("media:updated", handler);
-          }
-        };
+        const createHandler =
+          <K extends keyof EventMap>(eventName: K) =>
+          (payload: EventMap[K]) => {
+            if (event.request.signal.aborted) {
+              return;
+            }
+            try {
+              const data = JSON.stringify({ type: eventName, payload });
+              controller.enqueue(`data: ${data}\n\n`);
+            } catch (_error) {
+              // Controller might be closed or errored, clean up listeners
+              Object.keys(this.emitter).forEach((key) => {
+                this.emitter.off(key as K, createHandler(key as K));
+              });
+            }
+          };
 
-        this.emitter.on("media:updated", handler);
+        const mediaUpdatedHandler = createHandler("media:updated");
+        const batchStartedHandler = createHandler("tagging:batch-started");
+        const jobCompletedHandler = createHandler("tagging:job-completed");
+
+        this.emitter.on("media:updated", mediaUpdatedHandler);
+        this.emitter.on("tagging:batch-started", batchStartedHandler);
+        this.emitter.on("tagging:job-completed", jobCompletedHandler);
 
         // Clean up on client disconnect
         event.request.signal.addEventListener("abort", () => {
-          this.emitter.off("media:updated", handler);
+          this.emitter.off("media:updated", mediaUpdatedHandler);
+          this.emitter.off("tagging:batch-started", batchStartedHandler);
+          this.emitter.off("tagging:job-completed", jobCompletedHandler);
           controller.close();
         });
       },
