@@ -12,26 +12,26 @@
 現在、メディアがシステムに追加される経路は大きく4つあり、それぞれが独自の実装を持っています。
 
 1.  **メディアダウンロード (`DownloadJobs`)**
-    *   **実装**: `src/infrastructure/jobs/download-jobs.ts`
+    *   **実装**: `apps/server/src/infrastructure/jobs/download-jobs.ts`
     *   **フロー**: ダウンロード実行 -> `MediaRepository.create` -> `MediaRepository.addUrls` -> `AuthorRepository.create` -> `AuthorRepository.addMedia` -> `thumbnail` ジョブ投入 -> SSE通知。
     *   **問題**: メディアファイル自体の保存だけでなく、AuthorやSourceURLといった関連情報の保存もこのレイヤーで同期的に行われている。`FileWatcherService` との競合（Race Condition）を防ぐために `try-catch` で既存チェックを行うなど、複雑化している。
 
 2.  **ファイル監視 (`FileWatcherService`)**
-    *   **実装**: `src/infrastructure/jobs/file-watcher-service.ts`
+    *   **実装**: `apps/server/src/infrastructure/jobs/file-watcher-service.ts`
     *   **フロー**: `chokidar` 検知 -> `MediaRepository.create` -> `thumbnail` & `extractTags` ジョブ投入 -> **同期的に `ImageProcessor.extractMetadata` を実行**。
     *   **問題**: ジョブキューに入れているにもかかわらず、その場で重い処理（メタデータ抽出）を実行している箇所があり、非効率。また、ダウンロード処理とロジックが重複している。
 
 3.  **手動アップロード (`MediaService`)**
-    *   **実装**: `src/application/services/media-service.ts` (`uploadMedia`)
+    *   **実装**: `apps/server/src/application/services/media-service.ts` (`uploadMedia`)
     *   **フロー**: ファイル保存 -> `MediaRepository.upsert` -> (`addUrls`) -> `thumbnail` & `extractTags` ジョブ投入。
     *   **問題**: 独自にジョブ投入を行っており、他のフローとコードが重複している。
 
 4.  **Zipインポート / 既存登録 (`BackupService`, `MediaService`)**
-    *   **実装**: `src/application/services/backup-service.ts`, `src/application/services/media-service.ts`
+    *   **実装**: `apps/server/src/application/services/backup-service.ts`, `apps/server/src/application/services/media-service.ts`
     *   **フロー**: 展開/スキャン -> DB登録 -> まとめてジョブ投入。
 
 ### 2.2 ジョブ管理の実態
-*   **実装**: `src/infrastructure/jobs/job-manager.ts`
+*   **実装**: `apps/server/src/infrastructure/jobs/job-manager.ts`
 *   **状態**: 完全なインメモリ実装 (`Map` オブジェクト使用)。
 *   **リスク**: サーバー再起動により、未処理のジョブは全て消失します。「ジョブの登録漏れが多い」という課題の一部は、この永続化されていない性質に起因する可能性があります。
 
@@ -107,7 +107,7 @@ interface MediaProcessingService {
 
 ### 4.2 スキーマ構造の変更
 
-`src/domain/media/schemas.ts` を以下のように変更します。
+`packages/core/src/domain/media/schemas.ts` を以下のように変更します。
 
 ```typescript
 // 1. 基底スキーマ: 純粋なメタデータ
@@ -144,7 +144,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 
 ### 4.3 ジョブ定義の変更 (`JobManager`)
 
-`src/infrastructure/jobs/job-manager.ts` の `Job` 型定義を変更し、単一タイプにします。
+`apps/server/src/infrastructure/jobs/job-manager.ts` の `Job` 型定義を変更し、単一タイプにします。
 
 ```typescript
 export type Job = {
@@ -203,12 +203,12 @@ async function executeProcessMediaJob(job: Job) {
 段階的移行により、既存コード（特に `BackupService`）への影響を最小化します。
 
 1.  **Step 0: `MediaProcessingService` のスカフォールディング** (既存コードに影響なし)
-    *   `src/application/services/media-processing-service.ts` を新規作成。
+    *   `apps/server/src/application/services/media-processing-service.ts` を新規作成。
     *   `registerAndProcess` メソッドのスタブ実装。
     *   **検証**: `bun run check` が通ること。既存動作に影響がないこと。
 
 2.  **Step 1: スキーマの「追加」** (破壊的変更なし)
-    *   `src/domain/media/schemas.ts` に `MediaMetadataContext` を**新規追加**。
+    *   `packages/core/src/domain/media/schemas.ts` に `MediaMetadataContext` を**新規追加**。
     *   既存の `MediaDumpItem`, `DownloadItem` は維持し、内部で `MediaMetadataContext` を利用するように段階的に調整。
     *   **検証**: `bun run test` が通ること。`BackupService` が正常に動作すること。
 

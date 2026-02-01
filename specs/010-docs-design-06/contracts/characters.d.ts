@@ -1,4 +1,9 @@
-import type { Character, NewCharacter, MediaCharacter, NewMediaCharacter } from '~/infrastructure/db/schema';
+import type {
+  Character,
+  NewCharacter,
+  MediaCharacter,
+  NewMediaCharacter,
+} from "~/infrastructure/db/schema";
 
 /**
  * すべてのキャラクターを取得します。
@@ -19,7 +24,10 @@ export declare function insertCharacter(data: NewCharacter): Promise<Character>;
  * @param data - 更新するデータ。
  * @returns - 更新されたキャラクターオブジェクト。
  */
-export declare function updateCharacter(id: number, data: Partial<NewCharacter>): Promise<Character>;
+export declare function updateCharacter(
+  id: number,
+  data: Partial<NewCharacter>
+): Promise<Character>;
 
 /**
  * 指定されたIDのキャラクターを削除します。
@@ -32,11 +40,16 @@ export declare function deleteCharacter(id: number): Promise<void>;
  * @param data - 関連付けるメディアIDとキャラクターID。
  * @returns - 作成された中間テーブルのレコード。
  */
-export declare function insertMediaCharacter(data: NewMediaCharacter): Promise<MediaCharacter>;
+export declare function insertMediaCharacter(
+  data: NewMediaCharacter
+): Promise<MediaCharacter>;
 
 /**
  * 指定されたメディアからキャラクターの関連付けを解除します。
  * @param mediaId - メディアのUUID。
  * @param characterId - キャラクターのID。
  */
-export declare function deleteMediaCharacter(mediaId: string, characterId: number): Promise<void>;
+export declare function deleteMediaCharacter(
+  mediaId: string,
+  characterId: number
+): Promise<void>;

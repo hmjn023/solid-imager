@@ -38,7 +38,7 @@
 │  │  └────────────────────────────────────────────────┘  │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Router (src/infrastructure/api/routers/)           │  │
+│  │  Router (apps/server/src/infrastructure/api/routers/)           │  │
 │  │  ┌────────────────────────────────────────────────┐  │  │
 │  │  │  mediaRouter.search                            │  │  │
 │  │  │    .input(zodSchema)                           │  │  │
@@ -47,14 +47,14 @@
 │  │  └────────────────────────────────────────────────┘  │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Service (src/application/services/)                │  │
+│  │  Service (apps/server/src/application/services/)                │  │
 │  │  ┌────────────────────────────────────────────────┐  │  │
 │  │  │  MediaService.searchMedia(...)                 │  │  │
 │  │  │         ↓                                       │  │  │
 │  │  └────────────────────────────────────────────────┘  │  │
 │  └──────────────────────────────────────────────────────┘  │
 │  ┌──────────────────────────────────────────────────────┐  │
-│  │  Repository (src/infrastructure/repositories/)      │  │
+│  │  Repository (apps/server/src/infrastructure/repositories/)      │  │
 │  │  ┌────────────────────────────────────────────────┐  │  │
 │  │  │  MediaRepository.findMany(...)                 │  │  │
 │  │  │         ↓                                       │  │  │
@@ -74,10 +74,10 @@
 
 まず、ドメイン層でデータ構造を Zod スキーマとして定義します。
 
-**場所**: `src/domain/{entity}/schemas.ts`
+**場所**: `packages/core/src/domain/{entity}/schemas.ts`
 
 ```typescript
-// src/domain/media/schemas.ts
+// packages/core/src/domain/media/schemas.ts
 import { z } from "zod";
 
 /**
@@ -113,10 +113,10 @@ export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
 
 次に、インフラストラクチャ層で oRPC ルーターを実装します。
 
-**場所**: `src/infrastructure/api/routers/{entity}-router.ts`
+**場所**: `apps/server/src/infrastructure/api/routers/{entity}-router.ts`
 
 ```typescript
-// src/infrastructure/api/routers/media-router.ts
+// apps/server/src/infrastructure/api/routers/media-router.ts
 import { os } from "@orpc/server";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
@@ -219,10 +219,10 @@ export const mediaRouter = {
 
 実装したルーターをアプリケーションに登録します。
 
-**場所**: `src/domain/shared/api-contract.ts`
+**場所**: `packages/core/src/domain/shared/api-contract.ts`
 
 ```typescript
-// src/domain/shared/api-contract.ts
+// packages/core/src/domain/shared/api-contract.ts
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
@@ -246,10 +246,10 @@ export type AppRouter = typeof appRouter;
 
 フロントエンドから型安全に API を呼び出します。
 
-**場所**: `src/routes/*.tsx` または `src/components/*.tsx`
+**場所**: `apps/server/src/routes/*.tsx` または `apps/server/src/components/*.tsx`
 
 ```typescript
-// src/routes/search.tsx
+// apps/server/src/routes/search.tsx
 import { For } from "solid-js";
 import { createQuery } from "@tanstack/solid-query";
 import { createORPCClient } from "~/infrastructure/api-clients/orpc-client";
@@ -303,10 +303,10 @@ export default function SearchPage() {
 
 ### カスタムエラーの定義
 
-**場所**: `src/domain/errors.ts`
+**場所**: `packages/core/src/domain/errors.ts`
 
 ```typescript
-// src/domain/errors.ts
+// packages/core/src/domain/errors.ts
 export class ResourceNotFoundError extends Error {
   constructor(
     public resourceType: string,
@@ -351,7 +351,7 @@ export const mediaRouter = {
 
 ### グローバルエラーハンドラー
 
-**場所**: `src/infrastructure/api/app.ts`
+**場所**: `apps/server/src/infrastructure/api/app.ts`
 
 ```typescript
 export const app = new Elysia()
@@ -425,7 +425,7 @@ export const mediaRouter = {
 **REST エンドポイント**: Elysia で直接実装
 
 ```typescript
-// src/infrastructure/api/app.ts
+// apps/server/src/infrastructure/api/app.ts
 export const app = new Elysia()
   // ... 他の設定
   .get("/api/sources/:sourceId/:mediaId", async ({ params }) => {
@@ -456,7 +456,7 @@ oRPC は OpenAPI 仕様を自動生成できます。
 
 ### 設定
 
-**場所**: `src/infrastructure/api/app.ts`
+**場所**: `apps/server/src/infrastructure/api/app.ts`
 
 ```typescript
 import { OpenAPIGenerator } from "@orpc/openapi";
@@ -500,7 +500,7 @@ export const app = new Elysia()
 
 ### ユニットテスト
 
-**場所**: `src/tests/unit/routers/media-router.test.ts`
+**場所**: `apps/server/src/tests/unit/routers/media-router.test.ts`
 
 ```typescript
 import { describe, it, expect, beforeEach } from "vitest";
@@ -652,7 +652,7 @@ export const sourcesRouter = {
 
 **解決策**:
 ```typescript
-// src/domain/shared/api-contract.ts
+// packages/core/src/domain/shared/api-contract.ts
 export const appRouter = {
   media: mediaRouter, // ここに追加
 };

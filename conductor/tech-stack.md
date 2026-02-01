@@ -34,4 +34,4 @@
 
 ## Architecture Style
 - **Pattern**: Clean Architecture / Hexagonal Architecture
-- **Structure**: Monorepo (Planned: apps/server, apps/client, packages/core)
+- **Structure**: Monorepo (Current: apps/server, packages/core, Planned: apps/client)

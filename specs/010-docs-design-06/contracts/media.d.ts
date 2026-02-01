@@ -1,4 +1,4 @@
-import type { Media, NewMedia } from '~/infrastructure/db/schema';
+import type { Media, NewMedia } from "~/infrastructure/db/schema";
 
 /**
  * 指定されたIDのメディアを1件取得します。
@@ -20,7 +20,10 @@ export declare function insertMedia(data: NewMedia): Promise<Media>;
  * @param data - 更新するデータ（部分的な更新も可能）。
  * @returns - 更新されたメディアオブジェクト。
  */
-export declare function updateMedia(id: string, data: Partial<NewMedia>): Promise<Media>;
+export declare function updateMedia(
+  id: string,
+  data: Partial<NewMedia>
+): Promise<Media>;
 
 /**
  * 指定されたIDのメディアを削除します。
@@ -33,4 +36,8 @@ export declare function deleteMedia(id: string): Promise<void>;
  * @param options - 検索条件（タグ、ファイル名、日付範囲など）。
  * @returns - 条件に一致したメディアの配列。
  */
-export declare function searchMedia(options: { tags?: string[]; filename?: string; dateRange?: { from?: Date; to?: Date; }; }): Promise<Media[]>;
+export declare function searchMedia(options: {
+  tags?: string[];
+  filename?: string;
+  dateRange?: { from?: Date; to?: Date };
+}): Promise<Media[]>;

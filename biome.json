@@ -3,18 +3,35 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "useNamingConvention": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off"
+      }
     }
   },
   "files": {
     "includes": [
-      "src/**",
-      "!node_modules/",
-      "!dist/",
-      "!drizzle/",
-      "!src/app.css"
+      "apps/**/src/**",
+      "packages/**/src/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.vinxi",
+      "!**/.output",
+      "!apps/server/src/app.css",
+      "!apps/server/public/docs",
+      "!apps/server/scripts",
+      "!apps/server/playwright.config.ts",
+      "!apps/server/get-media-ids.ts"
     ],
-    "experimentalScannerIgnores": ["db-data"]
+    "experimentalScannerIgnores": [
+      "db-data",
+      ".output",
+      ".vinxi",
+      "node_modules"
+    ]
   },
   "extends": ["ultracite"],
   "overrides": [

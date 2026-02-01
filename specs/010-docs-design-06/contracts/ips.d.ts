@@ -1,4 +1,4 @@
-import type { Ip, NewIp } from '~/infrastructure/db/schema';
+import type { Ip, NewIp } from "~/infrastructure/db/schema";
 
 /**
  * すべてのIP（知的財産）を取得します。

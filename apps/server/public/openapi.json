@@ -1,0 +1,1634 @@
+{
+  "info": {
+    "title": "Solid Imager oRPC API",
+    "version": "1.0.0",
+    "description": "Solid Imagerを管理するためのAPIドキュメントです。"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/rpc",
+      "description": "Development server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Media Sources",
+      "description": "Operations for managing media sources (local directories, SFTP, S3, etc.)"
+    },
+    {
+      "name": "Media",
+      "description": "Operations for managing media files and their metadata"
+    },
+    {
+      "name": "Tags",
+      "description": "Operations for managing tags and tag associations"
+    },
+    {
+      "name": "Categories",
+      "description": "Operations for managing categories"
+    },
+    {
+      "name": "Projects",
+      "description": "Operations for managing projects and project associations"
+    },
+    {
+      "name": "Characters",
+      "description": "Operations for managing characters and character associations"
+    },
+    {
+      "name": "IPs",
+      "description": "Operations for managing intellectual properties (IPs) and their associations"
+    },
+    {
+      "name": "Thumbnails",
+      "description": "Operations for generating and managing thumbnails"
+    },
+    {
+      "name": "Downloads",
+      "description": "Operations for managing download jobs"
+    },
+    {
+      "name": "Directories",
+      "description": "Operations for managing directories within media sources"
+    },
+    {
+      "name": "AI",
+      "description": "AI-powered operations for tagging and image similarity"
+    },
+    {
+      "name": "Utilities",
+      "description": "Utility operations such as URL fetching"
+    }
+  ],
+  "openapi": "3.1.1",
+  "paths": {
+    "/sources/list": {
+      "post": {
+        "operationId": "sources.list",
+        "summary": "メディアソース一覧取得",
+        "description": "登録されているすべてのメディアソース（ローカル、SFTP、S3等）を取得します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/get": {
+      "post": {
+        "operationId": "sources.get",
+        "summary": "メディアソース詳細取得",
+        "description": "UUIDを指定して特定のメディアソースの情報を取得します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/create": {
+      "post": {
+        "operationId": "sources.create",
+        "summary": "メディアソース作成",
+        "description": "新しいメディアソースを登録します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/update": {
+      "post": {
+        "operationId": "sources.update",
+        "summary": "メディアソース更新",
+        "description": "既存のメディアソースの設定を更新します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/delete": {
+      "post": {
+        "operationId": "sources.delete",
+        "summary": "メディアソース削除",
+        "description": "メディアソースを削除し、監視を停止します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/dump": {
+      "post": {
+        "operationId": "sources.dump",
+        "summary": "dump",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/restore": {
+      "post": {
+        "operationId": "sources.restore",
+        "summary": "restore",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/importZip": {
+      "post": {
+        "operationId": "sources.importZip",
+        "summary": "importZip",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/status": {
+      "post": {
+        "operationId": "sources.status",
+        "summary": "メディアソースの状態取得",
+        "description": "スキャン進捗やファイル数などの統計情報を取得します。",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/events": {
+      "post": {
+        "operationId": "sources.events",
+        "summary": "events",
+        "tags": ["Media Sources"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/list": {
+      "post": {
+        "operationId": "tags.list",
+        "summary": "list",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/get": {
+      "post": {
+        "operationId": "tags.get",
+        "summary": "get",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/create": {
+      "post": {
+        "operationId": "tags.create",
+        "summary": "create",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/update": {
+      "post": {
+        "operationId": "tags.update",
+        "summary": "update",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tags/delete": {
+      "post": {
+        "operationId": "tags.delete",
+        "summary": "delete",
+        "tags": ["Tags"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/search": {
+      "post": {
+        "operationId": "media.search",
+        "summary": "メディア検索",
+        "description": "タグ、プロジェクト、キャラクターなどの条件でメディアを検索します。",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/get": {
+      "post": {
+        "operationId": "media.get",
+        "summary": "get",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getDetails": {
+      "post": {
+        "operationId": "media.getDetails",
+        "summary": "getDetails",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getContent": {
+      "post": {
+        "operationId": "media.getContent",
+        "summary": "getContent",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/getTags": {
+      "post": {
+        "operationId": "media.getTags",
+        "summary": "getTags",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/update": {
+      "post": {
+        "operationId": "media.update",
+        "summary": "update",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/delete": {
+      "post": {
+        "operationId": "media.delete",
+        "summary": "delete",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/copy": {
+      "post": {
+        "operationId": "media.copy",
+        "summary": "copy",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/move": {
+      "post": {
+        "operationId": "media.move",
+        "summary": "move",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/upload": {
+      "post": {
+        "operationId": "media.upload",
+        "summary": "upload",
+        "tags": ["Media"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/list": {
+      "post": {
+        "operationId": "categories.list",
+        "summary": "list",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/get": {
+      "post": {
+        "operationId": "categories.get",
+        "summary": "get",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/create": {
+      "post": {
+        "operationId": "categories.create",
+        "summary": "create",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/update": {
+      "post": {
+        "operationId": "categories.update",
+        "summary": "update",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/delete": {
+      "post": {
+        "operationId": "categories.delete",
+        "summary": "delete",
+        "tags": ["Categories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/list": {
+      "post": {
+        "operationId": "projects.list",
+        "summary": "list",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/get": {
+      "post": {
+        "operationId": "projects.get",
+        "summary": "get",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/create": {
+      "post": {
+        "operationId": "projects.create",
+        "summary": "create",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/update": {
+      "post": {
+        "operationId": "projects.update",
+        "summary": "update",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/delete": {
+      "post": {
+        "operationId": "projects.delete",
+        "summary": "delete",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/listForMedia": {
+      "post": {
+        "operationId": "projects.listForMedia",
+        "summary": "listForMedia",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/addToMedia": {
+      "post": {
+        "operationId": "projects.addToMedia",
+        "summary": "addToMedia",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/removeFromMedia": {
+      "post": {
+        "operationId": "projects.removeFromMedia",
+        "summary": "removeFromMedia",
+        "tags": ["Projects"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/list": {
+      "post": {
+        "operationId": "characters.list",
+        "summary": "list",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/get": {
+      "post": {
+        "operationId": "characters.get",
+        "summary": "get",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/create": {
+      "post": {
+        "operationId": "characters.create",
+        "summary": "create",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/update": {
+      "post": {
+        "operationId": "characters.update",
+        "summary": "update",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/delete": {
+      "post": {
+        "operationId": "characters.delete",
+        "summary": "delete",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/listForMedia": {
+      "post": {
+        "operationId": "characters.listForMedia",
+        "summary": "listForMedia",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/addToMedia": {
+      "post": {
+        "operationId": "characters.addToMedia",
+        "summary": "addToMedia",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/removeFromMedia": {
+      "post": {
+        "operationId": "characters.removeFromMedia",
+        "summary": "removeFromMedia",
+        "tags": ["Characters"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/list": {
+      "post": {
+        "operationId": "ips.list",
+        "summary": "list",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/get": {
+      "post": {
+        "operationId": "ips.get",
+        "summary": "get",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/create": {
+      "post": {
+        "operationId": "ips.create",
+        "summary": "create",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/update": {
+      "post": {
+        "operationId": "ips.update",
+        "summary": "update",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/delete": {
+      "post": {
+        "operationId": "ips.delete",
+        "summary": "delete",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/listForMedia": {
+      "post": {
+        "operationId": "ips.listForMedia",
+        "summary": "listForMedia",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/addToMedia": {
+      "post": {
+        "operationId": "ips.addToMedia",
+        "summary": "addToMedia",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ips/removeFromMedia": {
+      "post": {
+        "operationId": "ips.removeFromMedia",
+        "summary": "removeFromMedia",
+        "tags": ["IPs"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/thumbnails/generate": {
+      "post": {
+        "operationId": "thumbnails.generate",
+        "summary": "generate",
+        "tags": ["Thumbnails"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/thumbnails/clear": {
+      "post": {
+        "operationId": "thumbnails.clear",
+        "summary": "clear",
+        "tags": ["Thumbnails"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/downloads/start": {
+      "post": {
+        "operationId": "downloads.start",
+        "summary": "start",
+        "tags": ["Downloads"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/list": {
+      "post": {
+        "operationId": "directories.list",
+        "summary": "list",
+        "tags": ["Directories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/create": {
+      "post": {
+        "operationId": "directories.create",
+        "summary": "create",
+        "tags": ["Directories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/delete": {
+      "post": {
+        "operationId": "directories.delete",
+        "summary": "delete",
+        "tags": ["Directories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/directories/rename": {
+      "post": {
+        "operationId": "directories.rename",
+        "summary": "rename",
+        "tags": ["Directories"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/tag": {
+      "post": {
+        "operationId": "ai.tag",
+        "summary": "AI自動タグ付け",
+        "description": "画像を解析して、関連するタグ（DeepDanbooru等）を自動生成します。",
+        "tags": ["AI"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/ccipFeature": {
+      "post": {
+        "operationId": "ai.ccipFeature",
+        "summary": "ccipFeature",
+        "tags": ["AI"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/ccipDifference": {
+      "post": {
+        "operationId": "ai.ccipDifference",
+        "summary": "ccipDifference",
+        "tags": ["AI"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utils/fetchUrl": {
+      "post": {
+        "operationId": "utils.fetchUrl",
+        "summary": "fetchUrl",
+        "tags": ["Utilities"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
