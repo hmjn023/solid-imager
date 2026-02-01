@@ -40,7 +40,7 @@
 - [x] Task: Update CI/CD configuration (if any) and local scripts in root `package.json` to trigger workspace scripts. <!-- 8941ec5 -->
 - [x] Task: Conductor - User Manual Verification 'Monorepo Restructuring' (Protocol in workflow.md) <!-- f58d351 -->
 
-## Phase 4: Documentation Update
+## Phase 4: Documentation Update [checkpoint: da57aa2]
 - [x] Task: Update `AGENTS.md` to reflect the new monorepo structure, updated paths, and new coding rules. <!-- 9832868 -->
 - [x] Task: Update `docs/architecture/ARCHITECTURE.md` to document the core/server separation and abstraction layers. <!-- 71add4f -->
 - [x] Task: Update all relative links within the `docs/` directory to ensure they point to the correct locations in the monorepo. <!-- d7b8782 -->
