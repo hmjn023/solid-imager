@@ -16,7 +16,7 @@ export default defineConfig({
     },
     plugins: [tailwindcss()],
     ssr: {
-      noExternal: ["drizzle-orm"],
+      noExternal: ["drizzle-orm", "effect"],
       external: ["pg"],
     },
     optimizeDeps: {
