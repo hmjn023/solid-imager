@@ -79,6 +79,16 @@
         "vitest": "^3.2.4",
       },
     },
+    "packages/core": {
+      "name": "@solid-imager/core",
+      "version": "0.0.0",
+      "devDependencies": {
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "zod": "^4.3.5",
+      },
+    },
     "xtracter": {
       "name": "xtracter",
       "version": "0.0.0",
@@ -92,6 +102,7 @@
     },
   },
   "trustedDependencies": [
+    "ffmpeg-static",
     "youtube-dl-exec",
   ],
   "overrides": {
@@ -517,6 +528,8 @@
     "@sindresorhus/is": ["@sindresorhus/is@7.2.0", "", {}, "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="],
 
     "@sindresorhus/merge-streams": ["@sindresorhus/merge-streams@4.0.0", "", {}, "sha512-tlqY9xq5ukxTUZBmoOp+m61cqwQD5pHJtFY3Mn8CA8ps6yghLH/Hw8UPdqg4OLmFW3IFlcXnQNmo/dh8HzXYIQ=="],
+
+    "@solid-imager/core": ["@solid-imager/core@workspace:packages/core"],
 
     "@solid-primitives/deep": ["@solid-primitives/deep@0.2.10", "", { "dependencies": { "@solid-primitives/memo": "^1.3.10" }, "peerDependencies": { "solid-js": "^1.6.12" } }, "sha512-uzhXr/cMABsGkTcV3yuviZjTDmj44wb2JetuJ5O8NCugz4Ug/6XlPjT8ISMPYV7eCbC/gFhgt7e60+TRpl2Upg=="],
 
