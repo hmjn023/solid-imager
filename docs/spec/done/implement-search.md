@@ -21,7 +21,7 @@
 従来のフラットなフィルタパラメータ (`tags`, `ips`, `q` など) は廃止し、全てのフィルタ条件を `condition` フィールド内の再帰的構造で表現する形式に刷新する。（後方互換性は考慮しない）
 ただし、ページネーションやソートに関するフィールドはトップレベルに残す。
 
-`src/domain/media/schemas.ts` を更新する。
+`packages/core/src/domain/media/schemas.ts` を更新する。
 
 ```typescript
 import { z } from "zod";
@@ -111,7 +111,7 @@ export type MediaSearchRequest = z.infer<typeof mediaSearchRequestSchema>;
 ### 2. クエリ構築ロジック (Repository層)
 
 `MediaRepository.search` メソッドを刷新し、再帰的にSQLを構築するロジックを実装する。
-`src/infrastructure/db/repositories/media-repository.ts` を修正する。
+`apps/server/src/infrastructure/db/repositories/media-repository.ts` を修正する。
 
 **実装アプローチ:**
 
@@ -171,7 +171,7 @@ function escapeLikePattern(value: string): string {
 
 ### 3. API (Media Router)
 
-既存の `media.search` エンドポイント (`src/infrastructure/api/routers/media-router.ts`) は、自動的に新しい `MediaSearchRequest` スキーマを受け入れるようになる（スキーマ定義を参照しているため）。
+既存の `media.search` エンドポイント (`apps/server/src/infrastructure/api/routers/media-router.ts`) は、自動的に新しい `MediaSearchRequest` スキーマを受け入れるようになる（スキーマ定義を参照しているため）。
 実装側はリポジトリの変更により自動的に新ロジックが適用される。
 
 ### 4. `keyword` 全文検索の詳細
@@ -234,8 +234,8 @@ if (node.target === "keyword") {
 
 ## タスク手順
 
-1.  **Schema Update**: `src/domain/media/schemas.ts` を更新し、新しい検索スキーマを定義する。
-2.  **Repository Update**: `src/infrastructure/db/repositories/media-repository.ts` にクエリビルダロジックを実装し、`search` メソッドを更新する。
+1.  **Schema Update**: `packages/core/src/domain/media/schemas.ts` を更新し、新しい検索スキーマを定義する。
+2.  **Repository Update**: `apps/server/src/infrastructure/db/repositories/media-repository.ts` にクエリビルダロジックを実装し、`search` メソッドを更新する。
 3.  **Validation Layer**: ネスト深度・条件数の制限を検証するバリデーション関数を追加する。
 4.  **Frontend Update**: フロントエンドからのAPI呼び出し部分を一時的に修正するか、動作確認用の簡易スクリプトでAPIの疎通を確認する。（本格的なUI対応は別途実施）
 

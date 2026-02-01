@@ -119,13 +119,13 @@ Dependency Management (Python): uv
   - バイナリコンテンツ配信（画像、動画、ZIP）
   - グローバルエラーハンドリング
 - **実装場所**: 
-  - ルーター: `src/infrastructure/api/routers/`
-  - エントリーポイント: `src/infrastructure/api/app.ts`
-  - 型定義: `src/domain/shared/api-contract.ts`
+  - ルーター: `apps/server/src/infrastructure/api/routers/`
+  - エントリーポイント: `apps/server/src/infrastructure/api/app.ts`
+  - 型定義: `packages/core/src/domain/shared/api-contract.ts`
 - 詳細は [oRPC実装ガイド](./orpc-guide.md) を参照
 
 ### UIコンポーネント (Kobalte + Tailwind CSS + solid-ui)
-- shadcn/ui にインスパイアされたUIコンポーネント群が `src/components/ui` に実装されています。
+- shadcn/ui にインスパイアされたUIコンポーネント群が `apps/server/src/components/ui` に実装されています。
 - これらのコンポーネントは、ヘッドレスなUIプリミティブを提供する `@kobalte/core` をベースに構築されています。
 - 一部のコンポーネント（`Command`など）は、[solid-ui](https://www.solid-ui.com/)（shadcn/uiのSolid.jsポート）の CLI ツールを使用して追加されています。
 - **追加コンポーネント**:
@@ -136,12 +136,12 @@ Dependency Management (Python): uv
 ### フォーム管理 (TanStack Form)
 - **型安全なフォーム状態管理**: フォームの入力値、バリデーション状態、送信状態などを型安全に管理します。
 - **バリデーション**: `zod` と `@tanstack/zod-form-adapter` を利用して堅牢なフォームバリデーションを実装します。
-- **ヘッドレスUI**: UIコンポーネントに依存しないため、`src/components/ui` で提供されるコンポーネントと組み合わせて柔軟なフォームUIを構築できます。
+- **ヘッドレスUI**: UIコンポーネントに依存しないため、`apps/server/src/components/ui` で提供されるコンポーネントと組み合わせて柔軟なフォームUIを構築できます。
 - **パフォーマンス**: 必要な部分のみを再レンダリングする設計により、フォーム操作時のパフォーマンスを最適化します。
 
 ### リアルタイム更新 (Server-Sent Events)
 - **SSE (Server-Sent Events)**: サーバーからクライアントへの一方向リアルタイム通信を実装
-- **実装場所**: `src/infrastructure/jobs/sse-manager.ts`
+- **実装場所**: `apps/server/src/infrastructure/jobs/sse-manager.ts`
 - **使用技術**: 
   - Web標準の `ReadableStream` API
   - フロントエンドでは `EventSource` API
@@ -170,7 +170,7 @@ Dependency Management (Python): uv
 
 ### ロギング (Pino)
 - **Pino**: 高速なJSON構造化ログライブラリ
-- **実装場所**: `src/infrastructure/logger.ts`
+- **実装場所**: `apps/server/src/infrastructure/logger.ts`
 - **特徴**:
   - 非常に高速（他のロガーの5-10倍）
   - JSON形式の構造化ログ
@@ -192,8 +192,8 @@ Dependency Management (Python): uv
   - メディアソースのインポート
   - メタデータの復元
 - **実装場所**: 
-  - エクスポート: `src/infrastructure/api/app.ts` (REST エンドポイント)
-  - インポート: `src/infrastructure/api/app.ts` (REST エンドポイント)
+  - エクスポート: `apps/server/src/infrastructure/api/app.ts` (REST エンドポイント)
+  - インポート: `apps/server/src/infrastructure/api/app.ts` (REST エンドポイント)
 
 ### ブラウザ拡張機能 (xtracter)
 - **Chrome Extension**: X (Twitter) から画像を抽出

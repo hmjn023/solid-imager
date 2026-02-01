@@ -1,4 +1,9 @@
-import type { Tag, NewTag, MediaTag, NewMediaTag } from '~/infrastructure/db/schema';
+import type {
+  Tag,
+  NewTag,
+  MediaTag,
+  NewMediaTag,
+} from "~/infrastructure/db/schema";
 
 /**
  * すべてのタグを取得します。
@@ -19,7 +24,10 @@ export declare function insertTag(data: NewTag): Promise<Tag>;
  * @param data - 更新するデータ。
  * @returns - 更新されたタグオブジェクト。
  */
-export declare function updateTag(id: number, data: Partial<NewTag>): Promise<Tag>;
+export declare function updateTag(
+  id: number,
+  data: Partial<NewTag>
+): Promise<Tag>;
 
 /**
  * 指定されたIDのタグを削除します。
@@ -39,4 +47,7 @@ export declare function insertMediaTag(data: NewMediaTag): Promise<MediaTag>;
  * @param mediaId - メディアのUUID。
  * @param tagId - タグのID。
  */
-export declare function deleteMediaTag(mediaId: string, tagId: number): Promise<void>;
+export declare function deleteMediaTag(
+  mediaId: string,
+  tagId: number
+): Promise<void>;

@@ -101,7 +101,7 @@ Bun APIへの依存を局所化し、将来的なNode.jsへの移行（戻し）
 ## 6. Worker実装イメージ
 
 ```typescript
-// src/workers/backup.worker.ts
+// apps/server/src/workers/backup.worker.ts
 declare var self: Worker;
 
 import { join } from "path";
@@ -132,7 +132,7 @@ async function handleImport({ zipPath, extractPath }: any) {
 ```
 
 ## 7. 次のアクション
-1.  `src/workers/backup.worker.ts` の作成。
+1.  `apps/server/src/workers/backup.worker.ts` の作成。
 2.  `BackupService` の改修（Worker呼び出し処理の追加）。
 3.  `tsconfig.json` 等でWorkerのビルド設定が必要か確認（Bunならそのままtsを実行可能なので不要なはず）。
 
@@ -141,7 +141,7 @@ async function handleImport({ zipPath, extractPath }: any) {
 バックアップ処理以外で、パフォーマンス向上やコード簡素化に寄与するBun APIの活用案。
 
 ### 8.1 `Bun.spawn` (Subprocess Management)
-- **現状**: `src/infrastructure/processing/image-processor.ts` や `download-jobs.ts` で `node:child_process` の `execFile` を使用している。
+- **現状**: `apps/server/src/infrastructure/processing/image-processor.ts` や `download-jobs.ts` で `node:child_process` の `execFile` を使用している。
 - **提案**: `Bun.spawn` への置き換え。
 - **メリット**:
   - `child_process` よりも起動オーバーヘッドが小さく、メモリ効率が良い。
@@ -157,7 +157,7 @@ async function handleImport({ zipPath, extractPath }: any) {
   - コード上で明示的な `dotenv.config()` 呼び出しが不要になる。
 
 ### 8.3 `Bun.hash` & `Bun.Crypto` (Hashing)
-- **現状**: `src/domain/media/utils/hash-utils.ts` で `node:crypto` を使用。
+- **現状**: `packages/core/src/domain/media/utils/hash-utils.ts` で `node:crypto` を使用。
 - **提案**:
   - **暗号学的ハッシュ**: `Bun.SHA256` 等の使用（Web Crypto APIのBun最適化実装）。`Bun.file(path).arrayBuffer()` と組み合わせることで、ファイルハッシュ計算を高速化できる可能性がある。
   - **非暗号学的ハッシュ**: キャッシュキー生成やETag計算には、爆速な `Bun.hash` (MurmurHash) を採用する。

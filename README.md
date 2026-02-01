@@ -29,9 +29,11 @@
 
 ## 🚀 セットアップ手順
 
+このプロジェクトはモノレポ構成を採用しています。
+
 ### 1. 依存関係のインストール
 
-プロジェクトの依存関係をインストールします。
+プロジェクトのルートディレクトリで実行します。
 
 ```bash
 bun install
@@ -39,40 +41,39 @@ bun install
 
 ### 2. 環境変数の設定
 
-`.env.example` ファイルをコピーして `.env` ファイルを作成します。
+`apps/server` ディレクトリ内の `.env.example` をコピーして `.env` を作成します。
 
 ```bash
-cp .env.example .env
+cp apps/server/.env.example apps/server/.env
 ```
 
-`.env` ファイルを開き、ご自身の環境に合わせてデータベースの接続情報などを設定してください。`DB_HOST` に `pglite` を指定すると、PostgreSQLの代わりに組み込みのPGliteデータベースが使用されます（Dockerは不要です）。
+`apps/server/.env` ファイルを開き、ご自身の環境に合わせてデータベースの接続情報などを設定してください。
 
 ### 3. データベースの起動 (PostgreSQLの場合)
 
 PostgreSQLを使用する場合は、Docker Composeでデータベースコンテナを起動します。
 
 ```bash
-# -E オプションは環境変数をsudoに引き継ぐために必要です
 sudo -E docker compose --project-directory . up -d
 ```
 
 ### 4. データベースマイグレーション
 
-データベースのテーブル構造をセットアップするために、マイグレーションを実行します。
+`--filter` オプションを使用して、サーバーパッケージ内でコマンドを実行します。
 
 **PostgreSQLの場合:**
 ```bash
-bun run db:migrate
+bun --filter @solid-imager/server run db:migrate
 ```
 
 **PGliteの場合:**
 ```bash
-bun run db:migrate:pglite
+bun --filter @solid-imager/server run db:migrate:pglite
 ```
 
 ### 5. 開発サーバーの起動
 
-開発サーバーを起動します。
+ルートディレクトリから実行できます。
 
 ```bash
 bun run dev

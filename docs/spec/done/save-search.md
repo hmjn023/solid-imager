@@ -43,7 +43,7 @@ export const RESERVED_PRESET_NAMES = ["current"] as const;
 
 ### 2. API設計 (oRPC - Presets Router)
 
-`src/infrastructure/api/routers/presets-router.ts` を新規作成し、以下の操作を提供する。
+`apps/server/src/infrastructure/api/routers/presets-router.ts` を新規作成し、以下の操作を提供する。
 
 #### 利用するスキーマ
 *   `MediaSearchRequest`: [Implement Search Enhancement](./implement-search.md) で定義済み。
@@ -146,7 +146,7 @@ return { ...preset, value: result.data };
 
 ## タスク手順
 
-1.  **Presets Router Implementation**: `src/infrastructure/api/routers/presets-router.ts` を実装し、`appRouter` に登録する。
+1.  **Presets Router Implementation**: `apps/server/src/infrastructure/api/routers/presets-router.ts` を実装し、`appRouter` に登録する。
 2.  **Validation & Error Handling**: スキーマ検証失敗時のフォールバック処理を実装する。
 3.  **Frontend State Management**: フロントエンド（SolidJS）で検索条件のStoreを実装し、上記のフロー（初期化、更新同期）を組み込む。
 4.  **UI Implementation**: 検索条件保存モーダル、プリセット一覧表示、ロード機能のUIを実装する。

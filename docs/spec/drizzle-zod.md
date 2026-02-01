@@ -2,7 +2,7 @@
 
 ## 1. 背景と目的
 
-現在、`src/infrastructure/db/schema.ts`（Drizzle ORMによるDB定義）と、`src/domain/**/schemas.ts`（Zodによるドメイン/バリデーション定義）の間で、類似したスキーマ定義が重複して存在している。
+現在、`apps/server/src/infrastructure/db/schema.ts`（Drizzle ORMによるDB定義）と、`packages/core/src/domain/**/schemas.ts`（Zodによるドメイン/バリデーション定義）の間で、類似したスキーマ定義が重複して存在している。
 
 この「二重管理」状態には以下の課題がある：
 1.  **保守コスト**: DBカラムを追加・変更した際、Zodスキーマ側も手動で追従させる必要があり、手間がかかる。
@@ -23,8 +23,8 @@ graph LR
 ```
 
 ### 2.1. 依存関係の壁
-- `drizzle-zod` は、`src/infrastructure/db/schema.ts` (Infrastructure層) に定義されたテーブルオブジェクトを入力として Zod スキーマを生成する。
-- もし、ドメイン層にある `src/domain/media/schemas.ts` を `drizzle-zod` で生成したコードに置き換えると、**Domain層がInfrastructure層（Drizzleの定義）に直接依存する** ことになる。
+- `drizzle-zod` は、`apps/server/src/infrastructure/db/schema.ts` (Infrastructure層) に定義されたテーブルオブジェクトを入力として Zod スキーマを生成する。
+- もし、ドメイン層にある `packages/core/src/domain/media/schemas.ts` を `drizzle-zod` で生成したコードに置き換えると、**Domain層がInfrastructure層（Drizzleの定義）に直接依存する** ことになる。
 - これはクリーンアーキテクチャの原則違反であり、ドメインモデルがDBの物理構造や特定のライブラリに強く結合してしまうため、許容すべきではない。
 
 ### 2.2. スキーマの質の乖離
@@ -34,7 +34,7 @@ graph LR
 
 ## 3. 導入の是非と結論
 
-**結論: ドメイン層のスキーマ (`src/domain/**/*.ts`) を `drizzle-zod` で置き換えることは行わない。**
+**結論: ドメイン層のスキーマ (`packages/core/src/domain/**/*.ts`) を `drizzle-zod` で置き換えることは行わない。**
 
 当初の懸念通り、「後からドメイン層のスキーマをこれに置き換えるのは破壊的変更となり、かつアーキテクチャ違反を招くため推奨されない」。
 
@@ -61,7 +61,7 @@ graph LR
 **Infrastructure層に Zod スキーマ定義を集約するファイルを作成**
 
 ```typescript
-// src/infrastructure/db/zod-schemas.ts
+// apps/server/src/infrastructure/db/zod-schemas.ts
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { medias, tags } from './schema';
 import { z } from 'zod';
@@ -83,7 +83,7 @@ export const updateMediaApiSchema = insertMediaSchema.pick({
 **Route/Controllerでの利用**
 
 ```typescript
-// src/routes/api/media.ts
+// apps/server/src/routes/api/media.ts
 import { insertMediaSchema } from '~/infrastructure/db/zod-schemas';
 
 // ...
@@ -116,4 +116,4 @@ app.post('/media', async (c) => {
 - **禁止事項**: ドメイン層の既存 Zod スキーマの置き換え。ドメイン層からのインポート。
 - **ネクストアクション**:
     - `bun add drizzle-zod` の実施。
-    - `src/infrastructure/db/validation.ts` (仮) 等を作成し、試験的に一部のAPIで利用を開始する。
+    - `apps/server/src/infrastructure/db/validation.ts` (仮) 等を作成し、試験的に一部のAPIで利用を開始する。

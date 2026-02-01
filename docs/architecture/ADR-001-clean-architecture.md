@@ -9,7 +9,7 @@
 
 The original codebase structure had several organizational issues:
 
-1. **Mixed Concerns**: `src/lib/api/media.ts` contained both API client functions and business logic
+1. **Mixed Concerns**: `apps/server/src/lib/api/media.ts` contained both API client functions and business logic
 2. **Poor Organization**: Types and schemas were in monolithic files (`types.ts`, `schemas.ts`) rather than organized by domain
 3. **Scattered Utilities**: Helper functions spread across multiple files without clear purpose
 4. **Unclear Boundaries**: No clear separation between business logic, infrastructure, and presentation
@@ -38,10 +38,10 @@ src/
 
 We will adopt a **Clean Architecture / Hexagonal Architecture** approach with four primary layers:
 
-1. **Domain Layer** (`src/domain/`) - Business logic, domain models, pure functions
-2. **Application Layer** (`src/application/`) - Use case orchestration, service layer
-3. **Infrastructure Layer** (`src/infrastructure/`) - External integrations, I/O, adapters
-4. **Presentation Layer** (`src/presentation/`) - UI utilities
+1. **Domain Layer** (`packages/core/src/domain/`) - Business logic, domain models, pure functions
+2. **Application Layer** (`apps/server/src/application/`) - Use case orchestration, service layer
+3. **Infrastructure Layer** (`apps/server/src/infrastructure/`) - External integrations, I/O, adapters
+4. **Presentation Layer** (`apps/server/src/presentation/`) - UI utilities
 
 ### Dependency Rules
 
@@ -126,8 +126,8 @@ src/
    - Benefit: Single source of truth for each concern
 
 4. **Framework Compatibility**: Works with SolidStart conventions
-   - Routes stay in `src/routes/` per framework requirement
-   - Components stay in `src/components/` per framework requirement
+   - Routes stay in `apps/server/src/routes/` per framework requirement
+   - Components stay in `apps/server/src/components/` per framework requirement
    - Architecture layers don't conflict with framework structure
 
 ## Consequences

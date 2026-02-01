@@ -41,7 +41,7 @@
 
 ### 2.3 Router Factoryの導入 (oRPC)
 
-`src/infrastructure/api/routers/` 内のルーター定義（`tags-router.ts` 等）は、`list`, `get`, `create`, `update`, `delete` のハンドラーを個別に定義しています。これらもパターン化されています。
+`apps/server/src/infrastructure/api/routers/` 内のルーター定義（`tags-router.ts` 等）は、`list`, `get`, `create`, `update`, `delete` のハンドラーを個別に定義しています。これらもパターン化されています。
 
 **提案:**
 `createCrudRouter(serviceOrRepo, schema)` のようなファクトリ関数を作成し、標準的なCRUDエンドポイントを自動生成するようにします。
@@ -53,17 +53,17 @@
 
 ### 3.1 APIクライアントのラッパー削除
 
-`src/infrastructure/api-clients/` 下にある `projects-api.ts` や `tags-api.ts` は、単に `orpc` クライアントをラップしているだけです。`orpc` は既に型安全なクライアントを提供しているため、これらのラッパーは技術的に不要です。
+`apps/server/src/infrastructure/api-clients/` 下にある `projects-api.ts` や `tags-api.ts` は、単に `orpc` クライアントをラップしているだけです。`orpc` は既に型安全なクライアントを提供しているため、これらのラッパーは技術的に不要です。
 
 **提案:**
 コンポーネントから直接 `orpc.projects.list()` のように呼び出すか、あるいは `orpc` クライアントを拡張して使用し、手動のラッパーファイルを削除します。
 
 **削減効果:**
-`src/infrastructure/api-clients/` 内の多数のファイルを削除できます。
+`apps/server/src/infrastructure/api-clients/` 内の多数のファイルを削除できます。
 
 ### 3.2 管理画面 (Manager Page) の共通コンポーネント化
 
-`src/routes/manager.tsx` では、Projects, IPs, Characters の3つのエンティティに対して、表示・作成・編集・削除のロジックを `if/else` や `switch` 文で分岐して実装しています。
+`apps/server/src/routes/manager.tsx` では、Projects, IPs, Characters の3つのエンティティに対して、表示・作成・編集・削除のロジックを `if/else` や `switch` 文で分岐して実装しています。
 
 **提案:**
 「一覧表示 + 作成/編集モーダル + 削除確認」の機能をセットにした `GenericCrudManager<T>` コンポーネント（または `CrudTable`）を作成し、エンティティごとの設定（カラム定義、API呼び出し関数）を渡す形にリファクタリングすることを推奨します。

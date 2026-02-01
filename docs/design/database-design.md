@@ -1,7 +1,7 @@
 # 04 データベース設計
 
 このドキュメントは、プロジェクトのデータベーススキーマについて記述します。
-スキーマ定義の唯一の信頼できる情報源（Single Source of Truth）は `src/infrastructure/db/schema.ts` にある Drizzle ORM のスキーマファイルです。このドキュメントは、その内容を人間が読みやすい形式でまとめたものです。
+スキーマ定義の唯一の信頼できる情報源（Single Source of Truth）は `apps/server/src/infrastructure/db/schema.ts` にある Drizzle ORM のスキーマファイルです。このドキュメントは、その内容を人間が読みやすい形式でまとめたものです。
 
 ## ER図 (Mermaid)
 
