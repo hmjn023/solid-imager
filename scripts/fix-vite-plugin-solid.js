@@ -14,7 +14,7 @@ function findFile(startPath) {
 
 // In Bun, files might be in a different structure, but usually node_modules/vite-plugin-solid should exist via symlinks.
 // However, the error log showed: file:///home/hmjn/solid-imager/node_modules/.bun/vite-plugin-solid@2.11.10...
-// So we leverage `require.resolve` or similar to find it? 
+// So we leverage `require.resolve` or similar to find it?
 // Actually, let's try to locate it relative to CWD.
 
 const possiblePaths = [
