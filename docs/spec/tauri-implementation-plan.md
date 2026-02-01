@@ -88,7 +88,7 @@ export interface IConfigService {
 
 ### Step 2: 抽象化インターフェースの実装
 1.  `src/infrastructure/interfaces/` ディレクトリを作成（後で `packages/core` へ移動）。
-2.  上記 `IFileSystem`, `IMediaStorage` を定義。
+2.  上記 `IFileSystem`, `IMediaStorage`, `IConfigService` を定義。
 3.  既存の `LocalMediaStorage` を `ServerMediaStorage` にリネームし、`IMediaStorage` を実装するように修正。
 
 ### Step 3: アプリケーション層のリファクタリング
