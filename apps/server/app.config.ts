@@ -1,10 +1,20 @@
 import { defineConfig } from "@solidjs/start/config";
 import tailwindcss from "@tailwindcss/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   vite: {
-    plugins: [tailwindcss(), tsconfigPaths()],
+    resolve: {
+      alias: {
+        "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
+        "@": path.resolve(__dirname, "../../packages/core/src"),
+        "~": path.resolve(__dirname, "./src"),
+      },
+    },
+    plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm", "effect"],
       external: ["pg"],

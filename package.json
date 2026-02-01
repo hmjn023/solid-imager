@@ -38,5 +38,8 @@
   "trustedDependencies": [
     "youtube-dl-exec",
     "ffmpeg-static"
-  ]
+  ],
+  "patchedDependencies": {
+    "vite-plugin-solid@2.11.10": "patches/vite-plugin-solid@2.11.10.patch"
+  }
 }

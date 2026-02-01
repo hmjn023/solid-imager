@@ -1,0 +1,14 @@
+diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
+index e3b0c44..2f3e456 100644
+--- a/dist/esm/index.mjs
++++ b/dist/esm/index.mjs
+@@ -133,7 +133,8 @@
+         }
+       }
+       /* restored safe patch */
+-      config.resolve.conditions = ['solid', ...(replaceDev ? ['development'] : []), ...(isTestMode && !opts.isSsrTargetWebworker && !options.ssr ? ['browser'] : []), ...config.resolve.conditions];
++      const currentConditions = Array.isArray(config.resolve.conditions) ? config.resolve.conditions : [];
++      config.resolve.conditions = ['solid', ...(replaceDev ? ['development'] : []), ...(isTestMode && !opts.isSsrTargetWebworker && !options.ssr ? ['browser'] : []), ...currentConditions];
+ 
+       // Set resolve.noExternal and resolve.external for SSR environment (Vite 6+)
+       // Only set resolve.external if noExternal is not true (to avoid conflicts with plugins like Cloudflare)

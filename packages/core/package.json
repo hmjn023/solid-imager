@@ -26,9 +26,11 @@
     "lint": "biome lint ./src"
   },
   "peerDependencies": {
-    "zod": "^4.3.5"
+    "zod": "^4.3.5",
+    "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@types/node": "^24.10.4"
   }
 }
