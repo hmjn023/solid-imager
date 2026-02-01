@@ -1,4 +1,4 @@
-import { TweetMetadata, Author } from "../schema";
+import { TweetMetadata, Author } from "@ext/schema";
 
 console.log("xtracter content script loaded");
 
@@ -177,8 +177,7 @@ function extractMetadata(
     }
 
     if (!authorId) {
-      authorId =
-        (userNameNode as HTMLElement)?.innerText?.match(/@\w+/)?.[0] || "";
+      authorId = userNameNode?.textContent?.match(/@\w+/)?.[0] || "";
     }
   }
 

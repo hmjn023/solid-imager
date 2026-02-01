@@ -27,33 +27,6 @@ const URL_HASH_LENGTH = 12;
 // ffmpeg-static may return null on unsupported platforms
 const resolvedFfmpegPath = ffmpegPath ?? undefined;
 
-/**
- * Downloads an image from a URL and saves it to the specified path.
- * @param imageUrl - The URL of the image to download
- * @param outputPath - The path where the image should be saved
- */
-async function _downloadImage(
-  imageUrl: string,
-  outputPath: string
-): Promise<void> {
-  const response = await fetch(imageUrl, {
-    headers: {
-      "User-Agent":
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    },
-  });
-  if (!response.ok) {
-    throw new Error(
-      `Failed to download image: ${response.status} ${response.statusText}`
-    );
-  }
-
-  const arrayBuffer = await response.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-
-  await fs.mkdir(path.dirname(outputPath), { recursive: true });
-  await fs.writeFile(outputPath, buffer);
-}
 
 type YtDlpOutput = {
   id: string;

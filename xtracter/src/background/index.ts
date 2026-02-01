@@ -5,9 +5,9 @@ import {
   PostBulkMessage,
   PostDownloadMessage,
   TweetMetadata,
-} from "../schema";
-import { getClient, APIError } from "../api";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+} from "@ext/schema";
+import { getClient, APIError } from "@ext/api";
+import type { SafeMediaSource } from "@core/domain/sources/schemas";
 
 console.log("[xtracter] Background script loaded");
 
@@ -36,7 +36,7 @@ async function retryWithBackoff<T>(
           const delay = initialDelay * Math.pow(2, attempt);
           console.warn(
             `[xtracter] API call failed (attempt ${attempt + 1}/${maxRetries}), ` +
-              `retrying in ${delay}ms...`,
+            `retrying in ${delay}ms...`,
             error.message
           );
           await new Promise((resolve) => setTimeout(resolve, delay));

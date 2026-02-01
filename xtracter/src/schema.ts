@@ -99,8 +99,11 @@ export const messageSchema = z.discriminatedUnion("type", [
 
 export type Message = z.infer<typeof messageSchema>;
 
-export const extendedMessageSchema = z.union([
-  messageSchema,
+export const extendedMessageSchema = z.discriminatedUnion("type", [
+  downloadMessageSchema,
+  downloadBulkMessageSchema,
+  postDownloadMessageSchema,
+  postBulkMessageSchema,
   getSourcesMessageSchema,
   getMetadataMessageSchema,
   downloadJsonMessageSchema,

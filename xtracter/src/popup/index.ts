@@ -1,5 +1,5 @@
-import { MediaSource, TweetMetadata } from "../schema";
-import { testConnection, getClient } from "../api";
+import { MediaSource, TweetMetadata } from "@ext/schema";
+import { testConnection, getClient } from "@ext/api";
 
 const apiUrlInput = document.getElementById("api-url") as HTMLInputElement;
 const select = document.getElementById("source-select") as HTMLSelectElement;
@@ -202,12 +202,7 @@ bulkUploadBtn.addEventListener("click", async () => {
 
     uploadStatusDiv.textContent = `Uploading ${metadata.length} items...`;
 
-    // 2. Map TweetMetadata to DownloadItem
-    // TweetMetadata matches DownloadItem mostly, but let's be safe or just cast if compatible.
-    // DownloadItem requires targetUrl. TweetMetadata has it.
-    // DownloadItem has authors[], TweetMetadata has authors[].
-
-    // 3. Call API
+    // 2. Call API
     const client = await getClient();
     const result = await client.imports.bulkAdd({
       items: metadata,

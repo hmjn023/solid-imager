@@ -3,7 +3,11 @@
     "target": "ES2022",
     "useDefineForClassFields": true,
     "module": "ESNext",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
@@ -15,11 +19,30 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@solid-imager/core/*": ["../packages/core/src/*"],
-      "@solid-imager/server/*": ["../apps/server/src/*"],
-      "~/*": ["../apps/server/src/*"],
-      "@/*": ["../packages/core/src/*"]
+      "@ext/*": [
+        "./src/*"
+      ],
+      "~/*": [
+        "../apps/server/src/*"
+      ],
+      "@/*": [
+        "../packages/core/src/*"
+      ],
+      "@solid-imager/core/*": [
+        "../packages/core/src/*"
+      ],
+      "@solid-imager/server/*": [
+        "../apps/server/src/*"
+      ],
+      "@core/*": [
+        "../packages/core/src/*"
+      ],
+      "@server/*": [
+        "../apps/server/src/*"
+      ]
     }
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
