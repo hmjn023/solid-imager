@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
-    "build": "bun --filter @solid-imager/server build",
+    "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "lint": "bun x biome lint .",
     "format": "bun x biome format --fix .",
