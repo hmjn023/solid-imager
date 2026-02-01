@@ -12,6 +12,51 @@ type ClipboardCopyProps = {
 const DEFAULT_ICON_SIZE = 14;
 const RESET_TIMEOUT = 2000;
 
+function CopyIcon(props: { size?: number; class?: string }) {
+  return (
+    <svg
+      aria-label="Copy icon"
+      class={props.class}
+      fill="none"
+      height={props.size || 24}
+      role="img"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width={props.size || 24}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Copy icon</title>
+      <rect height="14" rx="2" ry="2" width="14" x="8" y="8" />
+      <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </svg>
+  );
+}
+
+function CheckIcon(props: { size?: number; class?: string }) {
+  return (
+    <svg
+      aria-label="Check icon"
+      class={props.class}
+      fill="none"
+      height={props.size || 24}
+      role="img"
+      stroke="currentColor"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      viewBox="0 0 24 24"
+      width={props.size || 24}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Check icon</title>
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+
 export function ClipboardCopy(props: ClipboardCopyProps) {
   const [copied, setCopied] = createSignal(false);
   const [local, others] = splitProps(props, [
@@ -63,20 +108,14 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
       {...others}
     >
       {copied() ? (
-        <span
-          class="i-lucide-check text-green-600"
-          style={{
-            width: `${local.iconSize || DEFAULT_ICON_SIZE}px`,
-            height: `${local.iconSize || DEFAULT_ICON_SIZE}px`,
-          }}
+        <CheckIcon
+          class="text-green-600"
+          size={local.iconSize || DEFAULT_ICON_SIZE}
         />
       ) : (
-        <span
-          class="i-lucide-copy text-gray-500 hover:text-gray-700"
-          style={{
-            width: `${local.iconSize || DEFAULT_ICON_SIZE}px`,
-            height: `${local.iconSize || DEFAULT_ICON_SIZE}px`,
-          }}
+        <CopyIcon
+          class="text-gray-500 hover:text-gray-700"
+          size={local.iconSize || DEFAULT_ICON_SIZE}
         />
       )}
     </button>
