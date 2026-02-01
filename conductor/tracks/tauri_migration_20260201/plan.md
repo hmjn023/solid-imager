@@ -41,8 +41,8 @@
 - [x] Task: Conductor - User Manual Verification 'Monorepo Restructuring' (Protocol in workflow.md) <!-- f58d351 -->
 
 ## Phase 4: Documentation Update
-- [~] Task: Update `AGENTS.md` to reflect the new monorepo structure, updated paths, and new coding rules.
-- [~] Task: Update `docs/architecture/ARCHITECTURE.md` to document the core/server separation and abstraction layers.
-- [~] Task: Update all relative links within the `docs/` directory to ensure they point to the correct locations in the monorepo.
-- [~] Task: Update the "Development Setup" instructions in various READMEs to reflect Bun Workspaces usage.
-- [ ] Task: Conductor - User Manual Verification 'Documentation Update' (Protocol in workflow.md)
+- [x] Task: Update `AGENTS.md` to reflect the new monorepo structure, updated paths, and new coding rules. <!-- 9832868 -->
+- [x] Task: Update `docs/architecture/ARCHITECTURE.md` to document the core/server separation and abstraction layers. <!-- 71add4f -->
+- [x] Task: Update all relative links within the `docs/` directory to ensure they point to the correct locations in the monorepo. <!-- d7b8782 -->
+- [x] Task: Update the "Development Setup" instructions in various READMEs to reflect Bun Workspaces usage. <!-- 9f50580 -->
+- [x] Task: Conductor - User Manual Verification 'Documentation Update' (Protocol in workflow.md)
