@@ -3,12 +3,12 @@
 ## Phase 1: Core Package Extraction & Setup
 - [x] Task: Create `packages/core` directory structure and initialize `package.json` for Bun Workspaces. <!-- 59437f3 -->
 - [x] Task: Configure Bun Workspaces in the root `package.json`. <!-- 565025d -->
-- [~] Task: Move `src/domain` entities and logic to `packages/core/src/domain`.
-    - [ ] Subtask: Identify pure TypeScript domain logic (no Node.js deps).
-    - [ ] Subtask: Move files and update internal relative imports within `core`.
-- [ ] Task: Move shared Zod schemas to `packages/core/src/schema`.
-- [ ] Task: Refactor `apps/server` (original src) to import from `@solid-imager/core` (or equivalent alias).
-- [ ] Task: Verify that `packages/core` builds/lints correctly without Node.js specific dependencies.
+- [x] Task: Move `src/domain` entities and logic to `packages/core/src/domain`. <!-- ab4a704 -->
+    - [x] Subtask: Identify pure TypeScript domain logic (no Node.js deps).
+    - [x] Subtask: Move files and update internal relative imports within `core`.
+- [x] Task: Move shared Zod schemas to `packages/core/src/schema`. <!-- ab4a704 -->
+- [x] Task: Refactor `apps/server` (original src) to import from `@solid-imager/core` (or equivalent alias). <!-- ab4a704 -->
+- [x] Task: Verify that `packages/core` builds/lints correctly without Node.js specific dependencies. <!-- 09607e9 -->
 
 ## Phase 2: Abstraction Layer Implementation
 - [ ] Task: Define `IFileSystem` interface in `packages/core`.
