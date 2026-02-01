@@ -1,7 +1,7 @@
 # Implementation Plan - Track: Tauri Infrastructure & Monorepo Migration (Phase 1-3)
 
 ## Phase 1: Core Package Extraction & Setup
-- [~] Task: Create `packages/core` directory structure and initialize `package.json` for Bun Workspaces.
+- [x] Task: Create `packages/core` directory structure and initialize `package.json` for Bun Workspaces. <!-- 59437f3 -->
 - [ ] Task: Configure Bun Workspaces in the root `package.json`.
 - [ ] Task: Move `src/domain` entities and logic to `packages/core/src/domain`.
     - [ ] Subtask: Identify pure TypeScript domain logic (no Node.js deps).
