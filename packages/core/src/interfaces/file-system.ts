@@ -1,8 +1,8 @@
 export interface IFileSystem {
   exists(path: string): Promise<boolean>;
-  readFile(path: string): Promise<Buffer>;
-  readTextFile(path: string, encoding?: BufferEncoding): Promise<string>;
-  writeFile(path: string, data: string | Buffer): Promise<void>;
+  readFile(path: string): Promise<Uint8Array>;
+  readTextFile(path: string, encoding?: string): Promise<string>;
+  writeFile(path: string, data: string | Uint8Array): Promise<void>;
   mkdir(path: string, options?: { recursive?: boolean }): Promise<void>;
   readdir(path: string): Promise<string[]>;
   stat(path: string): Promise<{

@@ -11,18 +11,18 @@ export class NodeFileSystem implements IFileSystem {
     }
   }
 
-  async readFile(path: string): Promise<Buffer> {
+  async readFile(path: string): Promise<Uint8Array> {
     return await fs.readFile(path);
   }
 
   async readTextFile(
     path: string,
-    encoding: BufferEncoding = "utf-8"
+    encoding: string = "utf-8"
   ): Promise<string> {
-    return await fs.readFile(path, { encoding });
+    return await fs.readFile(path, { encoding: encoding as BufferEncoding });
   }
 
-  async writeFile(path: string, data: string | Buffer): Promise<void> {
+  async writeFile(path: string, data: string | Uint8Array): Promise<void> {
     await fs.writeFile(path, data);
   }
 
