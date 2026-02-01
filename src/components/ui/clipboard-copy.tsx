@@ -18,13 +18,13 @@ function CopyIcon(props: { size?: number; class?: string }) {
       aria-hidden="true"
       class={props.class}
       fill="none"
-      height={props.size || 24}
+      height={props.size}
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="2"
       viewBox="0 0 24 24"
-      width={props.size || 24}
+      width={props.size}
       xmlns="http://www.w3.org/2000/svg"
     >
       <rect height="14" rx="2" ry="2" width="14" x="8" y="8" />
@@ -39,13 +39,13 @@ function CheckIcon(props: { size?: number; class?: string }) {
       aria-hidden="true"
       class={props.class}
       fill="none"
-      height={props.size || 24}
+      height={props.size}
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
       stroke-width="2"
       viewBox="0 0 24 24"
-      width={props.size || 24}
+      width={props.size}
       xmlns="http://www.w3.org/2000/svg"
     >
       <polyline points="20 6 9 17 4 12" />
@@ -61,6 +61,14 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
     "class",
     "iconSize",
   ]);
+
+  let timeoutId: number | undefined;
+
+  onCleanup(() => {
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
+  });
 
   const handleCopy = async (e: MouseEvent) => {
     e.preventDefault();
@@ -78,7 +86,9 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
       return;
     }
 
-    let timeoutId: number;
+    if (timeoutId) {
+      window.clearTimeout(timeoutId);
+    }
 
     try {
       await navigator.clipboard.writeText(local.text);
@@ -87,16 +97,11 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 
       timeoutId = window.setTimeout(() => {
         setCopied(false);
+        timeoutId = undefined;
       }, RESET_TIMEOUT);
     } catch (_error) {
       toast.error("Failed to copy");
     }
-
-    onCleanup(() => {
-      if (timeoutId) {
-        window.clearTimeout(timeoutId);
-      }
-    });
   };
 
   return (
