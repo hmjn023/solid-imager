@@ -127,10 +127,10 @@ async function handleFileChanged(
     }
 
     // Update file metadata (size, dimensions, mtime)
-    const { LocalMediaStorage } = await import(
-      "~/infrastructure/storage/local-media-storage"
+    const { ServerMediaStorage } = await import(
+      "~/infrastructure/storage/server-media-storage"
     );
-    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
     await MediaRepository.update(media.id, {
       width: fileMetadata.width,
       height: fileMetadata.height,

@@ -21,10 +21,10 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-// Mock LocalMediaStorage to avoid needing real media files (ffmpeg/sharp dependencies)
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+// Mock ServerMediaStorage to avoid needing real media files (ffmpeg/sharp dependencies)
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
-vi.spyOn(LocalMediaStorage, "getFileMetadata").mockImplementation(
+vi.spyOn(ServerMediaStorage, "getFileMetadata").mockImplementation(
   (filePath: string): Promise<any> => {
     const ext = path.extname(filePath).toLowerCase();
 
@@ -76,7 +76,7 @@ describe("Media Type Handling Integration", () => {
   beforeAll(async () => {
     services.registerMediaRepository(MediaRepository);
     services.registerSourceRepository(new DrizzleSourceRepository());
-    services.registerStorageService(LocalMediaStorage);
+    services.registerMediaStorage(ServerMediaStorage);
     services.registerTagRepository(TagRepository);
     services.registerImageProcessor(ImageProcessor);
     services.registerAuthorRepository(AuthorRepository);

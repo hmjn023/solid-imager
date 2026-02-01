@@ -70,7 +70,7 @@ describe("MediaService - Copy Media Integration", () => {
     services.registerCharacterRepository(new DrizzleCharacterRepository());
     services.registerIpRepository(IpRepository);
     services.registerJobRepository(new JobRepository());
-    services.registerStorageService(mockStorageService as any);
+    services.registerMediaStorage(mockStorageService as any);
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
 

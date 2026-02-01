@@ -21,7 +21,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // We need to dynamically import these to work around Vitest's hoisting
 let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
@@ -50,7 +50,7 @@ describe("getMediaDetails", () => {
   beforeAll(async () => {
     services.registerMediaRepository(MediaRepository);
     services.registerSourceRepository(new DrizzleSourceRepository());
-    services.registerStorageService(LocalMediaStorage);
+    services.registerMediaStorage(ServerMediaStorage);
     services.registerTagRepository(TagRepository);
     services.registerImageProcessor(ImageProcessor);
     services.registerAuthorRepository(AuthorRepository);

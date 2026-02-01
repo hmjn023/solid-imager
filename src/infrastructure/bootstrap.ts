@@ -14,7 +14,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 export let isBootstrapped = false;
 
@@ -50,7 +50,7 @@ export function bootstrap() {
   services.registerJobRepository(jobRepo);
 
   // Register Services
-  services.registerStorageService(LocalMediaStorage);
+  services.registerMediaStorage(ServerMediaStorage);
   services.registerImageProcessor(ImageProcessor);
 
   // Initialize PythonClient with config values

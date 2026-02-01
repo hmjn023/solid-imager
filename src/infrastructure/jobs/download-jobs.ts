@@ -18,7 +18,7 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
@@ -303,7 +303,7 @@ async function handleYtDlpDownload(
       );
 
       // Get file metadata (size etc, verify it exists)
-      const fileMeta = await LocalMediaStorage.getFileMetadata(filePath);
+      const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
 
       const newMedia: AddMediaRequest = {
         mediaSourceId,
@@ -367,7 +367,7 @@ async function handleDirectImageDownload(
     await downloadImage(item.targetUrl, fullPath);
 
     // Get file metadata
-    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
 
     let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 

@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const TEST_DIR = path.join(process.cwd(), "test-data-storage-security");
 const TARGET_DIR = path.join(TEST_DIR, "target");
@@ -12,7 +12,7 @@ const VALID_PNG_BUFFER = Buffer.from(
   "hex"
 );
 
-describe("LocalMediaStorage Security", () => {
+describe("ServerMediaStorage Security", () => {
   beforeAll(async () => {
     await fs.mkdir(TARGET_DIR, { recursive: true });
     // Create a valid image file outside target
@@ -39,14 +39,14 @@ describe("LocalMediaStorage Security", () => {
   test("getFile should block traversal to parent directory", async () => {
     const traversalPath = "../secret.txt";
     await expect(
-      LocalMediaStorage.getFile(TARGET_DIR, traversalPath)
+      ServerMediaStorage.getFile(TARGET_DIR, traversalPath)
     ).rejects.toThrow("Invalid path");
   });
 
   test("deleteFile should block traversal", async () => {
     const traversalPath = "../secret.txt";
     await expect(
-      LocalMediaStorage.deleteFile(TARGET_DIR, traversalPath)
+      ServerMediaStorage.deleteFile(TARGET_DIR, traversalPath)
     ).rejects.toThrow("Invalid path");
     const exists = await fs
       .access(path.join(TEST_DIR, "secret.txt"))
@@ -63,7 +63,7 @@ describe("LocalMediaStorage Security", () => {
 
     // Expect strict rejection
     await expect(
-      LocalMediaStorage.saveFile(TARGET_DIR, file, {
+      ServerMediaStorage.saveFile(TARGET_DIR, file, {
         filename: traversalFilename,
       })
     ).rejects.toThrow("Invalid path");
@@ -77,7 +77,7 @@ describe("LocalMediaStorage Security", () => {
     // Since 'nested' dir does not exist and saveFile does not create it (nor sanitize the path string),
     // file system should throw ENOENT.
     try {
-      await LocalMediaStorage.saveFile(TARGET_DIR, file, {
+      await ServerMediaStorage.saveFile(TARGET_DIR, file, {
         filename: deeplyNested,
         overwrite: true,
       });
@@ -95,7 +95,7 @@ describe("LocalMediaStorage Security", () => {
     const traversalName = "../copied_malicious.png";
 
     await expect(
-      LocalMediaStorage.copyFile(source, TARGET_DIR, {
+      ServerMediaStorage.copyFile(source, TARGET_DIR, {
         filename: traversalName,
       })
     ).rejects.toThrow("Invalid path");

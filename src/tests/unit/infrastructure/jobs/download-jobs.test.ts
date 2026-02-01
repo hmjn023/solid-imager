@@ -51,9 +51,9 @@ vi.mock("~/infrastructure/repositories/author-repository", () => ({
     addMedia: mockAuthorAddMedia,
   },
 }));
-vi.mock("~/infrastructure/storage/local-media-storage", () => ({
+vi.mock("~/infrastructure/storage/server-media-storage", () => ({
   // biome-ignore lint/style/useNamingConvention: Mocking class export
-  LocalMediaStorage: {
+  ServerMediaStorage: {
     getFileMetadata: mockGetFileMetadata,
   },
 }));

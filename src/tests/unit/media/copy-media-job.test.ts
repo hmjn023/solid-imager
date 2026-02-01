@@ -134,7 +134,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 
     // Register Services
     services.registerMediaRepository(MediaRepository);
-    services.registerStorageService(mockStorageService as any);
+    services.registerMediaStorage(mockStorageService as any);
     services.registerImageProcessor(mockImageProcessor as any);
     services.registerAiClient(mockAiClient as any);
 

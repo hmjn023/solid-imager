@@ -1,3 +1,4 @@
+import type { IMediaStorage } from "@solid-imager/core";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
@@ -7,7 +8,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { IStorageService } from "@solid-imager/core/domain/services/storage-service";
 import type { ConfigServiceImpl } from "~/application/services/config-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -17,7 +17,7 @@ export class ServiceRegistry {
   private static instance: ServiceRegistry;
   private mediaRepository?: IMediaRepository;
   private sourceRepository?: SourceRepository;
-  private storageService?: IStorageService;
+  private mediaStorage?: IMediaStorage;
   private tagRepository?: TagRepositoryDef;
   private imageProcessor?: IImageProcessor;
   private aiClient?: IAiClient;
@@ -47,8 +47,8 @@ export class ServiceRegistry {
     this.sourceRepository = repo;
   }
 
-  registerStorageService(service: IStorageService): void {
-    this.storageService = service;
+  registerMediaStorage(service: IMediaStorage): void {
+    this.mediaStorage = service;
   }
 
   registerTagRepository(repo: TagRepositoryDef): void {
@@ -101,11 +101,11 @@ export class ServiceRegistry {
     return this.sourceRepository;
   }
 
-  getStorageService(): IStorageService {
-    if (!this.storageService) {
+  getMediaStorage(): IMediaStorage {
+    if (!this.mediaStorage) {
       throw new Error("StorageService has not been registered.");
     }
-    return this.storageService;
+    return this.mediaStorage;
   }
 
   getImageProcessor(): IImageProcessor {
@@ -197,7 +197,7 @@ export class ServiceRegistry {
   async reset(): Promise<void> {
     this.mediaRepository = undefined;
     this.sourceRepository = undefined;
-    this.storageService = undefined;
+    this.mediaStorage = undefined;
     this.tagRepository = undefined;
     this.imageProcessor = undefined;
     this.aiClient = undefined;

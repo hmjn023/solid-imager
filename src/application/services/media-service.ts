@@ -4,6 +4,7 @@
  */
 
 import path from "node:path";
+import type { IMediaStorage } from "@solid-imager/core";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
@@ -33,7 +34,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository"; // Added
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { IStorageService } from "@solid-imager/core/domain/services/storage-service";
 import { services } from "~/application/registry"; // Default registry
 import {
   type DeferredActions,
@@ -94,7 +94,7 @@ export async function validateFileSignature(
 export class MediaServiceImpl {
   private readonly mediaRepository: IMediaRepository;
   private readonly sourceRepository: SourceRepository;
-  private readonly storageService: IStorageService;
+  private readonly storageService: IMediaStorage;
   private readonly tagRepository: TagRepositoryDef;
   private readonly imageProcessor: IImageProcessor;
   private readonly authorRepository: IAuthorRepository;
@@ -106,7 +106,7 @@ export class MediaServiceImpl {
   constructor(
     mediaRepository: IMediaRepository,
     sourceRepository: SourceRepository,
-    storageService: IStorageService,
+    storageService: IMediaStorage,
     tagRepository: TagRepositoryDef,
     imageProcessor: IImageProcessor,
     authorRepository: IAuthorRepository,
@@ -306,7 +306,7 @@ export class MediaServiceImpl {
   async getMediaContent(
     mediaSourceId: string,
     mediaId: string
-  ): Promise<{ buffer: Buffer; contentType: string }> {
+  ): Promise<{ buffer: Uint8Array; contentType: string }> {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
 
@@ -970,7 +970,7 @@ const getMediaService = () => {
     _mediaService = new MediaServiceImpl(
       services.getMediaRepository(),
       services.getSourceRepository(),
-      services.getStorageService(),
+      services.getMediaStorage(),
       services.getTagRepository(),
       services.getImageProcessor(),
       services.getAuthorRepository(),

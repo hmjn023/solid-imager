@@ -1,3 +1,4 @@
+import type { IMediaStorage } from "@solid-imager/core";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
@@ -7,7 +8,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { IStorageService } from "@solid-imager/core/domain/services/storage-service";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
 
@@ -22,7 +22,7 @@ vi.mock("~/application/registry", () => {
     registerCharacterRepository: vi.fn(),
     registerIpRepository: vi.fn(),
     registerJobRepository: vi.fn(),
-    registerStorageService: vi.fn(),
+    registerMediaStorage: vi.fn(),
     registerImageProcessor: vi.fn(),
     registerAiClient: vi.fn(),
     registerJobWorker: vi.fn(),
@@ -35,7 +35,7 @@ vi.mock("~/application/registry", () => {
     getCharacterRepository: vi.fn(),
     getIpRepository: vi.fn(),
     getProjectRepository: vi.fn(),
-    getStorageService: vi.fn(),
+    getMediaStorage: vi.fn(),
     getConfigService: vi.fn(),
     getImageProcessor: vi.fn(),
   };
@@ -55,7 +55,7 @@ describe("MediaService Unit Tests", () => {
   let mediaService: MediaServiceImpl;
   let mockMediaRepository: IMediaRepository;
   let mockSourceRepository: SourceRepository;
-  let mockStorageService: IStorageService;
+  let mockStorageService: IMediaStorage;
   let mockTagRepository: TagRepository;
   let mockImageProcessor: IImageProcessor;
   let mockAuthorRepository: IAuthorRepository;
@@ -103,7 +103,7 @@ describe("MediaService Unit Tests", () => {
       getFileMetadata: vi.fn(),
       copyFile: vi.fn(),
       deleteFile: vi.fn(),
-    } as unknown as IStorageService;
+    } as unknown as IMediaStorage;
 
     mockTagRepository = {
       addTagsToMedia: vi.fn(),

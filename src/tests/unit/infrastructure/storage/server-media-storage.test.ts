@@ -2,14 +2,14 @@ import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // Mock definitions
 vi.mock("node:fs/promises");
 vi.mock("sharp");
 vi.mock("fluent-ffmpeg");
 
-describe("LocalMediaStorage Unit Tests", () => {
+describe("ServerMediaStorage Unit Tests", () => {
   const basePath = "/tmp/test-storage";
   const ExpectedWidth = 800;
 
@@ -63,7 +63,7 @@ describe("LocalMediaStorage Unit Tests", () => {
       } as any);
 
       // Execute
-      const result = await LocalMediaStorage.copyFile(
+      const result = await ServerMediaStorage.copyFile(
         sourcePath,
         targetPath,
         {}
@@ -94,7 +94,7 @@ describe("LocalMediaStorage Unit Tests", () => {
       } as any);
 
       // Execute
-      const result = await LocalMediaStorage.copyFile(
+      const result = await ServerMediaStorage.copyFile(
         sourcePath,
         targetPath,
         {}
@@ -127,7 +127,7 @@ describe("LocalMediaStorage Unit Tests", () => {
       } as any);
 
       // Execute & Verify
-      const result = await LocalMediaStorage.saveFile(basePath, file, {});
+      const result = await ServerMediaStorage.saveFile(basePath, file, {});
 
       expect(result).toBeDefined();
       expect(ffmpeg.ffprobe).toHaveBeenCalled();

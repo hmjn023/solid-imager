@@ -11,12 +11,12 @@
 - [x] Task: Verify that `packages/core` builds/lints correctly without Node.js specific dependencies. <!-- 09607e9 -->
 
 ## Phase 2: Abstraction Layer Implementation
-- [ ] Task: Define `IFileSystem` interface in `packages/core`.
-    - [ ] Subtask: Create `packages/core/src/interfaces/file-system.ts`.
-- [ ] Task: Define `IMediaStorage` interface in `packages/core`.
-    - [ ] Subtask: Create `packages/core/src/interfaces/media-storage.ts`.
-- [ ] Task: Define `IConfigService` interface in `packages/core`.
-    - [ ] Subtask: Create `packages/core/src/interfaces/config-service.ts`.
+- [x] Task: Define `IFileSystem` interface in `packages/core`.
+    - [x] Subtask: Create `packages/core/src/interfaces/file-system.ts`.
+- [x] Task: Define `IMediaStorage` interface in `packages/core`.
+    - [x] Subtask: Create `packages/core/src/interfaces/media-storage.ts`.
+- [x] Task: Define `IConfigService` interface in `packages/core`.
+    - [x] Subtask: Create `packages/core/src/interfaces/config-service.ts`.
 - [ ] Task: Implement `NodeFileSystem` (Server implementation) in `apps/server`.
     - [ ] Subtask: Create class implementing `IFileSystem` using `node:fs`.
     - [ ] Subtask: Refactor existing file system usage to use this implementation.

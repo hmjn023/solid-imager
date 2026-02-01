@@ -25,7 +25,7 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 export class MediaProcessingServiceImpl {
   private readonly sourceRepo: SourceRepository;
@@ -84,7 +84,7 @@ export class MediaProcessingServiceImpl {
     const fullPath = path.join(basePath, relativePath);
 
     // Get file metadata
-    const fileMetadata = await LocalMediaStorage.getFileMetadata(fullPath);
+    const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
 
     // Determine media type
     const ext = path.extname(relativePath).toLowerCase();

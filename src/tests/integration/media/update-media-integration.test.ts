@@ -14,7 +14,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
-import { LocalMediaStorage } from "~/infrastructure/storage/local-media-storage";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_FILE_SIZE = 1024 * 1024;
@@ -30,7 +30,7 @@ describe("updateMedia Integration", () => {
     // Register services
     services.registerMediaRepository(MediaRepository);
     services.registerSourceRepository(new DrizzleSourceRepository());
-    services.registerStorageService(LocalMediaStorage);
+    services.registerMediaStorage(ServerMediaStorage);
     services.registerTagRepository(TagRepository);
     services.registerImageProcessor(ImageProcessor);
     services.registerAuthorRepository(AuthorRepository);

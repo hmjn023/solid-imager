@@ -1,7 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type {
+  IMediaStorage,
+  MediaMetadata,
+  MediaStorageResult,
+} from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import type { IStorageService } from "@solid-imager/core/domain/services/storage-service";
 import sharp from "sharp";
 import type { z } from "zod";
 
@@ -22,31 +26,18 @@ const resolveSafePath = (basePath: string, targetPath: string): string => {
   return resolvedPath;
 };
 
-export const LocalMediaStorage: IStorageService = {
+export const ServerMediaStorage: IMediaStorage = {
   async saveFile(
     basePath: string,
-    file: File,
+    file: { name: string; arrayBuffer(): Promise<ArrayBuffer | Uint8Array> },
     options: {
       filename?: string;
       overwrite?: boolean;
       autoIncrement?: boolean;
     }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
+  ): Promise<MediaStorageResult> {
     const uploadRequest = options;
     let targetFileName = uploadRequest.filename || file.name;
-
-    // Removed silent sanitization to allow strict validation by resolveSafePath
-    // If strictness is needed (e.g. no subdirectories), check here.
-    // For now, ensuring no traversal is the priority.
 
     let targetFilePath = resolveSafePath(basePath, targetFileName);
     let relativeFilePath = path.relative(basePath, targetFilePath);
@@ -88,11 +79,12 @@ export const LocalMediaStorage: IStorageService = {
     }
 
     // Save the file
-    await fs.writeFile(targetFilePath, Buffer.from(await file.arrayBuffer()));
+    const arrayBuffer = await file.arrayBuffer();
+    await fs.writeFile(targetFilePath, new Uint8Array(arrayBuffer));
 
     // Extract valid metadata using getFileMetadata to support both images and videos
     try {
-      const metadata = await LocalMediaStorage.getFileMetadata(targetFilePath);
+      const metadata = await ServerMediaStorage.getFileMetadata(targetFilePath);
 
       return {
         filePath: relativeFilePath,
@@ -129,7 +121,7 @@ export const LocalMediaStorage: IStorageService = {
     }
   },
 
-  async getFile(basePath: string, filePath: string): Promise<Buffer> {
+  async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
     const fullPath = resolveSafePath(basePath, filePath);
     return await fs.readFile(fullPath);
   },
@@ -162,7 +154,7 @@ export const LocalMediaStorage: IStorageService = {
     return files;
   },
 
-  async getFileMetadata(fullPath: string) {
+  async getFileMetadata(fullPath: string): Promise<MediaMetadata> {
     const stats = await fs.stat(fullPath);
     const ext = path.extname(fullPath).toLowerCase();
 
@@ -171,47 +163,42 @@ export const LocalMediaStorage: IStorageService = {
       const { getFfmpeg } = await import("~/infrastructure/utils/ffmpeg");
       const ffmpeg = getFfmpeg();
 
-      return new Promise<{
-        width: number;
-        height: number;
-        size: number;
-        createdAt: Date;
-        modifiedAt: Date;
-        duration?: number;
-      }>((resolve, reject) => {
-        ffmpeg.ffprobe(fullPath, (err, videoData) => {
-          if (err) {
-            reject(
-              new Error(
-                `Could not extract video metadata for ${fullPath}: ${err.message}`
-              )
-            );
-            return;
-          }
+      return new Promise<MediaMetadata & { duration?: number }>(
+        (resolve, reject) => {
+          ffmpeg.ffprobe(fullPath, (err, videoData) => {
+            if (err) {
+              reject(
+                new Error(
+                  `Could not extract video metadata for ${fullPath}: ${err.message}`
+                )
+              );
+              return;
+            }
 
-          // Find video stream
-          const videoStream = videoData.streams.find(
-            (s) => s.codec_type === "video"
-          );
-          if (!(videoStream?.width && videoStream?.height)) {
-            reject(
-              new Error(
-                `No video stream found or missing dimensions for ${fullPath}`
-              )
+            // Find video stream
+            const videoStream = videoData.streams.find(
+              (s) => s.codec_type === "video"
             );
-            return;
-          }
+            if (!(videoStream?.width && videoStream?.height)) {
+              reject(
+                new Error(
+                  `No video stream found or missing dimensions for ${fullPath}`
+                )
+              );
+              return;
+            }
 
-          resolve({
-            width: videoStream.width,
-            height: videoStream.height,
-            size: stats.size,
-            createdAt: stats.birthtime,
-            modifiedAt: stats.mtime,
-            duration: videoData.format.duration,
+            resolve({
+              width: videoStream.width,
+              height: videoStream.height,
+              size: stats.size,
+              createdAt: stats.birthtime,
+              modifiedAt: stats.mtime,
+              duration: videoData.format.duration,
+            });
           });
-        });
-      });
+        }
+      );
     }
 
     // Audio formats
@@ -249,16 +236,7 @@ export const LocalMediaStorage: IStorageService = {
       overwrite?: boolean;
       autoIncrement?: boolean;
     }
-  ): Promise<{
-    filePath: string;
-    fileName: string;
-    width: number;
-    height: number;
-    size: number;
-    createdAt: Date;
-    modifiedAt: Date;
-    conflict?: z.infer<typeof conflictSchema>;
-  }> {
+  ): Promise<MediaStorageResult> {
     const uploadRequest = options;
     const sourceFileName = path.basename(sourcePath);
     let targetFileName = uploadRequest.filename || sourceFileName;
@@ -310,8 +288,8 @@ export const LocalMediaStorage: IStorageService = {
 
     // Extract metadata using getFileMetadata
     try {
-      // Use LocalMediaStorage.getFileMetadata to support video files as well
-      const metadata = await LocalMediaStorage.getFileMetadata(targetFilePath);
+      // Use ServerMediaStorage.getFileMetadata to support video files as well
+      const metadata = await ServerMediaStorage.getFileMetadata(targetFilePath);
 
       return {
         filePath: relativeFilePath,
