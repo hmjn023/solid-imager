@@ -10,7 +10,8 @@
     "./domain/*/schemas": "./src/domain/*/schemas.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint ./src"
   },
   "peerDependencies": {
     "zod": "^4.3.5"
