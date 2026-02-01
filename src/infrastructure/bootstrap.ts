@@ -15,6 +15,7 @@ import { ProjectRepository } from "~/infrastructure/repositories/project-reposit
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 
 export let isBootstrapped = false;
 
@@ -51,6 +52,7 @@ export function bootstrap() {
 
   // Register Services
   services.registerMediaStorage(ServerMediaStorage);
+  services.registerFileSystem(new NodeFileSystem());
   services.registerImageProcessor(ImageProcessor);
 
   // Initialize PythonClient with config values

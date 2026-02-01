@@ -1,4 +1,3 @@
-import type { IConfigService, IMediaStorage } from "@solid-imager/core";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
@@ -8,6 +7,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IMediaStorage, IConfigService, IFileSystem } from "@solid-imager/core";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
@@ -17,6 +17,7 @@ export class ServiceRegistry {
   private mediaRepository?: IMediaRepository;
   private sourceRepository?: SourceRepository;
   private mediaStorage?: IMediaStorage;
+  private fileSystem?: IFileSystem;
   private tagRepository?: TagRepositoryDef;
   private imageProcessor?: IImageProcessor;
   private aiClient?: IAiClient;
@@ -48,6 +49,10 @@ export class ServiceRegistry {
 
   registerMediaStorage(service: IMediaStorage): void {
     this.mediaStorage = service;
+  }
+
+  registerFileSystem(fs: IFileSystem): void {
+    this.fileSystem = fs;
   }
 
   registerTagRepository(repo: TagRepositoryDef): void {
@@ -105,6 +110,13 @@ export class ServiceRegistry {
       throw new Error("MediaStorage has not been registered.");
     }
     return this.mediaStorage;
+  }
+
+  getFileSystem(): IFileSystem {
+    if (!this.fileSystem) {
+      throw new Error("FileSystem has not been registered.");
+    }
+    return this.fileSystem;
   }
 
   getImageProcessor(): IImageProcessor {
@@ -197,6 +209,7 @@ export class ServiceRegistry {
     this.mediaRepository = undefined;
     this.sourceRepository = undefined;
     this.mediaStorage = undefined;
+    this.fileSystem = undefined;
     this.tagRepository = undefined;
     this.imageProcessor = undefined;
     this.aiClient = undefined;

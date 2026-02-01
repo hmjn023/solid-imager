@@ -1,4 +1,4 @@
-import fs from "node:fs/promises";
+import { services } from "~/application/registry";
 import {
   generateThumbnailsForSource,
   getSourceCacheDir,
@@ -44,6 +44,7 @@ export const ThumbnailService = {
    */
   async clearThumbnailCache(mediaSourceId: string) {
     const cacheDir = getSourceCacheDir(mediaSourceId);
+    const fs = services.getFileSystem();
     try {
       await fs.rm(cacheDir, { recursive: true, force: true });
       return { success: true };
