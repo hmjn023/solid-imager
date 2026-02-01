@@ -23,7 +23,7 @@
     *   **問題点**:
         *   `sharp`: Node.js バイナリ依存。Tauri では Rust Image crate または Canvas API で代用が必要。
         *   `fluent-ffmpeg`: 子プロセス起動 (`spawn`) が必要。Tauri では Sidecar としてバンドルし、Command 経由で呼び出す必要がある。
-        *   `pg`: `node-postgres` はブラウザ不可。PGlite (`@electric-sql/pglite`) への完全な切り替えが必要。
+        *   `pg`: `node-postgres` はブラウザ不可。クライアント側では PGlite (`@electric-sql/pglite`) への切り替えが必要。
 
 ### 2.2 データベース接続のハードコード
 `src/infrastructure/db/index.ts` は `process.env` を読み取り、条件分岐で `pg` または `pglite` を初期化しています。
