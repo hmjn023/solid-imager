@@ -15,6 +15,7 @@ const {
   mockMediaFindByPath,
   mockAuthorCreate,
   mockAuthorAddMedia,
+  mockSaveFile,
 } = vi.hoisted(() => ({
   mockFindById: vi.fn(),
   mockGetFileMetadata: vi.fn(),
@@ -26,6 +27,7 @@ const {
   mockMediaFindByPath: vi.fn(),
   mockAuthorCreate: vi.fn(),
   mockAuthorAddMedia: vi.fn(),
+  mockSaveFile: vi.fn(),
 }));
 
 // Mocks
@@ -55,6 +57,7 @@ vi.mock("~/infrastructure/storage/server-media-storage", () => ({
   // biome-ignore lint/style/useNamingConvention: Mocking class export
   ServerMediaStorage: {
     getFileMetadata: mockGetFileMetadata,
+    saveFile: mockSaveFile,
   },
 }));
 // job-manager mock removed
@@ -118,6 +121,19 @@ describe("processDownloadJob", () => {
       modifiedAt: new Date(),
       width: 800,
       height: 600,
+    });
+
+    mockSaveFile.mockImplementation((_base, _file, options) => {
+      const filename = options?.filename || "file.jpg";
+      return Promise.resolve({
+        filePath: filename,
+        fileName: filename,
+        width: 800,
+        height: 600,
+        size: 1000,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+      });
     });
 
     mockMediaRegisterAndProcess.mockResolvedValue({

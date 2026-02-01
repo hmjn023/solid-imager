@@ -23,6 +23,7 @@ vi.mock("~/application/registry", () => {
     registerIpRepository: vi.fn(),
     registerJobRepository: vi.fn(),
     registerMediaStorage: vi.fn(),
+    registerFileSystem: vi.fn(),
     registerImageProcessor: vi.fn(),
     registerAiClient: vi.fn(),
     registerJobWorker: vi.fn(),
@@ -36,6 +37,7 @@ vi.mock("~/application/registry", () => {
     getIpRepository: vi.fn(),
     getProjectRepository: vi.fn(),
     getMediaStorage: vi.fn(),
+    getFileSystem: vi.fn(),
     getConfigService: vi.fn(),
     getImageProcessor: vi.fn(),
   };

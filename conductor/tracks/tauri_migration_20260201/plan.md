@@ -17,18 +17,18 @@
     - [x] Subtask: Create `packages/core/src/interfaces/media-storage.ts`.
 - [x] Task: Define `IConfigService` interface in `packages/core`.
     - [x] Subtask: Create `packages/core/src/interfaces/config-service.ts`.
-- [ ] Task: Implement `NodeFileSystem` (Server implementation) in `apps/server`.
-    - [ ] Subtask: Create class implementing `IFileSystem` using `node:fs`.
-    - [ ] Subtask: Refactor existing file system usage to use this implementation.
-    - [ ] Subtask: Update unit tests to mock `IFileSystem` instead of `node:fs`.
-- [ ] Task: Implement `ServerMediaStorage` in `apps/server`.
-    - [ ] Subtask: Rename/Refactor `LocalMediaStorage` to `ServerMediaStorage`.
-    - [ ] Subtask: Ensure it implements `IMediaStorage`.
-    - [ ] Subtask: Update unit tests.
-- [ ] Task: Implement `EnvConfigService` in `apps/server`.
-    - [ ] Subtask: Create wrapper around `process.env`.
-    - [ ] Subtask: Refactor configuration usage.
-- [ ] Task: Conductor - User Manual Verification 'Abstraction Layer Implementation' (Protocol in workflow.md)
+- [x] Task: Implement `NodeFileSystem` (Server implementation) in `apps/server`. <!-- 37d398c -->
+    - [x] Subtask: Create class implementing `IFileSystem` using `node:fs`.
+    - [x] Subtask: Refactor existing file system usage to use this implementation.
+    - [x] Subtask: Update unit tests to mock `IFileSystem` instead of `node:fs`.
+- [x] Task: Implement `ServerMediaStorage` in `apps/server`. <!-- deac7af -->
+    - [x] Subtask: Rename/Refactor `LocalMediaStorage` to `ServerMediaStorage`.
+    - [x] Subtask: Ensure it implements `IMediaStorage`.
+    - [x] Subtask: Update unit tests.
+- [x] Task: Implement `EnvConfigService` in `apps/server`. <!-- 6c97497 -->
+    - [x] Subtask: Create wrapper around `process.env`.
+    - [x] Subtask: Refactor configuration usage.
+- [~] Task: Conductor - User Manual Verification 'Abstraction Layer Implementation' (Protocol in workflow.md)
 
 ## Phase 3: Monorepo Restructuring (The Big Move)
 - [ ] Task: Prepare `apps/server` directory.

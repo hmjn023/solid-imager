@@ -359,15 +359,38 @@ async function handleDirectImageDownload(
     .digest("hex")
     .slice(0, URL_HASH_LENGTH);
   const filename = `download-${urlHash}-${originalFilename}`;
-  const filePath = filename;
-  const fullPath = path.join(basePath, filePath);
 
   try {
     // Download the image
-    await downloadImage(item.targetUrl, fullPath);
+    const response = await fetch(item.targetUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download image: ${response.status} ${response.statusText}`
+      );
+    }
 
-    // Get file metadata
-    const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
+    const arrayBuffer = await response.arrayBuffer();
+
+    // Use ServerMediaStorage to save with autoIncrement
+    const fileInfo = await ServerMediaStorage.saveFile(
+      basePath,
+      {
+        name: filename,
+        arrayBuffer: async () => arrayBuffer,
+      },
+      {
+        filename: filename,
+        overwrite: false,
+        autoIncrement: true,
+      }
+    );
+
+    const fullPath = path.join(basePath, fileInfo.filePath);
 
     let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 
@@ -398,7 +421,7 @@ async function handleDirectImageDownload(
 
     // Fallback to file creation time
     if (!createdAt) {
-      createdAt = fileMetadata.createdAt;
+      createdAt = fileInfo.createdAt;
     }
 
     // Determine media type using getMediaType
@@ -407,15 +430,15 @@ async function handleDirectImageDownload(
     // Create media entry
     const newMedia: AddMediaRequest = {
       mediaSourceId,
-      filePath,
-      fileName: filename,
+      filePath: fileInfo.filePath,
+      fileName: fileInfo.fileName,
       mediaType,
       description: formatMetadataAsMarkdown(item),
-      width: fileMetadata.width,
-      height: fileMetadata.height,
-      fileSize: fileMetadata.size,
+      width: fileInfo.width,
+      height: fileInfo.height,
+      fileSize: fileInfo.size,
       createdAt,
-      modifiedAt: fileMetadata.modifiedAt,
+      modifiedAt: fileInfo.modifiedAt,
       sourceUrls: Array.from(
         new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
       ),
