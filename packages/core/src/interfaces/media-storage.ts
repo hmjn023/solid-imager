@@ -1,5 +1,5 @@
-import type { conflictSchema } from "@/domain/media/upload-schemas";
 import type { z } from "zod";
+import type { conflictSchema } from "@/domain/media/upload-schemas";
 
 export type MediaStorageResult = {
   filePath: string;
@@ -10,6 +10,11 @@ export type MediaStorageResult = {
   createdAt: Date;
   modifiedAt: Date;
   conflict?: z.infer<typeof conflictSchema>;
+};
+
+export type MediaSourceFile = {
+  name: string;
+  arrayBuffer(): Promise<ArrayBuffer | Uint8Array>;
 };
 
 export type MediaMetadata = {
@@ -23,7 +28,7 @@ export type MediaMetadata = {
 export interface IMediaStorage {
   saveFile(
     basePath: string,
-    file: { name: string; arrayBuffer(): Promise<ArrayBuffer | Uint8Array> },
+    file: MediaSourceFile,
     options: {
       filename?: string;
       overwrite?: boolean;

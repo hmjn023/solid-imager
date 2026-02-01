@@ -1,7 +1,3 @@
-import {
-  searchState,
-  setSearchState,
-} from "@solid-imager/core/domain/search/store";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { A } from "@solidjs/router";
@@ -33,6 +29,7 @@ import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
+import { searchState, setSearchState } from "~/presentation/store/search-store";
 
 // Type alias to avoid conflict with DOM MediaSource API
 type Source = SafeMediaSource;

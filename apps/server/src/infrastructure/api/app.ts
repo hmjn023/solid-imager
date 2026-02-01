@@ -72,7 +72,8 @@ function assignTags(spec: any) {
 export const app = new Elysia()
   .onError(({ code, error, request }) => {
     if (error instanceof ResourceNotFoundError) {
-      return new Response(JSON.stringify({ error: error.message }), {
+      // biome-ignore lint/suspicious/noExplicitAny: error is narrowed by instanceof
+      return new Response(JSON.stringify({ error: (error as any).message }), {
         status: 404,
         headers: { "Content-Type": "application/json" },
       });
