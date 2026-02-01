@@ -16,7 +16,7 @@
 
 ## 開発セットアップ
 
-すべてのコマンドは `bun` を使用して実行します。
+すべてのコマンドは `bun` を使用して実行します。このプロジェクトはモノレポ構成になっており、サーバー (`apps/server`) とコアパッケージ (`packages/core`)、ブラウザ拡張機能 (`xtracter`) で構成されています。
 
 1.  **依存関係のインストール:**
     ```bash
@@ -24,22 +24,22 @@
     ```
 
 2.  **環境変数の設定:**
-    `.env.example` をコピーして `.env` を作成し、データベース接続情報などを設定してください。
+    `apps/server/.env.example` をコピーして `apps/server/.env` を作成し、データベース接続情報などを設定してください。
     ```bash
-    cp .env.example .env
+    cp apps/server/.env.example apps/server/.env
     ```
 
 3.  **データベースのセットアップ:**
-    使用するデータベースに応じて、マイグレーションを実行します。
+    `apps/server` ディレクトリでコマンドを実行するか、`--filter @solid-imager/server` オプションを使用します。
     -   **PostgreSQL (Docker):**
         ```bash
         sudo -E docker compose --project-directory . up -d
-        bun run db:migrate
+        bun --filter @solid-imager/server run db:migrate
         ```
     -   **PGlite:**
         ```bash
         # .env で DB_HOST=pglite を設定
-        bun run db:migrate:pglite
+        bun --filter @solid-imager/server run db:migrate:pglite
         ```
 
 ## 開発フロー
@@ -182,7 +182,9 @@ bun run gen:spec
 
 -   **クリーンアーキテクチャ:** `ARCHITECTURE.md` に記載されているレイヤー間の依存関係ルールを厳守してください。ドメイン層は他のどのレイヤーにも依存してはいけません。
 -   **型安全性:** `any` 型の使用は避け、TypeScriptの型システムを最大限に活用してください。型定義のインポートには `import type` を使用します。
--   **インポートエイリアス:** `src` ディレクトリへのエイリアスとして `~/*` を使用してください。(例: `import Nav from '~/components/Nav';`)
+-   **インポートエイリアス:**
+    -   `~/*`: `apps/server/src` へのエイリアス (サーバーサイドコード内)
+    -   `@/*` または `@solid-imager/core/*`: `packages/core/src` へのエイリアス (共有ドメインロジック)
 -   **Bun固有APIの回避:** ポータビリティを確保するため、`Bun.file()` のようなBun固有のAPIの使用は避け、可能な限りNode.js互換のAPIやWeb標準APIを使用してください。
 -   **開発サーバーの不使用:** 開発サーバー (`bun run dev`) を起動しないでください。あなたの役割はコードの実装と修正であり、アプリケーションを直接実行することではありません。
 -   **Schema-Driven Development (SDD) with Zod:**
@@ -206,12 +208,12 @@ bun run gen:spec
 -   **APIレスポンスのセキュリティ:**
     -   **Safe DTO:** パスワードや秘密鍵などの機密情報を含むエンティティをそのままAPIレスポンスとして返さないでください。必ず `Safe` プレフィックスのついたスキーマ（例: `SafeMediaSource`）にマッピングし、機密情報を除外してから返却してください。
 -   **oRPC ハンドラー実装:**
-    -   すべてのAPIエンドポイントは `src/infrastructure/api/routers/` 配下に実装します。
-    -   入力スキーマは必ず `src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
-    -   ハンドラー内では直接データベースにアクセスせず、必ず `src/application/services/` のサービスクラスを経由します。
+    -   すべてのAPIエンドポイントは `apps/server/src/infrastructure/api/routers/` 配下に実装します。
+    -   入力スキーマは必ず `packages/core/src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
+    -   ハンドラー内では直接データベースにアクセスせず、必ず `apps/server/src/application/services/` のサービスクラスを経由します。
     -   バイナリコンテンツ（画像、動画など）は oRPC では返さず、専用のRESTエンドポイントを使用します。
 -   **Python AI サービス連携:**
-    -   Python AIサービスへの呼び出しは `src/application/services/tagging-service.ts` を経由します。
+    -   Python AIサービスへの呼び出しは `apps/server/src/application/services/tagging-service.ts` を経由します。
     -   直接 HTTP リクエストを送信せず、必ずサービス層を通してください。
 -   **ブラウザ拡張機能 (xtracter):**
     -   xtracter は独立したワークスペースです。変更を加える場合は `xtracter/` ディレクトリ内で作業してください。
