@@ -2,7 +2,7 @@
 
 ## 調査概要
 
-[`src/routes/config.tsx`](../../src/routes/config.tsx)で設定可能な値が、実際のアプリケーション動作にどの程度影響を与えているかを調査しました。
+[`apps/server/src/routes/config.tsx`](../../apps/server/src/routes/config.tsx)で設定可能な値が、実際のアプリケーション動作にどの程度影響を与えているかを調査しました。
 
 ## 設定項目一覧
 
@@ -43,14 +43,14 @@
 
 **保存場所:** `config.json`
 
-**使用箇所:** [`src/infrastructure/jobs/job-worker.ts`](../../src/infrastructure/jobs/job-worker.ts)
+**使用箇所:** [`apps/server/src/infrastructure/jobs/job-worker.ts`](../../apps/server/src/infrastructure/jobs/job-worker.ts)
 
 **動作:** ✅ **完全に動作**
 
 設定値は以下のように利用されています:
 
-1. **初期化時:** [`src/infrastructure/bootstrap.ts:L43`](../../src/infrastructure/bootstrap.ts#L43)で`JobWorker`が設定値で初期化される
-2. **動的更新:** [`src/infrastructure/bootstrap.ts:L44`](../../src/infrastructure/bootstrap.ts#L44)で`onChange`リスナーが登録され、設定変更時に自動的に`JobWorker`が更新される
+1. **初期化時:** [`apps/server/src/infrastructure/bootstrap.ts:L43`](../../apps/server/src/infrastructure/bootstrap.ts#L43)で`JobWorker`が設定値で初期化される
+2. **動的更新:** [`apps/server/src/infrastructure/bootstrap.ts:L44`](../../apps/server/src/infrastructure/bootstrap.ts#L44)で`onChange`リスナーが登録され、設定変更時に自動的に`JobWorker`が更新される
 
 ```typescript
 // bootstrap.ts
@@ -72,7 +72,7 @@ configService.onChange((config) => jobWorker.updateConfig(config));
 
 **問題点:** ⚠️ **ハードコードされている**
 
-[`src/application/services/media-processing-service.ts:L59`](../../src/application/services/media-processing-service.ts#L59)で`false`にハードコードされており、設定値が使用されていません:
+[`apps/server/src/application/services/media-processing-service.ts:L59`](../../apps/server/src/application/services/media-processing-service.ts#L59)で`false`にハードコードされており、設定値が使用されていません:
 
 ```typescript
 private readonly enableAutoTagging = false;
@@ -88,7 +88,7 @@ private readonly enableAutoTagging = false;
 
 **問題点:** ⚠️ **ハードコードされている**
 
-[`src/infrastructure/ai/python-client.ts:L14`](../../src/infrastructure/ai/python-client.ts#L14)でコンストラクタがデフォルト値`http://localhost:8000`を使用しており、設定値を参照していません:
+[`apps/server/src/infrastructure/ai/python-client.ts:L14`](../../apps/server/src/infrastructure/ai/python-client.ts#L14)でコンストラクタがデフォルト値`http://localhost:8000`を使用しており、設定値を参照していません:
 
 ```typescript
 constructor(baseUrl = "http://localhost:8000") {
@@ -110,11 +110,11 @@ constructor(baseUrl = "http://localhost:8000") {
 
 **問題点:** ⚠️ **ハードコードされている**
 
-[`src/infrastructure/jobs/thumbnails.ts`](../../src/infrastructure/jobs/thumbnails.ts)でサムネイル生成時の設定がハードコードされています:
+[`apps/server/src/infrastructure/jobs/thumbnails.ts`](../../apps/server/src/infrastructure/jobs/thumbnails.ts)でサムネイル生成時の設定がハードコードされています:
 
-- **thumbnailDir:** [L19](../../src/infrastructure/jobs/thumbnails.ts#L19) - `.cache/thumbnails`にハードコード
-- **thumbnailSize:** [L15](../../src/infrastructure/jobs/thumbnails.ts#L15) - `512`にハードコード
-- **thumbnailQuality:** [L16](../../src/infrastructure/jobs/thumbnails.ts#L16) - `80`にハードコード
+- **thumbnailDir:** [L19](../../apps/server/src/infrastructure/jobs/thumbnails.ts#L19) - `.cache/thumbnails`にハードコード
+- **thumbnailSize:** [L15](../../apps/server/src/infrastructure/jobs/thumbnails.ts#L15) - `512`にハードコード
+- **thumbnailQuality:** [L16](../../apps/server/src/infrastructure/jobs/thumbnails.ts#L16) - `80`にハードコード
 
 ```typescript
 const DEFAULT_THUMBNAIL_SIZE = 512;
@@ -136,7 +136,7 @@ export function getSourceCacheDir(mediaSourceId: string): string {
 **問題点:** ⚠️ **ハードコードされている**
 
 **supportedExtensions:**
-- [`src/application/services/media-processing-service.ts:L85-L88`](../../src/application/services/media-processing-service.ts#L85-L88)でメディアタイプ判定がハードコードされています
+- [`apps/server/src/application/services/media-processing-service.ts:L85-L88`](../../apps/server/src/application/services/media-processing-service.ts#L85-L88)でメディアタイプ判定がハードコードされています
   
 ```typescript
 const ext = path.extname(relativePath).toLowerCase();
@@ -149,7 +149,7 @@ if ([".mp4", ".webm", ".mov"].includes(ext)) {
 ```
 
 **tagExtraction.comfyui:**
-- [`src/domain/media/utils/metadata-utils.ts`](../../src/domain/media/utils/metadata-utils.ts)でタグ抽出ロジックが実装されていますが、設定値を参照していません
+- [`packages/core/src/domain/media/utils/metadata-utils.ts`](../../packages/core/src/domain/media/utils/metadata-utils.ts)でタグ抽出ロジックが実装されていますが、設定値を参照していません
 
 **影響:**
 - 設定画面で拡張子を追加・削除しても、実際のメディア判定には反映されません
@@ -163,7 +163,7 @@ if ([".mp4", ".webm", ".mov"].includes(ext)) {
 
 **問題点:** ⚠️ **環境変数のみ参照**
 
-[`src/infrastructure/logger.ts:L6`](../../src/infrastructure/logger.ts#L6)でログレベルは環境変数`LOG_LEVEL`から読み込まれており、設定ファイルの値は使用されていません:
+[`apps/server/src/infrastructure/logger.ts:L6`](../../apps/server/src/infrastructure/logger.ts#L6)でログレベルは環境変数`LOG_LEVEL`から読み込まれており、設定ファイルの値は使用されていません:
 
 ```typescript
 export const logger = pino({

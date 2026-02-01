@@ -9,24 +9,24 @@
 現在のコードベース（特に `infrastructure` 層）は、Node.js ランタイムに強く依存しており、そのままでは Tauri（ブラウザ環境）で動作しません。
 
 *   **ファイルシステム (`node:fs`, `node:path`)**:
-    *   **影響箇所**: `src/infrastructure/storage/local-media-storage.ts`, `src/domain/media/utils/hash-utils.ts` (ドメイン層での違反あり)
+    *   **影響箇所**: `apps/server/src/infrastructure/storage/local-media-storage.ts`, `packages/core/src/domain/media/utils/hash-utils.ts` (ドメイン層での違反あり)
     *   **問題点**: ブラウザには `fs` が存在しない。Tauri では Rust 側のコマンド経由または `tauri-plugin-fs` を利用する必要がある。
     *   **改善策**: `IFileSystem` インターフェースによる抽象化と、環境別（Server/Client）の実装注入。
 
 *   **暗号化 (`node:crypto`)**:
-    *   **影響箇所**: `src/domain/media/utils/hash-utils.ts`
+    *   **影響箇所**: `packages/core/src/domain/media/utils/hash-utils.ts`
     *   **問題点**: ドメイン層で使用されており、純粋な TypeScript ロジックになっていない。
     *   **改善策**: Web Crypto API への書き換え、または `ICryptoProvider` による抽象化。
 
 *   **ネイティブモジュール (`sharp`, `fluent-ffmpeg`, `pg`)**:
-    *   **影響箇所**: `src/infrastructure/storage/local-media-storage.ts`, `src/infrastructure/db/index.ts`
+    *   **影響箇所**: `apps/server/src/infrastructure/storage/local-media-storage.ts`, `apps/server/src/infrastructure/db/index.ts`
     *   **問題点**:
         *   `sharp`: Node.js バイナリ依存。Tauri では Rust Image crate または Canvas API で代用が必要。
         *   `fluent-ffmpeg`: 子プロセス起動 (`spawn`) が必要。Tauri では Sidecar としてバンドルし、Command 経由で呼び出す必要がある。
         *   `pg`: `node-postgres` はブラウザ不可。クライアント側では PGlite (`@electric-sql/pglite`) への切り替えが必要。
 
 ### 2.2 データベース接続のハードコード
-`src/infrastructure/db/index.ts` は `process.env` を読み取り、条件分岐で `pg` または `pglite` を初期化しています。
+`apps/server/src/infrastructure/db/index.ts` は `process.env` を読み取り、条件分岐で `pg` または `pglite` を初期化しています。
 *   **問題点**: `import { Pool } from "pg"` がトップレベルにあるため、バンドラー（Vite）がブラウザ向けビルドを行う際にエラーとなる可能性が高い。
 *   **改善策**: DB初期化ロジックをファクトリーパターン化し、依存性の注入（DI）を行うことで、クライアントビルドから `pg` を完全に排除する。
 
@@ -40,7 +40,7 @@
 *   **データフェッチ**: 現状の `createQuery` (TanStack Query) は維持できるが、SSR/ローダーの仕組みがフレームワークごとに異なるため調整が必要。
 
 ### 3.2 環境変数の扱い
-*   **現状**: `process.env` を多用 (`src/application/services/config-service.ts` 等)。
+*   **現状**: `process.env` を多用 (`apps/server/src/application/services/config-service.ts` 等)。
 *   **Tauri**: `import.meta.env` または Tauri の `loadConfig` API を使用する必要がある。
 *   **改善策**: `IConfigService` を定義し、環境変数の取得元を隠蔽する。
 

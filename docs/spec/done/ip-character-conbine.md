@@ -30,7 +30,7 @@
 > 
 > **形式**: `{ character_name: [ip_names] }` (キャラクター名がキー、IP名のリストが値)
 
-### 2.2 データベーススキーマ (`src/infrastructure/db/schema.ts`)
+### 2.2 データベーススキーマ (`apps/server/src/infrastructure/db/schema.ts`)
 
 1.  **新規テーブル追加**: `character_ips` (中間テーブル)
     *   `character_id`: UUID (FK -> characters.id)
@@ -72,7 +72,7 @@
 
 既存のDBスキーマ更新だけでは、`ip_id` カラムのデータを中間テーブルに移行する際にデータ損失のリスクがあること、またユーザー指示により「JSONバックアップを用いた移行」を行う。
 
-### Phase 1: バックアップ機能の拡張 (`src/application/services/backup-service.ts`)
+### Phase 1: バックアップ機能の拡張 (`apps/server/src/application/services/backup-service.ts`)
 
 現在のJSONバックアップ（`createDump`）は、キャラクターとIPの結びつきを明示的に保持していない。
 
@@ -110,7 +110,7 @@ const simpleCharacters = media.characters.map((mc: any) => ({
 
 ---
 
-## 4. AI Taggingロジックの改修 (`src/application/services/tagging-service.ts`)
+## 4. AI Taggingロジックの改修 (`apps/server/src/application/services/tagging-service.ts`)
 
 ### 4.1 現状の問題点
 

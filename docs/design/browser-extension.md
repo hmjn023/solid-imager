@@ -537,7 +537,7 @@ const apiKey = 'your-api-key'; // 絶対にやらない！
 
 solid-imager 側で CORS ヘッダーを設定する必要があります。
 
-**実装**: `src/infrastructure/api/app.ts`
+**実装**: `apps/server/src/infrastructure/api/app.ts`
 
 ```typescript
 export const app = new Elysia()

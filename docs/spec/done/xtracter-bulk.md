@@ -99,7 +99,7 @@ type DownloadItem = {
 
 ## 1. バックエンド実装 (Solid Imager)
 
-### 1.1. `imports` ルーター (`src/infrastructure/api/routers/imports-router.ts`)
+### 1.1. `imports` ルーター (`apps/server/src/infrastructure/api/routers/imports-router.ts`)
 
 一括インポート要求を処理する新しいルーターを作成します。
 
@@ -132,7 +132,7 @@ type DownloadItem = {
     *   **ロジック**:
         1.  指定されたジョブを取得。
         2.  `payload` (DownloadItem) を `queueDownloadJobs` (画像の場合) または標準のメディア登録処理の入力に変換。
-            *   **注記**: `src/infrastructure/jobs/download-jobs.ts` を再利用。これは `targetUrl` (画像 vs 動画URL) を適切に処理する。
+            *   **注記**: `apps/server/src/infrastructure/jobs/download-jobs.ts` を再利用。これは `targetUrl` (画像 vs 動画URL) を適切に処理する。
         3.  ジョブのステータスを `'completed'` に更新。
         4.  SSEイベント `import-request:processed` を発行。
     *   **出力**: `{ success: true, processedCount: number }`
@@ -142,13 +142,13 @@ type DownloadItem = {
     *   **ロジック**: 指定されたジョブを削除、またはステータスを `'failed'`/`'canceled'` に更新。
     *   **出力**: `{ success: true }`
 
-### 1.2. API コントラクト (`src/domain/shared/api-contract.ts`)
+### 1.2. API コントラクト (`packages/core/src/domain/shared/api-contract.ts`)
 
 *   `importsRouter` を登録。
 
 ### 1.3. サービス統合
 
-*   `src/infrastructure/jobs/download-jobs.ts` の `queueDownloadJobs` が、Xtracterからのリッチなメタデータ（Author, Tagsなど）を受け取れることを確認。
+*   `apps/server/src/infrastructure/jobs/download-jobs.ts` の `queueDownloadJobs` が、Xtracterからのリッチなメタデータ（Author, Tagsなど）を受け取れることを確認。
     *   *実装時の確認事項*: 現在のダウンロードジョブペイロードは完全なメタデータの受け渡しをサポートしているか？ (おそらく `MediaMetadataContext` 経由で可能)
 
 ## 2. 拡張機能実装 (Xtracter)
@@ -184,12 +184,12 @@ type DownloadItem = {
 *   複雑なグローバルストアは不要。モーダル内で `createResource` を使用して保留中のインポートを取得。
 *   ヘッダーの「保留中インポート数」用シグナル（RPCで取得 + SSEで更新）。
 
-### 3.2. ヘッダーインジケータ (`src/presentation/components/layout/Header.tsx`)
+### 3.2. ヘッダーインジケータ (`apps/server/src/presentation/components/layout/Header.tsx`)
 
 *   アイコン（例: `InboxIcon`）を追加し、保留中のインポートジョブ数をバッジで表示。
 *   クリックで **インポートレビューモーダル** を開く。
 
-### 3.3. インポートレビューモーダル (`src/presentation/components/imports/ImportReviewModal.tsx`)
+### 3.3. インポートレビューモーダル (`apps/server/src/presentation/components/imports/ImportReviewModal.tsx`)
 
 *   **レイアウト**:
     *   保存先ソース選択ドロップダウン。
