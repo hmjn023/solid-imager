@@ -2,7 +2,7 @@ import type {
   CcipDifferenceResponse,
   CcipFeatureResponse,
   TaggingResponse,
-} from "~/domain/tagging/schemas";
+} from "@/domain/tagging/schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IAiClient = {

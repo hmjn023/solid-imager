@@ -4,14 +4,8 @@
  */
 
 import path from "node:path";
-import { services } from "~/application/registry"; // Default registry
-import {
-  type DeferredActions,
-  type DeferredSse,
-  executeDeferredActions,
-} from "~/application/services/job-dispatch-service";
-import { ResourceNotFoundError } from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
   type AddMediaRequest,
   type Media,
@@ -21,25 +15,31 @@ import {
   mediaSearchRequestSchema,
   mediaSourceIdSchema,
   updateMediaRequestSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
 import {
   type UploadMediaRequest,
   type UploadResponse,
   uploadMediaRequestSchema,
-} from "~/domain/media/upload-schemas";
+} from "@solid-imager/core/domain/media/upload-schemas";
 import {
   getContentTypeFromExtension,
   getMediaTypeFromExtension,
-} from "~/domain/media/utils/media-type-utils";
-import type { IAuthorRepository } from "~/domain/repositories/author-repository";
-import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import type { IIpRepository } from "~/domain/repositories/ip-repository";
-import type { IMediaRepository } from "~/domain/repositories/media-repository";
-import type { IProjectRepository } from "~/domain/repositories/project-repository";
-import type { SourceRepository } from "~/domain/repositories/source-repository";
-import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository"; // Added
-import type { IImageProcessor } from "~/domain/services/image-processor";
-import type { IStorageService } from "~/domain/services/storage-service";
+} from "@solid-imager/core/domain/media/utils/media-type-utils";
+import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository"; // Added
+import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IStorageService } from "@solid-imager/core/domain/services/storage-service";
+import { services } from "~/application/registry"; // Default registry
+import {
+  type DeferredActions,
+  type DeferredSse,
+  executeDeferredActions,
+} from "~/application/services/job-dispatch-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { SseManager } from "~/infrastructure/jobs/sse-manager";
 // keeping SseManager if used elsewhere

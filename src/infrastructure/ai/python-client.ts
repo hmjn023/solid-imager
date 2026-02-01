@@ -1,4 +1,4 @@
-import type { IAiClient } from "~/domain/interfaces/ai-client";
+import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
   type CcipDifferenceResponse,
   type CcipFeatureResponse,
@@ -6,7 +6,7 @@ import {
   ccipFeatureResponseSchema,
   type TaggingResponse,
   taggingResponseSchema,
-} from "~/domain/tagging/schemas";
+} from "@solid-imager/core/domain/tagging/schemas";
 
 export class PythonClient implements IAiClient {
   private baseUrl: string;

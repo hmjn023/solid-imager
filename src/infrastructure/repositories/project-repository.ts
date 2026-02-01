@@ -1,12 +1,12 @@
-import { and, eq } from "drizzle-orm";
-import { ResourceNotFoundError } from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
   NewProject,
   Project,
   UpdateProject,
-} from "~/domain/projects/schemas";
-import type { IProjectRepository } from "~/domain/repositories/project-repository";
+} from "@solid-imager/core/domain/projects/schemas";
+import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+import { and, eq } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";
 

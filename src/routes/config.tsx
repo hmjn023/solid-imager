@@ -1,3 +1,5 @@
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { createForm } from "@tanstack/solid-form";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { zodValidator } from "@tanstack/zod-form-adapter";
@@ -14,8 +16,6 @@ import {
 } from "~/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 import { Textarea } from "~/components/ui/textarea";
-import type { AppConfig } from "~/domain/config/config-schema";
-import { AppConfigSchema } from "~/domain/config/config-schema";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 function ConfigForm(props: { data: AppConfig }) {

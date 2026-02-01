@@ -1,6 +1,6 @@
 import { os } from "@orpc/server";
+import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { services } from "~/application/registry";
-import { AppConfigSchema } from "~/domain/config/config-schema";
 
 export const configRouter = {
   get: os

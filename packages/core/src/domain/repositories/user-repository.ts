@@ -1,6 +1,6 @@
-import type { NewUser, UpdateUser, User } from "~/domain/users/schemas";
+import type { NewUser, UpdateUser, User } from "@/domain/users/schemas";
 
-export type { NewUser, UpdateUser, User } from "~/domain/users/schemas";
+export type { NewUser, UpdateUser, User } from "@/domain/users/schemas";
 
 export type UserRepository = {
   findAll(): Promise<User[]>;

@@ -1,17 +1,17 @@
-import { and, eq } from "drizzle-orm";
 import type {
   Collection,
   NewCollection,
   NewCollectionItem,
   UpdateCollection,
-} from "~/domain/collections/schemas";
+} from "@solid-imager/core/domain/collections/schemas";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { ICollectionRepository } from "~/domain/repositories/collection-repository";
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { ICollectionRepository } from "@solid-imager/core/domain/repositories/collection-repository";
+import { and, eq } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { collections, mediaCollections } from "~/infrastructure/db/schema";
 

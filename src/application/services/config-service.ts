@@ -5,7 +5,7 @@ import {
   type AppConfig,
   AppConfigSchema,
   defaultAppConfig,
-} from "~/domain/config/config-schema";
+} from "@solid-imager/core/domain/config/config-schema";
 import { logger } from "~/infrastructure/logger";
 
 type ConfigChangeListener = (config: AppConfig) => void;

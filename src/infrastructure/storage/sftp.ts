@@ -3,7 +3,7 @@
  * Extracted from src/lib/helpers/storage-drivers.ts
  */
 
-import type { SftpConnection } from "~/domain/sources/schemas";
+import type { SftpConnection } from "@solid-imager/core/domain/sources/schemas";
 
 /**
  * Provides functionalities for interacting with SFTP storage.

@@ -1,10 +1,13 @@
-import { ResourceConflictError, ResourceNotFoundError } from "~/domain/errors";
+import {
+  ResourceConflictError,
+  ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import type {
   CreatePresetRequest,
   Preset,
   UpdatePresetRequest,
-} from "~/domain/media/schemas";
-import type { PresetRepository } from "~/domain/repositories/preset-repository";
+} from "@solid-imager/core/domain/media/schemas";
+import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
 import { DrizzlePresetRepository } from "~/infrastructure/repositories/preset-repository";
 
 let repository: PresetRepository = new DrizzlePresetRepository();

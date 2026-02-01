@@ -1,11 +1,11 @@
 import type {
   NewCharacter,
   UpdateCharacter,
-} from "~/domain/characters/schemas";
+} from "@solid-imager/core/domain/characters/schemas";
 import type {
   Character,
   CharacterRepository,
-} from "~/domain/repositories/character-repository";
+} from "@solid-imager/core/domain/repositories/character-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 
 // Initialize repository

@@ -1,9 +1,9 @@
+import type { UUID } from "@solid-imager/core/domain/shared/schemas";
 import { useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Match, onCleanup, onMount, Switch } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
-import type { UUID } from "~/domain/shared/schemas";
 import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
 
 export default function Media() {

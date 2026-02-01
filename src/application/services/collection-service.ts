@@ -3,7 +3,7 @@
  * Feature 14: コレクション管理機能
  */
 
-import type { NewCollectionItem } from "~/domain/collections/schemas";
+import type { NewCollectionItem } from "@solid-imager/core/domain/collections/schemas";
 /**
  * Provides services for managing media collections.
  */

@@ -1,7 +1,7 @@
+import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
+import { mediaSourceIdSchema } from "@solid-imager/core/domain/sources/schemas";
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { mediaIdSchema } from "~/domain/media/schemas";
-import { mediaSourceIdSchema } from "~/domain/sources/schemas";
 
 describe("deleteMedia Contract", () => {
   it("should return success: true on successful deletion", () => {

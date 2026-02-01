@@ -1,13 +1,13 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { services } from "~/application/registry";
-import { taggingService } from "~/application/services/tagging-service";
 import {
   batchTaggingRequestSchema,
   ccipDifferenceRequestSchema,
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
-} from "~/domain/tagging/schemas";
+} from "@solid-imager/core/domain/tagging/schemas";
+import { z } from "zod";
+import { services } from "~/application/registry";
+import { taggingService } from "~/application/services/tagging-service";
 import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {

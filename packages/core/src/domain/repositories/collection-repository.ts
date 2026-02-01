@@ -3,7 +3,7 @@ import type {
   NewCollection,
   NewCollectionItem,
   UpdateCollection,
-} from "~/domain/collections/schemas";
+} from "@/domain/collections/schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type ICollectionRepository = {

@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ConfigServiceImpl } from "~/application/services/config-service";
-import { defaultAppConfig } from "~/domain/config/config-schema";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");

@@ -1,8 +1,11 @@
-import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
+import type {
+  NewCategory,
+  UpdateCategory,
+} from "@solid-imager/core/domain/categories/schemas";
 import type {
   Category,
   CategoryRepository,
-} from "~/domain/repositories/category-repository";
+} from "@solid-imager/core/domain/repositories/category-repository";
 import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
 
 // Initialize repository

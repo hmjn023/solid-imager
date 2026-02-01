@@ -1,9 +1,9 @@
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { MediaTag } from "~/domain/media/schemas";
-import type { NewTag, TagResponse, UpdateTag } from "~/domain/tags/schemas";
+import type { Transaction } from "@/domain/interfaces/transaction-manager";
+import type { MediaTag } from "@/domain/media/schemas";
+import type { NewTag, TagResponse, UpdateTag } from "@/domain/tags/schemas";
 
 // Re-export types for usage in implementations
-export type { NewTag, UpdateTag } from "~/domain/tags/schemas";
+export type { NewTag, UpdateTag } from "@/domain/tags/schemas";
 
 // TagResponse maps to the Tag entity in this context
 export type Tag = TagResponse;

@@ -1,10 +1,10 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { CategoryService } from "~/application/services/category-service";
 import {
   newCategorySchema,
   updateCategorySchema,
-} from "~/domain/categories/schemas";
+} from "@solid-imager/core/domain/categories/schemas";
+import { z } from "zod";
+import { CategoryService } from "~/application/services/category-service";
 
 /**
  * Categories Router Implementation

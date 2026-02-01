@@ -1,4 +1,7 @@
-import type { NewUser, UpdateUser } from "~/domain/users/schemas";
+import type {
+  NewUser,
+  UpdateUser,
+} from "@solid-imager/core/domain/users/schemas";
 import { UserRepository } from "~/infrastructure/repositories/user-repository";
 
 export const UserService = {

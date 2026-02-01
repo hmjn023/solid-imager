@@ -1,7 +1,7 @@
+import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import { and, eq } from "drizzle-orm";
-import { ResourceNotFoundError } from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { IAuthorRepository } from "~/domain/repositories/author-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   type Author,

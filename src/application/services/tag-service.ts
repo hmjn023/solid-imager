@@ -2,8 +2,8 @@ import type {
   NewTag,
   Tag,
   TagRepository,
-} from "~/domain/repositories/tag-repository";
-import type { UpdateTag } from "~/domain/tags/schemas";
+} from "@solid-imager/core/domain/repositories/tag-repository";
+import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
 import { DrizzleTagRepository } from "~/infrastructure/repositories/tag-repository";
 
 // Initialize repository

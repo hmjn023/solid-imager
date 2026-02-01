@@ -1,3 +1,7 @@
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "~/components/ui/button";
 import {
   Dialog,
@@ -7,10 +11,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import type {
-  MediaSourceInfo,
-  SafeMediaSource,
-} from "~/domain/sources/schemas";
 
 type SourceDeleteModalProps = {
   isOpen: boolean;

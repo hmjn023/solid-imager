@@ -1,3 +1,4 @@
+import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { createResource, createSignal, Show } from "solid-js";
 import { Button } from "~/components/ui/button";
 import {
@@ -15,7 +16,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { SafeMediaSource } from "~/domain/sources/schemas";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
 type MoveCopyMediaDialogProps = {

@@ -1,5 +1,5 @@
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { describe, expect, it } from "vitest";
-import { downloadItemSchema } from "~/domain/media/schemas";
 
 describe("downloadItemSchema", () => {
   it("should validate a valid download item", () => {

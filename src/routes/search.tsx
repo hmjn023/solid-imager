@@ -1,3 +1,9 @@
+import {
+  searchState,
+  setSearchState,
+} from "@solid-imager/core/domain/search/store";
+import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { A } from "@solidjs/router";
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
@@ -20,9 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import { searchState, setSearchState } from "~/domain/search/store";
-import type { SafeMediaSource } from "~/domain/sources/schemas";
-import type { TagResponse } from "~/domain/tags/schemas";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";

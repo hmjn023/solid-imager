@@ -1,10 +1,10 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { CharacterService } from "~/application/services/character-service";
 import {
   newCharacterSchema,
   updateCharacterSchema,
-} from "~/domain/characters/schemas";
+} from "@solid-imager/core/domain/characters/schemas";
+import { z } from "zod";
+import { CharacterService } from "~/application/services/character-service";
 
 /**
  * Characters Router Implementation

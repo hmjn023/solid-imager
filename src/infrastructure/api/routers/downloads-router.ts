@@ -1,5 +1,5 @@
 import { os } from "@orpc/server";
-import { bulkDownloadRequestSchema } from "~/domain/media/schemas";
+import { bulkDownloadRequestSchema } from "@solid-imager/core/domain/media/schemas";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 
 /**

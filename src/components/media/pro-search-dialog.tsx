@@ -1,3 +1,9 @@
+import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createSignal } from "solid-js";
 import { Button } from "~/components/ui/button";
 import {
@@ -8,12 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import type { Author } from "~/domain/authors/schemas";
-import type { Character } from "~/domain/characters/schemas";
-import type { Ip } from "~/domain/ips/schemas";
-import type { SearchGroup } from "~/domain/media/schemas";
-import type { Project } from "~/domain/projects/schemas";
-import type { TagResponse } from "~/domain/tags/schemas";
 
 import { ProSearchBuilder } from "./pro-search-builder";
 

@@ -1,11 +1,17 @@
-import { eq } from "drizzle-orm";
-import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
-import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import type {
+  NewCategory,
+  UpdateCategory,
+} from "@solid-imager/core/domain/categories/schemas";
+import {
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
   Category,
   CategoryRepository,
-} from "~/domain/repositories/category-repository";
+} from "@solid-imager/core/domain/repositories/category-repository";
+import { eq } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { categories } from "~/infrastructure/db/schema";
 

@@ -1,3 +1,6 @@
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
 import { toast } from "solid-toast";
@@ -51,9 +54,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { Character } from "~/domain/characters/schemas";
-import type { Ip } from "~/domain/ips/schemas";
-import type { Project } from "~/domain/projects/schemas";
 import {
   createCharacter,
   deleteCharacter,

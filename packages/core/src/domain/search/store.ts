@@ -3,7 +3,7 @@ import type {
   Preset,
   SearchCriterion,
   SearchGroup,
-} from "~/domain/media/schemas";
+} from "@/domain/media/schemas";
 
 export type SearchState = {
   // Modes

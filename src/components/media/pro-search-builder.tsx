@@ -1,3 +1,12 @@
+import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type {
+  SearchCriterion,
+  SearchGroup,
+} from "@solid-imager/core/domain/media/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent } from "~/components/ui/card";
@@ -17,12 +26,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type { Author } from "~/domain/authors/schemas";
-import type { Character } from "~/domain/characters/schemas";
-import type { Ip } from "~/domain/ips/schemas";
-import type { SearchCriterion, SearchGroup } from "~/domain/media/schemas";
-import type { Project } from "~/domain/projects/schemas";
-import type { TagResponse } from "~/domain/tags/schemas";
 import { cn } from "~/presentation/utils/cn";
 
 // Labels for targets

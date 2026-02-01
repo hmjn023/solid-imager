@@ -1,9 +1,9 @@
-import type { ExtractedData } from "~/domain/media/schemas";
+import type { ExtractedData } from "@/domain/media/schemas";
 import {
   extractTagsFromWorkflow,
   type TagExtractionOptions,
-} from "~/domain/tags/extractor";
-import { type Workflow, workflowSchema } from "~/domain/tags/schemas";
+} from "@/domain/tags/extractor";
+import { type Workflow, workflowSchema } from "@/domain/tags/schemas";
 
 function parseWorkflowAndExtractTags(
   text: string,

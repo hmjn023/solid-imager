@@ -1,7 +1,7 @@
 import type {
   Transaction,
   TransactionManager,
-} from "~/domain/interfaces/transaction-manager";
+} from "@solid-imager/core/domain/interfaces/transaction-manager";
 import { db } from "~/infrastructure/db/index";
 
 export const DrizzleTransactionManager: TransactionManager = {

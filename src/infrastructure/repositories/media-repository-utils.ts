@@ -1,3 +1,4 @@
+import { UnexpectedError } from "@solid-imager/core/domain/errors";
 import {
   and,
   asc,
@@ -13,7 +14,6 @@ import {
   type SQL,
   sql,
 } from "drizzle-orm";
-import { UnexpectedError } from "~/domain/errors";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   mediaCharacters,

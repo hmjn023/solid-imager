@@ -1,4 +1,5 @@
 import { Collapsible } from "@kobalte/core";
+import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { toast } from "solid-toast";
@@ -6,7 +7,6 @@ import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import { Badge } from "~/components/ui/badge";
 import { ClipboardCopy } from "~/components/ui/clipboard-copy";
-import type { MediaDetails } from "~/domain/media/schemas";
 import {
   addCharacterToMedia,
   createCharacter,

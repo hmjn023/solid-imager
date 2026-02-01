@@ -1,4 +1,23 @@
 import {
+  ResourceNotFoundError,
+  UnexpectedError,
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import {
+  type AddMediaRequest,
+  type Author,
+  type Media,
+  type MediaDetails,
+  type MediaGenerationInfo,
+  type MediaSearchRequest,
+  type MediaSearchResponse,
+  type MediaTag,
+  type MediaUrl,
+  mediaSearchResponseSchema,
+  type UpdateMediaRequest,
+} from "@solid-imager/core/domain/media/schemas";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import {
   and,
   asc,
   desc,
@@ -20,22 +39,6 @@ import {
   sql,
 } from "drizzle-orm";
 import type { z } from "zod";
-import { ResourceNotFoundError, UnexpectedError } from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import {
-  type AddMediaRequest,
-  type Author,
-  type Media,
-  type MediaDetails,
-  type MediaGenerationInfo,
-  type MediaSearchRequest,
-  type MediaSearchResponse,
-  type MediaTag,
-  type MediaUrl,
-  mediaSearchResponseSchema,
-  type UpdateMediaRequest,
-} from "~/domain/media/schemas";
-import type { IMediaRepository } from "~/domain/repositories/media-repository";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   authors,
@@ -594,11 +597,11 @@ export const MediaRepository: IMediaRepository = {
 // Query Builder Helpers
 // ============================================================================
 
-import type { AnyColumn } from "drizzle-orm";
 import type {
   SearchGroup,
   searchCriterionSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
+import type { AnyColumn } from "drizzle-orm";
 
 type SearchCriterion = z.infer<typeof searchCriterionSchema>;
 type CriterionValue = SearchCriterion["value"];

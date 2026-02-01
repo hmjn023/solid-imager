@@ -1,17 +1,17 @@
-import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { MediaTag } from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { MediaTag } from "@solid-imager/core/domain/media/schemas";
 import type {
   NewTag,
   Tag,
   TagRepository as TagRepositoryDef,
-} from "~/domain/repositories/tag-repository";
-import type { UpdateTag } from "~/domain/tags/schemas";
+} from "@solid-imager/core/domain/repositories/tag-repository";
+import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
+import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { mediaTags, tags } from "~/infrastructure/db/schema";
 

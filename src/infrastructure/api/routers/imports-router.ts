@@ -1,7 +1,7 @@
 import { os } from "@orpc/server";
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
-import { downloadItemSchema } from "~/domain/media/schemas";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";

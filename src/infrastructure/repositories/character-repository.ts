@@ -1,16 +1,16 @@
-import { and, eq, sql } from "drizzle-orm";
 import type {
   Character,
   NewCharacter,
   UpdateCharacter,
-} from "~/domain/characters/schemas";
+} from "@solid-imager/core/domain/characters/schemas";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { CharacterRepository } from "~/domain/repositories/character-repository";
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import { and, eq, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
   characterIps,

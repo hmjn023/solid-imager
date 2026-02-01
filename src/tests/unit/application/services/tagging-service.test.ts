@@ -1,10 +1,10 @@
+import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { TaggingService } from "~/application/services/tagging-service";
-import type { IAiClient } from "~/domain/interfaces/ai-client";
-import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import type { IIpRepository } from "~/domain/repositories/ip-repository";
-import type { SourceRepository } from "~/domain/repositories/source-repository";
-import type { TagRepository } from "~/domain/repositories/tag-repository";
 
 // biome-ignore lint/style/noMagicNumbers: Test data
 const MOCK_BUFFER_DATA = [1, 2, 3];

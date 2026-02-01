@@ -1,5 +1,5 @@
-import type { NewCategory, UpdateCategory } from "~/domain/categories/schemas";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import type { NewCategory, UpdateCategory } from "@/domain/categories/schemas";
+import type { Transaction } from "@/domain/interfaces/transaction-manager";
 
 // Define strict Category entity as it is not fully exported from schemas yet
 // Assuming similar structure to Drizzle schema but domain-pure

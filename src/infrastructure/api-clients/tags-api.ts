@@ -5,8 +5,11 @@
  * NOTE: Migrated to use oRPC ✅
  */
 
+import type {
+  newTagSchema,
+  updateTagSchema,
+} from "@solid-imager/core/domain/tags/schemas";
 import type { z } from "zod";
-import type { newTagSchema, updateTagSchema } from "~/domain/tags/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**

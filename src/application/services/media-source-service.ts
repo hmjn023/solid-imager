@@ -1,7 +1,7 @@
 import type {
   MediaSource,
   NewMediaSource,
-} from "~/domain/repositories/source-repository";
+} from "@solid-imager/core/domain/repositories/source-repository";
 import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 

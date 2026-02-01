@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { Open } from "unzipper";
 import {
   type MediaDumpItem,
   mediaDumpItemSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { Open } from "unzipper";
 import { db } from "~/infrastructure/db";
 import {
   authors,

@@ -1,12 +1,16 @@
-import { and, eq, sql } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
-import type { Ip, NewIp, UpdateIp } from "~/domain/ips/schemas";
-import type { IIpRepository } from "~/domain/repositories/ip-repository";
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type {
+  Ip,
+  NewIp,
+  UpdateIp,
+} from "@solid-imager/core/domain/ips/schemas";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import { and, eq, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import { ips, mediaIps } from "~/infrastructure/db/schema";
 

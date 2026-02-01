@@ -1,3 +1,7 @@
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { A } from "@solidjs/router";
 import {
   Card,
@@ -6,10 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type {
-  MediaSourceInfo,
-  SafeMediaSource,
-} from "~/domain/sources/schemas";
 
 /**
  * Props for the SourceCard component.

@@ -9,7 +9,7 @@ import type {
   LocalConnection,
   S3Connection,
   SftpConnection,
-} from "~/domain/sources/schemas";
+} from "@solid-imager/core/domain/sources/schemas";
 
 // すべての接続情報の方をまとめたUnion型
 /**

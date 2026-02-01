@@ -42,6 +42,7 @@
     "@orpc/solid-query": "^1.13.2",
     "@orpc/tanstack-query": "^1.13.2",
     "@orpc/zod": "^1.13.2",
+    "@solid-imager/core": "workspace:*",
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.4",
     "@solidjs/start": "^1.2.1",

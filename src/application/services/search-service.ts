@@ -3,12 +3,12 @@
  * Feature 7: Media Sort/Search Functionality
  */
 
-import { services } from "~/application/registry";
 import type {
   MediaSearchRequest,
   MediaSearchResponse,
-} from "~/domain/media/schemas";
-import type { IMediaRepository } from "~/domain/repositories/media-repository";
+} from "@solid-imager/core/domain/media/schemas";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import { services } from "~/application/registry";
 
 /**
  * Defines the options available for searching media.

@@ -1,6 +1,6 @@
+import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { useParams } from "@solidjs/router";
 import { createMemo, Match, Switch } from "solid-js";
-import type { MediaDetails } from "~/domain/media/schemas";
 
 type MediaViewerProps = {
   media: MediaDetails;

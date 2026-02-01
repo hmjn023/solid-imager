@@ -1,7 +1,7 @@
+import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
+import { mediaSourceIdSchema } from "@solid-imager/core/domain/sources/schemas";
 import { describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { mediaIdSchema } from "~/domain/media/schemas";
-import { mediaSourceIdSchema } from "~/domain/sources/schemas";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("getMedia Contract", () => {

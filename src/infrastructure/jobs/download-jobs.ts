@@ -5,11 +5,14 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import type {
+  AddMediaRequest,
+  DownloadItem,
+} from "@solid-imager/core/domain/media/schemas";
+import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
-import type { AddMediaRequest, DownloadItem } from "~/domain/media/schemas";
-import { getMediaTypeFromExtension } from "~/domain/media/utils/media-type-utils";
 import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";

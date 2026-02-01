@@ -1,14 +1,14 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { BackupService } from "~/application/services/backup-service";
-import { MediaService } from "~/application/services/media-service";
-import { MediaSourceService } from "~/application/services/media-source-service";
-import type { MediaSource } from "~/domain/repositories/source-repository";
+import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import {
   mediaSourceInfoSchema,
   mediaSourceStatusSchema,
   type SafeMediaSource,
-} from "~/domain/sources/schemas";
+} from "@solid-imager/core/domain/sources/schemas";
+import { z } from "zod";
+import { BackupService } from "~/application/services/backup-service";
+import { MediaService } from "~/application/services/media-service";
+import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 

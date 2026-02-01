@@ -19,6 +19,12 @@
     "paths": {
       "~/*": [
         "./src/*"
+      ],
+      "@solid-imager/core/*": [
+        "./packages/core/src/*"
+      ],
+      "@/*": [
+        "./packages/core/src/*"
       ]
     },
     "strictNullChecks": true,

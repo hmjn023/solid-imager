@@ -1,5 +1,5 @@
+import { authorSchema } from "@solid-imager/core/domain/authors/schemas";
 import { desc, like, or } from "drizzle-orm";
-import { authorSchema } from "~/domain/authors/schemas";
 import { db } from "~/infrastructure/db";
 import { authors } from "~/infrastructure/db/schema";
 

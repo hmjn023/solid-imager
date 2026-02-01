@@ -1,7 +1,10 @@
 import { os } from "@orpc/server";
+import {
+  newTagSchema,
+  updateTagSchema,
+} from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
 import { TagService } from "~/application/services/tag-service";
-import { newTagSchema, updateTagSchema } from "~/domain/tags/schemas";
 
 /**
  * Tags Router Implementation

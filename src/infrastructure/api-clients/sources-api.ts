@@ -5,8 +5,8 @@
  * NOTE: This file is migrated to use oRPC ✅
  */
 
+import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { z } from "zod";
-import type { mediaSourceInfoSchema } from "~/domain/sources/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**

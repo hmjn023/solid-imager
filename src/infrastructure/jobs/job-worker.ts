@@ -1,4 +1,4 @@
-import type { AppConfig } from "~/domain/config/config-schema";
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";

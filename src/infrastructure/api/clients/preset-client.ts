@@ -1,4 +1,4 @@
-import type { SearchGroup } from "~/domain/media/schemas";
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export const PresetClient = {

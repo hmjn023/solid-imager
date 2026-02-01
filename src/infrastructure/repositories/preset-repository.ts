@@ -1,11 +1,11 @@
-import { eq, type InferSelectModel } from "drizzle-orm";
 import type {
   CreatePresetRequest,
   Preset,
   SearchGroup,
   UpdatePresetRequest,
-} from "~/domain/media/schemas";
-import type { PresetRepository } from "~/domain/repositories/preset-repository";
+} from "@solid-imager/core/domain/media/schemas";
+import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
+import { eq, type InferSelectModel } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import { presets } from "~/infrastructure/db/schema";
 

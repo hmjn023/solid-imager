@@ -1,15 +1,15 @@
-import { eq } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
+} from "@solid-imager/core/domain/errors";
 import type {
   NewUser,
   UpdateUser,
   User,
   UserRepository as UserRepositoryDef,
-} from "~/domain/repositories/user-repository";
+} from "@solid-imager/core/domain/repositories/user-repository";
+import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import { users } from "~/infrastructure/db/schema";
 

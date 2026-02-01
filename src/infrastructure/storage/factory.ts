@@ -3,7 +3,7 @@
  * Extracted from src/lib/drivers/factory.ts
  */
 
-import { localConnectionSchema } from "~/domain/sources/schemas";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { MediaSource } from "~/infrastructure/db/schema";
 import { LocalDriver } from "./local";
 import type { MediaSourceDriver } from "./types";

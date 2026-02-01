@@ -1,3 +1,7 @@
+import type {
+  MediaSourceInfo,
+  SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { createEffect, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { Button } from "~/components/ui/button";
@@ -18,10 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
-import type {
-  MediaSourceInfo,
-  SafeMediaSource,
-} from "~/domain/sources/schemas";
 
 const DEFAULT_SFTP_PORT = 22;
 

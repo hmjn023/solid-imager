@@ -1,10 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { ZodError } from "zod";
 import {
   mediaIdSchema,
   mediaSourceIdSchema,
   updateMediaRequestSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
+import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("updateMedia Contract", () => {

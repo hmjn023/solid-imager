@@ -5,7 +5,7 @@
  * NOTE: Migrated to use oRPC ✅
  */
 
-import type { MediaSearchRequest } from "~/domain/media/schemas";
+import type { MediaSearchRequest } from "@solid-imager/core/domain/media/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**

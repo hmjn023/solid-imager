@@ -1,10 +1,10 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { ProjectService } from "~/application/services/project-service";
 import {
   newProjectSchema,
   updateProjectSchema,
-} from "~/domain/projects/schemas";
+} from "@solid-imager/core/domain/projects/schemas";
+import { z } from "zod";
+import { ProjectService } from "~/application/services/project-service";
 
 /**
  * Projects Router Implementation

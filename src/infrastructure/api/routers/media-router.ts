@@ -1,11 +1,11 @@
 import { ORPCError, os } from "@orpc/server";
-import { z } from "zod";
-import { MediaService } from "~/application/services/media-service";
-import { ResourceNotFoundError } from "~/domain/errors";
+import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
   mediaSearchRequestSchema,
   updateMediaRequestSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
+import { z } from "zod";
+import { MediaService } from "~/application/services/media-service";
 
 /**
  * Media Router Implementation

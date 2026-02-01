@@ -1,4 +1,4 @@
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type {
   AddMediaRequest,
   Author,
@@ -10,7 +10,7 @@ import type {
   MediaTag,
   MediaUrl,
   UpdateMediaRequest,
-} from "~/domain/media/schemas";
+} from "@/domain/media/schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IMediaRepository = {

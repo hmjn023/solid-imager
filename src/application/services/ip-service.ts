@@ -1,4 +1,4 @@
-import type { NewIp } from "~/domain/ips/schemas";
+import type { NewIp } from "@solid-imager/core/domain/ips/schemas";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 
 /**

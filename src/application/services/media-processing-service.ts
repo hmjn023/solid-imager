@@ -3,19 +3,23 @@
  */
 
 import path from "node:path";
+
 // Registry for backward compatibility proxy
 
-import type { ConfigServiceImpl } from "~/application/services/config-service";
-import type { Media, MediaMetadataContext } from "~/domain/media/schemas";
+import type {
+  Media,
+  MediaMetadataContext,
+} from "@solid-imager/core/domain/media/schemas";
 // Repository Interfaces
-import type { IAuthorRepository } from "~/domain/repositories/author-repository";
-import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import type { IIpRepository } from "~/domain/repositories/ip-repository";
+import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import type { ConfigServiceImpl } from "~/application/services/config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { IMediaRepository } from "~/domain/repositories/media-repository";
-import type { IProjectRepository } from "~/domain/repositories/project-repository";
-import type { SourceRepository } from "~/domain/repositories/source-repository";
-import type { TagRepository } from "~/domain/repositories/tag-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";

@@ -1,21 +1,21 @@
 import path from "node:path";
-import { services } from "~/application/registry";
-import type { IAiClient } from "~/domain/interfaces/ai-client";
-import type { CharacterRepository } from "~/domain/repositories/character-repository";
-import type { IIpRepository } from "~/domain/repositories/ip-repository";
-import type { SourceRepository } from "~/domain/repositories/source-repository";
-import type { TagRepository as TagRepositoryDef } from "~/domain/repositories/tag-repository";
-import { DEFAULT_MANUAL_CONFIDENCE } from "~/domain/tagging/constants";
+import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
+import { DEFAULT_MANUAL_CONFIDENCE } from "@solid-imager/core/domain/tagging/constants";
 import type {
   CcipFeatureResponse,
   TaggingResponse,
-} from "~/domain/tagging/schemas";
+} from "@solid-imager/core/domain/tagging/schemas";
+import { services } from "~/application/registry";
 import { eventService } from "./event-service";
 import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
-import { ResourceConflictError } from "~/domain/errors";
+import { ResourceConflictError } from "@solid-imager/core/domain/errors";
 
 export class TaggingService {
   private readonly aiClient: IAiClient;

@@ -1,15 +1,15 @@
-import { eq, type InferSelectModel } from "drizzle-orm";
 import {
   ResourceConflictError,
   ResourceNotFoundError,
   UnexpectedError,
-} from "~/domain/errors";
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+} from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
   MediaSource,
   NewMediaSource,
   SourceRepository,
-} from "~/domain/repositories/source-repository";
+} from "@solid-imager/core/domain/repositories/source-repository";
+import { eq, type InferSelectModel } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import { mediaSources } from "~/infrastructure/db/schema";
 

@@ -1,10 +1,10 @@
 import { os } from "@orpc/server";
-import { z } from "zod";
-import { PresetService } from "~/application/services/preset-service";
 import {
   createPresetRequestSchema,
   updatePresetRequestSchema,
-} from "~/domain/media/schemas";
+} from "@solid-imager/core/domain/media/schemas";
+import { z } from "zod";
+import { PresetService } from "~/application/services/preset-service";
 
 /**
  * Presets Router Implementation

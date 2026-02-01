@@ -1,4 +1,4 @@
-import type { NewProject } from "~/domain/projects/schemas";
+import type { NewProject } from "@solid-imager/core/domain/projects/schemas";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 
 /**

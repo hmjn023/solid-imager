@@ -1,3 +1,4 @@
+import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Badge } from "~/components/ui/badge";
 import {
@@ -7,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
-import type { TaggingResponse } from "~/domain/tagging/schemas";
 import { fetchAiTags } from "~/infrastructure/api-clients/ai-api";
 
 type AiTaggingModalProps = {

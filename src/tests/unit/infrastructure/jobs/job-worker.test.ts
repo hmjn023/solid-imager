@@ -1,5 +1,5 @@
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AppConfig } from "~/domain/config/config-schema";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
@@ -8,9 +8,13 @@ import { JobWorker } from "~/infrastructure/jobs/job-worker";
 vi.mock("~/infrastructure/logger", () => ({
   logger: {
     info: vi.fn(),
+    debug: vi.fn(),
     error: vi.fn(),
     warn: vi.fn(),
+    fatal: vi.fn(),
+    trace: vi.fn(),
   },
+  updateLogLevel: vi.fn(),
 }));
 
 describe("JobWorker", () => {

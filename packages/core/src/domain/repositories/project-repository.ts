@@ -1,9 +1,9 @@
-import type { Transaction } from "~/domain/interfaces/transaction-manager";
+import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type {
   NewProject,
   Project,
   UpdateProject,
-} from "~/domain/projects/schemas";
+} from "@/domain/projects/schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IProjectRepository = {

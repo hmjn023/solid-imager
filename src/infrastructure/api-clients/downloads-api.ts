@@ -4,7 +4,7 @@
  * NOTE: Migrated to use oRPC ✅
  */
 
-import type { DownloadItem } from "~/domain/media/schemas";
+import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**

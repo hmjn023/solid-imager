@@ -1,3 +1,4 @@
+import { uploadMediaFormSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import { createForm } from "@tanstack/solid-form";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
@@ -13,7 +14,6 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
-import { uploadMediaFormSchema } from "~/domain/media/upload-schemas";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type UploadMediaModalProps = {

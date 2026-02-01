@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { conflictSchema } from "~/domain/media/upload-schemas";
+import type { conflictSchema } from "@/domain/media/upload-schemas";
 
 // biome-ignore lint/style/useNamingConvention: Interface naming
 export type IStorageService = {
