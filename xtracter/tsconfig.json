@@ -21,8 +21,14 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "paths": {
+            "~/domain/shared/api-contract": [
+                "../apps/server/src/domain/shared/api-contract"
+            ],
+            "~/domain/*": [
+                "../packages/core/src/domain/*"
+            ],
             "~/*": [
-                "../src/*"
+                "../apps/server/src/*"
             ]
         }
     },

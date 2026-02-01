@@ -6,8 +6,19 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./domain/*": "./src/domain/*.ts",
-    "./domain/*/schemas": "./src/domain/*/schemas.ts"
+    "./domain/errors": "./src/domain/errors/index.ts",
+    "./domain/*/schemas": "./src/domain/*/schemas.ts",
+    "./domain/repositories/*": "./src/domain/repositories/*.ts",
+    "./domain/services/*": "./src/domain/services/*.ts",
+    "./domain/interfaces/*": "./src/domain/interfaces/*.ts",
+    "./domain/search/*": "./src/domain/search/*.ts",
+    "./domain/sources/*": "./src/domain/sources/*.ts",
+    "./domain/tagging/*": "./src/domain/tagging/*.ts",
+    "./domain/tags/*": "./src/domain/tags/*.ts",
+    "./domain/media/*": "./src/domain/media/*.ts",
+    "./domain/media/utils/*": "./src/domain/media/utils/*.ts",
+    "./domain/config/*": "./src/domain/config/*.ts",
+    "./interfaces/*": "./src/interfaces/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

@@ -10,28 +10,28 @@
 - [x] Task: Refactor `apps/server` (original src) to import from `@solid-imager/core` (or equivalent alias). <!-- ab4a704 -->
 - [x] Task: Verify that `packages/core` builds/lints correctly without Node.js specific dependencies. <!-- 09607e9 -->
 
-## Phase 2: Abstraction Layer Implementation
+## Phase 2: Abstraction Layer Implementation [checkpoint: 1ad9a25]
 - [x] Task: Define `IFileSystem` interface in `packages/core`.
     - [x] Subtask: Create `packages/core/src/interfaces/file-system.ts`.
 - [x] Task: Define `IMediaStorage` interface in `packages/core`.
     - [x] Subtask: Create `packages/core/src/interfaces/media-storage.ts`.
 - [x] Task: Define `IConfigService` interface in `packages/core`.
     - [x] Subtask: Create `packages/core/src/interfaces/config-service.ts`.
-- [x] Task: Implement `NodeFileSystem` (Server implementation) in `apps/server`. <!-- 37d398c -->
+- [x] Task: Implement `NodeFileSystem` (Server implementation) in `apps/server`.
     - [x] Subtask: Create class implementing `IFileSystem` using `node:fs`.
     - [x] Subtask: Refactor existing file system usage to use this implementation.
     - [x] Subtask: Update unit tests to mock `IFileSystem` instead of `node:fs`.
-- [x] Task: Implement `ServerMediaStorage` in `apps/server`. <!-- deac7af -->
+- [x] Task: Implement `ServerMediaStorage` in `apps/server`.
     - [x] Subtask: Rename/Refactor `LocalMediaStorage` to `ServerMediaStorage`.
     - [x] Subtask: Ensure it implements `IMediaStorage`.
     - [x] Subtask: Update unit tests.
-- [x] Task: Implement `EnvConfigService` in `apps/server`. <!-- 6c97497 -->
+- [x] Task: Implement `EnvConfigService` in `apps/server`.
     - [x] Subtask: Create wrapper around `process.env`.
     - [x] Subtask: Refactor configuration usage.
-- [~] Task: Conductor - User Manual Verification 'Abstraction Layer Implementation' (Protocol in workflow.md)
+- [x] Task: Conductor - User Manual Verification 'Abstraction Layer Implementation' (Protocol in workflow.md) <!-- 1ad9a25 -->
 
 ## Phase 3: Monorepo Restructuring (The Big Move)
-- [ ] Task: Prepare `apps/server` directory.
+- [~] Task: Prepare `apps/server` directory.
     - [ ] Subtask: Move remaining `src` content to `apps/server/src`.
     - [ ] Subtask: Move `package.json` (server specific) and configuration files.
 - [ ] Task: Update `tsconfig.json` paths and aliases for the new structure.
