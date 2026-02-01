@@ -27,7 +27,6 @@ const URL_HASH_LENGTH = 12;
 // ffmpeg-static may return null on unsupported platforms
 const resolvedFfmpegPath = ffmpegPath ?? undefined;
 
-
 type YtDlpOutput = {
   id: string;
 
