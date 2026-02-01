@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "style": {
+        "useNamingConvention": "off"
+      },
+      "performance": {
+        "noBarrelFile": "off"
+      }
+    }
+  },
+  "files": {
+    "includes": [
+      "apps/**/src/**",
+      "packages/**/src/**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/.vinxi",
+      "!**/.output",
+      "!apps/server/src/app.css",
+      "!apps/server/public/docs",
+      "!apps/server/scripts",
+      "!apps/server/playwright.config.ts",
+      "!apps/server/get-media-ids.ts"
+    ],
+    "experimentalScannerIgnores": [
+      "db-data",
+      ".output",
+      ".vinxi",
+      "node_modules"
+    ]
+  },
+  "extends": ["ultracite"],
+  "overrides": [
+    {
+      "includes": ["src/db/schema.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": "off"
+          }
+        }
+      }
+    }
+  ]
+}
