@@ -82,12 +82,12 @@ export interface IConfigService {
 
 ### Step 1: Core パッケージの抽出
 1.  `packages/core` を作成。
-2.  `src/domain` 配下のコードを移動。
-    *   **注意**: `src/domain/media/utils/hash-utils.ts` 内の `node:crypto`, `node:fs` 依存箇所は、一時的に `apps/server` へ退避するか、抽象化インターフェース経由にリファクタリングする。
+2.  `packages/core/src/domain` 配下のコードを移動。
+    *   **注意**: `packages/core/src/domain/media/utils/hash-utils.ts` 内の `node:crypto`, `node:fs` 依存箇所は、一時的に `apps/server` へ退避するか、抽象化インターフェース経由にリファクタリングする。
 3.  Zod スキーマ (`schema.ts`) を全て Core に移動。
 
 ### Step 2: 抽象化インターフェースの実装
-1.  `src/infrastructure/interfaces/` ディレクトリを作成（後で `packages/core` へ移動）。
+1.  `apps/server/src/infrastructure/interfaces/` ディレクトリを作成（後で `packages/core` へ移動）。
 2.  上記 `IFileSystem`, `IMediaStorage`, `IConfigService` を定義。
 3.  既存の `LocalMediaStorage` を `ServerMediaStorage` にリネームし、`IMediaStorage` を実装するように修正。
 
@@ -111,7 +111,7 @@ export interface IConfigService {
 
 ## 4. DB接続の分離戦略
 
-`src/infrastructure/db/index.ts` の条件分岐を廃止し、ビルド時に決定されるようにします。
+`apps/server/src/infrastructure/db/index.ts` の条件分岐を廃止し、ビルド時に決定されるようにします。
 
 *   **apps/server**: `drizzle-orm/node-postgres` と `pg` を使用。
 *   **apps/client**: `drizzle-orm/pglite` と `@electric-sql/pglite` を使用。

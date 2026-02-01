@@ -1,4 +1,4 @@
-import type { Category, NewCategory } from '~/infrastructure/db/schema';
+import type { Category, NewCategory } from "~/infrastructure/db/schema";
 
 /**
  * すべてのカテゴリを取得します。
@@ -19,7 +19,10 @@ export declare function insertCategory(data: NewCategory): Promise<Category>;
  * @param data - 更新するデータ。
  * @returns - 更新されたカテゴリオブジェクト。
  */
-export declare function updateCategory(id: number, data: Partial<NewCategory>): Promise<Category>;
+export declare function updateCategory(
+  id: number,
+  data: Partial<NewCategory>
+): Promise<Category>;
 
 /**
  * 指定されたIDのカテゴリを削除します。

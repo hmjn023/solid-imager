@@ -94,15 +94,15 @@
 *   **目標:** 分割に向けたデータ構造とロジックの整理。
 *   **ステップ:**
     1.  **全テーブルの UUID 化:** `serial` ID を UUID に移行。既存データのマイグレーション（IDの流し替えと外部キー更新）を実施。
-    2.  **ドメイン層の純粋化:** `src/domain` から環境依存の API を排除し、リポジトリパターンを導入。
+    2.  **ドメイン層の純粋化:** `packages/core/src/domain` から環境依存の API を排除し、リポジトリパターンを導入。
 
 ### Phase 1: APIの分離と oRPC の導入
 *   **目標:** 現在のリポジトリ内で UI とバックエンドロジックを分離し、型安全な RPC 通信を導入する。
 *   **ステップ:**
     1.  `elysia`, `@orpc/server`, `@orpc/client`, `@orpc/zod` をインストール。✅ **完了**
-    2.  **API Contract の定義 (`src/domain/shared/api-contract.ts`):** Zod スキーマを用いて API の仕様（Input/Output）を定義。これが Core パッケージの型情報の核となる。✅ **完了**
-    3.  **Server Router の実装 (`src/infrastructure/api/routers/*.ts`):** Contract に基づき、Application Service を呼び出す実処理を実装。✅ **完了（sources のみ）**
-    4.  **Elysia のマウント (`src/routes/api/[...path].ts`):** SolidStart の Catch-all API ルート内で Elysia の `app.handle(request)` を呼び出す。これにより、**Same-Origin 通信による CORS 回避** と Elysia の型安全なルーティングを両立させる。✅ **完了**
+    2.  **API Contract の定義 (`packages/core/src/domain/shared/api-contract.ts`):** Zod スキーマを用いて API の仕様（Input/Output）を定義。これが Core パッケージの型情報の核となる。✅ **完了**
+    3.  **Server Router の実装 (`apps/server/src/infrastructure/api/routers/*.ts`):** Contract に基づき、Application Service を呼び出す実処理を実装。✅ **完了（sources のみ）**
+    4.  **Elysia のマウント (`apps/server/src/routes/api/[...path].ts`):** SolidStart の Catch-all API ルート内で Elysia の `app.handle(request)` を呼び出す。これにより、**Same-Origin 通信による CORS 回避** と Elysia の型安全なルーティングを両立させる。✅ **完了**
     5.  **段階的な API 移行:** 既存の REST API エンドポイントを oRPC に順次移行。
     6.  *検証:* アプリケーションの動作は変わらず、通信が完全に型安全（End-to-End Type Safety）になることを確認。
 
@@ -212,7 +212,7 @@
 
 1. **Router の作成**
    ```typescript
-   // src/infrastructure/api/routers/media-router.ts
+   // apps/server/src/infrastructure/api/routers/media-router.ts
    export const mediaRouter = {
      search: os.input(searchSchema).handler(async ({ input }) => {
        return await MediaService.search(input);
@@ -223,7 +223,7 @@
 
 2. **Contract への追加**
    ```typescript
-   // src/domain/shared/api-contract.ts
+   // packages/core/src/domain/shared/api-contract.ts
    export const appRouter = {
      sources: sourcesRouter,
      media: mediaRouter,  // 追加
@@ -242,7 +242,7 @@
    ```
 
 4. **既存 REST エンドポイントの削除**
-   - oRPC への移行が完了し、動作確認が取れたら、対応する `src/routes/api/**/*.ts` ファイルを削除
+   - oRPC への移行が完了し、動作確認が取れたら、対応する `apps/server/src/routes/api/**/*.ts` ファイルを削除
 
 ##### 移行の進め方
 
@@ -253,15 +253,15 @@
 ##### 完了条件
 
 - [x] 全 46 エンドポイントが oRPC に移行完了
-- [x] `src/routes/api` 配下に残るのは `[...path].ts`（Elysia マウント）のみ
+- [x] `apps/server/src/routes/api` 配下に残るのは `[...path].ts`（Elysia マウント）のみ
 - [x] フロントエンドの全 API 呼び出しが `orpc` クライアント経由（`api-clients` ラッパーを含む）
-- [ ] 既存の `src/infrastructure/api-clients/*-api.ts` ファイルを削除または非推奨化（現状はoRPCラッパーとして維持）
+- [ ] 既存の `apps/server/src/infrastructure/api-clients/*-api.ts` ファイルを削除または非推奨化（現状はoRPCラッパーとして維持）
 - [x] End-to-End の型安全性が確立され、IDE で完全な補完が効く状態
 
 ### Phase 2: データレイヤーの抽象化
 *   **目標:** アプリケーションが DB の場所（プロセス内 vs ネットワーク越し）やランタイム（Bun vs Tauri）を意識しないようにする。
 *   **ステップ:**
-    1.  `src/infrastructure/db` を依存注入可能 (Injectable) にリファクタリング。
+    1.  `apps/server/src/infrastructure/db` を依存注入可能 (Injectable) にリファクタリング。
     2.  `Repository` パターンを作成するか、切り替え可能な `db` インスタンスを持つ Drizzle を使用。
     3.  テストルートで **PGlite** を導入し、現在の Drizzle スキーマで動作することを検証。
     4.  **ファイルシステム操作の抽象化:**
@@ -291,7 +291,7 @@
 完全な型安全性の確保は、モノレポ化（Phase 3）のタイミングで段階的に実施します。
 
 *   **Phase 0-2 (現在):**
-    *   `src/domain` 配下（将来の Core）のみ、厳格な型チェックを適用します。
+    *   `packages/core/src/domain` 配下（将来の Core）のみ、厳格な型チェックを適用します。
     *   それ以外の UI やレガシーコードの型エラーは許容し、開発速度を優先します。
 *   **Phase 3 (分離時):**
     *   `packages/core`: `strict: true` を強制し、完全な型安全性を確保します。

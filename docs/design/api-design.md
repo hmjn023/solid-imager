@@ -28,9 +28,9 @@
 - ✅ JSON形式のリクエスト/レスポンス
 
 **実装場所:**
-- ルーター定義: `src/infrastructure/api/routers/`
-- 型定義: `src/domain/shared/api-contract.ts`
-- エントリーポイント: `src/routes/api/[...path].ts`
+- ルーター定義: `apps/server/src/infrastructure/api/routers/`
+- 型定義: `packages/core/src/domain/shared/api-contract.ts`
+- エントリーポイント: `apps/server/src/routes/api/[...path].ts`
 
 **使用例:**
 ```typescript
@@ -60,7 +60,7 @@ oRPC は JSON ベースのため、バイナリコンテンツは専用の REST 
 - `GET /api/sources/:sourceId/dump` - バックアップZIP
 - `POST /api/sources/:sourceId/import` - ZIPインポート
 
-**実装場所:** `src/infrastructure/api/app.ts`
+**実装場所:** `apps/server/src/infrastructure/api/app.ts`
 
 **使用例:**
 ```html

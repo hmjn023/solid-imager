@@ -25,7 +25,7 @@
 ## 現在の実装
 
 ### 対象ファイル
-- `src/infrastructure/jobs/download-jobs.ts`
+- `apps/server/src/infrastructure/jobs/download-jobs.ts`
 
 ### 現在使用している yt-dlp オプション
 
@@ -55,7 +55,7 @@ bun add youtube-dl-exec ffmpeg-static
 bun add -D @types/ffmpeg-static
 ```
 
-### コード変更方針 (`src/infrastructure/jobs/download-jobs.ts`)
+### コード変更方針 (`apps/server/src/infrastructure/jobs/download-jobs.ts`)
 
 現在の `child_process.execFileAsync` を使用した直接実行から、ライブラリ経由の実行に変更する。
 
