@@ -14,7 +14,6 @@ export default defineConfig({
         "~": path.resolve(process.cwd(), "./src"),
       },
     },
-    // @ts-expect-error: Vite version mismatch in Vinxi/SolidStart
     plugins: [tailwindcss()],
     ssr: {
       noExternal: ["drizzle-orm", "effect"],
