@@ -1,4 +1,4 @@
-import { TweetMetadata, Author } from "../types";
+import { TweetMetadata, Author } from "../schema";
 
 console.log("xtracter content script loaded");
 

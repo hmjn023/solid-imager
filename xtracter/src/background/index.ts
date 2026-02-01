@@ -5,7 +5,7 @@ import {
   PostBulkMessage,
   PostDownloadMessage,
   TweetMetadata,
-} from "../types";
+} from "../schema";
 import { getClient, APIError } from "../api";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 

@@ -3,7 +3,7 @@ import type {
   SearchCriterion,
   SearchGroup,
 } from "@/domain/media/schemas";
-import type { defaultState, SearchState } from "./types";
+import type { defaultState, SearchState } from "./schema";
 
 /**
  * Transitions between search modes while attempting to preserve conditions.

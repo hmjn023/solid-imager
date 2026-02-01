@@ -6,7 +6,7 @@
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { MediaSource } from "~/infrastructure/db/schema";
 import { LocalDriver } from "./local";
-import type { MediaSourceDriver } from "./types";
+import type { MediaSourceDriver } from "./schema";
 
 /**
  * Returns a driver instance for the specified media source.

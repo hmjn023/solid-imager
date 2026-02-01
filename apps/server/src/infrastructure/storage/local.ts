@@ -6,7 +6,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { LocalConnection } from "@solid-imager/core/domain/sources/schemas";
-import type { MediaSourceDriver, MediaSourceEntry } from "./types";
+import type { MediaSourceDriver, MediaSourceEntry } from "./schema";
 
 /**
  * Implements the MediaSourceDriver interface for local file system access.

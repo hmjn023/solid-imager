@@ -7,7 +7,7 @@ import {
 import {
   defaultState,
   type SearchState,
-} from "@solid-imager/core/domain/search/types";
+} from "@solid-imager/core/domain/search/schema";
 import { createStore } from "solid-js/store";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
