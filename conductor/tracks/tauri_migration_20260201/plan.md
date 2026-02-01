@@ -2,7 +2,7 @@
 
 ## Phase 1: Core Package Extraction & Setup
 - [x] Task: Create `packages/core` directory structure and initialize `package.json` for Bun Workspaces. <!-- 59437f3 -->
-- [ ] Task: Configure Bun Workspaces in the root `package.json`.
+- [x] Task: Configure Bun Workspaces in the root `package.json`. <!-- 565025d -->
 - [ ] Task: Move `src/domain` entities and logic to `packages/core/src/domain`.
     - [ ] Subtask: Identify pure TypeScript domain logic (no Node.js deps).
     - [ ] Subtask: Move files and update internal relative imports within `core`.
