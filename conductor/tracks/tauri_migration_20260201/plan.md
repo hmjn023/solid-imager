@@ -1,6 +1,6 @@
 # Implementation Plan - Track: Tauri Infrastructure & Monorepo Migration (Phase 1-3)
 
-## Phase 1: Core Package Extraction & Setup
+## Phase 1: Core Package Extraction & Setup [checkpoint: 0d88742]
 - [x] Task: Create `packages/core` directory structure and initialize `package.json` for Bun Workspaces. <!-- 59437f3 -->
 - [x] Task: Configure Bun Workspaces in the root `package.json`. <!-- 565025d -->
 - [x] Task: Move `src/domain` entities and logic to `packages/core/src/domain`. <!-- ab4a704 -->
