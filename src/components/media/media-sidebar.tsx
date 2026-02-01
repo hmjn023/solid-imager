@@ -471,7 +471,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
                 <div>
                   <div class="mb-1 flex items-center justify-between">
                     <span class="font-medium text-gray-600">Prompt:</span>
-                    <ClipboardCopy text={genInfo()?.prompt || ""} />
+                    <ClipboardCopy text={genInfo()?.prompt ?? ""} />
                   </div>
                   <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
                     {genInfo()?.prompt}
@@ -484,7 +484,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
                     <span class="font-medium text-gray-600">
                       Negative Prompt:
                     </span>
-                    <ClipboardCopy text={genInfo()?.negativePrompt || ""} />
+                    <ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
                   </div>
                   <p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
                     {genInfo()?.negativePrompt}

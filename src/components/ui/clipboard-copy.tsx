@@ -1,4 +1,4 @@
-import { createSignal, splitProps } from "solid-js";
+import { createSignal, onCleanup, splitProps } from "solid-js";
 import { toast } from "solid-toast";
 import { cn } from "~/presentation/utils/cn";
 
@@ -15,11 +15,10 @@ const RESET_TIMEOUT = 2000;
 function CopyIcon(props: { size?: number; class?: string }) {
   return (
     <svg
-      aria-label="Copy icon"
+      aria-hidden="true"
       class={props.class}
       fill="none"
       height={props.size || 24}
-      role="img"
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -28,7 +27,6 @@ function CopyIcon(props: { size?: number; class?: string }) {
       width={props.size || 24}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <title>Copy icon</title>
       <rect height="14" rx="2" ry="2" width="14" x="8" y="8" />
       <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
     </svg>
@@ -38,11 +36,10 @@ function CopyIcon(props: { size?: number; class?: string }) {
 function CheckIcon(props: { size?: number; class?: string }) {
   return (
     <svg
-      aria-label="Check icon"
+      aria-hidden="true"
       class={props.class}
       fill="none"
       height={props.size || 24}
-      role="img"
       stroke="currentColor"
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -51,7 +48,6 @@ function CheckIcon(props: { size?: number; class?: string }) {
       width={props.size || 24}
       xmlns="http://www.w3.org/2000/svg"
     >
-      <title>Check icon</title>
       <polyline points="20 6 9 17 4 12" />
     </svg>
   );
@@ -82,17 +78,25 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
       return;
     }
 
+    let timeoutId: number;
+
     try {
       await navigator.clipboard.writeText(local.text);
       setCopied(true);
-      toast.success("クリップボードにコピーしました");
+      toast.success("Copied to clipboard");
 
-      setTimeout(() => {
+      timeoutId = window.setTimeout(() => {
         setCopied(false);
       }, RESET_TIMEOUT);
     } catch (_error) {
-      toast.error("コピーに失敗しました");
+      toast.error("Failed to copy");
     }
+
+    onCleanup(() => {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    });
   };
 
   return (
