@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { HashUtils } from "~/application/utils/hash-utils";
 import { describe, expect, it } from "vitest";
+import { HashUtils } from "~/application/utils/hash-utils";
 
 describe("HashUtils", () => {
   describe("generateMd5", () => {

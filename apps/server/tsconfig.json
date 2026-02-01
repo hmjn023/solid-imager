@@ -5,10 +5,7 @@
     "jsxImportSource": "solid-js",
     "allowJs": true,
     "noEmit": true,
-    "types": [
-      "vinxi/types/client",
-      "vitest/globals"
-    ],
+    "types": ["vinxi/types/client", "vitest/globals"],
     "isolatedModules": true,
     "skipLibCheck": true,
     "baseUrl": ".",
@@ -18,11 +15,5 @@
     }
   },
   "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": [
-    "node_modules",
-    ".vinxi",
-    ".output",
-    "dist",
-    "scripts"
-  ]
+  "exclude": ["node_modules", ".vinxi", ".output", "dist", "scripts"]
 }

@@ -1,3 +1,8 @@
+import type {
+  IConfigService,
+  IFileSystem,
+  IMediaStorage,
+} from "@solid-imager/core";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
@@ -7,7 +12,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { IMediaStorage, IConfigService, IFileSystem } from "@solid-imager/core";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";

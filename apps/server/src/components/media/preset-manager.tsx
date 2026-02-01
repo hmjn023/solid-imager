@@ -1,8 +1,4 @@
 import type { Preset } from "@solid-imager/core/domain/media/schemas";
-import {
-  loadPreset,
-  searchState,
-} from "@solid-imager/core/domain/search/store";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { toast } from "solid-toast";
 import {
@@ -35,6 +31,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
+import { loadPreset, searchState } from "~/presentation/store/search-store";
 import { cn } from "~/presentation/utils/cn";
 
 export function PresetManager(props: {
@@ -75,7 +72,7 @@ export function PresetManager(props: {
 
     // Use current search state to build the preset value
     const { getSearchCondition } = await import(
-      "@solid-imager/core/domain/search/store"
+      "~/presentation/store/search-store"
     );
     const condition = getSearchCondition();
 

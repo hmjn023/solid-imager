@@ -3,6 +3,7 @@ import { processJob } from "~/application/services/job-dispatch-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
+import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -15,7 +16,6 @@ import { ProjectRepository } from "~/infrastructure/repositories/project-reposit
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
-import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 
 export let isBootstrapped = false;
 

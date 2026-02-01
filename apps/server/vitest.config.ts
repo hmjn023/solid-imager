@@ -12,12 +12,12 @@ export default defineConfig({
     environment: "node",
     globals: true,
     setupFiles: ["./src/tests/setup.ts"],
-    exclude: ['**/*.spec.ts', 'src/tests/e2e/**', 'node_modules/**'],
+    exclude: ["**/*.spec.ts", "src/tests/e2e/**", "node_modules/**"],
     // 統合テストを順次実行（実際のDBを使用するため）
     sequence: {
-      hooks: 'stack',
+      hooks: "stack",
     },
-    pool: 'forks',
+    pool: "forks",
     poolOptions: {
       forks: {
         singleFork: true,
@@ -25,7 +25,7 @@ export default defineConfig({
     },
     // テスト環境では必ずPGliteを使用
     env: {
-      DB_HOST: 'pglite',
+      DB_HOST: "pglite",
     },
   },
 });

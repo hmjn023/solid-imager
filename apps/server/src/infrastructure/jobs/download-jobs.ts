@@ -32,7 +32,7 @@ const resolvedFfmpegPath = ffmpegPath ?? undefined;
  * @param imageUrl - The URL of the image to download
  * @param outputPath - The path where the image should be saved
  */
-async function downloadImage(
+async function _downloadImage(
   imageUrl: string,
   outputPath: string
 ): Promise<void> {
@@ -384,7 +384,7 @@ async function handleDirectImageDownload(
         arrayBuffer: async () => arrayBuffer,
       },
       {
-        filename: filename,
+        filename,
         overwrite: false,
         autoIncrement: true,
       }

@@ -15,10 +15,7 @@ export class NodeFileSystem implements IFileSystem {
     return await fs.readFile(path);
   }
 
-  async readTextFile(
-    path: string,
-    encoding: string = "utf-8"
-  ): Promise<string> {
+  async readTextFile(path: string, encoding = "utf-8"): Promise<string> {
     return await fs.readFile(path, { encoding: encoding as BufferEncoding });
   }
 

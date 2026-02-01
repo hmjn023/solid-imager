@@ -1,11 +1,5 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import {
-  getSearchCondition,
-  searchState,
-  setSearchMode,
-  setSearchState,
-} from "@solid-imager/core/domain/search/store";
-import {
   getScrollPosition,
   setScrollPosition,
 } from "@solid-imager/core/domain/sources/store";
@@ -75,6 +69,12 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 import { logger } from "~/infrastructure/logger";
+import {
+  getSearchCondition,
+  searchState,
+  setSearchMode,
+  setSearchState,
+} from "~/presentation/store/search-store";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
