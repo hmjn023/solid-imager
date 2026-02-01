@@ -2,7 +2,8 @@
   "name": "example-with-tailwindcss",
   "type": "module",
   "workspaces": [
-    "xtracter"
+    "xtracter",
+    "packages/core"
   ],
   "scripts": {
     "dev": "bun run vinxi dev",
