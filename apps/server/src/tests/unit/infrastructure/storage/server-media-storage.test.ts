@@ -33,7 +33,6 @@ describe("ServerMediaStorage Unit Tests", () => {
     // but explicit ffprobe usage: ffmpeg.ffprobe(path, cb)
     vi.mocked(ffmpeg).ffprobe = vi.fn((_path, cb) => {
       cb(null, {
-        // biome-ignore lint/style/useNamingConvention: external library property
         streams: [{ codec_type: "video", width: 1920, height: 1080 }],
         format: { duration: 60 },
       });

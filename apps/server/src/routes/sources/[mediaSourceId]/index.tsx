@@ -49,6 +49,7 @@ import {
 } from "~/components/ui/dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
+import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
@@ -59,7 +60,6 @@ import {
   moveMedia,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
@@ -78,6 +78,7 @@ import {
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
+const DEBOUNCE_DELAY_MS = 1000;
 
 export default function MediaListPage() {
   const params = useParams();
@@ -599,93 +600,86 @@ export default function MediaListPage() {
     }
   };
 
+  const [addedCount, setAddedCount] = createSignal(0);
+  const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
+    typeof setTimeout
+  > | null>(null);
+
+  onCleanup(() => {
+    const timer = debounceTimer();
+    if (timer) {
+      clearTimeout(timer);
+    }
+  });
+
+  useMediaSourceEvents(mediaSourceId, {
+    onMediaAdded: () => {
+      setAddedCount((prev) => prev + 1);
+
+      const timer = debounceTimer();
+      if (timer) {
+        clearTimeout(timer);
+      }
+
+      setDebounceTimer(
+        setTimeout(() => {
+          const count = addedCount();
+          if (count > 0) {
+            toast.success(`${count} new media detected. Refreshing list...`);
+            setAddedCount(0);
+          }
+          queryClient.invalidateQueries({
+            queryKey: ["media", mediaSourceId()],
+          });
+        }, DEBOUNCE_DELAY_MS)
+      );
+    },
+    onMediaDeleted: () => {
+      toast.success("Media deleted");
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onThumbnailGenerated: () => {
+      toast.success("Thumbnail generated");
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onMediaCopied: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onMediaMoved: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onMediaChanged: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onAllJobsCompleted: (data) => {
+      toast.success(
+        `All jobs completed! Processed: ${data.processed ?? "N/A"}`
+      );
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId()],
+      });
+    },
+    onWatcherError: (data) => {
+      toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
+    },
+  });
+
   onMount(() => {
     if (!isServer) {
       document.addEventListener("paste", handlePaste);
 
-      const ac = new AbortController();
-
-      const invalidateMedia = () => {
-        queryClient.invalidateQueries({
-          queryKey: ["media", mediaSourceId()],
-        });
-      };
-
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE event handler
-      const startEventStream = async () => {
-        try {
-          const id = mediaSourceId();
-          if (!id) {
-            return;
-          }
-
-          // Start oRPC stream
-          // Assuming orpc client allows passing signal in options
-          // If not, we rely on the loop breaking when cleanup runs (though loop might stick on await)
-          const events = await orpc.sources.events(
-            { id },
-            { signal: ac.signal }
-          );
-
-          for await (const msg of events) {
-            if (ac.signal.aborted) {
-              break;
-            }
-
-            const { event, data } = msg;
-
-            switch (event) {
-              case "thumbnail-generated":
-                toast.success("Thumbnail generated");
-                invalidateMedia();
-                break;
-              case "media-deleted":
-                toast.success("Media deleted");
-                invalidateMedia();
-                break;
-              case "media-added":
-                toast.success("New media detected");
-                invalidateMedia();
-                break;
-              case "media-copied":
-                invalidateMedia();
-                break;
-              case "media-moved":
-                invalidateMedia();
-                break;
-              case "media-changed":
-                invalidateMedia();
-                break;
-              case "all-jobs-completed":
-                // data is already an object, no need to parse
-                toast.success(
-                  `All jobs completed! Processed: ${data?.processed}`
-                );
-                invalidateMedia();
-                break;
-              case "watcher-error":
-                toast.error(`Watcher Error: ${data?.error || "Unknown error"}`);
-                break;
-              case "connected":
-                // console.log("Connected to event stream");
-                break;
-              default:
-                break;
-            }
-          }
-        } catch (err) {
-          if (!ac.signal.aborted) {
-            logger.error({ err }, "Event stream error");
-            // Retry logic could go here
-          }
-        }
-      };
-
-      startEventStream();
-
       onCleanup(() => {
         document.removeEventListener("paste", handlePaste);
-        ac.abort();
       });
     }
   });

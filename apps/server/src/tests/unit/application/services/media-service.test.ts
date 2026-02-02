@@ -43,7 +43,7 @@ vi.mock("~/application/registry", () => {
   };
   return {
     services: mockServices,
-    // biome-ignore lint/style/useNamingConvention: Mocking PascalCase export
+
     ServiceRegistry: {
       getInstance: () => mockServices,
     },

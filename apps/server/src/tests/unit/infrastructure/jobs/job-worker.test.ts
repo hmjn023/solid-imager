@@ -36,6 +36,8 @@ describe("JobWorker", () => {
       markAsInProgress: vi.fn().mockResolvedValue(undefined),
       markAsCompleted: vi.fn().mockResolvedValue(undefined),
       markAsFailed: vi.fn().mockResolvedValue(undefined),
+      update: vi.fn(),
+      incrementProgress: vi.fn(),
     };
 
     processor = vi.fn().mockResolvedValue(undefined);

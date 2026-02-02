@@ -853,6 +853,10 @@ export const jobs = pgTable("jobs", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   /** 最終更新日時 */
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  /** 親ジョブID (バッチ処理用) */
+  parentId: uuid("parent_id").references((): AnyPgColumn => jobs.id, {
+    onDelete: "cascade",
+  }),
 });
 
 /**
