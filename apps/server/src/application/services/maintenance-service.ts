@@ -117,22 +117,23 @@ export class MaintenanceService {
     const sourceIds = [...new Set(items.map((i) => i.mediaSourceId))];
     const sources = new Map<string, string>(); // id -> path
 
-    for (const sid of sourceIds) {
-      const source = await this.sourceRepo.findById(sid);
-      if (source && source.type === "local") {
-        const info = source.connectionInfo;
-        if (
-          info &&
-          typeof info === "object" &&
-          "path" in info &&
-          typeof (info as { path: string }).path === "string"
-        ) {
-          sources.set(sid, (info as { path: string }).path);
-        } else {
-          logger.warn({ sourceId: sid }, "Invalid local source config");
+    await Promise.all(
+      sourceIds.map(async (sid) => {
+        const source = await this.sourceRepo.findById(sid);
+        if (source?.type === "local") {
+          // For local sources, we expect connectionInfo to have a path string
+          const path = (source.connectionInfo as { path?: string }).path;
+          if (typeof path === "string" && path) {
+            sources.set(sid, path);
+          } else {
+            logger.warn(
+              { sourceId: sid },
+              "Invalid local source config: path is missing or invalid"
+            );
+          }
         }
-      }
-    }
+      })
+    );
 
     let queuedCount = 0;
     for (const item of items) {

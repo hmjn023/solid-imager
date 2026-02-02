@@ -22,21 +22,23 @@ export class JobRepository implements IJobRepository {
       mediaId = (payload as { mediaId: string }).mediaId;
     }
 
-    const conditions = [eq(jobs.type, job.type), eq(jobs.status, "pending")];
-
+    // Check duplication only if mediaId is present
     if (mediaId) {
-      conditions.push(sql`${jobs.payload}->>'mediaId' = ${mediaId}`);
-    }
+      const conditions = [
+        eq(jobs.type, job.type),
+        eq(jobs.status, "pending"),
+        sql`${jobs.payload}->>'mediaId' = ${mediaId}`,
+      ];
 
-    // Check if a similar pending job already exists
-    const [existing] = await db
-      .select()
-      .from(jobs)
-      .where(and(...conditions))
-      .limit(1);
+      const [existing] = await db
+        .select()
+        .from(jobs)
+        .where(and(...conditions))
+        .limit(1);
 
-    if (existing) {
-      return null;
+      if (existing) {
+        return null;
+      }
     }
 
     return this.create(job);
