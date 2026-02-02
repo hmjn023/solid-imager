@@ -5,7 +5,7 @@ import {
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, notExists } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -162,22 +162,27 @@ export const aiRouter = {
         },
       });
 
-      for (const mediaId of mediaIds) {
-        // Find the media to get the sourceId
-        const media = await db.query.medias.findFirst({
-          where: eq(medias.id, mediaId),
-        });
-        if (!media) {
-          logger.warn({ mediaId }, "Media not found for batch tagging");
-          continue;
-        }
+      const mediaItems = await db.query.medias.findMany({
+        where: inArray(medias.id, mediaIds),
+        columns: { id: true, mediaSourceId: true },
+      });
 
+      const foundIds = new Set(mediaItems.map((m) => m.id));
+      const notFoundIds = mediaIds.filter((id) => !foundIds.has(id));
+      if (notFoundIds.length > 0) {
+        logger.warn(
+          { notFoundIds },
+          "Some media IDs were not found for batch tagging"
+        );
+      }
+
+      for (const media of mediaItems) {
         await jobRepo.create({
           type: "auto_tagging",
           mediaSourceId: media.mediaSourceId,
           parentId: parentJob.id,
           payload: {
-            mediaId: mediaId,
+            mediaId: media.id,
             force,
           },
         });

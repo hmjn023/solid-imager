@@ -39,17 +39,18 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
     if (parentId) {
       const jobRepo = services.getJobRepository();
+      await jobRepo.incrementProgress(parentId);
       const parentJob = await jobRepo.getById(parentId);
+
       if (parentJob) {
         const parentPayload = parentJob.payload as {
           total: number;
           processed: number;
         };
-        parentPayload.processed += 1;
-        await jobRepo.update(parentId, { payload: parentPayload });
 
         // SSE event
-        sseManager.sendEvent("job-progress", {
+        const JOB_EVENTS_CHANNEL = "global-jobs";
+        sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
           jobId: parentId,
           processed: parentPayload.processed,
           total: parentPayload.total,
@@ -57,15 +58,18 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
         if (parentPayload.processed === parentPayload.total) {
           await jobRepo.update(parentId, { status: "completed" });
-          sseManager.sendEvent("job-completed", { jobId: parentId });
+          sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
+            jobId: parentId,
+          });
         }
       }
     }
   } catch (error) {
     logger.error({ err: error, mediaId }, "Auto tagging failed");
     if (parentId) {
+      const JOB_EVENTS_CHANNEL = "global-jobs";
       await services.getJobRepository().update(parentId, { status: "failed" });
-      sseManager.sendEvent("job-failed", {
+      sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
         jobId: parentId,
         error: (error as Error).message,
       });

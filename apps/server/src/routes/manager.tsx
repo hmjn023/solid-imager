@@ -267,34 +267,46 @@ export default function ManagerPage() {
     const eventSource = new EventSource("/api/events");
 
     const onProgress = (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      if (data.jobId === jobId) {
-        setJobProgress(data);
-        setTaggingStatus(
-          `Processing: ${data.processed} / ${data.total} tagged.`
-        );
+      try {
+        const data = JSON.parse(event.data);
+        if (data.jobId === jobId) {
+          setJobProgress(data);
+          setTaggingStatus(
+            `Processing: ${data.processed} / ${data.total} tagged.`
+          );
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE progress event", e);
       }
     };
 
     const onCompleted = (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      if (data.jobId === jobId) {
-        toast.success("Batch tagging completed!");
-        setTaggingStatus("Batch tagging completed successfully.");
-        setActiveJobId(null);
-        setJobProgress(null);
-        eventSource.close();
+      try {
+        const data = JSON.parse(event.data);
+        if (data.jobId === jobId) {
+          toast.success("Batch tagging completed!");
+          setTaggingStatus("Batch tagging completed successfully.");
+          setActiveJobId(null);
+          setJobProgress(null);
+          eventSource.close();
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE completed event", e);
       }
     };
 
     const onFailed = (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      if (data.jobId === jobId) {
-        toast.error(`Job failed: ${data.error}`);
-        setTaggingStatus(`Job failed: ${data.error}`);
-        setActiveJobId(null);
-        setJobProgress(null);
-        eventSource.close();
+      try {
+        const data = JSON.parse(event.data);
+        if (data.jobId === jobId) {
+          toast.error(`Job failed: ${data.error}`);
+          setTaggingStatus(`Job failed: ${data.error}`);
+          setActiveJobId(null);
+          setJobProgress(null);
+          eventSource.close();
+        }
+      } catch (e) {
+        console.error("Failed to parse SSE failed event", e);
       }
     };
 
