@@ -7,6 +7,9 @@
       "style": {
         "useNamingConvention": "off"
       },
+      "suspicious": {
+        "noExplicitAny": "error"
+      },
       "performance": {
         "noBarrelFile": "off"
       }
@@ -33,7 +36,6 @@
       "node_modules"
     ]
   },
-  "extends": ["ultracite"],
   "overrides": [
     {
       "includes": ["src/db/schema.ts"],
