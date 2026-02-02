@@ -1,7 +1,7 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { A } from "@solidjs/router";
-import { createQuery } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { SearchFilters } from "~/components/media/search-filters";
@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
@@ -98,6 +99,7 @@ const SourceSelector = (props: SourceSelectorProps) => (
 );
 
 export default function Search() {
+  const queryClient = useQueryClient();
   const [isRestored, setIsRestored] = createSignal(false);
 
   createEffect(() => {
@@ -158,6 +160,20 @@ export default function Search() {
     },
     enabled: !!searchState.selectedSource,
   }));
+
+  // Subscribe to real-time events for the selected source
+  useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+    onMediaAdded: () => {
+      // Invalidate all search results to ensure any matching new media appears
+      queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+    },
+    onMediaDeleted: () => {
+      queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+    },
+    onMediaChanged: () => {
+      queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+    },
+  });
 
   const handleSearch = () => {
     setSearchState("offset", 0);
