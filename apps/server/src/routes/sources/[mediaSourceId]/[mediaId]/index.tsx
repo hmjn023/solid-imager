@@ -1,9 +1,10 @@
 import type { UUID } from "@solid-imager/core/domain/shared/schemas";
 import { useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Match, onCleanup, onMount, Switch } from "solid-js";
+import { Match, Switch } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
+import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
 
 export default function Media() {
@@ -23,23 +24,39 @@ export default function Media() {
     });
   };
 
-  onMount(() => {
-    const eventSource = new EventSource("/api/events");
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.mediaId === mediaId) {
-          handleUpdate();
-        }
-      } catch {
-        // Ignore JSON parse errors for non-matching events
+  useMediaSourceEvents(() => mediaSourceId, {
+    onMediaAdded: () => {
+      // New media added to source, invalidate list cache
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId],
+      });
+    },
+    onMediaDeleted: (data) => {
+      // Media deleted from source
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId],
+      });
+      // If current media is deleted, invalidate details to show error
+      if (data.filePath === mediaDetails.data?.filePath) {
+        handleUpdate();
       }
-    };
-
-    onCleanup(() => {
-      eventSource.close();
-    });
+    },
+    onMediaChanged: (data) => {
+      // Invalidate list cache as changes might affect sorting/filtering
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId],
+      });
+      // If current media changed, update
+      if (data.filePath === mediaDetails.data?.filePath) {
+        handleUpdate();
+      }
+    },
+    onThumbnailGenerated: (data) => {
+      // Thumbnail might affect current view if it was missing
+      if (data.mediaId === mediaId) {
+        handleUpdate();
+      }
+    },
   });
 
   return (
