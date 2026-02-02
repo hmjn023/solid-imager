@@ -1,4 +1,5 @@
 import { and, asc, eq, notExists } from "drizzle-orm";
+import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
@@ -27,6 +28,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
   const payload = job.payload as AutoTaggingJobPayload;
   const { mediaId, force } = payload;
   const { mediaSourceId, parentId } = job;
+  const JOB_EVENTS_CHANNEL = "global-jobs";
 
   if (!(mediaId && mediaSourceId)) {
     throw new Error("Missing mediaId or mediaSourceId");
@@ -43,31 +45,38 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
       const parentJob = await jobRepo.getById(parentId);
 
       if (parentJob) {
-        const parentPayload = parentJob.payload as {
-          total: number;
-          processed: number;
-        };
-
-        // SSE event
-        const JOB_EVENTS_CHANNEL = "global-jobs";
-        sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
-          jobId: parentId,
-          processed: parentPayload.processed,
-          total: parentPayload.total,
+        const parentPayloadSchema = z.object({
+          total: z.number(),
+          processed: z.number(),
         });
+        try {
+          const parentPayload = parentPayloadSchema.parse(parentJob.payload);
 
-        if (parentPayload.processed === parentPayload.total) {
-          await jobRepo.update(parentId, { status: "completed" });
-          sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
+          // SSE event
+          sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
             jobId: parentId,
+            processed: parentPayload.processed,
+            total: parentPayload.total,
           });
+
+          if (parentPayload.processed === parentPayload.total) {
+            await jobRepo.update(parentId, { status: "completed" });
+            sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
+              jobId: parentId,
+            });
+          }
+        } catch (e) {
+          logger.error(
+            { parentId, payload: parentJob.payload, error: e },
+            "Invalid parent job payload"
+          );
+          return;
         }
       }
     }
   } catch (error) {
     logger.error({ err: error, mediaId }, "Auto tagging failed");
     if (parentId) {
-      const JOB_EVENTS_CHANNEL = "global-jobs";
       await services.getJobRepository().update(parentId, { status: "failed" });
       sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
         jobId: parentId,

@@ -176,17 +176,19 @@ export const aiRouter = {
         );
       }
 
-      for (const media of mediaItems) {
-        await jobRepo.create({
-          type: "auto_tagging",
-          mediaSourceId: media.mediaSourceId,
-          parentId: parentJob.id,
-          payload: {
-            mediaId: media.id,
-            force,
-          },
-        });
-      }
+      await Promise.all(
+        mediaItems.map((media) =>
+          jobRepo.create({
+            type: "auto_tagging",
+            mediaSourceId: media.mediaSourceId,
+            parentId: parentJob.id,
+            payload: {
+              mediaId: media.id,
+              force,
+            },
+          })
+        )
+      );
 
       return {
         success: true,
