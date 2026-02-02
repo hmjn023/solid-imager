@@ -601,7 +601,9 @@ export default function MediaListPage() {
   };
 
   const [addedCount, setAddedCount] = createSignal(0);
-  const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
+  const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
+    typeof setTimeout
+  > | null>(null);
 
   onCleanup(() => {
     const timer = debounceTimer();
@@ -614,8 +616,9 @@ export default function MediaListPage() {
     onMediaAdded: () => {
       setAddedCount((prev) => prev + 1);
 
-      if (debounceTimer()) {
-        clearTimeout(debounceTimer());
+      const timer = debounceTimer();
+      if (timer) {
+        clearTimeout(timer);
       }
 
       setDebounceTimer(

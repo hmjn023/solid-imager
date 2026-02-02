@@ -1,51 +1,62 @@
 import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
+import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
-export type MediaAddedEvent = {
-  filePath: string;
-  mediaId?: string;
-  timestamp?: string;
-};
+export const MediaAddedEventSchema = z.object({
+  filePath: z.string(),
+  mediaId: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+export type MediaAddedEvent = z.infer<typeof MediaAddedEventSchema>;
 
-export type MediaDeletedEvent = {
-  filePath: string;
-  timestamp?: string;
-};
+export const MediaDeletedEventSchema = z.object({
+  filePath: z.string(),
+  timestamp: z.string().optional(),
+});
+export type MediaDeletedEvent = z.infer<typeof MediaDeletedEventSchema>;
 
-export type MediaChangedEvent = {
-  filePath: string;
-  mediaId?: string;
-  timestamp?: string;
-};
+export const MediaChangedEventSchema = z.object({
+  filePath: z.string(),
+  mediaId: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+export type MediaChangedEvent = z.infer<typeof MediaChangedEventSchema>;
 
-export type MediaCopiedEvent = {
-  sourceId: string;
-  media: unknown;
-  timestamp: string;
-};
+export const MediaCopiedEventSchema = z.object({
+  sourceId: z.string(),
+  media: z.unknown(),
+  timestamp: z.string(),
+});
+export type MediaCopiedEvent = z.infer<typeof MediaCopiedEventSchema>;
 
-export type MediaMovedEvent = {
-  type: "source" | "target";
-  mediaId?: string;
-  targetId?: string;
-  media?: unknown;
-  sourceId?: string;
-  timestamp: string;
-};
+export const MediaMovedEventSchema = z.object({
+  type: z.enum(["source", "target"]),
+  mediaId: z.string().optional(),
+  targetId: z.string().optional(),
+  media: z.unknown().optional(),
+  sourceId: z.string().optional(),
+  timestamp: z.string(),
+});
+export type MediaMovedEvent = z.infer<typeof MediaMovedEventSchema>;
 
-export type ThumbnailGeneratedEvent = {
-  mediaId: string;
-};
+export const ThumbnailGeneratedEventSchema = z.object({
+  mediaId: z.string(),
+});
+export type ThumbnailGeneratedEvent = z.infer<
+  typeof ThumbnailGeneratedEventSchema
+>;
 
-export type AllJobsCompletedEvent = {
-  processed: number;
-};
+export const AllJobsCompletedEventSchema = z.object({
+  processed: z.number(),
+});
+export type AllJobsCompletedEvent = z.infer<typeof AllJobsCompletedEventSchema>;
 
-export type WatcherErrorEvent = {
-  error?: string;
-};
+export const WatcherErrorEventSchema = z.object({
+  error: z.string().optional(),
+});
+export type WatcherErrorEvent = z.infer<typeof WatcherErrorEventSchema>;
 
 type MediaSourceEventsOptions = {
   enabled?: boolean | Accessor<boolean>;
@@ -84,31 +95,88 @@ export function useMediaSourceEvents(
 
     const ac = new AbortController();
 
+    const validateAndDispatch = <T>(
+      schema: z.ZodSchema<T>,
+      rawData: unknown,
+      callback?: (data: T) => void,
+      eventName?: string
+    ) => {
+      const result = schema.safeParse(rawData);
+      if (result.success) {
+        callback?.(result.data);
+      } else {
+        logger.warn(
+          { event: eventName, error: result.error, data: rawData },
+          "Received invalid event data"
+        );
+      }
+    };
+
     const handleEvent = (event: string, data: unknown) => {
       switch (event) {
         case "media-added":
-          options.onMediaAdded?.(data as MediaAddedEvent);
+          validateAndDispatch(
+            MediaAddedEventSchema,
+            data,
+            options.onMediaAdded,
+            event
+          );
           break;
         case "media-deleted":
-          options.onMediaDeleted?.(data as MediaDeletedEvent);
+          validateAndDispatch(
+            MediaDeletedEventSchema,
+            data,
+            options.onMediaDeleted,
+            event
+          );
           break;
         case "media-changed":
-          options.onMediaChanged?.(data as MediaChangedEvent);
+          validateAndDispatch(
+            MediaChangedEventSchema,
+            data,
+            options.onMediaChanged,
+            event
+          );
           break;
         case "media-copied":
-          options.onMediaCopied?.(data as MediaCopiedEvent);
+          validateAndDispatch(
+            MediaCopiedEventSchema,
+            data,
+            options.onMediaCopied,
+            event
+          );
           break;
         case "media-moved":
-          options.onMediaMoved?.(data as MediaMovedEvent);
+          validateAndDispatch(
+            MediaMovedEventSchema,
+            data,
+            options.onMediaMoved,
+            event
+          );
           break;
         case "thumbnail-generated":
-          options.onThumbnailGenerated?.(data as ThumbnailGeneratedEvent);
+          validateAndDispatch(
+            ThumbnailGeneratedEventSchema,
+            data,
+            options.onThumbnailGenerated,
+            event
+          );
           break;
         case "all-jobs-completed":
-          options.onAllJobsCompleted?.(data as AllJobsCompletedEvent);
+          validateAndDispatch(
+            AllJobsCompletedEventSchema,
+            data,
+            options.onAllJobsCompleted,
+            event
+          );
           break;
         case "watcher-error":
-          options.onWatcherError?.(data as WatcherErrorEvent);
+          validateAndDispatch(
+            WatcherErrorEventSchema,
+            data,
+            options.onWatcherError,
+            event
+          );
           break;
         case "connected":
           // Connection established
