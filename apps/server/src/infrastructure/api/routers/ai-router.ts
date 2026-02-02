@@ -5,9 +5,17 @@ import {
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
+import { and, asc, eq, notExists } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
+import { db } from "~/infrastructure/db";
+import {
+  mediaCharacters,
+  mediaIps,
+  medias,
+  mediaTags,
+} from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {
@@ -68,6 +76,61 @@ export const aiRouter = {
         await taggingService.getCcipDifference(input.feature1, input.feature2)
     ),
 
+  scanBatchTaggingTargets: os
+    .input(batchTaggingRequestSchema)
+    .handler(async ({ input }) => {
+      const { mediaSourceId, force } = input;
+
+      const whereClause = and(
+        eq(medias.mediaType, "image"),
+        mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
+        force
+          ? undefined
+          : and(
+              notExists(
+                db
+                  .select({ f: mediaTags.id })
+                  .from(mediaTags)
+                  .where(
+                    and(
+                      eq(mediaTags.mediaId, medias.id),
+                      eq(mediaTags.source, "AI")
+                    )
+                  )
+              ),
+              notExists(
+                db
+                  .select({ f: mediaCharacters.id })
+                  .from(mediaCharacters)
+                  .where(
+                    and(
+                      eq(mediaCharacters.mediaId, medias.id),
+                      eq(mediaCharacters.source, "AI")
+                    )
+                  )
+              ),
+              notExists(
+                db
+                  .select({ f: mediaIps.id })
+                  .from(mediaIps)
+                  .where(
+                    and(
+                      eq(mediaIps.mediaId, medias.id),
+                      eq(mediaIps.source, "AI")
+                    )
+                  )
+              )
+            )
+      );
+
+      const results = await db.query.medias.findMany({
+        where: whereClause,
+        orderBy: asc(medias.id),
+      });
+
+      return results;
+    }),
+
   batchTagging: os
     .input(batchTaggingRequestSchema)
     .handler(async ({ input }) => {
@@ -78,5 +141,52 @@ export const aiRouter = {
         payload: input,
       });
       return { success: true, message: "Batch tagging started" };
+    }),
+
+  startBatchTaggingWithIds: os
+    .input(
+      batchTaggingRequestSchema.extend({
+        mediaIds: z.array(z.string()),
+      })
+    )
+    .handler(async ({ input }) => {
+      const { mediaIds, mediaSourceId, force } = input;
+      const jobRepo = services.getJobRepository();
+
+      const parentJob = await jobRepo.create({
+        type: "bulk_tagging_parent",
+        mediaSourceId,
+        payload: {
+          total: mediaIds.length,
+          processed: 0,
+        },
+      });
+
+      for (const mediaId of mediaIds) {
+        // Find the media to get the sourceId
+        const media = await db.query.medias.findFirst({
+          where: eq(medias.id, mediaId),
+        });
+        if (!media) {
+          logger.warn({ mediaId }, "Media not found for batch tagging");
+          continue;
+        }
+
+        await jobRepo.create({
+          type: "auto_tagging",
+          mediaSourceId: media.mediaSourceId,
+          parentId: parentJob.id,
+          payload: {
+            mediaId: mediaId,
+            force,
+          },
+        });
+      }
+
+      return {
+        success: true,
+        message: "Batch tagging started with selected media.",
+        jobId: parentJob.id,
+      };
     }),
 };

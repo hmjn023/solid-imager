@@ -1,8 +1,9 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { toast } from "solid-toast";
 import {
   AlertDialog,
@@ -47,6 +48,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { Progress } from "~/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -96,6 +98,15 @@ export default function ManagerPage() {
   >(undefined);
   const [forceRetag, setForceRetag] = createSignal(false);
   const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
+  const [scannedMedia, setScannedMedia] = createSignal<Media[]>([]);
+  const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
+    new Set()
+  );
+  const [jobProgress, setJobProgress] = createSignal<{
+    processed: number;
+    total: number;
+  } | null>(null);
+  const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -225,13 +236,18 @@ export default function ManagerPage() {
   const handleStartBatchTagging = async () => {
     try {
       setTaggingStatus("Starting...");
-      const result = await orpc.ai.batchTagging({
+      setJobProgress(null);
+      const result = await orpc.ai.startBatchTaggingWithIds({
         force: forceRetag(),
         mediaSourceId: selectedSourceId(),
+        mediaIds: Array.from(selectedMedia()),
       });
-      if (result.success) {
+      if (result.success && result.jobId) {
         toast.success(result.message);
-        setTaggingStatus("Batch tagging started successfully.");
+        setTaggingStatus("Batch tagging in progress...");
+        setActiveJobId(result.jobId);
+        setScannedMedia([]);
+        setSelectedMedia(new Set());
       } else {
         toast.error("Failed to start batch tagging.");
         setTaggingStatus("Failed to start batch tagging.");
@@ -239,6 +255,95 @@ export default function ManagerPage() {
     } catch (e) {
       toast.error(`Error: ${(e as Error).message}`);
       setTaggingStatus(`Error: ${(e as Error).message}`);
+    }
+  };
+
+  createEffect(() => {
+    const jobId = activeJobId();
+    if (!jobId) {
+      return;
+    }
+
+    const eventSource = new EventSource("/api/events");
+
+    const onProgress = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      if (data.jobId === jobId) {
+        setJobProgress(data);
+        setTaggingStatus(
+          `Processing: ${data.processed} / ${data.total} tagged.`
+        );
+      }
+    };
+
+    const onCompleted = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      if (data.jobId === jobId) {
+        toast.success("Batch tagging completed!");
+        setTaggingStatus("Batch tagging completed successfully.");
+        setActiveJobId(null);
+        setJobProgress(null);
+        eventSource.close();
+      }
+    };
+
+    const onFailed = (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      if (data.jobId === jobId) {
+        toast.error(`Job failed: ${data.error}`);
+        setTaggingStatus(`Job failed: ${data.error}`);
+        setActiveJobId(null);
+        setJobProgress(null);
+        eventSource.close();
+      }
+    };
+
+    eventSource.addEventListener("job-progress", onProgress);
+    eventSource.addEventListener("job-completed", onCompleted);
+    eventSource.addEventListener("job-failed", onFailed);
+
+    onCleanup(() => {
+      eventSource.removeEventListener("job-progress", onProgress);
+      eventSource.removeEventListener("job-completed", onCompleted);
+      eventSource.removeEventListener("job-failed", onFailed);
+      eventSource.close();
+    });
+  });
+
+  const handleScan = async () => {
+    try {
+      setTaggingStatus("Scanning...");
+      setScannedMedia([]);
+      const result = await orpc.ai.scanBatchTaggingTargets({
+        force: forceRetag(),
+        mediaSourceId: selectedSourceId(),
+      });
+      setScannedMedia(result);
+      setSelectedMedia(new Set(result.map((m) => m.id))); // Initially select all
+      setTaggingStatus(`${result.length} items found.`);
+    } catch (e) {
+      toast.error(`Error: ${(e as Error).message}`);
+      setTaggingStatus(`Error during scan: ${(e as Error).message}`);
+    }
+  };
+
+  const toggleMediaSelection = (mediaId: string) => {
+    setSelectedMedia((prev) => {
+      const next = new Set(prev);
+      if (next.has(mediaId)) {
+        next.delete(mediaId);
+      } else {
+        next.add(mediaId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedMedia().size === scannedMedia().length) {
+      setSelectedMedia(new Set());
+    } else {
+      setSelectedMedia(new Set(scannedMedia().map((m) => m.id)));
     }
   };
 
@@ -364,9 +469,13 @@ export default function ManagerPage() {
                 re-analyzed.
               </p>
 
-              <div class="pt-2">
-                <Button onClick={handleStartBatchTagging}>
-                  Start Batch Tagging
+              <div class="flex items-center gap-x-2 pt-2">
+                <Button onClick={handleScan}>Scan for Targets</Button>
+                <Button
+                  disabled={scannedMedia().length === 0}
+                  onClick={handleStartBatchTagging}
+                >
+                  Start Batch Tagging ({selectedMedia().size})
                 </Button>
               </div>
 
@@ -375,8 +484,62 @@ export default function ManagerPage() {
                   {taggingStatus()}
                 </div>
               </Show>
+              <Show when={jobProgress()}>
+                {(progress) => (
+                  <div class="mt-4">
+                    <Progress
+                      value={
+                        (progress().processed / progress().total) * 100
+                      }
+                    />
+                  </div>
+                )}
+              </Show>
             </CardContent>
           </Card>
+          <Show when={scannedMedia().length > 0}>
+            <div class="mt-4">
+              <div class="mb-2 flex items-center justify-between">
+                <h3 class="font-bold text-lg">Scanned Media</h3>
+                <Button onClick={toggleSelectAll} size="sm" variant="outline">
+                  {selectedMedia().size === scannedMedia().length
+                    ? "Deselect All"
+                    : "Select All"}
+                </Button>
+              </div>
+              <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                <For each={scannedMedia()}>
+                  {(media) => (
+                    <Card
+                      class={`cursor-pointer ${
+                        selectedMedia().has(media.id)
+                          ? "ring-2 ring-blue-500"
+                          : ""
+                      }`}
+                      onClick={() => toggleMediaSelection(media.id)}
+                    >
+                      <div class="relative">
+                        <img
+                          alt={media.filename}
+                          class="h-40 w-full rounded-t-lg object-cover"
+                          src={`/api/sources/${media.mediaSourceId}/${media.id}/thumbnail`}
+                        />
+                        <div class="absolute top-2 right-2">
+                          <Checkbox
+                            checked={selectedMedia().has(media.id)}
+                            class="h-5 w-5 rounded border-gray-300 bg-white text-blue-600 focus:ring-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <div class="p-2">
+                        <p class="truncate text-sm">{media.filename}</p>
+                      </div>
+                    </Card>
+                  )}
+                </For>
+              </div>
+            </div>
+          </Show>
         </div>
       </Show>
 
