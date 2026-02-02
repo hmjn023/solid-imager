@@ -3,16 +3,60 @@ import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
+export type MediaAddedEvent = {
+  filePath: string;
+  mediaId?: string;
+  timestamp?: string;
+};
+
+export type MediaDeletedEvent = {
+  filePath: string;
+  timestamp?: string;
+};
+
+export type MediaChangedEvent = {
+  filePath: string;
+  mediaId?: string;
+  timestamp?: string;
+};
+
+export type MediaCopiedEvent = {
+  sourceId: string;
+  media: unknown;
+  timestamp: string;
+};
+
+export type MediaMovedEvent = {
+  type: "source" | "target";
+  mediaId?: string;
+  targetId?: string;
+  media?: unknown;
+  sourceId?: string;
+  timestamp: string;
+};
+
+export type ThumbnailGeneratedEvent = {
+  mediaId: string;
+};
+
+export type AllJobsCompletedEvent = {
+  processed: number;
+};
+
+export type WatcherErrorEvent = {
+  error?: string;
+};
+
 type MediaSourceEventsOptions = {
   enabled?: boolean | Accessor<boolean>;
-  onMediaAdded?: (data: unknown) => void;
-  onMediaDeleted?: (data: unknown) => void;
-  onMediaChanged?: (data: unknown) => void;
-  onMediaCopied?: (data: unknown) => void;
-  onMediaMoved?: (data: unknown) => void;
-  onThumbnailGenerated?: (data: unknown) => void;
-  onAllJobsCompleted?: (data: unknown) => void;
-  onWatcherError?: (data: unknown) => void;
+  onMediaAdded?: (data: MediaAddedEvent) => void;
+  onMediaDeleted?: (data: MediaDeletedEvent) => void;
+  onMediaChanged?: (data: MediaChangedEvent) => void;
+  onMediaCopied?: (data: MediaCopiedEvent) => void;
+  onMediaMoved?: (data: MediaMovedEvent) => void;
+  onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
+  onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
+  onWatcherError?: (data: WatcherErrorEvent) => void;
 };
 
 /**
@@ -43,28 +87,28 @@ export function useMediaSourceEvents(
     const handleEvent = (event: string, data: unknown) => {
       switch (event) {
         case "media-added":
-          options.onMediaAdded?.(data);
+          options.onMediaAdded?.(data as MediaAddedEvent);
           break;
         case "media-deleted":
-          options.onMediaDeleted?.(data);
+          options.onMediaDeleted?.(data as MediaDeletedEvent);
           break;
         case "media-changed":
-          options.onMediaChanged?.(data);
+          options.onMediaChanged?.(data as MediaChangedEvent);
           break;
         case "media-copied":
-          options.onMediaCopied?.(data);
+          options.onMediaCopied?.(data as MediaCopiedEvent);
           break;
         case "media-moved":
-          options.onMediaMoved?.(data);
+          options.onMediaMoved?.(data as MediaMovedEvent);
           break;
         case "thumbnail-generated":
-          options.onThumbnailGenerated?.(data);
+          options.onThumbnailGenerated?.(data as ThumbnailGeneratedEvent);
           break;
         case "all-jobs-completed":
-          options.onAllJobsCompleted?.(data);
+          options.onAllJobsCompleted?.(data as AllJobsCompletedEvent);
           break;
         case "watcher-error":
-          options.onWatcherError?.(data);
+          options.onWatcherError?.(data as WatcherErrorEvent);
           break;
         case "connected":
           // Connection established
