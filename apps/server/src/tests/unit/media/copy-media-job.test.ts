@@ -22,7 +22,6 @@ vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 
 // Mock ImageProcessor Module (used by MediaProcessingService)
 vi.mock("~/infrastructure/processing/image-processor", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking PascalCase export
   ImageProcessor: {
     extractMetadata: vi.fn().mockResolvedValue({
       width: 800,

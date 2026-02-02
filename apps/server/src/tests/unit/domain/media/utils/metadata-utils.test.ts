@@ -10,7 +10,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["1girl, solo, smile"],
               title: "Positive Prompt",
             },
@@ -23,7 +23,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["bad anatomy, ugly, disfigured"],
               title: "Negative Prompt",
             },
@@ -54,7 +54,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["1girl, solo, smile"],
               title: "Positive Prompt",
             },
@@ -82,7 +82,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["bad anatomy, ugly"],
               title: "Negative Prompt",
             },
@@ -143,7 +143,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["1girl, solo, smile, 1girl"],
               title: "Positive Prompt",
             },
@@ -169,7 +169,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: [],
               title: "Positive Prompt",
             },
@@ -190,7 +190,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: [""],
               title: "Positive Prompt",
             },
@@ -211,7 +211,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["bad anatomy"],
               title: "NEGATIVE PROMPT",
             },
@@ -232,7 +232,7 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CLIPTextEncode",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["1boy"],
               title: "Positive Prompt",
             },
@@ -253,19 +253,19 @@ describe("extractDataFromComments", () => {
           nodes: [
             {
               type: "CLIPTextEncode",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["1boy"],
               title: "Positive Prompt",
             },
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["cat"],
               title: "Positive Prompt",
             },
             {
               type: "CR Combine Prompt",
-              // biome-ignore lint/style/useNamingConvention: ComfyUI output
+
               widgets_values: ["dog"],
               title: "NEGATIVE PROMPT",
             },

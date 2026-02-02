@@ -23,7 +23,7 @@ describe("AI API Client", () => {
       general: { tag1: 0.9 },
       character: { char1: 0.8 },
       ips: ["ip1"],
-      // biome-ignore lint/style/useNamingConvention: external API response mapping
+
       ips_mapping: { ip1: ["tag1"] },
     };
 

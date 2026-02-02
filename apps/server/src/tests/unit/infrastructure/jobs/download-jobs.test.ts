@@ -32,13 +32,11 @@ const {
 
 // Mocks
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
   DrizzleSourceRepository: class {
     findById = mockFindById;
   },
 }));
 vi.mock("~/infrastructure/repositories/media-repository", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
   MediaRepository: {
     create: mockMediaCreate,
     update: mockMediaUpdate,
@@ -47,14 +45,12 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
   },
 }));
 vi.mock("~/infrastructure/repositories/author-repository", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
   AuthorRepository: {
     create: mockAuthorCreate,
     addMedia: mockAuthorAddMedia,
   },
 }));
 vi.mock("~/infrastructure/storage/server-media-storage", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
   ServerMediaStorage: {
     getFileMetadata: mockGetFileMetadata,
     saveFile: mockSaveFile,
@@ -62,18 +58,16 @@ vi.mock("~/infrastructure/storage/server-media-storage", () => ({
 }));
 // job-manager mock removed
 vi.mock("~/infrastructure/jobs/sse-manager", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
   SseManager: {
     sendEvent: vi.fn(),
   },
 }));
 vi.mock("~/application/services/media-processing-service", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking module export
   MediaProcessingService: {
     registerAndProcess: mockMediaRegisterAndProcess,
     addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
   },
-  // biome-ignore lint/style/useNamingConvention: Mocking class export
+
   MediaProcessingServiceImpl: class {},
 }));
 vi.mock("node:fs/promises", () => ({

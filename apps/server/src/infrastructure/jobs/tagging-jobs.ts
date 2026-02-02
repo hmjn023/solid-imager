@@ -10,7 +10,7 @@ import {
   medias,
   mediaTags,
 } from "~/infrastructure/db/schema";
-import { sseManager } from "~/infrastructure/jobs/sse-manager";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 
 type AutoTaggingJobPayload = {
@@ -42,7 +42,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
     if (parentId) {
       const jobRepo = services.getJobRepository();
       await jobRepo.incrementProgress(parentId);
-      const parentJob = await jobRepo.getById(parentId);
+      const parentJob = await jobRepo.findById(parentId);
 
       if (parentJob) {
         const parentPayloadSchema = z.object({
@@ -53,7 +53,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
           const parentPayload = parentPayloadSchema.parse(parentJob.payload);
 
           // SSE event
-          sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
+          SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
             jobId: parentId,
             processed: parentPayload.processed,
             total: parentPayload.total,
@@ -61,7 +61,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
           if (parentPayload.processed === parentPayload.total) {
             await jobRepo.update(parentId, { status: "completed" });
-            sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
+            SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
               jobId: parentId,
             });
           }
@@ -78,7 +78,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
     logger.error({ err: error, mediaId }, "Auto tagging failed");
     if (parentId) {
       await services.getJobRepository().update(parentId, { status: "failed" });
-      sseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
+      SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
         jobId: parentId,
         error: (error as Error).message,
       });

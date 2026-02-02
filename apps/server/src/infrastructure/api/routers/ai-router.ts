@@ -5,7 +5,7 @@ import {
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, inArray, notExists } from "drizzle-orm";
+import { and, asc, eq, inArray, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -89,7 +89,7 @@ export const aiRouter = {
           : and(
               notExists(
                 db
-                  .select({ f: mediaTags.id })
+                  .select({ f: sql`1` })
                   .from(mediaTags)
                   .where(
                     and(
@@ -100,7 +100,7 @@ export const aiRouter = {
               ),
               notExists(
                 db
-                  .select({ f: mediaCharacters.id })
+                  .select({ f: sql`1` })
                   .from(mediaCharacters)
                   .where(
                     and(
@@ -111,7 +111,7 @@ export const aiRouter = {
               ),
               notExists(
                 db
-                  .select({ f: mediaIps.id })
+                  .select({ f: sql`1` })
                   .from(mediaIps)
                   .where(
                     and(
@@ -123,10 +123,11 @@ export const aiRouter = {
             )
       );
 
-      const results = await db.query.medias.findMany({
-        where: whereClause,
-        orderBy: asc(medias.id),
-      });
+      const results = await db
+        .select()
+        .from(medias)
+        .where(whereClause)
+        .orderBy(asc(medias.id));
 
       return results;
     }),

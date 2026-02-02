@@ -59,7 +59,7 @@ export class TaggingService {
         general: {},
         character: {},
         ips: [],
-        // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+
         ips_mapping: {},
       };
     }
@@ -82,7 +82,7 @@ export class TaggingService {
           general: {},
           character: {},
           ips: aiIps.map((i) => i.name),
-          // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+
           ips_mapping: {},
         };
 

@@ -247,7 +247,7 @@ export default function ManagerPage() {
         setTaggingStatus("Batch tagging in progress...");
         setActiveJobId(result.jobId);
         setScannedMedia([]);
-        setSelectedMedia(new Set());
+        setSelectedMedia(new Set<string>());
       } else {
         toast.error("Failed to start batch tagging.");
         setTaggingStatus("Failed to start batch tagging.");
@@ -275,8 +275,8 @@ export default function ManagerPage() {
             `Processing: ${data.processed} / ${data.total} tagged.`
           );
         }
-      } catch (e) {
-        console.error("Failed to parse SSE progress event", e);
+      } catch (_e) {
+        // ignore
       }
     };
 
@@ -290,8 +290,8 @@ export default function ManagerPage() {
           setJobProgress(null);
           eventSource.close();
         }
-      } catch (e) {
-        console.error("Failed to parse SSE completed event", e);
+      } catch (_e) {
+        // ignore
       }
     };
 
@@ -305,8 +305,8 @@ export default function ManagerPage() {
           setJobProgress(null);
           eventSource.close();
         }
-      } catch (e) {
-        console.error("Failed to parse SSE failed event", e);
+      } catch (_e) {
+        // ignore
       }
     };
 
@@ -353,7 +353,7 @@ export default function ManagerPage() {
 
   const toggleSelectAll = () => {
     if (selectedMedia().size === scannedMedia().length) {
-      setSelectedMedia(new Set());
+      setSelectedMedia(new Set<string>());
     } else {
       setSelectedMedia(new Set(scannedMedia().map((m) => m.id)));
     }
@@ -500,9 +500,8 @@ export default function ManagerPage() {
                 {(progress) => (
                   <div class="mt-4">
                     <Progress
-                      value={
-                        (progress().processed / progress().total) * 100
-                      }
+                      // biome-ignore lint/style/noMagicNumbers: Percentage calculation
+                      value={(progress().processed / progress().total) * 100}
                     />
                   </div>
                 )}
@@ -531,8 +530,10 @@ export default function ManagerPage() {
                       onClick={() => toggleMediaSelection(media.id)}
                     >
                       <div class="relative">
+                        {/* biome-ignore lint/performance/noImgElement: Standard img is fine here */
+                        /* biome-ignore lint/nursery/useImageSize: Dynamic size handled by CSS */}
                         <img
-                          alt={media.filename}
+                          alt={media.fileName}
                           class="h-40 w-full rounded-t-lg object-cover"
                           src={`/api/sources/${media.mediaSourceId}/${media.id}/thumbnail`}
                         />
@@ -544,7 +545,7 @@ export default function ManagerPage() {
                         </div>
                       </div>
                       <div class="p-2">
-                        <p class="truncate text-sm">{media.filename}</p>
+                        <p class="truncate text-sm">{media.fileName}</p>
                       </div>
                     </Card>
                   )}

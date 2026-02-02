@@ -1,6 +1,5 @@
 import type { Job, NewJob } from "~/infrastructure/db/schema";
 
-// biome-ignore lint/style/useNamingConvention: Interface prefix pattern
 export type IJobRepository = {
   /**
    * Creates a new job.
