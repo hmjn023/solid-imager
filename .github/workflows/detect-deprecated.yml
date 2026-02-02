@@ -1,0 +1,65 @@
+name: Detect Deprecated Code
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+
+jobs:
+  check-deprecation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install Root Dependencies
+        run: bun install
+
+      - name: Install Checker Dependencies
+        run: cd tools/deprecation-checker && bun install
+
+      - name: Run Deprecation Check
+        id: check
+        continue-on-error: true
+        run: |
+          cd tools/deprecation-checker
+          # Run ESLint on the apps and packages directory, capturing output
+          # Use --no-warn-ignored to prevent exit code 1 if some files are ignored (though we want to check them)
+          # But mainly to suppress the warning if we are explicit.
+          # actually --no-ignore might be better if we want to FORCE check.
+          # Let's use --no-warn-ignored to avoid noise, but typically we want to check what we pass.
+          bun x eslint --config eslint.config.js --no-warn-ignored "../../apps/**/*.{ts,tsx}" "../../packages/**/*.{ts,tsx}" > ../../deprecation-report.txt 2>&1
+          exit_code=$?
+          echo "exit_code=$exit_code" >> $GITHUB_OUTPUT
+          if [ $exit_code -ne 0 ]; then
+            echo "Deprecated code detected."
+            cat ../../deprecation-report.txt
+            exit 1
+          fi
+
+      - name: Report Findings
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORT=$(cat deprecation-report.txt)
+          TITLE="⚠️ Deprecated Code Detected"
+          BODY="The following deprecated code usages were found:\n\n\`\`\`\n${REPORT}\n\`\`\`\n\nPlease check the report and update the code."
+
+          # If triggered by a PR, comment on the PR
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            gh pr comment ${{ github.event.pull_request.number }} --body "$BODY"
+          else
+            # If triggered by push, create an issue
+            gh issue create --title "$TITLE" --body "$BODY" --label "deprecation"
+          fi
