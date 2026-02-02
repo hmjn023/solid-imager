@@ -5,7 +5,16 @@ import {
   ccipFeatureRequestSchema,
   tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, inArray, notExists, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  getTableColumns,
+  inArray,
+  isNull,
+  notExists,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -81,7 +90,7 @@ export const aiRouter = {
     .handler(async ({ input }) => {
       const { mediaSourceId, force } = input;
 
-      const whereClause = and(
+      const _whereClause = and(
         eq(medias.mediaType, "image"),
         mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
         force
@@ -124,9 +133,38 @@ export const aiRouter = {
       );
 
       const results = await db
-        .select()
+        .select({
+          ...getTableColumns(medias),
+        })
         .from(medias)
-        .where(whereClause)
+        .leftJoin(
+          mediaTags,
+          and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI"))
+        )
+        .leftJoin(
+          mediaCharacters,
+          and(
+            eq(mediaCharacters.mediaId, medias.id),
+            eq(mediaCharacters.source, "AI")
+          )
+        )
+        .leftJoin(
+          mediaIps,
+          and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI"))
+        )
+        .where(
+          and(
+            eq(medias.mediaType, "image"),
+            mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
+            force
+              ? undefined
+              : and(
+                  isNull(mediaTags.mediaId),
+                  isNull(mediaCharacters.mediaId),
+                  isNull(mediaIps.mediaId)
+                )
+          )
+        )
         .orderBy(asc(medias.id));
 
       return results;

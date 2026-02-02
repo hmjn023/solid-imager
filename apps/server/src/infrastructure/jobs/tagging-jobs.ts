@@ -59,7 +59,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
             total: parentPayload.total,
           });
 
-          if (parentPayload.processed === parentPayload.total) {
+          if (parentPayload.processed >= parentPayload.total) {
             await jobRepo.update(parentId, { status: "completed" });
             SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
               jobId: parentId,
