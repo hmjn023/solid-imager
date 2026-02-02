@@ -10,8 +10,17 @@ export class JobRepository implements IJobRepository {
   }
 
   async createIfUnique(job: NewJob): Promise<Job | null> {
-    // biome-ignore lint/suspicious/noExplicitAny: Check payload for mediaId
-    const mediaId = (job.payload as any)?.mediaId;
+    const payload = job.payload;
+    let mediaId: string | undefined;
+
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "mediaId" in payload &&
+      typeof (payload as { mediaId: unknown }).mediaId === "string"
+    ) {
+      mediaId = (payload as { mediaId: string }).mediaId;
+    }
 
     const conditions = [eq(jobs.type, job.type), eq(jobs.status, "pending")];
 
