@@ -591,6 +591,37 @@ export const MediaRepository: IMediaRepository = {
       throw new UnexpectedError("Failed to check existing URLs", error);
     }
   },
+
+  async findIdsWithMissingGenerationInfo(
+    tx?: Transaction
+  ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
+    const client = (tx as unknown as TransactionClient) || db;
+    return await client
+      .select({
+        id: medias.id,
+        mediaSourceId: medias.mediaSourceId,
+        filePath: medias.filePath,
+      })
+      .from(medias)
+      .leftJoin(mediaGenerationInfo, eq(medias.id, mediaGenerationInfo.mediaId))
+      .where(
+        and(eq(medias.status, "active"), isNull(mediaGenerationInfo.mediaId))
+      );
+  },
+
+  async findAllMediaIndices(
+    tx?: Transaction
+  ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
+    const client = (tx as unknown as TransactionClient) || db;
+    return await client
+      .select({
+        id: medias.id,
+        mediaSourceId: medias.mediaSourceId,
+        filePath: medias.filePath,
+      })
+      .from(medias)
+      .where(eq(medias.status, "active"));
+  },
 };
 
 // ============================================================================

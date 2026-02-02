@@ -9,6 +9,30 @@ export class JobRepository implements IJobRepository {
     return created;
   }
 
+  async createIfUnique(job: NewJob): Promise<Job | null> {
+    // biome-ignore lint/suspicious/noExplicitAny: Check payload for mediaId
+    const mediaId = (job.payload as any)?.mediaId;
+
+    const conditions = [eq(jobs.type, job.type), eq(jobs.status, "pending")];
+
+    if (mediaId) {
+      conditions.push(sql`${jobs.payload}->>'mediaId' = ${mediaId}`);
+    }
+
+    // Check if a similar pending job already exists
+    const [existing] = await db
+      .select()
+      .from(jobs)
+      .where(and(...conditions))
+      .limit(1);
+
+    if (existing) {
+      return null;
+    }
+
+    return this.create(job);
+  }
+
   async findById(id: string): Promise<Job | null> {
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
     return job || null;
