@@ -84,6 +84,7 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]>;
   findAllMediaIndices(
-    tx?: Transaction
+    tx?: Transaction,
+    options?: { limit: number; offset: number }
   ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]>;
 };

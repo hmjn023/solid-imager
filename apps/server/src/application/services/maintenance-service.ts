@@ -48,59 +48,77 @@ export class MaintenanceService {
 
   private async queueMissingThumbnails() {
     try {
-      const allMedia = await this.mediaRepo.findAllMediaIndices();
-      const missing: typeof allMedia = [];
+      const BATCH_SIZE = 1000;
+      let offset = 0;
+      let hasMore = true;
 
-      // Group by mediaSourceId to optimize readdir
-      const mediaBySource = new Map<string, typeof allMedia>();
-      for (const media of allMedia) {
-        if (!mediaBySource.has(media.mediaSourceId)) {
-          mediaBySource.set(media.mediaSourceId, []);
+      while (hasMore) {
+        const batch = await this.mediaRepo.findAllMediaIndices(undefined, {
+          limit: BATCH_SIZE,
+          offset,
+        });
+
+        if (batch.length === 0) {
+          hasMore = false;
+          break;
         }
-        mediaBySource.get(media.mediaSourceId)?.push(media);
-      }
 
-      for (const [sourceId, items] of mediaBySource) {
-        const cacheDir = getSourceCacheDir(sourceId);
-        let existingFiles: Set<string>;
+        const missingInBatch: typeof batch = [];
 
-        try {
-          const files = await fs.readdir(cacheDir);
-          // Files are named "{id}.webp". We extract the ID (basename without ext).
-          existingFiles = new Set(
-            files.map((f) => path.basename(f, path.extname(f)))
-          );
-        } catch (error) {
-          // If directory doesn't exist (ENOENT), all thumbnails are missing
-          if ((error as { code?: string }).code === "ENOENT") {
-            existingFiles = new Set();
-          } else {
-            logger.warn(
-              { err: error, sourceId },
-              "Failed to read thumbnail directory"
+        // Group by mediaSourceId to optimize readdir
+        const mediaBySource = new Map<string, typeof batch>();
+        for (const media of batch) {
+          if (!mediaBySource.has(media.mediaSourceId)) {
+            mediaBySource.set(media.mediaSourceId, []);
+          }
+          mediaBySource.get(media.mediaSourceId)?.push(media);
+        }
+
+        for (const [sourceId, items] of mediaBySource) {
+          const cacheDir = getSourceCacheDir(sourceId);
+          let existingFiles: Set<string>;
+
+          try {
+            const files = await fs.readdir(cacheDir);
+            // Files are named "{id}.webp". We extract the ID (basename without ext).
+            existingFiles = new Set(
+              files.map((f) => path.basename(f, path.extname(f)))
             );
-            continue; // Skip this source on unexpected error
+          } catch (error) {
+            // If directory doesn't exist (ENOENT), all thumbnails are missing
+            if ((error as { code?: string }).code === "ENOENT") {
+              existingFiles = new Set();
+            } else {
+              logger.warn(
+                { err: error, sourceId },
+                "Failed to read thumbnail directory"
+              );
+              continue; // Skip this source on unexpected error
+            }
+          }
+
+          for (const item of items) {
+            if (!existingFiles.has(item.id)) {
+              missingInBatch.push(item);
+            }
           }
         }
 
-        for (const item of items) {
-          if (!existingFiles.has(item.id)) {
-            missing.push(item);
-          }
+        if (missingInBatch.length > 0) {
+          logger.info(
+            { count: missingInBatch.length, offset },
+            "Found media with missing thumbnails in batch. Queueing jobs..."
+          );
+          await this.dispatchJobs(missingInBatch, {
+            skipMetadataExtraction: true,
+          });
+        }
+
+        offset += BATCH_SIZE;
+        if (batch.length < BATCH_SIZE) {
+          hasMore = false;
         }
       }
-
-      if (missing.length === 0) {
-        return;
-      }
-
-      logger.info(
-        { count: missing.length },
-        "Found media with missing thumbnails. Queueing jobs..."
-      );
-
-      // We only need thumbnails here.
-      await this.dispatchJobs(missing, { skipMetadataExtraction: true });
     } catch (error) {
       logger.error({ err: error }, "Failed to queue missing thumbnail jobs");
     }

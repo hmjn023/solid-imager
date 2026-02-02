@@ -610,10 +610,11 @@ export const MediaRepository: IMediaRepository = {
   },
 
   async findAllMediaIndices(
-    tx?: Transaction
+    tx?: Transaction,
+    options?: { limit: number; offset: number }
   ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
     const client = (tx as unknown as TransactionClient) || db;
-    return await client
+    let query = client
       .select({
         id: medias.id,
         mediaSourceId: medias.mediaSourceId,
@@ -621,6 +622,12 @@ export const MediaRepository: IMediaRepository = {
       })
       .from(medias)
       .where(eq(medias.status, "active"));
+
+    if (options) {
+      query = query.limit(options.limit).offset(options.offset);
+    }
+
+    return await query;
   },
 };
 

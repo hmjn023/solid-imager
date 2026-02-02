@@ -24,21 +24,15 @@ export class JobRepository implements IJobRepository {
 
     // Check duplication only if mediaId is present
     if (mediaId) {
-      const conditions = [
-        eq(jobs.type, job.type),
-        eq(jobs.status, "pending"),
-        sql`${jobs.payload}->>'mediaId' = ${mediaId}`,
-      ];
+      // Attempt atomic insert using onConflictDoNothing.
+      // The unique index "jobs_type_media_id_pending_unique_idx" handles the constraint.
+      const [created] = await db
+        .insert(jobs)
+        .values(job)
+        .onConflictDoNothing()
+        .returning();
 
-      const [existing] = await db
-        .select()
-        .from(jobs)
-        .where(and(...conditions))
-        .limit(1);
-
-      if (existing) {
-        return null;
-      }
+      return created ?? null;
     }
 
     return this.create(job);
