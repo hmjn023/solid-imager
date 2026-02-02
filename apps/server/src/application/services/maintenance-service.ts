@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
+import path from "node:path";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
+import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 export class MaintenanceService {
@@ -50,20 +51,43 @@ export class MaintenanceService {
       const allMedia = await this.mediaRepo.findAllMediaIndices();
       const missing: typeof allMedia = [];
 
-      // Process in chunks to avoid overwhelming the event loop or file system
-      const chunkSize = 50;
-      for (let i = 0; i < allMedia.length; i += chunkSize) {
-        const chunk = allMedia.slice(i, i + chunkSize);
-        await Promise.all(
-          chunk.map(async (m) => {
-            const thumbPath = getThumbnailPath(m.mediaSourceId, m.id);
-            try {
-              await fs.access(thumbPath);
-            } catch {
-              missing.push(m);
-            }
-          })
-        );
+      // Group by mediaSourceId to optimize readdir
+      const mediaBySource = new Map<string, typeof allMedia>();
+      for (const media of allMedia) {
+        if (!mediaBySource.has(media.mediaSourceId)) {
+          mediaBySource.set(media.mediaSourceId, []);
+        }
+        mediaBySource.get(media.mediaSourceId)?.push(media);
+      }
+
+      for (const [sourceId, items] of mediaBySource) {
+        const cacheDir = getSourceCacheDir(sourceId);
+        let existingFiles: Set<string>;
+
+        try {
+          const files = await fs.readdir(cacheDir);
+          // Files are named "{id}.webp". We extract the ID (basename without ext).
+          existingFiles = new Set(
+            files.map((f) => path.basename(f, path.extname(f)))
+          );
+        } catch (error) {
+          // If directory doesn't exist (ENOENT), all thumbnails are missing
+          if ((error as { code?: string }).code === "ENOENT") {
+            existingFiles = new Set();
+          } else {
+            logger.warn(
+              { err: error, sourceId },
+              "Failed to read thumbnail directory"
+            );
+            continue; // Skip this source on unexpected error
+          }
+        }
+
+        for (const item of items) {
+          if (!existingFiles.has(item.id)) {
+            missing.push(item);
+          }
+        }
       }
 
       if (missing.length === 0) {
@@ -96,7 +120,17 @@ export class MaintenanceService {
     for (const sid of sourceIds) {
       const source = await this.sourceRepo.findById(sid);
       if (source && source.type === "local") {
-        sources.set(sid, (source.connectionInfo as { path: string }).path);
+        const info = source.connectionInfo;
+        if (
+          info &&
+          typeof info === "object" &&
+          "path" in info &&
+          typeof (info as { path: string }).path === "string"
+        ) {
+          sources.set(sid, (info as { path: string }).path);
+        } else {
+          logger.warn({ sourceId: sid }, "Invalid local source config");
+        }
       }
     }
 
