@@ -12,7 +12,6 @@ const _NON_EXISTENT_ID = 999;
 
 // Mock MediaService
 vi.mock("~/application/services/media-service", () => ({
-  // biome-ignore lint/style/useNamingConvention: Mocking exported module name
   MediaService: {
     getMedia: vi.fn(() =>
       Promise.resolve({
@@ -98,13 +97,13 @@ describe("TaggingService", () => {
     // Setup AI response with character -> ip mapping
     (mockAiClient.tagImage as any).mockResolvedValue({
       general: { "1girl": 0.9 },
-      // biome-ignore lint/style/useNamingConvention: Simulating external API response
+
       character: { HatsuneMiku: 0.95 },
       ips: ["Vocaloid"],
-      // biome-ignore lint/style/useNamingConvention: External API uses snake_case
+
       ips_mapping: {
         // Character Name -> List of IP Names
-        // biome-ignore lint/style/useNamingConvention: Simulating external API response
+
         HatsuneMiku: ["Vocaloid"],
       },
     });

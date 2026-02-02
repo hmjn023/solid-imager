@@ -82,7 +82,7 @@ class EventService {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        // biome-ignore lint/style/useNamingConvention: HTTP header standard
+
         Connection: "keep-alive",
       },
     });

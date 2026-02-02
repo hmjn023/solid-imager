@@ -17,7 +17,7 @@ vi.mock("@electric-sql/pglite", () => {
   const PgLiteMock = vi.fn(() => mockPgliteInstance);
   // Make the mock instance appear as an instance of PgLiteMock
   Object.setPrototypeOf(mockPgliteInstance, PgLiteMock.prototype);
-  // biome-ignore lint/style/useNamingConvention: PGlite is a specific library name and should not be changed.
+
   return { PGlite: PgLiteMock };
 });
 
@@ -35,7 +35,6 @@ vi.mock("pg", () => {
   const MockPool = vi.fn(() => mockPool);
   Object.setPrototypeOf(mockPool, MockPool.prototype);
   return {
-    // biome-ignore lint/style/useNamingConvention: Mocking a PascalCase export
     Pool: MockPool,
   };
 });

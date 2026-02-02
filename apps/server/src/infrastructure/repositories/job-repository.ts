@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, ne, notInArray } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -76,5 +76,15 @@ export class JobRepository implements IJobRepository {
         updatedAt: new Date(),
       })
       .where(eq(jobs.id, id));
+  }
+
+  async update(id: string, data: Partial<Job>): Promise<void> {
+    await db.update(jobs).set(data).where(eq(jobs.id, id));
+  }
+
+  async incrementProgress(id: string): Promise<void> {
+    await db.execute(
+      sql`UPDATE ${jobs} SET payload = jsonb_set(payload, '{processed}', (COALESCE(payload->>'processed', '0')::int + 1)::text::jsonb) WHERE id = ${id}`
+    );
   }
 }

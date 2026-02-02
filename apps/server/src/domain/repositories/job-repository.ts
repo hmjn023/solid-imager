@@ -1,6 +1,5 @@
 import type { Job, NewJob } from "~/infrastructure/db/schema";
 
-// biome-ignore lint/style/useNamingConvention: Interface prefix pattern
 export type IJobRepository = {
   /**
    * Creates a new job.
@@ -45,4 +44,17 @@ export type IJobRepository = {
    * @param error - The error message.
    */
   markAsFailed(id: string, error: string): Promise<void>;
+
+  /**
+   * Updates a job.
+   * @param id - The ID of the job.
+   * @param data - The data to update.
+   */
+  update(id: string, data: Partial<Job>): Promise<void>;
+
+  /**
+   * Atomically increments the progress of a job.
+   * @param id - The ID of the job.
+   */
+  incrementProgress(id: string): Promise<void>;
 };

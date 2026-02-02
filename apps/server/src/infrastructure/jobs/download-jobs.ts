@@ -37,9 +37,9 @@ type YtDlpOutput = {
   height?: number;
   ext: string;
   uploader?: string;
-  // biome-ignore lint/style/useNamingConvention: External API
+
   uploader_id?: string;
-  // biome-ignore lint/style/useNamingConvention: External API
+
   upload_date?: string;
   _filename?: string;
   filename: string;
