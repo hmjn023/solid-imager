@@ -601,8 +601,7 @@ export default function MediaListPage() {
   };
 
   const [addedCount, setAddedCount] = createSignal(0);
-  // biome-ignore lint/suspicious/noExplicitAny: Timer type mismatch
-  const [debounceTimer, setDebounceTimer] = createSignal<any>(null);
+  const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
 
   onCleanup(() => {
     const timer = debounceTimer();
