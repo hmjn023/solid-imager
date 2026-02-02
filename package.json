@@ -15,7 +15,8 @@
     "format": "bun x biome format --fix .",
     "test": "bun --filter @solid-imager/server test",
     "typecheck": "bun --filter '*' typecheck",
-    "prepare": "husky"
+    "prepare": "husky",
+    "postinstall": "bun scripts/fix-vite-plugin-solid.js"
   },
   "lint-staged": {
     "apps/server/src/**/*.{ts,tsx,js,jsx,json}": [

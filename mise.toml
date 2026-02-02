@@ -5,6 +5,7 @@ run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
 _.file = '.env'
 
 [tools]
+bun = "latest"
 "npm:@upstash/context7-mcp" = "latest"
 "npm:chrome-devtools-mcp" = "latest"
 "npm:ultracite" = "latest"
