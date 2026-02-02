@@ -38,22 +38,26 @@ export default function Media() {
       });
       // If current media is deleted, invalidate details to show error
       if (
-        (data as { filePath: string }).filePath === mediaDetails.data?.filePath
+        (data as { filePath: string })?.filePath === mediaDetails.data?.filePath
       ) {
         handleUpdate();
       }
     },
     onMediaChanged: (data) => {
+      // Invalidate list cache as changes might affect sorting/filtering
+      queryClient.invalidateQueries({
+        queryKey: ["media", mediaSourceId],
+      });
       // If current media changed, update
       if (
-        (data as { filePath: string }).filePath === mediaDetails.data?.filePath
+        (data as { filePath: string })?.filePath === mediaDetails.data?.filePath
       ) {
         handleUpdate();
       }
     },
     onThumbnailGenerated: (data) => {
       // Thumbnail might affect current view if it was missing
-      if ((data as { mediaId: string }).mediaId === mediaId) {
+      if ((data as { mediaId: string })?.mediaId === mediaId) {
         handleUpdate();
       }
     },

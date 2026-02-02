@@ -661,14 +661,16 @@ export default function MediaListPage() {
     },
     onAllJobsCompleted: (data) => {
       const payload = data as { processed: number };
-      toast.success(`All jobs completed! Processed: ${payload.processed}`);
+      toast.success(
+        `All jobs completed! Processed: ${payload?.processed ?? "N/A"}`
+      );
       queryClient.invalidateQueries({
         queryKey: ["media", mediaSourceId()],
       });
     },
     onWatcherError: (data) => {
       const payload = data as { error?: string };
-      toast.error(`Watcher Error: ${payload.error || "Unknown error"}`);
+      toast.error(`Watcher Error: ${payload?.error || "Unknown error"}`);
     },
   });
 
