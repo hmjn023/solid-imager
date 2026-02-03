@@ -9,6 +9,35 @@ export class JobRepository implements IJobRepository {
     return created;
   }
 
+  async createIfUnique(job: NewJob): Promise<Job | null> {
+    const payload = job.payload;
+    let mediaId: string | undefined;
+
+    if (
+      payload &&
+      typeof payload === "object" &&
+      "mediaId" in payload &&
+      typeof (payload as { mediaId: unknown }).mediaId === "string"
+    ) {
+      mediaId = (payload as { mediaId: string }).mediaId;
+    }
+
+    // Check duplication only if mediaId is present
+    if (mediaId) {
+      // Attempt atomic insert using onConflictDoNothing.
+      // The unique index "jobs_type_media_id_pending_unique_idx" handles the constraint.
+      const [created] = await db
+        .insert(jobs)
+        .values(job)
+        .onConflictDoNothing()
+        .returning();
+
+      return created ?? null;
+    }
+
+    return this.create(job);
+  }
+
   async findById(id: string): Promise<Job | null> {
     const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
     return job || null;

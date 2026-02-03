@@ -9,6 +9,13 @@ export type IJobRepository = {
   create(job: NewJob): Promise<Job>;
 
   /**
+   * Creates a new job only if a pending job with the same type and mediaId (in payload) does not exist.
+   * @param job - The job data to create.
+   * @returns The created job, or null if a duplicate exists.
+   */
+  createIfUnique(job: NewJob): Promise<Job | null>;
+
+  /**
    * Finds a job by its ID.
    * @param id - The ID of the job.
    * @returns The job if found, otherwise null.

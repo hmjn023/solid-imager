@@ -1,11 +1,12 @@
 import { services } from "~/application/registry";
 import { processJob } from "~/application/services/job-dispatch-service";
+import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
-import { updateLogLevel } from "~/infrastructure/logger";
+import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
@@ -94,4 +95,15 @@ export function bootstrap() {
 
   globalAny.__JOB_WORKER__ = jobWorker;
   jobWorker.start();
+
+  // Initialize MaintenanceService and perform startup checks (background)
+  const maintenanceService = new MaintenanceService(
+    services.getMediaRepository(),
+    jobRepo,
+    services.getSourceRepository()
+  );
+
+  maintenanceService.performStartupChecks().catch((err) => {
+    logger.error({ err }, "Maintenance startup checks failed");
+  });
 }
