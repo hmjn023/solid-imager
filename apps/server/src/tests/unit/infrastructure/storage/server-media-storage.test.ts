@@ -31,12 +31,12 @@ describe("ServerMediaStorage Unit Tests", () => {
     // Mock fluent-ffmpeg
     // fluent-ffmpeg default export is a function that returns an object (command)
     // but explicit ffprobe usage: ffmpeg.ffprobe(path, cb)
-    vi.mocked(ffmpeg).ffprobe = vi.fn((_path, cb) => {
+    vi.mocked(ffmpeg).ffprobe = vi.fn((_path: string, cb: any) => {
       cb(null, {
         streams: [{ codec_type: "video", width: 1920, height: 1080 }],
         format: { duration: 60 },
       });
-    });
+    }) as any;
   });
 
   afterEach(() => {
