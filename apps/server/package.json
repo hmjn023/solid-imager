@@ -3,9 +3,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "bun run vinxi dev",
-    "build": "bun run vinxi build",
-    "start": "bun run vinxi start",
+    "dev": "bun x --bun vinxi dev",
+    "build": "bun x --bun vinxi build",
+    "start": "bun x --bun vinxi start",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:pglite": "bun scripts/migrate-pglite.ts",

@@ -78,4 +78,13 @@ export type IMediaRepository = {
     tx?: Transaction
   ): Promise<Media[]>;
   findExistingUrls(urls: string[], tx?: Transaction): Promise<string[]>;
+
+  // Maintenance
+  findIdsWithMissingGenerationInfo(
+    tx?: Transaction
+  ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]>;
+  findAllMediaIndices(
+    tx?: Transaction,
+    options?: { limit: number; offset: number }
+  ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]>;
 };
