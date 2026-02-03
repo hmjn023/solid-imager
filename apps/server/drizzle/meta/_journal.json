@@ -92,13 +92,6 @@
       "when": 1770046639376,
       "tag": "0012_optimize_jobs_table",
       "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1770069691375,
-      "tag": "0013_jobs_unique_index",
-      "breakpoints": true
     }
   ]
 }
