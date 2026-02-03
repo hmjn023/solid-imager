@@ -31,6 +31,7 @@ describe("JobWorker", () => {
     // Mock Repository
     jobRepo = {
       create: vi.fn(),
+      createIfUnique: vi.fn(),
       findById: vi.fn(),
       findPending: vi.fn().mockResolvedValue([]),
       markAsInProgress: vi.fn().mockResolvedValue(undefined),

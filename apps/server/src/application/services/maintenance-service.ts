@@ -7,11 +7,19 @@ import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 export class MaintenanceService {
+  private readonly mediaRepo: IMediaRepository;
+  private readonly jobRepo: IJobRepository;
+  private readonly sourceRepo: SourceRepository;
+
   constructor(
-    private readonly mediaRepo: IMediaRepository,
-    private readonly jobRepo: IJobRepository,
-    private readonly sourceRepo: SourceRepository
-  ) {}
+    mediaRepo: IMediaRepository,
+    jobRepo: IJobRepository,
+    sourceRepo: SourceRepository
+  ) {
+    this.mediaRepo = mediaRepo;
+    this.jobRepo = jobRepo;
+    this.sourceRepo = sourceRepo;
+  }
 
   /**
    * Performs startup checks to ensure data consistency and recovery.
@@ -63,46 +71,7 @@ export class MaintenanceService {
           break;
         }
 
-        const missingInBatch: typeof batch = [];
-
-        // Group by mediaSourceId to optimize readdir
-        const mediaBySource = new Map<string, typeof batch>();
-        for (const media of batch) {
-          if (!mediaBySource.has(media.mediaSourceId)) {
-            mediaBySource.set(media.mediaSourceId, []);
-          }
-          mediaBySource.get(media.mediaSourceId)?.push(media);
-        }
-
-        for (const [sourceId, items] of mediaBySource) {
-          const cacheDir = getSourceCacheDir(sourceId);
-          let existingFiles: Set<string>;
-
-          try {
-            const files = await fs.readdir(cacheDir);
-            // Files are named "{id}.webp". We extract the ID (basename without ext).
-            existingFiles = new Set(
-              files.map((f) => path.basename(f, path.extname(f)))
-            );
-          } catch (error) {
-            // If directory doesn't exist (ENOENT), all thumbnails are missing
-            if ((error as { code?: string }).code === "ENOENT") {
-              existingFiles = new Set();
-            } else {
-              logger.warn(
-                { err: error, sourceId },
-                "Failed to read thumbnail directory"
-              );
-              continue; // Skip this source on unexpected error
-            }
-          }
-
-          for (const item of items) {
-            if (!existingFiles.has(item.id)) {
-              missingInBatch.push(item);
-            }
-          }
-        }
+        const missingInBatch = await this.findMissingThumbnails(batch);
 
         if (missingInBatch.length > 0) {
           logger.info(
@@ -124,6 +93,57 @@ export class MaintenanceService {
     }
   }
 
+  private async findMissingThumbnails(
+    batch: { id: string; mediaSourceId: string; filePath: string }[]
+  ) {
+    const missing: typeof batch = [];
+    const mediaBySource = this.groupMediaBySource(batch);
+
+    for (const [sourceId, items] of mediaBySource) {
+      const existingFiles = await this.getExistingThumbnails(sourceId);
+      if (!existingFiles) {
+        continue;
+      }
+
+      for (const item of items) {
+        if (!existingFiles.has(item.id)) {
+          missing.push(item);
+        }
+      }
+    }
+    return missing;
+  }
+
+  private groupMediaBySource(
+    batch: { id: string; mediaSourceId: string; filePath: string }[]
+  ) {
+    const mediaBySource = new Map<string, typeof batch>();
+    for (const media of batch) {
+      if (!mediaBySource.has(media.mediaSourceId)) {
+        mediaBySource.set(media.mediaSourceId, []);
+      }
+      mediaBySource.get(media.mediaSourceId)?.push(media);
+    }
+    return mediaBySource;
+  }
+
+  private async getExistingThumbnails(sourceId: string) {
+    const cacheDir = getSourceCacheDir(sourceId);
+    try {
+      const files = await fs.readdir(cacheDir);
+      return new Set(files.map((f) => path.basename(f, path.extname(f))));
+    } catch (error) {
+      if ((error as { code?: string }).code === "ENOENT") {
+        return new Set<string>();
+      }
+      logger.warn(
+        { err: error, sourceId },
+        "Failed to read thumbnail directory"
+      );
+      return null;
+    }
+  }
+
   private async dispatchJobs(
     items: { id: string; mediaSourceId: string; filePath: string }[],
     options: {
@@ -140,9 +160,9 @@ export class MaintenanceService {
         const source = await this.sourceRepo.findById(sid);
         if (source?.type === "local") {
           // For local sources, we expect connectionInfo to have a path string
-          const path = (source.connectionInfo as { path?: string }).path;
-          if (typeof path === "string" && path) {
-            sources.set(sid, path);
+          const sourcePath = (source.connectionInfo as { path?: string }).path;
+          if (typeof sourcePath === "string" && sourcePath) {
+            sources.set(sid, sourcePath);
           } else {
             logger.warn(
               { sourceId: sid },

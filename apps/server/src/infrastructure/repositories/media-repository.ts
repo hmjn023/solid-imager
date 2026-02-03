@@ -621,7 +621,8 @@ export const MediaRepository: IMediaRepository = {
         filePath: medias.filePath,
       })
       .from(medias)
-      .where(eq(medias.status, "active"));
+      .where(eq(medias.status, "active"))
+      .$dynamic();
 
     if (options) {
       query = query.limit(options.limit).offset(options.offset);
