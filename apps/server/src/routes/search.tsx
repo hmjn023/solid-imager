@@ -22,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
@@ -100,6 +101,10 @@ const SourceSelector = (props: SourceSelectorProps) => (
 
 export default function Search() {
   const queryClient = useQueryClient();
+
+  // Enable search persistence for global search
+  useCurrentSearchPersistence(() => "all");
+
   const [isRestored, setIsRestored] = createSignal(false);
 
   createEffect(() => {
