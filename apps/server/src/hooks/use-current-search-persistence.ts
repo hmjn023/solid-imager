@@ -1,35 +1,52 @@
-import { createEffect, onMount } from "solid-js";
+import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { logger } from "~/infrastructure/logger";
 import {
   getSearchCondition,
   loadPreset,
+  resetSearchState,
   searchState,
   setSearchState,
 } from "~/presentation/store/search-store";
 
 const DEBOUNCE_MS = 1000;
-const CURRENT_PRESET_NAME = "current";
 
-export function useCurrentSearchPersistence() {
-  let isInitialLoad = true;
+export function useCurrentSearchPersistence(
+  sourceId: Accessor<string | undefined>
+) {
+  const [isInitialLoad, setIsInitialLoad] = createSignal(true);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
-  onMount(() => {
-    const init = async () => {
-      try {
-        const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
-        if (current) {
-          logger.info(`[AutoSave] Loaded current state: ${current.name}`);
+  const getCurrentPresetName = () => {
+    const id = sourceId();
+    return id ? `current-${id}` : null;
+  };
 
-          // Try to find a matching named preset to restore selection state
+  createEffect(() => {
+    const presetName = getCurrentPresetName();
+    if (!presetName) return;
+
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    const init = async () => {
+      setIsInitialLoad(true);
+      resetSearchState();
+
+      try {
+        const current = await PresetClient.getByName(presetName);
+        if (current) {
+          logger.info(`[AutoSave] Loaded current state for: ${presetName}`);
+
           const allPresets = await PresetClient.list();
-          // Dynamic import to avoid circular dependencies if any, though utils is safe
           const { deepEqual } = await import("~/utils/deep-equal");
 
           const matchingPreset = allPresets.find(
             (p) =>
-              p.name !== CURRENT_PRESET_NAME &&
+              p.name !== presetName &&
+              !p.name.startsWith("current-") &&
+              p.name !== "current" &&
               deepEqual(p.value, current.value)
           );
 
@@ -37,8 +54,6 @@ export function useCurrentSearchPersistence() {
             logger.info(
               `[AutoSave] Found matching preset: ${matchingPreset.name}`
             );
-            // Even if we match a named preset, we should prioritize the exact UI state (mode, sort, order)
-            // stored in the "current" preset to ensure a perfect restoration.
             loadPreset({
               ...matchingPreset,
               mode: current.mode,
@@ -47,25 +62,22 @@ export function useCurrentSearchPersistence() {
             });
           } else {
             loadPreset(current);
-            // current preset itself should not be "selected" in UI, so we might want to clear activePresetId
-            // But loadPreset sets activePresetId to current.id.
-            // We can manually reset it to null effectively treating it as "unsaved/custom" state
-            // preserving the loaded conditions.
             setSearchState("activePresetId", null);
           }
         } else {
-          logger.info("[AutoSave] No current state found, creating default");
-          // Create initial "current" preset with empty/default state
+          logger.info(`[AutoSave] No current state found for ${presetName}`);
           await PresetClient.create({
-            name: CURRENT_PRESET_NAME,
+            name: presetName,
             value: { type: "group", operator: "and", children: [] },
             mode: "simple",
           });
         }
       } catch (e) {
-        logger.error(`[AutoSave] Failed to load current state: ${String(e)}`);
+        logger.error(
+          `[AutoSave] Failed to load current state (${presetName}): ${String(e)}`
+        );
       } finally {
-        isInitialLoad = false;
+        setIsInitialLoad(false);
       }
     };
     init();
@@ -73,24 +85,22 @@ export function useCurrentSearchPersistence() {
 
   createEffect(() => {
     // Track dependencies
-    // We strictly track the resulting search condition from the store
-    // However, getSearchCondition() might return undefined if empty, or specific structure.
-    // We want to save *whenever the effective search condition changes*.
-    // Note: accessing searchState.* properties here tracks them.
     const _track = [
       searchState.mode,
       searchState.searchQuery,
       searchState.selectedTags,
       searchState.excludeTags,
+      searchState.tagMode,
       searchState.selectedProjects,
       searchState.selectedIps,
       searchState.selectedCharacters,
+      searchState.selectedAuthors,
       searchState.advancedCondition,
       searchState.sortBy,
       searchState.sortOrder,
     ];
 
-    if (isInitialLoad) {
+    if (isInitialLoad() || !getCurrentPresetName()) {
       return;
     }
 
@@ -100,8 +110,16 @@ export function useCurrentSearchPersistence() {
     debounceTimer = setTimeout(saveCurrentState, DEBOUNCE_MS);
   });
 
+  onCleanup(() => {
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+  });
+
   const saveCurrentState = async () => {
-    // If condition is undefined (empty), save an empty group to represent "All"
+    const presetName = getCurrentPresetName();
+    if (!presetName) return;
+
     const condition = getSearchCondition() || {
       type: "group",
       operator: "and",
@@ -116,21 +134,19 @@ export function useCurrentSearchPersistence() {
     };
 
     try {
-      // We need ID to update.
-      // Optimization: Cache ID? Or just getByName every time?
-      // getByName is safer for race conditions across tabs (though minimal risk for "current").
-      const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
+      const current = await PresetClient.getByName(presetName);
       if (current) {
         await PresetClient.update(current.id, presetData);
-        // logger.info("[AutoSave] Saved current state");
       } else {
         await PresetClient.create({
-          name: CURRENT_PRESET_NAME,
+          name: presetName,
           ...presetData,
         });
       }
     } catch (e) {
-      logger.warn(`[AutoSave] Failed to save state: ${String(e)}`);
+      logger.warn(
+        `[AutoSave] Failed to save state (${presetName}): ${String(e)}`
+      );
     }
   };
 }

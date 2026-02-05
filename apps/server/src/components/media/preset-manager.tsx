@@ -40,8 +40,9 @@ export function PresetManager(props: {
 }) {
   const [data, { refetch }] = createResource(PresetClient.list);
 
-  // existing "current" preset should be hidden from UI
-  const presets = () => data()?.filter((p) => p.name !== "current");
+  // existing "current" presets should be hidden from UI
+  const presets = () =>
+    data()?.filter((p) => p.name !== "current" && !p.name.startsWith("current-"));
 
   const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 

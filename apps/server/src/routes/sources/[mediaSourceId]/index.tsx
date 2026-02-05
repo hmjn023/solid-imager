@@ -84,10 +84,10 @@ export default function MediaListPage() {
   const params = useParams();
   const queryClient = useQueryClient();
 
-  // Enable auto-save/restore of search conditions
-  useCurrentSearchPersistence();
-
   const mediaSourceId = () => params.mediaSourceId;
+
+  // Enable auto-save/restore of search conditions
+  useCurrentSearchPersistence(mediaSourceId);
 
   // Fetch filter data
   const tags = createQuery<TagResponse[]>(() => ({
