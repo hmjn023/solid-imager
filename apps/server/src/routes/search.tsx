@@ -4,7 +4,7 @@ import { A } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
-import { SearchFilters } from "~/components/media/search-filters";
+import { UnifiedSearchControls } from "~/components/media/unified-search-controls";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -31,32 +31,14 @@ import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
-import { searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+  getSearchCondition,
+  searchState,
+  setSearchState,
+} from "~/presentation/store/search-store";
 
 // Type alias to avoid conflict with DOM MediaSource API
 type Source = SafeMediaSource;
-
-const buildSearchParams = (state: typeof searchState) => ({
-  q: state.searchQuery,
-  tags:
-    state.selectedTags.length > 0 ? state.selectedTags.join(",") : undefined,
-  excludeTags:
-    state.excludeTags.length > 0 ? state.excludeTags.join(",") : undefined,
-  tagMode: state.tagMode,
-  projects:
-    state.selectedProjects.length > 0
-      ? state.selectedProjects.join(",")
-      : undefined,
-  ips: state.selectedIps.length > 0 ? state.selectedIps.join(",") : undefined,
-  characters:
-    state.selectedCharacters.length > 0
-      ? state.selectedCharacters.join(",")
-      : undefined,
-  sort: state.sortBy,
-  order: state.sortOrder,
-  limit: state.limit,
-  offset: state.offset,
-});
 
 type SourceSelectorProps = {
   sources: Source[] | undefined;
@@ -154,14 +136,28 @@ export default function Search() {
 
   // Search function
   const searchResults = createQuery(() => ({
-    queryKey: ["searchResults", { ...searchState }],
+    queryKey: [
+      "searchResults",
+      searchState.selectedSource,
+      getSearchCondition(),
+      searchState.sortBy,
+      searchState.sortOrder,
+      searchState.offset,
+      searchState.limit,
+    ],
     queryFn: async () => {
       const source = searchState.selectedSource;
       if (!source) {
         return { media: [], total: 0 };
       }
 
-      return await searchMedia(source, buildSearchParams(searchState));
+      return await searchMedia(source, {
+        condition: getSearchCondition(),
+        sort: searchState.sortBy,
+        order: searchState.sortOrder,
+        limit: searchState.limit,
+        offset: searchState.offset,
+      });
     },
     enabled: !!searchState.selectedSource,
   }));
@@ -231,23 +227,20 @@ export default function Search() {
               <DialogHeader>
                 <DialogTitle>検索フィルター</DialogTitle>
               </DialogHeader>
-              <div class="space-y-4">
+              <UnifiedSearchControls
+                authors={allAuthors.data}
+                characters={allCharacters.data}
+                ips={allIps.data}
+                onSearch={handleSearch}
+                projects={allProjects.data}
+                tags={tags.data}
+              >
                 <SourceSelector
                   onSelect={(id) => setSearchState("selectedSource", id)}
                   selectedSource={searchState.selectedSource}
                   sources={sources.data}
                 />
-                <SearchFilters
-                  authors={allAuthors.data}
-                  characters={allCharacters.data}
-                  ips={allIps.data}
-                  onSearch={handleSearch}
-                  projects={allProjects.data}
-                  setState={setSearchState}
-                  state={searchState}
-                  tags={tags.data}
-                />
-              </div>
+              </UnifiedSearchControls>
             </DialogContent>
           </Dialog>
         </Portal>
@@ -266,23 +259,22 @@ export default function Search() {
           <CardHeader>
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
-          <CardContent class="space-y-4">
-            <SourceSelector
-              onSelect={(id) => setSearchState("selectedSource", id)}
-              selectedSource={searchState.selectedSource}
-              sources={sources.data}
-            />
-            <SearchFilters
+          <CardContent>
+            <UnifiedSearchControls
               authors={allAuthors.data}
               characters={allCharacters.data}
               ips={allIps.data}
               onSearch={handleSearch}
               projects={allProjects.data}
-              setState={setSearchState}
-              state={searchState}
               tags={tags.data}
               usePopover={false}
-            />
+            >
+              <SourceSelector
+                onSelect={(id) => setSearchState("selectedSource", id)}
+                selectedSource={searchState.selectedSource}
+                sources={sources.data}
+              />
+            </UnifiedSearchControls>
           </CardContent>
         </Card>
 

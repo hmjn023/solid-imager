@@ -24,11 +24,7 @@ import { isServer, Portal } from "solid-js/web";
 import { toast } from "solid-toast";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { PresetManager } from "~/components/media/preset-manager";
-import { ProSearchBuilder } from "~/components/media/pro-search-builder";
-import { ProSearchDialog } from "~/components/media/pro-search-dialog";
-import { SearchFilters } from "~/components/media/search-filters";
-import { SortControls } from "~/components/media/sort-controls";
+import { UnifiedSearchControls } from "~/components/media/unified-search-controls";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -798,66 +794,14 @@ export default function MediaListPage() {
               <DialogHeader>
                 <DialogTitle>検索フィルター</DialogTitle>
               </DialogHeader>
-              <div class="space-y-4">
-                <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
-                  <Button
-                    class="h-7 flex-1 text-xs"
-                    onClick={() => setSearchMode("simple")}
-                    size="sm"
-                    type="button"
-                    variant={
-                      searchState.mode === "simple" ? "default" : "ghost"
-                    }
-                  >
-                    簡易検索
-                  </Button>
-                  <Button
-                    class="h-7 flex-1 text-xs"
-                    onClick={() => setSearchMode("pro")}
-                    size="sm"
-                    type="button"
-                    variant={searchState.mode === "pro" ? "default" : "ghost"}
-                  >
-                    詳細検索
-                  </Button>
-                </div>
-
-                <SortControls
-                  onSortByChange={(val) => setSearchState("sortBy", val)}
-                  onSortOrderChange={(val) => setSearchState("sortOrder", val)}
-                  sortBy={searchState.sortBy}
-                  sortOrder={searchState.sortOrder}
-                />
-
-                <div classList={{ hidden: searchState.mode !== "simple" }}>
-                  <SearchFilters
-                    authors={allAuthors.data}
-                    characters={allCharacters.data}
-                    ips={allIps.data}
-                    projects={allProjects.data}
-                    setState={setSearchState}
-                    state={searchState}
-                    tags={tags.data}
-                  />
-                </div>
-                <div
-                  class="space-y-4"
-                  classList={{ hidden: searchState.mode !== "pro" }}
-                >
-                  <ProSearchBuilder
-                    authors={allAuthors.data}
-                    characters={allCharacters.data}
-                    ips={allIps.data}
-                    onChange={(val) => setSearchState("advancedCondition", val)}
-                    projects={allProjects.data}
-                    tags={tags.data}
-                    value={searchState.advancedCondition || null}
-                  />
-                  <Button class="w-full" onClick={handleSearch} type="button">
-                    検索 (詳細)
-                  </Button>
-                </div>
-              </div>
+              <UnifiedSearchControls
+                authors={allAuthors.data}
+                characters={allCharacters.data}
+                ips={allIps.data}
+                onSearch={handleSearch}
+                projects={allProjects.data}
+                tags={tags.data}
+              />
             </DialogContent>
           </Dialog>
         </Portal>
@@ -873,69 +817,16 @@ export default function MediaListPage() {
           <CardHeader>
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
-          <CardContent class="space-y-4">
-            {/* Mode Switcher & Presets */}
-            <div class="flex items-center justify-between">
-              <div class="flex items-center gap-2 rounded-lg border bg-muted p-1">
-                <Button
-                  class="h-7 text-xs"
-                  onClick={() => setSearchMode("simple")}
-                  size="sm"
-                  type="button"
-                  variant={searchState.mode === "simple" ? "default" : "ghost"}
-                >
-                  簡易検索
-                </Button>
-                <Button
-                  class="h-7 text-xs"
-                  onClick={() => setSearchMode("pro")}
-                  size="sm"
-                  type="button"
-                  variant={searchState.mode === "pro" ? "default" : "ghost"}
-                >
-                  詳細検索
-                </Button>
-              </div>
-            </div>
-
-            <SortControls
-              onSortByChange={(val) => setSearchState("sortBy", val)}
-              onSortOrderChange={(val) => setSearchState("sortOrder", val)}
-              sortBy={searchState.sortBy}
-              sortOrder={searchState.sortOrder}
+          <CardContent>
+            <UnifiedSearchControls
+              authors={allAuthors.data}
+              characters={allCharacters.data}
+              ips={allIps.data}
+              onSearch={handleSearch}
+              projects={allProjects.data}
+              tags={tags.data}
+              usePopover={false}
             />
-
-            <div classList={{ hidden: searchState.mode !== "simple" }}>
-              <SearchFilters
-                authors={allAuthors.data}
-                characters={allCharacters.data}
-                ips={allIps.data}
-                projects={allProjects.data}
-                setState={setSearchState}
-                state={searchState}
-                tags={tags.data}
-                usePopover={false}
-              />
-            </div>
-            <div
-              class="space-y-4"
-              classList={{ hidden: searchState.mode !== "pro" }}
-            >
-              <PresetManager class="w-full flex-col items-stretch" />
-              <ProSearchDialog
-                authors={allAuthors.data}
-                characters={allCharacters.data}
-                ips={allIps.data}
-                onChange={(val) => setSearchState("advancedCondition", val)}
-                onSearch={handleSearch}
-                projects={allProjects.data}
-                tags={tags.data}
-                value={searchState.advancedCondition || null}
-              />
-              <Button class="w-full" onClick={handleSearch} type="button">
-                検索 (詳細)
-              </Button>
-            </div>
           </CardContent>
         </Card>
 

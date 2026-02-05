@@ -42,6 +42,7 @@ export class DrizzlePresetRepository implements PresetRepository {
         sort: data.sort,
         order: data.order,
         mode: data.mode,
+        selectedSource: data.selectedSource,
       })
       .returning();
     return this.mapToEntity(results[0]);
@@ -56,6 +57,9 @@ export class DrizzlePresetRepository implements PresetRepository {
         ...(data.sort !== undefined ? { sort: data.sort } : {}),
         ...(data.order !== undefined ? { order: data.order } : {}),
         ...(data.mode !== undefined ? { mode: data.mode } : {}),
+        ...(data.selectedSource !== undefined
+          ? { selectedSource: data.selectedSource }
+          : {}),
       })
       .where(eq(presets.id, id))
       .returning();
@@ -78,6 +82,7 @@ export class DrizzlePresetRepository implements PresetRepository {
       sort: row.sort as Preset["sort"],
       order: row.order as Preset["order"],
       mode: row.mode as Preset["mode"],
+      selectedSource: row.selectedSource ?? undefined,
       createdAt: row.createdAt,
     };
   }

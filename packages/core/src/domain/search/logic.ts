@@ -201,6 +201,11 @@ export const preparePresetState = (
     sortOrder: (preset.order as SearchState["sortOrder"]) || "desc",
   };
 
+  const commonState = {
+    ...sortState,
+    selectedSource: preset.selectedSource || "",
+  };
+
   if (preset.mode != null) {
     if (preset.mode === "simple" && simpleState) {
       return {
@@ -208,7 +213,7 @@ export const preparePresetState = (
         activePresetId: preset.id,
         advancedCondition: null,
         ...simpleState,
-        ...sortState,
+        ...commonState,
       };
     }
     return {
@@ -222,7 +227,7 @@ export const preparePresetState = (
       selectedIps: [],
       selectedCharacters: [],
       selectedAuthors: [],
-      ...sortState,
+      ...commonState,
     };
   }
 
@@ -234,13 +239,13 @@ export const preparePresetState = (
       activePresetId: preset.id,
       advancedCondition: targetMode === "pro" ? preset.value : null,
       ...(targetMode === "simple" ? simpleState : {}),
-      ...sortState,
+      ...commonState,
     };
   }
   return {
     mode: "pro" as const,
     activePresetId: preset.id,
     advancedCondition: preset.value,
-    ...sortState,
+    ...commonState,
   };
 };

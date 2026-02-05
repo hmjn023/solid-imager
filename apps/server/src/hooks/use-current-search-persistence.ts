@@ -98,6 +98,7 @@ export function useCurrentSearchPersistence(
       searchState.advancedCondition,
       searchState.sortBy,
       searchState.sortOrder,
+      searchState.selectedSource,
     ];
 
     if (isInitialLoad() || !getCurrentPresetName()) {
@@ -131,6 +132,7 @@ export function useCurrentSearchPersistence(
       sort: searchState.sortBy,
       order: searchState.sortOrder,
       mode: searchState.mode,
+      selectedSource: searchState.selectedSource,
     };
 
     try {

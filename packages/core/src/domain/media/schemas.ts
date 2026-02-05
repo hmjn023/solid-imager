@@ -504,6 +504,7 @@ export const presetSchema = z.object({
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   mode: z.enum(["simple", "pro"]).optional(),
+  selectedSource: z.string().optional(),
   createdAt: z.coerce.date(),
 });
 
@@ -515,6 +516,7 @@ export const createPresetRequestSchema = z.object({
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   mode: z.enum(["simple", "pro"]).optional(),
+  selectedSource: z.string().optional(),
 });
 
 export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
@@ -525,6 +527,7 @@ export const updatePresetRequestSchema = z.object({
   sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
   order: z.enum(["asc", "desc"]).optional(),
   mode: z.enum(["simple", "pro"]).optional(),
+  selectedSource: z.string().optional(),
 });
 
 export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;

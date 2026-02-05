@@ -887,6 +887,8 @@ export const presets = pgTable("presets", {
   order: text("order"),
   /** 検索モード ("simple" または "pro") */
   mode: text("mode"),
+  /** 選択されたソースID */
+  selectedSource: text("selected_source"),
   /** 作成日時 */
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
