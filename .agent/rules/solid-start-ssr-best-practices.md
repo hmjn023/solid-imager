@@ -86,3 +86,29 @@ export default function Page() {
   value={(field().state.value as string) ?? ""} 
 />
 ```
+
+#### 4. ブラウザタブの無限ロード回避
+
+**問題:**
+`enabled: !isServer` や `enabled: mounted()` のように、SSR時にデータフェッチをブロックする条件を追加すると、サーバー側ではデータなし（`undefined`）でレンダリングされ、クライアント側ではデータフェッチが開始されるまでの間に不整合が生じます。これにより、ブラウザがページロード完了を検知できず、タブのロードスピナーが回り続ける現象が発生します。
+
+**解決策:**
+`createQuery` はデフォルトでSSRとCSRの両方で動作するように設計されています。特別な理由がない限り、`enabled` オプションでSSRをブロックしないでください。サーバー側でプリフェッチが行われることで、クライアント側は初期データを持った状態でハイドレーションされ、スムーズなページ遷移が実現します。
+
+```tsx
+// ❌ Bad Pattern: isServerでブロックすると無限ロードの原因になる
+import { isServer } from "solid-js/web";
+
+const query = createQuery(() => ({
+  queryKey: ["items"],
+  queryFn: fetchItems,
+  enabled: !isServer, // 避けるべき
+}));
+
+// ✅ Good Pattern: サーバーでも実行させる
+const query = createQuery(() => ({
+  queryKey: ["items"],
+  queryFn: fetchItems,
+  // enabledプロパティは省略するか、ビジネスロジックに基づく条件のみにする
+}));
+```
