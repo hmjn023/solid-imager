@@ -7,9 +7,13 @@ description: コード品質チェックの手順
 
 コミットする前には、必ず **Biome** を使ってコードの品質をチェックしてください。
 
--   **チェックと修正の実行:**
+-   **ルートでのチェック:**
     ```bash
-    bun run check
+    bun run lint
+    ```
+-   **サーバー側でのチェック (型チェック含む):**
+    ```bash
+    bun --filter @solid-imager/server check
     ```
 -   **フォーマットのみの実行:**
     ```bash

@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: SolidStartとTanStack QueryにおけるSSR/CSR競合回避のベストプラクティス
-globs: src/**/*.{tsx,jsx}
+globs: apps/server/src/**/*.{tsx,jsx}
 ---
 
 ### SolidStart & TanStack Query SSR/CSR ベストプラクティス
