@@ -1,8 +1,10 @@
 import { os } from "@orpc/server";
 import {
+  batchCcipExtractionRequestSchema,
   batchTaggingRequestSchema,
   ccipDifferenceRequestSchema,
   ccipFeatureRequestSchema,
+  similarityCalculationRequestSchema,
   tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
@@ -183,5 +185,29 @@ export const aiRouter = {
         message: "Batch tagging started with selected media.",
         jobId: parentJob.id,
       };
+    }),
+
+  batchCcipExtraction: os
+    .input(batchCcipExtractionRequestSchema)
+    .handler(async ({ input }) => {
+      const jobRepo = services.getJobRepository();
+      await jobRepo.create({
+        type: "bulk_ccip_extraction",
+        mediaSourceId: input.mediaSourceId,
+        payload: input,
+      });
+      return { success: true, message: "Batch CCIP extraction started" };
+    }),
+
+  calculateSimilarity: os
+    .input(similarityCalculationRequestSchema)
+    .handler(async ({ input }) => {
+      const jobRepo = services.getJobRepository();
+      await jobRepo.create({
+        type: "similarity_calculation",
+        mediaSourceId: input.mediaSourceId,
+        payload: input,
+      });
+      return { success: true, message: "Similarity calculation started" };
     }),
 };

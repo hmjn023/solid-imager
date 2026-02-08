@@ -1,4 +1,5 @@
 import type {
+  CcipBatchDifferenceResponse,
   CcipDifferenceResponse,
   CcipFeatureResponse,
   TaggingResponse,
@@ -20,4 +21,9 @@ export type IAiClient = {
     feature1: number[],
     feature2: number[]
   ): Promise<CcipDifferenceResponse>;
+
+  calculateCcipBatchDifference(
+    queries: number[][],
+    targets: number[][]
+  ): Promise<CcipBatchDifferenceResponse>;
 };

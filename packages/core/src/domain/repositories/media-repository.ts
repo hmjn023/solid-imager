@@ -8,6 +8,7 @@ import type {
   MediaSearchRequest,
   MediaSearchResponse,
   MediaTag,
+  MediaTechnicalInfo,
   MediaUrl,
   UpdateMediaRequest,
 } from "@/domain/media/schemas";
@@ -63,6 +64,17 @@ export type IMediaRepository = {
     workflow: unknown,
     tx?: Transaction
   ): Promise<MediaGenerationInfo>;
+
+  getTechnicalInfo(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaTechnicalInfo | null>;
+
+  upsertTechnicalInfo(
+    mediaId: string,
+    updates: Partial<Omit<MediaTechnicalInfo, "mediaId">>,
+    tx?: Transaction
+  ): Promise<MediaTechnicalInfo>;
 
   // Bulk/List
   findAllBySourceId(

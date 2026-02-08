@@ -1,6 +1,7 @@
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,6 +33,7 @@ describe("TaggingService", () => {
   let taggingService: TaggingService;
   let mockAiClient: IAiClient;
   let mockSourceRepo: SourceRepository;
+  let mockMediaRepo: IMediaRepository;
   let mockTagRepo: TagRepository;
   let mockCharacterRepo: CharacterRepository;
   let mockIpRepo: IIpRepository;
@@ -55,6 +57,11 @@ describe("TaggingService", () => {
         })
       ),
     } as unknown as SourceRepository;
+
+    mockMediaRepo = {
+      getTechnicalInfo: vi.fn(() => Promise.resolve(null)),
+      upsertTechnicalInfo: vi.fn(() => Promise.resolve({})),
+    } as unknown as IMediaRepository;
 
     mockTagRepo = {
       findByMediaId: vi.fn(() => Promise.resolve([])),
@@ -87,6 +94,7 @@ describe("TaggingService", () => {
     taggingService = new TaggingService(
       mockAiClient,
       mockSourceRepo,
+      mockMediaRepo,
       mockTagRepo,
       mockCharacterRepo,
       mockIpRepo

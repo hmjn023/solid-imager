@@ -4,6 +4,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Body
 from pydantic import BaseModel
 from imgutils.tagging import get_pixai_tags
 from imgutils.metrics import ccip_extract_feature, ccip_difference
+import numpy as np
 from PIL import Image
 import io
 import logging
@@ -64,6 +65,13 @@ class CCIPDifferenceRequest(BaseModel):
 
 class CCIPDifferenceResponse(BaseModel):
     difference: float
+
+class CCIPBatchDifferenceRequest(BaseModel):
+    queries: List[List[float]]
+    targets: List[List[float]]
+
+class CCIPBatchDifferenceResponse(BaseModel):
+    differences: List[List[float]]
 
 class PathRequest(BaseModel):
     path: str
@@ -134,4 +142,32 @@ async def calculate_ccip_difference(request: CCIPDifferenceRequest):
         return {"difference": float(diff)}
     except Exception as e:
         logger.error(f"Error processing CCIP difference request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/ccip/batch_difference", response_model=CCIPBatchDifferenceResponse)
+async def calculate_ccip_batch_difference(request: CCIPBatchDifferenceRequest):
+    try:
+        if not request.queries or not request.targets:
+            return {"differences": []}
+
+        queries = np.array(request.queries)
+        targets = np.array(request.targets)
+
+        # Optimized matrix calculation for Euclidean distance:
+        # dist(a, b) = sqrt(|a|^2 + |b|^2 - 2 * a . b)
+
+        q_sq = np.sum(queries**2, axis=1, keepdims=True)
+        t_sq = np.sum(targets**2, axis=1, keepdims=False)
+
+        # Matrix multiplication for the 2*a.b part
+        dot_product = np.dot(queries, targets.T)
+
+        dists_sq = q_sq + t_sq - 2 * dot_product
+
+        # Avoid negative values from precision errors
+        dists = np.sqrt(np.maximum(dists_sq, 0.0))
+
+        return {"differences": dists.tolist()}
+    except Exception as e:
+        logger.error(f"Error processing CCIP batch difference request: {e}")
         raise HTTPException(status_code=500, detail=str(e))

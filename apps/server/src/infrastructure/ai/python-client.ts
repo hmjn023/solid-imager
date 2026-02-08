@@ -1,7 +1,9 @@
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
+  type CcipBatchDifferenceResponse,
   type CcipDifferenceResponse,
   type CcipFeatureResponse,
+  ccipBatchDifferenceResponseSchema,
   ccipDifferenceResponseSchema,
   ccipFeatureResponseSchema,
   type TaggingResponse,
@@ -138,5 +140,28 @@ export class PythonClient implements IAiClient {
 
     const data = await response.json();
     return ccipDifferenceResponseSchema.parse(data);
+  }
+
+  async calculateCcipBatchDifference(
+    queries: number[][],
+    targets: number[][]
+  ): Promise<CcipBatchDifferenceResponse> {
+    const response = await fetch(`${this.baseUrl}/ccip/batch_difference`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ queries, targets }),
+      signal: this.createAbortSignal(),
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `Failed to calculate CCIP batch difference: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    return ccipBatchDifferenceResponseSchema.parse(data);
   }
 }

@@ -548,6 +548,8 @@ export const mediaTechnicalInfo = pgTable(
     hashMd5: text("hash_md5").default(""),
     /** 知覚ハッシュ */
     hashPerceptual: text("hash_perceptual").default(""),
+    /** CCIP特徴量ベクトル */
+    hashCcip: real("hash_ccip").array(),
 
     // 動画固有
     /** 再生時間 (秒) */

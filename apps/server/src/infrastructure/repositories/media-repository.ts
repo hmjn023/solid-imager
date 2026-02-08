@@ -12,6 +12,7 @@ import {
   type MediaSearchRequest,
   type MediaSearchResponse,
   type MediaTag,
+  type MediaTechnicalInfo,
   type MediaUrl,
   mediaSearchResponseSchema,
   type UpdateMediaRequest,
@@ -52,6 +53,7 @@ import {
   mediaProjects,
   medias,
   mediaTags,
+  mediaTechnicalInfo,
   mediaUrls,
   type NewMedia,
   projects,
@@ -526,6 +528,56 @@ export const MediaRepository: IMediaRepository = {
     } catch (error) {
       throw new UnexpectedError(
         `Failed to upsert media generation info for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  async getTechnicalInfo(
+    mediaId: string,
+    tx?: Transaction
+  ): Promise<MediaTechnicalInfo | null> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const result = await client
+        .select()
+        .from(mediaTechnicalInfo)
+        .where(eq(mediaTechnicalInfo.mediaId, mediaId));
+      if (result.length === 0) {
+        return null;
+      }
+      return result[0];
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to select media technical info for mediaId: ${mediaId}`,
+        error
+      );
+    }
+  },
+
+  async upsertTechnicalInfo(
+    mediaId: string,
+    updates: Partial<Omit<MediaTechnicalInfo, "mediaId">>,
+    tx?: Transaction
+  ): Promise<MediaTechnicalInfo> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      const values = {
+        mediaId,
+        ...updates,
+      };
+      const result = await client
+        .insert(mediaTechnicalInfo)
+        .values(values)
+        .onConflictDoUpdate({
+          target: mediaTechnicalInfo.mediaId,
+          set: updates,
+        })
+        .returning();
+      return result[0];
+    } catch (error) {
+      throw new UnexpectedError(
+        `Failed to upsert media technical info for mediaId: ${mediaId}`,
         error
       );
     }

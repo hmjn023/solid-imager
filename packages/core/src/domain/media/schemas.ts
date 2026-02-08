@@ -224,6 +224,21 @@ export const mediaGenerationInfoSchema = z.object({
 });
 export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
+export const mediaTechnicalInfoSchema = z.object({
+  mediaId: z.uuid({ version: "v4" }),
+  colorProfile: z.string().nullable(),
+  exifData: z.any().nullable(),
+  hashMd5: z.string().nullable(),
+  hashPerceptual: z.string().nullable(),
+  hashCcip: z.array(z.number()).nullable(),
+  durationSeconds: z.number().nullable(),
+  frameRate: z.number().nullable(),
+  bitrateKbps: z.number().nullable(),
+  videoCodec: z.string().nullable(),
+  audioCodec: z.string().nullable(),
+});
+export type MediaTechnicalInfo = z.infer<typeof mediaTechnicalInfoSchema>;
+
 // Search schemas
 export const filterOperatorSchema = z.enum([
   "equals", // 完全一致

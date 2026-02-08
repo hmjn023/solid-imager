@@ -24,7 +24,9 @@ export function useCurrentSearchPersistence(
 
   createEffect(() => {
     const presetName = getCurrentPresetName();
-    if (!presetName) return;
+    if (!presetName) {
+      return;
+    }
 
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -118,7 +120,9 @@ export function useCurrentSearchPersistence(
 
   const saveCurrentState = async () => {
     const presetName = getCurrentPresetName();
-    if (!presetName) return;
+    if (!presetName) {
+      return;
+    }
 
     const condition = getSearchCondition() || {
       type: "group",

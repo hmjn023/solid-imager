@@ -1,5 +1,10 @@
 import { services } from "~/application/registry";
 import type { Job as DbJob } from "~/infrastructure/db/schema";
+import {
+  processBulkCcipExtractionJob,
+  processCcipExtractionJob,
+  processSimilarityCalculationJob,
+} from "~/infrastructure/jobs/similarity-jobs";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import {
   processAutoTaggingJob,
@@ -54,6 +59,12 @@ export async function processJob(job: DbJob) {
     await processAutoTaggingJob(job);
   } else if (job.type === "bulk_tagging_dispatch") {
     await processBulkTaggingDispatchJob(job);
+  } else if (job.type === "ccip_extraction") {
+    await processCcipExtractionJob(job);
+  } else if (job.type === "bulk_ccip_extraction") {
+    await processBulkCcipExtractionJob(job);
+  } else if (job.type === "similarity_calculation") {
+    await processSimilarityCalculationJob(job);
   } else {
     logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
   }

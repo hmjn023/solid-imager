@@ -15,7 +15,11 @@ export class JobWorker {
   private readonly jobRepo: IJobRepository;
   private readonly processor: (job: Job) => Promise<void>;
 
-  private readonly aiJobTypes = new Set(["auto_tagging"]);
+  private readonly aiJobTypes = new Set([
+    "auto_tagging",
+    "ccip_extraction",
+    "similarity_calculation",
+  ]);
 
   constructor(jobRepo: IJobRepository, processor: (job: Job) => Promise<void>) {
     this.jobRepo = jobRepo;

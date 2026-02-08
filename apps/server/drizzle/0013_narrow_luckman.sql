@@ -1,0 +1,1 @@
+ALTER TABLE "media_technical_info" ADD COLUMN "hash_ccip" real[];

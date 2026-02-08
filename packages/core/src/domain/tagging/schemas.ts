@@ -24,6 +24,14 @@ export type CcipDifferenceResponse = z.infer<
   typeof ccipDifferenceResponseSchema
 >;
 
+export const ccipBatchDifferenceResponseSchema = z.object({
+  differences: z.array(z.array(z.number())),
+});
+
+export type CcipBatchDifferenceResponse = z.infer<
+  typeof ccipBatchDifferenceResponseSchema
+>;
+
 // Request schemas for API
 export const tagImageRequestSchema = z.object({
   mediaSourceId: z.string().optional(),
@@ -44,4 +52,15 @@ export const batchTaggingRequestSchema = z.object({
   force: z.boolean().optional(),
   batchSize: z.number().optional(),
   mediaSourceId: z.string().optional(),
+});
+
+export const batchCcipExtractionRequestSchema = z.object({
+  force: z.boolean().optional(),
+  batchSize: z.number().optional(),
+  mediaSourceId: z.string().optional(),
+});
+
+export const similarityCalculationRequestSchema = z.object({
+  mediaSourceId: z.string().optional(),
+  threshold: z.number().optional(),
 });

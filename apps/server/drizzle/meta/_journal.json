@@ -92,6 +92,13 @@
       "when": 1770046639376,
       "tag": "0012_optimize_jobs_table",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1770591188212,
+      "tag": "0013_narrow_luckman",
+      "breakpoints": true
     }
   ]
 }

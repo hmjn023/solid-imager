@@ -2,6 +2,7 @@ import path from "node:path";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import { DEFAULT_MANUAL_CONFIDENCE } from "@solid-imager/core/domain/tagging/constants";
@@ -20,6 +21,7 @@ import { ResourceConflictError } from "@solid-imager/core/domain/errors";
 export class TaggingService {
   private readonly aiClient: IAiClient;
   private readonly sourceRepo: SourceRepository;
+  private readonly mediaRepo: IMediaRepository;
   private readonly tagRepo: TagRepositoryDef;
   private readonly characterRepo: CharacterRepository;
   private readonly ipRepo: IIpRepository;
@@ -28,12 +30,14 @@ export class TaggingService {
   constructor(
     aiClient: IAiClient,
     sourceRepo: SourceRepository,
+    mediaRepo: IMediaRepository,
     tagRepo: TagRepositoryDef,
     characterRepo: CharacterRepository,
     ipRepo: IIpRepository
   ) {
     this.aiClient = aiClient;
     this.sourceRepo = sourceRepo;
+    this.mediaRepo = mediaRepo;
     this.tagRepo = tagRepo;
     this.characterRepo = characterRepo;
     this.ipRepo = ipRepo;
@@ -286,12 +290,22 @@ export class TaggingService {
 
   async getCcipFeatureForMedia(
     mediaSourceId: string,
-    mediaId: string
+    mediaId: string,
+    options?: { skipCache?: boolean }
   ): Promise<CcipFeatureResponse> {
     const media = await MediaService.getMedia(mediaSourceId, mediaId);
     if (media.mediaType !== "image") {
       throw new Error("CCIP feature extraction is only supported for images");
     }
+
+    // 1. Check Cache
+    if (!options?.skipCache) {
+      const techInfo = await this.mediaRepo.getTechnicalInfo(mediaId);
+      if (techInfo?.hashCcip) {
+        return { feature: techInfo.hashCcip };
+      }
+    }
+
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 
     if (!mediaSource) {
@@ -301,16 +315,27 @@ export class TaggingService {
     // Check if AI service is accessible locally (can use path-based API)
     const canUsePathApi = this.isAiServiceLocal();
 
+    let response: CcipFeatureResponse;
     if (mediaSource.type === "local" && canUsePathApi) {
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);
-      return await this.aiClient.extractCcipFeatureByPath(fullPath);
+      response = await this.aiClient.extractCcipFeatureByPath(fullPath);
+    } else {
+      const { buffer } = await MediaService.getMediaContent(
+        mediaSourceId,
+        mediaId
+      );
+      response = await this.aiClient.extractCcipFeature(
+        buffer.buffer as ArrayBuffer
+      );
     }
-    const { buffer } = await MediaService.getMediaContent(
-      mediaSourceId,
-      mediaId
-    );
-    return await this.aiClient.extractCcipFeature(buffer.buffer as ArrayBuffer);
+
+    // Save to Cache
+    await this.mediaRepo.upsertTechnicalInfo(mediaId, {
+      hashCcip: response.feature,
+    });
+
+    return response;
   }
 
   async getCcipDifference(
@@ -322,6 +347,17 @@ export class TaggingService {
       feature2
     );
     return result.difference;
+  }
+
+  async getCcipBatchDifference(
+    queries: number[][],
+    targets: number[][]
+  ): Promise<number[][]> {
+    const result = await this.aiClient.calculateCcipBatchDifference(
+      queries,
+      targets
+    );
+    return result.differences;
   }
 
   /**
@@ -357,6 +393,7 @@ const getTaggingService = () => {
     _taggingService = new TaggingService(
       services.getAiClient(),
       services.getSourceRepository(),
+      services.getMediaRepository(),
       services.getTagRepository(),
       services.getCharacterRepository(),
       services.getIpRepository()
