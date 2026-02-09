@@ -17,7 +17,7 @@ export const mediaRouter = {
   search: os
     .input(
       z.object({
-        sourceId: z.string().uuid(),
+        sourceId: z.string().uuid().nullish(), // Optional for global search
         params: mediaSearchRequestSchema,
       })
     )
