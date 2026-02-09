@@ -9,7 +9,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
 
 #### エンドポイントの追加手順
 
-1.  **Zodスキーマの定義** (`apps/server/src/domain/{entity}/schemas.ts`)
+1.  **Zodスキーマの定義** (`packages/core/src/domain/{entity}/schemas.ts`)
     ```typescript
     import { z } from "zod";
     
