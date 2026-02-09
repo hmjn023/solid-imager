@@ -59,6 +59,6 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
 #### oRPC ハンドラー実装ルール
 
 -   すべてのAPIエンドポイントは `apps/server/src/infrastructure/api/routers/` 配下に実装します。
--   入力スキーマは必ず `apps/server/src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
+-   入力スキーマは必ず `packages/core/src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
 -   ハンドラー内では直接データベースにアクセスせず、必ず `apps/server/src/application/services/` のサービスクラスを経由します。
 -   バイナリコンテンツ（画像、動画など）は oRPC では返さず、専用のRESTエンドポイントを使用します。
