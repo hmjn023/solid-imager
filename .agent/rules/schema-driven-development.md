@@ -1,7 +1,7 @@
 ---
 trigger: glob
 description: Schema-Driven Development (SDD) における、Zodスキーマの定義と型導出のルール。ドメインモデルやAPIスキーマを定義する際に参照してください。
-globs: apps/server/src/domain/**/schemas.ts
+globs: packages/core/src/domain/**/schemas.ts
 ---
 
 ### Schema-Driven Development (SDD) with Zod
