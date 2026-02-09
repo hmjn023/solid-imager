@@ -34,7 +34,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
     };
     ```
 
-3.  **ルーターの登録** (`apps/server/src/domain/shared/api-contract.ts`)
+3.  **ルーターの登録** (`packages/core/src/domain/shared/api-contract.ts`)
     ```typescript
     export const appRouter = {
       media: mediaRouter,
