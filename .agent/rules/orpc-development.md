@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: apps/server/src/**/*.{ts,tsx}
+globs: "{apps/server,packages/core}/src/**/*.{ts,tsx,jsx}"
 description: oRPCを用いたAPIエンドポイントの実装、ルーター定義、クライアント側からの呼び出し方法に関するルール。APIの実装や変更を行う際に参照してください。
 ---
 ### API開発 (oRPC)
@@ -34,7 +34,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
     };
     ```
 
-3.  **ルーターの登録** (`packages/core/src/domain/shared/api-contract.ts`)
+3.  **ルーターの登録** (`apps/server/src/domain/shared/api-contract.ts`)
     ```typescript
     export const appRouter = {
       media: mediaRouter,

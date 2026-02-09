@@ -6,109 +6,85 @@ globs: apps/server/src/**/*.{tsx,jsx}
 
 ### SolidStart & TanStack Query SSR/CSR ベストプラクティス
 
-SolidStartとTanStack Queryを組み合わせた場合、SSR（サーバーサイドレンダリング）とCSR（クライアントサイドレンダリング）の間で状態の不整合が起きやすく、無限ローディングやデータの消失につながることがあります。以下のパターンを遵守してください。
+SolidStartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
 
-#### 1. データフェッチにおける `ClientOnly` パターンの回避
+#### 1. データフェッチはSSRをブロックしない
 
-**問題:**
-`mounted` シグナルや `ClientOnly` コンポーネントを使用して、クエリの実行をクライアントサイドのみに制限すると (`enabled: mounted()`)、ハイドレーション中にサスペンス状態が解決されず、ブラウザのロードスピナーが回り続ける無限ローディングが発生する場合があります。
-
-**解決策:**
-基本的にSSRを有効活用し、`mounted` によるガードを行わないでください。APIクライアント（`orpc`など）はSSR環境（localhost）とブラウザ環境（window.origin）の両方で動作するように設計されている必要があります。
+**原則:**
+`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、SolidStartのサスペンスが未解決のままとなり、ブラウザのタブでロードスピナーが回り続ける「無限ロード」が発生します。
 
 ```tsx
-// ❌ Bad Pattern: 無限ロードの原因になる
-const [mounted, setMounted] = createSignal(false);
-const query = createQuery(() => ({
-  queryKey: ["data"],
-  queryFn: fetchData,
-  enabled: mounted(), // Don't do this
-}));
-
-// ✅ Good Pattern: SSR/CSR両対応
-const query = createQuery(() => ({
-  queryKey: ["data"],
-  queryFn: fetchData,
-}));
-```
-
-#### 2. 非同期データを用いたフォームの初期化
-
-**問題:**
-`createForm` などのフォームライブラリを初期化する際、クエリデータがロード中（`undefined`）の状態で初期化してしまうと、初期値が空になり、データロード後に正しく反映されない（または一瞬表示されて消える）現象が発生します。
-
-**解決策:**
-データフェッチを行う親コンポーネント（Page）と、フォームを表示する子コンポーネント（Form）を分離し、データが確実に存在する場合のみフォームコンポーネントをマウントしてください。これにより、フォームは常に正しい初期値で生成されます。
-
-```tsx
-// ❌ Bad Pattern: データロード前の初期化による不整合
-export default function Page() {
-  const query = createQuery(...);
-  // dataがundefinedの状態で初期化される
-  const form = createForm({ defaultValues: query.data || {} });
-  
-  createEffect(() => {
-    // 後からリセットしても競合する場合がある
-    if (query.data) form.reset({ value: query.data });
-  });
-  ...
-}
-
-// ✅ Good Pattern: 完全なデータでのみ初期化
-function FormComponent(props: { data: MyData }) {
-  // props.dataは常に存在する
-  const form = createForm({ defaultValues: props.data });
-  ...
-}
-
-export default function Page() {
-  const query = createQuery(...);
-  
-  return (
-    <Show when={query.data}>
-      {(data) => <FormComponent data={data()} />}
-    </Show>
-  );
-}
-```
-
-#### 3. 入力フィールドの `undefined` 制御
-
-**問題:**
-フォームの状態が初期化前などで `undefined` になっている値を `<Input value={value} />` に渡すと、React/Solidは「制御されていない入力」と見なしたり、ブラウザが警告を出したりします。
-
-**解決策:**
-必ずフォールバック値（空文字など）を設定し、型アサーションや変換を行ってください。
-
-```tsx
-// ✅ Good Pattern
-<Input 
-  value={(field().state.value as string) ?? ""} 
-/>
-```
-
-#### 4. ブラウザタブの無限ロード回避
-
-**問題:**
-`enabled: !isServer` や `enabled: mounted()` のように、SSR時にデータフェッチをブロックする条件を追加すると、サーバー側ではデータなし（`undefined`）でレンダリングされ、クライアント側ではデータフェッチが開始されるまでの間に不整合が生じます。これにより、ブラウザがページロード完了を検知できず、タブのロードスピナーが回り続ける現象が発生します。
-
-**解決策:**
-`createQuery` はデフォルトでSSRとCSRの両方で動作するように設計されています。特別な理由がない限り、`enabled` オプションでSSRをブロックしないでください。サーバー側でプリフェッチが行われることで、クライアント側は初期データを持った状態でハイドレーションされ、スムーズなページ遷移が実現します。
-
-```tsx
-// ❌ Bad Pattern: isServerでブロックすると無限ロードの原因になる
-import { isServer } from "solid-js/web";
-
+// ❌ Bad Pattern: SSRをブロックすると無限ロードの原因になる
 const query = createQuery(() => ({
   queryKey: ["items"],
   queryFn: fetchItems,
   enabled: !isServer, // 避けるべき
 }));
 
-// ✅ Good Pattern: サーバーでも実行させる
+// ✅ Good Pattern: サーバーでも実行させ、ハイドレーションをスムーズにする
 const query = createQuery(() => ({
   queryKey: ["items"],
   queryFn: fetchItems,
-  // enabledプロパティは省略するか、ビジネスロジックに基づく条件のみにする
 }));
+```
+
+#### 2. ブラウザ専用API・副作用のガード
+
+**原則:**
+`window`, `document`, `localStorage` などのブラウザ専用APIや、副作用（スクロール位置の操作など）は、必ず `isServer` でガードしてください。
+
+```tsx
+// ✅ Good Pattern: createEffect内でのガード
+createEffect(() => {
+  if (isServer) return;
+  
+  if (searchState.scrollY > 0) {
+    window.scrollTo(0, searchState.scrollY);
+  }
+});
+
+// ✅ Good Pattern: PortalなどのDOM依存コンポーネント
+<Show when={!isServer}>
+  <Portal mount={document.getElementById("nav-actions")!}>
+    <MyClientOnlyComponent />
+  </Portal>
+</Show>
+```
+
+#### 3. 非同期データを用いたフォームの初期化
+
+**原則:**
+`createForm` はデータが確実に存在した状態で初期化すべきです。`Show` を使って、データ取得後にフォームコンポーネントをマウントするパターンを推奨します。
+
+```tsx
+// ✅ Good Pattern (apps/server/src/routes/config.tsx の実装例)
+function ConfigForm(props: { data: AppConfig }) {
+  const form = createForm(() => ({
+    defaultValues: props.data,
+    ...
+  }));
+  ...
+}
+
+export default function ConfigPage() {
+  const configQuery = createQuery(...);
+  
+  return (
+    <Show when={configQuery.data}>
+      {(data) => <ConfigForm data={data()} />}
+    </Show>
+  );
+}
+```
+
+#### 4. 入力フィールドの `undefined` 回避
+
+**原則:**
+制御された入力（Controlled Input）に `undefined` を渡すと警告や不整合の原因になります。必ず空文字等へのフォールバックを行ってください。
+
+```tsx
+// ✅ Good Pattern
+<Input 
+  value={(field().state.value as string) ?? ""} 
+/>
 ```

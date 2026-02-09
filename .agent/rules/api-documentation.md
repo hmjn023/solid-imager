@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: apps/server/src/**/*.ts
+globs: "{apps/server,packages/core}/src/**/*.ts"
 description: コードベースの変更に伴うAPI仕様書 (OpenAPI spec) の更新手順。APIのエンドポイントやスキーマを変更した後に参照してください。
 ---
 
