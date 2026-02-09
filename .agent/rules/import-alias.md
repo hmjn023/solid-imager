@@ -4,4 +4,5 @@ description: インポートエイリアスの使用
 ---
 ### インポートエイリアス
 
-`src` ディレクトリへのエイリアスとして `~/*` を使用してください。(例: `import Nav from '~/components/Nav';`)
+-   **Server:** `apps/server/src` ディレクトリへのエイリアスとして `~/*` を使用してください。(例: `import Nav from '~/components/Nav';`)
+-   **Core Package:** `packages/core/src` ディレクトリへのエイリアスとして `@/*` を使用してください。

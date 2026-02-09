@@ -8,7 +8,7 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 画像タグ付けや類似度計算などのAI機能を使用する場合は、Python AIサービスを起動してください。
 
 ```bash
-bun run ai:start
+uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000
 ```
 
 サービスは `http://localhost:8000` で起動します。
@@ -22,5 +22,5 @@ bun run ai:start
 
 #### Python AI サービス連携ルール
 
--   Python AIサービスへの呼び出しは `src/application/services/tagging-service.ts` を経由します。
+-   Python AIサービスへの呼び出しは `apps/server/src/application/services/tagging-service.ts` を経由します。
 -   直接 HTTP リクエストを送信せず、必ずサービス層を通してください。

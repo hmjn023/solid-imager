@@ -1,84 +1,86 @@
 ---
 trigger: glob
 description: SolidStartとTanStack QueryにおけるSSR/CSR競合回避のベストプラクティス
-globs: src/**/*.{tsx,jsx}
+globs: apps/server/src/**/*.{tsx,jsx}
 ---
 
 ### SolidStart & TanStack Query SSR/CSR ベストプラクティス
 
-SolidStartとTanStack Queryを組み合わせた場合、SSR（サーバーサイドレンダリング）とCSR（クライアントサイドレンダリング）の間で状態の不整合が起きやすく、無限ローディングやデータの消失につながることがあります。以下のパターンを遵守してください。
+SolidStartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
 
-#### 1. データフェッチにおける `ClientOnly` パターンの回避
+#### 1. データフェッチはSSRをブロックしない
 
-**問題:**
-`mounted` シグナルや `ClientOnly` コンポーネントを使用して、クエリの実行をクライアントサイドのみに制限すると (`enabled: mounted()`)、ハイドレーション中にサスペンス状態が解決されず、ブラウザのロードスピナーが回り続ける無限ローディングが発生する場合があります。
-
-**解決策:**
-基本的にSSRを有効活用し、`mounted` によるガードを行わないでください。APIクライアント（`orpc`など）はSSR環境（localhost）とブラウザ環境（window.origin）の両方で動作するように設計されている必要があります。
+**原則:**
+`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、SolidStartのサスペンスが未解決のままとなり、ブラウザのタブでロードスピナーが回り続ける「無限ロード」が発生します。
 
 ```tsx
-// ❌ Bad Pattern: 無限ロードの原因になる
-const [mounted, setMounted] = createSignal(false);
+// ❌ Bad Pattern: SSRをブロックすると無限ロードの原因になる
 const query = createQuery(() => ({
-  queryKey: ["data"],
-  queryFn: fetchData,
-  enabled: mounted(), // Don't do this
+  queryKey: ["items"],
+  queryFn: fetchItems,
+  enabled: !isServer, // 避けるべき
 }));
 
-// ✅ Good Pattern: SSR/CSR両対応
+// ✅ Good Pattern: サーバーでも実行させ、ハイドレーションをスムーズにする
 const query = createQuery(() => ({
-  queryKey: ["data"],
-  queryFn: fetchData,
+  queryKey: ["items"],
+  queryFn: fetchItems,
 }));
 ```
 
-#### 2. 非同期データを用いたフォームの初期化
+#### 2. ブラウザ専用API・副作用のガード
 
-**問題:**
-`createForm` などのフォームライブラリを初期化する際、クエリデータがロード中（`undefined`）の状態で初期化してしまうと、初期値が空になり、データロード後に正しく反映されない（または一瞬表示されて消える）現象が発生します。
-
-**解決策:**
-データフェッチを行う親コンポーネント（Page）と、フォームを表示する子コンポーネント（Form）を分離し、データが確実に存在する場合のみフォームコンポーネントをマウントしてください。これにより、フォームは常に正しい初期値で生成されます。
+**原則:**
+`window`, `document`, `localStorage` などのブラウザ専用APIや、副作用（スクロール位置の操作など）は、必ず `isServer` でガードしてください。
 
 ```tsx
-// ❌ Bad Pattern: データロード前の初期化による不整合
-export default function Page() {
-  const query = createQuery(...);
-  // dataがundefinedの状態で初期化される
-  const form = createForm({ defaultValues: query.data || {} });
+// ✅ Good Pattern: createEffect内でのガード
+createEffect(() => {
+  if (isServer) return;
   
-  createEffect(() => {
-    // 後からリセットしても競合する場合がある
-    if (query.data) form.reset({ value: query.data });
-  });
+  if (searchState.scrollY > 0) {
+    window.scrollTo(0, searchState.scrollY);
+  }
+});
+
+// ✅ Good Pattern: PortalなどのDOM依存コンポーネント
+<Show when={!isServer}>
+  <Portal mount={document.getElementById("nav-actions")!}>
+    <MyClientOnlyComponent />
+  </Portal>
+</Show>
+```
+
+#### 3. 非同期データを用いたフォームの初期化
+
+**原則:**
+`createForm` はデータが確実に存在した状態で初期化すべきです。`Show` を使って、データ取得後にフォームコンポーネントをマウントするパターンを推奨します。
+
+```tsx
+// ✅ Good Pattern (apps/server/src/routes/config.tsx の実装例)
+function ConfigForm(props: { data: AppConfig }) {
+  const form = createForm(() => ({
+    defaultValues: props.data,
+    ...
+  }));
   ...
 }
 
-// ✅ Good Pattern: 完全なデータでのみ初期化
-function FormComponent(props: { data: MyData }) {
-  // props.dataは常に存在する
-  const form = createForm({ defaultValues: props.data });
-  ...
-}
-
-export default function Page() {
-  const query = createQuery(...);
+export default function ConfigPage() {
+  const configQuery = createQuery(...);
   
   return (
-    <Show when={query.data}>
-      {(data) => <FormComponent data={data()} />}
+    <Show when={configQuery.data}>
+      {(data) => <ConfigForm data={data()} />}
     </Show>
   );
 }
 ```
 
-#### 3. 入力フィールドの `undefined` 制御
+#### 4. 入力フィールドの `undefined` 回避
 
-**問題:**
-フォームの状態が初期化前などで `undefined` になっている値を `<Input value={value} />` に渡すと、React/Solidは「制御されていない入力」と見なしたり、ブラウザが警告を出したりします。
-
-**解決策:**
-必ずフォールバック値（空文字など）を設定し、型アサーションや変換を行ってください。
+**原則:**
+制御された入力（Controlled Input）に `undefined` を渡すと警告や不整合の原因になります。必ず空文字等へのフォールバックを行ってください。
 
 ```tsx
 // ✅ Good Pattern
