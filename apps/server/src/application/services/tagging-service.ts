@@ -279,6 +279,7 @@ export class TaggingService {
     }
 
     // Notify clients of the update
+    // Ensure all consumers (like use-media-source-events.ts) are updated to "media-changed"
     SseManager.sendEvent(mediaSourceId, "media-changed", {
       filePath,
       mediaId,

@@ -24,6 +24,7 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
+import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 // const _IMAGES_PREFIX = /^images\//;
@@ -741,6 +742,7 @@ export const BackupService = {
                   dumpEntry,
                   (readErr, readStream) => {
                     if (readErr || !readStream) {
+                      openedZipfile.close();
                       return reject(
                         readErr || new Error("Failed to read dump.json")
                       );
@@ -755,13 +757,18 @@ export const BackupService = {
                         dumpData = JSON.parse(buffer.toString("utf-8"));
                         resolve({ zipfile: openedZipfile, entries, dumpData });
                       } catch (e) {
+                        openedZipfile.close();
                         reject(e);
                       }
                     });
-                    readStream.on("error", reject);
+                    readStream.on("error", (streamErr) => {
+                      openedZipfile.close();
+                      reject(streamErr);
+                    });
                   }
                 );
               } else {
+                openedZipfile.close();
                 reject(new Error("dump.json not found in ZIP"));
               }
             });
@@ -986,8 +993,8 @@ export const BackupService = {
         archive.append(fsSync.createReadStream(tempJsonPath), {
           name: "dump.json",
         });
-      } catch (_err) {
-        // failed to create dump
+      } catch (err) {
+        logger.error({ err }, "Failed to create dump");
         archive.abort();
         jsonStream?.destroy();
       } finally {
