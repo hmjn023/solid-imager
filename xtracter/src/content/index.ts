@@ -170,6 +170,7 @@ function extractMetadata(
   }
 
   // Fallback: extract from URL if critical info is missing
+  // If either ID or URL is missing, or we're on a generic page, try to extract from current URL
   if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
     const urlMetadata = extractMetadataFromUrl();
     authorId = authorId || urlMetadata.authorId;

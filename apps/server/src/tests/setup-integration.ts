@@ -1,8 +1,5 @@
 import path from "node:path";
-import { PGlite } from "@electric-sql/pglite";
 import { config } from "dotenv";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, beforeEach, vi } from "vitest";
 
 // Bootstrap
@@ -18,14 +15,35 @@ if (process.env.NODE_ENV !== "production") {
   process.env.NODE_ENV = "test";
 }
 
-// Mock the DB module for integration tests to use PGlite
-vi.mock("~/infrastructure/db/index", async () => {
-  const schema = await import("~/infrastructure/db/schema");
-  const client = new PGlite();
-  const testDb = drizzle(client, { schema });
-  await migrate(testDb, { migrationsFolder: "./drizzle" });
-  return { db: testDb };
+const { mockDbFactory } = vi.hoisted(() => {
+  let dbInstance: { db: unknown } | null = null;
+  return {
+    mockDbFactory: async () => {
+      if (dbInstance) {
+        return dbInstance;
+      }
+
+      const { PGlite } = await import("@electric-sql/pglite");
+      const { drizzle } = await import("drizzle-orm/pglite");
+      const { migrate } = await import("drizzle-orm/pglite/migrator");
+      const schema = await import("~/infrastructure/db/schema");
+      const nodePath = await import("node:path");
+
+      const client = new PGlite();
+      const testDb = drizzle(client, { schema });
+      const migrationsFolder = process.cwd().endsWith("apps/server")
+        ? nodePath.resolve(process.cwd(), "drizzle")
+        : nodePath.resolve(process.cwd(), "apps/server/drizzle");
+      await migrate(testDb, { migrationsFolder });
+
+      dbInstance = { db: testDb };
+      return dbInstance;
+    },
+  };
 });
+
+vi.mock("~/infrastructure/db", mockDbFactory);
+vi.mock("~/infrastructure/db/index", mockDbFactory);
 
 beforeEach(() => {
   vi.clearAllMocks();
