@@ -129,6 +129,7 @@ const { mockDb } = vi.hoisted(() => ({
 mockDb.transaction = vi.fn((fn) => fn(mockDb));
 
 const { mockDbInstance } = vi.hoisted(() => {
+  let dbInstance: { db: unknown } | null = null;
   return {
     mockDbInstance: async () => {
       // 統合テストファイルのパターンを判定
@@ -140,6 +141,10 @@ const { mockDbInstance } = vi.hoisted(() => {
       const testPath = globalThis.__vitest_worker__?.filepath || "";
 
       if (isIntegrationTest(testPath)) {
+        if (dbInstance) {
+          return dbInstance;
+        }
+
         // 統合テストの場合は新しいPGLiteインスタンスを使用
         // schemaを動的にインポートしてホイスティングの問題を回避
         const { PGlite } = await import("@electric-sql/pglite");
@@ -151,12 +156,12 @@ const { mockDbInstance } = vi.hoisted(() => {
         const client = new PGlite();
         const testDb = drizzle(client, { schema });
         // Use absolute path to ensure it works from any CWD (monorepo root or app root)
-        const migrationsFolder = nodePath.resolve(
-          process.cwd(),
-          "apps/server/drizzle"
-        );
+        const migrationsFolder = process.cwd().endsWith("apps/server")
+          ? nodePath.resolve(process.cwd(), "drizzle")
+          : nodePath.resolve(process.cwd(), "apps/server/drizzle");
         await migrate(testDb, { migrationsFolder });
-        return { db: testDb };
+        dbInstance = { db: testDb };
+        return dbInstance;
       }
 
       // ユニットテストの場合はモックを使用
