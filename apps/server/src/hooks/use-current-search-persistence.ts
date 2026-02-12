@@ -10,11 +10,13 @@ import {
 } from "~/presentation/store/search-store";
 
 const DEBOUNCE_MS = 1000;
+export const RESERVED_PRESET_NAMES = ["current", "current-all"] as const;
+export type ReservedPresetName = (typeof RESERVED_PRESET_NAMES)[number];
 
 export function useCurrentSearchPersistence(
-  sourceId: Accessor<string | undefined>
+  presetName: ReservedPresetName = "current"
 ) {
-  const [isInitialLoad, setIsInitialLoad] = createSignal(true);
+  let isInitialLoad = true;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const getCurrentPresetName = () => {
@@ -43,11 +45,7 @@ export function useCurrentSearchPersistence(
           const { deepEqual } = await import("~/utils/deep-equal");
 
           const matchingPreset = allPresets.find(
-            (p) =>
-              p.name !== presetName &&
-              !p.name.startsWith("current-") &&
-              p.name !== "current" &&
-              deepEqual(p.value, current.value)
+            (p) => p.name !== presetName && deepEqual(p.value, current.value)
           );
 
           if (matchingPreset) {
@@ -87,6 +85,7 @@ export function useCurrentSearchPersistence(
     // Track dependencies
     const _track = [
       searchState.mode,
+      searchState.selectedSource,
       searchState.searchQuery,
       searchState.selectedTags,
       searchState.excludeTags,
@@ -128,12 +127,16 @@ export function useCurrentSearchPersistence(
 
     const presetData = {
       value: condition,
+      selectedSource: searchState.selectedSource,
       sort: searchState.sortBy,
       order: searchState.sortOrder,
       mode: searchState.mode,
     };
 
     try {
+      // We need ID to update.
+      // Optimization: Cache ID? Or just getByName every time?
+      // getByName is safer for race conditions across tabs (though minimal risk for "current").
       const current = await PresetClient.getByName(presetName);
       if (current) {
         await PresetClient.update(current.id, presetData);

@@ -36,24 +36,28 @@ export default function Sources() {
               <h2 class="mb-4 font-bold text-xl">メディアソースを追加</h2>
               <div class="mb-4 space-y-4">
                 <div>
-                  <label class="mb-1 block font-medium text-sm">名前</label>
-                  <input
-                    class="w-full rounded-md border border-gray-300 px-3 py-2"
-                    onInput={(e) => setFormName(e.currentTarget.value)}
-                    placeholder="ソース名を入力してください"
-                    type="text"
-                    value={formName()}
-                  />
+                  <label class="mb-1 block font-medium text-sm">
+                    名前
+                    <input
+                      class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                      onInput={(e) => setFormName(e.currentTarget.value)}
+                      placeholder="ソース名を入力してください"
+                      type="text"
+                      value={formName()}
+                    />
+                  </label>
                 </div>
                 <div>
-                  <label class="mb-1 block font-medium text-sm">パス</label>
-                  <input
-                    class="w-full rounded-md border border-gray-300 px-3 py-2"
-                    onInput={(e) => setFormPath(e.currentTarget.value)}
-                    placeholder="ファイルパスを入力してください"
-                    type="text"
-                    value={formPath()}
-                  />
+                  <label class="mb-1 block font-medium text-sm">
+                    パス
+                    <input
+                      class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"
+                      onInput={(e) => setFormPath(e.currentTarget.value)}
+                      placeholder="ファイルパスを入力してください"
+                      type="text"
+                      value={formPath()}
+                    />
+                  </label>
                 </div>
               </div>
               <div class="flex gap-2">
@@ -65,12 +69,14 @@ export default function Sources() {
                     setFormPath("");
                     setShowAddModal(false);
                   }}
+                  type="button"
                 >
                   保存
                 </button>
                 <button
                   class="rounded bg-gray-500 px-4 py-2 text-white"
                   onClick={() => setShowAddModal(false)}
+                  type="button"
                 >
                   キャンセル
                 </button>

@@ -10,7 +10,7 @@ import type {
   TaggingResponse,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { services } from "~/application/registry";
-import { eventService } from "./event-service";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
@@ -148,14 +148,16 @@ export class TaggingService {
     }
 
     // Save to DB
-    await this.saveTags(mediaId, response);
+    await this.saveTags(mediaSourceId, mediaId, media.filePath, response);
 
     return response;
   }
 
   // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
   private async saveTags(
+    mediaSourceId: string,
     mediaId: string,
+    filePath: string,
     response: TaggingResponse
   ): Promise<void> {
     // 1. Tags
@@ -277,7 +279,11 @@ export class TaggingService {
     }
 
     // Notify clients of the update
-    eventService.sendSseEvent("media:updated", { mediaId });
+    SseManager.sendEvent(mediaSourceId, "media-changed", {
+      filePath,
+      mediaId,
+      timestamp: new Date().toISOString(),
+    });
   }
 
   async getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {

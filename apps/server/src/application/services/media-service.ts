@@ -136,10 +136,16 @@ export class MediaServiceImpl {
   /**
    * Searches for media.
    */
-  async searchMedia(mediaSourceId: string, params: unknown) {
-    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+  async searchMedia(mediaSourceId: string | undefined | null, params: unknown) {
     const searchRequest = mediaSearchRequestSchema.parse(params);
-    return await this.mediaRepository.search(validatedSourceId, searchRequest);
+    if (mediaSourceId) {
+      const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+      return await this.mediaRepository.search(
+        validatedSourceId,
+        searchRequest
+      );
+    }
+    return await this.mediaRepository.globalSearch(searchRequest);
   }
 
   /**

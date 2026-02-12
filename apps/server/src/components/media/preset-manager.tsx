@@ -30,8 +30,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  RESERVED_PRESET_NAMES,
+  type ReservedPresetName,
+} from "~/hooks/use-current-search-persistence";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
-import { loadPreset, searchState } from "~/presentation/store/search-store";
+import {
+  loadPreset,
+  resetSearchState,
+  searchState,
+} from "~/presentation/store/search-store";
 import { cn } from "~/presentation/utils/cn";
 
 export function PresetManager(props: {
@@ -40,8 +48,12 @@ export function PresetManager(props: {
 }) {
   const [data, { refetch }] = createResource(PresetClient.list);
 
-  // existing "current" presets should be hidden from UI
-  const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
+  // existing "current" preset should be hidden from UI
+  // Hide any internal presets starting with "current" (e.g. current, current-all, and potentially others)
+  const presets = () =>
+    data()?.filter(
+      (p) => !RESERVED_PRESET_NAMES.includes(p.name as ReservedPresetName)
+    );
 
   const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 
@@ -141,6 +153,8 @@ export function PresetManager(props: {
 
   const handleClearSelection = () => {
     setSelectedPresetId(null);
+    resetSearchState();
+    props.onAction?.();
   };
 
   return (

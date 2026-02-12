@@ -1,6 +1,6 @@
 ---
 trigger: glob
-globs: src/**/*.{ts,tsx}
+globs: "{apps/server,packages/core}/src/**/*.{ts,tsx,jsx}"
 description: oRPCを用いたAPIエンドポイントの実装、ルーター定義、クライアント側からの呼び出し方法に関するルール。APIの実装や変更を行う際に参照してください。
 ---
 ### API開発 (oRPC)
@@ -9,7 +9,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
 
 #### エンドポイントの追加手順
 
-1.  **Zodスキーマの定義** (`src/domain/{entity}/schemas.ts`)
+1.  **Zodスキーマの定義** (`packages/core/src/domain/{entity}/schemas.ts`)
     ```typescript
     import { z } from "zod";
     
@@ -19,7 +19,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
     });
     ```
 
-2.  **ルーターの実装** (`src/infrastructure/api/routers/{entity}-router.ts`)
+2.  **ルーターの実装** (`apps/server/src/infrastructure/api/routers/{entity}-router.ts`)
     ```typescript
     import { os } from "@orpc/server";
     import { z } from "zod";
@@ -34,7 +34,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
     };
     ```
 
-3.  **ルーターの登録** (`src/domain/shared/api-contract.ts`)
+3.  **ルーターの登録** (`apps/server/src/domain/shared/api-contract.ts`)
     ```typescript
     export const appRouter = {
       media: mediaRouter,
@@ -58,7 +58,7 @@ description: oRPCを用いたAPIエンドポイントの実装、ルーター定
 
 #### oRPC ハンドラー実装ルール
 
--   すべてのAPIエンドポイントは `src/infrastructure/api/routers/` 配下に実装します。
--   入力スキーマは必ず `src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
--   ハンドラー内では直接データベースにアクセスせず、必ず `src/application/services/` のサービスクラスを経由します。
+-   すべてのAPIエンドポイントは `apps/server/src/infrastructure/api/routers/` 配下に実装します。
+-   入力スキーマは必ず `packages/core/src/domain/{entity}/schemas.ts` で定義したZodスキーマを使用します。
+-   ハンドラー内では直接データベースにアクセスせず、必ず `apps/server/src/application/services/` のサービスクラスを経由します。
 -   バイナリコンテンツ（画像、動画など）は oRPC では返さず、専用のRESTエンドポイントを使用します。

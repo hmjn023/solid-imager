@@ -12,7 +12,6 @@ import type {
   UpdateMediaRequest,
 } from "@/domain/media/schemas";
 
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IMediaRepository = {
   findById(id: string, tx?: Transaction): Promise<Media | null>;
   findByPath(

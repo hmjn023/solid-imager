@@ -471,7 +471,6 @@ export const bulkDownloadResponseSchema = z.object({
 
 export type BulkDownloadResponse = z.infer<typeof bulkDownloadResponseSchema>;
 
-// biome-ignore lint/performance/noBarrelFile: Re-exporting for convenience and to resolve bundling issues.
 export {
   type Conflict,
   conflictSchema,

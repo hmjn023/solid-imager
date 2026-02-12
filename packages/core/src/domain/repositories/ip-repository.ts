@@ -1,7 +1,6 @@
 import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type { Ip, NewIp, UpdateIp } from "@/domain/ips/schemas";
 
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IIpRepository = {
   findAll(): Promise<Ip[]>;
   findById(id: string, tx?: Transaction): Promise<Ip | null>;

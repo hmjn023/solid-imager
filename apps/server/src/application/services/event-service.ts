@@ -33,6 +33,12 @@ class TypedEventEmitter<T extends Record<string, any>> {
   }
 }
 
+/**
+ * @deprecated This service is being replaced by SseManager.
+ * It is currently only used by the /api/events endpoint which appears to be checked by ManagerPage,
+ * but this service only emits 'media:updated' which ManagerPage does not listen to.
+ * Use SseManager for all SSE needs.
+ */
 class EventService {
   private static instance: EventService;
 

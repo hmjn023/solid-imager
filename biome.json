@@ -44,6 +44,12 @@
           }
         }
       }
+    },
+    {
+      "includes": ["xtracter/src/**/*.ts"],
+      "javascript": {
+        "globals": ["chrome", "window", "document", "navigator", "console"]
+      }
     }
   ]
 }

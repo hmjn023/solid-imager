@@ -5,7 +5,6 @@ import type {
   UpdateProject,
 } from "@/domain/projects/schemas";
 
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IProjectRepository = {
   findAll(): Promise<Project[]>;
   findById(id: string, tx?: Transaction): Promise<Project | null>;

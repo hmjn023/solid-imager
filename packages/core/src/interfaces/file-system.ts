@@ -1,4 +1,4 @@
-export interface IFileSystem {
+export type IFileSystem = {
   exists(path: string): Promise<boolean>;
   readFile(path: string): Promise<Uint8Array>;
   readTextFile(path: string, encoding?: "utf-8"): Promise<string>;
@@ -19,4 +19,4 @@ export interface IFileSystem {
   copyFile(src: string, dest: string): Promise<void>;
   rename(oldPath: string, newPath: string): Promise<void>;
   mkdtemp(prefix: string): Promise<string>;
-}
+};
