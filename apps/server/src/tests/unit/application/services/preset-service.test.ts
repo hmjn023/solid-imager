@@ -106,4 +106,18 @@ describe("PresetService", () => {
       ResourceNotFoundError
     );
   });
+  it("should allow creating a preset with reserved name 'current-all'", async () => {
+    (mockRepo.getByName as any).mockResolvedValue(null);
+    const reservedPreset = { ...mockPreset, name: "current-all" };
+    (mockRepo.create as any).mockResolvedValue(reservedPreset);
+
+    const input: CreatePresetRequest = {
+      name: "current-all",
+      value: mockPreset.value,
+    };
+
+    const result = await PresetService.create(input);
+    expect(result.name).toBe("current-all");
+    expect(mockRepo.create).toHaveBeenCalledWith(input);
+  });
 });

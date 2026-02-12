@@ -9,16 +9,19 @@ import {
 } from "~/presentation/store/search-store";
 
 const DEBOUNCE_MS = 1000;
-const CURRENT_PRESET_NAME = "current";
+export const RESERVED_PRESET_NAMES = ["current", "current-all"] as const;
+export type ReservedPresetName = (typeof RESERVED_PRESET_NAMES)[number];
 
-export function useCurrentSearchPersistence() {
+export function useCurrentSearchPersistence(
+  presetName: ReservedPresetName = "current"
+) {
   let isInitialLoad = true;
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   onMount(() => {
     const init = async () => {
       try {
-        const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
+        const current = await PresetClient.getByName(presetName);
         if (current) {
           logger.info(`[AutoSave] Loaded current state: ${current.name}`);
 
@@ -28,9 +31,7 @@ export function useCurrentSearchPersistence() {
           const { deepEqual } = await import("~/utils/deep-equal");
 
           const matchingPreset = allPresets.find(
-            (p) =>
-              p.name !== CURRENT_PRESET_NAME &&
-              deepEqual(p.value, current.value)
+            (p) => p.name !== presetName && deepEqual(p.value, current.value)
           );
 
           if (matchingPreset) {
@@ -57,7 +58,7 @@ export function useCurrentSearchPersistence() {
           logger.info("[AutoSave] No current state found, creating default");
           // Create initial "current" preset with empty/default state
           await PresetClient.create({
-            name: CURRENT_PRESET_NAME,
+            name: presetName,
             value: { type: "group", operator: "and", children: [] },
             mode: "simple",
           });
@@ -119,13 +120,13 @@ export function useCurrentSearchPersistence() {
       // We need ID to update.
       // Optimization: Cache ID? Or just getByName every time?
       // getByName is safer for race conditions across tabs (though minimal risk for "current").
-      const current = await PresetClient.getByName(CURRENT_PRESET_NAME);
+      const current = await PresetClient.getByName(presetName);
       if (current) {
         await PresetClient.update(current.id, presetData);
         // logger.info("[AutoSave] Saved current state");
       } else {
         await PresetClient.create({
-          name: CURRENT_PRESET_NAME,
+          name: presetName,
           ...presetData,
         });
       }

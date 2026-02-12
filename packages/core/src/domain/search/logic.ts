@@ -3,7 +3,7 @@ import type {
   SearchCriterion,
   SearchGroup,
 } from "@/domain/media/schemas";
-import type { defaultState, SearchState } from "./schema";
+import type { SearchState } from "./schema";
 
 /**
  * Transitions between search modes while attempting to preserve conditions.
@@ -31,9 +31,17 @@ export const calculateNextModeState = (
       ...simpleStateFromPro,
     };
   }
-  // If cannot be restored perfectly, just switch mode and hope for the best/reset
+  // If cannot be restored perfectly, reset to default simple state
   return {
     mode: "simple" as const,
+    searchQuery: "",
+    selectedTags: [],
+    excludeTags: [],
+    selectedProjects: [],
+    selectedIps: [],
+    selectedCharacters: [],
+    selectedAuthors: [],
+    advancedCondition: null,
   };
 };
 

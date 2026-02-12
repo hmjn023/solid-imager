@@ -2,9 +2,16 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { A } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { isServer, Portal } from "solid-js/web";
-import { SearchFilters } from "~/components/media/search-filters";
+import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import {
@@ -14,14 +21,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
+import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
 import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
@@ -30,77 +30,36 @@ import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { fetchTags } from "~/infrastructure/api-clients/tags-api";
-import { searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+  getSearchCondition,
+  searchState,
+  setSearchState,
+} from "~/presentation/store/search-store";
 
 // Type alias to avoid conflict with DOM MediaSource API
 type Source = SafeMediaSource;
 
-const buildSearchParams = (state: typeof searchState) => ({
-  q: state.searchQuery,
-  tags:
-    state.selectedTags.length > 0 ? state.selectedTags.join(",") : undefined,
-  excludeTags:
-    state.excludeTags.length > 0 ? state.excludeTags.join(",") : undefined,
-  tagMode: state.tagMode,
-  projects:
-    state.selectedProjects.length > 0
-      ? state.selectedProjects.join(",")
-      : undefined,
-  ips: state.selectedIps.length > 0 ? state.selectedIps.join(",") : undefined,
-  characters:
-    state.selectedCharacters.length > 0
-      ? state.selectedCharacters.join(",")
-      : undefined,
-  sort: state.sortBy,
-  order: state.sortOrder,
-  limit: state.limit,
-  offset: state.offset,
-});
-
-type SourceSelectorProps = {
-  sources: Source[] | undefined;
-  selectedSource: string;
-  onSelect: (id: string) => void;
+const buildSearchParams = (state: typeof searchState) => {
+  const condition = getSearchCondition();
+  return {
+    condition: condition || undefined,
+    sort: state.sortBy,
+    order: state.sortOrder,
+    limit: state.limit,
+    offset: state.offset,
+  };
 };
-
-const SourceSelector = (props: SourceSelectorProps) => (
-  <div class="space-y-2">
-    <Label>メディアソース</Label>
-    <Select
-      itemComponent={(itemProps) => (
-        <SelectItem item={itemProps.item}>
-          {itemProps.item.rawValue.name}
-        </SelectItem>
-      )}
-      onChange={(value) => {
-        const id =
-          typeof value === "object" && value !== null && "id" in value
-            ? (value as Source).id
-            : "";
-        props.onSelect(id || "");
-      }}
-      options={props.sources || []}
-      optionTextValue="name"
-      optionValue="name"
-      placeholder="ソースを選択"
-      value={props.sources?.find((s) => s.id === props.selectedSource)}
-    >
-      <SelectTrigger>
-        <SelectValue<Source>>
-          {(state) => {
-            const source = state.selectedOption() as Source | undefined;
-            return source?.name || "ソースを選択";
-          }}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent />
-    </Select>
-  </div>
-);
 
 export default function Search() {
   const queryClient = useQueryClient();
   const [isRestored, setIsRestored] = createSignal(false);
+  const [isMounted, setIsMounted] = createSignal(false);
+
+  onMount(() => {
+    setIsMounted(true);
+  });
+
+  useCurrentSearchPersistence("current-all");
 
   createEffect(() => {
     if (isServer) {
@@ -151,14 +110,12 @@ export default function Search() {
   const searchResults = createQuery(() => ({
     queryKey: ["searchResults", { ...searchState }],
     queryFn: async () => {
-      const source = searchState.selectedSource;
-      if (!source) {
-        return { media: [], total: 0 };
-      }
-
+      // Handle empty string as undefined for global search
+      const source = searchState.selectedSource || undefined;
+      // Pass source (can be undefined/null for global search)
       return await searchMedia(source, buildSearchParams(searchState));
     },
-    enabled: !!searchState.selectedSource,
+    // Always enabled
   }));
 
   // Subscribe to real-time events for the selected source
@@ -227,20 +184,19 @@ export default function Search() {
                 <DialogTitle>検索フィルター</DialogTitle>
               </DialogHeader>
               <div class="space-y-4">
-                <SourceSelector
-                  onSelect={(id) => setSearchState("selectedSource", id)}
+                <SearchControlPanel
+                  context="global"
+                  filterData={{
+                    tags: tags.data,
+                    projects: allProjects.data,
+                    ips: allIps.data,
+                    characters: allCharacters.data,
+                    authors: allAuthors.data,
+                  }}
+                  onSearch={handleSearch}
+                  onSelectSource={(id) => setSearchState("selectedSource", id)}
                   selectedSource={searchState.selectedSource}
                   sources={sources.data}
-                />
-                <SearchFilters
-                  authors={allAuthors.data}
-                  characters={allCharacters.data}
-                  ips={allIps.data}
-                  onSearch={handleSearch}
-                  projects={allProjects.data}
-                  setState={setSearchState}
-                  state={searchState}
-                  tags={tags.data}
                 />
               </div>
             </DialogContent>
@@ -262,20 +218,19 @@ export default function Search() {
             <CardTitle>検索フィルター</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
-            <SourceSelector
-              onSelect={(id) => setSearchState("selectedSource", id)}
+            <SearchControlPanel
+              context="global"
+              filterData={{
+                tags: tags.data,
+                projects: allProjects.data,
+                ips: allIps.data,
+                characters: allCharacters.data,
+                authors: allAuthors.data,
+              }}
+              onSearch={handleSearch}
+              onSelectSource={(id) => setSearchState("selectedSource", id)}
               selectedSource={searchState.selectedSource}
               sources={sources.data}
-            />
-            <SearchFilters
-              authors={allAuthors.data}
-              characters={allCharacters.data}
-              ips={allIps.data}
-              onSearch={handleSearch}
-              projects={allProjects.data}
-              setState={setSearchState}
-              state={searchState}
-              tags={tags.data}
               usePopover={false}
             />
           </CardContent>
@@ -285,12 +240,12 @@ export default function Search() {
         <div class="space-y-4">
           <Show
             fallback={<div class="py-8 text-center">読み込み中...</div>}
-            when={!searchResults.isLoading}
+            when={!searchResults.isLoading && isMounted()}
           >
             <Show
               fallback={
-                <div class="py-8 text-center text-gray-500">
-                  メディアソースを選択して検索してください
+                <div class="py-12 text-center text-gray-500">
+                  {/* Should not happen if data is loaded, but handled by inner Show */}
                 </div>
               }
               when={searchResults.data}
@@ -339,7 +294,7 @@ export default function Search() {
                             <img
                               alt={media.fileName}
                               class="h-full w-full object-cover"
-                              src={`/api/sources/${searchState.selectedSource}/${media.id}/thumbnail`}
+                              src={`/api/sources/${media.mediaSourceId}/${media.id}/thumbnail`}
                             />
                           </Show>
                         </div>
@@ -369,7 +324,7 @@ export default function Search() {
                         </div>
                         <A
                           class="mt-2 block text-center text-blue-600 text-sm hover:underline"
-                          href={`/sources/${searchState.selectedSource}/${media.id}`}
+                          href={`/sources/${media.mediaSourceId}/${media.id}`}
                         >
                           詳細を見る
                         </A>
