@@ -57,26 +57,23 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
               </SelectItem>
             )}
             onChange={(value) => {
-              const id =
-                typeof value === "object" && value !== null && "id" in value
-                  ? (value as SafeMediaSource).id
-                  : "";
-              props.onSelectSource?.(id || "");
+              const selected = value as { id: string } | undefined;
+              props.onSelectSource?.(selected?.id ?? "");
             }}
-            options={props.sources || []}
-            optionTextValue="name"
-            optionValue="name"
+            options={[
+              { id: "", name: "すべてのソース" },
+              ...(props.sources || []),
+            ]}
+            optionValue="id"
             placeholder="ソースを選択"
-            value={props.sources?.find((s) => s.id === props.selectedSource)}
+            value={[
+              { id: "", name: "すべてのソース" },
+              ...(props.sources || []),
+            ].find((s) => s.id === props.selectedSource)}
           >
             <SelectTrigger>
-              <SelectValue<SafeMediaSource>>
-                {(state) => {
-                  const source = state.selectedOption() as
-                    | SafeMediaSource
-                    | undefined;
-                  return source?.name || "ソースを選択";
-                }}
+              <SelectValue<{ name: string }>>
+                {(state) => state.selectedOption()?.name || "ソースを選択"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent />
