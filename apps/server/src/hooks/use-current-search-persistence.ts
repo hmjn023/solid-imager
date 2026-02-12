@@ -80,12 +80,15 @@ export function useCurrentSearchPersistence(
     // Note: accessing searchState.* properties here tracks them.
     const _track = [
       searchState.mode,
+      searchState.selectedSource,
       searchState.searchQuery,
       searchState.selectedTags,
       searchState.excludeTags,
+      searchState.tagMode,
       searchState.selectedProjects,
       searchState.selectedIps,
       searchState.selectedCharacters,
+      searchState.selectedAuthors,
       searchState.advancedCondition,
       searchState.sortBy,
       searchState.sortOrder,
@@ -111,6 +114,7 @@ export function useCurrentSearchPersistence(
 
     const presetData = {
       value: condition,
+      selectedSource: searchState.selectedSource,
       sort: searchState.sortBy,
       order: searchState.sortOrder,
       mode: searchState.mode,

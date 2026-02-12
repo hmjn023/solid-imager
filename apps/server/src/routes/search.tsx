@@ -119,6 +119,7 @@ export default function Search() {
   }));
 
   // Subscribe to real-time events for the selected source
+  // NOTE: When selectedSource is empty (All Sources), events are not subscribed.
   useMediaSourceEvents(() => searchState.selectedSource || undefined, {
     onMediaAdded: () => {
       // Invalidate all search results to ensure any matching new media appears

@@ -30,6 +30,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "~/components/ui/select";
+import {
+  RESERVED_PRESET_NAMES,
+  type ReservedPresetName,
+} from "~/hooks/use-current-search-persistence";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
   loadPreset,
@@ -46,7 +50,10 @@ export function PresetManager(props: {
 
   // existing "current" preset should be hidden from UI
   // Hide any internal presets starting with "current" (e.g. current, current-all, and potentially others)
-  const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
+  const presets = () =>
+    data()?.filter(
+      (p) => !RESERVED_PRESET_NAMES.includes(p.name as ReservedPresetName)
+    );
 
   const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 

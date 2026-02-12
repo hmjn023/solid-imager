@@ -1,4 +1,3 @@
-import { describe, expect, it } from "bun:test";
 import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import { calculateNextModeState } from "@solid-imager/core/domain/search/logic";
 import {
