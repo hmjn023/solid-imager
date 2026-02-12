@@ -4,7 +4,6 @@ import type {
   TaggingResponse,
 } from "@/domain/tagging/schemas";
 
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IAiClient = {
   healthCheck(): Promise<boolean>;
 

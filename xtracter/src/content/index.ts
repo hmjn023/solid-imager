@@ -3,6 +3,7 @@ import type { Author, TweetMetadata } from "@ext/schema";
 const OBSERVER_CONFIG = { childList: true, subtree: true };
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 const PROCESSED_VIDEO_CLASS = "xtracter-video-processed";
+const AUTHOR_ID_REGEX = /@\w+/;
 
 function createButtonContainer(
   metadata: TweetMetadata,
@@ -130,11 +131,18 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
   let authorId = "";
   let tweetUrl = window.location.href;
 
+  const MIN_PATH_PARTS_FOR_STATUS = 3;
+  const STATUS_PART_INDEX = 1;
+  const TWEET_ID_PART_INDEX = 2;
+
   // pathParts check: ['username', 'status', '1234567890', 'photo', '1']
-  if (pathParts.length >= 3 && pathParts[1] === "status") {
+  if (
+    pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
+    pathParts[STATUS_PART_INDEX] === "status"
+  ) {
     authorId = `@${pathParts[0]}`;
     // Remove /photo/1, /video/1 to reconstruct base Tweet URL
-    tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[2]}`;
+    tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
   }
 
   return { authorId, tweetUrl };
@@ -153,63 +161,22 @@ function extractMetadata(
 
   // If article is found, try to extract from DOM
   if (article) {
-    const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
-    tweetText = tweetTextNode ? (tweetTextNode as HTMLElement).innerText : "";
-
-    const timeNode = article.querySelector("time");
-    timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
-
-    const timeLink = timeNode?.closest("a");
-    if (timeLink) {
-      tweetUrl = timeLink.href;
-    }
-
-    const userNameNode = article.querySelector('div[data-testid="User-Name"]');
-    authorName = userNameNode?.querySelector("span")?.innerText || "";
-
-    const userAnchor = userNameNode?.querySelector("a");
-    if (userAnchor) {
-      try {
-        const url = new URL(userAnchor.href);
-        const pathParts = url.pathname.split("/").filter((p) => p);
-        if (pathParts.length > 0) {
-          authorId = `@${pathParts[0]}`;
-        }
-      } catch (_e) {}
-    }
-
-    if (!authorId) {
-      authorId = userNameNode?.textContent?.match(/@\w+/)?.[0] || "";
-    }
+    const extracted = extractFromArticle(article);
+    tweetText = extracted.tweetText;
+    timestamp = extracted.timestamp;
+    tweetUrl = extracted.tweetUrl;
+    authorName = extracted.authorName;
+    authorId = extracted.authorId;
   }
 
   // Fallback: extract from URL if critical info is missing
   if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
     const urlMetadata = extractMetadataFromUrl();
-    if (urlMetadata.authorId && !authorId) {
-      authorId = urlMetadata.authorId;
-    }
-    if (urlMetadata.tweetUrl) {
-      tweetUrl = urlMetadata.tweetUrl;
-    }
+    authorId = authorId || urlMetadata.authorId;
+    tweetUrl = urlMetadata.tweetUrl || tweetUrl;
   }
 
-  let targetUrl: string;
-
-  if (mediaType === "VIDEO") {
-    // For video, targetUrl is the tweet URL (processed by yt-dlp on server)
-    targetUrl = tweetUrl;
-  } else {
-    // For image, targetUrl is the direct image URL
-    try {
-      const img = element as HTMLImageElement;
-      const url = new URL(img.src);
-      url.searchParams.set("name", "orig");
-      targetUrl = url.toString();
-    } catch (_e) {
-      targetUrl = (element as HTMLImageElement).src;
-    }
-  }
+  const targetUrl = determineTargetUrl(element, mediaType, tweetUrl);
 
   const authors: Author[] = [];
   if (authorName || authorId) {
@@ -234,6 +201,64 @@ function extractMetadata(
   };
 }
 
+function determineTargetUrl(
+  element: HTMLElement,
+  mediaType: "IMAGE" | "VIDEO",
+  tweetUrl: string
+): string {
+  if (mediaType === "VIDEO") {
+    return tweetUrl;
+  }
+
+  try {
+    const img = element as HTMLImageElement;
+    const url = new URL(img.src);
+    url.searchParams.set("name", "orig");
+    return url.toString();
+  } catch (_e) {
+    return (element as HTMLImageElement).src;
+  }
+}
+
+function extractFromArticle(article: HTMLElement) {
+  const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
+  const tweetText = tweetTextNode
+    ? (tweetTextNode as HTMLElement).innerText
+    : "";
+
+  const timeNode = article.querySelector("time");
+  const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
+
+  let tweetUrl = window.location.href;
+  const timeLink = timeNode?.closest("a");
+  if (timeLink) {
+    tweetUrl = timeLink.href;
+  }
+
+  const userNameNode = article.querySelector('div[data-testid="User-Name"]');
+  const authorName = userNameNode?.querySelector("span")?.innerText || "";
+
+  let authorId = "";
+  const userAnchor = userNameNode?.querySelector("a");
+  if (userAnchor) {
+    try {
+      const url = new URL(userAnchor.href);
+      const pathParts = url.pathname.split("/").filter((p) => p);
+      if (pathParts.length > 0) {
+        authorId = `@${pathParts[0]}`;
+      }
+    } catch (_e) {
+      // Ignore
+    }
+  }
+
+  if (!authorId) {
+    authorId = userNameNode?.textContent?.match(AUTHOR_ID_REGEX)?.[0] || "";
+  }
+
+  return { tweetText, timestamp, tweetUrl, authorName, authorId };
+}
+
 const processedMetadata = new Map<string, TweetMetadata>();
 
 // Listen for requests from Popup/Background
@@ -245,13 +270,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 function processMedia() {
-  // Process Images
+  processImages();
+  processVideos();
+}
+
+function processImages() {
   const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
-  images.forEach((img) => {
+  for (const img of images) {
     const imageElement = img as HTMLImageElement;
 
     if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
-      return;
+      continue;
     }
 
     const container = imageElement.parentElement;
@@ -273,19 +302,20 @@ function processMedia() {
       const btnContainer = createButtonContainer(metadata, "IMAGE");
       container.appendChild(btnContainer);
     }
-  });
+  }
+}
 
-  // Process Videos/GIFs
+function processVideos() {
   const videoComponents = document.querySelectorAll(
     'div[data-testid="videoComponent"]'
   );
-  videoComponents.forEach((videoComponent) => {
+  for (const videoComponent of videoComponents) {
     const container = videoComponent.parentElement;
     if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) {
-      return;
+      continue;
     }
     if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) {
-      return;
+      continue;
     }
 
     const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
@@ -312,7 +342,7 @@ function processMedia() {
     btnContainer.style.right = "10px";
 
     container.appendChild(btnContainer);
-  });
+  }
 }
 
 const observer = new MutationObserver((mutations) => {

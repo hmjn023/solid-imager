@@ -6,6 +6,8 @@ import {
 import { ErrorBoundary, Suspense } from "solid-js";
 import { render } from "solid-js/web";
 
+const STALE_TIME_MS = 300_000; // 5分
+
 function App() {
   const repositoryQuery = useQuery(() => ({
     queryKey: ["TanStack Query"],
@@ -16,7 +18,7 @@ function App() {
       }
       return result.json();
     },
-    staleTime: 1000 * 60 * 5, // 5分
+    staleTime: STALE_TIME_MS,
     throwOnError: true, // クエリが失敗した場合にエラーをスローする
   }));
 
@@ -41,11 +43,13 @@ function App() {
 const root = document.getElementById("root");
 const client = new QueryClient();
 
-render(
-  () => (
-    <QueryClientProvider client={client}>
-      <App />
-    </QueryClientProvider>
-  ),
-  root!
-);
+if (root) {
+  render(
+    () => (
+      <QueryClientProvider client={client}>
+        <App />
+      </QueryClientProvider>
+    ),
+    root
+  );
+}

@@ -4,7 +4,6 @@ export const taggingResponseSchema = z.object({
   general: z.record(z.string(), z.number()),
   character: z.record(z.string(), z.number()),
   ips: z.array(z.string()),
-  // biome-ignore lint/style/useNamingConvention: External API uses snake_case
   ips_mapping: z.record(z.string(), z.array(z.string())),
 });
 

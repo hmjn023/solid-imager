@@ -9,6 +9,8 @@ import type {
   TweetMetadata,
 } from "@ext/schema";
 
+const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
+
 /**
  * リトライ付きでAPI呼び出しを実行する
  */
@@ -81,9 +83,6 @@ async function getTargetSourceId(): Promise<string | null> {
 async function postDownloads(items: TweetMetadata[]) {
   const mediaSourceId = await getTargetSourceId();
   if (!mediaSourceId) {
-    const _errorMsg =
-      "No valid media source found (and none selected in settings)";
-
     chrome.notifications.create({
       type: "basic",
       iconUrl: "icon.png",
@@ -95,7 +94,7 @@ async function postDownloads(items: TweetMetadata[]) {
   }
 
   try {
-    const _result = await retryWithBackoff(async () => {
+    await retryWithBackoff(async () => {
       const client = await getClient();
       return await client.downloads.start({
         mediaSourceId,
@@ -193,7 +192,7 @@ chrome.runtime.onMessage.addListener(
                 const dateStr = now
                   .toISOString()
                   .replace(/[:.]/g, "-")
-                  .slice(0, 19);
+                  .slice(0, DATE_STRING_LENGTH);
                 const filename = `xtracter/xtracter-${dateStr}.json`;
                 const jsonString = JSON.stringify(response, null, 2);
                 const dataUrl =
@@ -229,7 +228,10 @@ chrome.runtime.onMessage.addListener(
       });
     } else if (isDownloadBulkMessage(message)) {
       const now = new Date();
-      const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const dateStr = now
+        .toISOString()
+        .replace(/[:.]/g, "-")
+        .slice(0, DATE_STRING_LENGTH);
       const filename = `xtracter/xtracter-${dateStr}.json`;
       const jsonString = JSON.stringify(message.data, null, 2);
       const dataUrl =

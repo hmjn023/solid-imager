@@ -1,7 +1,6 @@
 import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type { Author, NewAuthor } from "@/domain/media/schemas";
 
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IAuthorRepository = {
   findAll(): Promise<Author[]>;
   findById(id: string): Promise<Author | null>;

@@ -1,8 +1,8 @@
-import * as dotenv from "dotenv";
+import { config as dotenvConfig } from "dotenv";
 import type { Config } from "drizzle-kit";
 
 // .envファイルを読み込む
-dotenv.config();
+dotenvConfig();
 
 const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE } = process.env;
 
@@ -41,5 +41,4 @@ if (DB_HOST === "pglite") {
   };
 }
 
-// biome-ignore lint/style/noDefaultExport: <explanation>
 export default config;

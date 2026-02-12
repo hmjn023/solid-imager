@@ -17,6 +17,9 @@ const uploadStatusDiv = document.getElementById(
 ) as HTMLDivElement;
 
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
+const API_URL_DEBOUNCE_MS = 1000;
+const STATUS_CLEAR_TIMEOUT_MS = 2000;
+const EXPORT_STATUS_CLEAR_TIMEOUT_MS = 3000;
 
 let isTestingConnection = false;
 
@@ -49,7 +52,7 @@ async function init() {
       statusDiv.textContent = "No sources found. Check API URL and server.";
       statusDiv.className = "error";
     } else {
-      sources.forEach((source) => {
+      for (const source of sources) {
         const option = document.createElement("option");
         option.value = source.id;
         option.text = `${source.name} (${source.type})`;
@@ -57,7 +60,7 @@ async function init() {
           option.selected = true;
         }
         select.add(option);
-      });
+      }
       statusDiv.textContent = "";
       statusDiv.className = "";
     }
@@ -123,7 +126,7 @@ apiUrlInput.addEventListener("input", () => {
   }
   urlChangeTimeout = setTimeout(() => {
     handleApiUrlChange();
-  }, 1000) as unknown as number;
+  }, API_URL_DEBOUNCE_MS) as unknown as number;
 });
 
 saveBtn.addEventListener("click", async () => {
@@ -144,7 +147,7 @@ saveBtn.addEventListener("click", async () => {
   setTimeout(() => {
     statusDiv.textContent = "";
     statusDiv.className = "";
-  }, 2000);
+  }, STATUS_CLEAR_TIMEOUT_MS);
 });
 
 exportBtn.addEventListener("click", async () => {
@@ -157,7 +160,7 @@ exportBtn.addEventListener("click", async () => {
     setTimeout(() => {
       exportStatusDiv.textContent = "";
       exportStatusDiv.className = "";
-    }, 3000);
+    }, EXPORT_STATUS_CLEAR_TIMEOUT_MS);
   } catch (_error) {
     exportStatusDiv.textContent = "Failed. Are you on X.com?";
     exportStatusDiv.className = "error";
@@ -177,8 +180,12 @@ bulkUploadBtn.addEventListener("click", async () => {
     }
 
     const metadata = await new Promise<TweetMetadata[]>((resolve, reject) => {
+      if (activeTab.id === undefined) {
+        reject(new Error("Active tab ID is missing"));
+        return;
+      }
       chrome.tabs.sendMessage(
-        activeTab.id!,
+        activeTab.id,
         { type: "GET_METADATA" },
         (response) => {
           if (chrome.runtime.lastError) {

@@ -1,7 +1,6 @@
 import { z } from "zod";
 
 export const UuidSchema = z.uuid({ version: "v4" });
-// biome-ignore lint/style/useNamingConvention: UUID
 export type UUID = z.infer<typeof UuidSchema>;
 
 export const appConfigSchema = z

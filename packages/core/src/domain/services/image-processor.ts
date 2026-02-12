@@ -1,4 +1,3 @@
-// biome-ignore lint/style/useNamingConvention: Interface naming
 export type IImageProcessor = {
   generateThumbnail(
     mediaPath: string,
