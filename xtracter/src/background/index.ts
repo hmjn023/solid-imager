@@ -34,6 +34,10 @@ async function retryWithBackoff<T>(
         attempt < maxRetries - 1
       ) {
         const delay = initialDelay * 2 ** attempt;
+        console.warn(
+          `[xtracter] API call failed, retrying in ${delay}ms...`,
+          error
+        );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }

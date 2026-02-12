@@ -485,8 +485,8 @@ export const BackupService = {
             // Priority: 1) linkedIps from JSON, 2) infer from media's IPs
             const ipNamesToLink =
               c.linkedIps &&
-              Array.isArray(c.linkedIps) &&
-              c.linkedIps.length > 0
+                Array.isArray(c.linkedIps) &&
+                c.linkedIps.length > 0
                 ? c.linkedIps
                 : mediaIpNames;
 
@@ -715,12 +715,16 @@ export const BackupService = {
           zipFilePath,
           { lazyEntries: true, autoClose: false },
           (err, openedZipfile) => {
-            if (err) {
-              return reject(err);
+            if (err || !openedZipfile) {
+              return reject(err || new Error("Failed to open zip"));
             }
-            if (!openedZipfile) {
-              return reject(new Error("Failed to open zip"));
-            }
+
+            const rejectAndClose = (error: Error) => {
+              openedZipfile.close();
+              reject(error);
+            };
+
+            openedZipfile.on("error", rejectAndClose);
 
             const entries = new Map<string, yauzl.Entry>();
             // biome-ignore lint/suspicious/noExplicitAny: dump data is any
@@ -742,8 +746,7 @@ export const BackupService = {
                   dumpEntry,
                   (readErr, readStream) => {
                     if (readErr || !readStream) {
-                      openedZipfile.close();
-                      return reject(
+                      return rejectAndClose(
                         readErr || new Error("Failed to read dump.json")
                       );
                     }
@@ -757,23 +760,16 @@ export const BackupService = {
                         dumpData = JSON.parse(buffer.toString("utf-8"));
                         resolve({ zipfile: openedZipfile, entries, dumpData });
                       } catch (e) {
-                        openedZipfile.close();
-                        reject(e);
+                        rejectAndClose(e as Error);
                       }
                     });
-                    readStream.on("error", (streamErr) => {
-                      openedZipfile.close();
-                      reject(streamErr);
-                    });
+                    readStream.on("error", rejectAndClose);
                   }
                 );
               } else {
-                openedZipfile.close();
-                reject(new Error("dump.json not found in ZIP"));
+                rejectAndClose(new Error("dump.json not found in ZIP"));
               }
             });
-
-            openedZipfile.on("error", reject);
           }
         );
       });
@@ -815,7 +811,7 @@ export const BackupService = {
                 if (err || !readStream) {
                   return reject(
                     err ||
-                      new Error(`Failed to read stream for ${entry.fileName}`)
+                    new Error(`Failed to read stream for ${entry.fileName}`)
                   );
                 }
 
@@ -1078,16 +1074,16 @@ export const BackupService = {
         // AI Generation Info
         generationInfo: media.generationInfo
           ? {
-              prompt: media.generationInfo.prompt,
-              negativePrompt: media.generationInfo.negativePrompt,
-              modelName: media.generationInfo.modelName,
-              seed: media.generationInfo.seed,
-              steps: media.generationInfo.steps,
-              cfgScale: media.generationInfo.cfgScale,
-              aiGenerated: media.generationInfo.aiGenerated,
-              workflow: media.generationInfo.workflow,
-              metadata: media.generationInfo.metadata,
-            }
+            prompt: media.generationInfo.prompt,
+            negativePrompt: media.generationInfo.negativePrompt,
+            modelName: media.generationInfo.modelName,
+            seed: media.generationInfo.seed,
+            steps: media.generationInfo.steps,
+            cfgScale: media.generationInfo.cfgScale,
+            aiGenerated: media.generationInfo.aiGenerated,
+            workflow: media.generationInfo.workflow,
+            metadata: media.generationInfo.metadata,
+          }
           : null,
 
         tags: simpleTags,
