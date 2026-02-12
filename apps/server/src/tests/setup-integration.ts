@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { config } from "dotenv";
@@ -23,7 +24,10 @@ vi.mock("~/infrastructure/db/index", async () => {
   const schema = await import("~/infrastructure/db/schema");
   const client = new PGlite();
   const testDb = drizzle(client, { schema });
-  await migrate(testDb, { migrationsFolder: "./drizzle" });
+  const migrationsFolder = fs.existsSync("apps/server/drizzle")
+    ? "apps/server/drizzle"
+    : "drizzle";
+  await migrate(testDb, { migrationsFolder });
   return { db: testDb };
 });
 
