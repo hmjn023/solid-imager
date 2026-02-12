@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { presetSchema, searchGroupSchema } from "@/domain/media/schemas";
+import { searchGroupSchema } from "@/domain/media/schemas";
 
 export const searchStateSchema = z.object({
   // Modes

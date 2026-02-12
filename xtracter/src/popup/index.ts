@@ -1,5 +1,5 @@
-import { MediaSource, TweetMetadata } from "@ext/schema";
-import { testConnection, getClient } from "@ext/api";
+import { getClient, testConnection } from "@ext/api";
+import type { MediaSource, TweetMetadata } from "@ext/schema";
 
 const apiUrlInput = document.getElementById("api-url") as HTMLInputElement;
 const select = document.getElementById("source-select") as HTMLSelectElement;
@@ -32,8 +32,6 @@ async function init() {
     const currentApiUrl = settings.apiUrl || DEFAULT_API_URL;
     apiUrlInput.value = currentApiUrl;
     const savedId = settings.selectedSourceId;
-
-    console.log("[xtracter] Initializing popup, fetching sources...");
     statusDiv.textContent = "Loading sources...";
     statusDiv.className = "";
 
@@ -45,14 +43,12 @@ async function init() {
     // 3. Render Select Options
     select.innerHTML = "";
     if (!sources || sources.length === 0) {
-      console.warn("[xtracter] No sources found");
       const option = document.createElement("option");
       option.text = "No sources found";
       select.add(option);
       statusDiv.textContent = "No sources found. Check API URL and server.";
       statusDiv.className = "error";
     } else {
-      console.log(`[xtracter] Loaded ${sources.length} sources`);
       sources.forEach((source) => {
         const option = document.createElement("option");
         option.value = source.id;
@@ -69,8 +65,6 @@ async function init() {
     select.disabled = false;
     saveBtn.disabled = false;
   } catch (error) {
-    console.error("[xtracter] Error during initialization:", error);
-
     let errorMessage = "Error loading sources.";
     if (error instanceof Error) {
       errorMessage += ` ${error.message}`;
@@ -86,10 +80,14 @@ async function init() {
 
 // API URLが変更されたときに接続をテスト
 async function handleApiUrlChange() {
-  if (isTestingConnection) return;
+  if (isTestingConnection) {
+    return;
+  }
 
   const newUrl = apiUrlInput.value.trim();
-  if (!newUrl || newUrl === DEFAULT_API_URL) return;
+  if (!newUrl || newUrl === DEFAULT_API_URL) {
+    return;
+  }
 
   isTestingConnection = true;
   statusDiv.textContent = "Testing connection...";
@@ -108,8 +106,7 @@ async function handleApiUrlChange() {
       statusDiv.textContent = `Connection failed: ${result.error}`;
       statusDiv.className = "error";
     }
-  } catch (error) {
-    console.error("[xtracter] Connection test error:", error);
+  } catch (_error) {
     statusDiv.textContent = "Connection test failed";
     statusDiv.className = "error";
   } finally {
@@ -135,7 +132,7 @@ saveBtn.addEventListener("click", async () => {
 
   await chrome.storage.local.set({
     selectedSourceId: selectedId,
-    apiUrl: apiUrl,
+    apiUrl,
   });
 
   statusDiv.textContent = "Saved!";
@@ -161,8 +158,7 @@ exportBtn.addEventListener("click", async () => {
       exportStatusDiv.textContent = "";
       exportStatusDiv.className = "";
     }, 3000);
-  } catch (error) {
-    console.error(error);
+  } catch (_error) {
     exportStatusDiv.textContent = "Failed. Are you on X.com?";
     exportStatusDiv.className = "error";
   }
@@ -211,9 +207,10 @@ bulkUploadBtn.addEventListener("click", async () => {
     uploadStatusDiv.textContent = `Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`;
     uploadStatusDiv.className = "success";
   } catch (error) {
-    console.error("Bulk upload failed:", error);
     let msg = "Upload failed.";
-    if (error instanceof Error) msg += ` ${error.message}`;
+    if (error instanceof Error) {
+      msg += ` ${error.message}`;
+    }
     uploadStatusDiv.textContent = msg;
     uploadStatusDiv.className = "error";
   }

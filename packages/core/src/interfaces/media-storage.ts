@@ -25,7 +25,7 @@ export type MediaMetadata = {
   modifiedAt: Date;
 };
 
-export interface IMediaStorage {
+export type IMediaStorage = {
   saveFile(
     basePath: string,
     file: MediaSourceFile,
@@ -53,4 +53,4 @@ export interface IMediaStorage {
       autoIncrement?: boolean;
     }
   ): Promise<MediaStorageResult>;
-}
+};

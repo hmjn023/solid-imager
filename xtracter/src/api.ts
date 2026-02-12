@@ -4,7 +4,7 @@ import type { RouterClient } from "@orpc/server";
 import type { AppRouter } from "@solid-imager/server/domain/shared/api-contract";
 
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
-const REQUEST_TIMEOUT_MS = 10000; // 10秒
+const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
 export class APIError extends Error {
   constructor(
@@ -27,7 +27,7 @@ export const getClient = async () => {
   const url = result.apiUrl || DEFAULT_API_URL;
 
   const link = new RPCLink({
-    url: url,
+    url,
     fetch: async (input, init) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(
@@ -103,8 +103,6 @@ export const testConnection = async (
 
     return { success: true };
   } catch (error) {
-    console.error("[xtracter] Connection test failed:", error);
-
     if (error instanceof APIError) {
       return { success: false, error: error.message };
     }

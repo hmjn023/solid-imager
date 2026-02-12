@@ -1,4 +1,6 @@
-import {
+import type { SafeMediaSource } from "@core/domain/sources/schemas";
+import { APIError, getClient } from "@ext/api";
+import type {
   DownloadBulkMessage,
   DownloadMessage,
   ExtendedMessage,
@@ -6,10 +8,6 @@ import {
   PostDownloadMessage,
   TweetMetadata,
 } from "@ext/schema";
-import { getClient, APIError } from "@ext/api";
-import type { SafeMediaSource } from "@core/domain/sources/schemas";
-
-console.log("[xtracter] Background script loaded");
 
 /**
  * リトライ付きでAPI呼び出しを実行する
@@ -30,18 +28,12 @@ async function retryWithBackoff<T>(
       // タイムアウトやネットワークエラーの場合のみリトライ
       if (
         error instanceof APIError &&
-        (error.code === "TIMEOUT" || error.code === "NETWORK_ERROR")
+        (error.code === "TIMEOUT" || error.code === "NETWORK_ERROR") &&
+        attempt < maxRetries - 1
       ) {
-        if (attempt < maxRetries - 1) {
-          const delay = initialDelay * Math.pow(2, attempt);
-          console.warn(
-            `[xtracter] API call failed (attempt ${attempt + 1}/${maxRetries}), ` +
-            `retrying in ${delay}ms...`,
-            error.message
-          );
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          continue;
-        }
+        const delay = initialDelay * 2 ** attempt;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
       }
 
       // その他のエラーは即座に失敗
@@ -60,7 +52,7 @@ async function getMediaSources(): Promise<SafeMediaSource[]> {
       return await client.sources.list();
     });
     return sources as SafeMediaSource[];
-  } catch (error) {
+  } catch (_error) {
     return [];
   }
 }
@@ -76,8 +68,12 @@ async function getTargetSourceId(): Promise<string | null> {
   // 2. Fallback
   const sources = await getMediaSources();
   const twitterSource = sources.find((s) => s.name === "twitter");
-  if (twitterSource?.id) return twitterSource.id;
-  if (sources.length > 0 && sources[0].id) return sources[0].id;
+  if (twitterSource?.id) {
+    return twitterSource.id;
+  }
+  if (sources.length > 0 && sources[0].id) {
+    return sources[0].id;
+  }
 
   return null;
 }
@@ -85,9 +81,8 @@ async function getTargetSourceId(): Promise<string | null> {
 async function postDownloads(items: TweetMetadata[]) {
   const mediaSourceId = await getTargetSourceId();
   if (!mediaSourceId) {
-    const errorMsg =
+    const _errorMsg =
       "No valid media source found (and none selected in settings)";
-    console.error(`[xtracter] ${errorMsg}`);
 
     chrome.notifications.create({
       type: "basic",
@@ -100,28 +95,13 @@ async function postDownloads(items: TweetMetadata[]) {
   }
 
   try {
-    console.log(
-      `[xtracter] Posting ${items.length} downloads to source ${mediaSourceId}...`
-    );
-    console.log(
-      `[xtracter] Items:`,
-      items.map((item) => ({
-        targetUrl: item.targetUrl,
-        sourceUrls: item.sourceUrls,
-        hasCookies: !!item.cookies,
-        hasUserAgent: !!item.userAgent,
-      }))
-    );
-
-    const result = await retryWithBackoff(async () => {
+    const _result = await retryWithBackoff(async () => {
       const client = await getClient();
       return await client.downloads.start({
         mediaSourceId,
-        items: items,
+        items,
       });
     });
-
-    console.log("[xtracter] Download job queued successfully:", result);
 
     chrome.notifications.create({
       type: "basic",
@@ -131,13 +111,6 @@ async function postDownloads(items: TweetMetadata[]) {
     });
   } catch (error) {
     if (error instanceof APIError) {
-      console.error(
-        `[xtracter] Failed to post download job: ${error.message}`,
-        `\nError code: ${error.code}`,
-        `\nItems count: ${items.length}`,
-        error.originalError
-      );
-
       chrome.notifications.create({
         type: "basic",
         iconUrl: "icon.png",
@@ -145,8 +118,6 @@ async function postDownloads(items: TweetMetadata[]) {
         message: `Failed to queue downloads: ${error.message}`,
       });
     } else {
-      console.error("[xtracter] Unexpected error posting download job:", error);
-
       chrome.notifications.create({
         type: "basic",
         iconUrl: "icon.png",
@@ -213,10 +184,6 @@ chrome.runtime.onMessage.addListener(
             { type: "GET_METADATA" },
             (response) => {
               if (chrome.runtime.lastError) {
-                console.error(
-                  "Could not get metadata from content script:",
-                  chrome.runtime.lastError
-                );
                 return;
               }
 
@@ -234,7 +201,7 @@ chrome.runtime.onMessage.addListener(
                   btoa(unescape(encodeURIComponent(jsonString)));
                 chrome.downloads.download({
                   url: dataUrl,
-                  filename: filename,
+                  filename,
                 });
               }
             }
@@ -270,7 +237,7 @@ chrome.runtime.onMessage.addListener(
         btoa(unescape(encodeURIComponent(jsonString)));
       chrome.downloads.download({
         url: dataUrl,
-        filename: filename,
+        filename,
       });
     } else if (isPostDownloadMessage(message)) {
       postDownloads([message.data]);

@@ -1,6 +1,4 @@
-import { TweetMetadata, Author } from "@ext/schema";
-
-console.log("xtracter content script loaded");
+import type { Author, TweetMetadata } from "@ext/schema";
 
 const OBSERVER_CONFIG = { childList: true, subtree: true };
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
@@ -75,8 +73,6 @@ function handleAction(
   type: "DOWNLOAD" | "POST_DOWNLOAD",
   mediaType: "IMAGE" | "VIDEO"
 ) {
-  console.log(`Action ${type} triggered:`, metadata);
-
   // For videos, we rely on server-side yt-dlp which needs cookies for best results,
   // though for public tweets it might work without.
   // The previous implementation fetched cookies for videos. We'll keep that.
@@ -103,7 +99,9 @@ function handleAction(
 function findTweetArticle(element: HTMLElement): HTMLElement | null {
   // 1. Standard case: ancestor
   const closest = element.closest("article");
-  if (closest) return closest;
+  if (closest) {
+    return closest;
+  }
 
   // 2. Popup/Layer case: search in common layer
   const layer =
@@ -111,12 +109,16 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
     document.querySelector('[data-testid="layers"]');
   if (layer) {
     const article = layer.querySelector("article");
-    if (article) return article as HTMLElement;
+    if (article) {
+      return article as HTMLElement;
+    }
   }
 
   // 3. Document-wide search (focusing on the single active article if unique)
   const articles = document.querySelectorAll("article");
-  if (articles.length === 1) return articles[0] as HTMLElement;
+  if (articles.length === 1) {
+    return articles[0] as HTMLElement;
+  }
 
   return null;
 }
@@ -130,7 +132,7 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 
   // pathParts check: ['username', 'status', '1234567890', 'photo', '1']
   if (pathParts.length >= 3 && pathParts[1] === "status") {
-    authorId = "@" + pathParts[0];
+    authorId = `@${pathParts[0]}`;
     // Remove /photo/1, /video/1 to reconstruct base Tweet URL
     tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[2]}`;
   }
@@ -158,7 +160,9 @@ function extractMetadata(
     timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
 
     const timeLink = timeNode?.closest("a");
-    if (timeLink) tweetUrl = timeLink.href;
+    if (timeLink) {
+      tweetUrl = timeLink.href;
+    }
 
     const userNameNode = article.querySelector('div[data-testid="User-Name"]');
     authorName = userNameNode?.querySelector("span")?.innerText || "";
@@ -169,11 +173,9 @@ function extractMetadata(
         const url = new URL(userAnchor.href);
         const pathParts = url.pathname.split("/").filter((p) => p);
         if (pathParts.length > 0) {
-          authorId = "@" + pathParts[0];
+          authorId = `@${pathParts[0]}`;
         }
-      } catch (e) {
-        console.error("Error parsing user URL:", e);
-      }
+      } catch (_e) {}
     }
 
     if (!authorId) {
@@ -182,10 +184,14 @@ function extractMetadata(
   }
 
   // Fallback: extract from URL if critical info is missing
-  if (!authorId || !tweetUrl || tweetUrl === window.location.href) {
+  if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
     const urlMetadata = extractMetadataFromUrl();
-    if (urlMetadata.authorId && !authorId) authorId = urlMetadata.authorId;
-    if (urlMetadata.tweetUrl) tweetUrl = urlMetadata.tweetUrl;
+    if (urlMetadata.authorId && !authorId) {
+      authorId = urlMetadata.authorId;
+    }
+    if (urlMetadata.tweetUrl) {
+      tweetUrl = urlMetadata.tweetUrl;
+    }
   }
 
   let targetUrl: string;
@@ -200,12 +206,7 @@ function extractMetadata(
       const url = new URL(img.src);
       url.searchParams.set("name", "orig");
       targetUrl = url.toString();
-    } catch (e) {
-      console.error(
-        "Failed to parse image URL:",
-        (element as HTMLImageElement).src,
-        e
-      );
+    } catch (_e) {
       targetUrl = (element as HTMLImageElement).src;
     }
   }
@@ -239,7 +240,6 @@ const processedMetadata = new Map<string, TweetMetadata>();
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.type === "GET_METADATA") {
     const allMetadata = Array.from(processedMetadata.values());
-    console.log("Sending metadata to popup:", allMetadata.length, "items");
     sendResponse(allMetadata);
   }
 });
@@ -250,8 +250,9 @@ function processMedia() {
   images.forEach((img) => {
     const imageElement = img as HTMLImageElement;
 
-    if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS))
+    if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
       return;
+    }
 
     const container = imageElement.parentElement;
     if (container) {
@@ -280,9 +281,12 @@ function processMedia() {
   );
   videoComponents.forEach((videoComponent) => {
     const container = videoComponent.parentElement;
-    if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS))
+    if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) {
       return;
-    if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) return;
+    }
+    if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) {
+      return;
+    }
 
     const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
     const metadata = extractMetadata(
