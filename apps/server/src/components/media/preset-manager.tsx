@@ -31,7 +31,11 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
-import { loadPreset, searchState } from "~/presentation/store/search-store";
+import {
+  loadPreset,
+  resetSearchState,
+  searchState,
+} from "~/presentation/store/search-store";
 import { cn } from "~/presentation/utils/cn";
 
 export function PresetManager(props: {
@@ -142,6 +146,8 @@ export function PresetManager(props: {
 
   const handleClearSelection = () => {
     setSelectedPresetId(null);
+    resetSearchState();
+    props.onAction?.();
   };
 
   return (
