@@ -52,6 +52,10 @@ const buildSearchParams = (state: typeof searchState) => {
 
 export default function Search() {
   const queryClient = useQueryClient();
+
+  // Enable search persistence for global search
+  useCurrentSearchPersistence(() => "all");
+
   const [isRestored, setIsRestored] = createSignal(false);
   const [isMounted, setIsMounted] = createSignal(false);
 
