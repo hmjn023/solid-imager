@@ -485,8 +485,8 @@ export const BackupService = {
             // Priority: 1) linkedIps from JSON, 2) infer from media's IPs
             const ipNamesToLink =
               c.linkedIps &&
-                Array.isArray(c.linkedIps) &&
-                c.linkedIps.length > 0
+              Array.isArray(c.linkedIps) &&
+              c.linkedIps.length > 0
                 ? c.linkedIps
                 : mediaIpNames;
 
@@ -811,7 +811,7 @@ export const BackupService = {
                 if (err || !readStream) {
                   return reject(
                     err ||
-                    new Error(`Failed to read stream for ${entry.fileName}`)
+                      new Error(`Failed to read stream for ${entry.fileName}`)
                   );
                 }
 
@@ -1074,16 +1074,16 @@ export const BackupService = {
         // AI Generation Info
         generationInfo: media.generationInfo
           ? {
-            prompt: media.generationInfo.prompt,
-            negativePrompt: media.generationInfo.negativePrompt,
-            modelName: media.generationInfo.modelName,
-            seed: media.generationInfo.seed,
-            steps: media.generationInfo.steps,
-            cfgScale: media.generationInfo.cfgScale,
-            aiGenerated: media.generationInfo.aiGenerated,
-            workflow: media.generationInfo.workflow,
-            metadata: media.generationInfo.metadata,
-          }
+              prompt: media.generationInfo.prompt,
+              negativePrompt: media.generationInfo.negativePrompt,
+              modelName: media.generationInfo.modelName,
+              seed: media.generationInfo.seed,
+              steps: media.generationInfo.steps,
+              cfgScale: media.generationInfo.cfgScale,
+              aiGenerated: media.generationInfo.aiGenerated,
+              workflow: media.generationInfo.workflow,
+              metadata: media.generationInfo.metadata,
+            }
           : null,
 
         tags: simpleTags,
