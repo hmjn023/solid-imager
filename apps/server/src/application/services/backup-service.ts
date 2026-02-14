@@ -5,7 +5,7 @@ import {
   mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { Open } from "unzipper";
+import yauzl from "yauzl";
 import { db } from "~/infrastructure/db";
 import {
   authors,
@@ -24,6 +24,7 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
+import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 // const _IMAGES_PREFIX = /^images\//;
@@ -484,8 +485,8 @@ export const BackupService = {
             // Priority: 1) linkedIps from JSON, 2) infer from media's IPs
             const ipNamesToLink =
               c.linkedIps &&
-              Array.isArray(c.linkedIps) &&
-              c.linkedIps.length > 0
+                Array.isArray(c.linkedIps) &&
+                c.linkedIps.length > 0
                 ? c.linkedIps
                 : mediaIpNames;
 
@@ -702,42 +703,139 @@ export const BackupService = {
       throw new Error("Media source not found");
     }
 
-    // Open ZIP from file path using unzipper
-    const directory = await Open.file(zipFilePath);
+    // Helper to open zip and get entries
+    const loadZip = (): Promise<{
+      zipfile: yauzl.ZipFile;
+      entries: Map<string, yauzl.Entry>;
+      // biome-ignore lint/suspicious/noExplicitAny: dump data is any
+      dumpData: any;
+    }> => {
+      return new Promise((resolve, reject) => {
+        yauzl.open(
+          zipFilePath,
+          { lazyEntries: true, autoClose: false },
+          (err, openedZipfile) => {
+            if (err || !openedZipfile) {
+              return reject(err || new Error("Failed to open zip"));
+            }
 
-    const dumpFile = directory.files.find((f) => f.path === "dump.json");
-    if (!dumpFile) {
-      throw new Error("dump.json not found in ZIP");
-    }
+            const rejectAndClose = (error: Error) => {
+              openedZipfile.close();
+              reject(error);
+            };
 
-    const dumpContent = await dumpFile.buffer();
-    const dumpData = JSON.parse(dumpContent.toString("utf-8"));
+            openedZipfile.on("error", rejectAndClose);
+
+            const entries = new Map<string, yauzl.Entry>();
+            // biome-ignore lint/suspicious/noExplicitAny: dump data is any
+            let dumpData: any = null;
+            let dumpEntry: yauzl.Entry | null = null;
+
+            openedZipfile.readEntry();
+            openedZipfile.on("entry", (entry) => {
+              entries.set(entry.fileName, entry);
+              if (entry.fileName === "dump.json") {
+                dumpEntry = entry;
+              }
+              openedZipfile.readEntry();
+            });
+
+            openedZipfile.on("end", () => {
+              if (dumpEntry) {
+                openedZipfile.openReadStream(
+                  dumpEntry,
+                  (readErr, readStream) => {
+                    if (readErr || !readStream) {
+                      return rejectAndClose(
+                        readErr || new Error("Failed to read dump.json")
+                      );
+                    }
+                    const chunks: Buffer[] = [];
+                    readStream.on("data", (chunk) =>
+                      chunks.push(Buffer.from(chunk))
+                    );
+                    readStream.on("end", () => {
+                      try {
+                        const buffer = Buffer.concat(chunks);
+                        dumpData = JSON.parse(buffer.toString("utf-8"));
+                        resolve({ zipfile: openedZipfile, entries, dumpData });
+                      } catch (e) {
+                        rejectAndClose(e as Error);
+                      }
+                    });
+                    readStream.on("error", rejectAndClose);
+                  }
+                );
+              } else {
+                rejectAndClose(new Error("dump.json not found in ZIP"));
+              }
+            });
+          }
+        );
+      });
+    };
+
+    let zipfile: yauzl.ZipFile;
+    let entries: Map<string, yauzl.Entry>;
+    // biome-ignore lint/suspicious/noExplicitAny: dump data is any
+    let dumpData: any;
+
+    const result = await loadZip();
+    zipfile = result.zipfile;
+    entries = result.entries;
+    dumpData = result.dumpData;
 
     if (!Array.isArray(dumpData)) {
+      zipfile.close();
       throw new Error("Invalid dump format");
     }
 
     const driver = getDriver(mediaSource);
 
-    // Process files
-    for (const item of dumpData) {
-      if (item.filePath) {
-        try {
-          validateRelativePath(item.filePath);
-        } catch (_e) {
-          continue;
-        }
+    try {
+      // Process files
+      for (const item of dumpData) {
+        if (item.filePath) {
+          try {
+            validateRelativePath(item.filePath);
+          } catch (_e) {
+            continue;
+          }
 
-        const imagePathInZip = `images/${item.filePath}`;
-        const imageFile = directory.files.find(
-          (f) => f.path === imagePathInZip
-        );
+          const imagePathInZip = `images/${item.filePath}`;
+          const entry = entries.get(imagePathInZip);
 
-        if (imageFile) {
-          const content = await imageFile.buffer();
-          await driver.put(item.filePath, content);
+          if (entry) {
+            await new Promise<void>((resolve, reject) => {
+              zipfile.openReadStream(entry, (err, readStream) => {
+                if (err || !readStream) {
+                  return reject(
+                    err ||
+                    new Error(`Failed to read stream for ${entry.fileName}`)
+                  );
+                }
+
+                const chunks: Buffer[] = [];
+                readStream.on("data", (chunk) =>
+                  chunks.push(Buffer.from(chunk))
+                );
+                readStream.on("end", async () => {
+                  try {
+                    const content = Buffer.concat(chunks);
+                    await driver.put(item.filePath, content);
+                    resolve();
+                  } catch (e) {
+                    reject(e);
+                  }
+                });
+                readStream.on("error", reject);
+              });
+            });
+          }
         }
       }
+    } finally {
+      zipfile.close();
     }
 
     // Process metadata using bulk restore logic
@@ -891,7 +989,8 @@ export const BackupService = {
         archive.append(fsSync.createReadStream(tempJsonPath), {
           name: "dump.json",
         });
-      } catch (_err) {
+      } catch (err) {
+        logger.error({ err }, "Failed to create dump");
         archive.abort();
         jsonStream?.destroy();
       } finally {
@@ -975,16 +1074,16 @@ export const BackupService = {
         // AI Generation Info
         generationInfo: media.generationInfo
           ? {
-              prompt: media.generationInfo.prompt,
-              negativePrompt: media.generationInfo.negativePrompt,
-              modelName: media.generationInfo.modelName,
-              seed: media.generationInfo.seed,
-              steps: media.generationInfo.steps,
-              cfgScale: media.generationInfo.cfgScale,
-              aiGenerated: media.generationInfo.aiGenerated,
-              workflow: media.generationInfo.workflow,
-              metadata: media.generationInfo.metadata,
-            }
+            prompt: media.generationInfo.prompt,
+            negativePrompt: media.generationInfo.negativePrompt,
+            modelName: media.generationInfo.modelName,
+            seed: media.generationInfo.seed,
+            steps: media.generationInfo.steps,
+            cfgScale: media.generationInfo.cfgScale,
+            aiGenerated: media.generationInfo.aiGenerated,
+            workflow: media.generationInfo.workflow,
+            metadata: media.generationInfo.metadata,
+          }
           : null,
 
         tags: simpleTags,

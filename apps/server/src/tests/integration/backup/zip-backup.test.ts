@@ -9,9 +9,16 @@ import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
   authors,
+  characters,
+  ips,
+  mediaAuthors,
+  mediaCharacters,
+  mediaIps,
+  mediaProjects,
   mediaSources,
   medias,
   mediaTags,
+  projects,
   tags,
 } from "~/infrastructure/db/schema";
 
@@ -25,9 +32,16 @@ describe("BackupService ZIP Integration", () => {
   beforeEach(async () => {
     // Clean DB
     await db.delete(mediaTags);
+    await db.delete(mediaAuthors);
+    await db.delete(mediaCharacters);
+    await db.delete(mediaIps);
+    await db.delete(mediaProjects);
     await db.delete(medias);
     await db.delete(tags);
     await db.delete(authors);
+    await db.delete(characters);
+    await db.delete(ips);
+    await db.delete(projects);
     await db.delete(mediaSources);
 
     // Setup FS
@@ -55,7 +69,7 @@ describe("BackupService ZIP Integration", () => {
     vi.clearAllMocks();
   });
 
-  it("should create a ZIP backup and restore it successfully", async () => {
+  it("should create a ZIP backup and restore it successfully with all metadata", async () => {
     // 1. Setup Data in Source 1
     const testFileName = "test-image.png";
     const testFilePath = path.join(source1Path, testFileName);
@@ -74,8 +88,8 @@ describe("BackupService ZIP Integration", () => {
       })
       .returning();
 
+    // Add Tags
     const [tag] = await db.insert(tags).values({ name: "Zip Tag" }).returning();
-
     await db.insert(mediaTags).values({
       mediaId: media.id,
       tagId: tag.id,
@@ -83,18 +97,53 @@ describe("BackupService ZIP Integration", () => {
       confidence: 0.9,
     });
 
-    // 2. Create ZIP Dump
-    // createDump returns a Readable stream in 'zip' mode
+    // Add Author
+    const [author] = await db
+      .insert(authors)
+      .values({ name: "Zip Author" })
+      .returning();
+    await db.insert(mediaAuthors).values({
+      mediaId: media.id,
+      authorId: author.id,
+    });
 
+    // Add Character
+    const CHARACTER_CONFIDENCE = 0.8;
+    const [character] = await db
+      .insert(characters)
+      .values({ name: "Zip Character" })
+      .returning();
+    await db.insert(mediaCharacters).values({
+      mediaId: media.id,
+      characterId: character.id,
+      confidence: CHARACTER_CONFIDENCE,
+    });
+
+    // Add IP
+    const IP_CONFIDENCE = 0.7;
+    const [ip] = await db.insert(ips).values({ name: "Zip IP" }).returning();
+    await db.insert(mediaIps).values({
+      mediaId: media.id,
+      ipId: ip.id,
+      confidence: IP_CONFIDENCE,
+    });
+
+    // Add Project
+    const [project] = await db
+      .insert(projects)
+      .values({ name: "Zip Project" })
+      .returning();
+    await db.insert(mediaProjects).values({
+      mediaId: media.id,
+      projectId: project.id,
+    });
+
+    // 2. Create ZIP Dump
     const zipStream: any = await BackupService.createDump(sourceId1, "zip");
     const zipFilePath = path.join(tempDir, "backup.zip");
     const writeStream = createWriteStream(zipFilePath);
 
     await pipeline(zipStream, writeStream);
-
-    // Verify ZIP file exists
-    const stats = await fs.stat(zipFilePath);
-    expect(stats.size).toBeGreaterThan(0);
 
     // 3. Restore to Source 2
     const importResult = await BackupService.importSourceZip(
@@ -111,21 +160,26 @@ describe("BackupService ZIP Integration", () => {
       where: eq(medias.mediaSourceId, sourceId2),
       with: {
         tags: { with: { tag: true } },
+        authors: { with: { author: true } },
+        characters: { with: { character: true } },
+        ips: { with: { ip: true } },
+        projects: { with: { project: true } },
       },
     });
 
     expect(restoredMedia).toBeDefined();
     expect(restoredMedia?.filePath).toBe(testFileName);
     expect(restoredMedia?.tags[0].tag.name).toBe("Zip Tag");
+    expect(restoredMedia?.authors[0].author.name).toBe("Zip Author");
+    expect(restoredMedia?.characters[0].character.name).toBe("Zip Character");
+    expect(restoredMedia?.characters[0].confidence).toBe(CHARACTER_CONFIDENCE);
+    expect(restoredMedia?.ips[0].ip.name).toBe("Zip IP");
+    expect(restoredMedia?.ips[0].confidence).toBe(IP_CONFIDENCE);
+    expect(restoredMedia?.projects[0].project.name).toBe("Zip Project");
 
     // Verify file restored
     const restoredFilePath = path.join(source2Path, testFileName);
-    try {
-      await fs.access(restoredFilePath);
-      const content = await fs.readFile(restoredFilePath, "utf-8");
-      expect(content).toBe("mock image content");
-    } catch {
-      throw new Error(`Restored file not found at ${restoredFilePath}`);
-    }
+    const content = await fs.readFile(restoredFilePath, "utf-8");
+    expect(content).toBe("mock image content");
   });
 });

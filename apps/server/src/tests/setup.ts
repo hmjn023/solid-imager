@@ -1,8 +1,5 @@
 import path from "node:path";
-import { PGlite } from "@electric-sql/pglite";
 import { config } from "dotenv";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { beforeAll, beforeEach, vi } from "vitest";
 
 // Mock logger module
@@ -131,29 +128,52 @@ const { mockDb } = vi.hoisted(() => ({
 // Fix transaction to use mockDb
 mockDb.transaction = vi.fn((fn) => fn(mockDb));
 
-// ~/infrastructure/db/index のモックを条件付きで設定
-vi.mock("~/infrastructure/db/index", async (_importOriginal) => {
-  // 統合テストファイルのパターンを判定
-  const isIntegrationTest = (filePath: string) =>
-    filePath.includes("/integration/") || filePath.includes("/tests/api/");
+const { mockDbInstance } = vi.hoisted(() => {
+  let dbInstance: { db: unknown } | null = null;
+  return {
+    mockDbInstance: async () => {
+      // 統合テストファイルのパターンを判定
+      const isIntegrationTest = (filePath: string) =>
+        filePath.includes("/integration/") || filePath.includes("/tests/api/");
 
-  // テストファイルのパスを取得（グローバル変数から）
-  // @ts-expect-error - accessing internal test state
-  const testPath = globalThis.__vitest_worker__?.filepath || "";
+      // テストファイルのパスを取得（グローバル変数から）
+      // @ts-expect-error - accessing internal test state
+      const testPath = globalThis.__vitest_worker__?.filepath || "";
 
-  if (isIntegrationTest(testPath)) {
-    // 統合テストの場合は新しいPGLiteインスタンスを使用
-    // schemaを動的にインポートしてホイスティングの問題を回避
-    const schema = await import("~/infrastructure/db/schema");
-    const client = new PGlite();
-    const testDb = drizzle(client, { schema });
-    await migrate(testDb, { migrationsFolder: "./drizzle" });
-    return { db: testDb };
-  }
+      if (isIntegrationTest(testPath)) {
+        if (dbInstance) {
+          return dbInstance;
+        }
 
-  // ユニットテストの場合はモックを使用
-  return { db: mockDb };
+        // 統合テストの場合は新しいPGLiteインスタンスを使用
+        // schemaを動的にインポートしてホイスティングの問題を回避
+        const { PGlite } = await import("@electric-sql/pglite");
+        const { drizzle } = await import("drizzle-orm/pglite");
+        const { migrate } = await import("drizzle-orm/pglite/migrator");
+        const schema = await import("~/infrastructure/db/schema");
+        const nodePath = await import("node:path");
+
+        const client = new PGlite();
+        const testDb = drizzle(client, { schema });
+        // Use absolute path to ensure it works from any CWD (monorepo root or app root)
+        const migrationsFolder = process.cwd().endsWith("apps/server")
+          ? nodePath.resolve(process.cwd(), "drizzle")
+          : nodePath.resolve(process.cwd(), "apps/server/drizzle");
+        await migrate(testDb, { migrationsFolder });
+        dbInstance = { db: testDb };
+        return dbInstance;
+      }
+
+      // ユニットテストの場合はモックを使用
+      // mockDb is defined in a hoisted block above
+      return { db: mockDb };
+    },
+  };
 });
+
+// ~/infrastructure/db のモックを設定
+vi.mock("~/infrastructure/db", mockDbInstance);
+vi.mock("~/infrastructure/db/index", mockDbInstance);
 
 // 各テストの前にモックをクリア
 beforeEach(() => {
