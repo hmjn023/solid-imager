@@ -22,7 +22,8 @@
   "lint-staged": {
     "apps/server/src/**/*.{ts,tsx,js,jsx,json}": [
       "bun --filter @solid-imager/server lint",
-      "bun --filter @solid-imager/server check"
+      "bun --filter @solid-imager/server check",
+      "bun --filter @solid-imager/server test:unit"
     ],
     "packages/core/src/**/*.{ts,tsx,js,jsx,json}": [
       "bun --filter @solid-imager/core lint"
