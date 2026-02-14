@@ -1,7 +1,11 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { A } from "@solidjs/router";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import {
+  createInfiniteQuery,
+  createQuery,
+  keepPreviousData,
+  useQueryClient,
+} from "@tanstack/solid-query";
 import {
   createEffect,
   createSignal,
@@ -11,6 +15,7 @@ import {
   Show,
 } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -46,9 +51,11 @@ const buildSearchParams = (state: typeof searchState) => {
     sort: state.sortBy,
     order: state.sortOrder,
     limit: state.limit,
-    offset: state.offset,
   };
 };
+
+// biome-ignore lint/style/noMagicNumbers: Standard time calculation
+const QUERY_GC_TIME = 1000 * 60 * 5;
 
 export default function Search() {
   const queryClient = useQueryClient();
@@ -67,10 +74,18 @@ export default function Search() {
     if (isServer) {
       return;
     }
-    if (!(searchResults.isLoading || isRestored())) {
-      if (searchState.scrollY > 0) {
+    // Restoration logic: wait until not loading and haven't restored yet
+    if (
+      !(searchResultQuery.isLoading || isRestored()) &&
+      searchResultQuery.data &&
+      searchResultQuery.data.pages.length > 0 &&
+      searchState.scrollY > 0
+    ) {
+      // Restore scroll position
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
         window.scrollTo(0, searchState.scrollY);
-      }
+      });
       setIsRestored(true);
     }
   });
@@ -108,23 +123,34 @@ export default function Search() {
     queryFn: fetchAllAuthors,
   }));
 
-  // Search function
-  const searchResults = createQuery(() => ({
-    queryKey: ["searchResults", { ...searchState }],
-    queryFn: async () => {
+  // Optimize query key to include search params
+  const searchResultQuery = createInfiniteQuery(() => ({
+    queryKey: ["searchResults", { ...searchState, offset: undefined }], // offset is handled by infinite query
+    queryFn: async ({ pageParam }) => {
       // Handle empty string as undefined for global search
       const source = searchState.selectedSource || undefined;
-      // Pass source (can be undefined/null for global search)
-      return await searchMedia(source, buildSearchParams(searchState));
+      return await searchMedia(source, {
+        ...buildSearchParams(searchState),
+        offset: pageParam as number,
+      });
     },
-    // Always enabled
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce(
+        (sum, page) => sum + page.media.length,
+        0
+      );
+      if (loadedCount < lastPage.total) {
+        return loadedCount;
+      }
+    },
+    placeholderData: keepPreviousData,
+    gcTime: QUERY_GC_TIME, // Keep cache for 5 minutes for scroll restoration
   }));
 
-  // Subscribe to real-time events for the selected source
-  // NOTE: When selectedSource is empty (All Sources), events are not subscribed.
+  // Subscribe to real-time events
   useMediaSourceEvents(() => searchState.selectedSource || undefined, {
     onMediaAdded: () => {
-      // Invalidate all search results to ensure any matching new media appears
       queryClient.invalidateQueries({ queryKey: ["searchResults"] });
     },
     onMediaDeleted: () => {
@@ -139,20 +165,35 @@ export default function Search() {
     setSearchState("offset", 0);
     setSearchState("scrollY", 0);
     window.scrollTo(0, 0);
-    // refetch is automatic due to resource dependency
   };
 
-  const handleNextPage = () => {
-    setSearchState("offset", (prev) => prev + searchState.limit);
-    setSearchState("scrollY", 0);
-    window.scrollTo(0, 0);
-  };
+  // Infinite scroll trigger
+  const [loadMoreRef, setLoadMoreRef] = createSignal<
+    HTMLDivElement | undefined
+  >(undefined);
 
-  const handlePrevPage = () => {
-    setSearchState("offset", (prev) => Math.max(0, prev - searchState.limit));
-    setSearchState("scrollY", 0);
-    window.scrollTo(0, 0);
-  };
+  createEffect(() => {
+    const el = loadMoreRef();
+    if (isServer || !el) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0].isIntersecting &&
+          searchResultQuery.hasNextPage &&
+          !searchResultQuery.isFetchingNextPage
+        ) {
+          searchResultQuery.fetchNextPage();
+        }
+      },
+      { threshold: 0.5, rootMargin: "1000px" }
+    );
+
+    observer.observe(el);
+    onCleanup(() => observer.disconnect());
+  });
 
   return (
     <main class="container mx-auto p-4">
@@ -243,7 +284,7 @@ export default function Search() {
         <div class="space-y-4">
           <Show
             fallback={<div class="py-8 text-center">読み込み中...</div>}
-            when={!searchResults.isLoading && isMounted()}
+            when={!searchResultQuery.isLoading && isMounted()}
           >
             <Show
               fallback={
@@ -251,93 +292,43 @@ export default function Search() {
                   {/* Should not happen if data is loaded, but handled by inner Show */}
                 </div>
               }
-              when={searchResults.data}
+              when={searchResultQuery.data}
             >
               <div class="mb-4 flex items-center justify-between">
                 <p class="text-gray-600 text-sm">
-                  {searchResults.data?.total || 0} 件の結果
+                  {searchResultQuery.data?.pages[0]?.total || 0} 件の結果
                 </p>
-                <div class="flex gap-2">
-                  <Button
-                    disabled={searchState.offset === 0}
-                    onClick={handlePrevPage}
-                    size="sm"
-                    variant="outline"
-                  >
-                    前へ
-                  </Button>
-                  <Button
-                    disabled={
-                      searchState.offset + searchState.limit >=
-                      (searchResults.data?.total || 0)
-                    }
-                    onClick={handleNextPage}
-                    size="sm"
-                    variant="outline"
-                  >
-                    次へ
-                  </Button>
-                </div>
               </div>
 
-              <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                <For each={searchResults.data?.media || []}>
-                  {(media) => (
-                    <Card class="overflow-hidden transition-shadow hover:shadow-lg">
-                      <CardContent class="p-4">
-                        <div class="mb-2 flex aspect-video items-center justify-center rounded bg-gray-100">
-                          <Show
-                            fallback={
-                              <div class="text-gray-400">{media.mediaType}</div>
-                            }
-                            when={media.mediaType === "image"}
-                          >
-                            {/* biome-ignore lint/performance/noImgElement: Using standard img for simplicity */}
-                            {/* biome-ignore lint/nursery/useImageSize: Aspect ratio container handles sizing */}
-                            <img
-                              alt={media.fileName}
-                              class="h-full w-full object-cover"
-                              src={`/api/sources/${media.mediaSourceId}/${media.id}/thumbnail`}
-                            />
-                          </Show>
-                        </div>
-                        <h3
-                          class="truncate font-semibold"
-                          title={media.fileName}
-                        >
-                          {media.fileName}
-                        </h3>
-                        <p class="truncate text-gray-500 text-sm">
-                          {media.filePath}
-                        </p>
-                        <div class="mt-2 flex justify-between text-gray-400 text-xs">
-                          <span>
-                            {media.width && media.height
-                              ? `${media.width}×${media.height}`
-                              : "N/A"}
-                          </span>
-                          <span>
-                            {media.fileSize
-                              ? (() => {
-                                  const BytesToKb = 1024;
-                                  return `${(media.fileSize / BytesToKb).toFixed(1)}KB`;
-                                })()
-                              : "N/A"}
-                          </span>
-                        </div>
-                        <A
-                          class="mt-2 block text-center text-blue-600 text-sm hover:underline"
-                          href={`/sources/${media.mediaSourceId}/${media.id}`}
-                        >
-                          詳細を見る
-                        </A>
-                      </CardContent>
-                    </Card>
-                  )}
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                <For
+                  each={(() => {
+                    const seen = new Set<string>();
+                    return (
+                      searchResultQuery.data?.pages.flatMap((p) => p.media) ||
+                      []
+                    ).filter((m) => {
+                      if (seen.has(m.id)) {
+                        return false;
+                      }
+                      seen.add(m.id);
+                      return true;
+                    });
+                  })()}
+                >
+                  {(media) => <MediaGridItem media={media} />}
                 </For>
               </div>
 
-              <Show when={(searchResults.data?.media || []).length === 0}>
+              <div class="h-10 w-full" ref={setLoadMoreRef}>
+                <Show when={searchResultQuery.isFetchingNextPage}>
+                  <div class="py-4 text-center text-gray-500">
+                    読み込み中...
+                  </div>
+                </Show>
+              </div>
+
+              <Show when={(searchResultQuery.data?.pages[0]?.total || 0) === 0}>
                 <div class="py-12 text-center text-gray-500">
                   検索結果が見つかりませんでした
                 </div>

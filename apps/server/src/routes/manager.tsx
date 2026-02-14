@@ -5,6 +5,7 @@ import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { toast } from "solid-toast";
+import { MediaCardItem } from "~/components/media/media-card-item";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -416,7 +417,7 @@ export default function ManagerPage() {
       </div>
 
       <Show when={activeTab() === "tagging"}>
-        <div class="max-w-xl space-y-6">
+        <div class="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle>Batch AI Tagging</CardTitle>
@@ -518,36 +519,15 @@ export default function ManagerPage() {
                     : "Select All"}
                 </Button>
               </div>
-              <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
                 <For each={scannedMedia()}>
                   {(media) => (
-                    <Card
-                      class={`cursor-pointer ${
-                        selectedMedia().has(media.id)
-                          ? "ring-2 ring-blue-500"
-                          : ""
-                      }`}
-                      onClick={() => toggleMediaSelection(media.id)}
-                    >
-                      <div class="relative">
-                        {/* biome-ignore lint/performance/noImgElement: Standard img is fine here */
-                        /* biome-ignore lint/nursery/useImageSize: Dynamic size handled by CSS */}
-                        <img
-                          alt={media.fileName}
-                          class="h-40 w-full rounded-t-lg object-cover"
-                          src={`/api/sources/${media.mediaSourceId}/${media.id}/thumbnail`}
-                        />
-                        <div class="absolute top-2 right-2">
-                          <Checkbox
-                            checked={selectedMedia().has(media.id)}
-                            class="h-5 w-5 rounded border-gray-300 bg-white text-blue-600 focus:ring-blue-500"
-                          />
-                        </div>
-                      </div>
-                      <div class="p-2">
-                        <p class="truncate text-sm">{media.fileName}</p>
-                      </div>
-                    </Card>
+                    <MediaCardItem
+                      media={media}
+                      onToggle={(id) => toggleMediaSelection(id)}
+                      selectable={true}
+                      selected={selectedMedia().has(media.id)}
+                    />
                   )}
                 </For>
               </div>

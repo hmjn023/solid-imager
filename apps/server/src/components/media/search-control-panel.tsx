@@ -127,9 +127,6 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
               tags={props.filterData.tags}
               value={searchState.advancedCondition || null}
             />
-            <Button class="w-full" onClick={props.onSearch} type="button">
-              検索 (詳細)
-            </Button>
           </div>
         }
         when={searchState.mode === "simple"}

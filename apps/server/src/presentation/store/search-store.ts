@@ -18,6 +18,17 @@ export const resetSearchState = () => {
   setSearchState({ ...defaultState });
 };
 
+export const clearPresetFilters = () => {
+  setSearchState((prev) => ({
+    ...defaultState,
+    mode: prev.mode,
+    selectedSource: prev.selectedSource,
+    sortBy: prev.sortBy,
+    sortOrder: prev.sortOrder,
+    tagMode: prev.tagMode,
+  }));
+};
+
 export const loadPreset = (preset: Preset) => {
   const nextState = preparePresetState(preset, searchState);
   setSearchState(nextState);
