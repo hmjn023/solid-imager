@@ -153,6 +153,7 @@ describe("BackupService ZIP Integration", () => {
 
     expect(importResult.success).toBe(true);
     expect(importResult.importedCount).toBe(1);
+    expect(importResult.skippedCount).toBe(0);
 
     // 4. Verify Data in Source 2
     const restoredMedia = await db.query.medias.findFirst({
