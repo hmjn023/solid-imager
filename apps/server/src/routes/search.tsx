@@ -54,7 +54,7 @@ export default function Search() {
   const queryClient = useQueryClient();
 
   // Enable search persistence for global search
-  useCurrentSearchPersistence(() => "all");
+  useCurrentSearchPersistence("all");
 
   const [isRestored, setIsRestored] = createSignal(false);
   const [isMounted, setIsMounted] = createSignal(false);
@@ -62,8 +62,6 @@ export default function Search() {
   onMount(() => {
     setIsMounted(true);
   });
-
-  useCurrentSearchPersistence("current-all");
 
   createEffect(() => {
     if (isServer) {

@@ -10,23 +10,29 @@ import {
 } from "~/presentation/store/search-store";
 
 const DEBOUNCE_MS = 1000;
-export const RESERVED_PRESET_NAMES = ["current", "current-all"] as const;
-export type ReservedPresetName = (typeof RESERVED_PRESET_NAMES)[number];
 
 export function useCurrentSearchPersistence(
-  presetName: ReservedPresetName = "current"
+  sourceId: string | Accessor<string | null | undefined> = "current"
 ) {
-  let isInitialLoad = true;
+  const [isInitialLoad, setIsInitialLoad] = createSignal(true);
   let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
   const getCurrentPresetName = () => {
-    const id = sourceId();
+    const id = typeof sourceId === "function" ? sourceId() : sourceId;
+    if (id === "current") {
+      return "current";
+    }
+    if (id === "current-all" || id === "all") {
+      return "current-all";
+    }
     return id ? `current-${id}` : null;
   };
 
   createEffect(() => {
     const presetName = getCurrentPresetName();
-    if (!presetName) return;
+    if (!presetName) {
+      return;
+    }
 
     if (debounceTimer) {
       clearTimeout(debounceTimer);
@@ -34,7 +40,6 @@ export function useCurrentSearchPersistence(
 
     const init = async () => {
       setIsInitialLoad(true);
-      resetSearchState();
 
       try {
         const current = await PresetClient.getByName(presetName);
@@ -64,6 +69,7 @@ export function useCurrentSearchPersistence(
           }
         } else {
           logger.info(`[AutoSave] No current state found for ${presetName}`);
+          resetSearchState();
           await PresetClient.create({
             name: presetName,
             value: { type: "group", operator: "and", children: [] },
@@ -117,7 +123,9 @@ export function useCurrentSearchPersistence(
 
   const saveCurrentState = async () => {
     const presetName = getCurrentPresetName();
-    if (!presetName) return;
+    if (!presetName) {
+      return;
+    }
 
     const condition = getSearchCondition() || {
       type: "group",
