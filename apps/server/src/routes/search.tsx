@@ -8,6 +8,7 @@ import {
 } from "@tanstack/solid-query";
 import {
   createEffect,
+  createMemo,
   createSignal,
   For,
   onCleanup,
@@ -53,6 +54,14 @@ const buildSearchParams = (state: typeof searchState) => {
     limit: state.limit,
   };
 };
+
+/**
+ * Serialize condition as JSON for stable query key comparison.
+ * This prevents mode toggles (simple/pro) with equivalent conditions
+ * from producing different query keys due to SolidJS store proxy references.
+ */
+const useStableConditionKey = () =>
+  createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
 // biome-ignore lint/style/noMagicNumbers: Standard time calculation
 const QUERY_GC_TIME = 1000 * 60 * 5;
@@ -125,15 +134,25 @@ export default function Search() {
 
   // Use only effective search params as query key to avoid unnecessary refetches
   // (e.g., mode toggle with equivalent conditions should NOT refetch)
+  const conditionKey = useStableConditionKey();
+
   const searchResultQuery = createInfiniteQuery(() => {
     const params = buildSearchParams(searchState);
     const source = searchState.selectedSource || undefined;
     return {
-      queryKey: ["searchResults", { source, ...params }],
-      queryFn: async ({ pageParam }) => await searchMedia(source, {
-        ...params,
-        offset: pageParam as number,
-      }),
+      queryKey: [
+        "searchResults",
+        source,
+        conditionKey(),
+        searchState.sortBy,
+        searchState.sortOrder,
+        searchState.limit,
+      ],
+      queryFn: async ({ pageParam }) =>
+        await searchMedia(source, {
+          ...params,
+          offset: pageParam as number,
+        }),
       initialPageParam: 0,
       getNextPageParam: (lastPage, allPages) => {
         const loadedCount = allPages.reduce(

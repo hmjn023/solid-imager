@@ -105,7 +105,13 @@ export default function MediaListPage() {
     queryFn: fetchAllAuthors,
   }));
 
-  // Optimize query key to only include relevant search parameters
+  // Optimize query key to only include relevant search parameters.
+  // Serialize condition as JSON string to stabilize the key across mode toggles
+  // (simple/pro produce structurally-equivalent but referentially-different objects).
+  const searchConditionKey = createMemo(() =>
+    JSON.stringify(getSearchCondition() ?? null)
+  );
+
   const searchParams = createMemo(() => ({
     condition: getSearchCondition(),
     sort: searchState.sortBy,
@@ -113,7 +119,13 @@ export default function MediaListPage() {
   }));
 
   const mediaQuery = createInfiniteQuery(() => ({
-    queryKey: ["media", mediaSourceId(), searchParams()],
+    queryKey: [
+      "media",
+      mediaSourceId(),
+      searchConditionKey(),
+      searchState.sortBy,
+      searchState.sortOrder,
+    ],
     queryFn: ({ pageParam }) => {
       const id = mediaSourceId();
       if (!id) {
