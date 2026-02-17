@@ -123,30 +123,31 @@ export default function Search() {
     queryFn: fetchAllAuthors,
   }));
 
-  // Optimize query key to include search params
-  const searchResultQuery = createInfiniteQuery(() => ({
-    queryKey: ["searchResults", { ...searchState, offset: undefined }], // offset is handled by infinite query
-    queryFn: async ({ pageParam }) => {
-      // Handle empty string as undefined for global search
-      const source = searchState.selectedSource || undefined;
-      return await searchMedia(source, {
-        ...buildSearchParams(searchState),
+  // Use only effective search params as query key to avoid unnecessary refetches
+  // (e.g., mode toggle with equivalent conditions should NOT refetch)
+  const searchResultQuery = createInfiniteQuery(() => {
+    const params = buildSearchParams(searchState);
+    const source = searchState.selectedSource || undefined;
+    return {
+      queryKey: ["searchResults", { source, ...params }],
+      queryFn: async ({ pageParam }) => await searchMedia(source, {
+        ...params,
         offset: pageParam as number,
-      });
-    },
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      const loadedCount = allPages.reduce(
-        (sum, page) => sum + page.media.length,
-        0
-      );
-      if (loadedCount < lastPage.total) {
-        return loadedCount;
-      }
-    },
-    placeholderData: keepPreviousData,
-    gcTime: QUERY_GC_TIME, // Keep cache for 5 minutes for scroll restoration
-  }));
+      }),
+      initialPageParam: 0,
+      getNextPageParam: (lastPage, allPages) => {
+        const loadedCount = allPages.reduce(
+          (sum, page) => sum + page.media.length,
+          0
+        );
+        if (loadedCount < lastPage.total) {
+          return loadedCount;
+        }
+      },
+      placeholderData: keepPreviousData,
+      gcTime: QUERY_GC_TIME, // Keep cache for 5 minutes for scroll restoration
+    };
+  });
 
   // Subscribe to real-time events
   useMediaSourceEvents(() => searchState.selectedSource || undefined, {
