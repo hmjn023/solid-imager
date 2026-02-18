@@ -109,6 +109,23 @@ export default function ManagerPage() {
   } | null>(null);
   const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = createSignal(1);
+  const itemsPerPage = 50;
+
+  const totalPages = () => Math.ceil(scannedMedia().length / itemsPerPage);
+
+  const paginatedMedia = () => {
+    const start = (currentPage() - 1) * itemsPerPage;
+    return scannedMedia().slice(start, start + itemsPerPage);
+  };
+
+  createEffect(() => {
+    // Reset to page 1 when scanned media changes
+    if (scannedMedia().length > 0) {
+      setCurrentPage(1);
+    }
+  });
   const queryClient = useQueryClient();
 
   const projects = createQuery(() => ({
@@ -512,15 +529,42 @@ export default function ManagerPage() {
           <Show when={scannedMedia().length > 0}>
             <div class="mt-4">
               <div class="mb-2 flex items-center justify-between">
-                <h3 class="font-bold text-lg">Scanned Media</h3>
-                <Button onClick={toggleSelectAll} size="sm" variant="outline">
-                  {selectedMedia().size === scannedMedia().length
-                    ? "Deselect All"
-                    : "Select All"}
-                </Button>
+                <h3 class="font-bold text-lg">
+                  Scanned Media ({scannedMedia().length})
+                </h3>
+                <div class="flex items-center gap-2">
+                  <span class="text-muted-foreground text-sm">
+                    Page {currentPage()} of {totalPages()}
+                  </span>
+                  <div class="flex gap-1">
+                    <Button
+                      disabled={currentPage() === 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      size="sm"
+                      variant="outline"
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      disabled={currentPage() === totalPages()}
+                      onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages(), p + 1))
+                      }
+                      size="sm"
+                      variant="outline"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                  <Button onClick={toggleSelectAll} size="sm" variant="outline">
+                    {selectedMedia().size === scannedMedia().length
+                      ? "Deselect All"
+                      : "Select All"}
+                  </Button>
+                </div>
               </div>
               <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                <For each={scannedMedia()}>
+                <For each={paginatedMedia()}>
                   {(media) => (
                     <MediaCardItem
                       media={media}
@@ -530,6 +574,30 @@ export default function ManagerPage() {
                     />
                   )}
                 </For>
+              </div>
+              {/* Bottom Pagination */}
+              <div class="mt-4 flex justify-center gap-2">
+                <Button
+                  disabled={currentPage() === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  size="sm"
+                  variant="outline"
+                >
+                  Prev
+                </Button>
+                <span class="flex items-center px-2 text-sm">
+                  Page {currentPage()} of {totalPages()}
+                </span>
+                <Button
+                  disabled={currentPage() === totalPages()}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(totalPages(), p + 1))
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  Next
+                </Button>
               </div>
             </div>
           </Show>

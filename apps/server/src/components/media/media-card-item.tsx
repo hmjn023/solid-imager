@@ -26,9 +26,9 @@ type MediaCardItemProps = {
 
 export function MediaCardItem(props: MediaCardItemProps) {
   const thumbnailUrl = () =>
-    `/ api / sources / ${props.media.mediaSourceId} /${props.media.id}/thumbnail ? t = ${new Date(
+    `/api/sources/${props.media.mediaSourceId}/${props.media.id}/thumbnail?t=${new Date(
       props.media.modifiedAt
-    ).getTime()} `;
+    ).getTime()}`;
 
   const fileSizeStr = () => {
     if (!props.media.fileSize) {
@@ -45,7 +45,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 
   return (
     <Card
-      class={`hidden overflow-hidden shadow shadow-lg transition-shadow hover:shadow-lg ${
+      class={`overflow-hidden shadow shadow-lg transition-shadow hover:shadow-lg ${
         props.selected ? "ring-2 ring-primary" : ""
       }`}
       onClick={() => props.selectable && props.onToggle?.(props.media.id)}
