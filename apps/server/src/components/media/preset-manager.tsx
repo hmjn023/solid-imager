@@ -32,8 +32,8 @@ import {
 } from "~/components/ui/select";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
+  clearPresetFilters,
   loadPreset,
-  resetSearchState,
   searchState,
 } from "~/presentation/store/search-store";
 import { cn } from "~/presentation/utils/cn";
@@ -146,7 +146,7 @@ export function PresetManager(props: {
 
   const handleClearSelection = () => {
     setSelectedPresetId(null);
-    resetSearchState();
+    clearPresetFilters();
     props.onAction?.();
   };
 
@@ -227,7 +227,22 @@ export function PresetManager(props: {
             title="選択解除"
             variant="ghost"
           >
-            <span class="i-lucide-x h-4 w-4" />
+            <svg
+              class="lucide lucide-x"
+              fill="none"
+              height="16"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="16"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <title>選択解除</title>
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
           </Button>
         </Show>
       </div>
