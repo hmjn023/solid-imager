@@ -113,27 +113,8 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
       <div class="my-4 h-px bg-border" />
 
       {/* Search Components */}
-      <Show
-        fallback={
-          <div class="space-y-4">
-            <PresetManager class="w-full flex-col items-stretch" />
-            <ProSearchDialog
-              authors={props.filterData.authors}
-              characters={props.filterData.characters}
-              ips={props.filterData.ips}
-              onChange={(val) => setSearchState("advancedCondition", val)}
-              onSearch={props.onSearch}
-              projects={props.filterData.projects}
-              tags={props.filterData.tags}
-              value={searchState.advancedCondition || null}
-            />
-            <Button class="w-full" onClick={props.onSearch} type="button">
-              検索 (詳細)
-            </Button>
-          </div>
-        }
-        when={searchState.mode === "simple"}
-      >
+      {/* Search Components */}
+      <div class={searchState.mode === "simple" ? "block" : "hidden"}>
         <SearchFilters
           authors={props.filterData.authors}
           characters={props.filterData.characters}
@@ -145,7 +126,23 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
           tags={props.filterData.tags}
           usePopover={props.usePopover}
         />
-      </Show>
+      </div>
+
+      <div class={searchState.mode === "pro" ? "block" : "hidden"}>
+        <div class="space-y-4">
+          <PresetManager class="w-full flex-col items-stretch" />
+          <ProSearchDialog
+            authors={props.filterData.authors}
+            characters={props.filterData.characters}
+            ips={props.filterData.ips}
+            onChange={(val) => setSearchState("advancedCondition", val)}
+            onSearch={props.onSearch}
+            projects={props.filterData.projects}
+            tags={props.filterData.tags}
+            value={searchState.advancedCondition || null}
+          />
+        </div>
+      </div>
     </div>
   );
 }
