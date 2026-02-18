@@ -49,6 +49,7 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
+import { PaginationControls } from "~/components/ui/pagination-controls";
 import { Progress } from "~/components/ui/progress";
 import {
   Select,
@@ -533,29 +534,11 @@ export default function ManagerPage() {
                   Scanned Media ({scannedMedia().length})
                 </h3>
                 <div class="flex items-center gap-2">
-                  <span class="text-muted-foreground text-sm">
-                    Page {currentPage()} of {totalPages()}
-                  </span>
-                  <div class="flex gap-1">
-                    <Button
-                      disabled={currentPage() === 1}
-                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      disabled={currentPage() === totalPages()}
-                      onClick={() =>
-                        setCurrentPage((p) => Math.min(totalPages(), p + 1))
-                      }
-                      size="sm"
-                      variant="outline"
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <PaginationControls
+                    currentPage={currentPage()}
+                    onPageChange={setCurrentPage}
+                    totalPages={totalPages()}
+                  />
                   <Button onClick={toggleSelectAll} size="sm" variant="outline">
                     {selectedMedia().size === scannedMedia().length
                       ? "Deselect All"
@@ -576,28 +559,12 @@ export default function ManagerPage() {
                 </For>
               </div>
               {/* Bottom Pagination */}
-              <div class="mt-4 flex justify-center gap-2">
-                <Button
-                  disabled={currentPage() === 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  size="sm"
-                  variant="outline"
-                >
-                  Prev
-                </Button>
-                <span class="flex items-center px-2 text-sm">
-                  Page {currentPage()} of {totalPages()}
-                </span>
-                <Button
-                  disabled={currentPage() === totalPages()}
-                  onClick={() =>
-                    setCurrentPage((p) => Math.min(totalPages(), p + 1))
-                  }
-                  size="sm"
-                  variant="outline"
-                >
-                  Next
-                </Button>
+              <div class="mt-4 flex justify-center">
+                <PaginationControls
+                  currentPage={currentPage()}
+                  onPageChange={setCurrentPage}
+                  totalPages={totalPages()}
+                />
               </div>
             </div>
           </Show>

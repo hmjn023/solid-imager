@@ -181,6 +181,19 @@ export default function Search() {
     },
   });
 
+  const searchResults = createMemo(() => {
+    const seen = new Set<string>();
+    return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
+      (m) => {
+        if (seen.has(m.id)) {
+          return false;
+        }
+        seen.add(m.id);
+        return true;
+      }
+    );
+  });
+
   const handleSearch = () => {
     setSearchState("offset", 0);
     setSearchState("scrollY", 0);
@@ -321,21 +334,7 @@ export default function Search() {
               </div>
 
               <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-                <For
-                  each={(() => {
-                    const seen = new Set<string>();
-                    return (
-                      searchResultQuery.data?.pages.flatMap((p) => p.media) ||
-                      []
-                    ).filter((m) => {
-                      if (seen.has(m.id)) {
-                        return false;
-                      }
-                      seen.add(m.id);
-                      return true;
-                    });
-                  })()}
-                >
+                <For each={searchResults()}>
                   {(media) => <MediaGridItem media={media} />}
                 </For>
               </div>

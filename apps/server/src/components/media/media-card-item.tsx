@@ -40,7 +40,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 
   const dimensionsStr = () =>
     props.media.width && props.media.height
-      ? `${props.media.width}×${props.media.height} `
+      ? `${props.media.width}×${props.media.height}`
       : "N/A";
 
   return (
