@@ -8,9 +8,13 @@
     "xtracter"
   ],
   "scripts": {
-    "dev": "bun --filter @solid-imager/server dev",
+    "dev:server": "bun --filter @solid-imager/server dev",
+    "dev:web": "bun --filter @solid-imager/web dev",
+    "dev": "bun run dev:server & bun run dev:web",
     "build": "bun --filter '*' build",
-    "start": "bun --filter @solid-imager/server start",
+    "start:server": "bun --filter @solid-imager/server start",
+    "start:web": "bun --filter @solid-imager/web start",
+    "start": "bun run start:server & bun run start:web",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
     "lint": "bun x biome lint .",
     "check": "bun x biome check --fix --unsafe .",
@@ -24,6 +28,10 @@
       "bun --filter @solid-imager/server lint",
       "bun --filter @solid-imager/server check",
       "bun --filter @solid-imager/server test:unit"
+    ],
+    "apps/web/src/**/*.{ts,tsx,js,jsx,json}": [
+      "bun --filter @solid-imager/web lint",
+      "bun --filter @solid-imager/web check"
     ],
     "packages/core/src/**/*.{ts,tsx,js,jsx,json}": [
       "bun --filter @solid-imager/core lint"
