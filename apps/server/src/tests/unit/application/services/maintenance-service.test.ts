@@ -1,5 +1,13 @@
 import fs from "node:fs/promises";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 
 // ---- Module mocks ----
@@ -212,7 +220,9 @@ describe("MaintenanceService", () => {
       mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
       // Thumbnail for media-1 already exists in the cache directory
-      vi.mocked(fs.readdir).mockResolvedValue(["media-1.webp"] as any);
+      (fs.readdir as unknown as Mock).mockResolvedValue([
+        "media-1.webp",
+      ] as any);
 
       await service.performStartupChecks();
 
@@ -227,7 +237,7 @@ describe("MaintenanceService", () => {
       mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
       // The cache directory exists but is empty → thumbnail is missing
-      vi.mocked(fs.readdir).mockResolvedValue([] as any);
+      (fs.readdir as unknown as Mock).mockResolvedValue([] as any);
 
       mockSourceRepo.findById.mockResolvedValue(
         makeLocalSource("source-1", "/local/images")
@@ -257,7 +267,7 @@ describe("MaintenanceService", () => {
 
       // ENOENT: directory does not exist yet → treat as empty → thumbnail missing
       const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-      vi.mocked(fs.readdir).mockRejectedValue(err);
+      (fs.readdir as unknown as Mock).mockRejectedValue(err);
 
       mockSourceRepo.findById.mockResolvedValue(
         makeLocalSource("source-1", "/local/images")
@@ -283,7 +293,7 @@ describe("MaintenanceService", () => {
         .mockResolvedValueOnce([]); // second page: empty → stop
 
       // All thumbnails exist (one set shared by all items in source-1)
-      vi.mocked(fs.readdir).mockResolvedValue(
+      (fs.readdir as unknown as Mock).mockResolvedValue(
         batch1.map((m) => `${m.id}.webp`) as any
       );
 

@@ -9,7 +9,6 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "~/presentation/utils/cn": ["./src/utils/cn.ts", "./src/utils/cn.tsx"],
       "~/*": ["./src/*"],
       "@/*": ["../core/src/*"]
     }
