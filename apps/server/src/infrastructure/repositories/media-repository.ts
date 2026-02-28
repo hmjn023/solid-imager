@@ -57,6 +57,7 @@ import {
   projects,
   tags,
 } from "~/infrastructure/db/schema";
+import { logger } from "~/infrastructure/logger";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 
 const DEFAULT_LIMIT = 100;
@@ -629,6 +630,31 @@ export const MediaRepository: IMediaRepository = {
     }
 
     return await query;
+  },
+
+  async findAllPathsBySourceId(
+    mediaSourceId: string,
+    tx?: Transaction
+  ): Promise<{ id: string; filePath: string }[]> {
+    try {
+      const client = (tx as unknown as TransactionClient) || db;
+      return await client
+        .select({
+          id: medias.id,
+          filePath: medias.filePath,
+        })
+        .from(medias)
+        .where(eq(medias.mediaSourceId, mediaSourceId));
+    } catch (error) {
+      logger.error(
+        { error, mediaSourceId },
+        "Database error in findAllPathsBySourceId"
+      );
+      throw new UnexpectedError(
+        `Failed to select media paths by source ID: ${mediaSourceId}`,
+        error
+      );
+    }
   },
 };
 
