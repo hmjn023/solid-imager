@@ -14,7 +14,7 @@ import {
 import type { JSX, ValidComponent } from "solid-js";
 import { splitProps } from "solid-js";
 
-import { cn } from "~/presentation/utils/cn";
+import { cn } from "./utils/cn";
 
 const Switch = SwitchRoot;
 const SwitchDescription = SwitchDescriptionPrimitive;

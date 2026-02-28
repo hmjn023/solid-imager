@@ -1,5 +1,5 @@
+import { Button } from "@solid-imager/ui/button";
 import { createSignal } from "solid-js";
-import { Button } from "./ui/button";
 
 /**
  * A simple modal component that can be opened and closed.

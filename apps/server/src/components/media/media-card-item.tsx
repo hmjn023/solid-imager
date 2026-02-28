@@ -1,8 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
+import { Card } from "@solid-imager/ui/card";
+import { Checkbox } from "@solid-imager/ui/checkbox";
 import { A } from "@solidjs/router";
 import { Show } from "solid-js";
-import { Card } from "~/components/ui/card";
-import { Checkbox } from "~/components/ui/checkbox";
 
 type MediaCardItemProps = {
   media: Media;

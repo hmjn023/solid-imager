@@ -10,9 +10,8 @@ import {
 } from "@kobalte/core/alert-dialog";
 import type { Component, ComponentProps } from "solid-js";
 import { splitProps } from "solid-js";
-
-import { cn } from "~/presentation/utils/cn";
 import { buttonVariants } from "./button";
+import { cn } from "./utils/cn";
 
 const AlertDialog = AlertDialogPrimitiveRoot;
 const AlertDialogTrigger = AlertDialogPrimitiveTrigger;

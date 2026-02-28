@@ -1,13 +1,4 @@
 import {
-  createEffect,
-  createResource,
-  createSignal,
-  For,
-  Show,
-} from "solid-js";
-import { Portal } from "solid-js/web";
-import { toast } from "solid-toast";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -16,7 +7,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
+} from "@solid-imager/ui/alert-dialog";
+import {
+  createEffect,
+  createResource,
+  createSignal,
+  For,
+  Show,
+} from "solid-js";
+import { Portal } from "solid-js/web";
+import { toast } from "solid-toast";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 type Props = {

@@ -140,6 +140,24 @@ describe("MaintenanceService", () => {
       );
     });
 
+    it("should process items in chunks of 50", async () => {
+      const TOTAL_ITEMS = 110;
+      const items = Array.from({ length: TOTAL_ITEMS }, (_, i) =>
+        makeMedia(`media-${i}`)
+      );
+      mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue(items);
+      mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
+
+      mockSourceRepo.findById.mockResolvedValue(
+        makeLocalSource("source-1", "/local/images")
+      );
+      mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+
+      await service.performStartupChecks();
+
+      expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(TOTAL_ITEMS);
+    });
+
     it("should skip media whose source is not a local source", async () => {
       const media1 = makeMedia("media-remote", "source-remote");
 
@@ -273,6 +291,16 @@ describe("MaintenanceService", () => {
 
       // Two calls: first full page, then the empty termination page
       expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledTimes(2);
+      expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
+        1,
+        undefined,
+        { limit: 1000, offset: 0 }
+      );
+      expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
+        2,
+        undefined,
+        { limit: 1000, offset: 1000 }
+      );
       expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
     });
   });
