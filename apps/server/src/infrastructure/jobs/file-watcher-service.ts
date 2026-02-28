@@ -179,6 +179,19 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 
     const basePath = (source.connectionInfo as { path: string }).path;
 
+    // Run directory sync before starting real-time file system monitoring
+    try {
+      const { DirectorySyncService } = await import(
+        "~/application/services/directory-sync-service"
+      );
+      await DirectorySyncService.syncMediaSource(mediaSourceId);
+    } catch (err) {
+      logger.error(
+        { err, mediaSourceId },
+        "Failed to sync media source before monitoring"
+      );
+    }
+
     SseManager.startFileSystemMonitoring(mediaSourceId, basePath, {
       onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
       onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
