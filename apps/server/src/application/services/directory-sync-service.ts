@@ -37,18 +37,22 @@ async function processAdditions(
     { mediaSourceId, count: filesToAdd.length },
     "Sync: Found new files to add"
   );
-  const promises = filesToAdd.map(async (fileToAdd) => {
-    try {
-      await MediaProcessingService.registerAndProcess(mediaSourceId, fileToAdd);
-      result.added++;
-    } catch (error) {
-      logger.error(
-        { err: error, mediaSourceId, fileToAdd },
-        "Failed to process new file during sync"
-      );
-    }
-  });
-  await Promise.all(promises);
+  await Promise.all(
+    filesToAdd.map(async (fileToAdd) => {
+      try {
+        await MediaProcessingService.registerAndProcess(
+          mediaSourceId,
+          fileToAdd
+        );
+        result.added++;
+      } catch (error) {
+        logger.error(
+          { err: error, mediaSourceId, fileToAdd },
+          "Failed to process new file during sync"
+        );
+      }
+    })
+  );
 }
 
 async function processDeletions(
@@ -63,23 +67,24 @@ async function processDeletions(
   if (filesToDelete.length === 0) {
     return;
   }
-  const promises = filesToDelete.map(async (fileToDelete) => {
-    try {
-      await MediaRepository.delete(fileToDelete.id);
-      await deleteThumbnail(mediaSourceId, fileToDelete.id);
-      SseManager.sendEvent(mediaSourceId, "media-deleted", {
-        filePath: fileToDelete.relativePath,
-        timestamp: new Date().toISOString(),
-      });
-      result.deleted++;
-    } catch (error) {
-      logger.error(
-        { err: error, mediaSourceId, fileToDelete },
-        "Failed to process deleted file during sync"
-      );
-    }
-  });
-  await Promise.all(promises);
+  await Promise.all(
+    filesToDelete.map(async (fileToDelete) => {
+      try {
+        await MediaRepository.delete(fileToDelete.id);
+        await deleteThumbnail(mediaSourceId, fileToDelete.id);
+        SseManager.sendEvent(mediaSourceId, "media-deleted", {
+          filePath: fileToDelete.relativePath,
+          timestamp: new Date().toISOString(),
+        });
+        result.deleted++;
+      } catch (error) {
+        logger.error(
+          { err: error, mediaSourceId, fileToDelete },
+          "Failed to process deleted file during sync"
+        );
+      }
+    })
+  );
 }
 
 /**
