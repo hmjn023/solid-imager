@@ -1,6 +1,4 @@
 import type { Preset } from "@solid-imager/core/domain/media/schemas";
-import { createEffect, createResource, createSignal, Show } from "solid-js";
-import { toast } from "solid-toast";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,8 +8,8 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
-import { Button } from "~/components/ui/button";
+} from "@solid-imager/ui/alert-dialog";
+import { Button } from "@solid-imager/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -20,23 +18,25 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+} from "@solid-imager/ui/dialog";
+import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
+} from "@solid-imager/ui/select";
+import { cn } from "@solid-imager/ui/utils/cn";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { toast } from "solid-toast";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
   clearPresetFilters,
   loadPreset,
   searchState,
 } from "~/presentation/store/search-store";
-import { cn } from "~/presentation/utils/cn";
 
 export function PresetManager(props: {
   class?: string;

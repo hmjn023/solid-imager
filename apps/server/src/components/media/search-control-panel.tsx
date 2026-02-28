@@ -4,20 +4,20 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { Show } from "solid-js";
-import { PresetManager } from "~/components/media/preset-manager";
-import { ProSearchDialog } from "~/components/media/pro-search-dialog";
-import { SearchFilters } from "~/components/media/search-filters";
-import { SortControls } from "~/components/media/sort-controls";
-import { Button } from "~/components/ui/button";
-import { Label } from "~/components/ui/label";
+import { Button } from "@solid-imager/ui/button";
+import { Label } from "@solid-imager/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
+} from "@solid-imager/ui/select";
+import { Show } from "solid-js";
+import { PresetManager } from "~/components/media/preset-manager";
+import { ProSearchDialog } from "~/components/media/pro-search-dialog";
+import { SearchFilters } from "~/components/media/search-filters";
+import { SortControls } from "~/components/media/sort-controls";
 import {
   searchState,
   setSearchMode,

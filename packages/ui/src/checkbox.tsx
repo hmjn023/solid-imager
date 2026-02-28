@@ -12,7 +12,7 @@ import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { ValidComponent } from "solid-js";
 import { Match, Switch, splitProps } from "solid-js";
 
-import { cn } from "~/presentation/utils/cn";
+import { cn } from "./utils/cn";
 
 const Checkbox = CheckboxRoot;
 

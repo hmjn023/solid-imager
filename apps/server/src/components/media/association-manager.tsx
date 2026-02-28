@@ -1,6 +1,5 @@
-import { createSignal, For, Show } from "solid-js";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
+import { Badge } from "@solid-imager/ui/badge";
+import { Button } from "@solid-imager/ui/button";
 import {
   CommandDialog,
   CommandEmpty,
@@ -8,7 +7,8 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "~/components/ui/command";
+} from "@solid-imager/ui/command";
+import { createSignal, For, Show } from "solid-js";
 
 type Item = {
   id: string;

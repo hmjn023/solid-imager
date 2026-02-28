@@ -8,8 +8,8 @@ import type {
   VoidProps,
 } from "solid-js";
 import { splitProps } from "solid-js";
-import { Dialog, DialogContent } from "~/components/ui/dialog";
-import { cn } from "~/presentation/utils/cn";
+import { Dialog, DialogContent } from "./dialog";
+import { cn } from "./utils/cn";
 
 const Command: Component<ParentProps<CommandPrimitive.CommandRootProps>> = (
   props

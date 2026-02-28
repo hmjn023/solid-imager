@@ -7,9 +7,8 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent } from "~/components/ui/card";
+import { Button } from "@solid-imager/ui/button";
+import { Card, CardContent } from "@solid-imager/ui/card";
 import {
   Combobox,
   ComboboxContent,
@@ -17,16 +16,17 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxItemLabel,
-} from "~/components/ui/combobox";
-import { Input } from "~/components/ui/input";
+} from "@solid-imager/ui/combobox";
+import { Input } from "@solid-imager/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
-import { cn } from "~/presentation/utils/cn";
+} from "@solid-imager/ui/select";
+import { cn } from "@solid-imager/ui/utils/cn";
+import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
 // Labels for targets
 const TARGET_LABELS: Record<string, string> = {

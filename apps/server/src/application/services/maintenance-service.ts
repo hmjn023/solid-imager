@@ -174,26 +174,41 @@ export class MaintenanceService {
     );
 
     let queuedCount = 0;
-    for (const item of items) {
-      const basePath = sources.get(item.mediaSourceId);
-      if (!basePath) {
-        continue; // Skip non-local or missing sources
-      }
+    const CHUNK_SIZE = 50;
 
-      const created = await this.jobRepo.createIfUnique({
-        type: "processMedia",
-        mediaSourceId: item.mediaSourceId,
-        payload: {
-          mediaId: item.id,
-          sourcePath: basePath,
-          type: "processMedia", // Legacy payload requirement
-          ...options,
-        },
-      });
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+      const chunk = items.slice(i, i + CHUNK_SIZE);
+      const results = await Promise.allSettled(
+        chunk.map(async (item) => {
+          const basePath = sources.get(item.mediaSourceId);
+          if (!basePath) {
+            return false; // Skip non-local or missing sources
+          }
 
-      if (created) {
-        queuedCount++;
-      }
+          try {
+            return await this.jobRepo.createIfUnique({
+              type: "processMedia",
+              mediaSourceId: item.mediaSourceId,
+              payload: {
+                mediaId: item.id,
+                sourcePath: basePath,
+                type: "processMedia", // Legacy payload requirement
+                ...options,
+              },
+            });
+          } catch (err) {
+            logger.error(
+              { err, mediaId: item.id },
+              "Failed to queue media process job"
+            );
+            return false;
+          }
+        })
+      );
+
+      queuedCount += results.filter(
+        (r) => r.status === "fulfilled" && r.value
+      ).length;
     }
 
     if (queuedCount > 0) {

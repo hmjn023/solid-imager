@@ -1,12 +1,12 @@
-import { Label } from "~/components/ui/label";
+import { Label } from "@solid-imager/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
-import { cn } from "~/presentation/utils/cn";
+} from "@solid-imager/ui/select";
+import { cn } from "@solid-imager/ui/utils/cn";
 
 type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
 
