@@ -2,6 +2,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -35,7 +37,7 @@ async function processAdditions(
     { mediaSourceId, count: filesToAdd.length },
     "Sync: Found new files to add"
   );
-  for (const fileToAdd of filesToAdd) {
+  const promises = filesToAdd.map(async (fileToAdd) => {
     try {
       await MediaProcessingService.registerAndProcess(mediaSourceId, fileToAdd);
       result.added++;
@@ -45,7 +47,8 @@ async function processAdditions(
         "Failed to process new file during sync"
       );
     }
-  }
+  });
+  await Promise.all(promises);
 }
 
 async function processDeletions(
@@ -60,9 +63,7 @@ async function processDeletions(
   if (filesToDelete.length === 0) {
     return;
   }
-  const { deleteThumbnail } = await import("~/infrastructure/jobs/thumbnails");
-  const { SseManager } = await import("~/infrastructure/jobs/sse-manager");
-  for (const fileToDelete of filesToDelete) {
+  const promises = filesToDelete.map(async (fileToDelete) => {
     try {
       await MediaRepository.delete(fileToDelete.id);
       await deleteThumbnail(mediaSourceId, fileToDelete.id);
@@ -77,7 +78,8 @@ async function processDeletions(
         "Failed to process deleted file during sync"
       );
     }
-  }
+  });
+  await Promise.all(promises);
 }
 
 /**
