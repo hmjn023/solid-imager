@@ -217,26 +217,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
         }
 
         const client = t as unknown as TransactionClient;
-        const existingTags = await client
-          .select()
-          .from(tags)
-          .where(inArray(tags.name, uniqueTagNames));
-
-        const existingTagNames = existingTags.map(
-          /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
-            tag: any
-          ) => tag.name
-        );
-        const newTagNames = uniqueTagNames.filter(
-          (name) => !existingTagNames.includes(name)
-        );
-
-        if (newTagNames.length > 0) {
-          await client
-            .insert(tags)
-            .values(newTagNames.map((name) => ({ name, source })))
-            .onConflictDoNothing();
-        }
+        await client
+          .insert(tags)
+          .values(uniqueTagNames.map((name) => ({ name, source })))
+          .onConflictDoNothing();
 
         // Fetch all tags (both existing and newly created)
         const allTags = await client

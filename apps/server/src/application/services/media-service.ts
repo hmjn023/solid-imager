@@ -442,7 +442,7 @@ export class MediaServiceImpl {
     mediaSourceId: string,
     mediaId: string,
     updates: unknown,
-    _tx?: Transaction
+    tx?: Transaction
   ) {
     const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
     const validatedMediaId = mediaIdSchema.parse(mediaId);
@@ -490,6 +490,9 @@ export class MediaServiceImpl {
       return updatedMedia;
     };
 
+    if (tx) {
+      return await execute(tx);
+    }
     return await DrizzleTransactionManager.transaction(execute);
   }
 

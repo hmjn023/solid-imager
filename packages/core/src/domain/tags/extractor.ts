@@ -66,6 +66,60 @@ export function processWidgetValueTags(
   return { positiveTags: newPositiveTags, negativeTags: newNegativeTags };
 }
 
+type ProcessWorkflowNodeParams = {
+  node: unknown;
+  positiveNodeTypes: string[];
+  options: TagExtractionOptions | undefined;
+  positiveTags: TagData[];
+  negativeTags: TagData[];
+};
+
+function processWorkflowNode({
+  node,
+  positiveNodeTypes,
+  options,
+  positiveTags,
+  negativeTags,
+}: ProcessWorkflowNodeParams) {
+  if (typeof node !== "object" || node === null) {
+    return;
+  }
+
+  // safely cast to Record since we checked it is an object
+  const nodeRecord = node as Record<string, unknown>;
+
+  const nodeType = nodeRecord.type || nodeRecord.class_type;
+  // biome-ignore lint/suspicious/noExplicitAny: accessing optional _meta
+  const nodeTitle = nodeRecord.title || (nodeRecord as any)._meta?.title;
+
+  if (typeof nodeType === "string" && positiveNodeTypes.includes(nodeType)) {
+    const valuesToProcess: unknown[] = [];
+    if (Array.isArray(nodeRecord.widgets_values)) {
+      valuesToProcess.push(...nodeRecord.widgets_values);
+    }
+    if (nodeRecord.inputs && typeof nodeRecord.inputs === "object") {
+      valuesToProcess.push(...Object.values(nodeRecord.inputs));
+    }
+
+    for (const widgetValue of valuesToProcess) {
+      const { positiveTags: newPosTags, negativeTags: newNegTags } =
+        processWidgetValueTags(widgetValue, nodeTitle, options);
+      positiveTags.push(
+        ...newPosTags.map((tag) => ({
+          name: tag,
+          source: "extracted" as const,
+        }))
+      );
+      negativeTags.push(
+        ...newNegTags.map((tag) => ({
+          name: tag,
+          source: "extracted" as const,
+        }))
+      );
+    }
+  }
+}
+
 export function extractTagsFromWorkflow(
   workflow: Workflow,
   options?: TagExtractionOptions
@@ -90,39 +144,15 @@ export function extractTagsFromWorkflow(
   }
 
   for (const node of nodesToProcess) {
-    if (!node || typeof node !== "object") continue;
-
-    const nodeType = node.type || node.class_type;
-    // biome-ignore lint/suspicious/noExplicitAny: accessing optional _meta
-    const nodeTitle = node.title || (node as any)._meta?.title;
-
-    if (nodeType && positiveNodeTypes.includes(nodeType)) {
-      const valuesToProcess: unknown[] = [];
-      if (Array.isArray(node.widgets_values)) {
-        valuesToProcess.push(...node.widgets_values);
-      }
-      if (node.inputs && typeof node.inputs === "object") {
-        valuesToProcess.push(...Object.values(node.inputs));
-      }
-
-      for (const widgetValue of valuesToProcess) {
-        const { positiveTags: newPosTags, negativeTags: newNegTags } =
-          processWidgetValueTags(widgetValue, nodeTitle, options);
-        positiveTags.push(
-          ...newPosTags.map((tag) => ({
-            name: tag,
-            source: "extracted",
-          }))
-        );
-        negativeTags.push(
-          ...newNegTags.map((tag) => ({
-            name: tag,
-            source: "extracted",
-          }))
-        );
-      }
-    }
+    processWorkflowNode({
+      node,
+      positiveNodeTypes,
+      options,
+      positiveTags,
+      negativeTags,
+    });
   }
+
   if (positiveTags.length > 0 || negativeTags.length > 0) {
     return { positiveTags, negativeTags };
   }

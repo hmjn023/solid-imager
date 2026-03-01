@@ -45,7 +45,10 @@ function processCommentChunk(
       if (typeof parsed === "object" && parsed !== null) {
         const hasNodes = "nodes" in parsed;
         // Check if it's an API format workflow (dictionary of nodes with class_type)
-        const isApiFormat = Object.values(parsed).some(
+        // We only check the first few values to avoid iterating over a massive JSON object
+        const MAX_NODES_TO_CHECK = 5;
+        const valuesToCheck = Object.values(parsed).slice(0, MAX_NODES_TO_CHECK);
+        const isApiFormat = valuesToCheck.some(
           // biome-ignore lint/suspicious/noExplicitAny: ComfyUI API nodes are dictionaries
           (v: any) => typeof v === "object" && v !== null && "class_type" in v
         );

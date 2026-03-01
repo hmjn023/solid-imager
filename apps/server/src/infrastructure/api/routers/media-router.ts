@@ -165,15 +165,26 @@ export const mediaRouter = {
   /**
    * Upload media to a source
    */
-  upload: os.input(
-    z.object({
-      sourceId: z.string().uuid(),
-      file: z.instanceof(File),
-      filename: z.string().optional(),
-      description: z.string().optional(),
-      sourceUrl: z.string().optional(),
-      overwrite: z.string().optional(),
-      autoIncrement: z.string().optional(),
-    })
-  ),
+  upload: os
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        file: z.instanceof(File),
+        filename: z.string().optional(),
+        description: z.string().optional(),
+        sourceUrl: z.string().optional(),
+        overwrite: z.string().optional(),
+        autoIncrement: z.string().optional(),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.uploadMedia(input.sourceId, input.file, {
+          filename: input.filename,
+          description: input.description,
+          sourceUrl: input.sourceUrl,
+          overwrite: input.overwrite === "true",
+          autoIncrement: input.autoIncrement === "true",
+        })
+    ),
 };
