@@ -12,6 +12,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
@@ -32,6 +33,7 @@ export class ServiceRegistry {
   private jobRepository?: IJobRepository;
   private jobWorker?: JobWorker;
   private mediaProcessingService?: MediaProcessingServiceImpl;
+  private characterService?: CharacterServiceImpl;
   private configService?: IConfigService;
 
   private constructor() {}
@@ -197,6 +199,17 @@ export class ServiceRegistry {
     return this.mediaProcessingService;
   }
 
+  registerCharacterService(service: CharacterServiceImpl): void {
+    this.characterService = service;
+  }
+
+  getCharacterService(): CharacterServiceImpl {
+    if (!this.characterService) {
+      throw new Error("CharacterService has not been registered.");
+    }
+    return this.characterService;
+  }
+
   registerConfigService(service: IConfigService): void {
     this.configService = service;
   }
@@ -224,6 +237,7 @@ export class ServiceRegistry {
     this.jobRepository = undefined;
     this.jobWorker = undefined;
     this.mediaProcessingService = undefined;
+    this.characterService = undefined;
     this.configService = undefined;
 
     // Reset service singletons that might hold references to old repositories

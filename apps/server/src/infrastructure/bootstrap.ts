@@ -1,4 +1,5 @@
 import { services } from "~/application/registry";
+import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
@@ -83,6 +84,10 @@ export function bootstrap() {
       jobRepo,
       configService
     )
+  );
+
+  services.registerCharacterService(
+    new CharacterServiceImpl(services.getCharacterRepository())
   );
 
   // Singleton management for JobWorker to prevent duplicates during HMR

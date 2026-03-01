@@ -475,17 +475,18 @@ export class MediaServiceImpl {
       }
 
       if (parsedUpdates.authors?.length) {
-        for (const authorData of parsedUpdates.authors) {
-          const author = await this.authorRepository.create(
-            {
-              name: authorData.name,
-              accountId: authorData.accountId || null,
-            },
-            t
-          );
-          await this.authorRepository.addMedia(validatedMediaId, author.id, t);
-        }
+        await this._updateMediaAuthors(
+          validatedMediaId,
+          parsedUpdates.authors,
+          t
+        );
       }
+
+      // Use MediaProcessingService for characters and IPs to ensure auto-assignment logic
+      await this._updateMediaRelations(validatedMediaId, {
+        characters: parsedUpdates.characters,
+        ips: parsedUpdates.ips,
+      });
 
       return updatedMedia;
     };
@@ -991,6 +992,41 @@ export class MediaServiceImpl {
         "[MediaService] extractAndUpdateMetadata FAILED"
       );
       return null;
+    }
+  }
+
+  private async _updateMediaAuthors(
+    mediaId: string,
+    authors: { name: string; accountId?: string | null }[],
+    tx: Transaction
+  ): Promise<void> {
+    for (const authorData of authors) {
+      const author = await this.authorRepository.create(
+        {
+          name: authorData.name,
+          accountId: authorData.accountId || null,
+        },
+        tx
+      );
+      await this.authorRepository.addMedia(mediaId, author.id, tx);
+    }
+  }
+
+  private async _updateMediaRelations(
+    mediaId: string,
+    updates: {
+      characters?: { name: string; confidence?: number }[];
+      ips?: { name: string; confidence?: number }[];
+    }
+  ): Promise<void> {
+    if (updates.characters?.length || updates.ips?.length) {
+      const { MediaProcessingService } = await import(
+        "~/application/services/media-processing-service"
+      );
+      await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
+        characters: updates.characters,
+        ips: updates.ips,
+      });
     }
   }
 }

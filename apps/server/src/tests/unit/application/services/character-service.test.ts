@@ -1,0 +1,73 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { services } from "~/application/registry";
+import {
+  CharacterService,
+  CharacterServiceImpl,
+} from "~/application/services/character-service";
+
+// Mock Repositories
+const mockCharacterRepo = {
+  findById: vi.fn(),
+  addToMedia: vi.fn(),
+  findAll: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  delete: vi.fn(),
+  findByMediaId: vi.fn(),
+  removeFromMedia: vi.fn(),
+};
+
+vi.mock("~/infrastructure/repositories/ip-repository", () => ({
+  IpRepository: {
+    addMedia: vi.fn(),
+  },
+}));
+
+import { IpRepository as mockIpRepo } from "~/infrastructure/repositories/ip-repository";
+
+describe("CharacterService", () => {
+  beforeEach(() => {
+    const service = new CharacterServiceImpl(mockCharacterRepo as any);
+    services.registerCharacterService(service);
+  });
+
+  afterEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("addCharacterToMedia", () => {
+    const mediaId = "media-1";
+    const charId = "char-1";
+    const ipId = "ip-1";
+
+    it("should add character to media and auto-assign linked IPs", async () => {
+      mockCharacterRepo.findById.mockResolvedValue({
+        id: charId,
+        name: "Char Name",
+        ips: [{ id: ipId, name: "IP Name" }],
+      });
+
+      await CharacterService.addCharacterToMedia(mediaId, charId);
+
+      expect(mockCharacterRepo.findById).toHaveBeenCalledWith(charId);
+      expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
+        mediaId,
+        charId
+      );
+      expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
+        mediaId,
+        ipId,
+        undefined,
+        "character_link"
+      );
+    });
+
+    it("should throw error if character not found", async () => {
+      mockCharacterRepo.findById.mockResolvedValue(null);
+
+      await expect(
+        CharacterService.addCharacterToMedia(mediaId, charId)
+      ).rejects.toThrow(`Character not found: ${charId}`);
+    });
+  });
+});

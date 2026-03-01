@@ -20,6 +20,8 @@ const mockCharacterRepo = {
   create: vi.fn(),
   addToMedia: vi.fn(),
   findByName: vi.fn(),
+  findById: vi.fn(),
+  update: vi.fn(),
 };
 const mockIpRepo = {
   create: vi.fn(),
@@ -106,6 +108,90 @@ describe("MediaProcessingService", () => {
       expect(mockAuthorRepo.addMedia).toHaveBeenCalledWith(
         mediaId,
         "author-id"
+      );
+    });
+
+    it("should register characters and auto-assign their IPs if provided", async () => {
+      const charId = "char-1";
+      const ipId = "ip-1";
+      const testConfidence = 0.9;
+      mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
+      mockCharacterRepo.findByName.mockResolvedValue({
+        id: charId,
+        name: "Char Name",
+        ips: [{ id: ipId, name: "IP Name" }],
+      });
+
+      await service.addContextMetadataToExistingMedia(mediaId, {
+        characters: [{ name: "Char Name", confidence: testConfidence }],
+      });
+
+      expect(mockCharacterRepo.findByName).toHaveBeenCalledWith("Char Name");
+      expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
+        mediaId,
+        charId,
+        testConfidence
+      );
+      // Auto-assigned IP
+      expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
+        mediaId,
+        ipId,
+        undefined,
+        "character_link"
+      );
+    });
+
+    it("should link new character to new IP if both are in the same context", async () => {
+      const charName = "New Char";
+      const ipName = "New IP";
+      const ipId = "new-ip-id";
+      const charId = "new-char-id";
+
+      mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
+
+      // 1. IP registration (called first)
+      mockIpRepo.findByName.mockResolvedValueOnce(null);
+      mockIpRepo.create.mockResolvedValue({ id: ipId, name: ipName });
+      mockIpRepo.findByName.mockResolvedValue({ id: ipId, name: ipName });
+
+      // 2. Character registration (called second)
+      mockCharacterRepo.findByName.mockResolvedValue(null);
+      mockCharacterRepo.create.mockResolvedValue({
+        id: charId,
+        name: charName,
+        ips: [{ id: ipId, name: ipName }],
+      });
+      // Re-fetch in update/registerCharacters
+      mockCharacterRepo.findById.mockResolvedValue({
+        id: charId,
+        name: charName,
+        ips: [{ id: ipId, name: ipName }],
+      });
+
+      await service.addContextMetadataToExistingMedia(mediaId, {
+        characters: [{ name: charName }],
+        ips: [{ name: ipName }],
+      });
+
+      // Verify IP was created
+      expect(mockIpRepo.create).toHaveBeenCalledWith({
+        name: ipName,
+        description: "",
+      });
+
+      // Verify Character was created with IP ID
+      expect(mockCharacterRepo.create).toHaveBeenCalledWith({
+        name: charName,
+        description: "",
+        ipIds: [ipId],
+      });
+
+      // Verify both were linked to media
+      expect(mockIpRepo.addMedia).toHaveBeenCalledWith(mediaId, ipId);
+      expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
+        mediaId,
+        charId,
+        undefined
       );
     });
 

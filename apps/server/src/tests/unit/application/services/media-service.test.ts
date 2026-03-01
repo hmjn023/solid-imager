@@ -10,6 +10,7 @@ import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-r
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 
 vi.mock("~/application/registry", () => {
   const mockServices = {
@@ -50,6 +51,18 @@ vi.mock("~/application/registry", () => {
   };
 });
 
+vi.mock("~/application/services/media-processing-service", () => ({
+  MediaProcessingService: {
+    addContextMetadataToExistingMedia: vi.fn(),
+  },
+}));
+
+vi.mock("~/infrastructure/db/transaction-manager", () => ({
+  DrizzleTransactionManager: {
+    transaction: vi.fn(async (callback) => await callback("mock-tx")),
+  },
+}));
+
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
 const MEDIA_SOURCE_NOT_FOUND_REGEX = /media source.*not found/i;
 
@@ -68,6 +81,9 @@ describe("MediaService Unit Tests", () => {
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    (DrizzleTransactionManager.transaction as Mock).mockImplementation(
+      async (callback) => await callback("mock-tx")
+    );
     // Mock registry
     const { services } = await import("~/application/registry");
     mockJobRepository = { create: vi.fn() };
@@ -79,6 +95,7 @@ describe("MediaService Unit Tests", () => {
       findByPath: vi.fn(),
       create: vi.fn(),
       upsert: vi.fn(),
+      update: vi.fn(),
       updateConfig: vi.fn(),
       delete: vi.fn(),
       search: vi.fn(),
@@ -303,6 +320,43 @@ describe("MediaService Unit Tests", () => {
         "/root",
         "fail.png"
       );
+    });
+  });
+
+  describe("updateMedia", () => {
+    it("should update media and call MediaProcessingService for characters/ips", async () => {
+      const mediaId = "123e4567-e89b-42d3-a456-426614174000";
+      const sourceId = "123e4567-e89b-42d3-a456-426614174001";
+      const updates = {
+        description: "Updated desc",
+        characters: [{ name: "Char 1", confidence: 0.8 }],
+        ips: [{ name: "IP 1" }],
+      };
+
+      (mockMediaRepository.findById as Mock).mockResolvedValue({
+        id: mediaId,
+        mediaSourceId: sourceId,
+      });
+      (mockMediaRepository.update as Mock).mockResolvedValue({ id: mediaId });
+
+      const { MediaProcessingService } = await import(
+        "~/application/services/media-processing-service"
+      );
+
+      await mediaService.updateMedia(sourceId, mediaId, updates);
+
+      expect(mockMediaRepository.update).toHaveBeenCalledWith(
+        mediaId,
+        expect.objectContaining({ description: "Updated desc" }),
+        expect.anything()
+      );
+
+      expect(
+        MediaProcessingService.addContextMetadataToExistingMedia
+      ).toHaveBeenCalledWith(mediaId, {
+        characters: updates.characters,
+        ips: updates.ips,
+      });
     });
   });
 });

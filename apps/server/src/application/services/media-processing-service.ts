@@ -6,6 +6,7 @@ import path from "node:path";
 
 // Registry for backward compatibility proxy
 
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type {
   Media,
   MediaMetadataContext,
@@ -249,12 +250,16 @@ export class MediaProcessingServiceImpl {
       );
     }
 
-    if (context.characters?.length) {
-      await this.registerCharacters(mediaId, context.characters);
-    }
-
     if (context.ips?.length) {
       await this.registerIps(mediaId, context.ips);
+    }
+
+    if (context.characters?.length) {
+      await this.registerCharacters(
+        mediaId,
+        context.characters,
+        context.ips?.map((ip) => ip.name)
+      );
     }
 
     if (context.projects?.length) {
@@ -284,27 +289,92 @@ export class MediaProcessingServiceImpl {
 
   private async registerCharacters(
     mediaId: string,
-    characters: NonNullable<MediaMetadataContext["characters"]>
+    characters: NonNullable<MediaMetadataContext["characters"]>,
+    currentIpNames?: string[]
   ): Promise<void> {
     for (const charData of characters) {
       try {
-        let created = await this.characterRepo.findByName(charData.name);
-        if (!created) {
-          created = await this.characterRepo.create({
-            name: charData.name,
-            description: charData.description ?? "",
-          });
-        }
-        await this.characterRepo.addToMedia(
-          mediaId,
-          created.id,
-          charData.confidence
-        );
+        await this._registerSingleCharacter(mediaId, charData, currentIpNames);
       } catch (e) {
         logger.warn(
           { err: e, character: charData },
           "Failed to register character"
         );
+      }
+    }
+  }
+
+  private async _registerSingleCharacter(
+    mediaId: string,
+    charData: NonNullable<MediaMetadataContext["characters"]>[number],
+    currentIpNames?: string[]
+  ): Promise<void> {
+    let character: Character | null = await this.characterRepo.findByName(
+      charData.name
+    );
+
+    const ipIdsToLink = await this._resolveIpIds(currentIpNames);
+
+    if (!character) {
+      character = await this.characterRepo.create({
+        name: charData.name,
+        description: charData.description ?? "",
+        ipIds: ipIdsToLink,
+      });
+    } else if (ipIdsToLink.length > 0) {
+      character = await this._updateCharacterIps(character, ipIdsToLink);
+    }
+
+    if (!character) {
+      return;
+    }
+
+    await this.characterRepo.addToMedia(
+      mediaId,
+      character.id,
+      charData.confidence
+    );
+
+    await this._linkCharacterIpsToMedia(mediaId, character);
+  }
+
+  private async _resolveIpIds(currentIpNames?: string[]): Promise<string[]> {
+    const ipIds: string[] = [];
+    if (!currentIpNames?.length) {
+      return ipIds;
+    }
+
+    for (const ipName of currentIpNames) {
+      const ip = await this.ipRepo.findByName(ipName);
+      if (ip) {
+        ipIds.push(ip.id);
+      }
+    }
+    return ipIds;
+  }
+
+  private async _updateCharacterIps(
+    character: Character,
+    ipIdsToLink: string[]
+  ): Promise<Character> {
+    const existingIpIds = character.ips?.map((i) => i.id) || [];
+    const newIpIds = [...new Set([...existingIpIds, ...ipIdsToLink])];
+
+    if (newIpIds.length > existingIpIds.length) {
+      return await this.characterRepo.update(character.id, {
+        ipIds: newIpIds,
+      });
+    }
+    return character;
+  }
+
+  private async _linkCharacterIpsToMedia(
+    mediaId: string,
+    character: Character
+  ): Promise<void> {
+    if (character?.ips && character.ips.length > 0) {
+      for (const ip of character.ips) {
+        await this.ipRepo.addMedia(mediaId, ip.id, undefined, "character_link");
       }
     }
   }
