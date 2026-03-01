@@ -142,9 +142,3 @@ export function moveMedia(
 ) {
   return orpc.media.move({ mediaId, targetSourceId });
 }
-
-/**
- * Reprocesses media metadata (extracts generation info and tags)
- * @param sourceId - Media source ID
- * @param mediaId - Media ID
- */
