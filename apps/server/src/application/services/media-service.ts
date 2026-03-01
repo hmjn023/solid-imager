@@ -45,6 +45,7 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 // keeping SseManager if used elsewhere
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
+import { logger } from "~/infrastructure/logger";
 
 const SIGNATURES = {
   png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -496,6 +497,21 @@ export class MediaServiceImpl {
   }
 
   /**
+   * Reprocesses media metadata (extracts generation info and tags).
+   */
+  async reprocessMetadata(mediaSourceId: string, mediaId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await this.mediaRepository.findById(validatedMediaId);
+    if (!media || media.mediaSourceId !== validatedSourceId) {
+      throw new ResourceNotFoundError("Media", validatedMediaId);
+    }
+
+    return await this.extractAndUpdateMetadata(media, validatedSourceId);
+  }
+
+  /**
    * Retrieves tags for a media item.
    */
   async getMediaTags(mediaSourceId: string, mediaId: string) {
@@ -939,6 +955,17 @@ export class MediaServiceImpl {
     try {
       const metadata = await this.imageProcessor.extractMetadata(fullPath);
 
+      logger.info(
+        {
+          mediaId: media.id,
+          fullPath,
+          tagsCount: metadata.tags.length,
+          hasWorkflow: !!metadata.workflow,
+          hasPrompt: !!metadata.prompt,
+        },
+        "[MediaService] extractAndUpdateMetadata result"
+      );
+
       // Store generation info
       await this.mediaRepository.upsertGenerationInfo(
         media.id,
@@ -958,7 +985,11 @@ export class MediaServiceImpl {
       }
 
       return await this.mediaRepository.getGenerationInfo(media.id);
-    } catch (_e) {
+    } catch (e) {
+      logger.error(
+        { err: e, mediaId: media.id, fullPath },
+        "[MediaService] extractAndUpdateMetadata FAILED"
+      );
       return null;
     }
   }

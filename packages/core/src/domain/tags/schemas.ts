@@ -23,16 +23,22 @@ export const TagsSchema = z.object({
 
 export type Tags = z.infer<typeof TagsSchema>;
 
-export const workflowNodeSchema = z.object({
-  type: z.string(),
-  widgets_values: z.array(z.any()).optional(),
-  title: z.string().optional(),
-});
+export const workflowNodeSchema = z
+  .object({
+    type: z.string().optional(),
+    class_type: z.string().optional(),
+    widgets_values: z.array(z.any()).optional(),
+    inputs: z.record(z.string(), z.any()).optional(),
+    title: z.string().optional(),
+  })
+  .passthrough();
 export type WorkflowNode = z.infer<typeof workflowNodeSchema>;
 
-export const workflowSchema = z.object({
-  nodes: z.array(workflowNodeSchema),
-});
+export const workflowSchema = z
+  .object({
+    nodes: z.array(workflowNodeSchema).optional(),
+  })
+  .passthrough();
 export type Workflow = z.infer<typeof workflowSchema>;
 
 export const newTagSchema = tagDataSchema.extend({
