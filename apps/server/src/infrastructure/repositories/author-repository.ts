@@ -24,6 +24,16 @@ export const AuthorRepository: IAuthorRepository = {
     return result[0] || null;
   },
 
+  async findByName(name: string, tx?: Transaction): Promise<Author | null> {
+    const client = (tx as unknown as TransactionClient) || db;
+    const result = await client
+      .select()
+      .from(authors)
+      .where(eq(authors.name, name))
+      .limit(1);
+    return result[0] || null;
+  },
+
   async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
     const client = (tx as unknown as TransactionClient) || db;
     // Check duplication

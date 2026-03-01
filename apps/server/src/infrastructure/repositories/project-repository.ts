@@ -34,6 +34,15 @@ export const ProjectRepository: IProjectRepository = {
     return result[0] ? mapToDomain(result[0]) : null;
   },
 
+  async findByName(name: string, tx?: Transaction): Promise<Project | null> {
+    const client = (tx as unknown as TransactionClient) || db;
+    const result = await client
+      .select()
+      .from(projects)
+      .where(eq(projects.name, name));
+    return result[0] ? mapToDomain(result[0]) : null;
+  },
+
   async create(project: NewProject, tx?: Transaction): Promise<Project> {
     const client = (tx as unknown as TransactionClient) || db;
     const result = await client.insert(projects).values(project).returning();

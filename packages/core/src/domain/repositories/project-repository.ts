@@ -8,6 +8,7 @@ import type {
 export type IProjectRepository = {
   findAll(): Promise<Project[]>;
   findById(id: string, tx?: Transaction): Promise<Project | null>;
+  findByName(name: string, tx?: Transaction): Promise<Project | null>;
   create(project: NewProject, tx?: Transaction): Promise<Project>;
   update(
     id: string,

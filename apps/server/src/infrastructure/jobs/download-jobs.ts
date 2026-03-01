@@ -350,7 +350,10 @@ async function handleDirectImageDownload(
     throw new Error("Missing targetUrl for direct download");
   }
 
-  logger.info({ url: item.targetUrl }, "[DownloadJob] Using direct image download method");
+  logger.info(
+    { url: item.targetUrl },
+    "[DownloadJob] Using direct image download method"
+  );
 
   // Generate filename from URL
   const urlPath = new URL(item.targetUrl).pathname;

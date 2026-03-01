@@ -268,10 +268,13 @@ export class MediaProcessingServiceImpl {
   ): Promise<void> {
     for (const author of authors) {
       try {
-        const createdAuthor = await this.authorRepo.create({
-          name: author.name,
-          accountId: author.accountId ?? null,
-        });
+        let createdAuthor = await this.authorRepo.findByName(author.name);
+        if (!createdAuthor) {
+          createdAuthor = await this.authorRepo.create({
+            name: author.name,
+            accountId: author.accountId ?? null,
+          });
+        }
         await this.authorRepo.addMedia(mediaId, createdAuthor.id);
       } catch (e) {
         logger.warn({ err: e, author }, "Failed to register author");
@@ -285,10 +288,13 @@ export class MediaProcessingServiceImpl {
   ): Promise<void> {
     for (const charData of characters) {
       try {
-        const created = await this.characterRepo.create({
-          name: charData.name,
-          description: charData.description ?? "",
-        });
+        let created = await this.characterRepo.findByName(charData.name);
+        if (!created) {
+          created = await this.characterRepo.create({
+            name: charData.name,
+            description: charData.description ?? "",
+          });
+        }
         await this.characterRepo.addToMedia(
           mediaId,
           created.id,
@@ -309,10 +315,13 @@ export class MediaProcessingServiceImpl {
   ): Promise<void> {
     for (const ipData of ipsData) {
       try {
-        const created = await this.ipRepo.create({
-          name: ipData.name,
-          description: ipData.description ?? "",
-        });
+        let created = await this.ipRepo.findByName(ipData.name);
+        if (!created) {
+          created = await this.ipRepo.create({
+            name: ipData.name,
+            description: ipData.description ?? "",
+          });
+        }
         await this.ipRepo.addMedia(mediaId, created.id);
       } catch (e) {
         logger.warn({ err: e, ip: ipData }, "Failed to register IP");
@@ -326,10 +335,13 @@ export class MediaProcessingServiceImpl {
   ): Promise<void> {
     for (const projData of projectsData) {
       try {
-        const created = await this.projectRepo.create({
-          name: projData.name,
-          description: projData.description ?? "",
-        });
+        let created = await this.projectRepo.findByName(projData.name);
+        if (!created) {
+          created = await this.projectRepo.create({
+            name: projData.name,
+            description: projData.description ?? "",
+          });
+        }
         await this.projectRepo.addMedia(mediaId, created.id);
       } catch (e) {
         logger.warn(

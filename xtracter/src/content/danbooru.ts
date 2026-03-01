@@ -2,6 +2,37 @@ import type { Author, TweetMetadata } from "@ext/schema";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 
+const TWITTER_REGEX =
+  /^https?:\/\/(?:(?:www\.)?(?:twitter\.com|x\.com|vxtwitter\.com|fxtwitter\.com))\/(?:@)?([a-zA-Z0-9_]+)/i;
+
+function extractSourceUrls(baseUrls: string[]): {
+  sourceUrls: string[];
+  twitterAccountId: string | null;
+} {
+  const sourceUrls = [...baseUrls];
+  let twitterAccountId: string | null = null;
+  const sourceLinks = document.querySelectorAll<HTMLAnchorElement>(
+    "#post-info-source a"
+  );
+  for (const link of sourceLinks) {
+    const href = link.href;
+    if (href && !sourceUrls.includes(href)) {
+      sourceUrls.push(href);
+
+      const twitterMatch = href.match(TWITTER_REGEX);
+      if (
+        twitterMatch?.[1] &&
+        !["intent", "search", "share", "home"].includes(
+          twitterMatch[1].toLowerCase()
+        )
+      ) {
+        twitterAccountId = `@${twitterMatch[1]}`;
+      }
+    }
+  }
+  return { sourceUrls, twitterAccountId };
+}
+
 export function processDanbooruMedia(
   createButtonContainer: (
     metadata: TweetMetadata,
@@ -51,7 +82,8 @@ function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
       : fileUrl;
   }
 
-  const sourceUrls = [targetUrl, window.location.href];
+  const baseUrls = [targetUrl, window.location.href];
+  const { sourceUrls, twitterAccountId } = extractSourceUrls(baseUrls);
 
   const authors: Author[] = [];
   const tags: { name: string; type: "positive"; source: "danbooru" }[] = [];
@@ -59,6 +91,14 @@ function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
   const ips: { name: string; source: "danbooru" }[] = [];
 
   extractTags(authors, ips, characters, tags);
+
+  if (twitterAccountId) {
+    for (const author of authors) {
+      if (!author.accountId) {
+        author.accountId = twitterAccountId;
+      }
+    }
+  }
 
   // Find post time
   const timeNode = document.querySelector("time");
