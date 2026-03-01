@@ -42,10 +42,19 @@ function processCommentChunk(
     try {
       // It might be a simple string or a JSON object string.
       const parsed = JSON.parse(chunk.text);
-      if (typeof parsed === "object" && parsed !== null && "nodes" in parsed) {
-        // This looks like a ComfyUI workflow embedded in a prompt
-        const { tags } = parseWorkflowAndExtractTags(chunk.text, options);
-        return { prompt: chunk.text, tags };
+      if (typeof parsed === "object" && parsed !== null) {
+        const hasNodes = "nodes" in parsed;
+        // Check if it's an API format workflow (dictionary of nodes with class_type)
+        const isApiFormat = Object.values(parsed).some(
+          // biome-ignore lint/suspicious/noExplicitAny: ComfyUI API nodes are dictionaries
+          (v: any) => typeof v === "object" && v !== null && "class_type" in v
+        );
+
+        if (hasNodes || isApiFormat) {
+          // This looks like a ComfyUI workflow embedded in a prompt
+          const { tags } = parseWorkflowAndExtractTags(chunk.text, options);
+          return { prompt: chunk.text, tags };
+        }
       }
       return { prompt: chunk.text, tags: [] };
     } catch {

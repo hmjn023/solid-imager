@@ -76,28 +76,50 @@ export function extractTagsFromWorkflow(
   const positiveTags: TagData[] = [];
   const negativeTags: TagData[] = [];
 
-  if (Array.isArray(workflow.nodes)) {
-    for (const node of workflow.nodes) {
-      if (
-        positiveNodeTypes.includes(node.type) &&
-        Array.isArray(node.widgets_values)
-      ) {
-        for (const widgetValue of node.widgets_values) {
-          const { positiveTags: newPosTags, negativeTags: newNegTags } =
-            processWidgetValueTags(widgetValue, node.title, options);
-          positiveTags.push(
-            ...newPosTags.map((tag) => ({
-              name: tag,
-              source: "extracted",
-            }))
-          );
-          negativeTags.push(
-            ...newNegTags.map((tag) => ({
-              name: tag,
-              source: "extracted",
-            }))
-          );
-        }
+  // biome-ignore lint/suspicious/noExplicitAny: ComfyUI workflow nodes can have various structures
+  let nodesToProcess: any[] = [];
+  if (workflow && Array.isArray(workflow.nodes)) {
+    nodesToProcess = workflow.nodes;
+  } else if (
+    workflow &&
+    typeof workflow === "object" &&
+    !Array.isArray(workflow)
+  ) {
+    // API format (Record<string, Node>)
+    nodesToProcess = Object.values(workflow);
+  }
+
+  for (const node of nodesToProcess) {
+    if (!node || typeof node !== "object") continue;
+
+    const nodeType = node.type || node.class_type;
+    // biome-ignore lint/suspicious/noExplicitAny: accessing optional _meta
+    const nodeTitle = node.title || (node as any)._meta?.title;
+
+    if (nodeType && positiveNodeTypes.includes(nodeType)) {
+      const valuesToProcess: unknown[] = [];
+      if (Array.isArray(node.widgets_values)) {
+        valuesToProcess.push(...node.widgets_values);
+      }
+      if (node.inputs && typeof node.inputs === "object") {
+        valuesToProcess.push(...Object.values(node.inputs));
+      }
+
+      for (const widgetValue of valuesToProcess) {
+        const { positiveTags: newPosTags, negativeTags: newNegTags } =
+          processWidgetValueTags(widgetValue, nodeTitle, options);
+        positiveTags.push(
+          ...newPosTags.map((tag) => ({
+            name: tag,
+            source: "extracted",
+          }))
+        );
+        negativeTags.push(
+          ...newNegTags.map((tag) => ({
+            name: tag,
+            source: "extracted",
+          }))
+        );
       }
     }
   }
