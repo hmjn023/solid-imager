@@ -14,18 +14,22 @@ const mockTagRepo = {
 const mockAuthorRepo = {
   create: vi.fn(),
   addMedia: vi.fn(),
+  findByName: vi.fn(),
 };
 const mockCharacterRepo = {
   create: vi.fn(),
   addToMedia: vi.fn(),
+  findByName: vi.fn(),
 };
 const mockIpRepo = {
   create: vi.fn(),
   addMedia: vi.fn(),
+  findByName: vi.fn(),
 };
 const mockProjectRepo = {
   create: vi.fn(),
   addMedia: vi.fn(),
+  findByName: vi.fn(),
 };
 const mockJobRepo = {
   create: vi.fn(),
@@ -87,12 +91,14 @@ describe("MediaProcessingService", () => {
 
     it("should register authors if provided", async () => {
       mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
+      mockAuthorRepo.findByName.mockResolvedValue(null);
       mockAuthorRepo.create.mockResolvedValue({ id: "author-id" });
 
       await service.addContextMetadataToExistingMedia(mediaId, {
         authors: [{ name: "Author Name", accountId: "acc-123" }],
       });
 
+      expect(mockAuthorRepo.findByName).toHaveBeenCalledWith("Author Name");
       expect(mockAuthorRepo.create).toHaveBeenCalledWith({
         name: "Author Name",
         accountId: "acc-123",

@@ -58,11 +58,12 @@ function processCommentChunk(
 
         if (hasNodes || isApiFormat) {
           // This looks like a ComfyUI workflow embedded in a prompt
-          const { parsed: workflow, tags } = parseWorkflowAndExtractTags(
+          const { tags } = parseWorkflowAndExtractTags(
             chunk.text,
             options
           );
-          return { prompt: chunk.text, workflow, tags };
+
+          return { prompt: chunk.text, workflow: null, tags };
         }
       }
       return { prompt: chunk.text, tags: [] };
