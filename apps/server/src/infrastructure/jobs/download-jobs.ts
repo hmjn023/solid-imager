@@ -307,6 +307,37 @@ async function handleYtDlpDownload(
   }
 }
 
+function buildFetchHeaders(item: DownloadItem): Record<string, string> {
+  const isDanbooru = item.targetUrl?.includes("donmai.us");
+
+  if (isDanbooru) {
+    // Mimic simple curl/browser behavior for Danbooru CDN
+    return {
+      "User-Agent": "curl/8.7.1", // Try a very simple UA if browser UA fails
+      Accept: "*/*",
+    };
+  }
+
+  const headers: Record<string, string> = {
+    "User-Agent":
+      item.userAgent ||
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    Accept: "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8",
+  };
+
+  // Use the post url as referer to avoid hotlink prevention
+  if (item.sourceUrls && item.sourceUrls.length > 0) {
+    const refUrl = item.sourceUrls.at(-1);
+    if (refUrl) {
+      headers.Referer = refUrl;
+    }
+  } else if (item.targetUrl) {
+    headers.Referer = `${new URL(item.targetUrl).origin}/`;
+  }
+
+  return headers;
+}
+
 /**
  * Handles direct image download (non-twitter)
  */
@@ -319,7 +350,7 @@ async function handleDirectImageDownload(
     throw new Error("Missing targetUrl for direct download");
   }
 
-  logger.info({}, "[DownloadJob] Using direct image download method");
+  logger.info({ url: item.targetUrl }, "[DownloadJob] Using direct image download method");
 
   // Generate filename from URL
   const urlPath = new URL(item.targetUrl).pathname;
@@ -334,13 +365,20 @@ async function handleDirectImageDownload(
 
   try {
     // Download the image
+    const headers = buildFetchHeaders(item);
+
     const response = await fetch(item.targetUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-      },
+      headers,
     });
     if (!response.ok) {
+      logger.error(
+        {
+          status: response.status,
+          statusText: response.statusText,
+          url: item.targetUrl,
+        },
+        "[DownloadJob] Fetch failed"
+      );
       throw new Error(
         `Failed to download image: ${response.status} ${response.statusText}`
       );
