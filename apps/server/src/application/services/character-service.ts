@@ -3,18 +3,27 @@ import type {
   NewCharacter,
   UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type {
+  Transaction,
+  TransactionManager,
+} from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import { services } from "~/application/registry";
 
 export class CharacterServiceImpl {
-  private readonly characterRepo: CharacterRepository;
+  readonly characterRepo: CharacterRepository;
   private readonly ipRepo: IIpRepository;
+  private readonly transactionManager: TransactionManager;
 
-  constructor(characterRepo: CharacterRepository, ipRepo: IIpRepository) {
+  constructor(
+    characterRepo: CharacterRepository,
+    ipRepo: IIpRepository,
+    transactionManager: TransactionManager
+  ) {
     this.characterRepo = characterRepo;
     this.ipRepo = ipRepo;
+    this.transactionManager = transactionManager;
   }
 
   async getAllCharacters(): Promise<Character[]> {
@@ -51,15 +60,24 @@ export class CharacterServiceImpl {
     mediaId: string,
     characterId: string
   ): Promise<void> {
-    const character = await this.characterRepo.findById(characterId);
-    if (!character) {
-      throw new Error(`Character not found: ${characterId}`);
-    }
+    await this.transactionManager.transaction(async (tx: Transaction) => {
+      // NOTE: findById in DrizzleCharacterRepository already includes IPs relative to the character
+      const character = await this.characterRepo.findById(characterId, tx);
+      if (!character) {
+        throw new Error(`Character not found: ${characterId}`);
+      }
 
-    await this.characterRepo.addToMedia(mediaId, characterId);
+      await this.characterRepo.addToMedia(
+        mediaId,
+        character.id,
+        undefined as number | undefined,
+        undefined as string | undefined, // Fixed type mismatch
+        tx
+      );
 
-    // Auto-assign linked IPs
-    await this.linkCharacterIps(mediaId, character);
+      // Auto-assign linked IPs
+      await this.linkCharacterIps(mediaId, character, tx);
+    });
   }
 
   /**

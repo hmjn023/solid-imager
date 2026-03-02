@@ -95,9 +95,13 @@ describe("MediaProcessingService", () => {
         description: "New Description",
       });
 
-      expect(mockMediaRepo.update).toHaveBeenCalledWith(mediaId, {
-        description: "New Description",
-      });
+      expect(mockMediaRepo.update).toHaveBeenCalledWith(
+        mediaId,
+        {
+          description: "New Description",
+        },
+        undefined
+      );
     });
 
     it("should register authors if provided", async () => {
@@ -109,14 +113,21 @@ describe("MediaProcessingService", () => {
         authors: [{ name: "Author Name", accountId: "acc-123" }],
       });
 
-      expect(mockAuthorRepo.findByName).toHaveBeenCalledWith("Author Name");
-      expect(mockAuthorRepo.create).toHaveBeenCalledWith({
-        name: "Author Name",
-        accountId: "acc-123",
-      });
+      expect(mockAuthorRepo.findByName).toHaveBeenCalledWith(
+        "Author Name",
+        undefined
+      );
+      expect(mockAuthorRepo.create).toHaveBeenCalledWith(
+        {
+          name: "Author Name",
+          accountId: "acc-123",
+        },
+        undefined
+      );
       expect(mockAuthorRepo.addMedia).toHaveBeenCalledWith(
         mediaId,
-        "author-id"
+        "author-id",
+        undefined
       );
     });
 
@@ -137,12 +148,18 @@ describe("MediaProcessingService", () => {
       });
 
       expect(mockCharacterService.findByName).toHaveBeenCalledWith("Char Name");
-      expect(mockCharacterService.addCharacterToMedia).toHaveBeenCalledWith(
+      expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
         mediaId,
-        charId
+        charId,
+        testConfidence,
+        "manual",
+        undefined
       );
-      // characterService.linkCharacterIps is called inside addCharacterToMedia (implementation),
-      // but since it's mocked, we only verify addCharacterToMedia was called.
+      expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
+        mediaId,
+        expect.objectContaining({ id: charId }),
+        undefined
+      );
     });
 
     it("should link new character to new IP if both are in the same context", async () => {
@@ -173,10 +190,13 @@ describe("MediaProcessingService", () => {
       });
 
       // Verify IP was created
-      expect(mockIpRepo.create).toHaveBeenCalledWith({
-        name: ipName,
-        description: "",
-      });
+      expect(mockIpRepo.create).toHaveBeenCalledWith(
+        {
+          name: ipName,
+          description: "",
+        },
+        undefined
+      );
 
       // Verify Character was created with IP ID
       expect(mockCharacterService.createCharacter).toHaveBeenCalledWith({
@@ -186,10 +206,24 @@ describe("MediaProcessingService", () => {
       });
 
       // Verify both were linked to media
-      expect(mockIpRepo.addMedia).toHaveBeenCalledWith(mediaId, ipId);
-      expect(mockCharacterService.addCharacterToMedia).toHaveBeenCalledWith(
+      expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
         mediaId,
-        charId
+        ipId,
+        undefined,
+        "manual",
+        undefined
+      );
+      expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
+        mediaId,
+        charId,
+        1,
+        "manual",
+        undefined
+      );
+      expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
+        mediaId,
+        expect.objectContaining({ id: charId }),
+        undefined
       );
     });
 

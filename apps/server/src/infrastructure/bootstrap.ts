@@ -5,6 +5,7 @@ import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
@@ -74,7 +75,8 @@ export function bootstrap() {
   services.registerCharacterService(
     new CharacterServiceImpl(
       services.getCharacterRepository(),
-      services.getIpRepository()
+      services.getIpRepository(),
+      DrizzleTransactionManager
     )
   );
 

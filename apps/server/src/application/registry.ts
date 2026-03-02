@@ -221,6 +221,10 @@ export class ServiceRegistry {
     return this.configService;
   }
 
+  getLogger() {
+    return console; // Or return a real logger if available in other services
+  }
+
   // Helper for testing to reset the registry
   async reset(): Promise<void> {
     this.mediaRepository = undefined;

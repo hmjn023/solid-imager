@@ -19,6 +19,7 @@ import {
   medias,
   projects,
 } from "~/infrastructure/db/schema";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
@@ -117,7 +118,8 @@ describe("MediaService - Copy Media Integration", () => {
     services.registerCharacterService(
       new CharacterServiceImpl(
         services.getCharacterRepository(),
-        services.getIpRepository()
+        services.getIpRepository(),
+        DrizzleTransactionManager
       )
     );
 

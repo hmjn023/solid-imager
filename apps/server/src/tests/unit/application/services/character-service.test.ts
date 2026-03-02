@@ -26,9 +26,13 @@ const mockIpRepo = {
 
 describe("CharacterService", () => {
   beforeEach(() => {
+    const mockTransactionManager = {
+      transaction: vi.fn(async (cb) => await cb("mock-tx")),
+    };
     const service = new CharacterServiceImpl(
       mockCharacterRepo as any,
-      mockIpRepo as any
+      mockIpRepo as any,
+      mockTransactionManager as any
     );
     services.registerCharacterService(service);
   });
@@ -51,17 +55,23 @@ describe("CharacterService", () => {
 
       await CharacterService.addCharacterToMedia(mediaId, charId);
 
-      expect(mockCharacterRepo.findById).toHaveBeenCalledWith(charId);
+      expect(mockCharacterRepo.findById).toHaveBeenCalledWith(
+        charId,
+        "mock-tx"
+      );
       expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
         mediaId,
-        charId
+        charId,
+        undefined,
+        undefined,
+        "mock-tx"
       );
       expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
         mediaId,
         ipId,
         undefined,
         "character_link",
-        undefined
+        "mock-tx"
       );
     });
 

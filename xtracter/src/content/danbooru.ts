@@ -3,7 +3,7 @@ import type { Author, TweetMetadata } from "@ext/schema";
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 
 const TWITTER_REGEX =
-  /^https?:\/\/(?:(?:www\.)?(?:twitter\.com|x\.com|vxtwitter\.com|fxtwitter\.com))\/(?:@)?([a-zA-Z0-9_]+)/i;
+  /^https?:\/\/(?:(?:[a-z0-9-]+\.)?(?:twitter\.com|x\.com|vxtwitter\.com|fxtwitter\.com))\/(?:@)?([a-zA-Z0-9_]+)/i;
 
 function extractSourceUrls(baseUrls: string[]): {
   sourceUrls: string[];
@@ -22,9 +22,16 @@ function extractSourceUrls(baseUrls: string[]): {
       const twitterMatch = href.match(TWITTER_REGEX);
       if (
         twitterMatch?.[1] &&
-        !["intent", "search", "share", "home"].includes(
-          twitterMatch[1].toLowerCase()
-        )
+        ![
+          "intent",
+          "search",
+          "share",
+          "home",
+          "i",
+          "messages",
+          "notifications",
+          "settings",
+        ].includes(twitterMatch[1].toLowerCase())
       ) {
         twitterAccountId = `@${twitterMatch[1]}`;
       }
@@ -65,21 +72,30 @@ export function processDanbooruMedia(
   imageContainer.appendChild(btnContainer);
 }
 
-function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
+function extractTargetUrl(container: HTMLElement): string | null {
   const imgElement = container.querySelector("#image") as HTMLImageElement;
   let targetUrl = "";
 
   if (imgElement?.src) {
     targetUrl = imgElement.src;
-  } else {
-    // Fallback if image tag is not found
+  }
+  if (!targetUrl) {
+    // Fallback if image tag is not found or has no src
     const fileUrl = container.getAttribute("data-file-url");
-    if (!fileUrl) {
-      return null;
+    if (fileUrl) {
+      targetUrl = fileUrl.startsWith("/")
+        ? `${window.location.origin}${fileUrl}`
+        : fileUrl;
     }
-    targetUrl = fileUrl.startsWith("/")
-      ? `${window.location.origin}${fileUrl}`
-      : fileUrl;
+  }
+
+  return targetUrl || null;
+}
+
+function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
+  const targetUrl = extractTargetUrl(container);
+  if (!targetUrl) {
+    return null;
   }
 
   const baseUrls = [targetUrl, window.location.href];

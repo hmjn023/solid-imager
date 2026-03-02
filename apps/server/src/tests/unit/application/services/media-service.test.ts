@@ -28,6 +28,7 @@ vi.mock("~/application/registry", () => {
     registerImageProcessor: vi.fn(),
     registerAiClient: vi.fn(),
     registerJobWorker: vi.fn(),
+    getLogger: vi.fn().mockReturnValue(console),
     registerMediaProcessingService: vi.fn(),
     registerConfigService: vi.fn(),
     getMediaRepository: vi.fn(),
@@ -306,10 +307,14 @@ describe("MediaService Unit Tests", () => {
 
       expect(
         localMockMediaProcessingService.addContextMetadataToExistingMedia
-      ).toHaveBeenCalledWith(mediaId, {
-        characters: updates.characters,
-        ips: updates.ips,
-      });
+      ).toHaveBeenCalledWith(
+        mediaId,
+        {
+          characters: updates.characters,
+          ips: updates.ips,
+        },
+        "mock-tx"
+      );
     });
   });
 });

@@ -7,6 +7,7 @@ import path from "node:path";
 // Registry for backward compatibility proxy
 
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
   Media,
   MediaMetadataContext,
@@ -228,14 +229,15 @@ export class MediaProcessingServiceImpl {
 
   private async registerContextMetadata(
     mediaId: string,
-    context: Partial<MediaMetadataContext>
+    context: Partial<MediaMetadataContext>,
+    tx?: Transaction
   ): Promise<void> {
     if (context.sourceUrls?.length) {
-      await this.mediaRepo.addUrls(mediaId, context.sourceUrls);
+      await this.mediaRepo.addUrls(mediaId, context.sourceUrls, tx);
     }
 
     if (context.authors?.length) {
-      await this.registerAuthors(mediaId, context.authors);
+      await this.registerAuthors(mediaId, context.authors, tx);
     }
 
     if (context.tags?.length) {
@@ -246,41 +248,47 @@ export class MediaProcessingServiceImpl {
           type: (t.type ?? "positive") as "positive" | "negative",
           confidence: t.confidence,
         })),
-        "user_provided"
+        "user_provided",
+        tx
       );
     }
 
     if (context.ips?.length) {
-      await this.registerIps(mediaId, context.ips);
+      await this.registerIps(mediaId, context.ips, tx);
     }
 
     if (context.characters?.length) {
       await this.registerCharacters(
         mediaId,
         context.characters,
-        context.ips?.map((ip) => ip.name)
+        context.ips?.map((ip) => ip.name),
+        tx
       );
     }
 
     if (context.projects?.length) {
-      await this.registerProjects(mediaId, context.projects);
+      await this.registerProjects(mediaId, context.projects, tx);
     }
   }
 
   private async registerAuthors(
     mediaId: string,
-    authors: NonNullable<MediaMetadataContext["authors"]>
+    authors: NonNullable<MediaMetadataContext["authors"]>,
+    tx?: Transaction
   ): Promise<void> {
     for (const author of authors) {
       try {
-        let createdAuthor = await this.authorRepo.findByName(author.name);
+        let createdAuthor = await this.authorRepo.findByName(author.name, tx);
         if (!createdAuthor) {
-          createdAuthor = await this.authorRepo.create({
-            name: author.name,
-            accountId: author.accountId ?? null,
-          });
+          createdAuthor = await this.authorRepo.create(
+            {
+              name: author.name,
+              accountId: author.accountId ?? null,
+            },
+            tx
+          );
         }
-        await this.authorRepo.addMedia(mediaId, createdAuthor.id);
+        await this.authorRepo.addMedia(mediaId, createdAuthor.id, tx);
       } catch (e) {
         logger.warn({ err: e, author }, "Failed to register author");
       }
@@ -290,11 +298,17 @@ export class MediaProcessingServiceImpl {
   private async registerCharacters(
     mediaId: string,
     characters: NonNullable<MediaMetadataContext["characters"]>,
-    currentIpNames?: string[]
+    currentIpNames?: string[],
+    tx?: Transaction
   ): Promise<void> {
     for (const charData of characters) {
       try {
-        await this._registerSingleCharacter(mediaId, charData, currentIpNames);
+        await this._registerSingleCharacter(
+          mediaId,
+          charData,
+          currentIpNames,
+          tx
+        );
       } catch (e) {
         logger.warn(
           { err: e, character: charData },
@@ -307,13 +321,14 @@ export class MediaProcessingServiceImpl {
   private async _registerSingleCharacter(
     mediaId: string,
     charData: NonNullable<MediaMetadataContext["characters"]>[number],
-    currentIpNames?: string[]
+    currentIpNames?: string[],
+    tx?: Transaction
   ): Promise<void> {
     let character: Character | null = await this.characterService.findByName(
       charData.name
     );
 
-    const ipIdsToLink = await this._resolveIpIds(currentIpNames);
+    const ipIdsToLink = await this._resolveIpIds(currentIpNames, tx);
 
     if (!character) {
       character = await this.characterService.createCharacter({
@@ -329,22 +344,27 @@ export class MediaProcessingServiceImpl {
       return;
     }
 
-    // Re-link character to media if necessary (addToMedia is in repo, but maybe we should add to service?)
-    // For now, let's keep characterRepo access if it's really needed, or add to service.
-    // Actually CharacterService already has addCharacterToMedia but it also links IPs.
-    // Let's add a direct repo call if we want to avoid double linking, or just use the service.
-
+    // Re-link character to media if necessary
     // We can use characterService.addCharacterToMedia(mediaId, character.id) but it will call linkCharacterIps again.
     // That's actually fine/safe.
-    await this.characterService.addCharacterToMedia(mediaId, character.id);
+    // NOTE: CharacterService.addCharacterToMedia now uses internal transactionManager, so we might want to call repo directly if we already have a tx?
+    // But for simplicity and consistent auto-link logic, service call is safer.
+    // If tx is provided, we should probably prefer repo call or update service to accept tx.
+    const charRepo = this.characterService.characterRepo;
+    const confidence = charData.confidence ?? 1;
+    await charRepo.addToMedia(mediaId, character.id, confidence, "manual", tx);
+    await this.characterService.linkCharacterIps(mediaId, character, tx);
   }
 
-  private async _resolveIpIds(currentIpNames?: string[]): Promise<string[]> {
+  private async _resolveIpIds(
+    currentIpNames?: string[],
+    tx?: Transaction
+  ): Promise<string[]> {
     if (!currentIpNames?.length) {
       return [];
     }
 
-    const foundIps = await this.ipRepo.findByNames(currentIpNames);
+    const foundIps = await this.ipRepo.findByNames(currentIpNames, tx);
     return foundIps.map((ip) => ip.id);
   }
 
@@ -365,18 +385,40 @@ export class MediaProcessingServiceImpl {
 
   private async registerIps(
     mediaId: string,
-    ipsData: NonNullable<MediaMetadataContext["ips"]>
+    ipsData: NonNullable<MediaMetadataContext["ips"]>,
+    tx?: Transaction
   ): Promise<void> {
-    for (const ipData of ipsData) {
+    // Normalize names and remove duplicates to avoid redundant creation attempts
+    const normalizedIpsMap = new Map<
+      string,
+      NonNullable<MediaMetadataContext["ips"]>[number]
+    >();
+    for (const ip of ipsData) {
+      const normalizedName = ip.name.trim();
+      if (!normalizedIpsMap.has(normalizedName)) {
+        normalizedIpsMap.set(normalizedName, ip);
+      }
+    }
+
+    for (const [name, ipData] of normalizedIpsMap) {
       try {
-        let created = await this.ipRepo.findByName(ipData.name);
+        let created = await this.ipRepo.findByName(name, tx);
         if (!created) {
-          created = await this.ipRepo.create({
-            name: ipData.name,
-            description: ipData.description ?? "",
-          });
+          created = await this.ipRepo.create(
+            {
+              name,
+              description: ipData.description ?? "",
+            },
+            tx
+          );
         }
-        await this.ipRepo.addMedia(mediaId, created.id);
+        await this.ipRepo.addMedia(
+          mediaId,
+          created.id,
+          ipData.confidence,
+          "manual",
+          tx
+        );
       } catch (e) {
         logger.warn({ err: e, ip: ipData }, "Failed to register IP");
       }
@@ -385,18 +427,22 @@ export class MediaProcessingServiceImpl {
 
   private async registerProjects(
     mediaId: string,
-    projectsData: NonNullable<MediaMetadataContext["projects"]>
+    projectsData: NonNullable<MediaMetadataContext["projects"]>,
+    tx?: Transaction
   ): Promise<void> {
     for (const projData of projectsData) {
       try {
-        let created = await this.projectRepo.findByName(projData.name);
+        let created = await this.projectRepo.findByName(projData.name, tx);
         if (!created) {
-          created = await this.projectRepo.create({
-            name: projData.name,
-            description: projData.description ?? "",
-          });
+          created = await this.projectRepo.create(
+            {
+              name: projData.name,
+              description: projData.description ?? "",
+            },
+            tx
+          );
         }
-        await this.projectRepo.addMedia(mediaId, created.id);
+        await this.projectRepo.addMedia(mediaId, created.id, tx);
       } catch (e) {
         logger.warn(
           { err: e, project: projData },
@@ -412,22 +458,27 @@ export class MediaProcessingServiceImpl {
    */
   async addContextMetadataToExistingMedia(
     mediaId: string,
-    context: Partial<MediaMetadataContext>
+    context: Partial<MediaMetadataContext>,
+    tx?: Transaction
   ): Promise<void> {
-    const media = await this.mediaRepo.findById(mediaId);
+    const media = await this.mediaRepo.findById(mediaId, tx);
     if (!media) {
       throw new Error(`Media not found: ${mediaId}`);
     }
 
     // Update description if provided
     if (context.description) {
-      await this.mediaRepo.update(mediaId, {
-        description: context.description,
-      });
+      await this.mediaRepo.update(
+        mediaId,
+        {
+          description: context.description,
+        },
+        tx
+      );
     }
 
     // Register related data using the shared private method
-    await this.registerContextMetadata(mediaId, context);
+    await this.registerContextMetadata(mediaId, context, tx);
   }
 }
 
