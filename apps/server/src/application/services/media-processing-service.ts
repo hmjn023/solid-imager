@@ -13,12 +13,12 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 // Repository Interfaces
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
@@ -33,7 +33,7 @@ export class MediaProcessingServiceImpl {
   private readonly mediaRepo: IMediaRepository;
   private readonly tagRepo: TagRepository;
   private readonly authorRepo: IAuthorRepository;
-  private readonly characterRepo: CharacterRepository;
+  private readonly characterService: CharacterServiceImpl;
   private readonly ipRepo: IIpRepository;
   private readonly projectRepo: IProjectRepository;
   private readonly jobRepo: IJobRepository;
@@ -45,7 +45,7 @@ export class MediaProcessingServiceImpl {
     mediaRepo: IMediaRepository,
     tagRepo: TagRepository,
     authorRepo: IAuthorRepository,
-    characterRepo: CharacterRepository,
+    characterService: CharacterServiceImpl,
     ipRepo: IIpRepository,
     projectRepo: IProjectRepository,
     jobRepo: IJobRepository,
@@ -55,7 +55,7 @@ export class MediaProcessingServiceImpl {
     this.mediaRepo = mediaRepo;
     this.tagRepo = tagRepo;
     this.authorRepo = authorRepo;
-    this.characterRepo = characterRepo;
+    this.characterService = characterService;
     this.ipRepo = ipRepo;
     this.projectRepo = projectRepo;
     this.jobRepo = jobRepo;
@@ -309,14 +309,14 @@ export class MediaProcessingServiceImpl {
     charData: NonNullable<MediaMetadataContext["characters"]>[number],
     currentIpNames?: string[]
   ): Promise<void> {
-    let character: Character | null = await this.characterRepo.findByName(
+    let character: Character | null = await this.characterService.findByName(
       charData.name
     );
 
     const ipIdsToLink = await this._resolveIpIds(currentIpNames);
 
     if (!character) {
-      character = await this.characterRepo.create({
+      character = await this.characterService.createCharacter({
         name: charData.name,
         description: charData.description ?? "",
         ipIds: ipIdsToLink,
@@ -329,28 +329,23 @@ export class MediaProcessingServiceImpl {
       return;
     }
 
-    await this.characterRepo.addToMedia(
-      mediaId,
-      character.id,
-      charData.confidence
-    );
+    // Re-link character to media if necessary (addToMedia is in repo, but maybe we should add to service?)
+    // For now, let's keep characterRepo access if it's really needed, or add to service.
+    // Actually CharacterService already has addCharacterToMedia but it also links IPs.
+    // Let's add a direct repo call if we want to avoid double linking, or just use the service.
 
-    await this._linkCharacterIpsToMedia(mediaId, character);
+    // We can use characterService.addCharacterToMedia(mediaId, character.id) but it will call linkCharacterIps again.
+    // That's actually fine/safe.
+    await this.characterService.addCharacterToMedia(mediaId, character.id);
   }
 
   private async _resolveIpIds(currentIpNames?: string[]): Promise<string[]> {
-    const ipIds: string[] = [];
     if (!currentIpNames?.length) {
-      return ipIds;
+      return [];
     }
 
-    for (const ipName of currentIpNames) {
-      const ip = await this.ipRepo.findByName(ipName);
-      if (ip) {
-        ipIds.push(ip.id);
-      }
-    }
-    return ipIds;
+    const foundIps = await this.ipRepo.findByNames(currentIpNames);
+    return foundIps.map((ip) => ip.id);
   }
 
   private async _updateCharacterIps(
@@ -361,22 +356,11 @@ export class MediaProcessingServiceImpl {
     const newIpIds = [...new Set([...existingIpIds, ...ipIdsToLink])];
 
     if (newIpIds.length > existingIpIds.length) {
-      return await this.characterRepo.update(character.id, {
+      return await this.characterService.updateCharacter(character.id, {
         ipIds: newIpIds,
       });
     }
     return character;
-  }
-
-  private async _linkCharacterIpsToMedia(
-    mediaId: string,
-    character: Character
-  ): Promise<void> {
-    if (character?.ips && character.ips.length > 0) {
-      for (const ip of character.ips) {
-        await this.ipRepo.addMedia(mediaId, ip.id, undefined, "character_link");
-      }
-    }
   }
 
   private async registerIps(

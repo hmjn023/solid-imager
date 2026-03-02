@@ -17,17 +17,19 @@ const mockCharacterRepo = {
   removeFromMedia: vi.fn(),
 };
 
-vi.mock("~/infrastructure/repositories/ip-repository", () => ({
-  IpRepository: {
-    addMedia: vi.fn(),
-  },
-}));
-
-import { IpRepository as mockIpRepo } from "~/infrastructure/repositories/ip-repository";
+const mockIpRepo = {
+  addMedia: vi.fn(),
+  findByNames: vi.fn(),
+  findByName: vi.fn(),
+  create: vi.fn(),
+};
 
 describe("CharacterService", () => {
   beforeEach(() => {
-    const service = new CharacterServiceImpl(mockCharacterRepo as any);
+    const service = new CharacterServiceImpl(
+      mockCharacterRepo as any,
+      mockIpRepo as any
+    );
     services.registerCharacterService(service);
   });
 
@@ -58,7 +60,8 @@ describe("CharacterService", () => {
         mediaId,
         ipId,
         undefined,
-        "character_link"
+        "character_link",
+        undefined
       );
     });
 

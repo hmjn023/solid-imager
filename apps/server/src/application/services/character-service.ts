@@ -3,14 +3,18 @@ import type {
   NewCharacter,
   UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import { services } from "~/application/registry";
 
 export class CharacterServiceImpl {
   private readonly characterRepo: CharacterRepository;
+  private readonly ipRepo: IIpRepository;
 
-  constructor(characterRepo: CharacterRepository) {
+  constructor(characterRepo: CharacterRepository, ipRepo: IIpRepository) {
     this.characterRepo = characterRepo;
+    this.ipRepo = ipRepo;
   }
 
   async getAllCharacters(): Promise<Character[]> {
@@ -19,6 +23,10 @@ export class CharacterServiceImpl {
 
   async createCharacter(data: NewCharacter): Promise<Character> {
     return await this.characterRepo.create(data);
+  }
+
+  async findByName(name: string): Promise<Character | null> {
+    return await this.characterRepo.findByName(name);
   }
 
   async getCharacterDetails(id: string): Promise<Character | undefined> {
@@ -51,12 +59,26 @@ export class CharacterServiceImpl {
     await this.characterRepo.addToMedia(mediaId, characterId);
 
     // Auto-assign linked IPs
+    await this.linkCharacterIps(mediaId, character);
+  }
+
+  /**
+   * Links all IPs associated with a character to a media item.
+   */
+  async linkCharacterIps(
+    mediaId: string,
+    character: Character,
+    tx?: Transaction
+  ): Promise<void> {
     if (character.ips && character.ips.length > 0) {
-      const { IpRepository: ipRepo } = await import(
-        "~/infrastructure/repositories/ip-repository"
-      );
       for (const ip of character.ips) {
-        await ipRepo.addMedia(mediaId, ip.id, undefined, "character_link");
+        await this.ipRepo.addMedia(
+          mediaId,
+          ip.id,
+          undefined,
+          "character_link",
+          tx
+        );
       }
     }
   }
@@ -75,6 +97,8 @@ export const CharacterService = {
     services.getCharacterService().getAllCharacters(),
   createCharacter: async (data: NewCharacter) =>
     services.getCharacterService().createCharacter(data),
+  findByName: async (name: string) =>
+    services.getCharacterService().findByName(name),
   getCharacterDetails: async (id: string) =>
     services.getCharacterService().getCharacterDetails(id),
   updateCharacter: async (id: string, data: UpdateCharacter) =>

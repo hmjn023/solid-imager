@@ -71,6 +71,13 @@ export function bootstrap() {
 
   services.registerJobWorker(jobWorker);
 
+  services.registerCharacterService(
+    new CharacterServiceImpl(
+      services.getCharacterRepository(),
+      services.getIpRepository()
+    )
+  );
+
   // Register MediaProcessingService (Implementation)
   services.registerMediaProcessingService(
     new MediaProcessingServiceImpl(
@@ -78,16 +85,12 @@ export function bootstrap() {
       services.getMediaRepository(),
       services.getTagRepository(),
       services.getAuthorRepository(),
-      services.getCharacterRepository(),
+      services.getCharacterService(),
       services.getIpRepository(),
       services.getProjectRepository(),
       jobRepo,
       configService
     )
-  );
-
-  services.registerCharacterService(
-    new CharacterServiceImpl(services.getCharacterRepository())
   );
 
   // Singleton management for JobWorker to prevent duplicates during HMR

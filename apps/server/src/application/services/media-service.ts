@@ -40,6 +40,7 @@ import {
   type DeferredSse,
   executeDeferredActions,
 } from "~/application/services/job-dispatch-service";
+import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { SseManager } from "~/infrastructure/jobs/sse-manager";
 // keeping SseManager if used elsewhere
@@ -102,6 +103,7 @@ export class MediaServiceImpl {
   private readonly projectRepository: IProjectRepository;
   private readonly characterRepository: CharacterRepository;
   private readonly ipRepository: IIpRepository;
+  private readonly mediaProcessingService: MediaProcessingServiceImpl;
 
   // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
@@ -113,7 +115,8 @@ export class MediaServiceImpl {
     authorRepository: IAuthorRepository,
     projectRepository: IProjectRepository,
     characterRepository: CharacterRepository,
-    ipRepository: IIpRepository
+    ipRepository: IIpRepository,
+    mediaProcessingService: MediaProcessingServiceImpl
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
@@ -124,6 +127,7 @@ export class MediaServiceImpl {
     this.projectRepository = projectRepository;
     this.characterRepository = characterRepository;
     this.ipRepository = ipRepository;
+    this.mediaProcessingService = mediaProcessingService;
   }
 
   /**
@@ -1020,13 +1024,13 @@ export class MediaServiceImpl {
     }
   ): Promise<void> {
     if (updates.characters?.length || updates.ips?.length) {
-      const { MediaProcessingService } = await import(
-        "~/application/services/media-processing-service"
+      await this.mediaProcessingService.addContextMetadataToExistingMedia(
+        mediaId,
+        {
+          characters: updates.characters,
+          ips: updates.ips,
+        }
       );
-      await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
-        characters: updates.characters,
-        ips: updates.ips,
-      });
     }
   }
 }
@@ -1049,7 +1053,8 @@ const getMediaService = () => {
       services.getAuthorRepository(),
       services.getProjectRepository(),
       services.getCharacterRepository(),
-      services.getIpRepository()
+      services.getIpRepository(),
+      services.getMediaProcessingService()
     );
   }
   return _mediaService;

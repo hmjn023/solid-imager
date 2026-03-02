@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { services } from "~/application/registry";
+import { CharacterServiceImpl } from "~/application/services/character-service";
+import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import {
@@ -109,9 +111,29 @@ describe("MediaService - Copy Media Integration", () => {
           level: "info",
         },
       }),
-      onChange: vi.fn(),
     };
     services.registerConfigService(mockConfigService as any);
+
+    services.registerCharacterService(
+      new CharacterServiceImpl(
+        services.getCharacterRepository(),
+        services.getIpRepository()
+      )
+    );
+
+    services.registerMediaProcessingService(
+      new MediaProcessingServiceImpl(
+        services.getSourceRepository(),
+        services.getMediaRepository(),
+        services.getTagRepository(),
+        services.getAuthorRepository(),
+        services.getCharacterService(),
+        services.getIpRepository(),
+        services.getProjectRepository(),
+        services.getJobRepository() as any,
+        mockConfigService as any
+      )
+    );
 
     // Clean DB
     await db.delete(mediaProjects);
