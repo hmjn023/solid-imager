@@ -4,6 +4,7 @@ import type { Author, NewAuthor } from "@/domain/media/schemas";
 export type IAuthorRepository = {
   findAll(): Promise<Author[]>;
   findById(id: string): Promise<Author | null>;
+  findByName(name: string, tx?: Transaction): Promise<Author | null>;
   // findByAccountId is implementation detail or specific query, usually usually findBy(criteria).
   // But keeping it simple for now if needed.
   // Actually, standard repo usually has specific finders.

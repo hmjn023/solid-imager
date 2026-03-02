@@ -41,13 +41,13 @@ function processCommentChunk(
   if (chunk.keyword === "prompt") {
     try {
       // It might be a simple string or a JSON object string.
-      const parsed = JSON.parse(chunk.text);
-      if (typeof parsed === "object" && parsed !== null) {
-        const hasNodes = "nodes" in parsed;
+      const parsedJson = JSON.parse(chunk.text);
+      if (typeof parsedJson === "object" && parsedJson !== null) {
+        const hasNodes = "nodes" in parsedJson;
         // Check if it's an API format workflow (dictionary of nodes with class_type)
         // We only check the first few values to avoid iterating over a massive JSON object
         const MAX_NODES_TO_CHECK = 5;
-        const valuesToCheck = Object.values(parsed).slice(
+        const valuesToCheck = Object.values(parsedJson).slice(
           0,
           MAX_NODES_TO_CHECK
         );
@@ -62,6 +62,7 @@ function processCommentChunk(
             chunk.text,
             options
           );
+
           return { prompt: chunk.text, workflow, tags };
         }
       }

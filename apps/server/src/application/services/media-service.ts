@@ -40,6 +40,7 @@ import {
   type DeferredSse,
   executeDeferredActions,
 } from "~/application/services/job-dispatch-service";
+import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { SseManager } from "~/infrastructure/jobs/sse-manager";
 // keeping SseManager if used elsewhere
@@ -102,7 +103,9 @@ export class MediaServiceImpl {
   private readonly projectRepository: IProjectRepository;
   private readonly characterRepository: CharacterRepository;
   private readonly ipRepository: IIpRepository;
+  private readonly mediaProcessingService: MediaProcessingServiceImpl;
 
+  private readonly logger = services.getLogger();
   // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
     mediaRepository: IMediaRepository,
@@ -113,7 +116,8 @@ export class MediaServiceImpl {
     authorRepository: IAuthorRepository,
     projectRepository: IProjectRepository,
     characterRepository: CharacterRepository,
-    ipRepository: IIpRepository
+    ipRepository: IIpRepository,
+    mediaProcessingService: MediaProcessingServiceImpl
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
@@ -124,6 +128,7 @@ export class MediaServiceImpl {
     this.projectRepository = projectRepository;
     this.characterRepository = characterRepository;
     this.ipRepository = ipRepository;
+    this.mediaProcessingService = mediaProcessingService;
   }
 
   /**
@@ -460,32 +465,22 @@ export class MediaServiceImpl {
         t
       );
 
-      if (parsedUpdates.sourceUrls?.length) {
-        const existingUrls = await this.mediaRepository.getUrls(
-          validatedMediaId,
-          t
-        );
-        const existingUrlSet = new Set(existingUrls.map((u) => u.url));
-        const newUrls = parsedUpdates.sourceUrls.filter(
-          (u) => !existingUrlSet.has(u)
-        );
-        if (newUrls.length > 0) {
-          await this.mediaRepository.addUrls(validatedMediaId, newUrls, t);
-        }
-      }
-
-      if (parsedUpdates.authors?.length) {
-        for (const authorData of parsedUpdates.authors) {
-          const author = await this.authorRepository.create(
-            {
-              name: authorData.name,
-              accountId: authorData.accountId || null,
-            },
-            t
-          );
-          await this.authorRepository.addMedia(validatedMediaId, author.id, t);
-        }
-      }
+      await this._updateMediaUrls(
+        validatedMediaId,
+        parsedUpdates.sourceUrls,
+        t
+      );
+      await this._updateMediaAuthorsHelper(
+        validatedMediaId,
+        parsedUpdates.authors,
+        t
+      );
+      await this._updateMediaRelationsHelper(
+        validatedMediaId,
+        parsedUpdates.characters,
+        parsedUpdates.ips,
+        t
+      );
 
       return updatedMedia;
     };
@@ -993,6 +988,84 @@ export class MediaServiceImpl {
       return null;
     }
   }
+
+  private async _updateMediaAuthors(
+    mediaId: string,
+    authors: { name: string; accountId?: string | null }[],
+    tx: Transaction
+  ): Promise<void> {
+    for (const authorData of authors) {
+      const author = await this.authorRepository.create(
+        {
+          name: authorData.name,
+          accountId: authorData.accountId || null,
+        },
+        tx
+      );
+      await this.authorRepository.addMedia(mediaId, author.id, tx);
+    }
+  }
+
+  private async _updateMediaUrls(
+    mediaId: string,
+    sourceUrls: string[] | undefined,
+    tx: Transaction
+  ) {
+    if (!sourceUrls?.length) {
+      return;
+    }
+    const existingUrls = await this.mediaRepository.getUrls(mediaId, tx);
+    const existingUrlSet = new Set(existingUrls.map((u) => u.url));
+    const newUrls = sourceUrls.filter((u) => !existingUrlSet.has(u));
+    if (newUrls.length > 0) {
+      await this.mediaRepository.addUrls(mediaId, newUrls, tx);
+    }
+  }
+
+  private async _updateMediaAuthorsHelper(
+    mediaId: string,
+    authors: { name: string; accountId?: string | null }[] | undefined,
+    tx: Transaction
+  ) {
+    if (authors?.length) {
+      await this._updateMediaAuthors(
+        mediaId,
+        authors.map((a) => ({
+          name: a.name,
+          accountId: a.accountId || undefined,
+        })),
+        tx
+      );
+    }
+  }
+
+  private async _updateMediaRelationsHelper(
+    mediaId: string,
+    characters: { name: string; confidence?: number }[] | undefined,
+    ips: { name: string; confidence?: number }[] | undefined,
+    tx: Transaction
+  ) {
+    // Use MediaProcessingService for characters and IPs to ensure auto-assignment logic
+    if (characters || ips) {
+      try {
+        await this.mediaProcessingService.addContextMetadataToExistingMedia(
+          mediaId,
+          {
+            characters,
+            ips,
+          },
+          tx
+        );
+      } catch (error) {
+        this.logger.error(
+          { mediaId, err: error },
+          "Failed to process context metadata during media update"
+        );
+        // We continue here to allow the main media update to succeed
+        // unless specific business rules require this to be atomic.
+      }
+    }
+  }
 }
 
 // For backward compatibility and deferred initialization
@@ -1013,7 +1086,8 @@ const getMediaService = () => {
       services.getAuthorRepository(),
       services.getProjectRepository(),
       services.getCharacterRepository(),
-      services.getIpRepository()
+      services.getIpRepository(),
+      services.getMediaProcessingService()
     );
   }
   return _mediaService;

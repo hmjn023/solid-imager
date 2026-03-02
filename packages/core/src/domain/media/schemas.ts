@@ -74,6 +74,22 @@ export const updateMediaRequestSchema = z.object({
       })
     )
     .optional(),
+  characters: z
+    .array(
+      z.object({
+        name: z.string(),
+        confidence: z.number().optional(),
+      })
+    )
+    .optional(),
+  ips: z
+    .array(
+      z.object({
+        name: z.string(),
+        confidence: z.number().optional(),
+      })
+    )
+    .optional(),
 });
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 

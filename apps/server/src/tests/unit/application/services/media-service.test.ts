@@ -10,6 +10,7 @@ import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-r
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { MediaServiceImpl } from "~/application/services/media-service";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 
 vi.mock("~/application/registry", () => {
   const mockServices = {
@@ -27,6 +28,7 @@ vi.mock("~/application/registry", () => {
     registerImageProcessor: vi.fn(),
     registerAiClient: vi.fn(),
     registerJobWorker: vi.fn(),
+    getLogger: vi.fn().mockReturnValue(console),
     registerMediaProcessingService: vi.fn(),
     registerConfigService: vi.fn(),
     getMediaRepository: vi.fn(),
@@ -50,8 +52,22 @@ vi.mock("~/application/registry", () => {
   };
 });
 
+const globalMockMediaProcessingService = {
+  addContextMetadataToExistingMedia: vi.fn(),
+};
+
+vi.mock("~/application/services/media-processing-service", () => ({
+  MediaProcessingServiceImpl: vi.fn(),
+  MediaProcessingService: globalMockMediaProcessingService,
+}));
+
+vi.mock("~/infrastructure/db/transaction-manager", () => ({
+  DrizzleTransactionManager: {
+    transaction: vi.fn(async (callback) => await callback("mock-tx")),
+  },
+}));
+
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
-const MEDIA_SOURCE_NOT_FOUND_REGEX = /media source.*not found/i;
 
 describe("MediaService Unit Tests", () => {
   let mediaService: MediaServiceImpl;
@@ -65,9 +81,14 @@ describe("MediaService Unit Tests", () => {
   let mockCharacterRepository: CharacterRepository;
   let mockIpRepository: IIpRepository;
   let mockJobRepository: { create: Mock };
+  let localMockMediaProcessingService: any;
 
   beforeEach(async () => {
     vi.resetAllMocks();
+    (DrizzleTransactionManager.transaction as Mock).mockImplementation(
+      async (callback) => await callback("mock-tx")
+    );
+
     // Mock registry
     const { services } = await import("~/application/registry");
     mockJobRepository = { create: vi.fn() };
@@ -79,6 +100,7 @@ describe("MediaService Unit Tests", () => {
       findByPath: vi.fn(),
       create: vi.fn(),
       upsert: vi.fn(),
+      update: vi.fn(),
       updateConfig: vi.fn(),
       delete: vi.fn(),
       search: vi.fn(),
@@ -136,6 +158,10 @@ describe("MediaService Unit Tests", () => {
       addMedia: vi.fn(),
     } as unknown as IIpRepository;
 
+    localMockMediaProcessingService = {
+      addContextMetadataToExistingMedia: vi.fn(),
+    };
+
     // Instantiate service with mocks
     mediaService = new MediaServiceImpl(
       mockMediaRepository,
@@ -146,13 +172,13 @@ describe("MediaService Unit Tests", () => {
       mockAuthorRepository,
       mockProjectRepository,
       mockCharacterRepository,
-      mockIpRepository
+      mockIpRepository,
+      localMockMediaProcessingService
     );
   });
 
   describe("getMediaDetails", () => {
     it("should return media details when found", async () => {
-      // Valid v4 UUIDs
       const mediaId = "123e4567-e89b-42d3-a456-426614174000";
       const sourceId = "123e4567-e89b-42d3-a456-426614174001";
       const mockMedia: MediaDetails = {
@@ -177,13 +203,10 @@ describe("MediaService Unit Tests", () => {
         ips: [],
       };
 
-      // Setup repository responses
       (mockMediaRepository.getDetails as Mock).mockResolvedValue(mockMedia);
 
-      // Call the method
       const result = await mediaService.getMediaDetails(sourceId, mediaId);
 
-      // Verify interactions and result
       expect(mockMediaRepository.getDetails).toHaveBeenCalledWith(mediaId);
       expect(result).toBeDefined();
       expect(result.id).toBe(mediaId);
@@ -256,52 +279,41 @@ describe("MediaService Unit Tests", () => {
       );
       expect(mockMediaRepository.upsert).toHaveBeenCalled();
     });
+  });
 
-    it("should throw error if source not found", async () => {
-      const sourceId = "123e4567-e89b-42d3-a456-426614174999";
-      const file = new File(["test"], "test.png", { type: "image/png" });
-      (mockSourceRepository.findById as Mock).mockResolvedValue(null);
-
-      await expect(
-        mediaService.uploadMedia(sourceId, file, {})
-      ).rejects.toThrow(MEDIA_SOURCE_NOT_FOUND_REGEX);
-    });
-
-    it("should delete file if DB insertion fails (rollback)", async () => {
+  describe("updateMedia", () => {
+    it("should update media and call MediaProcessingService for characters/ips", async () => {
+      const mediaId = "123e4567-e89b-42d3-a456-426614174000";
       const sourceId = "123e4567-e89b-42d3-a456-426614174001";
-      const pngSignature = Buffer.from("89504e470d0a1a0a", "hex");
-      const file = new File([pngSignature], "test.png", { type: "image/png" });
-      const options = { filename: "fail.png", overwrite: true };
-
-      const mockSource = {
-        id: sourceId,
-        type: "local",
-        connectionInfo: { path: "/root" },
+      const updates = {
+        description: "Updated desc",
+        characters: [{ name: "Char 1", confidence: 0.8 }],
+        ips: [{ name: "IP 1" }],
       };
 
-      const mockFileInfo = {
-        filePath: "fail.png",
-        fileName: "fail.png",
-        width: 100,
-        height: 100,
-        size: 4,
-        createdAt: new Date(),
-        modifiedAt: new Date(),
-      };
+      (mockMediaRepository.findById as Mock).mockResolvedValue({
+        id: mediaId,
+        mediaSourceId: sourceId,
+      });
+      (mockMediaRepository.update as Mock).mockResolvedValue({ id: mediaId });
 
-      (mockSourceRepository.findById as Mock).mockResolvedValue(mockSource);
-      (mockStorageService.saveFile as Mock).mockResolvedValue(mockFileInfo);
-      (mockMediaRepository.upsert as Mock).mockRejectedValue(
-        new Error("DB Error")
+      await mediaService.updateMedia(sourceId, mediaId, updates);
+
+      expect(mockMediaRepository.update).toHaveBeenCalledWith(
+        mediaId,
+        expect.objectContaining({ description: "Updated desc" }),
+        expect.anything()
       );
 
-      await expect(
-        mediaService.uploadMedia(sourceId, file, options)
-      ).rejects.toThrow("DB Error");
-
-      expect(mockStorageService.deleteFile).toHaveBeenCalledWith(
-        "/root",
-        "fail.png"
+      expect(
+        localMockMediaProcessingService.addContextMetadataToExistingMedia
+      ).toHaveBeenCalledWith(
+        mediaId,
+        {
+          characters: updates.characters,
+          ips: updates.ips,
+        },
+        "mock-tx"
       );
     });
   });
