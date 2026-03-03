@@ -39,12 +39,14 @@ export function createAsyncButtonContainer(
   type: "IMAGE" | "VIDEO" = "IMAGE"
 ): HTMLDivElement {
   const container = document.createElement("div");
-  container.style.position = "absolute";
-  container.style.top = "5px";
-  container.style.right = "5px";
-  container.style.zIndex = "9999";
-  container.style.display = "flex";
-  container.style.gap = "5px";
+  Object.assign(container.style, {
+    position: "absolute",
+    top: "5px",
+    right: "5px",
+    zIndex: "9999",
+    display: "flex",
+    gap: "5px",
+  });
 
   // Stop propagation on container to prevent clicking image/post
   container.addEventListener("click", (e) => {
@@ -52,9 +54,18 @@ export function createAsyncButtonContainer(
     e.stopPropagation();
   });
 
-  const handleAsyncAction = async (
-    actionType: "DOWNLOAD" | "POST_DOWNLOAD"
-  ) => {
+  const dlBtn = createButton(type === "VIDEO" ? "DL VIDEO" : "DL", "#000", () => {
+    handleAsyncAction("DOWNLOAD").catch(() => {
+      /* ignore */
+    });
+  });
+  const postBtn = createButton("POST", "#0056b3", () => {
+    handleAsyncAction("POST_DOWNLOAD").catch(() => {
+      /* ignore */
+    });
+  });
+
+  const handleAsyncAction = async (actionType: "DOWNLOAD" | "POST_DOWNLOAD") => {
     try {
       // Show loading state
       dlBtn.innerText = "⏳";
@@ -63,13 +74,11 @@ export function createAsyncButtonContainer(
       postBtn.disabled = true;
 
       const metadata = await fetchMetadata();
-      if (!metadata) {
-        return;
+      if (metadata) {
+        handleAction(metadata, actionType, type);
       }
-
-      handleAction(metadata, actionType, type);
     } catch {
-      // Ignore errors silently as per lint rules
+      // Ignore errors silently
     } finally {
       // Restore button state
       dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
@@ -78,21 +87,6 @@ export function createAsyncButtonContainer(
       postBtn.disabled = false;
     }
   };
-
-  const dlBtn = createButton(
-    type === "VIDEO" ? "DL VIDEO" : "DL",
-    "#000",
-    () => {
-      handleAsyncAction("DOWNLOAD").catch(() => {
-        /* ignore */
-      });
-    }
-  );
-  const postBtn = createButton("POST", "#0056b3", () => {
-    handleAsyncAction("POST_DOWNLOAD").catch(() => {
-      /* ignore */
-    });
-  });
 
   container.appendChild(dlBtn);
   container.appendChild(postBtn);

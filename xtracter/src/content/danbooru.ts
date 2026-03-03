@@ -11,6 +11,17 @@ function extractSourceUrls(baseUrls: string[]): {
 } {
   const sourceUrls = [...baseUrls];
   let twitterAccountId: string | null = null;
+
+  // Check provided baseUrls for Twitter IDs first
+  for (const url of baseUrls) {
+    const match = url.match(TWITTER_REGEX);
+    if (match?.[1] && !isExcludedTwitterUser(match[1])) {
+      twitterAccountId = `@${match[1]}`;
+      break;
+    }
+  }
+
+  // Then add DOM sources if we are on a post page
   const sourceLinks = document.querySelectorAll<HTMLAnchorElement>(
     "#post-info-source a"
   );
@@ -19,25 +30,29 @@ function extractSourceUrls(baseUrls: string[]): {
     if (href && !sourceUrls.includes(href)) {
       sourceUrls.push(href);
 
-      const twitterMatch = href.match(TWITTER_REGEX);
-      if (
-        twitterMatch?.[1] &&
-        ![
-          "intent",
-          "search",
-          "share",
-          "home",
-          "i",
-          "messages",
-          "notifications",
-          "settings",
-        ].includes(twitterMatch[1].toLowerCase())
-      ) {
-        twitterAccountId = `@${twitterMatch[1]}`;
+      if (!twitterAccountId) {
+        const twitterMatch = href.match(TWITTER_REGEX);
+        if (twitterMatch?.[1] && !isExcludedTwitterUser(twitterMatch[1])) {
+          twitterAccountId = `@${twitterMatch[1]}`;
+        }
       }
     }
   }
   return { sourceUrls, twitterAccountId };
+}
+
+function isExcludedTwitterUser(username: string): boolean {
+  const excluded = [
+    "intent",
+    "search",
+    "share",
+    "home",
+    "i",
+    "messages",
+    "notifications",
+    "settings",
+  ];
+  return excluded.includes(username.toLowerCase());
 }
 
 export function processDanbooruMedia(
@@ -151,7 +166,8 @@ function parseDanbooruApiMetadata(
     return null;
   }
 
-  const sourceUrls = [targetUrl, `https://danbooru.donmai.us/posts/${postId}`];
+  const postUrl = `https://danbooru.donmai.us/posts/${postId}`;
+  const sourceUrls = [postUrl, targetUrl];
   if (data.source) {
     sourceUrls.push(data.source);
   }
