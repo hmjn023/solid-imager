@@ -34,6 +34,65 @@ function createButtonContainer(
   return container;
 }
 
+export function createAsyncButtonContainer(
+  fetchMetadata: () => Promise<TweetMetadata | null>,
+  type: "IMAGE" | "VIDEO" = "IMAGE"
+): HTMLDivElement {
+  const container = document.createElement("div");
+  Object.assign(container.style, {
+    position: "absolute",
+    top: "5px",
+    right: "5px",
+    zIndex: "9999",
+    display: "flex",
+    gap: "5px",
+  });
+
+  // Stop propagation on container to prevent clicking image/post
+  container.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  const dlBtn = createButton(type === "VIDEO" ? "DL VIDEO" : "DL", "#000", () => {
+    handleAsyncAction("DOWNLOAD").catch(() => {
+      /* ignore */
+    });
+  });
+  const postBtn = createButton("POST", "#0056b3", () => {
+    handleAsyncAction("POST_DOWNLOAD").catch(() => {
+      /* ignore */
+    });
+  });
+
+  const handleAsyncAction = async (actionType: "DOWNLOAD" | "POST_DOWNLOAD") => {
+    try {
+      // Show loading state
+      dlBtn.innerText = "⏳";
+      postBtn.innerText = "⏳";
+      dlBtn.disabled = true;
+      postBtn.disabled = true;
+
+      const metadata = await fetchMetadata();
+      if (metadata) {
+        handleAction(metadata, actionType, type);
+      }
+    } catch {
+      // Ignore errors silently
+    } finally {
+      // Restore button state
+      dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
+      postBtn.innerText = "POST";
+      dlBtn.disabled = false;
+      postBtn.disabled = false;
+    }
+  };
+
+  container.appendChild(dlBtn);
+  container.appendChild(postBtn);
+  return container;
+}
+
 function createButton(
   text: string,
   bgColor: string,
@@ -107,7 +166,7 @@ function processMedia() {
   if (hostname.includes("twitter.com") || hostname.includes("x.com")) {
     processTwitterMedia(processedMetadata, createButtonContainer);
   } else if (hostname.includes("danbooru.donmai.us")) {
-    processDanbooruMedia(createButtonContainer);
+    processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
   }
 }
 

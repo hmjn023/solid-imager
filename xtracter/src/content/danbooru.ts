@@ -11,6 +11,17 @@ function extractSourceUrls(baseUrls: string[]): {
 } {
   const sourceUrls = [...baseUrls];
   let twitterAccountId: string | null = null;
+
+  // Check provided baseUrls for Twitter IDs first
+  for (const url of baseUrls) {
+    const match = url.match(TWITTER_REGEX);
+    if (match?.[1] && !isExcludedTwitterUser(match[1])) {
+      twitterAccountId = `@${match[1]}`;
+      break;
+    }
+  }
+
+  // Then add DOM sources if we are on a post page
   const sourceLinks = document.querySelectorAll<HTMLAnchorElement>(
     "#post-info-source a"
   );
@@ -19,30 +30,38 @@ function extractSourceUrls(baseUrls: string[]): {
     if (href && !sourceUrls.includes(href)) {
       sourceUrls.push(href);
 
-      const twitterMatch = href.match(TWITTER_REGEX);
-      if (
-        twitterMatch?.[1] &&
-        ![
-          "intent",
-          "search",
-          "share",
-          "home",
-          "i",
-          "messages",
-          "notifications",
-          "settings",
-        ].includes(twitterMatch[1].toLowerCase())
-      ) {
-        twitterAccountId = `@${twitterMatch[1]}`;
+      if (!twitterAccountId) {
+        const twitterMatch = href.match(TWITTER_REGEX);
+        if (twitterMatch?.[1] && !isExcludedTwitterUser(twitterMatch[1])) {
+          twitterAccountId = `@${twitterMatch[1]}`;
+        }
       }
     }
   }
   return { sourceUrls, twitterAccountId };
 }
 
+function isExcludedTwitterUser(username: string): boolean {
+  const excluded = [
+    "intent",
+    "search",
+    "share",
+    "home",
+    "i",
+    "messages",
+    "notifications",
+    "settings",
+  ];
+  return excluded.includes(username.toLowerCase());
+}
+
 export function processDanbooruMedia(
   createButtonContainer: (
     metadata: TweetMetadata,
+    type: "IMAGE" | "VIDEO"
+  ) => HTMLDivElement,
+  createAsyncButtonContainer: (
+    fetchMetadata: () => Promise<TweetMetadata | null>,
     type: "IMAGE" | "VIDEO"
   ) => HTMLDivElement
 ) {
@@ -50,26 +69,151 @@ export function processDanbooruMedia(
   const imageContainer = document.querySelector(
     ".image-container"
   ) as HTMLElement;
+
+  // Post page logic
   if (
-    !imageContainer ||
-    imageContainer.classList.contains(PROCESSED_IMAGE_CLASS)
+    imageContainer &&
+    !imageContainer.classList.contains(PROCESSED_IMAGE_CLASS)
   ) {
-    return;
+    const metadata = extractDanbooruMetadata(imageContainer);
+    if (metadata) {
+      const style = window.getComputedStyle(imageContainer);
+      if (style.position === "static") {
+        imageContainer.style.position = "relative";
+      }
+      imageContainer.classList.add(PROCESSED_IMAGE_CLASS);
+
+      const btnContainer = createButtonContainer(metadata, "IMAGE");
+      imageContainer.appendChild(btnContainer);
+    }
   }
 
-  const metadata = extractDanbooruMetadata(imageContainer);
-  if (!metadata) {
-    return;
+  // List page logic
+  const postPreviews = document.querySelectorAll(
+    `.post-preview:not(.${PROCESSED_IMAGE_CLASS})`
+  );
+  for (const preview of postPreviews) {
+    const postId = preview.getAttribute("data-id");
+    if (!postId) {
+      continue;
+    }
+
+    const previewContainer = preview.querySelector(
+      ".post-preview-container"
+    ) as HTMLElement;
+    if (!previewContainer) {
+      continue;
+    }
+
+    preview.classList.add(PROCESSED_IMAGE_CLASS);
+    const style = window.getComputedStyle(previewContainer);
+    if (style.position === "static") {
+      previewContainer.style.position = "relative";
+    }
+
+    const fetchMetadata = async () => {
+      try {
+        const response = await fetch(
+          `https://danbooru.donmai.us/posts/${postId}.json`
+        );
+        if (!response.ok) {
+          return null;
+        }
+        const data = await response.json();
+        return parseDanbooruApiMetadata(data, postId);
+      } catch {
+        return null;
+      }
+    };
+
+    const btnContainer = createAsyncButtonContainer(fetchMetadata, "IMAGE");
+    previewContainer.appendChild(btnContainer);
+  }
+}
+
+// Define a minimal interface for the expected API response
+type DanbooruApiResponse = {
+  file_url?: string;
+  source?: string;
+  tag_string_artist?: string;
+  tag_string_copyright?: string;
+  tag_string_character?: string;
+  tag_string_general?: string;
+  tag_string_meta?: string;
+  created_at?: string;
+};
+
+function parseTagsFromApiString(tagString: string | undefined): string[] {
+  if (!tagString) {
+    return [];
+  }
+  const result: string[] = [];
+  for (const name of tagString.split(" ")) {
+    if (!name) {
+      continue;
+    }
+    result.push(name);
+  }
+  return result;
+}
+
+function parseDanbooruApiMetadata(
+  data: DanbooruApiResponse,
+  postId: string
+): TweetMetadata | null {
+  const targetUrl = data.file_url;
+  if (!targetUrl) {
+    return null;
   }
 
-  const style = window.getComputedStyle(imageContainer);
-  if (style.position === "static") {
-    imageContainer.style.position = "relative";
+  const postUrl = `https://danbooru.donmai.us/posts/${postId}`;
+  const sourceUrls = [postUrl, targetUrl];
+  if (data.source) {
+    sourceUrls.push(data.source);
   }
-  imageContainer.classList.add(PROCESSED_IMAGE_CLASS);
 
-  const btnContainer = createButtonContainer(metadata, "IMAGE");
-  imageContainer.appendChild(btnContainer);
+  const { twitterAccountId } = extractSourceUrls(sourceUrls);
+
+  const authors: Author[] = [];
+  const tags: { name: string; type: "positive"; source: "danbooru" }[] = [];
+  const characters: { name: string; source: "danbooru" }[] = [];
+  const ips: { name: string; source: "danbooru" }[] = [];
+
+  // Parse artists
+  for (const name of parseTagsFromApiString(data.tag_string_artist)) {
+    authors.push({ name, accountId: twitterAccountId });
+  }
+
+  // Parse copyrights (IPs)
+  for (const name of parseTagsFromApiString(data.tag_string_copyright)) {
+    ips.push({ name, source: "danbooru" });
+  }
+
+  // Parse characters
+  for (const name of parseTagsFromApiString(data.tag_string_character)) {
+    characters.push({ name, source: "danbooru" });
+  }
+
+  // Parse general tags
+  for (const name of parseTagsFromApiString(data.tag_string_general)) {
+    tags.push({ name, type: "positive", source: "danbooru" });
+  }
+
+  for (const name of parseTagsFromApiString(data.tag_string_meta)) {
+    tags.push({ name, type: "positive", source: "danbooru" });
+  }
+
+  return {
+    targetUrl,
+    sourceUrls,
+    description: `Danbooru Post #${postId}`,
+    createdAt: data.created_at,
+    authors,
+    tags,
+    characters,
+    ips,
+    userAgent: navigator.userAgent,
+  };
 }
 
 function extractTargetUrl(container: HTMLElement): string | null {
