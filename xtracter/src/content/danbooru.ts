@@ -5,6 +5,14 @@ const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 const TWITTER_REGEX =
   /^https?:\/\/(?:(?:[a-z0-9-]+\.)?(?:twitter\.com|x\.com|vxtwitter\.com|fxtwitter\.com))\/(?:@)?([a-zA-Z0-9_]+)/i;
 
+function getTwitterIdFromUrl(url: string): string | null {
+  const match = url.match(TWITTER_REGEX);
+  if (match?.[1] && !isExcludedTwitterUser(match[1])) {
+    return `@${match[1]}`;
+  }
+  return null;
+}
+
 function extractSourceUrls(baseUrls: string[]): {
   sourceUrls: string[];
   twitterAccountId: string | null;
@@ -14,9 +22,8 @@ function extractSourceUrls(baseUrls: string[]): {
 
   // Check provided baseUrls for Twitter IDs first
   for (const url of baseUrls) {
-    const match = url.match(TWITTER_REGEX);
-    if (match?.[1] && !isExcludedTwitterUser(match[1])) {
-      twitterAccountId = `@${match[1]}`;
+    twitterAccountId = getTwitterIdFromUrl(url);
+    if (twitterAccountId) {
       break;
     }
   }
@@ -29,13 +36,7 @@ function extractSourceUrls(baseUrls: string[]): {
     const href = link.href;
     if (href && !sourceUrls.includes(href)) {
       sourceUrls.push(href);
-
-      if (!twitterAccountId) {
-        const twitterMatch = href.match(TWITTER_REGEX);
-        if (twitterMatch?.[1] && !isExcludedTwitterUser(twitterMatch[1])) {
-          twitterAccountId = `@${twitterMatch[1]}`;
-        }
-      }
+      twitterAccountId = twitterAccountId || getTwitterIdFromUrl(href);
     }
   }
   return { sourceUrls, twitterAccountId };
@@ -119,6 +120,12 @@ export function processDanbooruMedia(
         if (!response.ok) {
           return null;
         }
+
+        const contentType = response.headers.get("content-type");
+        if (!contentType?.includes("application/json")) {
+          return null;
+        }
+
         const data = await response.json();
         return parseDanbooruApiMetadata(data, postId);
       } catch {

@@ -3,6 +3,7 @@ import { processDanbooruMedia } from "./danbooru";
 import { processTwitterMedia } from "./twitter";
 
 const OBSERVER_CONFIG = { childList: true, subtree: true };
+const ERROR_TIMEOUT_MS = 2000;
 
 function createButtonContainer(
   metadata: TweetMetadata,
@@ -54,18 +55,24 @@ export function createAsyncButtonContainer(
     e.stopPropagation();
   });
 
-  const dlBtn = createButton(type === "VIDEO" ? "DL VIDEO" : "DL", "#000", () => {
-    handleAsyncAction("DOWNLOAD").catch(() => {
-      /* ignore */
-    });
-  });
+  const dlBtn = createButton(
+    type === "VIDEO" ? "DL VIDEO" : "DL",
+    "#000",
+    () => {
+      handleAsyncAction("DOWNLOAD").catch(() => {
+        /* ignore */
+      });
+    }
+  );
   const postBtn = createButton("POST", "#0056b3", () => {
     handleAsyncAction("POST_DOWNLOAD").catch(() => {
       /* ignore */
     });
   });
 
-  const handleAsyncAction = async (actionType: "DOWNLOAD" | "POST_DOWNLOAD") => {
+  const handleAsyncAction = async (
+    actionType: "DOWNLOAD" | "POST_DOWNLOAD"
+  ) => {
     try {
       // Show loading state
       dlBtn.innerText = "⏳";
@@ -76,6 +83,14 @@ export function createAsyncButtonContainer(
       const metadata = await fetchMetadata();
       if (metadata) {
         handleAction(metadata, actionType, type);
+      } else {
+        // Show error state
+        dlBtn.innerText = "❌";
+        postBtn.innerText = "❌";
+        setTimeout(() => {
+          dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
+          postBtn.innerText = "POST";
+        }, ERROR_TIMEOUT_MS);
       }
     } catch {
       // Ignore errors silently
