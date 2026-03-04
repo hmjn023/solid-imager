@@ -16,15 +16,56 @@ type FileWatcher = {
 };
 
 // mediaSourceId -> Set of clients
-const clientsMap = new Map<string, Set<SseClient>>();
+// HMR survival: use global map if available
+// biome-ignore lint/suspicious/noExplicitAny: Global augmentation for HMR
+const globalAny = globalThis as any;
+
+if (!globalAny.__SSE_CLIENTS_MAP__) {
+  globalAny.__SSE_CLIENTS_MAP__ = new Map<string, Set<SseClient>>();
+}
+const clientsMap: Map<string, Set<SseClient>> = globalAny.__SSE_CLIENTS_MAP__;
 
 // mediaSourceId -> FileWatcher
-const watchersMap = new Map<string, FileWatcher>();
+if (!globalAny.__SSE_WATCHERS_MAP__) {
+  globalAny.__SSE_WATCHERS_MAP__ = new Map<string, FileWatcher>();
+}
+const watchersMap: Map<string, FileWatcher> = globalAny.__SSE_WATCHERS_MAP__;
 
 // Event emitter for internal subscriptions (oRPC, etc.)
 const DEFAULT_MAX_LISTENERS = 100;
-const eventEmitter = new EventEmitter();
-eventEmitter.setMaxListeners(DEFAULT_MAX_LISTENERS);
+if (!globalAny.__SSE_EVENT_EMITTER__) {
+  const emitter = new EventEmitter();
+  emitter.setMaxListeners(DEFAULT_MAX_LISTENERS);
+  globalAny.__SSE_EVENT_EMITTER__ = emitter;
+}
+const eventEmitter: EventEmitter = globalAny.__SSE_EVENT_EMITTER__;
+
+// Cleanup on process exit
+if (!globalAny.__SSE_CLEANUP_REGISTERED__) {
+  const cleanup = async () => {
+    // console.log("[SseManager] Cleaning up watchers...");
+    const watchers = globalAny.__SSE_WATCHERS_MAP__ as Map<string, FileWatcher>;
+    if (watchers) {
+      const closePromises = Array.from(watchers.values()).map((fw) =>
+        fw.watcher.close()
+      );
+      await Promise.all(closePromises);
+      watchers.clear();
+    }
+  };
+
+  process.on("SIGINT", async () => {
+    await cleanup();
+    process.exit(0);
+  });
+
+  process.on("SIGTERM", async () => {
+    await cleanup();
+    process.exit(0);
+  });
+
+  globalAny.__SSE_CLEANUP_REGISTERED__ = true;
+}
 
 /**
  * Manages Server-Sent Events (SSE) for real-time updates to connected clients.
