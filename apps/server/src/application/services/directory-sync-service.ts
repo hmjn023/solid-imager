@@ -140,18 +140,26 @@ export const DirectorySyncService = {
 
       // 2. Scan actual file system
       // fast-glob uses POSIX separators even on Windows
-      const fsPaths = await fg("**/*", {
+      // Use async generator to avoid blocking the event loop and consuming too much memory for large directories
+      const stream = fg.stream("**/*", {
         cwd: basePath,
         ignore: ["**/.*", "**/.*/**"], // Ignore dotfiles and dot directories
         onlyFiles: true,
         caseSensitiveMatch: false,
+        suppressErrors: true,
       });
 
-      const actualMediaPaths = fsPaths.filter((p) => {
+      const actualMediaPaths: string[] = [];
+      const fsPathSet = new Set<string>();
+
+      for await (const entry of stream) {
+        const p = entry.toString();
         const ext = path.extname(p).toLowerCase();
-        return ALLOWED_EXTS.has(ext);
-      });
-      const fsPathSet = new Set(actualMediaPaths);
+        if (ALLOWED_EXTS.has(ext)) {
+          actualMediaPaths.push(p);
+          fsPathSet.add(p);
+        }
+      }
 
       // 3. Calculate diffs
       const filesToAdd: string[] = [];

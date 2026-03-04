@@ -136,6 +136,11 @@ export const SseManager = {
         stabilityThreshold: 2000,
         pollInterval: 100,
       },
+      // Avoid excessive CPU and memory usage, rely on native OS events
+      usePolling: false,
+      ignorePermissionErrors: true,
+      // Only watch up to 10 levels deep to prevent deep recursion
+      depth: 10,
     });
 
     // File added

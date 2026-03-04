@@ -216,8 +216,22 @@ export async function startMonitoringAll(): Promise<void> {
   }
 }
 
+/**
+ * Stops monitoring for all local media sources.
+ */
+export async function stopMonitoringAll(): Promise<void> {
+  const sources = await sourceRepo.findAll();
+
+  for (const source of sources) {
+    if (source.type === "local") {
+      await stopMonitoring(source.id);
+    }
+  }
+}
+
 export const FileWatcherService = {
   startMonitoring,
   stopMonitoring,
   startMonitoringAll,
+  stopMonitoringAll,
 };

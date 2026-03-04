@@ -16,9 +16,13 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 vi.mock("fast-glob", () => ({
-  default: vi
-    .fn()
-    .mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
+  default: {
+    stream: vi.fn().mockImplementation(async function* () {
+      yield "file1.jpg";
+      yield "sub/file2.png";
+      yield "new_file.mp3";
+    }),
+  },
 }));
 
 vi.mock("~/infrastructure/repositories/media-repository", () => ({

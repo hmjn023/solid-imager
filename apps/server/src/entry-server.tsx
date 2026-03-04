@@ -13,6 +13,13 @@ if (typeof window === "undefined") {
       module.FileWatcherService.startMonitoringAll().catch((_error) => {
         // Error already logged in startMonitoringAll
       });
+
+      // Provide a clean shutdown mechanism for the HMR server
+      if (import.meta.hot) {
+        import.meta.hot.dispose(async () => {
+          await module.FileWatcherService.stopMonitoringAll();
+        });
+      }
     })
     .catch((_error) => {
       // Error already logged in then block
