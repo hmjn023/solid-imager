@@ -116,4 +116,26 @@ export function bootstrap() {
   maintenanceService.performStartupChecks().catch((err) => {
     logger.error({ err }, "Maintenance startup checks failed");
   });
+
+  // Cleanup on process exit
+  if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
+    const cleanup = () => {
+      // console.log("[Bootstrap] Cleaning up JobWorker...");
+      if (globalAny.__JOB_WORKER__) {
+        globalAny.__JOB_WORKER__.stop();
+      }
+    };
+
+    process.on("SIGINT", () => {
+      cleanup();
+      process.exit(0);
+    });
+
+    process.on("SIGTERM", () => {
+      cleanup();
+      process.exit(0);
+    });
+
+    globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
+  }
 }
