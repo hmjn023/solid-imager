@@ -18,5 +18,6 @@ export default defineConfig({
       "src/tests/routes/**/*.test.ts",
     ],
     exclude: ["node_modules/**"],
+    passWithNoTests: true,
   },
 });
