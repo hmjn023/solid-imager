@@ -60,24 +60,26 @@ export class CharacterServiceImpl {
     mediaId: string,
     characterId: string
   ): Promise<void> {
-    await this.transactionManager.transaction(async (tx: Transaction) => {
-      // NOTE: findById in DrizzleCharacterRepository already includes IPs relative to the character
-      const character = await this.characterRepo.findById(characterId, tx);
-      if (!character) {
-        throw new Error(`Character not found: ${characterId}`);
+    return await this.transactionManager.transaction(
+      async (tx: Transaction) => {
+        // NOTE: findById in DrizzleCharacterRepository already includes IPs relative to the character
+        const character = await this.characterRepo.findById(characterId, tx);
+        if (!character) {
+          throw new Error(`Character not found: ${characterId}`);
+        }
+
+        await this.characterRepo.addToMedia(
+          mediaId,
+          character.id,
+          undefined as number | undefined,
+          undefined as string | undefined, // Fixed type mismatch
+          tx
+        );
+
+        // Auto-assign linked IPs
+        await this.linkCharacterIps(mediaId, character, tx);
       }
-
-      await this.characterRepo.addToMedia(
-        mediaId,
-        character.id,
-        undefined as number | undefined,
-        undefined as string | undefined, // Fixed type mismatch
-        tx
-      );
-
-      // Auto-assign linked IPs
-      await this.linkCharacterIps(mediaId, character, tx);
-    });
+    );
   }
 
   /**
