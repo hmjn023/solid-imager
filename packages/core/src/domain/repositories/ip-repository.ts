@@ -5,6 +5,7 @@ export type IIpRepository = {
   findAll(): Promise<Ip[]>;
   findById(id: string, tx?: Transaction): Promise<Ip | null>;
   findByName(name: string, tx?: Transaction): Promise<Ip | null>;
+  findByNames(names: string[], tx?: Transaction): Promise<Ip[]>;
   create(ip: NewIp, tx?: Transaction): Promise<Ip>;
   update(id: string, ip: UpdateIp, tx?: Transaction): Promise<Ip>;
   delete(id: string, tx?: Transaction): Promise<void>;

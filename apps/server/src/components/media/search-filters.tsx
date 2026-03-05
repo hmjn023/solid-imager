@@ -3,10 +3,8 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createSignal, For } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
-import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/button";
+import { Badge } from "@solid-imager/ui/badge";
+import { Button } from "@solid-imager/ui/button";
 import {
   Combobox,
   ComboboxContent,
@@ -14,10 +12,12 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxItemLabel,
-} from "~/components/ui/combobox";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { cn } from "~/presentation/utils/cn";
+} from "@solid-imager/ui/combobox";
+import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
+import { cn } from "@solid-imager/ui/utils/cn";
+import { createSignal, For } from "solid-js";
+import type { SetStoreFunction } from "solid-js/store";
 
 export type SearchFilterState = {
   searchQuery: string;

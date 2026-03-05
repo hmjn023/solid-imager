@@ -1,9 +1,11 @@
 import { services } from "~/application/registry";
+import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
@@ -70,6 +72,14 @@ export function bootstrap() {
 
   services.registerJobWorker(jobWorker);
 
+  services.registerCharacterService(
+    new CharacterServiceImpl(
+      services.getCharacterRepository(),
+      services.getIpRepository(),
+      DrizzleTransactionManager
+    )
+  );
+
   // Register MediaProcessingService (Implementation)
   services.registerMediaProcessingService(
     new MediaProcessingServiceImpl(
@@ -77,7 +87,7 @@ export function bootstrap() {
       services.getMediaRepository(),
       services.getTagRepository(),
       services.getAuthorRepository(),
-      services.getCharacterRepository(),
+      services.getCharacterService(),
       services.getIpRepository(),
       services.getProjectRepository(),
       jobRepo,
@@ -106,4 +116,26 @@ export function bootstrap() {
   maintenanceService.performStartupChecks().catch((err) => {
     logger.error({ err }, "Maintenance startup checks failed");
   });
+
+  // Cleanup on process exit
+  if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
+    const cleanup = () => {
+      // console.log("[Bootstrap] Cleaning up JobWorker...");
+      if (globalAny.__JOB_WORKER__) {
+        globalAny.__JOB_WORKER__.stop();
+      }
+    };
+
+    process.on("SIGINT", () => {
+      cleanup();
+      process.exit(0);
+    });
+
+    process.on("SIGTERM", () => {
+      cleanup();
+      process.exit(0);
+    });
+
+    globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
+  }
 }

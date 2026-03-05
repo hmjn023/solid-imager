@@ -66,6 +66,60 @@ export function processWidgetValueTags(
   return { positiveTags: newPositiveTags, negativeTags: newNegativeTags };
 }
 
+type ProcessWorkflowNodeParams = {
+  node: unknown;
+  positiveNodeTypes: string[];
+  options: TagExtractionOptions | undefined;
+  positiveTags: TagData[];
+  negativeTags: TagData[];
+};
+
+function processWorkflowNode({
+  node,
+  positiveNodeTypes,
+  options,
+  positiveTags,
+  negativeTags,
+}: ProcessWorkflowNodeParams) {
+  if (typeof node !== "object" || node === null) {
+    return;
+  }
+
+  // safely cast to Record since we checked it is an object
+  const nodeRecord = node as Record<string, unknown>;
+
+  const nodeType = nodeRecord.type || nodeRecord.class_type;
+  // biome-ignore lint/suspicious/noExplicitAny: accessing optional _meta
+  const nodeTitle = nodeRecord.title || (nodeRecord as any)._meta?.title;
+
+  if (typeof nodeType === "string" && positiveNodeTypes.includes(nodeType)) {
+    const valuesToProcess: unknown[] = [];
+    if (Array.isArray(nodeRecord.widgets_values)) {
+      valuesToProcess.push(...nodeRecord.widgets_values);
+    }
+    if (nodeRecord.inputs && typeof nodeRecord.inputs === "object") {
+      valuesToProcess.push(...Object.values(nodeRecord.inputs));
+    }
+
+    for (const widgetValue of valuesToProcess) {
+      const { positiveTags: newPosTags, negativeTags: newNegTags } =
+        processWidgetValueTags(widgetValue, nodeTitle, options);
+      positiveTags.push(
+        ...newPosTags.map((tag) => ({
+          name: tag,
+          source: "extracted" as const,
+        }))
+      );
+      negativeTags.push(
+        ...newNegTags.map((tag) => ({
+          name: tag,
+          source: "extracted" as const,
+        }))
+      );
+    }
+  }
+}
+
 export function extractTagsFromWorkflow(
   workflow: Workflow,
   options?: TagExtractionOptions
@@ -76,31 +130,29 @@ export function extractTagsFromWorkflow(
   const positiveTags: TagData[] = [];
   const negativeTags: TagData[] = [];
 
-  if (Array.isArray(workflow.nodes)) {
-    for (const node of workflow.nodes) {
-      if (
-        positiveNodeTypes.includes(node.type) &&
-        Array.isArray(node.widgets_values)
-      ) {
-        for (const widgetValue of node.widgets_values) {
-          const { positiveTags: newPosTags, negativeTags: newNegTags } =
-            processWidgetValueTags(widgetValue, node.title, options);
-          positiveTags.push(
-            ...newPosTags.map((tag) => ({
-              name: tag,
-              source: "extracted",
-            }))
-          );
-          negativeTags.push(
-            ...newNegTags.map((tag) => ({
-              name: tag,
-              source: "extracted",
-            }))
-          );
-        }
-      }
-    }
+  // biome-ignore lint/suspicious/noExplicitAny: ComfyUI workflow nodes can have various structures
+  let nodesToProcess: any[] = [];
+  if (workflow && Array.isArray(workflow.nodes)) {
+    nodesToProcess = workflow.nodes;
+  } else if (
+    workflow &&
+    typeof workflow === "object" &&
+    !Array.isArray(workflow)
+  ) {
+    // API format (Record<string, Node>)
+    nodesToProcess = Object.values(workflow);
   }
+
+  for (const node of nodesToProcess) {
+    processWorkflowNode({
+      node,
+      positiveNodeTypes,
+      options,
+      positiveTags,
+      negativeTags,
+    });
+  }
+
   if (positiveTags.length > 0 || negativeTags.length > 0) {
     return { positiveTags, negativeTags };
   }

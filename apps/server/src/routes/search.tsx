@@ -1,5 +1,19 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import { Button } from "@solid-imager/ui/button";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@solid-imager/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@solid-imager/ui/dialog";
 import {
   createInfiniteQuery,
   createQuery,
@@ -18,15 +32,6 @@ import {
 import { isServer, Portal } from "solid-js/web";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
-import { Button } from "~/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";

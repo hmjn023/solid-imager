@@ -40,11 +40,13 @@ import {
   type DeferredSse,
   executeDeferredActions,
 } from "~/application/services/job-dispatch-service";
+import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { SseManager } from "~/infrastructure/jobs/sse-manager";
 // keeping SseManager if used elsewhere
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
+import { logger } from "~/infrastructure/logger";
 
 const SIGNATURES = {
   png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -101,7 +103,7 @@ export class MediaServiceImpl {
   private readonly projectRepository: IProjectRepository;
   private readonly characterRepository: CharacterRepository;
   private readonly ipRepository: IIpRepository;
-
+  private readonly mediaProcessingService: MediaProcessingServiceImpl;
   // biome-ignore lint/nursery/useMaxParams: Dependency injection
   constructor(
     mediaRepository: IMediaRepository,
@@ -112,7 +114,8 @@ export class MediaServiceImpl {
     authorRepository: IAuthorRepository,
     projectRepository: IProjectRepository,
     characterRepository: CharacterRepository,
-    ipRepository: IIpRepository
+    ipRepository: IIpRepository,
+    mediaProcessingService: MediaProcessingServiceImpl
   ) {
     this.mediaRepository = mediaRepository;
     this.sourceRepository = sourceRepository;
@@ -123,6 +126,7 @@ export class MediaServiceImpl {
     this.projectRepository = projectRepository;
     this.characterRepository = characterRepository;
     this.ipRepository = ipRepository;
+    this.mediaProcessingService = mediaProcessingService;
   }
 
   /**
@@ -453,38 +457,19 @@ export class MediaServiceImpl {
         throw new ResourceNotFoundError("Media", validatedMediaId);
       }
 
-      const updatedMedia = await this.mediaRepository.update(
-        validatedMediaId,
-        parsedUpdates,
-        t
-      );
-
-      if (parsedUpdates.sourceUrls?.length) {
-        const existingUrls = await this.mediaRepository.getUrls(
+      const [updatedMedia] = await Promise.all([
+        this.mediaRepository.update(validatedMediaId, parsedUpdates, t),
+        this.mediaProcessingService.addContextMetadataToExistingMedia(
           validatedMediaId,
+          {
+            sourceUrls: parsedUpdates.sourceUrls,
+            authors: parsedUpdates.authors,
+            characters: parsedUpdates.characters,
+            ips: parsedUpdates.ips,
+          },
           t
-        );
-        const existingUrlSet = new Set(existingUrls.map((u) => u.url));
-        const newUrls = parsedUpdates.sourceUrls.filter(
-          (u) => !existingUrlSet.has(u)
-        );
-        if (newUrls.length > 0) {
-          await this.mediaRepository.addUrls(validatedMediaId, newUrls, t);
-        }
-      }
-
-      if (parsedUpdates.authors?.length) {
-        for (const authorData of parsedUpdates.authors) {
-          const author = await this.authorRepository.create(
-            {
-              name: authorData.name,
-              accountId: authorData.accountId || null,
-            },
-            t
-          );
-          await this.authorRepository.addMedia(validatedMediaId, author.id, t);
-        }
-      }
+        ),
+      ]);
 
       return updatedMedia;
     };
@@ -493,6 +478,21 @@ export class MediaServiceImpl {
       return await execute(tx);
     }
     return await DrizzleTransactionManager.transaction(execute);
+  }
+
+  /**
+   * Reprocesses media metadata (extracts generation info and tags).
+   */
+  async reprocessMetadata(mediaSourceId: string, mediaId: string) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    const media = await this.mediaRepository.findById(validatedMediaId);
+    if (!media || media.mediaSourceId !== validatedSourceId) {
+      throw new ResourceNotFoundError("Media", validatedMediaId);
+    }
+
+    return await this.extractAndUpdateMetadata(media, validatedSourceId);
   }
 
   /**
@@ -939,6 +939,17 @@ export class MediaServiceImpl {
     try {
       const metadata = await this.imageProcessor.extractMetadata(fullPath);
 
+      logger.info(
+        {
+          mediaId: media.id,
+          fullPath,
+          tagsCount: metadata.tags.length,
+          hasWorkflow: !!metadata.workflow,
+          hasPrompt: !!metadata.prompt,
+        },
+        "[MediaService] extractAndUpdateMetadata result"
+      );
+
       // Store generation info
       await this.mediaRepository.upsertGenerationInfo(
         media.id,
@@ -958,7 +969,11 @@ export class MediaServiceImpl {
       }
 
       return await this.mediaRepository.getGenerationInfo(media.id);
-    } catch (_e) {
+    } catch (e) {
+      logger.error(
+        { err: e, mediaId: media.id, fullPath },
+        "[MediaService] extractAndUpdateMetadata FAILED"
+      );
       return null;
     }
   }
@@ -982,7 +997,8 @@ const getMediaService = () => {
       services.getAuthorRepository(),
       services.getProjectRepository(),
       services.getCharacterRepository(),
-      services.getIpRepository()
+      services.getIpRepository(),
+      services.getMediaProcessingService()
     );
   }
   return _mediaService;

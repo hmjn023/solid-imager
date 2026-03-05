@@ -1,21 +1,26 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import { createForm } from "@tanstack/solid-form";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { zodValidator } from "@tanstack/zod-form-adapter";
-import { Show } from "solid-js";
-import toast from "solid-toast";
-import { Button } from "~/components/ui/button";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+import { Button } from "@solid-imager/ui/button";
+import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
 import {
   Switch,
   SwitchControl,
   SwitchLabel,
   SwitchThumb,
-} from "~/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
-import { Textarea } from "~/components/ui/textarea";
+} from "@solid-imager/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@solid-imager/ui/tabs";
+import { Textarea } from "@solid-imager/ui/textarea";
+import toast from "@solid-imager/ui/toast";
+import { createForm } from "@tanstack/solid-form";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { zodValidator } from "@tanstack/zod-form-adapter";
+import { Show } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 function ConfigForm(props: { data: AppConfig }) {

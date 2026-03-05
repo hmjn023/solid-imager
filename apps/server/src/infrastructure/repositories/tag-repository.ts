@@ -209,35 +209,25 @@ export class DrizzleTagRepository implements TagRepositoryDef {
     try {
       // const _client = (tx as unknown as TransactionClient) || db;
       const execute = async (t: Transaction) => {
-        const tagNames = tagsToInsert.map((tag) => tag.name);
-        if (tagNames.length === 0) {
+        const uniqueTagNames = Array.from(
+          new Set(tagsToInsert.map((tag) => tag.name))
+        );
+        if (uniqueTagNames.length === 0) {
           return;
         }
 
         const client = t as unknown as TransactionClient;
-        const existingTags = await client
+        await client
+          .insert(tags)
+          .values(uniqueTagNames.map((name) => ({ name, source })))
+          .onConflictDoNothing();
+
+        // Fetch all tags (both existing and newly created)
+        const allTags = await client
           .select()
           .from(tags)
-          .where(inArray(tags.name, tagNames));
+          .where(inArray(tags.name, uniqueTagNames));
 
-        const existingTagNames = existingTags.map(
-          /* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
-            tag: any
-          ) => tag.name
-        );
-        const newTagNames = tagNames.filter(
-          (name) => !existingTagNames.includes(name)
-        );
-
-        let newTagsCreated: (typeof tags.$inferSelect)[] = [];
-        if (newTagNames.length > 0) {
-          newTagsCreated = await (t as unknown as TransactionClient)
-            .insert(tags)
-            .values(newTagNames.map((name) => ({ name, source })))
-            .returning();
-        }
-
-        const allTags = [...existingTags, ...newTagsCreated];
         const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
           const foundTag = allTags.find((tag) => tag.name === tagToInsert.name);
           if (!foundTag) {

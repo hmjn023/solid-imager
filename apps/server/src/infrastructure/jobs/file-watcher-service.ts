@@ -6,11 +6,14 @@
 
 import path from "node:path";
 import { services } from "~/application/registry";
+import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
 
@@ -82,9 +85,6 @@ async function handleFileDeleted(
     await MediaRepository.delete(media.id);
 
     // Delete thumbnail
-    const { deleteThumbnail } = await import(
-      "~/infrastructure/jobs/thumbnails"
-    );
     await deleteThumbnail(mediaSourceId, media.id);
 
     // Notify
@@ -127,9 +127,6 @@ async function handleFileChanged(
     }
 
     // Update file metadata (size, dimensions, mtime)
-    const { ServerMediaStorage } = await import(
-      "~/infrastructure/storage/server-media-storage"
-    );
     const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
     await MediaRepository.update(media.id, {
       width: fileMetadata.width,
@@ -178,6 +175,16 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
     }
 
     const basePath = (source.connectionInfo as { path: string }).path;
+
+    // Run directory sync before starting real-time file system monitoring
+    try {
+      await DirectorySyncService.syncMediaSource(mediaSourceId);
+    } catch (err) {
+      logger.error(
+        { err, mediaSourceId },
+        "Failed to sync media source before monitoring"
+      );
+    }
 
     SseManager.startFileSystemMonitoring(mediaSourceId, basePath, {
       onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),

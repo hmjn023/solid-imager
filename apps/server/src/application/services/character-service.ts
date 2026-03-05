@@ -1,66 +1,136 @@
 import type {
+  Character,
   NewCharacter,
   UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
 import type {
-  Character,
-  CharacterRepository,
-} from "@solid-imager/core/domain/repositories/character-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+  Transaction,
+  TransactionManager,
+} from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import { services } from "~/application/registry";
 
-// Initialize repository
-const characterRepo: CharacterRepository = new DrizzleCharacterRepository();
+export class CharacterServiceImpl {
+  readonly characterRepo: CharacterRepository;
+  private readonly ipRepo: IIpRepository;
+  private readonly transactionManager: TransactionManager;
 
-const getAllCharactersServer = async (): Promise<Character[]> =>
-  await characterRepo.findAll();
+  constructor(
+    characterRepo: CharacterRepository,
+    ipRepo: IIpRepository,
+    transactionManager: TransactionManager
+  ) {
+    this.characterRepo = characterRepo;
+    this.ipRepo = ipRepo;
+    this.transactionManager = transactionManager;
+  }
 
-const createCharacterServer = async (data: NewCharacter): Promise<Character> =>
-  await characterRepo.create(data);
+  async getAllCharacters(): Promise<Character[]> {
+    return await this.characterRepo.findAll();
+  }
 
-const getCharacterByIdServer = async (
-  id: string
-): Promise<Character | undefined> => {
-  const result = await characterRepo.findById(id);
-  return result ?? undefined;
-};
+  async createCharacter(data: NewCharacter): Promise<Character> {
+    return await this.characterRepo.create(data);
+  }
 
-const updateCharacterServer = async (
-  id: string,
-  data: UpdateCharacter
-): Promise<Character> => await characterRepo.update(id, data);
+  async findByName(name: string): Promise<Character | null> {
+    return await this.characterRepo.findByName(name);
+  }
 
-const deleteCharacterServer = async (
-  id: string
-): Promise<{ success: true }> => {
-  await characterRepo.delete(id);
-  return { success: true };
-};
+  async getCharacterDetails(id: string): Promise<Character | undefined> {
+    const result = await this.characterRepo.findById(id);
+    return result ?? undefined;
+  }
 
-const getCharactersForMediaServer = async (
-  mediaId: string
-): Promise<Character[]> => await characterRepo.findByMediaId(mediaId);
+  async updateCharacter(id: string, data: UpdateCharacter): Promise<Character> {
+    return await this.characterRepo.update(id, data);
+  }
 
-const addCharacterToMediaServer = async (
-  mediaId: string,
-  characterId: string
-): Promise<void> => {
-  await characterRepo.addToMedia(mediaId, characterId);
-};
+  async deleteCharacter(id: string): Promise<{ success: true }> {
+    await this.characterRepo.delete(id);
+    return { success: true };
+  }
 
-const removeCharacterFromMediaServer = async (
-  mediaId: string,
-  characterId: string
-): Promise<void> => {
-  await characterRepo.removeFromMedia(mediaId, characterId);
-};
+  async getCharactersForMedia(mediaId: string): Promise<Character[]> {
+    return await this.characterRepo.findByMediaId(mediaId);
+  }
 
+  async addCharacterToMedia(
+    mediaId: string,
+    characterId: string
+  ): Promise<void> {
+    return await this.transactionManager.transaction(
+      async (tx: Transaction) => {
+        // NOTE: findById in DrizzleCharacterRepository already includes IPs relative to the character
+        const character = await this.characterRepo.findById(characterId, tx);
+        if (!character) {
+          throw new Error(`Character not found: ${characterId}`);
+        }
+
+        await this.characterRepo.addToMedia(
+          mediaId,
+          character.id,
+          undefined as number | undefined,
+          undefined as string | undefined, // Fixed type mismatch
+          tx
+        );
+
+        // Auto-assign linked IPs
+        await this.linkCharacterIps(mediaId, character, tx);
+      }
+    );
+  }
+
+  /**
+   * Links all IPs associated with a character to a media item.
+   */
+  async linkCharacterIps(
+    mediaId: string,
+    character: Character,
+    tx?: Transaction
+  ): Promise<void> {
+    if (character.ips && character.ips.length > 0) {
+      for (const ip of character.ips) {
+        await this.ipRepo.addMedia(
+          mediaId,
+          ip.id,
+          undefined,
+          "character_link",
+          tx
+        );
+      }
+    }
+  }
+
+  async removeCharacterFromMedia(
+    mediaId: string,
+    characterId: string
+  ): Promise<void> {
+    await this.characterRepo.removeFromMedia(mediaId, characterId);
+  }
+}
+
+// Backward compatibility proxy
 export const CharacterService = {
-  getAllCharacters: getAllCharactersServer,
-  createCharacter: createCharacterServer,
-  getCharacterDetails: getCharacterByIdServer,
-  updateCharacter: updateCharacterServer,
-  deleteCharacter: deleteCharacterServer,
-  getCharactersForMedia: getCharactersForMediaServer,
-  addCharacterToMedia: addCharacterToMediaServer,
-  removeCharacterFromMedia: removeCharacterFromMediaServer,
+  getAllCharacters: async () =>
+    services.getCharacterService().getAllCharacters(),
+  createCharacter: async (data: NewCharacter) =>
+    services.getCharacterService().createCharacter(data),
+  findByName: async (name: string) =>
+    services.getCharacterService().findByName(name),
+  getCharacterDetails: async (id: string) =>
+    services.getCharacterService().getCharacterDetails(id),
+  updateCharacter: async (id: string, data: UpdateCharacter) =>
+    services.getCharacterService().updateCharacter(id, data),
+  deleteCharacter: async (id: string) =>
+    services.getCharacterService().deleteCharacter(id),
+  getCharactersForMedia: async (mediaId: string) =>
+    services.getCharacterService().getCharactersForMedia(mediaId),
+  addCharacterToMedia: async (mediaId: string, characterId: string) =>
+    services.getCharacterService().addCharacterToMedia(mediaId, characterId),
+  removeCharacterFromMedia: async (mediaId: string, characterId: string) =>
+    services
+      .getCharacterService()
+      .removeCharacterFromMedia(mediaId, characterId),
 };

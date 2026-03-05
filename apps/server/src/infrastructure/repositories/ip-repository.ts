@@ -40,6 +40,18 @@ export const IpRepository: IIpRepository = {
     const result = await client.select().from(ips).where(eq(ips.name, name));
     return result[0] ? mapToDomain(result[0]) : null;
   },
+  async findByNames(names: string[], tx?: Transaction): Promise<Ip[]> {
+    if (names.length === 0) {
+      return [];
+    }
+    const { inArray } = await import("drizzle-orm");
+    const client = (tx as unknown as TransactionClient) || db;
+    const result = await client
+      .select()
+      .from(ips)
+      .where(inArray(ips.name, names));
+    return result.map(mapToDomain);
+  },
 
   async create(ip: NewIp, tx?: Transaction): Promise<Ip> {
     try {

@@ -136,27 +136,34 @@ export const BackupService = {
     // Trigger thumbnail generation (skip metadata extraction to preserve restored data)
     if (mediaSource.type === "local") {
       const mediaIds = Array.from(mediaPathToId.values());
-      const { services } = await import("~/application/registry");
 
       if (mediaIds.length > 0) {
-        const jobRepo = services.getJobRepository();
+        try {
+          const { services } = await import("~/application/registry");
+          const jobRepo = services.getJobRepository();
 
-        const connectionInfo = mediaSource.connectionInfo as { path: string };
-        const basePath = connectionInfo.path;
+          const connectionInfo = mediaSource.connectionInfo as { path: string };
+          const basePath = connectionInfo.path;
 
-        for (const id of mediaIds) {
-          await jobRepo.create({
-            type: "processMedia",
-            mediaSourceId,
-            payload: {
-              mediaId: id,
-              sourcePath: basePath,
-              type: "processMedia", // optional
-              skipMetadataExtraction: true,
-            },
-          });
+          for (const id of mediaIds) {
+            await jobRepo.create({
+              type: "processMedia",
+              mediaSourceId,
+              payload: {
+                mediaId: id,
+                sourcePath: basePath,
+                type: "processMedia", // optional
+                skipMetadataExtraction: true,
+              },
+            });
+          }
+          // Worker handles it automatically
+        } catch (e) {
+          logger.warn(
+            { err: e },
+            "Failed to queue thumbnail generation jobs after restore (non-critical)"
+          );
         }
-        // Worker handles it automatically
       }
     }
 
@@ -404,6 +411,9 @@ export const BackupService = {
     const characterIpsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaIpsData: any[] = [];
+    // Track unique (mediaId, ipId) pairs to prevent duplicates
+    const seenMediaIps = new Set<string>();
+    // ... rest of data arrays
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaUrlsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
@@ -457,12 +467,16 @@ export const BackupService = {
         for (const i of item.ips) {
           const ipId = i.name ? ipMap.get(i.name) : undefined;
           if (ipId) {
-            mediaIpsData.push({
-              mediaId,
-              ipId,
-              confidence: i.confidence ?? null,
-              source: i.source || "restored",
-            });
+            const key = `${mediaId}:${ipId}`;
+            if (!seenMediaIps.has(key)) {
+              mediaIpsData.push({
+                mediaId,
+                ipId,
+                confidence: i.confidence ?? null,
+                source: i.source || "restored",
+              });
+              seenMediaIps.add(key);
+            }
           }
         }
       }
@@ -498,6 +512,18 @@ export const BackupService = {
                   ipId,
                   source: "restored",
                 });
+
+                // Also ensure this IP is linked to the media (prevent duplicates)
+                const key = `${mediaId}:${ipId}`;
+                if (!seenMediaIps.has(key)) {
+                  mediaIpsData.push({
+                    mediaId,
+                    ipId,
+                    confidence: c.confidence ?? null, // Use character's confidence as fallback
+                    source: "character_link",
+                  });
+                  seenMediaIps.add(key);
+                }
               }
             }
           }

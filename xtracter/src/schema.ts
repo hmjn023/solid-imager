@@ -18,6 +18,37 @@ export const downloadItemSchema = z.object({
   // Relations
   sourceUrls: z.array(z.string()).optional(),
   authors: z.array(authorSchema).optional(),
+  tags: z
+    .array(
+      z.object({
+        name: z.string(),
+        type: z.enum(["positive", "negative"]).optional(),
+        confidence: z.number().optional(),
+        source: z.string().optional(),
+      })
+    )
+    .optional(),
+  characters: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+        confidence: z.number().optional(),
+        linkedIps: z.array(z.string()).optional(),
+        source: z.string().optional(),
+      })
+    )
+    .optional(),
+  ips: z
+    .array(
+      z.object({
+        name: z.string(),
+        description: z.string().nullable().optional(),
+        confidence: z.number().optional(),
+        source: z.string().optional(),
+      })
+    )
+    .optional(),
 
   // Technical
   cookies: z.array(z.any()).optional(),

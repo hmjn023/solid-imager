@@ -2,9 +2,7 @@ import type {
   MediaSourceInfo,
   SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
-import { createEffect, createSignal, Show } from "solid-js";
-import { createStore } from "solid-js/store";
-import { Button } from "~/components/ui/button";
+import { Button } from "@solid-imager/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -12,16 +10,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
+} from "@solid-imager/ui/dialog";
+import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
+} from "@solid-imager/ui/select";
+import { createEffect, createSignal, Show } from "solid-js";
+import { createStore } from "solid-js/store";
 
 const DEFAULT_SFTP_PORT = 22;
 

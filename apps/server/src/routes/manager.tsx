@@ -2,10 +2,6 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { toast } from "solid-toast";
-import { MediaCardItem } from "~/components/media/media-card-item";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,20 +11,20 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "~/components/ui/alert-dialog";
-import { Button } from "~/components/ui/button";
+} from "@solid-imager/ui/alert-dialog";
+import { Button } from "@solid-imager/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "~/components/ui/card";
+} from "@solid-imager/ui/card";
 import {
   Checkbox,
   CheckboxControl,
   CheckboxLabel,
-} from "~/components/ui/checkbox";
+} from "@solid-imager/ui/checkbox";
 import {
   Combobox,
   ComboboxContent,
@@ -38,7 +34,7 @@ import {
   ComboboxItemIndicator,
   ComboboxItemLabel,
   ComboboxTrigger,
-} from "~/components/ui/combobox";
+} from "@solid-imager/ui/combobox";
 import {
   Dialog,
   DialogContent,
@@ -46,18 +42,22 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "~/components/ui/dialog";
-import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { PaginationControls } from "~/components/ui/pagination-controls";
-import { Progress } from "~/components/ui/progress";
+} from "@solid-imager/ui/dialog";
+import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
+import { PaginationControls } from "@solid-imager/ui/pagination-controls";
+import { Progress } from "@solid-imager/ui/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "~/components/ui/select";
+} from "@solid-imager/ui/select";
+import { toast } from "@solid-imager/ui/toast";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import { MediaCardItem } from "~/components/media/media-card-item";
 import {
   createCharacter,
   deleteCharacter,

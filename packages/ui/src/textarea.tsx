@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js";
 import { splitProps } from "solid-js";
 
-import { cn } from "~/presentation/utils/cn";
+import { cn } from "./utils/cn";
 
 export type TextareaProps = JSX.TextareaHTMLAttributes<HTMLTextAreaElement>;
 

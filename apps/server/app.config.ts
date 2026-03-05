@@ -30,5 +30,17 @@ export default defineConfig({
         external: ["pg"],
       },
     },
+    server: {
+      watch: {
+        ignored: [
+          "**/node_modules/**",
+          "**/.git/**",
+          "**/.data/**",
+          "**/.thumbnails/**",
+          "**/data/**",
+          "**/tmp/**",
+        ],
+      },
+    },
   },
 });

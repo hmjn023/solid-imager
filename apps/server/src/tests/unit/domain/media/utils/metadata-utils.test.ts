@@ -71,7 +71,7 @@ describe("extractDataFromComments", () => {
       { name: "smile", type: "positive" },
     ]);
     expect(result.prompt).toBeTypeOf("string");
-    expect(result.workflow).toBeNull();
+    expect(result.workflow).toBeTypeOf("object");
   });
 
   it("should handle comments with only workflow", () => {
