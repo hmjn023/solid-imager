@@ -137,11 +137,11 @@ export const DirectorySyncService = {
       });
 
       const mediaExtensions = services.getConfigService().getConfig().media.supportedExtensions;
-      const allowedExts = new Set([
-        ...mediaExtensions.image,
-        ...mediaExtensions.video,
-        ...mediaExtensions.audio,
-      ].map(ext => ext.toLowerCase()));
+      const allowedExts = new Set(
+        Object.values(mediaExtensions)
+          .flat()
+          .map((ext) => ext.toLowerCase())
+      );
 
       const actualMediaPaths = fsPaths.filter((p) => {
         const ext = path.extname(p).toLowerCase();
