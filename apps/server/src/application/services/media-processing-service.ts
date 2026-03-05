@@ -328,7 +328,14 @@ export class MediaProcessingServiceImpl {
       charData.name
     );
 
-    const ipIdsToLink = await this._resolveIpIds(currentIpNames, tx);
+    // Determine which IPs to link to this character
+    // Priority: 1) linkedIps from metadata, 2) infer from media's current IPs
+    const ipNamesToLink =
+      charData.linkedIps && charData.linkedIps.length > 0
+        ? charData.linkedIps
+        : currentIpNames;
+
+    const ipIdsToLink = await this._resolveIpIds(ipNamesToLink, tx);
 
     if (!character) {
       character = await this.characterService.createCharacter({

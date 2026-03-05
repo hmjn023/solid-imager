@@ -8,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
+import { toast } from "@solid-imager/ui/toast";
 import {
   createEffect,
   createResource,
@@ -16,7 +17,6 @@ import {
   Show,
 } from "solid-js";
 import { Portal } from "solid-js/web";
-import { toast } from "solid-toast";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 type Props = {

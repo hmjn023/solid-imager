@@ -28,9 +28,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@solid-imager/ui/select";
+import { toast } from "@solid-imager/ui/toast";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
-import { toast } from "solid-toast";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
   clearPresetFilters,
