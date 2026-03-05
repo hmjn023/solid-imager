@@ -136,27 +136,34 @@ export const BackupService = {
     // Trigger thumbnail generation (skip metadata extraction to preserve restored data)
     if (mediaSource.type === "local") {
       const mediaIds = Array.from(mediaPathToId.values());
-      const { services } = await import("~/application/registry");
 
       if (mediaIds.length > 0) {
-        const jobRepo = services.getJobRepository();
+        try {
+          const { services } = await import("~/application/registry");
+          const jobRepo = services.getJobRepository();
 
-        const connectionInfo = mediaSource.connectionInfo as { path: string };
-        const basePath = connectionInfo.path;
+          const connectionInfo = mediaSource.connectionInfo as { path: string };
+          const basePath = connectionInfo.path;
 
-        for (const id of mediaIds) {
-          await jobRepo.create({
-            type: "processMedia",
-            mediaSourceId,
-            payload: {
-              mediaId: id,
-              sourcePath: basePath,
-              type: "processMedia", // optional
-              skipMetadataExtraction: true,
-            },
-          });
+          for (const id of mediaIds) {
+            await jobRepo.create({
+              type: "processMedia",
+              mediaSourceId,
+              payload: {
+                mediaId: id,
+                sourcePath: basePath,
+                type: "processMedia", // optional
+                skipMetadataExtraction: true,
+              },
+            });
+          }
+          // Worker handles it automatically
+        } catch (e) {
+          logger.warn(
+            { err: e },
+            "Failed to queue thumbnail generation jobs after restore (non-critical)"
+          );
         }
-        // Worker handles it automatically
       }
     }
 
@@ -497,6 +504,14 @@ export const BackupService = {
                   characterId: charId,
                   ipId,
                   source: "restored",
+                });
+
+                // Also ensure this IP is linked to the media
+                mediaIpsData.push({
+                  mediaId,
+                  ipId,
+                  confidence: c.confidence ?? null, // Use character's confidence as fallback
+                  source: "character_link",
                 });
               }
             }

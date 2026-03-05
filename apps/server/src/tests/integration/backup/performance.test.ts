@@ -16,15 +16,6 @@ import {
   tags,
 } from "~/infrastructure/db/schema";
 
-// Mock external modules
-vi.mock("node:fs/promises", async () => {
-  const actual = await vi.importActual("node:fs/promises");
-  return {
-    ...actual,
-    access: vi.fn().mockResolvedValue(undefined),
-  };
-});
-
 describe("BackupService Performance", () => {
   const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";
 
