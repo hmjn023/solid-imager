@@ -411,6 +411,9 @@ export const BackupService = {
     const characterIpsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaIpsData: any[] = [];
+    // Track unique (mediaId, ipId) pairs to prevent duplicates
+    const seenMediaIps = new Set<string>();
+    // ... rest of data arrays
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
     const mediaUrlsData: any[] = [];
     // biome-ignore lint/suspicious/noExplicitAny: complex structure
@@ -464,12 +467,16 @@ export const BackupService = {
         for (const i of item.ips) {
           const ipId = i.name ? ipMap.get(i.name) : undefined;
           if (ipId) {
-            mediaIpsData.push({
-              mediaId,
-              ipId,
-              confidence: i.confidence ?? null,
-              source: i.source || "restored",
-            });
+            const key = `${mediaId}:${ipId}`;
+            if (!seenMediaIps.has(key)) {
+              mediaIpsData.push({
+                mediaId,
+                ipId,
+                confidence: i.confidence ?? null,
+                source: i.source || "restored",
+              });
+              seenMediaIps.add(key);
+            }
           }
         }
       }
@@ -506,13 +513,17 @@ export const BackupService = {
                   source: "restored",
                 });
 
-                // Also ensure this IP is linked to the media
-                mediaIpsData.push({
-                  mediaId,
-                  ipId,
-                  confidence: c.confidence ?? null, // Use character's confidence as fallback
-                  source: "character_link",
-                });
+                // Also ensure this IP is linked to the media (prevent duplicates)
+                const key = `${mediaId}:${ipId}`;
+                if (!seenMediaIps.has(key)) {
+                  mediaIpsData.push({
+                    mediaId,
+                    ipId,
+                    confidence: c.confidence ?? null, // Use character's confidence as fallback
+                    source: "character_link",
+                  });
+                  seenMediaIps.add(key);
+                }
               }
             }
           }

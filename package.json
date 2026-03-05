@@ -12,24 +12,32 @@
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
-    "lint": "bun x biome lint .",
-    "check": "bun x biome check --fix --unsafe .",
-    "format": "bun x biome format --fix .",
-    "test": "bun --filter @solid-imager/server test",
+    "lint": "bun --filter '*' lint",
+    "check": "bun --filter '*' check",
+    "format": "bun --filter '*' format",
+    "test": "bun --filter '*' test",
     "typecheck": "bun --filter '*' typecheck",
     "prepare": "husky"
   },
   "lint-staged": {
     "apps/server/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/server lint",
       "bun --filter @solid-imager/server check",
-      "bun --filter @solid-imager/server test:unit"
+      "bun --filter @solid-imager/server test:unit",
+      "bash -c 'bun --filter @solid-imager/server typecheck'"
     ],
     "packages/core/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/core lint"
+      "bun --filter @solid-imager/core check",
+      "bun --filter @solid-imager/core test:unit",
+      "bash -c 'bun --filter @solid-imager/core typecheck'"
     ],
-    "**/*.{ts,tsx}": [
-      "bash -c 'bun run typecheck'"
+    "packages/ui/src/**/*.{ts,tsx,js,jsx,json}": [
+      "bun --filter @solid-imager/ui check",
+      "bun --filter @solid-imager/ui test:unit",
+      "bash -c 'bun --filter @solid-imager/ui typecheck'"
+    ],
+    "xtracter/src/**/*.{ts,tsx,js,jsx,json}": [
+      "bun --filter xtracter check",
+      "bash -c 'bun --filter xtracter typecheck'"
     ]
   },
   "devDependencies": {

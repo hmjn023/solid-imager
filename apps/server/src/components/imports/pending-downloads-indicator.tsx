@@ -1,3 +1,4 @@
+import { toast } from "@solid-imager/ui/toast";
 import {
   createResource,
   createSignal,
@@ -6,7 +7,6 @@ import {
   Show,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import { toast } from "solid-toast";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import ImportReviewModal from "./import-review-modal";
 

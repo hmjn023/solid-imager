@@ -54,9 +54,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@solid-imager/ui/select";
+import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
-import { toast } from "solid-toast";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import {
   createCharacter,

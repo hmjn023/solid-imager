@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { toast } from "@solid-imager/ui/toast";
 import { useParams } from "@solidjs/router";
 import {
   createInfiniteQuery,
@@ -44,7 +45,6 @@ import {
   Show,
 } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
-import { toast } from "solid-toast";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { SearchControlPanel } from "~/components/media/search-control-panel";

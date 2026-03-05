@@ -56,12 +56,10 @@ if (!globalAny.__SSE_CLEANUP_REGISTERED__) {
 
   process.on("SIGINT", async () => {
     await cleanup();
-    process.exit(0);
   });
 
   process.on("SIGTERM", async () => {
     await cleanup();
-    process.exit(0);
   });
 
   globalAny.__SSE_CLEANUP_REGISTERED__ = true;
