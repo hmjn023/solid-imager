@@ -9,6 +9,7 @@ import type {
   AddMediaRequest,
   DownloadItem,
 } from "@solid-imager/core/domain/media/schemas";
+import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
@@ -260,8 +261,49 @@ async function handleYtDlpDownload(
       "[DownloadJob] yt-dlp download completed"
     );
 
+    let index = 0;
     for (const res of results) {
-      const { filePath, metadata } = res;
+      let { filePath, metadata } = res;
+
+      // Unify filename
+      const extension = path.extname(filePath);
+      let unifiedName = generateMediaFilename(item, extension);
+
+      // If multiple results for the same item, append index
+      if (results.length > 1) {
+        const ext = path.extname(unifiedName);
+        const base = path.basename(unifiedName, ext);
+        unifiedName = `${base}_${index}${ext}`;
+      }
+
+      const targetPath = path.join(path.dirname(filePath), unifiedName);
+
+      try {
+        // Check if target already exists (unlikely given it's a new job, but good for safety)
+        let finalPath = targetPath;
+        let collisionIndex = 1;
+        const ext = path.extname(unifiedName);
+        const base = path.basename(unifiedName, ext);
+
+        while (true) {
+          if (finalPath === filePath) break; // Not a collision if it's the current file
+          try {
+            await fs.access(finalPath);
+            finalPath = path.join(path.dirname(filePath), `${base}_(${collisionIndex})${ext}`);
+            collisionIndex++;
+          } catch {
+            break;
+          }
+        }
+
+        await fs.rename(filePath, finalPath);
+        filePath = finalPath;
+        logger.info({ from: res.filePath, to: filePath }, "[DownloadJob] Renamed yt-dlp output to unified name");
+      } catch (e) {
+        logger.warn({ err: e, filePath, targetPath }, "[DownloadJob] Failed to rename yt-dlp output");
+        // Continue with original path if rename fails
+      }
+      index++;
 
       // Calculate relative path
       const relativePath = path.relative(basePath, filePath);
@@ -355,16 +397,10 @@ async function handleDirectImageDownload(
     "[DownloadJob] Using direct image download method"
   );
 
-  // Generate filename from URL
+  // Generate unified filename
   const urlPath = new URL(item.targetUrl).pathname;
-  const originalFilename = path.basename(urlPath);
-
-  const { createHash } = await import("node:crypto");
-  const urlHash = createHash("md5")
-    .update(item.targetUrl)
-    .digest("hex")
-    .slice(0, URL_HASH_LENGTH);
-  const filename = `download-${urlHash}-${originalFilename}`;
+  const extension = path.extname(urlPath) || ".png";
+  const filename = generateMediaFilename(item, extension);
 
   try {
     // Download the image
