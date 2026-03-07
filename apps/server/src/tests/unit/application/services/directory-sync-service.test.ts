@@ -59,6 +59,22 @@ vi.mock("~/infrastructure/jobs/sse-manager", () => ({
   },
 }));
 
+vi.mock("~/application/registry", () => ({
+  services: {
+    getConfigService: vi.fn().mockReturnValue({
+      getConfig: vi.fn().mockReturnValue({
+        media: {
+          supportedExtensions: {
+            image: [".jpg", ".png"],
+            video: [".mp4"],
+            audio: [".mp3"],
+          },
+        },
+      }),
+    }),
+  },
+}));
+
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 

@@ -1,4 +1,5 @@
 import type { SafeMediaSource } from "@core/domain/sources/schemas";
+import { generateMediaFilename } from "@core/domain/media/utils/filename-utils";
 import { APIError, getClient } from "@ext/api";
 import type {
   DownloadBulkMessage,
@@ -10,6 +11,21 @@ import type {
 } from "@ext/schema";
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
+
+function getExtensionFromUrl(url: string): string {
+  try {
+    const urlObj = new URL(url);
+    const pathname = urlObj.pathname;
+    const filename = pathname.split("/").pop() || "";
+    const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+    if (extMatch) {
+      return `.${extMatch[1]}`;
+    }
+  } catch (_e) {
+    // ignore
+  }
+  return ".png"; // default
+}
 
 /**
  * リトライ付きでAPI呼び出しを実行する
@@ -212,19 +228,13 @@ chrome.runtime.onMessage.addListener(
 
     // Handle Content Script Requests
     if (isDownloadMessage(message)) {
-      const { targetUrl, authors, createdAt } = message.data;
-      const authorId =
-        authors && authors.length > 0 && authors[0].accountId
-          ? authors[0].accountId
-          : "unknown";
-      const safeAuthorId = authorId.replace(/[^a-zA-Z0-9@_-]/g, "");
-      const safeTimestamp = createdAt
-        ? new Date(createdAt).getTime()
-        : Date.now();
-      const filenameBase = `xtracter/${safeAuthorId}_${safeTimestamp}`;
+      const { targetUrl } = message.data;
+      const extension = getExtensionFromUrl(targetUrl);
+      const filename = generateMediaFilename(message.data, extension);
+
       chrome.downloads.download({
         url: targetUrl,
-        filename: `${filenameBase}.png`,
+        filename: `xtracter/${filename}`,
       });
     } else if (isDownloadBulkMessage(message)) {
       const now = new Date();

@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import fg from "fast-glob";
+import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -9,18 +10,6 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
 const sourceRepo = new DrizzleSourceRepository();
-
-const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
-const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov"];
-const AUDIO_EXTENSIONS = [".mp3", ".wav"];
-const ALL_MEDIA_EXTENSIONS = [
-  ...IMAGE_EXTENSIONS,
-  ...VIDEO_EXTENSIONS,
-  ...AUDIO_EXTENSIONS,
-];
-
-// Helper to check extensions
-const ALLOWED_EXTS = new Set(ALL_MEDIA_EXTENSIONS);
 
 type SyncResult = {
   sourceId: string;
@@ -147,11 +136,18 @@ export const DirectorySyncService = {
         caseSensitiveMatch: false,
       });
 
+      const mediaExtensions = services.getConfigService().getConfig().media.supportedExtensions;
+      const allowedExts = new Set(
+        Object.values(mediaExtensions)
+          .flat()
+          .map((ext) => ext.toLowerCase())
+      );
+
       const actualMediaPaths = fsPaths.filter((p) => {
         const ext = path.extname(p).toLowerCase();
-        return ALLOWED_EXTS.has(ext);
+        return allowedExts.has(ext);
       });
-      const fsPathSet = new Set(actualMediaPaths);
+      const allFilesPathSet = new Set(fsPaths);
 
       // 3. Calculate diffs
       const filesToAdd: string[] = [];
@@ -163,7 +159,7 @@ export const DirectorySyncService = {
 
       const filesToDelete: { id: string; relativePath: string }[] = [];
       for (const [p, id] of dbPathMap.entries()) {
-        if (!fsPathSet.has(p)) {
+        if (!allFilesPathSet.has(p)) {
           filesToDelete.push({ id, relativePath: p.split("/").join(path.sep) });
         }
       }

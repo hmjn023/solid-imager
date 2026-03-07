@@ -1,0 +1,28 @@
+{
+  "name": "@solid-imager/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "imager-cli": "./src/index.ts"
+  },
+  "scripts": {
+    "dev": "bun run src/index.ts",
+    "build": "bun build ./src/index.ts --compile --outfile dist/imager-cli",
+    "start": "bun run dist/imager-cli",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "incur": "^0.2.2",
+    "zod": "^3.23.8",
+    "@solid-imager/core": "workspace:*",
+    "@solid-imager/server": "workspace:*",
+    "@orpc/client": "^1.13.2"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
