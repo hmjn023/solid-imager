@@ -1,12 +1,11 @@
 import { Cli, z } from 'incur'
 import { getClient } from '../orpc-client.ts'
 import fs from 'node:fs/promises'
+import { createWriteStream } from 'node:fs'
+import { finished } from 'node:stream/promises'
+import { Readable } from 'node:stream'
 import path from 'node:path'
-
-function getErrorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message
-  return String(e)
-}
+import { getErrorMessage, globalOptions } from '../utils.ts'
 
 /**
  * Validates that a string is a valid CSS-like dimension for iTerm2
@@ -23,7 +22,7 @@ function validateDimension(d: string): string {
  * Safely resolves a download path to prevent traversal
  */
 function resolveDownloadPath(output: string | undefined, defaultFilename: string, agent: boolean = false): string {
-  const target = output || defaultFilename
+  const target = output || path.basename(defaultFilename)
   const resolved = path.resolve(target)
   
   // Security: If used by an AI agent (MCP), restrict to CWD
@@ -33,10 +32,6 @@ function resolveDownloadPath(output: string | undefined, defaultFilename: string
 
   return resolved
 }
-
-const globalOptions = z.object({
-  remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
-})
 
 export const getHandler = async (c: any) => {
   const rpc = getClient(c.options.remote)
@@ -108,13 +103,17 @@ export const downloadHandler = async (c: any) => {
       return c.error({ code: 'FETCH_ERROR', message: `Failed to fetch media binary: ${res.statusText} (${res.status})` })
     }
 
-    const arrayBuffer = await res.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
+    if (!res.body) {
+      return c.error({ code: 'FETCH_ERROR', message: 'Response body is empty' })
+    }
 
     const filename = resolveDownloadPath(c.options.output, media.originalFileName || `${media.id}.bin`, c.agent)
+    const fileStream = createWriteStream(filename)
 
-    await fs.writeFile(filename, buffer)
-    return c.ok({ message: `Downloaded to ${filename}`, size: buffer.length })
+    // Bun or Node native fetch bodies are ReadableStreams
+    await finished(Readable.fromWeb(res.body as any).pipe(fileStream))
+
+    return c.ok({ message: `Downloaded to ${filename}` })
   } catch (e) {
     return c.error({ code: 'DOWNLOAD_ERROR', message: getErrorMessage(e) })
   }

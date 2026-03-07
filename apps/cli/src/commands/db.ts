@@ -2,14 +2,7 @@ import { Cli, z } from 'incur'
 import { spawn } from 'node:child_process'
 import { createWriteStream, createReadStream } from 'node:fs'
 import path from 'node:path'
-
-/**
- * Safely extract error message from unknown error object
- */
-function getErrorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message
-  return String(e)
-}
+import { getErrorMessage } from '../utils.ts'
 
 /**
  * Validates that a path is safe
@@ -42,9 +35,10 @@ async function runDatabaseCommand(
   let spawnArgs = args
 
   if (docker) {
-    if (!agent) process.stdout.write(`Executing docker ${command}...\n`)
+    const containerName = process.env.DB_CONTAINER || 'solid-imager-db-1'
+    if (!agent) process.stdout.write(`Executing docker ${command} on ${containerName}...\n`)
     spawnCmd = 'docker'
-    spawnArgs = ['exec', '-i', 'solid-imager-db-1', command, ...args]
+    spawnArgs = ['exec', '-i', containerName, command, ...args]
   } else {
     if (!agent) process.stdout.write(`Executing local ${command}...\n`)
   }
@@ -55,7 +49,7 @@ async function runDatabaseCommand(
   const child = spawn(spawnCmd, spawnArgs, {
     stdio: [
       inStream ? 'pipe' : 'ignore',
-      outStream ? 'pipe' : 'pipe',
+      outStream ? 'pipe' : 'inherit',
       'pipe'
     ]
   })

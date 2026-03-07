@@ -5,10 +5,7 @@ import { mediaCmd } from './commands/media.ts'
 import { jobCmd } from './commands/job.ts'
 import { aiCmd } from './commands/ai.ts'
 import { dbCmd } from './commands/db.ts'
-
-const globalOptions = z.object({
-  remote: z.string().default('http://localhost:3000').describe('Remote server URL (e.g. http://localhost:3000)'),
-})
+import { globalOptions } from './utils.ts'
 
 const cli = Cli.create('imager-cli', {
   description: 'Solid Imager Management CLI',
