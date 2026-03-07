@@ -282,11 +282,13 @@ async function handleYtDlpDownload(
         // Check if target already exists (unlikely given it's a new job, but good for safety)
         let finalPath = targetPath;
         let collisionIndex = 1;
+        const ext = path.extname(unifiedName);
+        const base = path.basename(unifiedName, ext);
+
         while (true) {
+          if (finalPath === filePath) break; // Not a collision if it's the current file
           try {
             await fs.access(finalPath);
-            const ext = path.extname(unifiedName);
-            const base = path.basename(unifiedName, ext);
             finalPath = path.join(path.dirname(filePath), `${base}_(${collisionIndex})${ext}`);
             collisionIndex++;
           } catch {

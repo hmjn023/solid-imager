@@ -6,8 +6,10 @@ import type { DownloadItem } from "../schemas";
 export function sanitizeFilenamePart(part: string): string {
   // Remove or replace characters that are invalid in filenames across OSes
   // Also remove @ at the beginning of Twitter IDs for cleaner filenames
-  const cleaned = part.startsWith("@") ? part.slice(1) : part;
-  return cleaned.replace(/[/\\?%*:|"<>]/g, "").replace(/\s+/g, "_");
+  const trimmed = part.trim();
+  const cleaned = trimmed.startsWith("@") ? trimmed.slice(1) : trimmed;
+  // Remove dots and other path characters to prevent path traversal
+  return cleaned.replace(/[/\\?%*:|"<>.]/g, "").replace(/\s+/g, "_");
 }
 
 /**
@@ -82,9 +84,11 @@ export function generateMediaFilename(
     if (item.targetUrl) {
       try {
         const url = new URL(item.targetUrl);
-        const filename = url.pathname.split("/").pop();
-        if (filename && filename.includes(".")) {
-          return filename; // Use original filename from URL
+        const originalFilename = url.pathname.split("/").pop();
+        if (originalFilename && originalFilename.includes(".")) {
+          const ext = originalFilename.split(".").pop() || "";
+          const baseName = originalFilename.split(".").slice(0, -1).join(".");
+          return `${sanitizeFilenamePart(baseName)}.${sanitizeFilenamePart(ext)}`;
         }
         // Hash-like from URL
         contentId = url.pathname.replace(/[^a-zA-Z0-9]/g, "_").slice(-12);
@@ -105,9 +109,14 @@ export function generateMediaFilename(
   let base = parts.join("_");
   if (!base) base = "media";
 
-  const ext = extension.startsWith(".") ? extension : `.${extension}`;
-  // Ensure no double dots and the extension is at the end
-  const cleanExt = ext.split("?")[0].split("#")[0]; // remove query/hash if any
+  let cleanExt = extension.split("?")[0].split("#")[0];
+  if (cleanExt) {
+    // Sanitize extension (e.g., remove "../" or other junk)
+    cleanExt = sanitizeFilenamePart(cleanExt);
+    if (cleanExt) {
+      cleanExt = `.${cleanExt}`;
+    }
+  }
 
   return `${base}${cleanExt}`;
 }

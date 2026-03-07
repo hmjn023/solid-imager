@@ -87,8 +87,8 @@ vi.mock("node:child_process", () => ({
 const fetchMock = vi.fn();
 global.fetch = fetchMock;
 
-// Regex for download filename pattern (moved to top level for performance)
-const DOWNLOAD_FILENAME_PATTERN = /^download-[a-f0-9]{12}-image\.jpg$/;
+// Regex for download filename pattern (unified format: {author}_{date}_{id}.{ext})
+const DOWNLOAD_FILENAME_PATTERN = /^user_.*123\.jpg$/;
 
 describe("processDownloadJob", () => {
   beforeEach(async () => {

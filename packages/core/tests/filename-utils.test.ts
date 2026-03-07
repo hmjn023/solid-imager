@@ -8,12 +8,16 @@ describe("filename-utils", () => {
       expect(sanitizeFilenamePart("@user_name")).toBe("user_name");
     });
 
-    it("should remove invalid characters", () => {
-      expect(sanitizeFilenamePart("user/name?%")).toBe("username");
+    it("should remove invalid characters including dots", () => {
+      expect(sanitizeFilenamePart("user/name.ext?%")).toBe("usernameext");
     });
 
     it("should replace spaces with underscores", () => {
       expect(sanitizeFilenamePart("user name")).toBe("user_name");
+    });
+
+    it("should trim leading and trailing spaces", () => {
+      expect(sanitizeFilenamePart("  artist_name  ")).toBe("artist_name");
     });
   });
 
@@ -69,6 +73,14 @@ describe("filename-utils", () => {
         sourceUrls: ["https://danbooru.donmai.us/posts/123456"]
       };
       expect(generateMediaFilename(item, ".png")).toBe("20231027_123456.png");
+    });
+
+    it("should not have a trailing dot if extension is empty", () => {
+      const item: DownloadItem = {
+        targetUrl: "https://example.com/image",
+        authors: [{ name: "Artist" }]
+      };
+      expect(generateMediaFilename(item, "")).toBe("Artist");
     });
   });
 });
