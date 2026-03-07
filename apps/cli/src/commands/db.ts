@@ -36,6 +36,11 @@ export const dbCmd = Cli.create('db', { description: 'Database operations (Local
 
       try {
          const outStream = createWriteStream(c.options.output)
+         const writePromise = new Promise((resolve, reject) => {
+           outStream.on('finish', resolve)
+           outStream.on('error', reject)
+         })
+
          if (c.options.docker) {
            if (!c.agent) process.stdout.write(`Executing docker dump...\n`)
            // No -t (tty) flag to prevent \r\n corruption and non-interactive errors
@@ -47,13 +52,14 @@ export const dbCmd = Cli.create('db', { description: 'Database operations (Local
            let stderr = ''
            child.stderr.on('data', data => stderr += data.toString())
 
-           await new Promise<void>((resolve, reject) => {
-             child.on('close', code => {
-               if (code === 0) resolve()
-               else reject(new Error(`pg_dump failed (code ${code}): ${stderr}`))
-             })
+           const exitCode = await new Promise<number>((resolve, reject) => {
+             child.on('close', resolve)
              child.on('error', reject)
            })
+
+           if (exitCode !== 0) {
+              throw new Error(`pg_dump failed (code ${exitCode}): ${stderr}`)
+           }
          } else {
            if (!c.agent) process.stdout.write(`Executing local pg_dump...\n`)
            const child = spawn('pg_dump', ['-U', 'postgres', '-d', 'solid_imager'], {
@@ -64,14 +70,17 @@ export const dbCmd = Cli.create('db', { description: 'Database operations (Local
            let stderr = ''
            child.stderr.on('data', data => stderr += data.toString())
 
-           await new Promise<void>((resolve, reject) => {
-             child.on('close', code => {
-               if (code === 0) resolve()
-               else reject(new Error(`pg_dump failed (code ${code}): ${stderr}`))
-             })
+           const exitCode = await new Promise<number>((resolve, reject) => {
+             child.on('close', resolve)
              child.on('error', reject)
            })
+
+           if (exitCode !== 0) {
+             throw new Error(`pg_dump failed (code ${exitCode}): ${stderr}`)
+           }
          }
+
+         await writePromise
          return c.ok({ success: true, file: c.options.output, format: c.options.format })
       } catch (e: any) {
          return c.error({ code: 'DUMP_ERROR', message: e.message })
@@ -93,7 +102,10 @@ export const dbCmd = Cli.create('db', { description: 'Database operations (Local
            const child = spawn('docker', ['exec', '-i', 'solid-imager-db-1', 'psql', '-U', 'postgres', '-d', 'solid_imager'], {
              stdio: ['pipe', 'pipe', 'pipe']
            })
-           inStream.pipe(child.stdin)
+           inStream.pipe(child.stdin).on('error', (err) => {
+             child.kill()
+             throw err
+           })
 
            let stderr = ''
            child.stderr.on('data', data => stderr += data.toString())
@@ -110,7 +122,10 @@ export const dbCmd = Cli.create('db', { description: 'Database operations (Local
            const child = spawn('psql', ['-U', 'postgres', '-d', 'solid_imager'], {
              stdio: ['pipe', 'pipe', 'pipe']
            })
-           inStream.pipe(child.stdin)
+           inStream.pipe(child.stdin).on('error', (err) => {
+             child.kill()
+             throw err
+           })
 
            let stderr = ''
            child.stderr.on('data', data => stderr += data.toString())
