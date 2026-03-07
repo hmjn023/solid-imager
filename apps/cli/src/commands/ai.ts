@@ -1,6 +1,11 @@
 import { Cli, z } from 'incur'
 import { getClient } from '../orpc-client.ts'
 
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  return String(e)
+}
+
 const globalOptions = z.object({
   remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
 })
@@ -13,8 +18,8 @@ export const tagHandler = async (c: any) => {
        mediaSourceId: c.options.mediaSourceId
     })
     return c.ok({ result })
-  } catch (e: any) {
-    return c.error({ code: 'AI_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'AI_ERROR', message: getErrorMessage(e) })
   }
 }
 
@@ -27,8 +32,8 @@ export const statusHandler = async (c: any) => {
        return c.ok({ status: 'online', details })
     }
     return c.error({ code: 'OFFLINE', message: 'AI service appears offline or unreachable.' })
-  } catch (e: any) {
-    return c.error({ code: 'FETCH_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'FETCH_ERROR', message: getErrorMessage(e) })
   }
 }
 

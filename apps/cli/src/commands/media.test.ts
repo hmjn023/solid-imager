@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { downloadHandler, getHandler, searchHandler } from './media'
+import { downloadHandler, getHandler, searchHandler, viewHandler } from './media'
 import * as orpcClient from '../orpc-client'
 import fs from 'node:fs/promises'
 
@@ -111,20 +111,17 @@ describe('media handlers', () => {
         error: vi.fn((val) => val),
       }
 
-      const result = await downloadHandler(context)
+      const result: any = await downloadHandler(context)
 
       expect(orpcClient.getClient).toHaveBeenCalledWith('http://test.local')
       expect(mockGet).toHaveBeenCalledWith({ id: 'media-uuid' })
       expect(mockFetch).toHaveBeenCalledWith(new URL('/api/media/media-uuid/original', 'http://test.local').toString())
-      expect(fs.writeFile).toHaveBeenCalledWith('test.jpg', expect.any(Buffer))
-      expect(context.ok).toHaveBeenCalledWith({
-        message: 'Downloaded to test.jpg',
+      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('test.jpg'), expect.any(Buffer))
+      expect(context.ok).toHaveBeenCalledWith(expect.objectContaining({
+        message: expect.stringContaining('test.jpg'),
         size: mockBuffer.length,
-      })
-      expect(result).toEqual({
-        message: 'Downloaded to test.jpg',
-        size: mockBuffer.length,
-      })
+      }))
+      expect(result.message).toContain('test.jpg')
     })
 
     it('should use id as filename if originalFileName is missing', async () => {
@@ -146,7 +143,7 @@ describe('media handlers', () => {
       }
 
       await downloadHandler(context)
-      expect(fs.writeFile).toHaveBeenCalledWith('media-uuid.bin', expect.any(Buffer))
+      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('media-uuid.bin'), expect.any(Buffer))
     })
 
     it('should use output option as filename if provided', async () => {
@@ -168,7 +165,7 @@ describe('media handlers', () => {
       }
 
       await downloadHandler(context)
-      expect(fs.writeFile).toHaveBeenCalledWith('custom.png', expect.any(Buffer))
+      expect(fs.writeFile).toHaveBeenCalledWith(expect.stringContaining('custom.png'), expect.any(Buffer))
     })
 
     it('should handle fetch errors', async () => {
@@ -199,6 +196,53 @@ describe('media handlers', () => {
         code: 'FETCH_ERROR',
         message: 'Failed to fetch media binary: Not Found (404)',
       })
+    })
+  })
+
+  describe('viewHandler dimensions', () => {
+    it('should fail on invalid dimensions', async () => {
+      const mockMedia = { id: 'media-1' }
+      const mockRpc = { media: { get: vi.fn().mockResolvedValue(mockMedia) } }
+      vi.mocked(orpcClient.getClient).mockReturnValue(mockRpc as any)
+
+      const context = {
+        args: { id: 'media-1' },
+        options: { remote: 'http://test.local', width: '50%;inject', height: 'auto' },
+        ok: vi.fn(),
+        error: vi.fn((val) => val),
+      }
+
+      const result = await viewHandler(context)
+      expect(context.error).toHaveBeenCalledWith(expect.objectContaining({
+        code: 'VIEW_ERROR',
+        message: expect.stringContaining('Invalid dimension'),
+      }))
+    })
+
+    it('should pass on valid dimensions', async () => {
+      const mockMedia = { id: 'media-1' }
+      const mockRpc = { media: { get: vi.fn().mockResolvedValue(mockMedia) } }
+      vi.mocked(orpcClient.getClient).mockReturnValue(mockRpc as any)
+
+      mockFetch.mockResolvedValue({
+        ok: true,
+        arrayBuffer: vi.fn().mockResolvedValue(Buffer.from('data')),
+      })
+
+      const context = {
+        args: { id: 'media-1' },
+        options: { remote: 'http://test.local', width: '400px', height: '10%' },
+        ok: vi.fn((val) => val),
+        error: vi.fn((val) => val),
+        agent: false
+      }
+
+      // Mock process.stdout.write
+      const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+
+      await viewHandler(context)
+      expect(context.ok).toHaveBeenCalledWith({ displayed: true })
+      stdoutSpy.mockRestore()
     })
   })
 })

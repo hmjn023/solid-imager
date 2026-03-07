@@ -3,6 +3,37 @@ import { getClient } from '../orpc-client.ts'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message
+  return String(e)
+}
+
+/**
+ * Validates that a string is a valid CSS-like dimension for iTerm2
+ */
+function validateDimension(d: string): string {
+  const dimensionRegex = /^(\d+(%|px|vh|vw)?|auto)$/
+  if (!dimensionRegex.test(d)) {
+    throw new Error(`Invalid dimension: ${d}. Must be auto or a number with unit (%, px, vh, vw).`)
+  }
+  return d
+}
+
+/**
+ * Safely resolves a download path to prevent traversal
+ */
+function resolveDownloadPath(output: string | undefined, defaultFilename: string, agent: boolean = false): string {
+  const target = output || defaultFilename
+  const resolved = path.resolve(target)
+  
+  // Security: If used by an AI agent (MCP), restrict to CWD
+  if (agent && !resolved.startsWith(process.cwd())) {
+    throw new Error(`Access denied: Agent is restricted to the current working directory. Path: ${resolved}`)
+  }
+
+  return resolved
+}
+
 const globalOptions = z.object({
   remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
 })
@@ -12,8 +43,8 @@ export const getHandler = async (c: any) => {
   try {
     const media = await rpc.media.get({ id: c.args.id })
     return c.ok({ media })
-  } catch (e: any) {
-    return c.error({ code: 'FETCH_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'FETCH_ERROR', message: getErrorMessage(e) })
   }
 }
 
@@ -27,13 +58,17 @@ export const searchHandler = async (c: any) => {
       sort: 'date_desc',
     })
     return c.ok({ total: result.total, items: result.items })
-  } catch (e: any) {
-    return c.error({ code: 'FETCH_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'FETCH_ERROR', message: getErrorMessage(e) })
   }
 }
 
 export const viewHandler = async (c: any) => {
   try {
+    // Fail fast with dimension validation
+    const width = validateDimension(c.options.width)
+    const height = validateDimension(c.options.height)
+
     const rpc = getClient(c.options.remote)
     const media = await rpc.media.get({ id: c.args.id })
 
@@ -48,8 +83,6 @@ export const viewHandler = async (c: any) => {
     const base64 = buffer.toString('base64')
 
     const name = Buffer.from(media.originalFileName || 'image').toString('base64')
-    const width = c.options.width
-    const height = c.options.height
 
     const escapeCode = `\x1b]1337;File=name=${name};size=${buffer.length};inline=1;width=${width};height=${height}:${base64}\x07`
 
@@ -59,8 +92,8 @@ export const viewHandler = async (c: any) => {
     } else {
       return c.error({ code: 'VIEW_NOT_SUPPORTED', message: "Terminal image display is not supported in agent mode." })
     }
-  } catch (e: any) {
-    return c.error({ code: 'VIEW_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'VIEW_ERROR', message: getErrorMessage(e) })
   }
 }
 
@@ -78,15 +111,12 @@ export const downloadHandler = async (c: any) => {
     const arrayBuffer = await res.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
 
-    let filename = c.options.output
-    if (!filename) {
-      filename = media.originalFileName || `${media.id}.bin`
-    }
+    const filename = resolveDownloadPath(c.options.output, media.originalFileName || `${media.id}.bin`, c.agent)
 
     await fs.writeFile(filename, buffer)
     return c.ok({ message: `Downloaded to ${filename}`, size: buffer.length })
-  } catch (e: any) {
-    return c.error({ code: 'DOWNLOAD_ERROR', message: e.message })
+  } catch (e) {
+    return c.error({ code: 'DOWNLOAD_ERROR', message: getErrorMessage(e) })
   }
 }
 
