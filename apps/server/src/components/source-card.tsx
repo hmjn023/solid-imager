@@ -21,6 +21,7 @@ type SourceCardProps = {
   mediaSource: SafeMediaSource | MediaSourceInfo;
   onEdit?: (source: SafeMediaSource | MediaSourceInfo) => void;
   onDelete?: (source: SafeMediaSource | MediaSourceInfo) => void;
+  onSync?: (source: SafeMediaSource | MediaSourceInfo) => void;
 };
 
 const getTypeLabel = (type: string) => {
@@ -65,6 +66,12 @@ export default function SourceCard(props: SourceCardProps) {
     props.onEdit?.(props.mediaSource);
   };
 
+  const handleSyncClick = (e: MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    props.onSync?.(props.mediaSource);
+  };
+
   const handleDeleteClick = (e: MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -96,6 +103,16 @@ export default function SourceCard(props: SourceCardProps) {
         </CardContent>
         {/* 編集ボタンと削除ボタン */}
         <div class="absolute top-2 right-2 z-10 flex gap-1">
+          {props.onSync && (
+            <button
+              class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+              data-testid="sync-source-btn"
+              onClick={handleSyncClick}
+              type="button"
+            >
+              Sync
+            </button>
+          )}
           {props.onEdit && (
             <button
               class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"

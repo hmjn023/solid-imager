@@ -60,6 +60,15 @@ export async function deleteMediaSource(id: string): Promise<void> {
 }
 
 /**
+ * Syncs one or more media sources
+ * @param ids - Array of media source IDs to sync
+ * @returns Sync results
+ */
+export function syncMediaSources(ids: string[]) {
+  return orpc.sources.sync({ ids });
+}
+
+/**
  * Fetches a dump of the media source
  * @param id - Media source ID
  * @param mode - The dump mode (json or zip)

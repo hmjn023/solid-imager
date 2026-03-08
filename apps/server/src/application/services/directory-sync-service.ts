@@ -136,7 +136,8 @@ export const DirectorySyncService = {
         caseSensitiveMatch: false,
       });
 
-      const mediaExtensions = services.getConfigService().getConfig().media.supportedExtensions;
+      const mediaExtensions = services.getConfigService().getConfig()
+        .media.supportedExtensions;
       const allowedExts = new Set(
         Object.values(mediaExtensions)
           .flat()

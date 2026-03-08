@@ -115,6 +115,36 @@ export const mediaRouter = {
     ),
 
   /**
+   * Sync (reprocess) multiple media items
+   */
+  sync: os
+    .meta({
+      openapi: {
+        tags: ["Media"],
+        summary: "Sync (reprocess) media metadata",
+        description: "Re-extract metadata and tags for specified media items",
+      },
+    })
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        mediaIds: z.array(z.string().uuid()),
+      })
+    )
+    .handler(async ({ input }) => {
+      const results: { id: string; success: boolean; error?: string }[] = [];
+      for (const mediaId of input.mediaIds) {
+        try {
+          await MediaService.reprocessMetadata(input.sourceId, mediaId);
+          results.push({ id: mediaId, success: true });
+        } catch (error) {
+          results.push({ id: mediaId, success: false, error: String(error) });
+        }
+      }
+      return { results };
+    }),
+
+  /**
    * Delete a media file
    */
   delete: os

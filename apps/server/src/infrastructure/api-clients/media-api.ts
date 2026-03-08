@@ -142,3 +142,13 @@ export function moveMedia(
 ) {
   return orpc.media.move({ mediaId, targetSourceId });
 }
+
+/**
+ * Syncs (reprocesses) multiple media items
+ * @param sourceId - Media source ID
+ * @param mediaIds - Array of media IDs to sync
+ * @returns Sync results
+ */
+export function syncMediaItems(sourceId: string, mediaIds: string[]) {
+  return orpc.media.sync({ sourceId, mediaIds });
+}

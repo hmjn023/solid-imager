@@ -68,7 +68,7 @@ vi.mock("~/application/services/media-processing-service", () => ({
     addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
   },
 
-  MediaProcessingServiceImpl: class { },
+  MediaProcessingServiceImpl: class {},
 }));
 vi.mock("node:fs/promises", () => ({
   default: {
@@ -84,7 +84,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 // Mock fetch
-const fetchMock = vi.fn();// biome-ignore lint/suspicious/noExplicitAny: Mocking global fetch
+const fetchMock = vi.fn(); // biome-ignore lint/suspicious/noExplicitAny: Mocking global fetch
 global.fetch = fetchMock as any;
 
 // Regex for download filename pattern (unified format: {author}_{date}_{id}.{ext})

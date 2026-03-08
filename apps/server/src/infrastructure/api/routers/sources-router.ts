@@ -7,6 +7,7 @@ import {
 } from "@solid-imager/core/domain/sources/schemas";
 import { z } from "zod";
 import { BackupService } from "~/application/services/backup-service";
+import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -202,6 +203,39 @@ export const sourcesRouter = {
         });
 
       return { success: true };
+    }),
+
+  /**
+   * Syncs one or more media sources
+   */
+  sync: os
+    .meta({
+      openapi: {
+        tags: ["Media Sources"],
+        summary: "Sync media sources",
+        description: "Synchronize local media source directory with database",
+      },
+    })
+    .input(
+      z.object({
+        ids: z.array(z.string().uuid()),
+      })
+    )
+    .handler(async ({ input }) => {
+      const results: Record<string, unknown>[] = [];
+      for (const id of input.ids) {
+        try {
+          const result = await DirectorySyncService.syncMediaSource(id);
+          results.push({ id, success: true, ...result });
+        } catch (error) {
+          logger.error(
+            { err: error, sourceId: id },
+            "Failed to sync media source"
+          );
+          results.push({ id, success: false, error: String(error) });
+        }
+      }
+      return { results };
     }),
 
   /**

@@ -1026,7 +1026,7 @@ export const BackupService = {
       }
     })();
 
-    return Readable.toWeb(passThrough) as ReadableStream;
+    return Readable.toWeb(passThrough) as unknown as ReadableStream;
   },
 
   // Helper to transform media list to dump format

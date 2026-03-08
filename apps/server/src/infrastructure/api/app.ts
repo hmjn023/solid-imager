@@ -66,10 +66,22 @@ function assignTags(spec: any) {
   }
 }
 
+const UNIT_SIZE = 1024;
+const KILOBYTE = UNIT_SIZE;
+const MEGABYTE = UNIT_SIZE * KILOBYTE;
+const GIGABYTE = UNIT_SIZE * MEGABYTE;
+
+// 50GB limit for ZIP imports
+const MAX_BODY_SIZE_GB = 50;
+const MAX_BODY_SIZE = MAX_BODY_SIZE_GB * GIGABYTE;
+
 /**
  * Elysia アプリケーション
  */
-export const app = new Elysia()
+export const app = new Elysia({
+  // @ts-expect-error: bodyLimit is supported at runtime but missing from current ElysiaConfig type
+  bodyLimit: MAX_BODY_SIZE,
+})
   .onError(({ code, error, request }) => {
     if (error instanceof ResourceNotFoundError) {
       // biome-ignore lint/suspicious/noExplicitAny: error is narrowed by instanceof
