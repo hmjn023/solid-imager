@@ -13,4 +13,5 @@ export function getErrorMessage(e: unknown): string {
  */
 export const globalOptions = z.object({
   remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
+  source: z.string().uuid().optional().describe('Media source ID (UUID)'),
 })

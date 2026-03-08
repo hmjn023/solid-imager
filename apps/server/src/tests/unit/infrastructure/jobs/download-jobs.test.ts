@@ -84,7 +84,7 @@ vi.mock("node:child_process", () => ({
 }));
 
 // Mock fetch
-const fetchMock = vi.fn(); // biome-ignore lint/suspicious/noExplicitAny: Mocking global fetch
+const fetchMock = vi.fn();
 global.fetch = fetchMock as any;
 
 // Regex for download filename pattern (unified format: {author}_{date}_{id}.{ext})

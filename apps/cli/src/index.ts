@@ -17,7 +17,7 @@ cli.command('ping', {
   async run(c) {
     try {
       const rpc = getClient(c.options.remote)
-      const config = await rpc.config.getConfig()
+      const config = await rpc.config.get()
       return { status: 'ok', remote: c.options.remote, config }
     } catch (e: any) {
       return { error: 'CONNECTION_ERROR', message: `Failed to connect to ${c.options.remote}: ${e.message}` }
