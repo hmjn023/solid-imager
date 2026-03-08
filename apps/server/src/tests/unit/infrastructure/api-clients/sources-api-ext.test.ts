@@ -21,8 +21,8 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 describe("Sources API Client Extensions", () => {
   const originalFetch = global.fetch;
 
-  beforeEach(() => {
-    global.fetch = vi.fn();
+  beforeEach(() => {    // biome-ignore lint/suspicious/noExplicitAny: Required to mock global.fetch
+    global.fetch = vi.fn() as any;
   });
 
   afterEach(() => {
