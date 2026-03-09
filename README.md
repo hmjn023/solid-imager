@@ -31,10 +31,10 @@
 
 このプロジェクトは、複数のパッケージやアプリケーションから成るモノレポ構成を採用しています。
 
-- **`apps/server`**: サーバーサイドの実装。SolidStartベースのメインアプリケーション。
-- **`apps/cli`**: コマンドラインツール（CLI）および Model Context Protocol (MCP) サーバー実装。
 - **`packages/core`**: 共通のビジネスロジック、ドメインモデル、および型定義。
 - **`packages/ui`**: 共通のUIコンポーネントライブラリ。
+- **`apps/server`**: サーバーサイドの実装。SolidStartベースのメインアプリケーション。
+- **`apps/cli`**: コマンドラインツール（CLI）および Model Context Protocol (MCP) サーバー実装。
 - **`xtracter`**: ブラウザ拡張機能。
 
 ## 🚀 セットアップ手順
