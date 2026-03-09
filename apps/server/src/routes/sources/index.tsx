@@ -14,6 +14,7 @@ import {
   createMediaSource,
   deleteMediaSource,
   fetchMediaSources,
+  syncMediaSources,
   updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { logger } from "~/infrastructure/logger";
@@ -34,6 +35,7 @@ export default function Sources() {
   const [deletingSource, setDeletingSource] = createSignal<
     SafeMediaSource | MediaSourceInfo | null
   >(null);
+  const [isSyncing, setIsSyncing] = createSignal(false);
 
   const queryClient = useQueryClient();
   const mediaSources = createQuery(() => ({
@@ -84,6 +86,48 @@ export default function Sources() {
         { err: error, mediaSourceId },
         "Failed to delete media source"
       );
+    }
+  };
+
+  const handleSyncSource = async (
+    source: SafeMediaSource | MediaSourceInfo
+  ) => {
+    if (!source.id || isSyncing()) {
+      return;
+    }
+    setIsSyncing(true);
+    toast(`Starting sync for ${source.name}...`);
+    try {
+      await syncMediaSources([source.id]);
+      toast.success(`Sync finished for ${source.name}`);
+    } catch (error) {
+      logger.error(
+        { err: error, sourceId: source.id },
+        "Failed to sync media source"
+      );
+      toast.error(`Failed to sync ${source.name}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleSyncAll = async () => {
+    const sources = mediaSources.data;
+    if (!sources || sources.length === 0 || isSyncing()) {
+      return;
+    }
+
+    setIsSyncing(true);
+    toast("Starting sync for all sources...");
+    try {
+      const ids = sources.map((s) => s.id).filter(Boolean) as string[];
+      await syncMediaSources(ids);
+      toast.success("Sync finished for all sources");
+    } catch (error) {
+      logger.error({ err: error }, "Failed to sync all media sources");
+      toast.error("Failed to sync all sources");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -164,13 +208,23 @@ export default function Sources() {
     <div class="container mx-auto p-6">
       <div class="mb-6 flex items-center justify-between">
         <h1 class="font-bold text-3xl">Media Sources</h1>
-        <button
-          class="rounded bg-blue-500 px-4 py-2 text-white"
-          onClick={() => handleAddSource()}
-          type="button"
-        >
-          Add Source
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={isSyncing() || !mediaSources.data?.length}
+            onClick={handleSyncAll}
+            type="button"
+          >
+            {isSyncing() ? "Syncing..." : "Sync All"}
+          </button>
+          <button
+            class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
+            onClick={() => handleAddSource()}
+            type="button"
+          >
+            Add Source
+          </button>
+        </div>
       </div>
 
       <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -180,6 +234,7 @@ export default function Sources() {
               mediaSource={source}
               onDelete={handleDeleteSource}
               onEdit={handleEditSource}
+              onSync={handleSyncSource}
             />
           )}
         </For>

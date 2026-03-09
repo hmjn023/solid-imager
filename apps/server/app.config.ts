@@ -19,7 +19,15 @@ export default defineConfig({
     },
     plugins: [tailwindcss()],
     ssr: {
-      noExternal: ["drizzle-orm", "effect"],
+      noExternal: [
+        "drizzle-orm",
+        "effect",
+        "elysia",
+        "memoirist",
+        "cookie",
+        "exact-mirror",
+        "fast-decode-uri-component"
+      ],
       external: ["pg"],
     },
     optimizeDeps: {
@@ -42,5 +50,8 @@ export default defineConfig({
         ],
       },
     },
+  },
+  server: {
+    preset: "node-server",
   },
 });

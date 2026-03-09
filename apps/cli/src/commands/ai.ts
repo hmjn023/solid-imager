@@ -1,14 +1,6 @@
 import { Cli, z } from 'incur'
 import { getClient } from '../orpc-client.ts'
-
-function getErrorMessage(e: unknown): string {
-  if (e instanceof Error) return e.message
-  return String(e)
-}
-
-const globalOptions = z.object({
-  remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
-})
+import { getErrorMessage, globalOptions } from '../utils.ts'
 
 export const tagHandler = async (c: any) => {
   const rpc = getClient(c.options.remote)

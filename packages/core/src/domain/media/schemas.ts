@@ -78,7 +78,7 @@ export const updateMediaRequestSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        confidence: z.number().optional(),
+        confidence: z.number().nullable().optional(),
       })
     )
     .optional(),
@@ -86,7 +86,7 @@ export const updateMediaRequestSchema = z.object({
     .array(
       z.object({
         name: z.string(),
-        confidence: z.number().optional(),
+        confidence: z.number().nullable().optional(),
       })
     )
     .optional(),
@@ -375,7 +375,7 @@ export const mediaMetadataContextSchema = z.object({
       z.object({
         name: z.string(),
         type: z.enum(["positive", "negative"]).optional(),
-        confidence: z.number().optional(),
+        confidence: z.number().nullable().optional(),
         source: z.string().optional(),
       })
     )
@@ -385,7 +385,7 @@ export const mediaMetadataContextSchema = z.object({
       z.object({
         name: z.string(),
         description: z.string().nullable().optional(),
-        confidence: z.number().optional(),
+        confidence: z.number().nullable().optional(),
         linkedIps: z.array(z.string()).optional(),
         source: z.string().optional(),
       })
@@ -396,7 +396,7 @@ export const mediaMetadataContextSchema = z.object({
       z.object({
         name: z.string(),
         description: z.string().nullable().optional(),
-        confidence: z.number().optional(),
+        confidence: z.number().nullable().optional(),
         source: z.string().optional(),
       })
     )

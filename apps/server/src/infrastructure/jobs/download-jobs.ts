@@ -23,7 +23,6 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
-const URL_HASH_LENGTH = 12;
 
 // ffmpeg-static may return null on unsupported platforms
 const resolvedFfmpegPath = ffmpegPath ?? undefined;
@@ -261,81 +260,14 @@ async function handleYtDlpDownload(
       "[DownloadJob] yt-dlp download completed"
     );
 
-    let index = 0;
-    for (const res of results) {
-      let { filePath, metadata } = res;
-
-      // Unify filename
-      const extension = path.extname(filePath);
-      let unifiedName = generateMediaFilename(item, extension);
-
-      // If multiple results for the same item, append index
-      if (results.length > 1) {
-        const ext = path.extname(unifiedName);
-        const base = path.basename(unifiedName, ext);
-        unifiedName = `${base}_${index}${ext}`;
-      }
-
-      const targetPath = path.join(path.dirname(filePath), unifiedName);
-
-      try {
-        // Check if target already exists (unlikely given it's a new job, but good for safety)
-        let finalPath = targetPath;
-        let collisionIndex = 1;
-        const ext = path.extname(unifiedName);
-        const base = path.basename(unifiedName, ext);
-
-        while (true) {
-          if (finalPath === filePath) break; // Not a collision if it's the current file
-          try {
-            await fs.access(finalPath);
-            finalPath = path.join(path.dirname(filePath), `${base}_(${collisionIndex})${ext}`);
-            collisionIndex++;
-          } catch {
-            break;
-          }
-        }
-
-        await fs.rename(filePath, finalPath);
-        filePath = finalPath;
-        logger.info({ from: res.filePath, to: filePath }, "[DownloadJob] Renamed yt-dlp output to unified name");
-      } catch (e) {
-        logger.warn({ err: e, filePath, targetPath }, "[DownloadJob] Failed to rename yt-dlp output");
-        // Continue with original path if rename fails
-      }
-      index++;
-
-      // Calculate relative path
-      const relativePath = path.relative(basePath, filePath);
-
-      // Determine media type
-      const mediaType = getMediaTypeFromExtension(filePath);
-
-      logger.info(
-        { relativePath, mediaType },
-        "[DownloadJob] Processing file from yt-dlp"
-      );
-
-      // Get file metadata (size etc, verify it exists)
-      const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
-
-      const newMedia: AddMediaRequest = {
+    for (let i = 0; i < results.length; i++) {
+      await _processSingleYtDlpResult({
+        index: i,
+        results,
+        item,
         mediaSourceId,
-        filePath: relativePath,
-        fileName: path.basename(filePath),
-        mediaType,
-        description: item.description || metadata.description || metadata.title,
-        width: metadata.width || fileMeta.width || 0,
-        height: metadata.height || fileMeta.height || 0,
-        fileSize: fileMeta.size,
-        createdAt: resolveCreatedAt(item, metadata, fileMeta),
-        modifiedAt: fileMeta.modifiedAt,
-        sourceUrls: Array.from(
-          new Set([item.targetUrl, ...(item.sourceUrls ?? [])])
-        ),
-      };
-
-      await registerMedia(newMedia, mediaSourceId, item, basePath);
+        basePath,
+      });
     }
   } catch (error) {
     logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
@@ -347,6 +279,107 @@ async function handleYtDlpDownload(
     });
     throw error;
   }
+}
+
+async function _processSingleYtDlpResult(params: {
+  index: number;
+  results: { filePath: string; metadata: YtDlpOutput }[];
+  item: DownloadItem;
+  mediaSourceId: string;
+  basePath: string;
+}) {
+  const { index, results, item, mediaSourceId, basePath } = params;
+  const res = results[index];
+  let { filePath, metadata } = res;
+
+  // Unify filename
+  const extension = path.extname(filePath);
+  let unifiedName = generateMediaFilename(item, extension);
+
+  // If multiple results for the same item, append index
+  if (results.length > 1) {
+    const ext = path.extname(unifiedName);
+    const base = path.basename(unifiedName, ext);
+    unifiedName = `${base}_${index}${ext}`;
+  }
+
+  const dir = path.dirname(filePath);
+  const targetPath = await _resolveFinalPathWithAvoidance(
+    dir,
+    unifiedName,
+    filePath
+  );
+
+  try {
+    await fs.rename(filePath, targetPath);
+    filePath = targetPath;
+    logger.info(
+      { from: res.filePath, to: filePath },
+      "[DownloadJob] Renamed yt-dlp output to unified name"
+    );
+  } catch (e) {
+    logger.warn(
+      { err: e, filePath, targetPath },
+      "[DownloadJob] Failed to rename yt-dlp output"
+    );
+  }
+
+  // Calculate relative path
+  const relativePath = path.relative(basePath, filePath);
+
+  // Determine media type
+  const mediaType = getMediaTypeFromExtension(filePath);
+
+  logger.info(
+    { relativePath, mediaType },
+    "[DownloadJob] Processing file from yt-dlp"
+  );
+
+  // Get file metadata
+  const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
+
+  const newMedia: AddMediaRequest = {
+    mediaSourceId,
+    filePath: relativePath,
+    fileName: path.basename(filePath),
+    mediaType,
+    description: item.description || metadata.description || metadata.title,
+    width: metadata.width || fileMeta.width || 0,
+    height: metadata.height || fileMeta.height || 0,
+    fileSize: fileMeta.size,
+    createdAt: resolveCreatedAt(item, metadata, fileMeta),
+    modifiedAt: fileMeta.modifiedAt,
+    sourceUrls: Array.from(
+      new Set([item.targetUrl ?? "", ...(item.sourceUrls ?? [])])
+    ),
+  };
+
+  await registerMedia(newMedia, mediaSourceId, item, basePath);
+}
+
+async function _resolveFinalPathWithAvoidance(
+  dir: string,
+  unifiedName: string,
+  currentPath: string
+): Promise<string> {
+  const ext = path.extname(unifiedName);
+  const base = path.basename(unifiedName, ext);
+  let finalPath = path.join(dir, unifiedName);
+  let collisionIndex = 1;
+
+  while (true) {
+    if (finalPath === currentPath) {
+      break;
+    }
+    try {
+      await fs.access(finalPath);
+      finalPath = path.join(dir, `${base}_(${collisionIndex})${ext}`);
+      collisionIndex++;
+    } catch {
+      break;
+    }
+  }
+  return finalPath;
 }
 
 function buildFetchHeaders(item: DownloadItem): Record<string, string> {

@@ -1,9 +1,6 @@
 import { Cli, z } from 'incur'
 import { getClient } from '../orpc-client.ts'
-
-const globalOptions = z.object({
-  remote: z.string().default('http://localhost:3000').describe('Remote server URL'),
-})
+import { globalOptions } from '../utils.ts'
 
 // Since solid-imager does not currently expose a generic job router via oRPC,
 // we will output a NOT_IMPLEMENTED error for now, but keep the structure fully typed

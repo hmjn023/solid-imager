@@ -246,7 +246,7 @@ export class MediaProcessingServiceImpl {
         context.tags.map((t) => ({
           name: t.name,
           type: (t.type ?? "positive") as "positive" | "negative",
-          confidence: t.confidence,
+          confidence: t.confidence ?? undefined,
         })),
         "user_provided",
         tx
@@ -422,7 +422,7 @@ export class MediaProcessingServiceImpl {
         await this.ipRepo.addMedia(
           mediaId,
           created.id,
-          ipData.confidence,
+          ipData.confidence ?? undefined,
           "manual",
           tx
         );

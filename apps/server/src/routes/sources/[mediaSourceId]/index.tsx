@@ -59,6 +59,7 @@ import {
   copyMedia,
   deleteMedia,
   moveMedia,
+  syncMediaItems,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
@@ -611,6 +612,48 @@ export default function MediaListPage() {
     }
   };
 
+  const [isSyncingMedia, setIsSyncingMedia] = createSignal(false);
+
+  const handleSyncLoadedMedia = async () => {
+    const allPages = mediaQuery.data?.pages;
+    if (!allPages) {
+      return;
+    }
+    const mediaIds = allPages
+      .flatMap((page) => page.media)
+      .map((m) => m?.id)
+      .filter(Boolean) as string[];
+
+    if (mediaIds.length === 0 || isSyncingMedia()) {
+      return;
+    }
+
+    setIsSyncingMedia(true);
+    toast("Starting batch sync for loaded media...");
+    try {
+      await syncMediaItems(mediaSourceId() || "", mediaIds);
+      toast.success(`Batch sync completed for ${mediaIds.length} items`);
+      await mediaQuery.refetch();
+    } catch (error) {
+      logger.error({ err: error }, "Failed to batch sync media");
+      toast.error(`Failed to batch sync: ${(error as Error).message}`);
+    } finally {
+      setIsSyncingMedia(false);
+    }
+  };
+
+  const handleSyncSingleMedia = async (mediaId: string) => {
+    toast("Starting metadata sync...");
+    try {
+      await syncMediaItems(mediaSourceId() || "", [mediaId]);
+      toast.success("Metadata synced successfully");
+      await mediaQuery.refetch();
+    } catch (e) {
+      logger.error({ err: e, mediaId }, "Failed to sync metadata");
+      toast.error(`Failed to sync metadata: ${(e as Error).message}`);
+    }
+  };
+
   const [addedCount, setAddedCount] = createSignal(0);
   const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
     typeof setTimeout
@@ -830,6 +873,13 @@ export default function MediaListPage() {
 
       <div class="mb-4 flex items-center justify-between">
         <h1 class="font-bold text-2xl">Media in Source: {mediaSourceId()}</h1>
+        <Button
+          disabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
+          onClick={handleSyncLoadedMedia}
+          variant="outline"
+        >
+          {isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
+        </Button>
       </div>
 
       <div class="grid gap-6 md:grid-cols-[300px_1fr]">
@@ -960,6 +1010,17 @@ export default function MediaListPage() {
                   }}
                 >
                   Move to Source
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleSyncSingleMedia(id);
+                    }
+                  }}
+                >
+                  Sync Metadata (Reprocess)
                 </ContextMenuItem>
               </Show>
             </ContextMenuContent>

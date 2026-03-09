@@ -1,5 +1,5 @@
-import type { SafeMediaSource } from "@core/domain/sources/schemas";
 import { generateMediaFilename } from "@core/domain/media/utils/filename-utils";
+import type { SafeMediaSource } from "@core/domain/sources/schemas";
 import { APIError, getClient } from "@ext/api";
 import type {
   DownloadBulkMessage,
@@ -12,12 +12,14 @@ import type {
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
 
+const EXTENSION_REGEX = /\.([a-z0-9]+)$/i;
+
 function getExtensionFromUrl(url: string): string {
   try {
     const urlObj = new URL(url);
     const pathname = urlObj.pathname;
     const filename = pathname.split("/").pop() || "";
-    const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+    const extMatch = filename.match(EXTENSION_REGEX);
     if (extMatch) {
       return `.${extMatch[1]}`;
     }
@@ -230,7 +232,9 @@ chrome.runtime.onMessage.addListener(
     if (isDownloadMessage(message)) {
       const { targetUrl } = message.data;
       const extension = getExtensionFromUrl(targetUrl);
-      const filename = generateMediaFilename(message.data, extension);
+      // Cast to any to handle string vs Date for createdAt field between core and ext schemas
+      // biome-ignore lint/suspicious/noExplicitAny: DownloadItem schemas between core and ext are slightly different (Date vs string for createdAt)
+      const filename = generateMediaFilename(message.data as any, extension);
 
       chrome.downloads.download({
         url: targetUrl,

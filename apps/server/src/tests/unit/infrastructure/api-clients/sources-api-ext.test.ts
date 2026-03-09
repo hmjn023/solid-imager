@@ -22,7 +22,7 @@ describe("Sources API Client Extensions", () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = vi.fn();
+    global.fetch = vi.fn() as any;
   });
 
   afterEach(() => {
