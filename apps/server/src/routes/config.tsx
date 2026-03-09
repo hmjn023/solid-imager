@@ -57,12 +57,13 @@ function ConfigForm(props: { data: AppConfig }) {
       </div>
 
       <Tabs class="w-full" defaultValue="jobs">
-        <TabsList class="grid w-full grid-cols-5">
+        <TabsList class="grid w-full grid-cols-6">
           <TabsTrigger value="jobs">Jobs</TabsTrigger>
           <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="storage">Storage</TabsTrigger>
           <TabsTrigger value="media">Media</TabsTrigger>
           <TabsTrigger value="logging">Logging</TabsTrigger>
+          <TabsTrigger value="sync">Sync</TabsTrigger>
         </TabsList>
 
         <div class="mt-6 space-y-6">
@@ -477,6 +478,104 @@ function ConfigForm(props: { data: AppConfig }) {
                     </select>
                   </div>
                 )}
+              </form.Field>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sync">
+            <div class="space-y-4 rounded-md border p-4">
+              <h2 class="mb-4 font-semibold text-xl">Remote Sync Servers</h2>
+              <form.Field name="sync.servers">
+                {(field) => {
+                  const servers = field().state.value || [];
+                  return (
+                    <div class="space-y-4">
+                      {servers.map((server, index) => (
+                        <div
+                          class="flex items-start gap-4 rounded-md border p-4"
+                          key={server.id}
+                        >
+                          <div class="flex-1 space-y-4">
+                            <div>
+                              <Label>Server ID</Label>
+                              <Input
+                                onInput={(e) => {
+                                  const newServers = [...servers];
+                                  newServers[index].id = e.target.value;
+                                  field().handleChange(newServers);
+                                }}
+                                value={server.id}
+                              />
+                            </div>
+                            <div>
+                              <Label>Server Name</Label>
+                              <Input
+                                onInput={(e) => {
+                                  const newServers = [...servers];
+                                  newServers[index].name = e.target.value;
+                                  field().handleChange(newServers);
+                                }}
+                                value={server.name}
+                              />
+                            </div>
+                            <div>
+                              <Label>Server URL</Label>
+                              <Input
+                                onInput={(e) => {
+                                  const newServers = [...servers];
+                                  newServers[index].url = e.target.value;
+                                  field().handleChange(newServers);
+                                }}
+                                placeholder="http://192.168.1.10:3000"
+                                value={server.url}
+                              />
+                            </div>
+                            <div>
+                              <Label>API Key (Optional)</Label>
+                              <Input
+                                onInput={(e) => {
+                                  const newServers = [...servers];
+                                  newServers[index].apiKey = e.target.value;
+                                  field().handleChange(newServers);
+                                }}
+                                type="password"
+                                value={server.apiKey || ""}
+                              />
+                            </div>
+                          </div>
+                          <Button
+                            onClick={() => {
+                              const newServers = servers.filter(
+                                (_, i) => i !== index
+                              );
+                              field().handleChange(newServers);
+                            }}
+                            variant="destructive"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        onClick={() => {
+                          field().handleChange([
+                            ...servers,
+                            {
+                              id: `server-${Date.now()}`,
+                              name: "New Server",
+                              url: "http://localhost:3000",
+                              apiKey: "",
+                            },
+                          ]);
+                        }}
+                        type="button"
+                        variant="outline"
+                      >
+                        Add Server
+                      </Button>
+                    </div>
+                  );
+                }}
               </form.Field>
             </div>
           </TabsContent>

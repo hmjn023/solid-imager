@@ -138,6 +138,185 @@ export class MediaServiceImpl {
   }
 
   /**
+   * Gets sources from a remote server.
+   */
+  async getRemoteSources(targetServerId: string) {
+    const config = services.getConfigService().getConfig();
+    const targetServer = config.sync.servers.find(
+      (s) => s.id === targetServerId
+    );
+
+    if (!targetServer) {
+      throw new Error(`Target server with ID ${targetServerId} not found`);
+    }
+
+    const { createORPCClient } = await import("@orpc/client");
+    const { RPCLink } = await import("@orpc/client/fetch");
+    const { appRouter } = await import("~/domain/shared/api-contract");
+    type AppRouter = typeof appRouter;
+
+    const link = new RPCLink({
+      url: new URL("/api/rpc", targetServer.url).toString(),
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (targetServer.apiKey) {
+          headers.set("Authorization", `Bearer ${targetServer.apiKey}`);
+        }
+        return fetch(input, { ...init, headers });
+      },
+    });
+
+    const remoteClient = createORPCClient<AppRouter>(link);
+
+    try {
+      return await remoteClient.sources.list();
+    } catch (error) {
+      throw new Error(
+        `Failed to fetch remote sources: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  /**
+   * Sync a media item to a remote server.
+   */
+  async syncMediaToRemote(
+    mediaSourceId: string,
+    mediaId: string,
+    targetServerId: string,
+    targetSourceId: string
+  ) {
+    const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+    const validatedMediaId = mediaIdSchema.parse(mediaId);
+
+    // 1. Get media details to construct the download item payload
+    const mediaDetails = await this.getMediaDetails(
+      validatedSourceId,
+      validatedMediaId
+    );
+
+    // 2. Find target server config
+    const config = services.getConfigService().getConfig();
+    const targetServer = config.sync.servers.find(
+      (s) => s.id === targetServerId
+    );
+
+    if (!targetServer) {
+      throw new Error(`Target server with ID ${targetServerId} not found`);
+    }
+
+    // 3. Get Media Content (Buffer)
+    const { buffer, contentType } = await this.getMediaContent(
+      validatedSourceId,
+      validatedMediaId
+    );
+
+    const file = new File([buffer], mediaDetails.fileName, {
+      type: contentType,
+    });
+
+    // 4. Setup ORPC client for remote server
+    const { createORPCClient } = await import("@orpc/client");
+    const { RPCLink } = await import("@orpc/client/fetch");
+    const { appRouter } = await import("~/domain/shared/api-contract");
+    type AppRouter = typeof appRouter;
+
+    const link = new RPCLink({
+      url: new URL("/api/rpc", targetServer.url).toString(),
+      fetch: (input, init) => {
+        const headers = new Headers(init?.headers);
+        if (targetServer.apiKey) {
+          headers.set("Authorization", `Bearer ${targetServer.apiKey}`);
+        }
+        return fetch(input, { ...init, headers });
+      },
+    });
+
+    const remoteClient = createORPCClient<AppRouter>(link);
+
+    try {
+      // 5. Upload File
+      // Wait for upload response which includes new media metadata path info or an id if it existed?
+      // Since it's processed asynchronously, `upload` triggers `processMedia` job, but we can update
+      // metadata separately by passing basic ones via upload options, or update via search.
+      // `upload` takes: `sourceId, file, filename, description, sourceUrl`
+      const sourceUrl = mediaDetails.urls?.[0]?.url;
+      const _uploadResponse = await remoteClient.media.upload({
+        sourceId: targetSourceId,
+        file,
+        filename: mediaDetails.fileName,
+        description: mediaDetails.description || undefined,
+        sourceUrl,
+        overwrite: "true",
+      });
+
+      // To do a full metadata sync (tags, characters, ips, authors), we need to update the newly created media.
+      // But `upload` does not return the `mediaId` immediately (only filePath) because DB insert might be slightly async or the router doesn't return it.
+      // Actually `uploadMedia` router returns `{ success: true, filePath: string, conflict: ... }`.
+      // We can search for it on the remote server to get its ID, then update it.
+      const searchResult = await remoteClient.media.search({
+        sourceId: targetSourceId,
+        params: {
+          condition: {
+            type: "group",
+            operator: "and",
+            children: [
+              {
+                type: "criterion",
+                target: "fileName",
+                operator: "equals",
+                value: mediaDetails.fileName,
+              },
+            ],
+          },
+          limit: 1,
+          offset: 0,
+        },
+      });
+
+      if (searchResult.media.length > 0) {
+        const remoteMediaId = searchResult.media[0].id;
+        // 6. Update Metadata
+        await remoteClient.media.update({
+          sourceId: targetSourceId,
+          mediaId: remoteMediaId,
+          data: {
+            description: mediaDetails.description,
+            sourceUrls: mediaDetails.urls.map((u) => u.url),
+            authors: mediaDetails.authors.map((a) => ({
+              name: a.name,
+              accountId: a.accountId,
+            })),
+            characters: mediaDetails.characters.map((c) => ({
+              name: c.name,
+              confidence: c.confidence,
+            })),
+            ips: mediaDetails.ips.map((i) => ({
+              name: i.name,
+              confidence: i.confidence,
+            })),
+            // tags aren't updated via standard updateMediaRequestSchema, they require a different endpoint or are auto-extracted.
+            // but for full sync this covers most of what `downloads.start` covered.
+          },
+        });
+      }
+
+      return {
+        success: true,
+        message: "Media uploaded and metadata synced successfully.",
+      };
+    } catch (error) {
+      throw new Error(
+        `Failed to sync to remote server: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    }
+  }
+
+  /**
    * Searches for media.
    */
   async searchMedia(mediaSourceId: string | undefined | null, params: unknown) {

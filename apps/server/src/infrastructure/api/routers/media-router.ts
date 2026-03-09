@@ -190,6 +190,38 @@ export const mediaRouter = {
     ),
 
   /**
+   * Get remote sources from a remote server via proxy
+   */
+  getRemoteSources: os
+    .input(z.object({ targetServerId: z.string().min(1) }))
+    .handler(
+      async ({ input }) =>
+        await MediaService.getRemoteSources(input.targetServerId)
+    ),
+
+  /**
+   * Sync a media item to a remote server
+   */
+  syncToRemote: os
+    .input(
+      z.object({
+        sourceId: z.string().uuid(),
+        mediaId: z.string().uuid(),
+        targetServerId: z.string().min(1),
+        targetSourceId: z.string().min(1),
+      })
+    )
+    .handler(
+      async ({ input }) =>
+        await MediaService.syncMediaToRemote(
+          input.sourceId,
+          input.mediaId,
+          input.targetServerId,
+          input.targetSourceId
+        )
+    ),
+
+  /**
    * Upload media to a source
    */
   /**

@@ -509,6 +509,15 @@ export const moveMediaRequestSchema = copyMediaRequestSchema;
 
 export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;
 
+export const syncMediaToRemoteRequestSchema = z.object({
+  targetServerId: z.string().min(1, "Target server ID is required"),
+  targetSourceId: z.string().min(1, "Target source ID is required"),
+});
+
+export type SyncMediaToRemoteRequest = z.infer<
+  typeof syncMediaToRemoteRequestSchema
+>;
+
 // Preset schemas
 export const presetSchema = z.object({
   id: z.number().int(),

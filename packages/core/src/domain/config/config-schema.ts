@@ -92,6 +92,20 @@ export const LoggingConfigSchema = z.object({
 });
 const defaultLoggingConfig = LoggingConfigSchema.parse({});
 
+export const SyncServerSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string().url("Invalid URL format"),
+  apiKey: z.string().optional(),
+});
+
+export type SyncServer = z.infer<typeof SyncServerSchema>;
+
+export const SyncConfigSchema = z.object({
+  servers: z.array(SyncServerSchema).default([]),
+});
+const defaultSyncConfig = SyncConfigSchema.parse({});
+
 export const AppConfigSchema = z.object({
   version: z.string().default("1.0.0"),
   jobs: JobsConfigSchema.default(defaultJobsConfig),
@@ -99,6 +113,7 @@ export const AppConfigSchema = z.object({
   storage: StorageConfigSchema.default(defaultStorageConfig),
   media: MediaConfigSchema.default(defaultMediaConfig),
   logging: LoggingConfigSchema.default(defaultLoggingConfig),
+  sync: SyncConfigSchema.default(defaultSyncConfig),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

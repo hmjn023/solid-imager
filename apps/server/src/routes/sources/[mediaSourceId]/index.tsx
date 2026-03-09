@@ -48,6 +48,7 @@ import { isServer, Portal } from "solid-js/web";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
+import { SyncMediaDialog } from "~/components/media/sync-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -60,6 +61,7 @@ import {
   deleteMedia,
   moveMedia,
   syncMediaItems,
+  syncMediaToRemote,
   uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
 import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
@@ -253,6 +255,12 @@ export default function MediaListPage() {
   const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
     null
   );
+
+  // Sync Remote Dialog State
+  const [syncRemoteDialogOpen, setSyncRemoteDialogOpen] = createSignal(false);
+  const [mediaIdToSyncRemote, setMediaIdToSyncRemote] = createSignal<
+    string | null
+  >(null);
 
   // Singleton Context Menu State
   const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
@@ -580,6 +588,11 @@ export default function MediaListPage() {
     setMoveCopyDialogOpen(true);
   };
 
+  const handleSyncRemote = (mediaId: string) => {
+    setMediaIdToSyncRemote(mediaId);
+    setSyncRemoteDialogOpen(true);
+  };
+
   const handleConfirmCopyMove = async (targetSourceId: string) => {
     const id = mediaIdToMoveCopy();
     const sourceId = mediaSourceId();
@@ -609,6 +622,35 @@ export default function MediaListPage() {
       toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
     } finally {
       setMediaIdToMoveCopy(null);
+    }
+  };
+
+  const handleConfirmSyncRemote = async (
+    targetServerId: string,
+    targetSourceId: string
+  ) => {
+    const id = mediaIdToSyncRemote();
+    const sourceId = mediaSourceId();
+    if (!(id && sourceId)) {
+      return;
+    }
+
+    toast.loading("Syncing to remote server...", { id: "sync-remote" });
+    try {
+      await syncMediaToRemote(sourceId, id, targetServerId, targetSourceId);
+      toast.success("Media synced to remote successfully", {
+        id: "sync-remote",
+      });
+    } catch (e) {
+      logger.error(
+        { err: e, mediaId: id, targetServerId },
+        "Failed to sync to remote"
+      );
+      toast.error(`Failed to sync to remote: ${(e as Error).message}`, {
+        id: "sync-remote",
+      });
+    } finally {
+      setMediaIdToSyncRemote(null);
     }
   };
 
@@ -1022,6 +1064,17 @@ export default function MediaListPage() {
                 >
                   Sync Metadata (Reprocess)
                 </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleSyncRemote(id);
+                    }
+                  }}
+                >
+                  Sync to Remote Server
+                </ContextMenuItem>
               </Show>
             </ContextMenuContent>
           </ContextMenu>
@@ -1109,6 +1162,12 @@ export default function MediaListPage() {
         onConfirm={handleConfirmCopyMove}
         onOpenChange={setMoveCopyDialogOpen}
         open={moveCopyDialogOpen()}
+      />
+
+      <SyncMediaDialog
+        onConfirm={handleConfirmSyncRemote}
+        onOpenChange={setSyncRemoteDialogOpen}
+        open={syncRemoteDialogOpen()}
       />
     </section>
   );

@@ -152,3 +152,25 @@ export function moveMedia(
 export function syncMediaItems(sourceId: string, mediaIds: string[]) {
   return orpc.media.sync({ sourceId, mediaIds });
 }
+
+/**
+ * Syncs a media item to a remote server
+ * @param sourceId - Media source ID
+ * @param mediaId - Media ID
+ * @param targetServerId - Target Server ID
+ * @param targetSourceId - Target Source ID
+ * @returns Sync results
+ */
+export function syncMediaToRemote(
+  sourceId: string,
+  mediaId: string,
+  targetServerId: string,
+  targetSourceId: string
+) {
+  return orpc.media.syncToRemote({
+    sourceId,
+    mediaId,
+    targetServerId,
+    targetSourceId,
+  });
+}
