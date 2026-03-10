@@ -226,9 +226,6 @@ export class MediaServiceImpl {
     );
 
     // 2. Setup ORPC client for remote server
-    const _remoteClient = await this._createRemoteClient(targetServerId);
-
-    // 2. Setup ORPC client for remote server
     const remoteClient = await this._createRemoteClient(targetServerId);
 
     // 3. Get File path and create a stream to avoid memory exhaustion
