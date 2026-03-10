@@ -557,7 +557,7 @@ function ConfigForm(props: { data: AppConfig }) {
                           field().handleChange([
                             ...servers,
                             {
-                              id: `server-${Date.now()}`,
+                              id: crypto.randomUUID(),
                               name: "New Server",
                               url: "http://localhost:3000",
                               apiKey: "",
