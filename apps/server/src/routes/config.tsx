@@ -499,12 +499,8 @@ function ConfigForm(props: { data: AppConfig }) {
                             <div>
                               <Label>Server ID</Label>
                               <Input
-                                onInput={(e) => {
-                                  const newServers = [...servers];
-                                  newServers[index].id = e.target.value;
-                                  field().handleChange(newServers);
-                                }}
                                 value={server.id}
+                                disabled
                               />
                             </div>
                             <div>
