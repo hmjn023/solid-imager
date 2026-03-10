@@ -2,6 +2,8 @@ import { os } from "@orpc/server";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { services } from "~/application/registry";
 
+const TRAILING_SLASH_REGEX = /\/$/;
+
 export const configRouter = {
   get: os.output(AppConfigSchema).handler(() => {
     const config = services.getConfigService().getConfig();
@@ -31,7 +33,12 @@ export const configRouter = {
             const existingServer = currentConfig.sync.servers.find(
               (s) => s.id === server.id
             );
-            if (existingServer && existingServer.url === server.url) {
+            const normalizeUrl = (u: string) =>
+              u.replace(TRAILING_SLASH_REGEX, "");
+            if (
+              existingServer &&
+              normalizeUrl(existingServer.url) === normalizeUrl(server.url)
+            ) {
               server.apiKey = existingServer.apiKey;
             } else {
               // URL changed or new server, clear the masked key to prevent leakage

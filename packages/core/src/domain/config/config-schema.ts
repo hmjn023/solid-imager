@@ -96,7 +96,7 @@ export const SyncServerSchema = z.object({
   id: z.string(),
   name: z.string(),
   url: z.string().url("Invalid URL format"),
-  apiKey: z.string().optional(),
+  apiKey: z.string().trim().min(1, "API Key cannot be empty").optional(),
 });
 
 export type SyncServer = z.infer<typeof SyncServerSchema>;

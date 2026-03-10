@@ -159,11 +159,16 @@ export function SyncMediaDialog(props: SyncMediaDialogProps) {
                 >
                   <SelectTrigger>
                     <SelectValue<{ label: string; value: string }>>
-                      {(state) =>
-                        state.selectedOption()?.label ?? "Select a source"
-                      }
+                      {(state) => {
+                        if (remoteSourcesQuery.isLoading) {
+                          return "Loading sources...";
+                        }
+                        return (
+                          state.selectedOption()?.label ?? "Select a source"
+                        );
+                      }}
                     </SelectValue>
-                  </SelectTrigger>
+                  </SelectTrigger>{" "}
                   <SelectContent />
                 </Select>
               </Show>

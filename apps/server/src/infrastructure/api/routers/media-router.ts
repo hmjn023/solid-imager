@@ -195,6 +195,7 @@ export const mediaRouter = {
    */
   getRemoteSources: os
     .input(z.object({ targetServerId: z.string().min(1) }))
+    .output(z.any())
     .handler(
       async ({ input }) =>
         await MediaService.getRemoteSources(input.targetServerId)
@@ -205,6 +206,7 @@ export const mediaRouter = {
    */
   syncToRemote: os
     .input(syncMediaToRemoteRequestSchema)
+    .output(z.any())
     .handler(
       async ({ input }) =>
         await MediaService.syncMediaToRemote(
@@ -215,9 +217,6 @@ export const mediaRouter = {
         )
     ),
 
-  /**
-   * Upload media to a source
-   */
   /**
    * Upload media to a source
    */

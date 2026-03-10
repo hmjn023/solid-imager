@@ -40,6 +40,8 @@ export type IMediaStorage = {
 
   getFile(basePath: string, filePath: string): Promise<Uint8Array>;
 
+  getFilePath(basePath: string, filePath: string): string;
+
   scanDirectory(basePath: string): Promise<string[]>;
 
   getFileMetadata(fullPath: string): Promise<MediaMetadata>;
