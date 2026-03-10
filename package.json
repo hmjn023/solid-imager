@@ -49,5 +49,8 @@
   "trustedDependencies": [
     "youtube-dl-exec",
     "ffmpeg-static"
-  ]
+  ],
+  "dependencies": {
+    "@playwright/test": "1.43.0"
+  }
 }
