@@ -22,7 +22,8 @@ export const configRouter = {
     .output(AppConfigSchema)
     // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Handling sync apiKey scrub/restore logic
     .handler(async ({ input }) => {
-      // If the frontend sends back "***", we need to preserve the original apiKey
+      // If the frontend sends back "***", we need to preserve the original apiKey,
+      // but ONLY if the URL hasn't changed to prevent SSRF/Credential Leakage.
       if (input.sync?.servers) {
         const currentConfig = services.getConfigService().getConfig();
         for (const server of input.sync.servers) {
@@ -30,9 +31,10 @@ export const configRouter = {
             const existingServer = currentConfig.sync.servers.find(
               (s) => s.id === server.id
             );
-            if (existingServer) {
+            if (existingServer && existingServer.url === server.url) {
               server.apiKey = existingServer.apiKey;
             } else {
+              // URL changed or new server, clear the masked key to prevent leakage
               server.apiKey = undefined;
             }
           }

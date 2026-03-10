@@ -499,8 +499,12 @@ function ConfigForm(props: { data: AppConfig }) {
                             <div>
                               <Label>Server ID</Label>
                               <Input
+                                onInput={(e) => {
+                                  const newServers = [...servers];
+                                  newServers[index].id = e.target.value;
+                                  field().handleChange(newServers);
+                                }}
                                 value={server.id}
-                                disabled
                               />
                             </div>
                             <div>
@@ -557,7 +561,7 @@ function ConfigForm(props: { data: AppConfig }) {
                           field().handleChange([
                             ...servers,
                             {
-                              id: crypto.randomUUID(),
+                              id: `server-${Date.now()}`,
                               name: "New Server",
                               url: "http://localhost:3000",
                               apiKey: "",

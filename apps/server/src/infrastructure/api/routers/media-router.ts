@@ -2,6 +2,7 @@ import { ORPCError, os } from "@orpc/server";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
   mediaSearchRequestSchema,
+  syncMediaToRemoteRequestSchema,
   updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { z } from "zod";
@@ -203,14 +204,7 @@ export const mediaRouter = {
    * Sync a media item to a remote server
    */
   syncToRemote: os
-    .input(
-      z.object({
-        sourceId: z.string().uuid(),
-        mediaId: z.string().uuid(),
-        targetServerId: z.string().min(1),
-        targetSourceId: z.string().min(1),
-      })
-    )
+    .input(syncMediaToRemoteRequestSchema)
     .handler(
       async ({ input }) =>
         await MediaService.syncMediaToRemote(

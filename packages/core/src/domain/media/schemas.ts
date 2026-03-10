@@ -510,6 +510,8 @@ export const moveMediaRequestSchema = copyMediaRequestSchema;
 export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;
 
 export const syncMediaToRemoteRequestSchema = z.object({
+  sourceId: z.string().uuid("Invalid source ID format"),
+  mediaId: z.string().uuid("Invalid media ID format"),
   targetServerId: z.string().min(1, "Target server ID is required"),
   targetSourceId: z.string().min(1, "Target source ID is required"),
 });

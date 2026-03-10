@@ -25,6 +25,8 @@ export type IStorageService = {
 
   getFile(basePath: string, filePath: string): Promise<Buffer>;
 
+  getFilePath(basePath: string, filePath: string): string;
+
   scanDirectory(basePath: string): Promise<string[]>;
 
   getFileMetadata(fullPath: string): Promise<{

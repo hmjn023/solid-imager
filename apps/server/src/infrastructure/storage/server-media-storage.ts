@@ -126,6 +126,10 @@ export const ServerMediaStorage: IMediaStorage = {
     return await fs.readFile(fullPath);
   },
 
+  getFilePath(basePath: string, filePath: string): string {
+    return resolveSafePath(basePath, filePath);
+  },
+
   async scanDirectory(basePath: string): Promise<string[]> {
     const files: string[] = [];
     const queue: string[] = [basePath];

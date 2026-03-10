@@ -41,6 +41,7 @@ export type UploadMediaRequest = z.infer<typeof uploadMediaRequestSchema>;
 export const uploadResponseSchema = z.object({
   success: z.boolean(),
   filePath: z.string(),
+  mediaId: z.string().optional(),
   conflict: conflictSchema.optional(),
 });
 export type UploadResponse = z.infer<typeof uploadResponseSchema>;
