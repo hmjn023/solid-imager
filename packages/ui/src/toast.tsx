@@ -46,7 +46,7 @@ export const Toaster = (props: Record<string, unknown>) => {
 
   return (
     <Show when={ToasterComponent()}>
-      {(Comp) => createComponent(Comp, props)}
+      {(Comp) => createComponent(Comp, { containerStyle: {}, ...props })}
     </Show>
   );
 };
