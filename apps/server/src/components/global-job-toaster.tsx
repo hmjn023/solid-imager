@@ -1,5 +1,6 @@
 import { Progress } from "@solid-imager/ui/progress";
-import { createSignal, onCleanup } from "solid-js";
+import { Toaster, toast } from "@solid-imager/ui/toast";
+import { createSignal, onCleanup, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 
 const PERCENTAGE_MULTIPLIER = 100;
@@ -10,16 +11,38 @@ type JobProgressData = {
   total: number;
 };
 
-import { Toaster, toast } from "@solid-imager/ui/toast";
-import { onMount, Show } from "solid-js";
+const JobProgressToast = (props: { processed: number; total: number }) => (
+  <div class="flex w-full min-w-[200px] flex-col gap-2">
+    <div class="font-medium text-sm">Job in Progress</div>
+    <div class="text-muted-foreground text-xs">
+      Processed: {props.processed} / {props.total}
+    </div>
+    <Progress
+      class="h-2"
+      value={(props.processed / props.total) * PERCENTAGE_MULTIPLIER}
+    />
+  </div>
+);
 
 export function GlobalJobToaster() {
   const [mounted, setMounted] = createSignal(false);
-
-  const [activeJobs, setActiveJobs] = createSignal<
+  const [_activeJobs, setActiveJobs] = createSignal<
     Record<string, JobProgressData>
   >({});
   const [toastIds, setToastIds] = createSignal<Record<string, string>>({});
+
+  const cleanupJob = (jobId: string) => {
+    setToastIds((prev) => {
+      const next = { ...prev };
+      delete next[jobId];
+      return next;
+    });
+    setActiveJobs((prev) => {
+      const next = { ...prev };
+      delete next[jobId];
+      return next;
+    });
+  };
 
   onMount(() => {
     if (isServer) {
@@ -34,70 +57,19 @@ export function GlobalJobToaster() {
         const data = JSON.parse(event.data) as JobProgressData;
         const { jobId, processed, total } = data;
 
-        setActiveJobs((prev) => ({
-          ...prev,
-          [jobId]: data,
-        }));
+        setActiveJobs((prev) => ({ ...prev, [jobId]: data }));
 
-        const currentToastIds = toastIds();
-        let toastId = currentToastIds[jobId];
-
-        if (toastId) {
-          // Update the existing toast
-          toast.loading(
-            () => (
-              <div class="flex w-full min-w-[200px] flex-col gap-2">
-                <div class="font-medium text-sm">Job in Progress</div>
-                <div class="text-muted-foreground text-xs">
-                  Processed: {activeJobs()[jobId]?.processed || processed} /{" "}
-                  {activeJobs()[jobId]?.total || total}
-                </div>
-                <Progress
-                  class="h-2"
-                  value={
-                    ((activeJobs()[jobId]?.processed || processed) /
-                      (activeJobs()[jobId]?.total || total)) *
-                    PERCENTAGE_MULTIPLIER
-                  }
-                />
-              </div>
-            ),
-            {
-              id: toastId,
-              duration: Number.POSITIVE_INFINITY,
-            }
-          );
-        } else {
-          // Create a new toast with a known ID
-          toastId = toast.loading(
-            () => (
-              <div class="flex w-full min-w-[200px] flex-col gap-2">
-                <div class="font-medium text-sm">Job in Progress</div>
-                <div class="text-muted-foreground text-xs">
-                  Processed: {activeJobs()[jobId]?.processed || processed} /{" "}
-                  {activeJobs()[jobId]?.total || total}
-                </div>
-                <Progress
-                  class="h-2"
-                  value={
-                    ((activeJobs()[jobId]?.processed || processed) /
-                      (activeJobs()[jobId]?.total || total)) *
-                    PERCENTAGE_MULTIPLIER
-                  }
-                />
-              </div>
-            ),
-            {
-              duration: Number.POSITIVE_INFINITY, // Keep it open until completed or failed
-            }
-          );
-
-          if (typeof toastId === "string") {
-            setToastIds((prev) => ({
-              ...prev,
-              [jobId]: toastId as string,
-            }));
+        const currentToastId = toastIds()[jobId];
+        const newToastId = toast.loading(
+          () => <JobProgressToast processed={processed} total={total} />,
+          {
+            id: currentToastId,
+            duration: Number.POSITIVE_INFINITY,
           }
+        );
+
+        if (!currentToastId && typeof newToastId === "string") {
+          setToastIds((prev) => ({ ...prev, [jobId]: newToastId }));
         }
       } catch (_e) {
         // Ignore JSON parse errors
@@ -106,28 +78,11 @@ export function GlobalJobToaster() {
 
     const _onCompleted = (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data);
-        const { jobId } = data;
+        const { jobId } = JSON.parse(event.data);
+        const toastId = toastIds()[jobId];
 
-        const currentToastIds = toastIds();
-        const toastId = currentToastIds[jobId];
-
-        if (toastId) {
-          toast.success("Job completed successfully", { id: toastId });
-          setToastIds((prev) => {
-            const next = { ...prev };
-            delete next[jobId];
-            return next;
-          });
-        } else {
-          toast.success("Job completed successfully");
-        }
-
-        setActiveJobs((prev) => {
-          const next = { ...prev };
-          delete next[jobId];
-          return next;
-        });
+        toast.success("Job completed successfully", { id: toastId });
+        cleanupJob(jobId);
       } catch (_e) {
         // Ignore
       }
@@ -135,28 +90,11 @@ export function GlobalJobToaster() {
 
     const onFailed = (event: MessageEvent) => {
       try {
-        const data = JSON.parse(event.data);
-        const { jobId, error } = data;
+        const { jobId, error } = JSON.parse(event.data);
+        const toastId = toastIds()[jobId];
 
-        const currentToastIds = toastIds();
-        const toastId = currentToastIds[jobId];
-
-        if (toastId) {
-          toast.error(`Job failed: ${error}`, { id: toastId });
-          setToastIds((prev) => {
-            const next = { ...prev };
-            delete next[jobId];
-            return next;
-          });
-        } else {
-          toast.error(`Job failed: ${error}`);
-        }
-
-        setActiveJobs((prev) => {
-          const next = { ...prev };
-          delete next[jobId];
-          return next;
-        });
+        toast.error(`Job failed: ${error}`, { id: toastId });
+        cleanupJob(jobId);
       } catch (_e) {
         // Ignore
       }
