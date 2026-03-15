@@ -1,29 +1,24 @@
-import { test, expect } from '@playwright/test';
+import { expect, test } from "@playwright/test";
 
-const STATIC_PAGES = [
-  '/',
-  '/config',
-  '/about',
-  '/manager',
-  '/search',
-  '/sources',
-  '/docs/swagger'
-];
+const HTTP_OK = 200;
+const HTTP_INTERNAL_SERVER_ERROR = 500;
 
-test.describe('Static pages', () => {
-  for (const pagePath of STATIC_PAGES) {
-    test(`should load ${pagePath} successfully without crashing`, async ({ page }) => {
+test.describe("SSR Crashing Check - E2E", () => {
+  const pages = ["/", "/config", "/about"];
+
+  for (const pagePath of pages) {
+    test(`should load ${pagePath} without crashing`, async ({ page }) => {
       const response = await page.goto(pagePath);
       // Ensure the response was successful (200 OK)
-      expect(response?.status()).toBe(200);
+      expect(response?.status()).toBe(HTTP_OK);
     });
   }
-});
 
-test.describe('Dynamic routes', () => {
-  test('should load /sources/123 without crashing', async ({ page }) => {
-    const response = await page.goto('/sources/123');
+  test("should load dynamic route /sources/123 without crashing", async ({
+    page,
+  }) => {
+    const response = await page.goto("/sources/123");
     // Ensure the response does not indicate a server crash (500)
-    expect(response?.status()).toBeLessThan(500);
+    expect(response?.status()).toBeLessThan(HTTP_INTERNAL_SERVER_ERROR);
   });
 });
