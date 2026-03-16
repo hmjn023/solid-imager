@@ -42,7 +42,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.2.4",
-    "@playwright/test": "1.43.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "typescript": "^5.9.3"
@@ -50,6 +49,5 @@
   "trustedDependencies": [
     "youtube-dl-exec",
     "ffmpeg-static"
-  ],
-  "dependencies": {}
+  ]
 }
