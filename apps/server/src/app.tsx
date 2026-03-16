@@ -1,9 +1,9 @@
+import { Toaster } from "@solid-imager/ui/toast";
 import { Meta, MetaProvider, Title } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { Suspense } from "solid-js";
-import { GlobalJobToaster } from "./components/global-job-toaster";
 import Nav from "./components/nav";
 import "./app.css";
 
@@ -42,7 +42,7 @@ export default function App() {
           root={(props) => (
             <>
               <Nav />
-              <GlobalJobToaster />
+              <Toaster />
               <Suspense>{props.children}</Suspense>
             </>
           )}
