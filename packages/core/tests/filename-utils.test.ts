@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { generateMediaFilename, sanitizeFilenamePart, extractIdFromUrl } from "../src/domain/media/utils/filename-utils";
 import type { DownloadItem } from "../src/domain/media/schemas";
 

@@ -1,6 +1,6 @@
 import { directoryPathSchema } from "@solid-imager/core/domain/media/schemas";
 import { mediaSourceIdSchema } from "@solid-imager/core/domain/sources/schemas";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 

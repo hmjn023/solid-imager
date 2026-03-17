@@ -8,7 +8,7 @@ import type {
   SearchGroup,
 } from "@solid-imager/core/domain/media/schemas";
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   PresetService,
   setPresetRepository,

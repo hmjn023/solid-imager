@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { loadDatabaseConfig } from "~/config/database";
 
 const TEST_CONFIG_DIR = join(process.cwd(), "temp_test_config");

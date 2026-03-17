@@ -3,7 +3,7 @@ import type { CharacterRepository } from "@solid-imager/core/domain/repositories
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { TaggingService } from "~/application/services/tagging-service";
 
 // biome-ignore lint/style/noMagicNumbers: Test data

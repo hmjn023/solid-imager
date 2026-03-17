@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Ip } from "~/infrastructure/db/schema";
 
 describe("GET /api/ips/:id", () => {

@@ -1,5 +1,5 @@
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 
 describe("extractDataFromComments", () => {
   it("should extract positive and negative tags, prompt, and workflow from comments", () => {

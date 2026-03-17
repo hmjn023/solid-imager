@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { CharacterServiceImpl } from "~/application/services/character-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";

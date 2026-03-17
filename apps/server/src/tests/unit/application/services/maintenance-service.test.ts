@@ -7,7 +7,7 @@ import {
   it,
   type Mock,
   vi,
-} from "vitest";
+} from "vite-plus/test";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 
 // ---- Module mocks ----

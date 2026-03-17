@@ -1,6 +1,6 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeAll, beforeEach, vi } from "vitest";
+import { beforeAll, beforeEach, vi } from "vite-plus/test";
 
 // Bootstrap
 beforeAll(async () => {

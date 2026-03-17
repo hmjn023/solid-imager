@@ -1,6 +1,6 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeEach, vi } from "vitest";
+import { beforeEach, vi } from "vite-plus/test";
 
 // Load env vars
 config({ path: path.resolve(process.cwd(), ".env") });

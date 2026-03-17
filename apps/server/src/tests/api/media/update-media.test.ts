@@ -3,7 +3,7 @@ import {
   mediaSourceIdSchema,
   updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
 import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 

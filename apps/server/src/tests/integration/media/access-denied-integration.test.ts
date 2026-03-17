@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";

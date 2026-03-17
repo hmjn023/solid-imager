@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
 
 // Mock the orpc client

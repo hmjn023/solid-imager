@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterEach, beforeAll, describe, expect, it } from "vite-plus/test";
 import { db } from "~/infrastructure/db";
 import { characterIps, characters, ips } from "~/infrastructure/db/schema";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";

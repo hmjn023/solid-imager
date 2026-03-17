@@ -9,7 +9,7 @@ import {
   expect,
   it,
   vi,
-} from "vitest";
+} from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";

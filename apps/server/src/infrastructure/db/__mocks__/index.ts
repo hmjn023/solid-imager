@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from "uuid";
-import { vi } from "vitest";
+import { vi } from "vite-plus/test";
 import type { Media, MediaSource, NewMedia } from "~/infrastructure/db/schema";
 
 let mockDbState: { mediaSources: MediaSource[]; medias: Media[] };

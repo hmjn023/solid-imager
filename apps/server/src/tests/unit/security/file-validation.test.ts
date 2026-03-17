@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import { validateFileSignature } from "~/application/services/media-service";
 
 const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a0000000d", "hex");

@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
