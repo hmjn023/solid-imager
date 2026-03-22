@@ -1,6 +1,6 @@
 import { createSignal } from "solid-js";
 import { logger } from "~/infrastructure/logger";
-import { sharedQueryClient } from "./collections/presets-collection";
+import { presetsCollection, sharedQueryClient } from "./collections/presets-collection";
 import { getLocalDb } from "./local-db";
 
 // Global sync state to show status in UI
@@ -28,8 +28,9 @@ export const SyncManager = {
         await getLocalDb();
       }
 
-      // Force refetch on all collections (this populates local PGLite cache)
-      await sharedQueryClient.fetchQuery({ queryKey: ["presets"] });
+      // Use the collection's integrated fetch logic via TanStack Query
+      // We use the underlying query client to trigger a fetch
+      await sharedQueryClient.prefetchQuery(presetsCollection as any);
 
       setLastSyncTime(new Date());
     } catch (error) {

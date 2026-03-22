@@ -19,7 +19,6 @@ export const presetsCollection = createCollection<Preset>(
 
       try {
         const db = await getLocalDb();
-        await db.query("BEGIN");
 
         // Optimized bulk upsert using PostgreSQL's unnest for better performance
         // This avoids individual INSERT statements in a loop
@@ -31,22 +30,22 @@ export const presetsCollection = createCollection<Preset>(
         const modes = response.map((p) => p.mode || null);
         const createdAts = response.map((p) => p.createdAt);
 
-        await db.query(
-          `
-          INSERT INTO presets (id, name, value, sort, display_order, mode, created_at)
-          SELECT * FROM UNNEST($1::int[], $2::text[], $3::jsonb[], $4::text[], $5::text[], $6::text[], $7::timestamp[])
-          ON CONFLICT (id) DO UPDATE SET
-            name = EXCLUDED.name,
-            value = EXCLUDED.value,
-            sort = EXCLUDED.sort,
-            display_order = EXCLUDED.display_order,
-            mode = EXCLUDED.mode,
-            created_at = EXCLUDED.created_at;
-        `,
-          [ids, names, values, sorts, orders, modes, createdAts]
-        );
-
-        await db.query("COMMIT");
+        await db.transaction(async (tx) => {
+          await tx.query(
+            `
+            INSERT INTO presets (id, name, value, sort, display_order, mode, created_at)
+            SELECT * FROM UNNEST($1::int[], $2::text[], $3::jsonb[], $4::text[], $5::text[], $6::text[], $7::timestamp[])
+            ON CONFLICT (id) DO UPDATE SET
+              name = EXCLUDED.name,
+              value = EXCLUDED.value,
+              sort = EXCLUDED.sort,
+              display_order = EXCLUDED.display_order,
+              mode = EXCLUDED.mode,
+              created_at = EXCLUDED.created_at
+          `,
+            [ids, names, values, sorts, orders, modes, createdAts]
+          );
+        });
       } catch (error) {
         logger.error({ error }, "Failed to update local presets cache");
       }

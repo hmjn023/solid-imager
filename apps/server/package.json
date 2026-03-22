@@ -59,6 +59,7 @@
     "solid-js": "^1.9.10",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-dist": "^5.31.0",
+    "tailwindcss-animate": "^1.0.7",
     "uuid": "^13.0.0",
     "vinxi": "^0.5.10",
     "vite-plugin-solid": "^2.11.10",
