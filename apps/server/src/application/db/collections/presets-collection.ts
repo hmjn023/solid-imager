@@ -1,37 +1,38 @@
-import { createCollection } from '@tanstack/solid-db';
-import { queryCollectionOptions } from '@tanstack/query-db-collection';
-import { orpc } from '~/infrastructure/api-clients/orpc-client';
-import { getLocalDb } from '../local-db';
-import { logger } from '~/infrastructure/logger';
-import { QueryClient } from '@tanstack/solid-query';
-import type { Preset } from '@core/domain/media/schemas';
+import type { Preset } from "@solid-imager/core/domain/media/schemas";
+import { queryCollectionOptions } from "@tanstack/query-db-collection";
+import { createCollection } from "@tanstack/solid-db";
+import { QueryClient } from "@tanstack/solid-query";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { logger } from "~/infrastructure/logger";
+import { getLocalDb } from "../local-db";
 
 // Shared query client for TanStack DB collections
 export const sharedQueryClient = new QueryClient();
 
 export const presetsCollection = createCollection<Preset>(
   queryCollectionOptions({
-    id: 'presets',
+    id: "presets",
     queryClient: sharedQueryClient,
-    queryKey: ['presets'],
+    queryKey: ["presets"],
     queryFn: async () => {
       const response = await orpc.presets.list();
 
       try {
         const db = await getLocalDb();
-        await db.query('BEGIN');
+        await db.query("BEGIN");
 
         // Optimized bulk upsert using PostgreSQL's unnest for better performance
         // This avoids individual INSERT statements in a loop
-        const ids = response.map(p => p.id);
-        const names = response.map(p => p.name);
-        const values = response.map(p => JSON.stringify(p.value));
-        const sorts = response.map(p => p.sort || null);
-        const orders = response.map(p => p.order || null);
-        const modes = response.map(p => p.mode || null);
-        const createdAts = response.map(p => p.createdAt);
+        const ids = response.map((p) => p.id);
+        const names = response.map((p) => p.name);
+        const values = response.map((p) => JSON.stringify(p.value));
+        const sorts = response.map((p) => p.sort || null);
+        const orders = response.map((p) => p.order || null);
+        const modes = response.map((p) => p.mode || null);
+        const createdAts = response.map((p) => p.createdAt);
 
-        await db.query(`
+        await db.query(
+          `
           INSERT INTO presets (id, name, value, sort, display_order, mode, created_at)
           SELECT * FROM UNNEST($1::int[], $2::text[], $3::jsonb[], $4::text[], $5::text[], $6::text[], $7::timestamp[])
           ON CONFLICT (id) DO UPDATE SET
@@ -41,15 +42,18 @@ export const presetsCollection = createCollection<Preset>(
             display_order = EXCLUDED.display_order,
             mode = EXCLUDED.mode,
             created_at = EXCLUDED.created_at;
-        `, [ids, names, values, sorts, orders, modes, createdAts]);
+        `,
+          [ids, names, values, sorts, orders, modes, createdAts]
+        );
 
-        await db.query('COMMIT');
+        await db.query("COMMIT");
       } catch (error) {
-        logger.error({ error }, 'Failed to update local presets cache');
+        logger.error({ error }, "Failed to update local presets cache");
       }
 
       return response as Preset[];
     },
+    // Explicitly use string for ID to avoid PGLite/TanStack DB mismatch
     getKey: (item: Preset) => String(item.id),
 
     onInsert: async ({ transaction }) => {
@@ -66,7 +70,7 @@ export const presetsCollection = createCollection<Preset>(
 
         return createdPreset as Preset;
       } catch (error) {
-        logger.error({ error }, 'Failed to create preset on backend');
+        logger.error({ error }, "Failed to create preset on backend");
         throw error;
       }
     },
@@ -83,12 +87,12 @@ export const presetsCollection = createCollection<Preset>(
             sort: modified.sort || undefined,
             order: modified.order || undefined,
             mode: modified.mode || undefined,
-          }
+          },
         });
 
         return updatedPreset as Preset;
       } catch (error) {
-        logger.error({ error }, 'Failed to update preset on backend');
+        logger.error({ error }, "Failed to update preset on backend");
         throw error;
       }
     },
@@ -99,9 +103,10 @@ export const presetsCollection = createCollection<Preset>(
       try {
         await orpc.presets.delete({ id: Number(original.id) });
       } catch (error) {
-        logger.error({ error }, 'Failed to delete preset on backend');
+        logger.error({ error }, "Failed to delete preset on backend");
         throw error;
       }
     },
-  })
+    // biome-ignore lint/suspicious/noExplicitAny: Required to bypass TanStack DB type mismatch with PGLite/oRPC schemas
+  }) as any
 );
