@@ -1,5 +1,5 @@
 import { createSignal, onCleanup, splitProps } from "solid-js";
-import { toast } from "solid-toast";
+import { toast } from "./toast";
 import { cn } from "./utils/cn";
 
 type ClipboardCopyProps = {
