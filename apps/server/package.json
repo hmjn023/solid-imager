@@ -73,6 +73,7 @@
     "@playwright/test": "^1.57.0",
     "@tailwindcss/vite": "^4.1.18",
     "@types/archiver": "^7.0.0",
+    "@types/emscripten": "^1.41.5",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^24.10.4",
@@ -92,8 +93,8 @@
     "typedoc": "^0.28.15",
     "typescript": "^5.9.3",
     "ultracite": "5.4.4",
+    "vite-plus": "latest",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-    "vite-plus": "latest"
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   }
 }

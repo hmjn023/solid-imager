@@ -11,6 +11,8 @@
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
+      "@solid-imager/core": ["../../packages/core/src"],
+      "@solid-imager/core/*": ["../../packages/core/src/*"],
       "@solid-imager/ui/*": ["../../packages/ui/src/*"],
       "@/*": ["../../packages/core/src/*"]
     }
