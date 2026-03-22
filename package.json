@@ -12,9 +12,9 @@
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
-    "lint": "bun --filter '*' lint",
-    "check": "bun --filter '*' check",
-    "format": "bun --filter '*' format",
+    "lint": "vp run lint",
+    "check": "vp run check",
+    "format": "vp run format",
     "test": "bun --filter '*' test",
     "typecheck": "bun --filter '*' typecheck",
     "prepare": "vp config"

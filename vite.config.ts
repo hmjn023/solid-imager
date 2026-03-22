@@ -3,24 +3,23 @@ import { defineConfig } from 'vite-plus';
 export default defineConfig({
   staged: {
     "apps/server/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/server check",
-      "bun --filter @solid-imager/server test:unit",
-      "bash -c 'bun --filter @solid-imager/server typecheck'"
+      "vp run @solid-imager/server#check",
+      "vp run @solid-imager/server#test:unit",
+      "vp run @solid-imager/server#typecheck"
     ],
     "packages/core/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/core check",
-      "bun --filter @solid-imager/core test:unit",
-      "bash -c 'bun --filter @solid-imager/core typecheck'"
+      "vp run @solid-imager/core#check",
+      "vp run @solid-imager/core#test:unit",
+      "vp run @solid-imager/core#typecheck"
     ],
     "packages/ui/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/ui check",
-      "bun --filter @solid-imager/ui test:unit",
-      "bash -c 'bun --filter @solid-imager/ui typecheck'"
+      "vp run @solid-imager/ui#check",
+      "vp run @solid-imager/ui#test:unit",
+      "vp run @solid-imager/ui#typecheck"
     ],
     "xtracter/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter xtracter check",
-      "bash -c 'bun --filter xtracter typecheck'"
+      "vp run xtracter#check",
+      "vp run xtracter#typecheck"
     ]
-  },
-
+  }
 });
