@@ -14,9 +14,7 @@ vi.mock("@electric-sql/pglite", () => {
 		query: vi.fn(() => Promise.resolve()),
 		constructor: { name: "PgLite" },
 	};
-	const PgLiteMock = vi.fn(function () {
-		return mockPgliteInstance;
-	});
+	const PgLiteMock = vi.fn(() => mockPgliteInstance);
 	// Make the mock instance appear as an instance of PgLiteMock
 	Object.setPrototypeOf(mockPgliteInstance, PgLiteMock.prototype);
 
@@ -34,9 +32,7 @@ vi.mock("pg", () => {
 		query: vi.fn(() => Promise.resolve({ rows: [] })),
 		constructor: { name: "Pool" },
 	};
-	const MockPool = vi.fn(function () {
-		return mockPool;
-	});
+	const MockPool = vi.fn(() => mockPool);
 	Object.setPrototypeOf(mockPool, MockPool.prototype);
 	return {
 		Pool: MockPool,

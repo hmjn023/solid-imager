@@ -6,22 +6,22 @@ if (typeof window === "undefined") {
 	// Server-side only
 	import("~/infrastructure/bootstrap").then(({ bootstrap }) => {
 		bootstrap();
-	});
 
-	// biome-ignore lint/suspicious/noExplicitAny: Global augmentation for HMR
-	const globalAny = globalThis as any;
-	if (!globalAny.__WATCHER_STARTED__) {
-		globalAny.__WATCHER_STARTED__ = true;
-		import("~/infrastructure/jobs/file-watcher-service")
-			.then((module) => {
-				module.FileWatcherService.startMonitoringAll().catch((_error) => {
-					// Error already logged in startMonitoringAll
+		// biome-ignore lint/suspicious/noExplicitAny: Global augmentation for HMR
+		const globalAny = globalThis as any;
+		if (!globalAny.__WATCHER_STARTED__) {
+			globalAny.__WATCHER_STARTED__ = true;
+			import("~/infrastructure/jobs/file-watcher-service")
+				.then((module) => {
+					module.FileWatcherService.startMonitoringAll().catch((_error) => {
+						// Error already logged in startMonitoringAll
+					});
+				})
+				.catch((_error) => {
+					// Error already logged in then block
 				});
-			})
-			.catch((_error) => {
-				// Error already logged in then block
-			});
-	}
+		}
+	});
 }
 
 /**

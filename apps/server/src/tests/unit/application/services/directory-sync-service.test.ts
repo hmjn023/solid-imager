@@ -33,16 +33,14 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
 }));
 
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
-	DrizzleSourceRepository: vi.fn(function () {
-		return {
-			findById: vi.fn().mockResolvedValue({
-				id: "source-1",
-				type: "local",
-				connectionInfo: { path: "/fake/path" },
-			}),
-			findAll: vi.fn(),
-		};
-	}),
+	DrizzleSourceRepository: vi.fn(() => ({
+		findById: vi.fn().mockResolvedValue({
+			id: "source-1",
+			type: "local",
+			connectionInfo: { path: "/fake/path" },
+		}),
+		findAll: vi.fn(),
+	})),
 }));
 
 vi.mock("~/application/services/media-processing-service", () => ({

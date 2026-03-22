@@ -1,6 +1,9 @@
 import { createSignal } from "solid-js";
 import { logger } from "~/infrastructure/logger";
-import { presetsCollection, sharedQueryClient } from "./collections/presets-collection";
+import {
+	presetsQueryOptions,
+	sharedQueryClient,
+} from "./collections/presets-collection";
 import { getLocalDb } from "./local-db";
 
 // Global sync state to show status in UI
@@ -12,51 +15,51 @@ export const [lastSyncTime, setLastSyncTime] = createSignal<Date | null>(null);
  * through TanStack DB collections.
  */
 export const SyncManager = {
-  /**
-   * Internal common sync logic
-   */
-  performSync: async (options: { forceInitDb?: boolean } = {}) => {
-    if (isSyncing()) {
-      return;
-    }
+	/**
+	 * Internal common sync logic
+	 */
+	performSync: async (options: { forceInitDb?: boolean } = {}) => {
+		if (isSyncing()) {
+			return;
+		}
 
-    try {
-      setIsSyncing(true);
+		try {
+			setIsSyncing(true);
 
-      if (options.forceInitDb) {
-        // Initialize local DB connection
-        await getLocalDb();
-      }
+			if (options.forceInitDb) {
+				// Initialize local DB connection
+				await getLocalDb();
+			}
 
-      // Use the collection's integrated fetch logic via TanStack Query
-      // We use the underlying query client to trigger a fetch
-      await sharedQueryClient.prefetchQuery(presetsCollection as any);
+			// Use the collection's integrated fetch logic via TanStack Query
+			// We use the underlying query client to trigger a fetch
+			await sharedQueryClient.prefetchQuery(presetsQueryOptions);
 
-      setLastSyncTime(new Date());
-    } catch (error) {
-      logger.error({ error }, "Sync failed");
-      throw error;
-    } finally {
-      setIsSyncing(false);
-    }
-  },
+			setLastSyncTime(new Date());
+		} catch (error) {
+			logger.error({ error }, "Sync failed");
+			throw error;
+		} finally {
+			setIsSyncing(false);
+		}
+	},
 
-  /**
-   * Initialize collections and force an initial sync
-   */
-  init: async () => {
-    try {
-      await SyncManager.performSync({ forceInitDb: true });
-      logger.info("Initial sync completed.");
-    } catch (_error) {
-      // Error is already logged in performSync
-    }
-  },
+	/**
+	 * Initialize collections and force an initial sync
+	 */
+	init: async () => {
+		try {
+			await SyncManager.performSync({ forceInitDb: true });
+			logger.info("Initial sync completed.");
+		} catch (_error) {
+			// Error is already logged in performSync
+		}
+	},
 
-  /**
-   * Manually trigger a full sync with the backend
-   */
-  syncAll: async () => {
-    await SyncManager.performSync();
-  },
+	/**
+	 * Manually trigger a full sync with the backend
+	 */
+	syncAll: async () => {
+		await SyncManager.performSync();
+	},
 };
