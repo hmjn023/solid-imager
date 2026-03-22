@@ -13,75 +13,75 @@ import { CollectionRepository } from "~/infrastructure/repositories/collection-r
  * Provides services for managing media collections.
  */
 export const CollectionService = {
-  /**
-   * Retrieves all collections.
-   */
-  async getAllCollections() {
-    return await CollectionRepository.findAll();
-  },
+	/**
+	 * Retrieves all collections.
+	 */
+	async getAllCollections() {
+		return await CollectionRepository.findAll();
+	},
 
-  /**
-   * Creates a new collection.
-   */
-  async createCollection(collectionData: {
-    userId: string;
-    name: string;
-    description?: string;
-  }) {
-    return await CollectionRepository.create({
-      userId: collectionData.userId,
-      name: collectionData.name,
-      description: collectionData.description,
-    });
-  },
+	/**
+	 * Creates a new collection.
+	 */
+	async createCollection(collectionData: {
+		userId: string;
+		name: string;
+		description?: string;
+	}) {
+		return await CollectionRepository.create({
+			userId: collectionData.userId,
+			name: collectionData.name,
+			description: collectionData.description,
+		});
+	},
 
-  /**
-   * Retrieves details of a specific collection by its ID.
-   */
-  async getCollectionDetails(collectionId: string) {
-    return await CollectionRepository.findById(collectionId);
-  },
+	/**
+	 * Retrieves details of a specific collection by its ID.
+	 */
+	async getCollectionDetails(collectionId: string) {
+		return await CollectionRepository.findById(collectionId);
+	},
 
-  /**
-   * Updates an existing collection.
-   */
-  async updateCollection(
-    collectionId: string,
-    collectionData: {
-      userId?: string;
-      name?: string;
-      description?: string;
-    }
-  ) {
-    return await CollectionRepository.update(collectionId, collectionData);
-  },
+	/**
+	 * Updates an existing collection.
+	 */
+	async updateCollection(
+		collectionId: string,
+		collectionData: {
+			userId?: string;
+			name?: string;
+			description?: string;
+		},
+	) {
+		return await CollectionRepository.update(collectionId, collectionData);
+	},
 
-  /**
-   * Deletes a collection by its ID.
-   */
-  async deleteCollection(collectionId: string) {
-    return await CollectionRepository.delete(collectionId);
-  },
+	/**
+	 * Deletes a collection by its ID.
+	 */
+	async deleteCollection(collectionId: string) {
+		return await CollectionRepository.delete(collectionId);
+	},
 
-  /**
-   * Adds a media item to a specific collection.
-   */
-  async addMediaToCollection(
-    collectionId: string,
-    mediaId: string,
-    displayOrder?: number
-  ) {
-    const item: NewCollectionItem = {
-      mediaId,
-      displayOrder,
-    };
-    return await CollectionRepository.addItem(collectionId, item);
-  },
+	/**
+	 * Adds a media item to a specific collection.
+	 */
+	async addMediaToCollection(
+		collectionId: string,
+		mediaId: string,
+		displayOrder?: number,
+	) {
+		const item: NewCollectionItem = {
+			mediaId,
+			displayOrder,
+		};
+		return await CollectionRepository.addItem(collectionId, item);
+	},
 
-  /**
-   * Removes a media item from a specific collection.
-   */
-  async removeMediaFromCollection(collectionId: string, mediaId: string) {
-    return await CollectionRepository.removeItem(collectionId, mediaId);
-  },
+	/**
+	 * Removes a media item from a specific collection.
+	 */
+	async removeMediaFromCollection(collectionId: string, mediaId: string) {
+		return await CollectionRepository.removeItem(collectionId, mediaId);
+	},
 };

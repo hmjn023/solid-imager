@@ -14,7 +14,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns The tagging response containing general tags, characters, and IPs
  */
 export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
-  return orpc.ai.tag(params);
+	return orpc.ai.tag(params);
 }
 
 /**
@@ -22,5 +22,5 @@ export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
  * @param file - The file to tag
  */
 export function fetchAiTagsForFile(file: File) {
-  return orpc.ai.tag({ file });
+	return orpc.ai.tag({ file });
 }

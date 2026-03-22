@@ -5,116 +5,116 @@ import type { Media, MediaSource, NewMedia } from "~/infrastructure/db/schema";
 let mockDbState: { mediaSources: MediaSource[]; medias: Media[] };
 
 export const resetMockDbState = () => {
-  mockDbState = { mediaSources: [], medias: [] };
+	mockDbState = { mediaSources: [], medias: [] };
 };
 
 resetMockDbState(); // Initialize for the first run
 
 export const insertMediaSource = vi.fn((mediaSource) => {
-  const newEntry = {
-    id: `mock-uuid-${mockDbState.mediaSources.length + 1}`,
-    ...mediaSource,
-  };
-  mockDbState.mediaSources.push(newEntry);
-  return Promise.resolve([newEntry]);
+	const newEntry = {
+		id: `mock-uuid-${mockDbState.mediaSources.length + 1}`,
+		...mediaSource,
+	};
+	mockDbState.mediaSources.push(newEntry);
+	return Promise.resolve([newEntry]);
 });
 
 export const selectMediaSourceById = vi.fn((id: string) =>
-  Promise.resolve(mockDbState.mediaSources.filter((s) => s.id === id))
+	Promise.resolve(mockDbState.mediaSources.filter((s) => s.id === id)),
 );
 
 export const selectMediaSources = vi.fn(() =>
-  Promise.resolve(mockDbState.mediaSources)
+	Promise.resolve(mockDbState.mediaSources),
 );
 
 export const updateMediaSource = vi.fn((id: string, mediaSource) => {
-  const index = mockDbState.mediaSources.findIndex((s) => s.id === id);
-  if (index !== -1) {
-    mockDbState.mediaSources[index] = {
-      ...mockDbState.mediaSources[index],
-      ...mediaSource,
-    };
-    return Promise.resolve([mockDbState.mediaSources[index]]);
-  }
-  return Promise.resolve([]);
+	const index = mockDbState.mediaSources.findIndex((s) => s.id === id);
+	if (index !== -1) {
+		mockDbState.mediaSources[index] = {
+			...mockDbState.mediaSources[index],
+			...mediaSource,
+		};
+		return Promise.resolve([mockDbState.mediaSources[index]]);
+	}
+	return Promise.resolve([]);
 });
 
 export const deleteMediaSource = vi.fn((id: string) => {
-  const initialLength = mockDbState.mediaSources.length;
-  mockDbState.mediaSources = mockDbState.mediaSources.filter(
-    (s) => s.id !== id
-  );
-  if (mockDbState.mediaSources.length < initialLength) {
-    return Promise.resolve([{ id }]);
-  }
-  return Promise.resolve([]);
+	const initialLength = mockDbState.mediaSources.length;
+	mockDbState.mediaSources = mockDbState.mediaSources.filter(
+		(s) => s.id !== id,
+	);
+	if (mockDbState.mediaSources.length < initialLength) {
+		return Promise.resolve([{ id }]);
+	}
+	return Promise.resolve([]);
 });
 
 export const selectMediaBySourceIdAndFilePath = vi.fn(
-  (mediaSourceId: string, filePath: string) =>
-    Promise.resolve(
-      mockDbState.medias.filter(
-        (m) => m.mediaSourceId === mediaSourceId && m.filePath === filePath
-      )
-    )
+	(mediaSourceId: string, filePath: string) =>
+		Promise.resolve(
+			mockDbState.medias.filter(
+				(m) => m.mediaSourceId === mediaSourceId && m.filePath === filePath,
+			),
+		),
 );
 
 export const insertMedia = vi.fn((media: NewMedia) => {
-  const newEntry: Media = {
-    id: uuidv4(),
-    ...media,
-    createdAt: media.createdAt || new Date(),
-    modifiedAt: media.modifiedAt || new Date(),
-    indexedAt: media.indexedAt || new Date(),
-    description: media.description || null,
-    fileSize: media.fileSize || null,
-    status: media.status || "active",
-  };
-  mockDbState.medias.push(newEntry);
-  return Promise.resolve([newEntry]);
+	const newEntry: Media = {
+		id: uuidv4(),
+		...media,
+		createdAt: media.createdAt || new Date(),
+		modifiedAt: media.modifiedAt || new Date(),
+		indexedAt: media.indexedAt || new Date(),
+		description: media.description || null,
+		fileSize: media.fileSize || null,
+		status: media.status || "active",
+	};
+	mockDbState.medias.push(newEntry);
+	return Promise.resolve([newEntry]);
 });
 
 export const selectMediaById = vi.fn((id: string) => {
-  const foundMedia = mockDbState.medias.find((m) => m.id === id);
-  return Promise.resolve(foundMedia ? [foundMedia] : []);
+	const foundMedia = mockDbState.medias.find((m) => m.id === id);
+	return Promise.resolve(foundMedia ? [foundMedia] : []);
 });
 
 export const updateMedia = vi.fn((id: string, updates) => {
-  const index = mockDbState.medias.findIndex((m) => m.id === id);
-  if (index !== -1) {
-    mockDbState.medias[index] = { ...mockDbState.medias[index], ...updates };
-    return Promise.resolve([mockDbState.medias[index]]);
-  }
-  return Promise.resolve([]);
+	const index = mockDbState.medias.findIndex((m) => m.id === id);
+	if (index !== -1) {
+		mockDbState.medias[index] = { ...mockDbState.medias[index], ...updates };
+		return Promise.resolve([mockDbState.medias[index]]);
+	}
+	return Promise.resolve([]);
 });
 
 export const deleteMedia = vi.fn((id: string) => {
-  const initialLength = mockDbState.medias.length;
-  mockDbState.medias = mockDbState.medias.filter((m) => m.id !== id);
-  if (mockDbState.medias.length < initialLength) {
-    return Promise.resolve([{ id }]);
-  }
-  return Promise.resolve([]);
+	const initialLength = mockDbState.medias.length;
+	mockDbState.medias = mockDbState.medias.filter((m) => m.id !== id);
+	if (mockDbState.medias.length < initialLength) {
+		return Promise.resolve([{ id }]);
+	}
+	return Promise.resolve([]);
 });
 
 export const selectMediaBySourceIdAndDirectoryPath = vi.fn(
-  (mediaSourceId: string, directoryPath: string) =>
-    Promise.resolve(
-      mockDbState.medias.filter(
-        (m) =>
-          m.mediaSourceId === mediaSourceId &&
-          m.filePath.startsWith(directoryPath)
-      )
-    )
+	(mediaSourceId: string, directoryPath: string) =>
+		Promise.resolve(
+			mockDbState.medias.filter(
+				(m) =>
+					m.mediaSourceId === mediaSourceId &&
+					m.filePath.startsWith(directoryPath),
+			),
+		),
 );
 
 export const addMediaToMockDb = (media: Media) => {
-  mockDbState.medias.push(media);
+	mockDbState.medias.push(media);
 };
 
 // Mock other functions as needed
 export const pool = {
-  end: vi.fn(),
+	end: vi.fn(),
 };
 export const DatabaseLive = vi.fn();
 export const selectMediaBySourceId = vi.fn();

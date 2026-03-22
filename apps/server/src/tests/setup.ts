@@ -4,21 +4,21 @@ import { beforeAll, beforeEach, vi } from "vite-plus/test";
 
 // Mock logger module
 vi.mock("~/infrastructure/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    debug: vi.fn(),
-    error: vi.fn(),
-    fatal: vi.fn(),
-    warn: vi.fn(),
-    trace: vi.fn(),
-  },
-  updateLogLevel: vi.fn(),
+	logger: {
+		info: vi.fn(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		fatal: vi.fn(),
+		warn: vi.fn(),
+		trace: vi.fn(),
+	},
+	updateLogLevel: vi.fn(),
 }));
 
 // サービス登録を全テスト開始前に行う
 beforeAll(async () => {
-  const { bootstrap } = await import("~/infrastructure/bootstrap");
-  bootstrap();
+	const { bootstrap } = await import("~/infrastructure/bootstrap");
+	bootstrap();
 });
 
 // .envファイルのパスを指定して読み込む
@@ -31,144 +31,144 @@ process.env.DB_HOST = "pglite";
 // PostgreSQL接続情報が設定されていても無視する
 // テスト実行時は常にPGliteを使用し、外部DBへの依存を排除
 if (process.env.NODE_ENV !== "production") {
-  // テスト環境であることを明示
-  process.env.NODE_ENV = "test";
+	// テスト環境であることを明示
+	process.env.NODE_ENV = "test";
 }
 
 // モックされたdbオブジェクトを作成
 const { mockDb } = vi.hoisted(() => ({
-  mockDb: {
-    insert: vi.fn(() => ({
-      values: vi.fn(() => ({
-        returning: vi.fn(() => [
-          {
-            id: "mock-uuid-1",
-            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({
-        where: vi.fn(() => [
-          {
-            id: "mock-uuid-123",
-            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-    update: vi.fn(() => ({
-      set: vi.fn(() => ({
-        where: vi.fn(() => ({
-          returning: vi.fn(() => [
-            {
-              id: "mock-uuid-123",
-              mediaSourceId: "b0000000-0000-4000-8000-000000000000",
-              filePath: "/mock/path/image.png",
-              fileName: "updated_image.png",
-              mediaType: "image",
-              width: 1024,
-              height: 768,
-              fileSize: 1024,
-              createdAt: new Date(),
-              modifiedAt: new Date(),
-              indexedAt: new Date(),
-            },
-          ]),
-        })),
-      })),
-    })),
-    delete: vi.fn(() => ({
-      where: vi.fn(() => ({
-        returning: vi.fn(() => [
-          {
-            id: "mock-uuid-123",
-            mediaSourceId: "b0000000-0000-4000-8000-000000000000",
-            filePath: "/mock/path/image.png",
-            fileName: "image.png",
-            mediaType: "image",
-            width: 800,
-            height: 600,
-            fileSize: 1024,
-            createdAt: new Date(),
-            modifiedAt: new Date(),
-            indexedAt: new Date(),
-          },
-        ]),
-      })),
-    })),
-    query: {
-      mediaSources: {
-        findFirst: vi.fn(() => Promise.resolve(null)),
-      },
-    },
-    transaction: vi.fn((fn) => fn(null)), // Placeholder for recursive mockDb if needed, but usually fn(db)
-  },
+	mockDb: {
+		insert: vi.fn(() => ({
+			values: vi.fn(() => ({
+				returning: vi.fn(() => [
+					{
+						id: "mock-uuid-1",
+						mediaSourceId: "b0000000-0000-4000-8000-000000000000",
+						filePath: "/mock/path/image.png",
+						fileName: "image.png",
+						mediaType: "image",
+						width: 800,
+						height: 600,
+						fileSize: 1024,
+						createdAt: new Date(),
+						modifiedAt: new Date(),
+						indexedAt: new Date(),
+					},
+				]),
+			})),
+		})),
+		select: vi.fn(() => ({
+			from: vi.fn(() => ({
+				where: vi.fn(() => [
+					{
+						id: "mock-uuid-123",
+						mediaSourceId: "b0000000-0000-4000-8000-000000000000",
+						filePath: "/mock/path/image.png",
+						fileName: "image.png",
+						mediaType: "image",
+						width: 800,
+						height: 600,
+						fileSize: 1024,
+						createdAt: new Date(),
+						modifiedAt: new Date(),
+						indexedAt: new Date(),
+					},
+				]),
+			})),
+		})),
+		update: vi.fn(() => ({
+			set: vi.fn(() => ({
+				where: vi.fn(() => ({
+					returning: vi.fn(() => [
+						{
+							id: "mock-uuid-123",
+							mediaSourceId: "b0000000-0000-4000-8000-000000000000",
+							filePath: "/mock/path/image.png",
+							fileName: "updated_image.png",
+							mediaType: "image",
+							width: 1024,
+							height: 768,
+							fileSize: 1024,
+							createdAt: new Date(),
+							modifiedAt: new Date(),
+							indexedAt: new Date(),
+						},
+					]),
+				})),
+			})),
+		})),
+		delete: vi.fn(() => ({
+			where: vi.fn(() => ({
+				returning: vi.fn(() => [
+					{
+						id: "mock-uuid-123",
+						mediaSourceId: "b0000000-0000-4000-8000-000000000000",
+						filePath: "/mock/path/image.png",
+						fileName: "image.png",
+						mediaType: "image",
+						width: 800,
+						height: 600,
+						fileSize: 1024,
+						createdAt: new Date(),
+						modifiedAt: new Date(),
+						indexedAt: new Date(),
+					},
+				]),
+			})),
+		})),
+		query: {
+			mediaSources: {
+				findFirst: vi.fn(() => Promise.resolve(null)),
+			},
+		},
+		transaction: vi.fn((fn) => fn(null)), // Placeholder for recursive mockDb if needed, but usually fn(db)
+	},
 }));
 
 // Fix transaction to use mockDb
 mockDb.transaction = vi.fn((fn) => fn(mockDb));
 
 const { mockDbInstance } = vi.hoisted(() => {
-  let dbInstance: { db: unknown } | null = null;
-  return {
-    mockDbInstance: async () => {
-      // 統合テストファイルのパターンを判定
-      const isIntegrationTest = (filePath: string) =>
-        filePath.includes("/integration/") || filePath.includes("/tests/api/");
+	let dbInstance: { db: unknown } | null = null;
+	return {
+		mockDbInstance: async () => {
+			// 統合テストファイルのパターンを判定
+			const isIntegrationTest = (filePath: string) =>
+				filePath.includes("/integration/") || filePath.includes("/tests/api/");
 
-      // テストファイルのパスを取得（グローバル変数から）
-      // @ts-expect-error - accessing internal test state
-      const testPath = globalThis.__vitest_worker__?.filepath || "";
+			// テストファイルのパスを取得（グローバル変数から）
+			// @ts-expect-error - accessing internal test state
+			const testPath = globalThis.__vitest_worker__?.filepath || "";
 
-      if (isIntegrationTest(testPath)) {
-        if (dbInstance) {
-          return dbInstance;
-        }
+			if (isIntegrationTest(testPath)) {
+				if (dbInstance) {
+					return dbInstance;
+				}
 
-        // 統合テストの場合は新しいPGLiteインスタンスを使用
-        // schemaを動的にインポートしてホイスティングの問題を回避
-        const { PGlite } = await import("@electric-sql/pglite");
-        const { drizzle } = await import("drizzle-orm/pglite");
-        const { migrate } = await import("drizzle-orm/pglite/migrator");
-        const schema = await import("~/infrastructure/db/schema");
-        const nodePath = await import("node:path");
+				// 統合テストの場合は新しいPGLiteインスタンスを使用
+				// schemaを動的にインポートしてホイスティングの問題を回避
+				const { PGlite } = await import("@electric-sql/pglite");
+				const { drizzle } = await import("drizzle-orm/pglite");
+				const { migrate } = await import("drizzle-orm/pglite/migrator");
+				const schema = await import("~/infrastructure/db/schema");
+				const nodePath = await import("node:path");
 
-        const client = new PGlite();
-        const testDb = drizzle(client, { schema });
-        // Use absolute path to ensure it works from any CWD (monorepo root or app root)
-        const migrationsFolder = process.cwd().endsWith("apps/server")
-          ? nodePath.resolve(process.cwd(), "drizzle")
-          : nodePath.resolve(process.cwd(), "apps/server/drizzle");
-        await migrate(testDb, { migrationsFolder });
-        dbInstance = { db: testDb };
-        return dbInstance;
-      }
+				const client = new PGlite();
+				const testDb = drizzle(client, { schema });
+				// Use absolute path to ensure it works from any CWD (monorepo root or app root)
+				const migrationsFolder = process.cwd().endsWith("apps/server")
+					? nodePath.resolve(process.cwd(), "drizzle")
+					: nodePath.resolve(process.cwd(), "apps/server/drizzle");
+				await migrate(testDb, { migrationsFolder });
+				dbInstance = { db: testDb };
+				return dbInstance;
+			}
 
-      // ユニットテストの場合はモックを使用
-      // mockDb is defined in a hoisted block above
-      return { db: mockDb };
-    },
-  };
+			// ユニットテストの場合はモックを使用
+			// mockDb is defined in a hoisted block above
+			return { db: mockDb };
+		},
+	};
 });
 
 // ~/infrastructure/db のモックを設定
@@ -177,5 +177,5 @@ vi.mock("~/infrastructure/db/index", mockDbInstance);
 
 // 各テストの前にモックをクリア
 beforeEach(() => {
-  vi.clearAllMocks();
+	vi.clearAllMocks();
 });

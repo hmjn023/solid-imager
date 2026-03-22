@@ -20,21 +20,21 @@ const DEFAULT_THUMBNAIL_QUALITY = 80;
  * Gets storage config with safe fallback for tests or when ConfigService is not registered
  */
 function getStorageConfig() {
-  try {
-    return services.getConfigService().getConfig().storage;
-  } catch {
-    // Fallback for tests or when ConfigService is not registered
-    return {
-      thumbnailDir: DEFAULT_THUMBNAIL_DIR,
-      thumbnailSize: DEFAULT_THUMBNAIL_SIZE,
-      thumbnailQuality: DEFAULT_THUMBNAIL_QUALITY,
-    };
-  }
+	try {
+		return services.getConfigService().getConfig().storage;
+	} catch {
+		// Fallback for tests or when ConfigService is not registered
+		return {
+			thumbnailDir: DEFAULT_THUMBNAIL_DIR,
+			thumbnailSize: DEFAULT_THUMBNAIL_SIZE,
+			thumbnailQuality: DEFAULT_THUMBNAIL_QUALITY,
+		};
+	}
 }
 
 export function getSourceCacheDir(mediaSourceId: string): string {
-  const storageConfig = getStorageConfig();
-  return path.join(storageConfig.thumbnailDir, mediaSourceId);
+	const storageConfig = getStorageConfig();
+	return path.join(storageConfig.thumbnailDir, mediaSourceId);
 }
 
 /**
@@ -44,7 +44,7 @@ export function getSourceCacheDir(mediaSourceId: string): string {
  * @returns {Promise<void>} A promise that resolves when the directory is ensured.
  */
 async function ensureCacheDir(mediaSourceId: string) {
-  await fs.mkdir(getSourceCacheDir(mediaSourceId), { recursive: true });
+	await fs.mkdir(getSourceCacheDir(mediaSourceId), { recursive: true });
 }
 
 /**
@@ -55,10 +55,10 @@ async function ensureCacheDir(mediaSourceId: string) {
  * @returns {string} The absolute path to the thumbnail file.
  */
 export function getThumbnailPath(
-  mediaSourceId: string,
-  mediaId: string
+	mediaSourceId: string,
+	mediaId: string,
 ): string {
-  return path.join(getSourceCacheDir(mediaSourceId), `${mediaId}.webp`);
+	return path.join(getSourceCacheDir(mediaSourceId), `${mediaId}.webp`);
 }
 
 /**
@@ -69,20 +69,20 @@ export function getThumbnailPath(
  * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
  */
 export async function generateThumbnail(
-  media: Media,
-  sourcePath: string,
-  mediaSourceId: string
+	media: Media,
+	sourcePath: string,
+	mediaSourceId: string,
 ): Promise<void> {
-  await ensureCacheDir(mediaSourceId);
+	await ensureCacheDir(mediaSourceId);
 
-  const storageConfig = getStorageConfig();
-  const size = storageConfig.thumbnailSize;
-  const quality = storageConfig.thumbnailQuality;
+	const storageConfig = getStorageConfig();
+	const size = storageConfig.thumbnailSize;
+	const quality = storageConfig.thumbnailQuality;
 
-  const inputPath = path.join(sourcePath, media.filePath);
-  const outputPath = getThumbnailPath(mediaSourceId, media.id);
+	const inputPath = path.join(sourcePath, media.filePath);
+	const outputPath = getThumbnailPath(mediaSourceId, media.id);
 
-  await ImageProcessor.generateThumbnail(inputPath, outputPath, size, quality);
+	await ImageProcessor.generateThumbnail(inputPath, outputPath, size, quality);
 }
 
 /**
@@ -92,18 +92,18 @@ export async function generateThumbnail(
  * @returns {Promise<void>} A promise that resolves when the thumbnail has been deleted or not found.
  */
 export async function deleteThumbnail(
-  mediaSourceId: string,
-  mediaId: string
+	mediaSourceId: string,
+	mediaId: string,
 ): Promise<void> {
-  const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
-  try {
-    await fs.unlink(thumbnailPath);
-  } catch (error: unknown) {
-    // ファイルが存在しない場合、このコンテキストではエラーではありません。
-    if ((error as { code?: string }).code !== "ENOENT") {
-      throw error;
-    }
-  }
+	const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
+	try {
+		await fs.unlink(thumbnailPath);
+	} catch (error: unknown) {
+		// ファイルが存在しない場合、このコンテキストではエラーではありません。
+		if ((error as { code?: string }).code !== "ENOENT") {
+			throw error;
+		}
+	}
 }
 
 /**
@@ -114,13 +114,13 @@ export async function deleteThumbnail(
  * @param {string} mediaSourceId - The ID of the media source.
  */
 export function processMediaJob(
-  _job: unknown, // or Job from schema
-  _mediaSourceId: string
+	_job: unknown, // or Job from schema
+	_mediaSourceId: string,
 ): Promise<void> {
-  // This function is deprecated and should probably be removed or updated to use DB Job context if called directly.
-  // For now, since it was used by job-manager callback, and we removed it, we can arguably remove this function.
-  // But if it's imported elsewhere, we keep signature.
-  return Promise.resolve();
+	// This function is deprecated and should probably be removed or updated to use DB Job context if called directly.
+	// For now, since it was used by job-manager callback, and we removed it, we can arguably remove this function.
+	// But if it's imported elsewhere, we keep signature.
+	return Promise.resolve();
 }
 
 /**
@@ -131,34 +131,34 @@ export function processMediaJob(
  * @throws {Error} If the source is not found or is not a local source.
  */
 export async function generateThumbnailsForSource(
-  mediaSourceId: string
+	mediaSourceId: string,
 ): Promise<number> {
-  const mediaSource = await sourceRepo.findById(mediaSourceId);
-  if (!mediaSource || mediaSource.type !== "local") {
-    throw new Error("Source not found or not a local source");
-  }
+	const mediaSource = await sourceRepo.findById(mediaSourceId);
+	if (!mediaSource || mediaSource.type !== "local") {
+		throw new Error("Source not found or not a local source");
+	}
 
-  const mediaItems = await MediaRepository.findAllBySourceId(mediaSourceId);
-  if (mediaItems.length === 0) {
-    return 0;
-  }
+	const mediaItems = await MediaRepository.findAllBySourceId(mediaSourceId);
+	if (mediaItems.length === 0) {
+		return 0;
+	}
 
-  // Use processMedia job type for unified processing
-  const jobRepo = services.getJobRepository();
-  const basePath = (mediaSource.connectionInfo as { path: string }).path;
+	// Use processMedia job type for unified processing
+	const jobRepo = services.getJobRepository();
+	const basePath = (mediaSource.connectionInfo as { path: string }).path;
 
-  for (const media of mediaItems) {
-    await jobRepo.create({
-      type: "processMedia",
-      mediaSourceId,
-      payload: {
-        mediaId: media.id,
-        sourcePath: basePath,
-        type: "processMedia",
-      },
-    });
-  }
+	for (const media of mediaItems) {
+		await jobRepo.create({
+			type: "processMedia",
+			mediaSourceId,
+			payload: {
+				mediaId: media.id,
+				sourcePath: basePath,
+				type: "processMedia",
+			},
+		});
+	}
 
-  // Jobs start automatically via worker
-  return mediaItems.length;
+	// Jobs start automatically via worker
+	return mediaItems.length;
 }

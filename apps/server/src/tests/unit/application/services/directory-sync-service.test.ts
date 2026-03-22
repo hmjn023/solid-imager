@@ -2,114 +2,116 @@ import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 // Mocks
 vi.mock("~/infrastructure/logger", () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
+	logger: {
+		info: vi.fn(),
+		error: vi.fn(),
+		debug: vi.fn(),
+	},
 }));
 
 vi.mock("node:fs/promises", () => ({
-  default: {
-    access: vi.fn(),
-  },
+	default: {
+		access: vi.fn(),
+	},
 }));
 
 vi.mock("fast-glob", () => ({
-  default: vi
-    .fn()
-    .mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
+	default: vi
+		.fn()
+		.mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
 }));
 
 vi.mock("~/infrastructure/repositories/media-repository", () => ({
-  MediaRepository: {
-    findAllPathsBySourceId: vi.fn().mockResolvedValue([
-      { id: "id1", filePath: "file1.jpg" },
-      { id: "id2", filePath: "sub/file2.png" },
-      { id: "id3", filePath: "file_to_delete.mp4" },
-    ]),
-    delete: vi.fn(),
-  },
+	MediaRepository: {
+		findAllPathsBySourceId: vi.fn().mockResolvedValue([
+			{ id: "id1", filePath: "file1.jpg" },
+			{ id: "id2", filePath: "sub/file2.png" },
+			{ id: "id3", filePath: "file_to_delete.mp4" },
+		]),
+		delete: vi.fn(),
+	},
 }));
 
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
-  DrizzleSourceRepository: vi.fn().mockImplementation(() => ({
-    findById: vi.fn().mockResolvedValue({
-      id: "source-1",
-      type: "local",
-      connectionInfo: { path: "/fake/path" },
-    }),
-    findAll: vi.fn(),
-  })),
+	DrizzleSourceRepository: vi.fn(function () {
+		return {
+			findById: vi.fn().mockResolvedValue({
+				id: "source-1",
+				type: "local",
+				connectionInfo: { path: "/fake/path" },
+			}),
+			findAll: vi.fn(),
+		};
+	}),
 }));
 
 vi.mock("~/application/services/media-processing-service", () => ({
-  MediaProcessingService: {
-    registerAndProcess: vi.fn(),
-  },
+	MediaProcessingService: {
+		registerAndProcess: vi.fn(),
+	},
 }));
 
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
-  deleteThumbnail: vi.fn(),
+	deleteThumbnail: vi.fn(),
 }));
 
 vi.mock("~/infrastructure/jobs/sse-manager", () => ({
-  SseManager: {
-    sendEvent: vi.fn(),
-  },
+	SseManager: {
+		sendEvent: vi.fn(),
+	},
 }));
 
 vi.mock("~/application/registry", () => ({
-  services: {
-    getConfigService: vi.fn().mockReturnValue({
-      getConfig: vi.fn().mockReturnValue({
-        media: {
-          supportedExtensions: {
-            image: [".jpg", ".png"],
-            video: [".mp4"],
-            audio: [".mp3"],
-          },
-        },
-      }),
-    }),
-  },
+	services: {
+		getConfigService: vi.fn().mockReturnValue({
+			getConfig: vi.fn().mockReturnValue({
+				media: {
+					supportedExtensions: {
+						image: [".jpg", ".png"],
+						video: [".mp4"],
+						audio: [".mp3"],
+					},
+				},
+			}),
+		}),
+	},
 }));
 
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 describe("DirectorySyncService", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
 
-  describe("syncMediaSource", () => {
-    it("should process additions and deletions correctly", async () => {
-      const mediaSourceId = "source-1";
+	describe("syncMediaSource", () => {
+		it("should process additions and deletions correctly", async () => {
+			const mediaSourceId = "source-1";
 
-      const { DirectorySyncService } = await import(
-        "~/application/services/directory-sync-service"
-      );
+			const { DirectorySyncService } = await import(
+				"~/application/services/directory-sync-service"
+			);
 
-      // Execute
-      const result = await DirectorySyncService.syncMediaSource(mediaSourceId);
+			// Execute
+			const result = await DirectorySyncService.syncMediaSource(mediaSourceId);
 
-      // Verify diff calculation
-      expect(result.added).toBe(1);
-      expect(result.deleted).toBe(1);
+			// Verify diff calculation
+			expect(result.added).toBe(1);
+			expect(result.deleted).toBe(1);
 
-      // Verify addition
-      expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(
-        1
-      );
-      expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
-        mediaSourceId,
-        "new_file.mp3"
-      );
+			// Verify addition
+			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(
+				1,
+			);
+			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
+				mediaSourceId,
+				"new_file.mp3",
+			);
 
-      // Verify deletion
-      expect(MediaRepository.delete).toHaveBeenCalledTimes(1);
-      expect(MediaRepository.delete).toHaveBeenCalledWith("id3");
-    });
-  });
+			// Verify deletion
+			expect(MediaRepository.delete).toHaveBeenCalledTimes(1);
+			expect(MediaRepository.delete).toHaveBeenCalledWith("id3");
+		});
+	});
 });

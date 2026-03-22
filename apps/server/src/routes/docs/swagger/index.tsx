@@ -3,10 +3,10 @@ import { clientOnly } from "@solidjs/start";
 const SwaggerUi = clientOnly(() => import("~/components/swagger-ui"));
 
 export default function SwaggerPage() {
-  return (
-    <div class="container mx-auto p-4">
-      <h1 class="mb-4 font-bold text-2xl">API Documentation</h1>
-      <SwaggerUi />
-    </div>
-  );
+	return (
+		<div class="container mx-auto p-4">
+			<h1 class="mb-4 font-bold text-2xl">API Documentation</h1>
+			<SwaggerUi />
+		</div>
+	);
 }

@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import * as schema from "./schema";
 
 export type NodePostgresDb = ReturnType<
-  typeof drizzleNodePostgres<typeof schema>
+	typeof drizzleNodePostgres<typeof schema>
 >;
 export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
 export type DbInstance = NodePostgresDb | PgLiteDb;
@@ -28,36 +28,36 @@ let _queryClient: Pool | PGlite | null = null;
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
-  if (_db) {
-    return _db;
-  }
+	if (_db) {
+		return _db;
+	}
 
-  const dbHost = process.env.DB_HOST;
-  const isTestEnv =
-    process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+	const dbHost = process.env.DB_HOST;
+	const isTestEnv =
+		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-  // テスト環境では必ずPGliteを使用
-  if (isTestEnv || dbHost === "pglite") {
-    _queryClient = new PGlite("./.data/pglite");
-    _db = drizzlePglite(_queryClient, { schema });
-    return _db;
-  }
+	// テスト環境では必ずPGliteを使用
+	if (isTestEnv || dbHost === "pglite") {
+		_queryClient = new PGlite("./.data/pglite");
+		_db = drizzlePglite(_queryClient, { schema });
+		return _db;
+	}
 
-  const dbPort = process.env.DB_PORT || "5432";
-  const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
-  const dbUser = process.env.DB_USER;
-  const dbPassword = process.env.DB_PASSWORD;
+	const dbPort = process.env.DB_PORT || "5432";
+	const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
+	const dbUser = process.env.DB_USER;
+	const dbPassword = process.env.DB_PASSWORD;
 
-  if (!(dbHost && dbName && dbUser && dbPassword)) {
-    throw new Error(
-      "Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)"
-    );
-  }
+	if (!(dbHost && dbName && dbUser && dbPassword)) {
+		throw new Error(
+			"Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)",
+		);
+	}
 
-  const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-  _queryClient = new Pool({ connectionString });
-  _db = drizzleNodePostgres(_queryClient, { schema });
-  return _db;
+	const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
+	_queryClient = new Pool({ connectionString });
+	_db = drizzleNodePostgres(_queryClient, { schema });
+	return _db;
 }
 
 /**
@@ -65,9 +65,9 @@ function initializeDb() {
  * It ensures that the database is initialized lazily upon first access.
  */
 export const db = new Proxy({} as NodePostgresDb | PgLiteDb, {
-  get(_target, prop) {
-    const instance = initializeDb();
-    const value = instance[prop as keyof typeof instance];
-    return typeof value === "function" ? value.bind(instance) : value;
-  },
+	get(_target, prop) {
+		const instance = initializeDb();
+		const value = instance[prop as keyof typeof instance];
+		return typeof value === "function" ? value.bind(instance) : value;
+	},
 });
