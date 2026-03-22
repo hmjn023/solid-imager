@@ -8,6 +8,7 @@
     "types": ["vinxi/types/client", "vitest/globals"],
     "isolatedModules": true,
     "skipLibCheck": true,
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],

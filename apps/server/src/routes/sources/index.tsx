@@ -2,7 +2,7 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
-import toast from "@solid-imager/ui/toast";
+import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";

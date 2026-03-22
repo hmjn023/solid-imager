@@ -16,7 +16,7 @@ import {
 	TabsTrigger,
 } from "@solid-imager/ui/tabs";
 import { Textarea } from "@solid-imager/ui/textarea";
-import toast from "@solid-imager/ui/toast";
+import { toast } from "@solid-imager/ui/toast";
 import { createForm } from "@tanstack/solid-form";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { zodValidator } from "@tanstack/zod-form-adapter";

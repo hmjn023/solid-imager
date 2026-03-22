@@ -5,8 +5,7 @@
     "rules": {
       "recommended": true,
       "style": {
-        "useNamingConvention": "off",
-        "useArrowFunction": "off"
+        "useNamingConvention": "off"
       },
       "performance": {
         "noBarrelFile": "off"
