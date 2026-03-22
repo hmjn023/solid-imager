@@ -10,8 +10,8 @@
     "dev": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --compile --outfile dist/imager-cli",
     "start": "bun run dist/imager-cli",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vp test run",
+    "test:watch": "vp test"
   },
   "dependencies": {
     "incur": "^0.2.2",
@@ -23,6 +23,7 @@
   "devDependencies": {
     "@types/bun": "latest",
     "typescript": "^5.9.3",
-    "vitest": "^1.6.0"
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+    "vite-plus": "latest"
   }
 }

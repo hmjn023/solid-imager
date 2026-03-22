@@ -9,14 +9,14 @@ import type { AppRouter } from "~/domain/shared/api-contract";
  * In SSR: use localhost (fallback)
  */
 export function getBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    return `${window.location.origin}/api/rpc`;
-  }
-  return "http://localhost:3000/api/rpc";
+	if (typeof window !== "undefined") {
+		return `${window.location.origin}/api/rpc`;
+	}
+	return "http://localhost:3000/api/rpc";
 }
 
 const link = new RPCLink({
-  url: getBaseUrl(),
+	url: getBaseUrl(),
 });
 
 /**

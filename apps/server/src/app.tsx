@@ -19,13 +19,13 @@ const FIVE_MINUTES_IN_MS = FIVE_MINUTES * MINUTES_TO_MS;
  * Configures queries to retry once, have a stale time of 5 minutes, and not refetch on window focus.
  */
 const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      staleTime: FIVE_MINUTES_IN_MS,
-      refetchOnWindowFocus: false,
-    },
-  },
+	defaultOptions: {
+		queries: {
+			retry: 1,
+			staleTime: FIVE_MINUTES_IN_MS,
+			refetchOnWindowFocus: false,
+		},
+	},
 });
 
 /**
@@ -34,31 +34,31 @@ const queryClient = new QueryClient({
  * @returns {JSX.Element} The root of the Solid Imager application.
  */
 export default function App() {
-  return (
-    <MetaProvider>
-      <Title>Solid Imager</Title>
-      <Meta charset="utf-8" />
-      <QueryClientProvider client={queryClient}>
-        <ErrorBoundary
-          fallback={(err) => <div>Error rendering app: {err.message}</div>}
-        >
-          <TanStackDbProvider>
-            <Router
-              root={(props) => (
-                <>
-                  <Nav />
-                  <Toaster />
-                  <Suspense fallback={<div>Loading...</div>}>
-                    {props.children}
-                  </Suspense>
-                </>
-              )}
-            >
-              <FileRoutes />
-            </Router>
-          </TanStackDbProvider>
-        </ErrorBoundary>
-      </QueryClientProvider>
-    </MetaProvider>
-  );
+	return (
+		<MetaProvider>
+			<Title>Solid Imager</Title>
+			<Meta charset="utf-8" />
+			<QueryClientProvider client={queryClient}>
+				<ErrorBoundary
+					fallback={(err) => <div>Error rendering app: {err.message}</div>}
+				>
+					<TanStackDbProvider>
+						<Router
+							root={(props) => (
+								<>
+									<Nav />
+									<Toaster />
+									<Suspense fallback={<div>Loading...</div>}>
+										{props.children}
+									</Suspense>
+								</>
+							)}
+						>
+							<FileRoutes />
+						</Router>
+					</TanStackDbProvider>
+				</ErrorBoundary>
+			</QueryClientProvider>
+		</MetaProvider>
+	);
 }

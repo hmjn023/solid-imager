@@ -1,10 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
 import {
-  type MediaSource,
-  mediaSources,
-  medias,
-  type NewMedia,
+	type MediaSource,
+	mediaSources,
+	medias,
+	type NewMedia,
 } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
 
@@ -15,9 +15,9 @@ import { NotFoundError, UnknownDbError } from "./errors";
  * @property {any} [otherTables] - Placeholder for other tables that might be included in the import.
  */
 type ImportData = {
-  mediaSource: MediaSource;
-  medias: NewMedia[];
-  // Add other tables as needed
+	mediaSource: MediaSource;
+	medias: NewMedia[];
+	// Add other tables as needed
 };
 /**
  * Selects all data related to a specific media source, including its associated media, tags, details, etc.
@@ -27,42 +27,42 @@ type ImportData = {
  * @throws {UnknownDbError} If a database error occurs during the selection process.
  */
 export const selectMediaSourceData = async (mediaSourceId: string) => {
-  try {
-    const mediaSource = await db.query.mediaSources.findFirst({
-      where: eq(mediaSources.id, mediaSourceId),
-      with: {
-        media: {
-          with: {
-            tags: { with: { tag: true } },
-            details: true,
-            generationInfo: true,
-            categories: { with: { category: true } },
-            projects: { with: { project: true } },
-            ips: { with: { ip: true } },
-            technicalInfo: true,
-            sync: true,
-            characters: { with: { character: true } },
-          },
-        },
-      },
-    });
+	try {
+		const mediaSource = await db.query.mediaSources.findFirst({
+			where: eq(mediaSources.id, mediaSourceId),
+			with: {
+				media: {
+					with: {
+						tags: { with: { tag: true } },
+						details: true,
+						generationInfo: true,
+						categories: { with: { category: true } },
+						projects: { with: { project: true } },
+						ips: { with: { ip: true } },
+						technicalInfo: true,
+						sync: true,
+						characters: { with: { character: true } },
+					},
+				},
+			},
+		});
 
-    if (!mediaSource) {
-      throw new NotFoundError({
-        message: `Media source data for ID ${mediaSourceId} not found`,
-      });
-    }
+		if (!mediaSource) {
+			throw new NotFoundError({
+				message: `Media source data for ID ${mediaSourceId} not found`,
+			});
+		}
 
-    return mediaSource;
-  } catch (error) {
-    if (error instanceof NotFoundError) {
-      throw error;
-    }
-    throw new UnknownDbError({
-      message: `Failed to select media source data for source ID: ${mediaSourceId}`,
-      details: error,
-    });
-  }
+		return mediaSource;
+	} catch (error) {
+		if (error instanceof NotFoundError) {
+			throw error;
+		}
+		throw new UnknownDbError({
+			message: `Failed to select media source data for source ID: ${mediaSourceId}`,
+			details: error,
+		});
+	}
 };
 
 /**
@@ -73,34 +73,34 @@ export const selectMediaSourceData = async (mediaSourceId: string) => {
  * @throws {UnknownDbError} If a database error occurs during the upsert process.
  */
 export const upsertMediaSourceData = async (
-  _mediaSourceId: string,
-  importData: ImportData
+	_mediaSourceId: string,
+	importData: ImportData,
 ) => {
-  try {
-    return await db.transaction(async (tx) => {
-      // Upsert mediaSource
-      await tx
-        .insert(mediaSources)
-        .values(importData.mediaSource)
-        .onConflictDoUpdate({
-          target: mediaSources.id,
-          set: importData.mediaSource,
-        });
+	try {
+		return await db.transaction(async (tx) => {
+			// Upsert mediaSource
+			await tx
+				.insert(mediaSources)
+				.values(importData.mediaSource)
+				.onConflictDoUpdate({
+					target: mediaSources.id,
+					set: importData.mediaSource,
+				});
 
-      // Upsert medias
-      if (importData.medias && importData.medias.length > 0) {
-        await tx.insert(medias).values(importData.medias).onConflictDoNothing();
-        // Note: This is a simplification. A real implementation would need to handle updates.
-      }
+			// Upsert medias
+			if (importData.medias && importData.medias.length > 0) {
+				await tx.insert(medias).values(importData.medias).onConflictDoNothing();
+				// Note: This is a simplification. A real implementation would need to handle updates.
+			}
 
-      // ... other tables would be handled here
-    });
-  } catch (error) {
-    throw new UnknownDbError({
-      message: `Failed to upsert media source data for source ID: ${_mediaSourceId}`,
-      details: error,
-    });
-  }
+			// ... other tables would be handled here
+		});
+	} catch (error) {
+		throw new UnknownDbError({
+			message: `Failed to upsert media source data for source ID: ${_mediaSourceId}`,
+			details: error,
+		});
+	}
 };
 
 /**
@@ -114,37 +114,37 @@ export const upsertMediaSourceData = async (
  * @throws {UnknownDbError} If a database error occurs during the reconciliation process.
  */
 export const reconcileMediaSource = async (
-  mediaSourceId: string,
-  fileSystemChanges: { added: NewMedia[]; deleted: string[] }
+	mediaSourceId: string,
+	fileSystemChanges: { added: NewMedia[]; deleted: string[] },
 ) => {
-  try {
-    return await db.transaction(async (tx) => {
-      // Handle added files
-      if (fileSystemChanges.added && fileSystemChanges.added.length > 0) {
-        await tx
-          .insert(medias)
-          .values(fileSystemChanges.added)
-          .onConflictDoNothing();
-      }
+	try {
+		return await db.transaction(async (tx) => {
+			// Handle added files
+			if (fileSystemChanges.added && fileSystemChanges.added.length > 0) {
+				await tx
+					.insert(medias)
+					.values(fileSystemChanges.added)
+					.onConflictDoNothing();
+			}
 
-      // Handle deleted files
-      if (fileSystemChanges.deleted && fileSystemChanges.deleted.length > 0) {
-        await tx
-          .delete(medias)
-          .where(
-            and(
-              eq(medias.mediaSourceId, mediaSourceId),
-              inArray(medias.filePath, fileSystemChanges.deleted)
-            )
-          );
-      }
-    });
-  } catch (error) {
-    throw new UnknownDbError({
-      message: `Failed to reconcile media source for source ID: ${mediaSourceId}`,
-      details: error,
-    });
-  }
+			// Handle deleted files
+			if (fileSystemChanges.deleted && fileSystemChanges.deleted.length > 0) {
+				await tx
+					.delete(medias)
+					.where(
+						and(
+							eq(medias.mediaSourceId, mediaSourceId),
+							inArray(medias.filePath, fileSystemChanges.deleted),
+						),
+					);
+			}
+		});
+	} catch (error) {
+		throw new UnknownDbError({
+			message: `Failed to reconcile media source for source ID: ${mediaSourceId}`,
+			details: error,
+		});
+	}
 };
 
 /**
@@ -155,28 +155,28 @@ export const reconcileMediaSource = async (
  * @throws {UnknownDbError} If a database error occurs during the cloning process.
  */
 export const cloneMediaData = async (
-  originalSourceId: string,
-  newSourceId: string
+	originalSourceId: string,
+	newSourceId: string,
 ) => {
-  try {
-    return await db.transaction(async (tx) => {
-      const allMedia = await tx
-        .select()
-        .from(medias)
-        .where(eq(medias.mediaSourceId, originalSourceId));
+	try {
+		return await db.transaction(async (tx) => {
+			const allMedia = await tx
+				.select()
+				.from(medias)
+				.where(eq(medias.mediaSourceId, originalSourceId));
 
-      if (allMedia.length > 0) {
-        const newMedias: NewMedia[] = allMedia.map((media) => {
-          const { id: _id, mediaSourceId: _mediaSourceId, ...rest } = media;
-          return { ...rest, mediaSourceId: newSourceId };
-        });
-        await tx.insert(medias).values(newMedias);
-      }
-    });
-  } catch (error) {
-    throw new UnknownDbError({
-      message: `Failed to clone media data from source ID: ${originalSourceId} to ${newSourceId}`,
-      details: error,
-    });
-  }
+			if (allMedia.length > 0) {
+				const newMedias: NewMedia[] = allMedia.map((media) => {
+					const { id: _id, mediaSourceId: _mediaSourceId, ...rest } = media;
+					return { ...rest, mediaSourceId: newSourceId };
+				});
+				await tx.insert(medias).values(newMedias);
+			}
+		});
+	} catch (error) {
+		throw new UnknownDbError({
+			message: `Failed to clone media data from source ID: ${originalSourceId} to ${newSourceId}`,
+			details: error,
+		});
+	}
 };

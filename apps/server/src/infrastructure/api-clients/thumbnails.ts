@@ -11,7 +11,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @param mediaSourceId - The ID of the media source
  */
 export function startThumbnailGeneration(mediaSourceId: string) {
-  return orpc.thumbnails.generate({ sourceId: mediaSourceId });
+	return orpc.thumbnails.generate({ sourceId: mediaSourceId });
 }
 
 /**
@@ -19,5 +19,5 @@ export function startThumbnailGeneration(mediaSourceId: string) {
  * @param mediaSourceId - The ID of the media source
  */
 export function clearThumbnailCache(mediaSourceId: string) {
-  return orpc.thumbnails.clear({ sourceId: mediaSourceId });
+	return orpc.thumbnails.clear({ sourceId: mediaSourceId });
 }

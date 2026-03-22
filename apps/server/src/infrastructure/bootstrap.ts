@@ -23,119 +23,119 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 export let isBootstrapped = false;
 
 export function bootstrap() {
-  if (isBootstrapped) {
-    return;
-  }
-  isBootstrapped = true;
+	if (isBootstrapped) {
+		return;
+	}
+	isBootstrapped = true;
 
-  // Initialize and load configuration
-  const configService = new ServerConfigService();
-  configService.load();
-  services.registerConfigService(configService);
+	// Initialize and load configuration
+	const configService = new ServerConfigService();
+	configService.load();
+	services.registerConfigService(configService);
 
-  const config = configService.getConfig();
+	const config = configService.getConfig();
 
-  // Initialize log level from config and subscribe to changes
-  updateLogLevel(config.logging.level);
-  configService.onChange((newConfig) =>
-    updateLogLevel(newConfig.logging.level)
-  );
+	// Initialize log level from config and subscribe to changes
+	updateLogLevel(config.logging.level);
+	configService.onChange((newConfig) =>
+		updateLogLevel(newConfig.logging.level),
+	);
 
-  // Register Repositories
-  services.registerMediaRepository(MediaRepository);
-  services.registerSourceRepository(new DrizzleSourceRepository());
-  services.registerTagRepository(TagRepository);
-  services.registerAuthorRepository(AuthorRepository);
-  services.registerProjectRepository(ProjectRepository);
-  services.registerCharacterRepository(new DrizzleCharacterRepository());
-  services.registerIpRepository(IpRepository);
+	// Register Repositories
+	services.registerMediaRepository(MediaRepository);
+	services.registerSourceRepository(new DrizzleSourceRepository());
+	services.registerTagRepository(TagRepository);
+	services.registerAuthorRepository(AuthorRepository);
+	services.registerProjectRepository(ProjectRepository);
+	services.registerCharacterRepository(new DrizzleCharacterRepository());
+	services.registerIpRepository(IpRepository);
 
-  const jobRepo = new JobRepository();
-  services.registerJobRepository(jobRepo);
+	const jobRepo = new JobRepository();
+	services.registerJobRepository(jobRepo);
 
-  // Register Services
-  services.registerMediaStorage(ServerMediaStorage);
-  services.registerFileSystem(new NodeFileSystem());
-  services.registerImageProcessor(ImageProcessor);
+	// Register Services
+	services.registerMediaStorage(ServerMediaStorage);
+	services.registerFileSystem(new NodeFileSystem());
+	services.registerImageProcessor(ImageProcessor);
 
-  // Initialize PythonClient with config values
-  const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
-  services.registerAiClient(pythonClient);
-  configService.onChange((newConfig) =>
-    pythonClient.updateConfig(newConfig.ai)
-  );
+	// Initialize PythonClient with config values
+	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
+	services.registerAiClient(pythonClient);
+	configService.onChange((newConfig) =>
+		pythonClient.updateConfig(newConfig.ai),
+	);
 
-  const jobWorker = new JobWorker(jobRepo, processJob);
-  // Initialize worker with current config and subscribe to changes
-  jobWorker.updateConfig(configService.getConfig());
-  configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
+	const jobWorker = new JobWorker(jobRepo, processJob);
+	// Initialize worker with current config and subscribe to changes
+	jobWorker.updateConfig(configService.getConfig());
+	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
 
-  services.registerJobWorker(jobWorker);
+	services.registerJobWorker(jobWorker);
 
-  services.registerCharacterService(
-    new CharacterServiceImpl(
-      services.getCharacterRepository(),
-      services.getIpRepository(),
-      DrizzleTransactionManager
-    )
-  );
+	services.registerCharacterService(
+		new CharacterServiceImpl(
+			services.getCharacterRepository(),
+			services.getIpRepository(),
+			DrizzleTransactionManager,
+		),
+	);
 
-  // Register MediaProcessingService (Implementation)
-  services.registerMediaProcessingService(
-    new MediaProcessingServiceImpl(
-      services.getSourceRepository(),
-      services.getMediaRepository(),
-      services.getTagRepository(),
-      services.getAuthorRepository(),
-      services.getCharacterService(),
-      services.getIpRepository(),
-      services.getProjectRepository(),
-      jobRepo,
-      configService
-    )
-  );
+	// Register MediaProcessingService (Implementation)
+	services.registerMediaProcessingService(
+		new MediaProcessingServiceImpl(
+			services.getSourceRepository(),
+			services.getMediaRepository(),
+			services.getTagRepository(),
+			services.getAuthorRepository(),
+			services.getCharacterService(),
+			services.getIpRepository(),
+			services.getProjectRepository(),
+			jobRepo,
+			configService,
+		),
+	);
 
-  // Singleton management for JobWorker to prevent duplicates during HMR
-  // biome-ignore lint/suspicious/noExplicitAny: Global augmentation
-  const globalAny = globalThis as any;
-  if (globalAny.__JOB_WORKER__) {
-    // console.log("[Bootstrap] Stopping existing JobWorker...");
-    globalAny.__JOB_WORKER__.stop();
-  }
+	// Singleton management for JobWorker to prevent duplicates during HMR
+	// biome-ignore lint/suspicious/noExplicitAny: Global augmentation
+	const globalAny = globalThis as any;
+	if (globalAny.__JOB_WORKER__) {
+		// console.log("[Bootstrap] Stopping existing JobWorker...");
+		globalAny.__JOB_WORKER__.stop();
+	}
 
-  globalAny.__JOB_WORKER__ = jobWorker;
-  jobWorker.start();
+	globalAny.__JOB_WORKER__ = jobWorker;
+	jobWorker.start();
 
-  // Initialize MaintenanceService and perform startup checks (background)
-  const maintenanceService = new MaintenanceService(
-    services.getMediaRepository(),
-    jobRepo,
-    services.getSourceRepository()
-  );
+	// Initialize MaintenanceService and perform startup checks (background)
+	const maintenanceService = new MaintenanceService(
+		services.getMediaRepository(),
+		jobRepo,
+		services.getSourceRepository(),
+	);
 
-  maintenanceService.performStartupChecks().catch((err) => {
-    logger.error({ err }, "Maintenance startup checks failed");
-  });
+	maintenanceService.performStartupChecks().catch((err) => {
+		logger.error({ err }, "Maintenance startup checks failed");
+	});
 
-  // Cleanup on process exit
-  if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
-    const cleanup = () => {
-      // console.log("[Bootstrap] Cleaning up JobWorker...");
-      if (globalAny.__JOB_WORKER__) {
-        globalAny.__JOB_WORKER__.stop();
-      }
-    };
+	// Cleanup on process exit
+	if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
+		const cleanup = () => {
+			// console.log("[Bootstrap] Cleaning up JobWorker...");
+			if (globalAny.__JOB_WORKER__) {
+				globalAny.__JOB_WORKER__.stop();
+			}
+		};
 
-    process.on("SIGINT", () => {
-      cleanup();
-      process.exit(0);
-    });
+		process.on("SIGINT", () => {
+			cleanup();
+			process.exit(0);
+		});
 
-    process.on("SIGTERM", () => {
-      cleanup();
-      process.exit(0);
-    });
+		process.on("SIGTERM", () => {
+			cleanup();
+			process.exit(0);
+		});
 
-    globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
-  }
+		globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
+	}
 }

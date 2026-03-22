@@ -26,7 +26,8 @@ export default defineConfig({
         "memoirist",
         "cookie",
         "exact-mirror",
-        "fast-decode-uri-component"
+        "fast-decode-uri-component",
+        "solid-sonner"
       ],
       external: ["pg"],
     },
