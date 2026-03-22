@@ -56,7 +56,14 @@ import {
 } from "@solid-imager/ui/select";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import {
   createCharacter,
@@ -83,6 +90,9 @@ type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
 
 export default function ManagerPage() {
+  const [mounted, setMounted] = createSignal(false);
+  onMount(() => setMounted(true));
+
   const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
   const [isDialogOpen, setIsDialogOpen] = createSignal(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
@@ -379,356 +389,365 @@ export default function ManagerPage() {
   };
 
   return (
-    <div class="container mx-auto p-8">
-      <div class="mb-8 flex items-center justify-between">
-        <h1 class="font-bold text-3xl">Entity Manager</h1>
-        <Show when={activeTab() !== "tagging"}>
-          <Button onClick={openCreateDialog}>Create New</Button>
-        </Show>
-      </div>
+    <Show when={mounted()}>
+      <div class="container mx-auto p-8">
+        <div class="mb-8 flex items-center justify-between">
+          <h1 class="font-bold text-3xl">Entity Manager</h1>
+          <Show when={activeTab() !== "tagging"}>
+            <Button onClick={openCreateDialog}>Create New</Button>
+          </Show>
+        </div>
 
-      <div class="mb-6 flex space-x-4 border-b">
-        <button
-          class={`border-b-2 px-4 py-2 font-medium transition-colors ${
-            activeTab() === "projects"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("projects")}
-          type="button"
-        >
-          Projects
-        </button>
-        <button
-          class={`border-b-2 px-4 py-2 font-medium transition-colors ${
-            activeTab() === "ips"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("ips")}
-          type="button"
-        >
-          IPs
-        </button>
-        <button
-          class={`border-b-2 px-4 py-2 font-medium transition-colors ${
-            activeTab() === "characters"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("characters")}
-          type="button"
-        >
-          Characters
-        </button>
-        <button
-          class={`border-b-2 px-4 py-2 font-medium transition-colors ${
-            activeTab() === "tagging"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-          onClick={() => setActiveTab("tagging")}
-          type="button"
-        >
-          Batch Tagging
-        </button>
-      </div>
+        <div class="mb-6 flex space-x-4 border-b">
+          <button
+            class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+              activeTab() === "projects"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("projects")}
+            type="button"
+          >
+            Projects
+          </button>
+          <button
+            class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+              activeTab() === "ips"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("ips")}
+            type="button"
+          >
+            IPs
+          </button>
+          <button
+            class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+              activeTab() === "characters"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("characters")}
+            type="button"
+          >
+            Characters
+          </button>
+          <button
+            class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+              activeTab() === "tagging"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+            onClick={() => setActiveTab("tagging")}
+            type="button"
+          >
+            Batch Tagging
+          </button>
+        </div>
 
-      <Show when={activeTab() === "tagging"}>
-        <div class="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Batch AI Tagging</CardTitle>
-              <CardDescription>
-                Analyze and tag images across your media sources using AI.
-              </CardDescription>
-            </CardHeader>
-            <CardContent class="space-y-4">
-              <div class="grid gap-2">
-                <Label>Target Media Source (Optional)</Label>
-                <Select
-                  itemComponent={(props) => (
-                    <SelectItem item={props.item}>
-                      {props.item.rawValue.name}
-                    </SelectItem>
-                  )}
-                  onChange={(val) => setSelectedSourceId(val?.id)}
-                  options={Array.isArray(sources.data) ? sources.data : []}
-                  optionTextValue="name"
-                  optionValue="id"
-                  placeholder="All Sources"
-                  value={
-                    selectedSourceId()
-                      ? (Array.isArray(sources.data) ? sources.data : []).find(
-                          (s) => s.id === selectedSourceId()
-                        )
-                      : null
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue<unknown>>
-                      {(state) => {
-                        const option = state.selectedOption();
-                        return option &&
-                          typeof option === "object" &&
-                          "name" in option
-                          ? (option as { name: string }).name
-                          : "All Sources";
-                      }}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent />
-                </Select>
-                <p class="text-muted-foreground text-xs">
-                  Leave empty to process all sources.
-                </p>
-              </div>
-
-              <div class="flex items-center space-x-2">
-                <Checkbox
-                  checked={forceRetag()}
-                  class="flex items-center space-x-2"
-                  id="force-retag"
-                  onChange={setForceRetag}
-                >
-                  <CheckboxControl />
-                  <CheckboxLabel>Force Re-tagging</CheckboxLabel>
-                </Checkbox>
-              </div>
-              <p class="text-muted-foreground text-xs">
-                If checked, existing AI tags will be ignored and images will be
-                re-analyzed.
-              </p>
-
-              <div class="flex items-center gap-x-2 pt-2">
-                <Button onClick={handleScan}>Scan for Targets</Button>
-                <Button
-                  disabled={scannedMedia().length === 0}
-                  onClick={handleStartBatchTagging}
-                >
-                  Start Batch Tagging ({selectedMedia().size})
-                </Button>
-              </div>
-
-              <Show when={taggingStatus()}>
-                <div class="mt-4 rounded bg-gray-100 p-2 text-sm">
-                  {taggingStatus()}
+        <Show when={activeTab() === "tagging"}>
+          <div class="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Batch AI Tagging</CardTitle>
+                <CardDescription>
+                  Analyze and tag images across your media sources using AI.
+                </CardDescription>
+              </CardHeader>
+              <CardContent class="space-y-4">
+                <div class="grid gap-2">
+                  <Label>Target Media Source (Optional)</Label>
+                  <Select
+                    itemComponent={(props) => (
+                      <SelectItem item={props.item}>
+                        {props.item.rawValue.name}
+                      </SelectItem>
+                    )}
+                    onChange={(val) => setSelectedSourceId(val?.id)}
+                    options={Array.isArray(sources.data) ? sources.data : []}
+                    optionTextValue="name"
+                    optionValue="id"
+                    placeholder="All Sources"
+                    value={
+                      selectedSourceId()
+                        ? (Array.isArray(sources.data)
+                            ? sources.data
+                            : []
+                          ).find((s) => s.id === selectedSourceId())
+                        : null
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue<unknown>>
+                        {(state) => {
+                          const option = state.selectedOption();
+                          return option &&
+                            typeof option === "object" &&
+                            "name" in option
+                            ? (option as { name: string }).name
+                            : "All Sources";
+                        }}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent />
+                  </Select>
+                  <p class="text-muted-foreground text-xs">
+                    Leave empty to process all sources.
+                  </p>
                 </div>
-              </Show>
-              <Show when={jobProgress()}>
-                {(progress) => (
-                  <div class="mt-4">
-                    <Progress
-                      // biome-ignore lint/style/noMagicNumbers: Percentage calculation
-                      value={(progress().processed / progress().total) * 100}
-                    />
+
+                <div class="flex items-center space-x-2">
+                  <Checkbox
+                    checked={forceRetag()}
+                    class="flex items-center space-x-2"
+                    id="force-retag"
+                    onChange={setForceRetag}
+                  >
+                    <CheckboxControl />
+                    <CheckboxLabel>Force Re-tagging</CheckboxLabel>
+                  </Checkbox>
+                </div>
+                <p class="text-muted-foreground text-xs">
+                  If checked, existing AI tags will be ignored and images will
+                  be re-analyzed.
+                </p>
+
+                <div class="flex items-center gap-x-2 pt-2">
+                  <Button onClick={handleScan}>Scan for Targets</Button>
+                  <Button
+                    disabled={scannedMedia().length === 0}
+                    onClick={handleStartBatchTagging}
+                  >
+                    Start Batch Tagging ({selectedMedia().size})
+                  </Button>
+                </div>
+
+                <Show when={taggingStatus()}>
+                  <div class="mt-4 rounded bg-gray-100 p-2 text-sm">
+                    {taggingStatus()}
                   </div>
-                )}
-              </Show>
-            </CardContent>
-          </Card>
-          <Show when={scannedMedia().length > 0}>
-            <div class="mt-4">
-              <div class="mb-2 flex items-center justify-between">
-                <h3 class="font-bold text-lg">
-                  Scanned Media ({scannedMedia().length})
-                </h3>
-                <div class="flex items-center gap-2">
+                </Show>
+                <Show when={jobProgress()}>
+                  {(progress) => (
+                    <div class="mt-4">
+                      <Progress
+                        // biome-ignore lint/style/noMagicNumbers: Percentage calculation
+                        value={(progress().processed / progress().total) * 100}
+                      />
+                    </div>
+                  )}
+                </Show>
+              </CardContent>
+            </Card>
+            <Show when={scannedMedia().length > 0}>
+              <div class="mt-4">
+                <div class="mb-2 flex items-center justify-between">
+                  <h3 class="font-bold text-lg">
+                    Scanned Media ({scannedMedia().length})
+                  </h3>
+                  <div class="flex items-center gap-2">
+                    <PaginationControls
+                      currentPage={currentPage()}
+                      onPageChange={setCurrentPage}
+                      totalPages={totalPages()}
+                    />
+                    <Button
+                      onClick={toggleSelectAll}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {selectedMedia().size === scannedMedia().length
+                        ? "Deselect All"
+                        : "Select All"}
+                    </Button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                  <For each={paginatedMedia()}>
+                    {(media) => (
+                      <MediaCardItem
+                        media={media}
+                        onToggle={(id) => toggleMediaSelection(id)}
+                        selectable={true}
+                        selected={selectedMedia().has(media.id)}
+                      />
+                    )}
+                  </For>
+                </div>
+                {/* Bottom Pagination */}
+                <div class="mt-4 flex justify-center">
                   <PaginationControls
                     currentPage={currentPage()}
                     onPageChange={setCurrentPage}
                     totalPages={totalPages()}
                   />
-                  <Button onClick={toggleSelectAll} size="sm" variant="outline">
-                    {selectedMedia().size === scannedMedia().length
-                      ? "Deselect All"
-                      : "Select All"}
-                  </Button>
-                </div>
-              </div>
-              <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                <For each={paginatedMedia()}>
-                  {(media) => (
-                    <MediaCardItem
-                      media={media}
-                      onToggle={(id) => toggleMediaSelection(id)}
-                      selectable={true}
-                      selected={selectedMedia().has(media.id)}
-                    />
-                  )}
-                </For>
-              </div>
-              {/* Bottom Pagination */}
-              <div class="mt-4 flex justify-center">
-                <PaginationControls
-                  currentPage={currentPage()}
-                  onPageChange={setCurrentPage}
-                  totalPages={totalPages()}
-                />
-              </div>
-            </div>
-          </Show>
-        </div>
-      </Show>
-
-      <Show when={activeTab() !== "tagging"}>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <For each={getActiveItems()}>
-            {(item) => (
-              <Card>
-                <CardHeader>
-                  <CardTitle>{item.name}</CardTitle>
-                  <Show when={item.description}>
-                    <CardDescription>{item.description}</CardDescription>
-                  </Show>
-                  <Show
-                    when={
-                      activeTab() === "characters" &&
-                      (item as Character).ips &&
-                      (item as Character).ips?.length > 0
-                    }
-                  >
-                    <CardDescription>
-                      IPs:{" "}
-                      {(item as Character).ips.map((ip) => ip.name).join(", ")}
-                    </CardDescription>
-                  </Show>
-                </CardHeader>
-                <CardContent>
-                  <div class="flex justify-end space-x-2">
-                    <Button
-                      onClick={() => openEditDialog(item)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setItemToDelete(item);
-                        setIsDeleteDialogOpen(true);
-                      }}
-                      size="sm"
-                      variant="destructive"
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </For>
-        </div>
-      </Show>
-
-      <Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen()}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>
-              {editingItem() ? "Edit" : "Create"}{" "}
-              {activeTab() === "tagging"
-                ? "TAGGING"
-                : activeTab().slice(0, -1).toUpperCase()}
-            </DialogTitle>
-            <DialogDescription>
-              {editingItem()
-                ? "Update the details of the item."
-                : "Enter the details for the new item."}
-            </DialogDescription>
-          </DialogHeader>
-          <div class="grid gap-4 py-4">
-            <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">Name</Label>
-              <Input
-                class="col-span-3"
-                onInput={(e) =>
-                  setFormData({ ...formData(), name: e.currentTarget.value })
-                }
-                value={formData().name}
-              />
-            </div>
-            <div class="grid grid-cols-4 items-center gap-4">
-              <Label class="text-right">Description</Label>
-              <Input
-                class="col-span-3"
-                onInput={(e) =>
-                  setFormData({
-                    ...formData(),
-                    description: e.currentTarget.value,
-                  })
-                }
-                value={formData().description}
-              />
-            </div>
-            <Show when={activeTab() === "characters"}>
-              <div class="grid grid-cols-4 items-center gap-4">
-                <Label class="text-right">IPs</Label>
-                <div class="col-span-3">
-                  <Combobox<Ip>
-                    itemComponent={(props) => (
-                      <ComboboxItem item={props.item}>
-                        <ComboboxItemLabel>
-                          {(props.item.rawValue as Ip).name}
-                        </ComboboxItemLabel>
-                        <ComboboxItemIndicator />
-                      </ComboboxItem>
-                    )}
-                    multiple
-                    onChange={(values) =>
-                      setFormData({
-                        ...formData(),
-                        ipIds: values.map((v) => v.id),
-                      })
-                    }
-                    optionLabel="name"
-                    options={(ips.data || []) as Ip[]}
-                    optionTextValue="name"
-                    optionValue="id"
-                    value={((ips.data || []) as Ip[]).filter((ip) =>
-                      formData().ipIds?.includes(ip.id)
-                    )}
-                  >
-                    <ComboboxControl>
-                      <ComboboxInput placeholder="Select IPs..." />
-                      <ComboboxTrigger />
-                    </ComboboxControl>
-                    <ComboboxContent />
-                  </Combobox>
                 </div>
               </div>
             </Show>
           </div>
-          <DialogFooter>
-            <Button onClick={editingItem() ? handleUpdate : handleCreate}>
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </Show>
 
-      <AlertDialog
-        onOpenChange={setIsDeleteDialogOpen}
-        open={isDeleteDialogOpen()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the{" "}
-              {activeTab().slice(0, -1)} and remove it from our servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={handleConfirmDelete}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+        <Show when={activeTab() !== "tagging"}>
+          <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <For each={getActiveItems()}>
+              {(item) => (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{item.name}</CardTitle>
+                    <Show when={item.description}>
+                      <CardDescription>{item.description}</CardDescription>
+                    </Show>
+                    <Show
+                      when={
+                        activeTab() === "characters" &&
+                        (item as Character).ips &&
+                        (item as Character).ips?.length > 0
+                      }
+                    >
+                      <CardDescription>
+                        IPs:{" "}
+                        {(item as Character).ips
+                          .map((ip) => ip.name)
+                          .join(", ")}
+                      </CardDescription>
+                    </Show>
+                  </CardHeader>
+                  <CardContent>
+                    <div class="flex justify-end space-x-2">
+                      <Button
+                        onClick={() => openEditDialog(item)}
+                        size="sm"
+                        variant="outline"
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setItemToDelete(item);
+                          setIsDeleteDialogOpen(true);
+                        }}
+                        size="sm"
+                        variant="destructive"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </For>
+          </div>
+        </Show>
+
+        <Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingItem() ? "Edit" : "Create"}{" "}
+                {activeTab() === "tagging"
+                  ? "TAGGING"
+                  : activeTab().slice(0, -1).toUpperCase()}
+              </DialogTitle>
+              <DialogDescription>
+                {editingItem()
+                  ? "Update the details of the item."
+                  : "Enter the details for the new item."}
+              </DialogDescription>
+            </DialogHeader>
+            <div class="grid gap-4 py-4">
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right">Name</Label>
+                <Input
+                  class="col-span-3"
+                  onInput={(e) =>
+                    setFormData({ ...formData(), name: e.currentTarget.value })
+                  }
+                  value={formData().name}
+                />
+              </div>
+              <div class="grid grid-cols-4 items-center gap-4">
+                <Label class="text-right">Description</Label>
+                <Input
+                  class="col-span-3"
+                  onInput={(e) =>
+                    setFormData({
+                      ...formData(),
+                      description: e.currentTarget.value,
+                    })
+                  }
+                  value={formData().description}
+                />
+              </div>
+              <Show when={activeTab() === "characters"}>
+                <div class="grid grid-cols-4 items-center gap-4">
+                  <Label class="text-right">IPs</Label>
+                  <div class="col-span-3">
+                    <Combobox<Ip>
+                      itemComponent={(props) => (
+                        <ComboboxItem item={props.item}>
+                          <ComboboxItemLabel>
+                            {(props.item.rawValue as Ip).name}
+                          </ComboboxItemLabel>
+                          <ComboboxItemIndicator />
+                        </ComboboxItem>
+                      )}
+                      multiple
+                      onChange={(values) =>
+                        setFormData({
+                          ...formData(),
+                          ipIds: values.map((v) => v.id),
+                        })
+                      }
+                      optionLabel="name"
+                      options={(ips.data || []) as Ip[]}
+                      optionTextValue="name"
+                      optionValue="id"
+                      value={((ips.data || []) as Ip[]).filter((ip) =>
+                        formData().ipIds?.includes(ip.id)
+                      )}
+                    >
+                      <ComboboxControl>
+                        <ComboboxInput placeholder="Select IPs..." />
+                        <ComboboxTrigger />
+                      </ComboboxControl>
+                      <ComboboxContent />
+                    </Combobox>
+                  </div>
+                </div>
+              </Show>
+            </div>
+            <DialogFooter>
+              <Button onClick={editingItem() ? handleUpdate : handleCreate}>
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog
+          onOpenChange={setIsDeleteDialogOpen}
+          open={isDeleteDialogOpen()}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the{" "}
+                {activeTab().slice(0, -1)} and remove it from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleConfirmDelete}
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    </Show>
   );
 }

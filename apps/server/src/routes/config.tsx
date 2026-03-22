@@ -20,7 +20,7 @@ import { toast } from "@solid-imager/ui/toast";
 import { createForm } from "@tanstack/solid-form";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { zodValidator } from "@tanstack/zod-form-adapter";
-import { Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 function ConfigForm(props: { data: AppConfig }) {
@@ -487,24 +487,29 @@ function ConfigForm(props: { data: AppConfig }) {
 }
 
 export default function ConfigPage() {
+  const [mounted, setMounted] = createSignal(false);
+  onMount(() => setMounted(true));
+
   const configQuery = createQuery(() => ({
     queryKey: ["config"],
     queryFn: async () => await orpc.config.get(),
   }));
 
   return (
-    <div class="container mx-auto max-w-4xl p-6">
-      <Show when={configQuery.isLoading}>
-        <div class="py-10 text-center">Loading settings...</div>
-      </Show>
+    <Show when={mounted()}>
+      <div class="container mx-auto max-w-4xl p-6">
+        <Show when={configQuery.isLoading}>
+          <div class="py-10 text-center">Loading settings...</div>
+        </Show>
 
-      <Show when={configQuery.isError}>
-        <div class="py-10 text-red-500">Error loading settings.</div>
-      </Show>
+        <Show when={configQuery.isError}>
+          <div class="py-10 text-red-500">Error loading settings.</div>
+        </Show>
 
-      <Show when={configQuery.data}>
-        {(data) => <ConfigForm data={data()} />}
-      </Show>
-    </div>
+        <Show when={configQuery.data}>
+          {(data) => <ConfigForm data={data()} />}
+        </Show>
+      </div>
+    </Show>
   );
 }

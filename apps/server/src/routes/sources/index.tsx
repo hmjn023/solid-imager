@@ -4,7 +4,14 @@ import type {
 } from "@solid-imager/core/domain/sources/schemas";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
+import {
+  createEffect,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from "solid-js";
 import { isServer } from "solid-js/web";
 import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
@@ -40,8 +47,16 @@ export default function Sources() {
   const queryClient = useQueryClient();
   const mediaSources = createQuery(() => ({
     queryKey: ["mediaSources"],
-    queryFn: fetchMediaSources,
+    queryFn: async () => {
+      if (isServer) {
+        return [];
+      }
+      return await fetchMediaSources();
+    },
   }));
+
+  const [mounted, setMounted] = createSignal(false);
+  onMount(() => setMounted(true));
 
   const handleAddSource = () => {
     setEditingSource(null);
@@ -205,68 +220,72 @@ export default function Sources() {
   });
 
   return (
-    <div class="container mx-auto p-6">
-      <div class="mb-6 flex items-center justify-between">
-        <h1 class="font-bold text-3xl">Media Sources</h1>
-        <div class="flex items-center gap-2">
-          <button
-            class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={isSyncing() || !mediaSources.data?.length}
-            onClick={handleSyncAll}
-            type="button"
-          >
-            {isSyncing() ? "Syncing..." : "Sync All"}
-          </button>
-          <button
-            class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
-            onClick={() => handleAddSource()}
-            type="button"
-          >
-            Add Source
-          </button>
+    <Show when={mounted()}>
+      <div class="container mx-auto p-6">
+        <div class="mb-6 flex items-center justify-between">
+          <h1 class="font-bold text-3xl">Media Sources</h1>
+          <div class="flex items-center gap-2">
+            <button
+              class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isSyncing() || !mediaSources.data?.length}
+              onClick={handleSyncAll}
+              type="button"
+            >
+              <Show fallback="Sync All" when={isSyncing()}>
+                Syncing...
+              </Show>
+            </button>
+            <button
+              class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
+              onClick={() => handleAddSource()}
+              type="button"
+            >
+              Add Source
+            </button>
+          </div>
         </div>
+
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <For each={mediaSources.data}>
+            {(source) => (
+              <SourceCard
+                mediaSource={source}
+                onDelete={handleDeleteSource}
+                onEdit={handleEditSource}
+                onSync={handleSyncSource}
+              />
+            )}
+          </For>
+        </div>
+
+        <Show when={mediaSources.isLoading}>
+          <div class="mt-8 text-center">
+            <p class="text-muted-foreground">Loading sources...</p>
+          </div>
+        </Show>
+
+        <Show when={mediaSources.isError}>
+          <div class="mt-8 text-center">
+            <p class="text-red-500">
+              Error loading sources: {mediaSources.error?.message}
+            </p>
+          </div>
+        </Show>
+
+        <SourceFormModal
+          editingSource={editingSource()}
+          isOpen={showFormModal()}
+          onClose={() => setShowFormModal(false)}
+          onSubmit={handleFormSubmit}
+        />
+
+        <SourceDeleteModal
+          isOpen={showDeleteModal()}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteConfirm}
+          sourceToDelete={deletingSource()}
+        />
       </div>
-
-      <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <For each={mediaSources.data}>
-          {(source) => (
-            <SourceCard
-              mediaSource={source}
-              onDelete={handleDeleteSource}
-              onEdit={handleEditSource}
-              onSync={handleSyncSource}
-            />
-          )}
-        </For>
-      </div>
-
-      {mediaSources.isLoading && (
-        <div class="mt-8 text-center">
-          <p class="text-muted-foreground">Loading sources...</p>
-        </div>
-      )}
-
-      {mediaSources.isError && (
-        <div class="mt-8 text-center">
-          <p class="text-red-500">
-            Error loading sources: {mediaSources.error?.message}
-          </p>
-        </div>
-      )}
-
-      <SourceFormModal
-        editingSource={editingSource()}
-        isOpen={showFormModal()}
-        onClose={() => setShowFormModal(false)}
-        onSubmit={handleFormSubmit}
-      />
-
-      <SourceDeleteModal
-        isOpen={showDeleteModal()}
-        onClose={() => setShowDeleteModal(false)}
-        onConfirm={handleDeleteConfirm}
-        sourceToDelete={deletingSource()}
-      />
-    </div>
+    </Show>
   );
 }
