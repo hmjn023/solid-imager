@@ -23,6 +23,10 @@ export default defineConfig({
         "drizzle-orm",
         "effect",
         "elysia",
+        "memoirist",
+        "cookie",
+        "exact-mirror",
+        "fast-decode-uri-component",
         "solid-sonner"
       ],
       external: ["pg"],

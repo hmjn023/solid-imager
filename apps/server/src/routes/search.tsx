@@ -78,10 +78,10 @@ export default function Search() {
   useCurrentSearchPersistence("all");
 
   const [isRestored, setIsRestored] = createSignal(false);
-  const [mounted, setMounted] = createSignal(false);
+  const [isMounted, setIsMounted] = createSignal(false);
 
   onMount(() => {
-    setMounted(true);
+    setIsMounted(true);
   });
 
   createEffect(() => {
@@ -234,141 +234,133 @@ export default function Search() {
   });
 
   return (
-    <Show when={mounted()}>
-      <main class="container mx-auto p-4">
-        <Show when={!isServer}>
-          {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
-          <Portal mount={document.getElementById("nav-actions")!}>
-            <Dialog>
-              <DialogTrigger
-                as={Button}
-                class="border-white text-white hover:bg-sky-700 md:hidden"
-                size="icon"
-                variant="outline"
-              >
-                {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
-                <svg
-                  class="lucide lucide-filter"
-                  fill="none"
-                  height="24"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-              </DialogTrigger>
-              <DialogContent class="max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>検索フィルター</DialogTitle>
-                </DialogHeader>
-                <div class="space-y-4">
-                  <SearchControlPanel
-                    context="global"
-                    filterData={{
-                      tags: tags.data,
-                      projects: allProjects.data,
-                      ips: allIps.data,
-                      characters: allCharacters.data,
-                      authors: allAuthors.data,
-                    }}
-                    onSearch={handleSearch}
-                    onSelectSource={(id) =>
-                      setSearchState("selectedSource", id)
-                    }
-                    selectedSource={searchState.selectedSource}
-                    sources={sources.data}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </Portal>
-        </Show>
-
-        <div class="mb-8 flex items-center justify-between">
-          <div>
-            <h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
-            <p class="text-gray-600">
-              タグやファイル名でメディアを検索できます
-            </p>
-          </div>
-        </div>
-
-        <div class="grid gap-6 md:grid-cols-[300px_1fr]">
-          {/* Search Filters (Desktop only) */}
-          <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
-            <CardHeader>
-              <CardTitle>検索フィルター</CardTitle>
-            </CardHeader>
-            <CardContent class="space-y-4">
-              <SearchControlPanel
-                context="global"
-                filterData={{
-                  tags: tags.data,
-                  projects: allProjects.data,
-                  ips: allIps.data,
-                  characters: allCharacters.data,
-                  authors: allAuthors.data,
-                }}
-                onSearch={handleSearch}
-                onSelectSource={(id) => setSearchState("selectedSource", id)}
-                selectedSource={searchState.selectedSource}
-                sources={sources.data}
-                usePopover={false}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Search Results */}
-          <div class="space-y-4">
-            <Show
-              fallback={<div class="py-8 text-center">読み込み中...</div>}
-              when={!searchResultQuery.isLoading && mounted()}
+    <main class="container mx-auto p-4">
+      <Show when={!isServer}>
+        {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
+        <Portal mount={document.getElementById("nav-actions")!}>
+          <Dialog>
+            <DialogTrigger
+              as={Button}
+              class="border-white text-white hover:bg-sky-700 md:hidden"
+              size="icon"
+              variant="outline"
             >
-              <Show
-                fallback={
-                  <div class="py-12 text-center text-gray-500">
-                    {/* Should not happen if data is loaded, but handled by inner Show */}
-                  </div>
-                }
-                when={searchResultQuery.data}
+              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
+              <svg
+                class="lucide lucide-filter"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
               >
-                <div class="mb-4 flex items-center justify-between">
-                  <p class="text-gray-600 text-sm">
-                    {searchResultQuery.data?.pages[0]?.total || 0} 件の結果
-                  </p>
-                </div>
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </DialogTrigger>
+            <DialogContent class="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>検索フィルター</DialogTitle>
+              </DialogHeader>
+              <div class="space-y-4">
+                <SearchControlPanel
+                  context="global"
+                  filterData={{
+                    tags: tags.data,
+                    projects: allProjects.data,
+                    ips: allIps.data,
+                    characters: allCharacters.data,
+                    authors: allAuthors.data,
+                  }}
+                  onSearch={handleSearch}
+                  onSelectSource={(id) => setSearchState("selectedSource", id)}
+                  selectedSource={searchState.selectedSource}
+                  sources={sources.data}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </Portal>
+      </Show>
 
-                <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-                  <For each={searchResults()}>
-                    {(media) => <MediaGridItem media={media} />}
-                  </For>
-                </div>
+      <div class="mb-8 flex items-center justify-between">
+        <div>
+          <h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
+          <p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
+        </div>
+      </div>
 
-                <div class="h-10 w-full" ref={setLoadMoreRef}>
-                  <Show when={searchResultQuery.isFetchingNextPage}>
-                    <div class="py-4 text-center text-gray-500">
-                      読み込み中...
-                    </div>
-                  </Show>
-                </div>
+      <div class="grid gap-6 md:grid-cols-[300px_1fr]">
+        {/* Search Filters (Desktop only) */}
+        <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+          <CardHeader>
+            <CardTitle>検索フィルター</CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            <SearchControlPanel
+              context="global"
+              filterData={{
+                tags: tags.data,
+                projects: allProjects.data,
+                ips: allIps.data,
+                characters: allCharacters.data,
+                authors: allAuthors.data,
+              }}
+              onSearch={handleSearch}
+              onSelectSource={(id) => setSearchState("selectedSource", id)}
+              selectedSource={searchState.selectedSource}
+              sources={sources.data}
+              usePopover={false}
+            />
+          </CardContent>
+        </Card>
 
-                <Show
-                  when={(searchResultQuery.data?.pages[0]?.total || 0) === 0}
-                >
-                  <div class="py-12 text-center text-gray-500">
-                    検索結果が見つかりませんでした
+        {/* Search Results */}
+        <div class="space-y-4">
+          <Show
+            fallback={<div class="py-8 text-center">読み込み中...</div>}
+            when={!searchResultQuery.isLoading && isMounted()}
+          >
+            <Show
+              fallback={
+                <div class="py-12 text-center text-gray-500">
+                  {/* Should not happen if data is loaded, but handled by inner Show */}
+                </div>
+              }
+              when={searchResultQuery.data}
+            >
+              <div class="mb-4 flex items-center justify-between">
+                <p class="text-gray-600 text-sm">
+                  {searchResultQuery.data?.pages[0]?.total || 0} 件の結果
+                </p>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                <For each={searchResults()}>
+                  {(media) => <MediaGridItem media={media} />}
+                </For>
+              </div>
+
+              <div class="h-10 w-full" ref={setLoadMoreRef}>
+                <Show when={searchResultQuery.isFetchingNextPage}>
+                  <div class="py-4 text-center text-gray-500">
+                    読み込み中...
                   </div>
                 </Show>
+              </div>
+
+              <Show when={(searchResultQuery.data?.pages[0]?.total || 0) === 0}>
+                <div class="py-12 text-center text-gray-500">
+                  検索結果が見つかりませんでした
+                </div>
               </Show>
             </Show>
-          </div>
+          </Show>
         </div>
-      </main>
-    </Show>
+      </div>
+    </main>
   );
 }

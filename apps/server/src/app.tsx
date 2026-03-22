@@ -1,9 +1,4 @@
-import { clientOnly } from "@solidjs/start";
-
-const Toaster = clientOnly(() =>
-  import("@solid-imager/ui/toast").then((mod) => ({ default: mod.Toaster }))
-);
-
+import { Toaster } from "@solid-imager/ui/toast";
 import { Meta, MetaProvider, Title } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";

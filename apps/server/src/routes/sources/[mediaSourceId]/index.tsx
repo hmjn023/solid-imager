@@ -612,9 +612,6 @@ export default function MediaListPage() {
     }
   };
 
-  const [mounted, setMounted] = createSignal(false);
-  onMount(() => setMounted(true));
-
   const [isSyncingMedia, setIsSyncingMedia] = createSignal(false);
 
   const handleSyncLoadedMedia = async () => {
@@ -742,385 +739,377 @@ export default function MediaListPage() {
   });
 
   return (
-    <Show when={mounted()}>
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: This section is a drop zone, and the event handlers are necessary for its functionality. */}
-      <section
-        aria-label="Media upload area"
-        class="container mx-auto min-h-[calc(100vh-2rem)] p-4"
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        <Show when={!isServer}>
-          {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
-          <Portal mount={document.getElementById("nav-actions")!}>
-            <Button
-              class="mr-2 border-white text-white hover:bg-sky-700"
-              onClick={() => handleDumpDownload("json")}
-              size="icon"
-              title="Download Backup JSON"
-              variant="outline"
-            >
-              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
-              <svg
-                class="lucide lucide-file-json"
-                fill="none"
-                height="20"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-                <path d="M14 2v4a2 2 0 0 0 2 2h4" />
-                <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
-                <path d="M10 18a1 1 0 0 0-1-1v-1a1 1 0 0 0 1-1" />
-              </svg>
-            </Button>
-            <Button
-              class="mr-2 border-white text-white hover:bg-sky-700"
-              onClick={() => handleDumpDownload("zip")}
-              size="icon"
-              title="Download Backup ZIP (with Images)"
-              variant="outline"
-            >
-              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
-              <svg
-                class="lucide lucide-archive"
-                fill="none"
-                height="20"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <rect height="5" rx="1" width="20" x="2" y="3" />
-                <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
-                <path d="M10 12h4" />
-              </svg>
-            </Button>
-            <Button
-              class="mr-2 border-white text-white hover:bg-sky-700"
-              onClick={() => document.getElementById("restore-input")?.click()}
-              size="icon"
-              title="Restore Metadata from Dump"
-              variant="outline"
-            >
-              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Upload Cloud icon */}
-              <svg
-                class="lucide lucide-upload-cloud"
-                fill="none"
-                height="20"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="20"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
-                <path d="M12 12v9" />
-                <path d="m16 16-4-4-4 4" />
-              </svg>
-            </Button>
-            <Dialog>
-              <DialogTrigger
-                as={Button}
-                class="border-white text-white hover:bg-sky-700 md:hidden"
-                size="icon"
-                variant="outline"
-              >
-                {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
-                <svg
-                  class="lucide lucide-filter"
-                  fill="none"
-                  height="24"
-                  stroke="currentColor"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  viewBox="0 0 24 24"
-                  width="24"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-              </DialogTrigger>
-              <DialogContent class="max-h-[80vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>検索フィルター</DialogTitle>
-                </DialogHeader>
-                <div class="space-y-4">
-                  <SearchControlPanel
-                    class="w-full"
-                    context="source"
-                    filterData={{
-                      tags: tags.data,
-                      projects: allProjects.data,
-                      ips: allIps.data,
-                      characters: allCharacters.data,
-                      authors: allAuthors.data,
-                    }}
-                    onSearch={handleSearch}
-                  />
-                </div>
-              </DialogContent>
-            </Dialog>
-          </Portal>
-        </Show>
-
-        <div class="mb-4 flex items-center justify-between">
-          <h1 class="font-bold text-2xl">Media in Source: {mediaSourceId()}</h1>
+    /* biome-ignore lint/a11y/noNoninteractiveElementInteractions: This section is a drop zone, and the event handlers are necessary for its functionality. */
+    <section
+      aria-label="Media upload area"
+      class="container mx-auto min-h-[calc(100vh-2rem)] p-4"
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
+      <Show when={!isServer}>
+        {/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
+        <Portal mount={document.getElementById("nav-actions")!}>
           <Button
-            disabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
-            onClick={handleSyncLoadedMedia}
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => handleDumpDownload("json")}
+            size="icon"
+            title="Download Backup JSON"
             variant="outline"
           >
-            <Show fallback="Sync Loaded Media" when={isSyncingMedia()}>
-              Syncing...
-            </Show>
-          </Button>
-        </div>
-
-        <div class="grid gap-6 md:grid-cols-[300px_1fr]">
-          {/* Sidebar Filters (Desktop only) */}
-          <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
-            <CardHeader>
-              <CardTitle>検索フィルター</CardTitle>
-            </CardHeader>
-            <CardContent class="space-y-4">
-              {/* Mode Switcher & Presets */}
-              <SearchControlPanel
-                class="w-full"
-                context="source"
-                filterData={{
-                  tags: tags.data,
-                  projects: allProjects.data,
-                  ips: allIps.data,
-                  characters: allCharacters.data,
-                  authors: allAuthors.data,
-                }}
-                onSearch={handleSearch}
-                usePopover={false}
-              />
-            </CardContent>
-          </Card>
-
-          {/* Media Grid & Content */}
-          <div class="flex flex-col gap-4">
-            <Show when={mediaQuery.isPending && !mediaQuery.data}>
-              <div class="flex h-64 items-center justify-center">
-                <div class="animate-pulse text-lg text-muted-foreground">
-                  Loading media...
-                </div>
-              </div>
-            </Show>
-
-            <Show when={mediaQuery.isError}>
-              <div class="text-red-500">Error: {mediaQuery.error?.message}</div>
-            </Show>
-
-            {/* Global Context Menu for the Grid */}
-            {/* Global Context Menu for the Grid */}
-            <ContextMenu>
-              <ContextMenuTrigger class="h-full w-full">
-                <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-                  <For each={mediaQuery.data?.pages}>
-                    {(page) => (
-                      <For each={page.media}>
-                        {(item) => {
-                          if (!item) {
-                            return null;
-                          }
-
-                          return (
-                            <a
-                              class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
-                              data-media-id={item.id}
-                              href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
-                              onContextMenu={() =>
-                                setContextMenuMediaId(item.id)
-                              }
-                            >
-                              {/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
-                              <img
-                                alt={item.fileName}
-                                class="h-full w-full object-cover"
-                                height={item.height}
-                                loading="lazy"
-                                src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(
-                                  item.modifiedAt
-                                ).getTime()}`}
-                                width={item.width}
-                              />
-                            </a>
-                          );
-                        }}
-                      </For>
-                    )}
-                  </For>
-                </div>
-              </ContextMenuTrigger>
-              <ContextMenuContent>
-                <Show
-                  fallback={
-                    <ContextMenuItem disabled>
-                      No media selected
-                    </ContextMenuItem>
-                  }
-                  when={contextMenuMediaId()}
-                >
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const id = contextMenuMediaId();
-                      if (id) {
-                        window.open(
-                          `/sources/${mediaSourceId()}/${id}`,
-                          "_blank"
-                        );
-                      }
-                    }}
-                  >
-                    Open in New Tab
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    class="text-red-600 focus:text-red-600"
-                    onSelect={() => {
-                      const id = contextMenuMediaId();
-                      if (id) {
-                        handleDelete(id);
-                      }
-                    }}
-                  >
-                    Delete
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const id = contextMenuMediaId();
-                      if (id) {
-                        handleCopyMove(id, "copy");
-                      }
-                    }}
-                  >
-                    Copy to Source
-                  </ContextMenuItem>
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const id = contextMenuMediaId();
-                      if (id) {
-                        handleCopyMove(id, "move");
-                      }
-                    }}
-                  >
-                    Move to Source
-                  </ContextMenuItem>
-                  <ContextMenuSeparator />
-                  <ContextMenuItem
-                    onSelect={() => {
-                      const id = contextMenuMediaId();
-                      if (id) {
-                        handleSyncSingleMedia(id);
-                      }
-                    }}
-                  >
-                    Sync Metadata (Reprocess)
-                  </ContextMenuItem>
-                </Show>
-              </ContextMenuContent>
-            </ContextMenu>
-
-            {/* Infinite scroll trigger */}
-            <div
-              class="h-10 w-full"
-              ref={(el) => {
-                loadMoreRef = el;
-              }}
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
+            <svg
+              class="lucide lucide-file-json"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
             >
-              <Show when={mediaQuery.isFetchingNextPage}>
-                <div class="text-center text-gray-500">Loading more...</div>
-              </Show>
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
+              <path d="M10 18a1 1 0 0 0-1-1v-1a1 1 0 0 0 1-1" />
+            </svg>
+          </Button>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => handleDumpDownload("zip")}
+            size="icon"
+            title="Download Backup ZIP (with Images)"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
+            <svg
+              class="lucide lucide-archive"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect height="5" rx="1" width="20" x="2" y="3" />
+              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+              <path d="M10 12h4" />
+            </svg>
+          </Button>
+          <Button
+            class="mr-2 border-white text-white hover:bg-sky-700"
+            onClick={() => document.getElementById("restore-input")?.click()}
+            size="icon"
+            title="Restore Metadata from Dump"
+            variant="outline"
+          >
+            {/* biome-ignore lint/a11y/noSvgWithoutTitle: Upload Cloud icon */}
+            <svg
+              class="lucide lucide-upload-cloud"
+              fill="none"
+              height="20"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+              <path d="M12 12v9" />
+              <path d="m16 16-4-4-4 4" />
+            </svg>
+          </Button>
+          <Dialog>
+            <DialogTrigger
+              as={Button}
+              class="border-white text-white hover:bg-sky-700 md:hidden"
+              size="icon"
+              variant="outline"
+            >
+              {/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
+              <svg
+                class="lucide lucide-filter"
+                fill="none"
+                height="24"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </DialogTrigger>
+            <DialogContent class="max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>検索フィルター</DialogTitle>
+              </DialogHeader>
+              <div class="space-y-4">
+                <SearchControlPanel
+                  class="w-full"
+                  context="source"
+                  filterData={{
+                    tags: tags.data,
+                    projects: allProjects.data,
+                    ips: allIps.data,
+                    characters: allCharacters.data,
+                    authors: allAuthors.data,
+                  }}
+                  onSearch={handleSearch}
+                />
+              </div>
+            </DialogContent>
+          </Dialog>
+        </Portal>
+      </Show>
+
+      <div class="mb-4 flex items-center justify-between">
+        <h1 class="font-bold text-2xl">Media in Source: {mediaSourceId()}</h1>
+        <Button
+          disabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
+          onClick={handleSyncLoadedMedia}
+          variant="outline"
+        >
+          {isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
+        </Button>
+      </div>
+
+      <div class="grid gap-6 md:grid-cols-[300px_1fr]">
+        {/* Sidebar Filters (Desktop only) */}
+        <Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+          <CardHeader>
+            <CardTitle>検索フィルター</CardTitle>
+          </CardHeader>
+          <CardContent class="space-y-4">
+            {/* Mode Switcher & Presets */}
+            <SearchControlPanel
+              class="w-full"
+              context="source"
+              filterData={{
+                tags: tags.data,
+                projects: allProjects.data,
+                ips: allIps.data,
+                characters: allCharacters.data,
+                authors: allAuthors.data,
+              }}
+              onSearch={handleSearch}
+              usePopover={false}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Media Grid & Content */}
+        <div class="flex flex-col gap-4">
+          <Show when={mediaQuery.isPending && !mediaQuery.data}>
+            <div class="flex h-64 items-center justify-center">
+              <div class="animate-pulse text-lg text-muted-foreground">
+                Loading media...
+              </div>
             </div>
+          </Show>
+
+          <Show when={mediaQuery.isError}>
+            <div class="text-red-500">Error: {mediaQuery.error?.message}</div>
+          </Show>
+
+          {/* Global Context Menu for the Grid */}
+          {/* Global Context Menu for the Grid */}
+          <ContextMenu>
+            <ContextMenuTrigger class="h-full w-full">
+              <div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                <For each={mediaQuery.data?.pages}>
+                  {(page) => (
+                    <For each={page.media}>
+                      {(item) => {
+                        if (!item) {
+                          return null;
+                        }
+
+                        return (
+                          <a
+                            class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
+                            data-media-id={item.id}
+                            href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
+                            onContextMenu={() => setContextMenuMediaId(item.id)}
+                          >
+                            {/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
+                            <img
+                              alt={item.fileName}
+                              class="h-full w-full object-cover"
+                              height={item.height}
+                              loading="lazy"
+                              src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(
+                                item.modifiedAt
+                              ).getTime()}`}
+                              width={item.width}
+                            />
+                          </a>
+                        );
+                      }}
+                    </For>
+                  )}
+                </For>
+              </div>
+            </ContextMenuTrigger>
+            <ContextMenuContent>
+              <Show
+                fallback={
+                  <ContextMenuItem disabled>No media selected</ContextMenuItem>
+                }
+                when={contextMenuMediaId()}
+              >
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      window.open(
+                        `/sources/${mediaSourceId()}/${id}`,
+                        "_blank"
+                      );
+                    }
+                  }}
+                >
+                  Open in New Tab
+                </ContextMenuItem>
+                <ContextMenuItem
+                  class="text-red-600 focus:text-red-600"
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleDelete(id);
+                    }
+                  }}
+                >
+                  Delete
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleCopyMove(id, "copy");
+                    }
+                  }}
+                >
+                  Copy to Source
+                </ContextMenuItem>
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleCopyMove(id, "move");
+                    }
+                  }}
+                >
+                  Move to Source
+                </ContextMenuItem>
+                <ContextMenuSeparator />
+                <ContextMenuItem
+                  onSelect={() => {
+                    const id = contextMenuMediaId();
+                    if (id) {
+                      handleSyncSingleMedia(id);
+                    }
+                  }}
+                >
+                  Sync Metadata (Reprocess)
+                </ContextMenuItem>
+              </Show>
+            </ContextMenuContent>
+          </ContextMenu>
+
+          {/* Infinite scroll trigger */}
+          <div
+            class="h-10 w-full"
+            ref={(el) => {
+              loadMoreRef = el;
+            }}
+          >
+            <Show when={mediaQuery.isFetchingNextPage}>
+              <div class="text-center text-gray-500">Loading more...</div>
+            </Show>
           </div>
         </div>
+      </div>
 
-        {/* Hidden file input */}
-        <input
-          accept=".json,.zip"
-          class="hidden"
-          id="restore-input"
-          onChange={handleRestoreSelect}
-          type="file"
-        />
-        <input
-          accept="image/*,.json"
-          class="hidden"
-          onChange={handleFileSelect}
-          ref={(el) => {
-            fileInputRef = el;
-          }}
-          type="file"
-        />
+      {/* Hidden file input */}
+      <input
+        accept=".json,.zip"
+        class="hidden"
+        id="restore-input"
+        onChange={handleRestoreSelect}
+        type="file"
+      />
+      <input
+        accept="image/*,.json"
+        class="hidden"
+        onChange={handleFileSelect}
+        ref={(el) => {
+          fileInputRef = el;
+        }}
+        type="file"
+      />
 
-        {/* Floating add button */}
-        <button
-          aria-label="Add media"
-          class="fixed right-8 bottom-8 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
-          onClick={handleAddButtonClick}
-          type="button"
-        >
-          <span class="text-3xl leading-none">＋</span>
-        </button>
+      {/* Floating add button */}
+      <button
+        aria-label="Add media"
+        class="fixed right-8 bottom-8 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
+        onClick={handleAddButtonClick}
+        type="button"
+      >
+        <span class="text-3xl leading-none">＋</span>
+      </button>
 
-        <UploadMediaModal
-          initialFile={fileToUpload()}
-          isOpen={showUploadModal()}
-          onClose={() => {
-            setShowUploadModal(false);
-            setPastedUrl(null);
-            setFileToUpload(null);
-          }}
-          onUpload={handleUpload}
-          onUrlFetch={(file) => setFileToUpload(file)}
-          pastedUrl={pastedUrl()}
-        />
-        <Dialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen()}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Media</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this media? This action cannot
-                be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                onClick={() => setDeleteDialogOpen(false)}
-                variant="outline"
-              >
-                Cancel
-              </Button>
-              <Button onClick={_confirmDelete} variant="destructive">
-                Delete
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <UploadMediaModal
+        initialFile={fileToUpload()}
+        isOpen={showUploadModal()}
+        onClose={() => {
+          setShowUploadModal(false);
+          setPastedUrl(null);
+          setFileToUpload(null);
+        }}
+        onUpload={handleUpload}
+        onUrlFetch={(file) => setFileToUpload(file)}
+        pastedUrl={pastedUrl()}
+      />
+      <Dialog onOpenChange={setDeleteDialogOpen} open={deleteDialogOpen()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Media</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this media? This action cannot be
+              undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              onClick={() => setDeleteDialogOpen(false)}
+              variant="outline"
+            >
+              Cancel
+            </Button>
+            <Button onClick={_confirmDelete} variant="destructive">
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-        <MoveCopyMediaDialog
-          currentSourceId={mediaSourceId() || ""}
-          mode={moveCopyMode()}
-          onConfirm={handleConfirmCopyMove}
-          onOpenChange={setMoveCopyDialogOpen}
-          open={moveCopyDialogOpen()}
-        />
-      </section>
-    </Show>
+      <MoveCopyMediaDialog
+        currentSourceId={mediaSourceId() || ""}
+        mode={moveCopyMode()}
+        onConfirm={handleConfirmCopyMove}
+        onOpenChange={setMoveCopyDialogOpen}
+        open={moveCopyDialogOpen()}
+      />
+    </section>
   );
 }
