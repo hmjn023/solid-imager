@@ -4,12 +4,12 @@ import { orpc } from '~/infrastructure/api-clients/orpc-client';
 import { getLocalDb } from '../local-db';
 import { logger } from '~/infrastructure/logger';
 import { QueryClient } from '@tanstack/solid-query';
+import type { Preset } from '@core/domain/media/schemas';
 
 // Shared query client for TanStack DB collections
 export const sharedQueryClient = new QueryClient();
 
-// biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-export const presetsCollection = createCollection<any>(
+export const presetsCollection = createCollection<Preset>(
   queryCollectionOptions({
     id: 'presets',
     queryClient: sharedQueryClient,
@@ -21,52 +21,38 @@ export const presetsCollection = createCollection<any>(
         const db = await getLocalDb();
         await db.query('BEGIN');
 
-        await db.query(`
-          CREATE TABLE IF NOT EXISTS presets (
-            id SERIAL PRIMARY KEY,
-            name TEXT UNIQUE NOT NULL,
-            value JSONB NOT NULL,
-            sort TEXT,
-            "order" TEXT,
-            mode TEXT,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-          );
-        `);
+        // Optimized bulk upsert using PostgreSQL's unnest for better performance
+        // This avoids individual INSERT statements in a loop
+        const ids = response.map(p => p.id);
+        const names = response.map(p => p.name);
+        const values = response.map(p => JSON.stringify(p.value));
+        const sorts = response.map(p => p.sort || null);
+        const orders = response.map(p => p.order || null);
+        const modes = response.map(p => p.mode || null);
+        const createdAts = response.map(p => p.createdAt);
 
-        for (const preset of response) {
-          await db.query(`
-            INSERT INTO presets (id, name, value, sort, "order", mode, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
-            ON CONFLICT (id) DO UPDATE SET
-              name = EXCLUDED.name,
-              value = EXCLUDED.value,
-              sort = EXCLUDED.sort,
-              "order" = EXCLUDED."order",
-              mode = EXCLUDED.mode,
-              created_at = EXCLUDED.created_at;
-          `, [
-            preset.id,
-            preset.name,
-            JSON.stringify(preset.value),
-            preset.sort,
-            preset.order,
-            preset.mode,
-            preset.createdAt
-          ]);
-        }
+        await db.query(`
+          INSERT INTO presets (id, name, value, sort, display_order, mode, created_at)
+          SELECT * FROM UNNEST($1::int[], $2::text[], $3::jsonb[], $4::text[], $5::text[], $6::text[], $7::timestamp[])
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            value = EXCLUDED.value,
+            sort = EXCLUDED.sort,
+            display_order = EXCLUDED.display_order,
+            mode = EXCLUDED.mode,
+            created_at = EXCLUDED.created_at;
+        `, [ids, names, values, sorts, orders, modes, createdAts]);
 
         await db.query('COMMIT');
       } catch (error) {
         logger.error({ error }, 'Failed to update local presets cache');
       }
 
-      return response;
+      return response as Preset[];
     },
-    // biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-    getKey: (item: any) => String(item.id),
+    getKey: (item: Preset) => String(item.id),
 
-    // biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-    onInsert: async ({ transaction }: any) => {
+    onInsert: async ({ transaction }) => {
       const { modified: newPreset } = transaction.mutations[0];
 
       try {
@@ -78,15 +64,14 @@ export const presetsCollection = createCollection<any>(
           mode: newPreset.mode || undefined,
         });
 
-        return createdPreset;
+        return createdPreset as Preset;
       } catch (error) {
         logger.error({ error }, 'Failed to create preset on backend');
         throw error;
       }
     },
 
-    // biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-    onUpdate: async ({ transaction }: any) => {
+    onUpdate: async ({ transaction }) => {
       const { original, modified } = transaction.mutations[0];
 
       try {
@@ -101,15 +86,14 @@ export const presetsCollection = createCollection<any>(
           }
         });
 
-        return updatedPreset;
+        return updatedPreset as Preset;
       } catch (error) {
         logger.error({ error }, 'Failed to update preset on backend');
         throw error;
       }
     },
 
-    // biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-    onDelete: async ({ transaction }: any) => {
+    onDelete: async ({ transaction }) => {
       const { original } = transaction.mutations[0];
 
       try {
@@ -119,6 +103,5 @@ export const presetsCollection = createCollection<any>(
         throw error;
       }
     },
-  // biome-ignore lint/suspicious/noExplicitAny: Required for TanStack DB collection types
-  }) as any
+  })
 );

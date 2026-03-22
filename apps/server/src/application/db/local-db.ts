@@ -32,5 +32,15 @@ async function initLocalSchema(db: PGlite): Promise<void> {
       last_synced_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       sync_token TEXT
     );
+
+    CREATE TABLE IF NOT EXISTS presets (
+      id SERIAL PRIMARY KEY,
+      name TEXT UNIQUE NOT NULL,
+      value JSONB NOT NULL,
+      sort TEXT,
+      display_order TEXT,
+      mode TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 }

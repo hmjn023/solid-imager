@@ -13,25 +13,40 @@ export const [lastSyncTime, setLastSyncTime] = createSignal<Date | null>(null);
  */
 export const SyncManager = {
   /**
+   * Internal common sync logic
+   */
+  performSync: async (options: { forceInitDb?: boolean } = {}) => {
+    if (isSyncing()) return;
+
+    try {
+      setIsSyncing(true);
+
+      if (options.forceInitDb) {
+        // Initialize local DB connection
+        await getLocalDb();
+      }
+
+      // Force refetch on all collections (this populates local PGLite cache)
+      await sharedQueryClient.fetchQuery({ queryKey: ['presets'] });
+
+      setLastSyncTime(new Date());
+    } catch (error) {
+      logger.error({ error }, 'Sync failed');
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  },
+
+  /**
    * Initialize collections and force an initial sync
    */
   init: async () => {
     try {
-      setIsSyncing(true);
-
-      // Initialize local DB connection
-      await getLocalDb();
-
-      // Force fetching collections (this populates local PGLite cache)
-      // Since fetch might not be directly exposed, we use the query client
-      await sharedQueryClient.fetchQuery({ queryKey: ['presets'] });
-
-      setLastSyncTime(new Date());
+      await SyncManager.performSync({ forceInitDb: true });
       logger.info('Initial sync completed.');
     } catch (error) {
-      logger.error({ error }, 'Initial sync failed');
-    } finally {
-      setIsSyncing(false);
+      // Error is already logged in performSync
     }
   },
 
@@ -39,17 +54,6 @@ export const SyncManager = {
    * Manually trigger a full sync with the backend
    */
   syncAll: async () => {
-    try {
-      setIsSyncing(true);
-
-      // Force refetch on all collections
-      await sharedQueryClient.fetchQuery({ queryKey: ['presets'] });
-
-      setLastSyncTime(new Date());
-    } catch (error) {
-      logger.error({ error }, 'Sync failed');
-    } finally {
-      setIsSyncing(false);
-    }
+    await SyncManager.performSync();
   }
 };
