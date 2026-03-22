@@ -18,8 +18,8 @@
     "format": "biome format --fix ./src",
     "check": "biome check --fix --unsafe ./src",
     "test": "bun run test:unit && bun run test:integration",
-    "test:unit": "vitest run -c vitest.unit.config.ts",
-    "test:integration": "vitest run -c vitest.integration.config.ts",
+    "test:unit": "vp test run -c vitest.unit.config.ts",
+    "test:integration": "vp test run -c vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
@@ -88,6 +88,7 @@
     "typescript": "^5.9.3",
     "ultracite": "5.4.4",
     "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "^1.6.0"
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+    "vite-plus": "latest"
   }
 }

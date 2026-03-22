@@ -15,11 +15,11 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns Search results with media array and total count
  */
 export function searchMedia(
-  sourceId: string | undefined | null,
-  params: MediaSearchRequest
+	sourceId: string | undefined | null,
+	params: MediaSearchRequest,
 ) {
-  return orpc.media.search({
-    sourceId,
-    params,
-  });
+	return orpc.media.search({
+		sourceId,
+		params,
+	});
 }

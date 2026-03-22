@@ -5,10 +5,14 @@
     "rules": {
       "recommended": true,
       "style": {
-        "useNamingConvention": "off"
+        "useNamingConvention": "off",
+        "useArrowFunction": "off"
       },
       "performance": {
         "noBarrelFile": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off"
       }
     }
   },
@@ -20,20 +24,14 @@
       "!**/dist",
       "!**/.vinxi",
       "!**/.output",
+      "!**/db-data",
       "!apps/server/src/app.css",
       "!apps/server/public/docs",
       "!apps/server/scripts",
       "!apps/server/playwright.config.ts",
       "!apps/server/get-media-ids.ts"
-    ],
-    "experimentalScannerIgnores": [
-      "db-data",
-      ".output",
-      ".vinxi",
-      "node_modules"
     ]
   },
-  "extends": ["ultracite"],
   "overrides": [
     {
       "includes": ["src/db/schema.ts"],

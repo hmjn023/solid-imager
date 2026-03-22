@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi } from 'vite-plus/test'
 import { tagHandler } from './ai'
 import * as orpcClient from '../orpc-client'
 

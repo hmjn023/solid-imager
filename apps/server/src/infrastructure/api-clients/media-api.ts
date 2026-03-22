@@ -14,14 +14,14 @@ import { searchMedia } from "./search-api";
  * @returns Array of media items
  */
 export async function fetchMediaList(sourceId: string) {
-  const result = await orpc.media.search({
-    sourceId,
-    params: {
-      offset: 0,
-      limit: 100, // Reasonable default
-    },
-  });
-  return result.media;
+	const result = await orpc.media.search({
+		sourceId,
+		params: {
+			offset: 0,
+			limit: 100, // Reasonable default
+		},
+	});
+	return result.media;
 }
 
 /**
@@ -32,17 +32,17 @@ export async function fetchMediaList(sourceId: string) {
  * @returns Search results with media array and total count
  */
 export function fetchMediaListInfinite(
-  sourceId: string,
-  pageParam = 0,
-  limit = 50
+	sourceId: string,
+	pageParam = 0,
+	limit = 50,
 ) {
-  // Use search API for pagination support
-  return searchMedia(sourceId, {
-    offset: pageParam,
-    limit,
-    sort: "date",
-    order: "desc",
-  });
+	// Use search API for pagination support
+	return searchMedia(sourceId, {
+		offset: pageParam,
+		limit,
+		sort: "date",
+		order: "desc",
+	});
 }
 
 /**
@@ -52,7 +52,7 @@ export function fetchMediaListInfinite(
  * @returns Media details including tags and generation info
  */
 export function fetchMediaDetails(sourceId: string, mediaId: string) {
-  return orpc.media.getDetails({ sourceId, mediaId });
+	return orpc.media.getDetails({ sourceId, mediaId });
 }
 
 /**
@@ -62,29 +62,29 @@ export function fetchMediaDetails(sourceId: string, mediaId: string) {
  * @returns Upload response with media information
  */
 export function uploadMedia(
-  sourceId: string,
-  file: File,
-  options?: {
-    filename?: string;
-    description?: string;
-    sourceUrl?: string;
-    overwrite?: boolean;
-    autoIncrement?: boolean;
-  }
+	sourceId: string,
+	file: File,
+	options?: {
+		filename?: string;
+		description?: string;
+		sourceUrl?: string;
+		overwrite?: boolean;
+		autoIncrement?: boolean;
+	},
 ) {
-  return orpc.media.upload({
-    sourceId,
-    file,
-    filename: options?.filename,
-    description: options?.description,
-    sourceUrl: options?.sourceUrl,
-    overwrite:
-      options?.overwrite !== undefined ? String(options.overwrite) : undefined,
-    autoIncrement:
-      options?.autoIncrement !== undefined
-        ? String(options.autoIncrement)
-        : undefined,
-  });
+	return orpc.media.upload({
+		sourceId,
+		file,
+		filename: options?.filename,
+		description: options?.description,
+		sourceUrl: options?.sourceUrl,
+		overwrite:
+			options?.overwrite !== undefined ? String(options.overwrite) : undefined,
+		autoIncrement:
+			options?.autoIncrement !== undefined
+				? String(options.autoIncrement)
+				: undefined,
+	});
 }
 
 /**
@@ -95,15 +95,15 @@ export function uploadMedia(
  * @returns Updated media details
  */
 export function updateMedia(
-  sourceId: string,
-  mediaId: string,
-  updates: { description?: string; sourceUrl?: string }
+	sourceId: string,
+	mediaId: string,
+	updates: { description?: string; sourceUrl?: string },
 ) {
-  return orpc.media.update({
-    sourceId,
-    mediaId,
-    data: updates,
-  });
+	return orpc.media.update({
+		sourceId,
+		mediaId,
+		data: updates,
+	});
 }
 
 /**
@@ -112,7 +112,7 @@ export function updateMedia(
  * @param mediaId - Media ID
  */
 export function deleteMedia(sourceId: string, mediaId: string) {
-  return orpc.media.delete({ sourceId, mediaId });
+	return orpc.media.delete({ sourceId, mediaId });
 }
 
 /**
@@ -122,11 +122,11 @@ export function deleteMedia(sourceId: string, mediaId: string) {
  * @param targetSourceId - Target Media source ID
  */
 export function copyMedia(
-  _sourceId: string,
-  mediaId: string,
-  targetSourceId: string
+	_sourceId: string,
+	mediaId: string,
+	targetSourceId: string,
 ) {
-  return orpc.media.copy({ mediaId, targetSourceId });
+	return orpc.media.copy({ mediaId, targetSourceId });
 }
 
 /**
@@ -136,11 +136,11 @@ export function copyMedia(
  * @param targetSourceId - Target Media source ID
  */
 export function moveMedia(
-  _sourceId: string,
-  mediaId: string,
-  targetSourceId: string
+	_sourceId: string,
+	mediaId: string,
+	targetSourceId: string,
 ) {
-  return orpc.media.move({ mediaId, targetSourceId });
+	return orpc.media.move({ mediaId, targetSourceId });
 }
 
 /**
@@ -150,5 +150,5 @@ export function moveMedia(
  * @returns Sync results
  */
 export function syncMediaItems(sourceId: string, mediaIds: string[]) {
-  return orpc.media.sync({ sourceId, mediaIds });
+	return orpc.media.sync({ sourceId, mediaIds });
 }

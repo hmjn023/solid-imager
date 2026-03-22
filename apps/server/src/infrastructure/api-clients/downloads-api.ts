@@ -14,11 +14,11 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns The response from the download API
  */
 export function startDownloadJobs(
-  mediaSourceId: string,
-  items: DownloadItem[]
+	mediaSourceId: string,
+	items: DownloadItem[],
 ) {
-  return orpc.downloads.start({
-    mediaSourceId,
-    items,
-  });
+	return orpc.downloads.start({
+		mediaSourceId,
+		items,
+	});
 }

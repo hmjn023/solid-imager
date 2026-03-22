@@ -1,100 +1,100 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vite-plus/test";
 import type { Category } from "~/infrastructure/db/schema";
 
 describe("GET /api/categories/:id", () => {
-  it("should return category by id", () => {
-    const id = "00000000-0000-0000-0000-000000000000";
+	it("should return category by id", () => {
+		const id = "00000000-0000-0000-0000-000000000000";
 
-    // TODO: Implement after GET function is available
-    // const result = await GET({ params: { id: '1' } });
-    const result: Category = {
-      id,
-      name: "Test Category",
-      description: "Test description",
-      color: "#FF0000",
-      source: "manual",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      parentId: null,
-    };
+		// TODO: Implement after GET function is available
+		// const result = await GET({ params: { id: '1' } });
+		const result: Category = {
+			id,
+			name: "Test Category",
+			description: "Test description",
+			color: "#FF0000",
+			source: "manual",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			parentId: null,
+		};
 
-    expect(result).toBeDefined();
-    expect(result.id).toBe(id);
-    expect(result.name).toBeTypeOf("string");
-  });
+		expect(result).toBeDefined();
+		expect(result.id).toBe(id);
+		expect(result.name).toBeTypeOf("string");
+	});
 
-  it("should throw error for non-existent category", () => {
-    // TODO: Test not found scenario
-    const _fakeId = "00000000-0000-0000-0000-000000000000";
+	it("should throw error for non-existent category", () => {
+		// TODO: Test not found scenario
+		const _fakeId = "00000000-0000-0000-0000-000000000000";
 
-    // await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
-  });
+		// await expect(GET({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
+	});
 
-  it("should throw error for invalid id format", () => {
-    // TODO: Test validation
-    const _invalidId = "invalid";
+	it("should throw error for invalid id format", () => {
+		// TODO: Test validation
+		const _invalidId = "invalid";
 
-    // await expect(GET({ params: { id: invalidId } })).rejects.toThrow();
-  });
+		// await expect(GET({ params: { id: invalidId } })).rejects.toThrow();
+	});
 });
 
 describe("PUT /api/categories/:id", () => {
-  it("should update and return category", () => {
-    const id = "00000000-0000-0000-0000-000000000000";
-    const updateData = {
-      name: "Updated Name",
-      description: "Updated description",
-    };
+	it("should update and return category", () => {
+		const id = "00000000-0000-0000-0000-000000000000";
+		const updateData = {
+			name: "Updated Name",
+			description: "Updated description",
+		};
 
-    // TODO: Implement after PUT function is available
-    // const result = await PUT({ params: { id: '1' }, request: new Request('', { method: 'PUT', body: JSON.stringify(updateData) }) });
-    const result: Category = {
-      id,
-      ...updateData,
-      color: "#FF0000",
-      source: "manual",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      parentId: null,
-    };
+		// TODO: Implement after PUT function is available
+		// const result = await PUT({ params: { id: '1' }, request: new Request('', { method: 'PUT', body: JSON.stringify(updateData) }) });
+		const result: Category = {
+			id,
+			...updateData,
+			color: "#FF0000",
+			source: "manual",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			parentId: null,
+		};
 
-    expect(result).toBeDefined();
-    expect(result.name).toBe(updateData.name);
-  });
+		expect(result).toBeDefined();
+		expect(result.name).toBe(updateData.name);
+	});
 
-  it("should throw error for non-existent category", () => {
-    // TODO: Test not found scenario
-    const _fakeId = "00000000-0000-0000-0000-000000000000";
+	it("should throw error for non-existent category", () => {
+		// TODO: Test not found scenario
+		const _fakeId = "00000000-0000-0000-0000-000000000000";
 
-    // await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
-  });
+		// await expect(PUT({ params: { id: fakeId.toString() }, request: ... })).rejects.toThrow('not found');
+	});
 
-  it("should throw error for invalid update data", () => {
-    // TODO: Test validation
-    const _invalidData = { name: 123 }; // Wrong type
+	it("should throw error for invalid update data", () => {
+		// TODO: Test validation
+		const _invalidData = { name: 123 }; // Wrong type
 
-    // expect(() => validateUpdateData(invalidData)).toThrow();
-  });
+		// expect(() => validateUpdateData(invalidData)).toThrow();
+	});
 });
 
 describe("DELETE /api/categories/:id", () => {
-  it("should delete category and return success", () => {
-    const _id = "00000000-0000-0000-0000-000000000000";
+	it("should delete category and return success", () => {
+		const _id = "00000000-0000-0000-0000-000000000000";
 
-    // TODO: Implement after DELETE function is available
-    // const result = await DELETE({ params: { id: '1' } });
-    // expect(result.success).toBe(true);
-  });
+		// TODO: Implement after DELETE function is available
+		// const result = await DELETE({ params: { id: '1' } });
+		// expect(result.success).toBe(true);
+	});
 
-  it("should throw error for non-existent category", () => {
-    // TODO: Test not found scenario
-    const _fakeId = "00000000-0000-0000-0000-000000000000";
+	it("should throw error for non-existent category", () => {
+		// TODO: Test not found scenario
+		const _fakeId = "00000000-0000-0000-0000-000000000000";
 
-    // await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
-  });
+		// await expect(DELETE({ params: { id: fakeId.toString() } })).rejects.toThrow('not found');
+	});
 
-  it("should handle cascading deletes correctly", () => {
-    // TODO: Test related data cleanup
-    // If deleting a category with children, handle appropriately
-  });
+	it("should handle cascading deletes correctly", () => {
+		// TODO: Test related data cleanup
+		// If deleting a category with children, handle appropriately
+	});
 });
