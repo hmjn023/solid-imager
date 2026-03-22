@@ -1,7 +1,7 @@
-import { getLocalDb } from './local-db';
-import { sharedQueryClient } from './collections/presets-collection';
-import { createSignal } from 'solid-js';
-import { logger } from '~/infrastructure/logger';
+import { createSignal } from "solid-js";
+import { logger } from "~/infrastructure/logger";
+import { sharedQueryClient } from "./collections/presets-collection";
+import { getLocalDb } from "./local-db";
 
 // Global sync state to show status in UI
 export const [isSyncing, setIsSyncing] = createSignal(false);
@@ -16,7 +16,9 @@ export const SyncManager = {
    * Internal common sync logic
    */
   performSync: async (options: { forceInitDb?: boolean } = {}) => {
-    if (isSyncing()) return;
+    if (isSyncing()) {
+      return;
+    }
 
     try {
       setIsSyncing(true);
@@ -27,11 +29,11 @@ export const SyncManager = {
       }
 
       // Force refetch on all collections (this populates local PGLite cache)
-      await sharedQueryClient.fetchQuery({ queryKey: ['presets'] });
+      await sharedQueryClient.fetchQuery({ queryKey: ["presets"] });
 
       setLastSyncTime(new Date());
     } catch (error) {
-      logger.error({ error }, 'Sync failed');
+      logger.error({ error }, "Sync failed");
       throw error;
     } finally {
       setIsSyncing(false);
@@ -44,8 +46,8 @@ export const SyncManager = {
   init: async () => {
     try {
       await SyncManager.performSync({ forceInitDb: true });
-      logger.info('Initial sync completed.');
-    } catch (error) {
+      logger.info("Initial sync completed.");
+    } catch (_error) {
       // Error is already logged in performSync
     }
   },
@@ -55,5 +57,5 @@ export const SyncManager = {
    */
   syncAll: async () => {
     await SyncManager.performSync();
-  }
+  },
 };

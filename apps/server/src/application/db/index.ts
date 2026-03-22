@@ -1,2 +1,2 @@
-export * from './local-db';
-export * from './collections';
+export * from "./collections";
+export * from "./local-db";

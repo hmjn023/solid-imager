@@ -3,7 +3,7 @@ import { Meta, MetaProvider, Title } from "@solidjs/meta";
 import { Router } from "@solidjs/router";
 import { FileRoutes } from "@solidjs/start/router";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { Suspense, ErrorBoundary } from "solid-js";
+import { ErrorBoundary, Suspense } from "solid-js";
 import Nav from "./components/nav";
 import "./app.css";
 import { TanStackDbProvider } from "./application/db/provider";
@@ -39,14 +39,18 @@ export default function App() {
       <Title>Solid Imager</Title>
       <Meta charset="utf-8" />
       <QueryClientProvider client={queryClient}>
-        <ErrorBoundary fallback={(err) => <div>Error rendering app: {err.message}</div>}>
+        <ErrorBoundary
+          fallback={(err) => <div>Error rendering app: {err.message}</div>}
+        >
           <TanStackDbProvider>
             <Router
               root={(props) => (
                 <>
                   <Nav />
                   <Toaster />
-                  <Suspense fallback={<div>Loading...</div>}>{props.children}</Suspense>
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {props.children}
+                  </Suspense>
                 </>
               )}
             >

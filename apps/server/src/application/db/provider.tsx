@@ -1,6 +1,6 @@
-import { onMount, type ParentComponent } from 'solid-js';
-import { SyncManager } from './sync-manager';
-import { logger } from '~/infrastructure/logger';
+import { onMount, type ParentComponent } from "solid-js";
+import { logger } from "~/infrastructure/logger";
+import { SyncManager } from "./sync-manager";
 
 /**
  * Provider component that initializes local DB and collections
@@ -14,7 +14,7 @@ export const TanStackDbProvider: ParentComponent = (props) => {
     // This connects to PGLite and starts syncing TanStack DB collections
     // The collections manage their own TanStack Query integration
     SyncManager.init().catch((error) => {
-      logger.error({ error }, 'Failed to initialize TanStack DB Provider sync');
+      logger.error({ error }, "Failed to initialize TanStack DB Provider sync");
     });
 
     // Optional: set up real-time listener or periodic sync here
@@ -32,4 +32,4 @@ export const TanStackDbProvider: ParentComponent = (props) => {
 };
 
 // Export context or utilities if needed
-export { SyncManager } from './sync-manager';
+export { SyncManager } from "./sync-manager";
