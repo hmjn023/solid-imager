@@ -1,3 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/manager')({
+  component: RouteComponent,
+})
+
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
@@ -82,7 +88,7 @@ import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
 
-export default function ManagerPage() {
+function RouteComponent() {
 	const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
 	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);

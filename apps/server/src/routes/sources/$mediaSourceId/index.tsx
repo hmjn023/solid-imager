@@ -1,3 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('sources/$mediaSourceId')({
+  component: RouteComponent,
+})
+
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import {
 	getScrollPosition,
@@ -80,7 +86,7 @@ const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 
-export default function MediaListPage() {
+function RouteComponent() {
 	const params = useParams();
 	const queryClient = useQueryClient();
 

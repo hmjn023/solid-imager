@@ -1,3 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/$')({
+  component: RouteComponent,
+})
+
 import { A } from "@solidjs/router";
 
 /**
@@ -5,7 +11,7 @@ import { A } from "@solidjs/router";
  * Displays a message indicating the page was not found and provides links to the home and about pages.
  * @returns {JSX.Element} The rendered 404 page.
  */
-export default function NotFound() {
+function RouteComponent() {
 	return (
 		<main class="mx-auto p-4 text-center text-gray-700">
 			<h1 class="max-6-xs my-16 font-thin text-6xl text-sky-700 uppercase">

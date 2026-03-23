@@ -1,0 +1,6 @@
+chore: migrate to TanStack Start + oRPC
+
+Migrated architecture from Vinxi/SolidStart + Elysia to TanStack Start (Solid.js) and oRPC to better support Tauri.
+- Replaced Vinxi server commands with Vite and nitro config
+- Updated all API routes to use oRPC and TanStack Start API routes
+- Migrated directory structure to TanStack Router format (createFileRoute, __root.tsx)

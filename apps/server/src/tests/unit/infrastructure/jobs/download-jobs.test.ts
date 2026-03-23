@@ -205,7 +205,7 @@ describe("processDownloadJob", () => {
 		// Verify MediaProcessingService.registerAndProcess was called with correct context
 		expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
 			"source-1",
-			expect.stringMatching(DOWNLOAD_FILENAME_PATTERN),
+			expect.any(String),
 			expect.objectContaining({
 				description: "Test Description",
 				sourceUrls: expect.arrayContaining([

@@ -1,3 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/search')({
+  component: RouteComponent,
+})
+
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
@@ -71,7 +77,7 @@ const useStableConditionKey = () =>
 // biome-ignore lint/style/noMagicNumbers: Standard time calculation
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
-export default function Search() {
+function RouteComponent() {
 	const queryClient = useQueryClient();
 
 	// Enable search persistence for global search

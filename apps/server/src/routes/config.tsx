@@ -1,3 +1,9 @@
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/config')({
+  component: RouteComponent,
+})
+
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { Button } from "@solid-imager/ui/button";
@@ -486,7 +492,7 @@ function ConfigForm(props: { data: AppConfig }) {
 	);
 }
 
-export default function ConfigPage() {
+function RouteComponent() {
 	const configQuery = createQuery(() => ({
 		queryKey: ["config"],
 		queryFn: async () => await orpc.config.get(),

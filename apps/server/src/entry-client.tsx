@@ -1,10 +1,9 @@
-// @refresh reload
-import { mount, StartClient } from "@solidjs/start/client";
+import { hydrateStart, StartClient } from '@tanstack/solid-start/client'
+import { getRouter } from './router'
+import { mount } from 'solid-js/web'
 
-const app = document.getElementById("app");
-if (app) {
-	mount(() => <StartClient />, app);
-} else {
-	// biome-ignore lint/suspicious/noConsole: Log error if root element is missing
-	console.error("Root element #app not found. Application failed to mount.");
-}
+const router = getRouter()
+
+hydrateStart().then(() => {
+  mount(() => <StartClient router={router} />, document.getElementById('app')!)
+})
