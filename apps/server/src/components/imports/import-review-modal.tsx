@@ -27,8 +27,17 @@ type Props = {
 
 function getPreviewUrl(url?: string): string {
 	if (!url) return "";
-	if (url.includes("pbs.twimg.com")) {
-		return url.replace("name=orig", "name=small");
+	try {
+		const urlObj = new URL(url);
+		if (
+			urlObj.hostname === "pbs.twimg.com" &&
+			urlObj.searchParams.get("name") === "orig"
+		) {
+			urlObj.searchParams.set("name", "small");
+			return urlObj.toString();
+		}
+	} catch {
+		// Not a valid URL, return original string below
 	}
 	return url;
 }
