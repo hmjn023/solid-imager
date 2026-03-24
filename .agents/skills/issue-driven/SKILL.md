@@ -136,14 +136,15 @@ gh issue comment <NUMBER> --body-file - <<'EOF'
 EOF
 
 # ステータスを In Review に移動
-# （項目IDは gh project item-list 1 --owner @me --format json で確認）
+# ステータスを In Review に移動
+# （projectId, fieldId, itemId, optionId は `gh project` や `gh api` コマンドで確認）
 gh api graphql -f query='
 mutation {
   updateProjectV2ItemFieldValue(input: {
-    projectId: "PVT_kwHOBJLKfM4BSrJK"
+    projectId: "<PROJECT_ID>"
     itemId: "<ITEM_ID>"
-    fieldId: "PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q"
-    value: { singleSelectOptionId: "f250fa0e" }
+    fieldId: "<FIELD_ID>"
+    value: { singleSelectOptionId: "<IN_REVIEW_OPTION_ID>" }
   }) { projectV2Item { id } }
 }'
 ```
