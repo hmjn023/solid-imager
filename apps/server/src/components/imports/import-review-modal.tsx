@@ -25,6 +25,14 @@ type Props = {
 	onImportCompleted: () => void;
 };
 
+function getPreviewUrl(url?: string): string {
+	if (!url) return "";
+	if (url.includes("pbs.twimg.com")) {
+		return url.replace("name=orig", "name=small");
+	}
+	return url;
+}
+
 export default function ImportReviewModal(props: Props) {
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
 		new Set(),
@@ -195,16 +203,13 @@ export default function ImportReviewModal(props: Props) {
 													}
 													when={job.item.targetUrl}
 												>
-													{/* biome-ignore lint/performance/noImgElement: Dynamic content */}
-													{/* biome-ignore lint: Dynamic content */}
-													{/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: onError handler required */}
 													<img
 														alt="Preview"
 														class="h-full w-full object-cover"
 														onError={(e) => {
 															e.currentTarget.style.display = "none";
 														}}
-														src={job.item.targetUrl}
+														src={getPreviewUrl(job.item.targetUrl)}
 													/>
 												</Show>
 											</div>
