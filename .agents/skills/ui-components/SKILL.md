@@ -1,6 +1,6 @@
 ---
 name: ui-components
-description: solid-ui (shadcn/ui port) コンポーネントの追加方法や使用方法に関するルール。UIコンポーネントを新規作成または変更する際に参照してください。
+description: solid-ui (shadcn/ui port) のコンポーネント管理。UIコンポーネントの新規追加 ('solidui-cli add')、初期化、テーマ設定、またはボタンや入力フォームなどのUIパーツを 'apps/server/src/components/ui/' 配下に実装・修正する際に使用してください。
 ---
 
 # UI Components (solid-ui) スキル

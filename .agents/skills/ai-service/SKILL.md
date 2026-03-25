@@ -1,6 +1,6 @@
 ---
 name: ai-service
-description: 画像の自動タグ付け、類似度計算、CCIP特徴量などのAI機能を利用する機能の実装や、Python AIサービスの起動方法について参照してください。
+description: 画像の自動タグ付け、類似度計算、CCIP特徴量などのAI機能の利用と Python AI サービス（src-python/main.py）の管理。AI サービスへの API リクエストの実装や、Python サーバーの起動方法、ベクトル検索機能（SimilarSearch）の調整を行う際に使用してください。
 ---
 
 # Python AI Service スキル

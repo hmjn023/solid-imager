@@ -1,6 +1,6 @@
 ---
 name: repository-rules
-description: リポジトリ層の実装におけるデータマッピングのルール。データベースアクセスを行うコードを実装する際に参照してください。
+description: リポジトリ層におけるデータアクセスとドメインモデルへの明示的なマッピングルール。データベースからの戻り値をドメインエンティティに変換する際や、'apps/server/src/infrastructure/repositories/' 配下での実装、および DBスキーマとドメイン層の型不整合を防ぐためのマッピング処理を行う際に使用してください。
 ---
 
 # Repository Rules スキル

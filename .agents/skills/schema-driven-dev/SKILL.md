@@ -1,6 +1,6 @@
 ---
 name: schema-driven-dev
-description: Schema-Driven Development (SDD) における、Zodスキーマの定義と型導出のルール。ドメインモデルやAPIスキーマを定義する際に参照してください。
+description: Schema-Driven Development (SDD) に基づく Zod スキーマの定義と、そこからの TypeScript 型導出（z.infer）。APIのリクエスト/レスポンス、ドメインモデル、または 'packages/core/src/domain/**/schemas.ts' で共通のデータ構造を定義・変更する際に使用してください。
 ---
 
 # Schema-Driven Development (SDD) with Zod スキル

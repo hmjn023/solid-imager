@@ -1,6 +1,6 @@
 ---
 name: browser-extension
-description: ブラウザ拡張機能 (xtracter) の開発における作業ディレクトリと依存関係のルール。拡張機能のコードを変更する際に参照してください。
+description: ブラウザ拡張機能 'xtracter/' ディレクトリ内の開発、manifest.json の管理、および Web ページからのメタデータ抽出ロジック。拡張機能のバックグラウンドスクリプト、コンテンツスクリプト、またはポップアップUIを修正する際に使用してください。
 ---
 
 # Browser Extension (xtracter) スキル

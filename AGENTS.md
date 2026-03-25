@@ -4,12 +4,41 @@
 
 このプロジェクトは、AIによって生成された画像などのメディアを管理する包括的なメディア管理システムです。ファイルの整理、検索、配信を行うためのバックエンドAPIとWebフロントエンドを提供します。
 
-モノレポ構成で、サーバー(`apps/server`)、コアパッケージ(`packages/core`)、ブラウザ拡張機能(`xtracter`)で構成されています。
-
 ## 主要ドキュメント
 
 - **API設計:** [./docs/design/api-design.md](./docs/design/api-design.md) (詳細はSwagger UIを参照)
 - **DBスキーマ:** `apps/server/src/infrastructure/db/schema.ts`
+
+## 開発ルール & 内部構成
+
+### プロジェクト構成
+
+- **`apps/server`**: `@solid-imager/server` (SolidStart + oRPC)
+- **`apps/cli`**: `@solid-imager/cli` (Bun compileによるシングルバイナリ)
+- **`packages/core`**: `@solid-imager/core` (ドメインモデル、Zodスキーマ、リポジトリIF)
+- **`packages/ui`**: `@solid-imager/ui` (Shared UI Components)
+- **`xtracter`**: ブラウザ拡張機能
+- **`src-python`**: AI/ML サービス (FastAPI)
+
+### サーバー内部構成 (`apps/server/src/`)
+
+- `application/`: アプリケーションサービス、ユースケース、レジストリ。
+- `infrastructure/`: DB (Drizzle), API実装, File System, AI連携, Job Queue。
+- `presentation/`: ルート定義, グローバルストア。
+- `components/`, `routes/`, `hooks/`: UIおよびルーティング関連。
+
+### コア内部構成 (`packages/core/src/domain/`)
+
+- ドメインごとにディレクトリを分離（`media`, `tags`, `characters`, `ips`, `authors` 等）。
+- 各ドメイン配下に `schemas.ts` を配置し、Zodスキーマを定義する。
+
+### アーキテクチャルール (Clean Architecture)
+
+- **依存方向:** `infrastructure` -> `application` -> `core` (Domain)。コアは他へ依存しない。
+- **リポジトリ層:** `as unknown as DomainModel` 禁止。`infrastructure/repositories` にて明示的なマッパーを実装すること。
+- **セキュリティ:** APIレスポンスは必ず Safe DTO を経由し、機密情報を除外する。
+- **データベース:** 全テーブルUUID (v4)。中間テーブルは `media_{entity}` 命名。
+- **API:** oRPCを使用。スキーマ駆動開発を徹底する。
 
 ## スキル一覧
 
