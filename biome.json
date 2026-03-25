@@ -19,7 +19,6 @@
     "includes": [
       "apps/**/src/**",
       "packages/**/src/**",
-      "xtracter/src/**",
       "!**/node_modules",
       "!**/dist",
       "!**/.vinxi",
@@ -44,7 +43,7 @@
       }
     },
     {
-      "includes": ["xtracter/src/**/*.ts"],
+      "includes": ["apps/xtracter/src/**/*.ts", "apps/xtracter/src/**/*.tsx"],
       "javascript": {
         "globals": ["chrome", "window", "document", "navigator", "console"]
       }

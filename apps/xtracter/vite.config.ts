@@ -23,12 +23,12 @@ export default defineConfig({
   resolve: {
     alias: {
       "@ext": path.resolve(__dirname, "./src"),
-      "~": path.resolve(__dirname, "../apps/server/src"),
-      "@": path.resolve(__dirname, "../packages/core/src"),
-      "@solid-imager/core": path.resolve(__dirname, "../packages/core/src"),
-      "@solid-imager/server": path.resolve(__dirname, "../apps/server/src"),
-      "@core": path.resolve(__dirname, "../packages/core/src"),
-      "@server": path.resolve(__dirname, "../apps/server/src"),
+      "~": path.resolve(__dirname, "../../apps/server/src"),
+      "@": path.resolve(__dirname, "../../packages/core/src"),
+      "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
+      "@solid-imager/server": path.resolve(__dirname, "../../apps/server/src"),
+      "@core": path.resolve(__dirname, "../../packages/core/src"),
+      "@server": path.resolve(__dirname, "../../apps/server/src"),
     },
   },
 });
