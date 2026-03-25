@@ -39,21 +39,13 @@ export const getClient = async () => {
 	const link = new RPCLink({
 		url,
 		fetch: async (input, init) => {
-			const controller = new AbortController();
-			const timeoutId = setTimeout(
-				() => controller.abort(),
-				REQUEST_TIMEOUT_MS,
-			);
-
 			try {
 				const response = await fetch(input, {
 					...init,
-					signal: controller.signal,
+					signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
 				});
-				clearTimeout(timeoutId);
 				return response;
 			} catch (error) {
-				clearTimeout(timeoutId);
 				throw handleFetchError(error, url);
 			}
 		},

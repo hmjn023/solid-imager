@@ -216,10 +216,20 @@ chrome.runtime.onMessage.addListener(
 								const dataUrl =
 									"data:application/json;base64," +
 									btoa(unescape(encodeURIComponent(jsonString)));
-								chrome.downloads.download({
-									url: dataUrl,
-									filename,
-								});
+								chrome.downloads.download(
+									{
+										url: dataUrl,
+										filename,
+									},
+									() => {
+										if (chrome.runtime.lastError) {
+											console.error(
+												"Download failed:",
+												chrome.runtime.lastError.message,
+											);
+										}
+									},
+								);
 							}
 						},
 					);
@@ -235,9 +245,17 @@ chrome.runtime.onMessage.addListener(
 			// Cast to any to handle string vs Date for createdAt field between core and ext schemas
 			const filename = generateMediaFilename(message.data as any, extension);
 
-			chrome.downloads.download({				url: targetUrl,
-				filename: `xtracter/${filename}`,
-			});
+			chrome.downloads.download(
+				{
+					url: targetUrl,
+					filename: `xtracter/${filename}`,
+				},
+				() => {
+					if (chrome.runtime.lastError) {
+						console.error("Download failed:", chrome.runtime.lastError.message);
+					}
+				},
+			);
 		} else if (isDownloadBulkMessage(message)) {
 			const now = new Date();
 			const dateStr = now
@@ -249,10 +267,17 @@ chrome.runtime.onMessage.addListener(
 			const dataUrl =
 				"data:application/json;base64," +
 				btoa(unescape(encodeURIComponent(jsonString)));
-			chrome.downloads.download({
-				url: dataUrl,
-				filename,
-			});
+			chrome.downloads.download(
+				{
+					url: dataUrl,
+					filename,
+				},
+				() => {
+					if (chrome.runtime.lastError) {
+						console.error("Download failed:", chrome.runtime.lastError.message);
+					}
+				},
+			);
 		} else if (isPostDownloadMessage(message)) {
 			postDownloads([message.data]);
 		} else if (isPostBulkMessage(message)) {

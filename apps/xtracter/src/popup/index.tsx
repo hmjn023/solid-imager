@@ -52,14 +52,19 @@ function Popup() {
 	};
 
 	const handleSave = async () => {
-		await chrome.storage.local.set({
-			selectedSourceId: selectedSourceId(),
-			apiUrl: apiUrl(),
-		});
-		setStatus("Saved!");
-		setStatusType("success");
-		setTimeout(() => setStatus(""), 2000);
-		await fetchSources();
+		try {
+			await chrome.storage.local.set({
+				selectedSourceId: selectedSourceId(),
+				apiUrl: apiUrl(),
+			});
+			setStatus("Saved!");
+			setStatusType("success");
+			setTimeout(() => setStatus(""), 2000);
+			await fetchSources();
+		} catch (_err) {
+			setStatus("Failed to save settings.");
+			setStatusType("error");
+		}
 	};
 
 	const handleExport = async () => {
