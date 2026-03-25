@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
-    "build": "tsc && vp build",
+    "build": "vp build",
     "preview": "vp preview",
     "typecheck": "bun x tsc --noEmit",
     "lint": "biome lint ./src",
@@ -13,11 +13,12 @@
     "check": "biome check --fix --unsafe ./src"
   },
   "devDependencies": {
-    "@crxjs/vite-plugin": "^2.0.0-beta.28",
     "@types/chrome": "^0.0.268",
     "@types/node": "^20.11.24",
+    "solid-js": "^1.9.12",
     "typescript": "^5.2.2",
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+    "vite": "6.0.0",
+    "vite-plugin-solid": "^2.11.11",
     "vite-plus": "latest"
   },
   "dependencies": {

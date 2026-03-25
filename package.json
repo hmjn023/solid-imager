@@ -4,8 +4,7 @@
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "xtracter"
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",

@@ -43,7 +43,7 @@
       }
     },
     {
-      "includes": ["xtracter/src/**/*.ts"],
+      "includes": ["apps/xtracter/src/**/*.ts", "apps/xtracter/src/**/*.tsx"],
       "javascript": {
         "globals": ["chrome", "window", "document", "navigator", "console"]
       }
