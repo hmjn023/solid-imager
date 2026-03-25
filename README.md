@@ -25,30 +25,14 @@ Testing: Vitest / Playwright
 Lint: Biome
 ```
 
-## プロジェクト構成（モノレポ）
+### プロジェクト構成（モノレポ）
 
-```
-packages/core/   # ドメインモデル、Zodスキーマ、リポジトリインターフェース
-packages/ui/     # 共通UIコンポーネント
-apps/server/     # サーバー (TanStack Start + oRPC)
-apps/cli/        # CLI / MCPサーバー
-xtracter/        # ブラウザ拡張機能
-```
-
-### サーバー内部構成 (`apps/server/src/`)
-
-```
-application/     # ユースケース、サービスクラス
-infrastructure/  # DB、外部API、ファイルシステム実装
-presentation/    # コンポーネント、ルート
-```
-
-### アーキテクチャルール (Clean Architecture)
-
-- 依存は外→内。ドメイン層は他のどの層にも依存しない
-- リポジトリは `as unknown as DomainModel` 禁止、明示的マッピング必須
-- APIレスポンスは Safe DTO 経由で機密情報を除外
-- DB: 全テーブルUUID (v4)、中間テーブルは `media_{entity}` 命名
+- `apps/server/`: メインサーバー (SolidStart + oRPC)。バックエンドAPIとフロントエンドUIを統合。
+- `apps/cli/`: メディア管理・同期用CLIツール。
+- `packages/core/`: ドメインモデル、Zodスキーマ、ビジネスロジック、各インターフェース。
+- `packages/ui/`: 共通UIコンポーネントライブラリ (Kobalte + Tailwind CSS + solid-ui)。
+- `xtracter/`: メディア収集用ブラウザ拡張機能。
+- `src-python/`: AI解析サービス (FastAPI + dghs-imgutils)。
 
 ## セットアップ
 
