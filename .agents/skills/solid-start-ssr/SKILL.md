@@ -1,6 +1,6 @@
 ---
 name: solid-start-ssr
-description: SolidStartとTanStack QueryにおけるSSR/CSR競合回避のベストプラクティス。フロントエンドのTSX/JSXファイルを扱う際に参照してください。
+description: SolidStart と TanStack Query を用いた SSR/CSR 競合回避とハイドレーションのベストプラクティス. フロントエンドの TSX/JSX ファイル（'apps/server/src/routes/'）でデータフェッチを行う際、または 'onMount' や 'isServer' を使ったブラウザ専用 API の制御を行う際に使用してください。
 ---
 
 # SolidStart & TanStack Query SSR/CSR ベストプラクティス

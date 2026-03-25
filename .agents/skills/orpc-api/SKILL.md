@@ -1,6 +1,6 @@
 ---
 name: orpc-api
-description: oRPCを用いたAPIエンドポイントの実装、ルーター定義、クライアント呼び出しのワークフロー。APIの実装や変更を行う際に参照してください。
+description: oRPCを用いた型安全なAPIエンドポイントの実装、ルーター定義、Zodスキーマによるバリデーション、およびフロントエンド（apps/server/src/routes/）からのクライアント呼び出し。APIの新規追加、既存エンドポイントの修正、OpenAPI定義の更新、または 'apps/server/src/infrastructure/api/routers/' 配下のファイルを操作する際に使用してください。
 ---
 
 # oRPC API Development Skill

@@ -1,6 +1,6 @@
 ---
 name: api-docs
-description: コードベースの変更に伴うAPI仕様書 (OpenAPI spec) の更新手順。APIのエンドポイントやスキーマを変更した後に参照してください。
+description: APIエンドポイントやスキーマの変更に伴う OpenAPI 仕様書（'apps/server/public/openapi.json'）の更新。JSDoc コメントの記述ルールや 'bun gen:spec' コマンドによるドキュメントの再生成を行う際に使用してください。
 ---
 
 # API Documentation スキル

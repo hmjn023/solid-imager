@@ -1,6 +1,6 @@
 ---
 name: database-schema
-description: データベースのスキーマ定義を変更する際の手順と、マイグレーションの生成・適用方法。DBスキーマを変更する作業時に参照してください。
+description: Drizzle ORMを用いたデータベーススキーマの定義とマイグレーションの生成・適用。テーブル定義の変更、インデックスの追加、'apps/server/src/infrastructure/db/schema.ts' の修正、または 'bun db:generate/migrate' コマンドを実行する際に使用してください。
 ---
 
 # Database Schema 変更スキル

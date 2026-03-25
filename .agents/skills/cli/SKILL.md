@@ -1,6 +1,6 @@
 ---
 name: cli
-description: imager-cli のコマンド開発・変更時。CLIコマンドの追加・修正時はこのスキルを参照してください。
+description: imager-cli コマンドの開発と 'apps/cli/src/commands/' 配下の修正。incur ライブラリを用いた CLI 引数の定義、サーバーとの通信、または管理コマンドの新規追加を行う際に使用してください。
 ---
 
 # CLI スキル
