@@ -21,7 +21,7 @@ issue着手 → Investigate → Plan → Implement → Review → Submit → Don
 | **2. Plan** | 調査結果から実装計画を策定 | Plan Note |
 | **3. Implement** | コード変更を実施 | Implementation Note |
 | **4. Review** | lint/check/test 実行、セルフチェック | Review Checklist |
-| **5. Submit** | ブランチ作成、Push、PR作成 | Pull Request |
+| **5. Submit** | PR作成 & Issue関連付け | Pull Request |
 
 ## 原則
 
@@ -40,107 +40,32 @@ issue着手 → Investigate → Plan → Implement → Review → Submit → Don
 gh issue view <NUMBER>
 gh issue view <NUMBER> --comments
 
-# 作業用ブランチを作成
+# 作業用ブランチを作成 (fix/issue-<NUMBER>-<TITLE_SLUG> 形式)
 git checkout -b fix/issue-<NUMBER>-<TITLE_SLUG>
 ```
 
-### 2. 調査フェーズ
+### 2. 調査フェーズ (Investigation Note)
 
-調査が完了したら **Investigation Note** をコメントとして投稿する。
+調査が完了したらコメントとして投稿する。
 
-```bash
-gh issue comment <NUMBER> --body-file - <<'EOF'
-## 🔍 Investigation Note
+### 3. 計画フェーズ (Plan Note)
 
-### 現状のコード
-- `path/to/file.ts:L42` - 該当処理の説明
-- 既存の実装パターン: ...
+実装方針を策定し、必要なら人間に確認する。**新規ディレクトリを作成する場合は `biome.json` の `includes` に追加することを忘れない。**
 
-### 判断ポイント
-- [選択肢A]: ...
-- [選択肢B]: ...
-- **採用理由:** ...
+### 4. 実装フェーズ (Implementation Note)
 
-### 参考資料
-- session.md: ...
-- 他issue: ...
-EOF
-```
+コード変更を実施し、テスト結果を含めてコメントする。
 
-### 3. 計画フェーズ（人間への確認が必要な場合）
+### 5. レビューフェーズ (Review Checklist)
 
 ```bash
-gh issue comment <NUMBER> --body-file - <<'EOF'
-## 📋 Plan Note
-
-### 実装方針
-- 方針の説明
-
-### 変更予定ファイル
-| ファイル | 変更内容 |
-|---------|---------|
-| `path/a.ts` | 新規作成 |
-| `path/b.ts` | 追記 |
-
-### 確認事項
-- [ ] 人間への質問事項
-
-この方針で進めますか？
-EOF
-```
-
-### 4. 実装フェーズ
-
-コード変更を実施し、完了後に **Implementation Note** をコメントとして投稿する。
-
-```bash
-gh issue comment <NUMBER> --body-file - <<'EOF'
-## 🔨 Implementation Note
-
-### 変更ファイル
-| ファイル | 変更内容 |
-|---------|---------|
-| `path/a.ts` | 新規作成: 処理の説明 |
-| `path/b.ts` | 追記: 変更の説明 |
-
-### 実装判断
-- ...の理由で...を選択
-
-### テスト実行結果
-```
-（コマンドの出力を貼り付け）
-```
-EOF
-```
-
-### 5. レビューフェーズ
-
-lint/check/test を実行し、結果を **Review Checklist** としてコメント投稿する。
-全てPASSしたらステータスを In Review に移動する。
-
-```bash
-# セルフチェック
-bun run lint
+# セルフチェック (Vite Plus の check/typecheck を含む)
 bun run check
+bun run typecheck
 bun run test
 
-# チェックリスト投稿
-gh issue comment <NUMBER> --body-file - <<'EOF'
-## ✅ Review Checklist
-
-- [x] `bun run lint` PASS
-- [x] `bun run check` PASS
-- [x] `bun run test` PASS
-- [x] 型エラーなし
-- [x] 不要なコメント追加なし
-- [x] 既存パターンに準拠
-
-### 残タスク / メモ
-- 特になし
-EOF
-
-# ステータスを In Review に移動
-# （itemId は `gh api graphql` で取得した PVTI_ で始まるIDを使用）
+# チェックリスト投稿後にステータスを "In Review" へ
+# projectId: PVT_kwHOBJLKfM4BSrJK, fieldId: PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q, In Review ID: f250fa0e
 gh api graphql -f query='
 mutation {
   updateProjectV2ItemFieldValue(input: {
@@ -154,64 +79,33 @@ mutation {
 
 ### 6. 提出 (Submit) フェーズ
 
-変更を Push し、Pull Request を作成して Issue と紐付ける。
+PRを作成し、GitHub の **Development** リンクを有効にする。
 
 ```bash
-# Push
-git push origin HEAD
-
-# PR作成 (本文に "fixes #<NUMBER>" を含めることで自動的にIssueが閉じるようにする)
+# PR作成 (本文に "fixes #<NUMBER>" または "closes #<NUMBER>" を含める)
+# これにより正式な関連付け (Development link) が行われる
 gh pr create --title "fix: <SUMMARY> (#<NUMBER>)" \
-             --body "## 概要\n\nIssue #<NUMBER> を修正しました。\n\n## 変更点\n\n- ..." \
+             --body "## 概要\n\nIssue #<NUMBER> を修正しました。\n\n## 変更点\n\n- ...\n\nfixes #<NUMBER>" \
              --base develop
 ```
 
-## ステータス管理
+## プロジェクト・メタデータ (solid-imager)
 
-| ステータス | 移動タイミング | Option ID |
-|-----------|--------------|-----------|
-| **Todo** | issue未着手 | `76512601` |
-| **In Progress** | 実装開始時 | `abd28694` |
-| **In Review** | 実装完了・セルフチェック後 | `f250fa0e` |
-| **Done** | 人間がマージ/承認後 | `d32cf67d` |
+- **Owner**: `hmjn023`
+- **Repo**: `solid-imager`
+- **Project ID**: `PVT_kwHOBJLKfM4BSrJK`
+- **Status Field ID**: `PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q`
 
-## プロジェクトID等 (solid-imager)
+| ステータス | Option ID |
+|-----------|-----------|
+| **Todo** | `76512601` |
+| **In Progress** | `abd28694` |
+| **In Review** | `f250fa0e` |
+| **Done** | `d32cf67d` |
 
-- **projectId**: `PVT_kwHOBJLKfM4BSrJK`
-- **fieldId**: `PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q`
-
-## コメント投稿コマンドリファレンス
+## お役立ちコマンド
 
 ```bash
-# issue本文とコメントを読む
-gh issue view <NUMBER>
-gh issue view <NUMBER> --comments
-
-# コメントを投稿する（HEREDOC推奨）
-gh issue comment <NUMBER> --body-file - <<'EOF'
-（本文）
-EOF
-
-# ステータスを変更する
-gh api graphql -f query='
-mutation {
-  updateProjectV2ItemFieldValue(input: {
-    projectId: "PVT_kwHOBJLKfM4BSrJK"
-    itemId: "<ITEM_ID>"
-    fieldId: "PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q"
-    value: { singleSelectOptionId: "<OPTION_ID>" }
-  }) { projectV2Item { id } }
-}'
-
-# プロジェクトアイテムID (PVTI_...) を取得する
-gh api graphql -f query='
-query {
-  repository(owner: "hmjn023", name: "solid-imager") {
-    issue(number: <NUMBER>) {
-      projectItems(first: 10) {
-        nodes { id project { title } }
-      }
-    }
-  }
-}'
+# アイテムID (PVTI_...) を取得
+gh api graphql -f query='query { repository(owner:"hmjn023", name:"solid-imager") { issue(number:<NUMBER>) { projectItems(first:10) { nodes { id } } } } }'
 ```
