@@ -5,250 +5,250 @@ const PROCESSED_VIDEO_CLASS = "xtracter-video-processed";
 const AUTHOR_ID_REGEX = /@\w+/;
 
 export function processTwitterMedia(
-  processedMetadata: Map<string, TweetMetadata>,
-  createButtonContainer: (
-    metadata: TweetMetadata,
-    type: "IMAGE" | "VIDEO"
-  ) => HTMLDivElement
+	processedMetadata: Map<string, TweetMetadata>,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
-  processImages(processedMetadata, createButtonContainer);
-  processVideos(processedMetadata, createButtonContainer);
+	processImages(processedMetadata, createButtonContainer);
+	processVideos(processedMetadata, createButtonContainer);
 }
 
 function processImages(
-  processedMetadata: Map<string, TweetMetadata>,
-  createButtonContainer: (
-    metadata: TweetMetadata,
-    type: "IMAGE" | "VIDEO"
-  ) => HTMLDivElement
+	processedMetadata: Map<string, TweetMetadata>,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
-  const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
-  for (const img of images) {
-    const imageElement = img as HTMLImageElement;
+	const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
+	for (const img of images) {
+		const imageElement = img as HTMLImageElement;
 
-    if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
-      continue;
-    }
+		if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
+			continue;
+		}
 
-    const container = imageElement.parentElement;
-    if (container) {
-      // Extract metadata first
-      const tweetArticle = findTweetArticle(imageElement);
-      const metadata = extractMetadata(tweetArticle, imageElement, "IMAGE");
+		const container = imageElement.parentElement;
+		if (container) {
+			// Extract metadata first
+			const tweetArticle = findTweetArticle(imageElement);
+			const metadata = extractMetadata(tweetArticle, imageElement, "IMAGE");
 
-      // Store metadata for bulk export
-      if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
-        processedMetadata.set(metadata.targetUrl, metadata);
-      }
+			// Store metadata for bulk export
+			if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
+				processedMetadata.set(metadata.targetUrl, metadata);
+			}
 
-      const style = window.getComputedStyle(container);
-      if (style.position === "static") {
-        container.style.position = "relative";
-      }
-      container.classList.add(PROCESSED_IMAGE_CLASS);
-      const btnContainer = createButtonContainer(metadata, "IMAGE");
-      container.appendChild(btnContainer);
-    }
-  }
+			const style = window.getComputedStyle(container);
+			if (style.position === "static") {
+				container.style.position = "relative";
+			}
+			container.classList.add(PROCESSED_IMAGE_CLASS);
+			const btnContainer = createButtonContainer(metadata, "IMAGE");
+			container.appendChild(btnContainer);
+		}
+	}
 }
 
 function processVideos(
-  processedMetadata: Map<string, TweetMetadata>,
-  createButtonContainer: (
-    metadata: TweetMetadata,
-    type: "IMAGE" | "VIDEO"
-  ) => HTMLDivElement
+	processedMetadata: Map<string, TweetMetadata>,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
-  const videoComponents = document.querySelectorAll(
-    'div[data-testid="videoComponent"]'
-  );
-  for (const videoComponent of videoComponents) {
-    const container = videoComponent.parentElement;
-    if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) {
-      continue;
-    }
-    if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) {
-      continue;
-    }
+	const videoComponents = document.querySelectorAll(
+		'div[data-testid="videoComponent"]',
+	);
+	for (const videoComponent of videoComponents) {
+		const container = videoComponent.parentElement;
+		if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) {
+			continue;
+		}
+		if (container.querySelector(`.${PROCESSED_VIDEO_CLASS}`)) {
+			continue;
+		}
 
-    const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
-    const metadata = extractMetadata(
-      tweetArticle,
-      container as HTMLElement,
-      "VIDEO"
-    );
+		const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
+		const metadata = extractMetadata(
+			tweetArticle,
+			container as HTMLElement,
+			"VIDEO",
+		);
 
-    // Store metadata for bulk export
-    if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
-      processedMetadata.set(metadata.targetUrl, metadata);
-    }
+		// Store metadata for bulk export
+		if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
+			processedMetadata.set(metadata.targetUrl, metadata);
+		}
 
-    const style = window.getComputedStyle(container);
-    if (style.position === "static") {
-      container.style.position = "relative";
-    }
+		const style = window.getComputedStyle(container);
+		if (style.position === "static") {
+			container.style.position = "relative";
+		}
 
-    container.classList.add(PROCESSED_VIDEO_CLASS);
+		container.classList.add(PROCESSED_VIDEO_CLASS);
 
-    const btnContainer = createButtonContainer(metadata, "VIDEO");
-    btnContainer.style.top = "10px";
-    btnContainer.style.right = "10px";
+		const btnContainer = createButtonContainer(metadata, "VIDEO");
+		btnContainer.style.top = "10px";
+		btnContainer.style.right = "10px";
 
-    container.appendChild(btnContainer);
-  }
+		container.appendChild(btnContainer);
+	}
 }
 
 function findTweetArticle(element: HTMLElement): HTMLElement | null {
-  const closest = element.closest("article");
-  if (closest) {
-    return closest;
-  }
+	const closest = element.closest("article");
+	if (closest) {
+		return closest;
+	}
 
-  const layer =
-    element.closest('[data-testid="layers"]') ||
-    document.querySelector('[data-testid="layers"]');
-  if (layer) {
-    const article = layer.querySelector("article");
-    if (article) {
-      return article as HTMLElement;
-    }
-  }
+	const layer =
+		element.closest('[data-testid="layers"]') ||
+		document.querySelector('[data-testid="layers"]');
+	if (layer) {
+		const article = layer.querySelector("article");
+		if (article) {
+			return article as HTMLElement;
+		}
+	}
 
-  const articles = document.querySelectorAll("article");
-  if (articles.length === 1) {
-    return articles[0] as HTMLElement;
-  }
+	const articles = document.querySelectorAll("article");
+	if (articles.length === 1) {
+		return articles[0] as HTMLElement;
+	}
 
-  return null;
+	return null;
 }
 
 function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
-  const url = new URL(window.location.href);
-  const pathParts = url.pathname.split("/").filter((p) => p);
+	const url = new URL(window.location.href);
+	const pathParts = url.pathname.split("/").filter((p) => p);
 
-  let authorId = "";
-  let tweetUrl = window.location.href;
+	let authorId = "";
+	let tweetUrl = window.location.href;
 
-  const MIN_PATH_PARTS_FOR_STATUS = 3;
-  const STATUS_PART_INDEX = 1;
-  const TWEET_ID_PART_INDEX = 2;
+	const MIN_PATH_PARTS_FOR_STATUS = 3;
+	const STATUS_PART_INDEX = 1;
+	const TWEET_ID_PART_INDEX = 2;
 
-  if (
-    pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
-    pathParts[STATUS_PART_INDEX] === "status"
-  ) {
-    authorId = `@${pathParts[0]}`;
-    tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
-  }
+	if (
+		pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
+		pathParts[STATUS_PART_INDEX] === "status"
+	) {
+		authorId = `@${pathParts[0]}`;
+		tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
+	}
 
-  return { authorId, tweetUrl };
+	return { authorId, tweetUrl };
 }
 
 function extractMetadata(
-  article: HTMLElement | null,
-  element: HTMLElement,
-  mediaType: "IMAGE" | "VIDEO" = "IMAGE"
+	article: HTMLElement | null,
+	element: HTMLElement,
+	mediaType: "IMAGE" | "VIDEO" = "IMAGE",
 ): TweetMetadata {
-  let tweetText = "";
-  let timestamp = "";
-  let tweetUrl = window.location.href;
-  let authorName = "";
-  let authorId = "";
+	let tweetText = "";
+	let timestamp = "";
+	let tweetUrl = window.location.href;
+	let authorName = "";
+	let authorId = "";
 
-  if (article) {
-    const extracted = extractFromArticle(article);
-    tweetText = extracted.tweetText;
-    timestamp = extracted.timestamp;
-    tweetUrl = extracted.tweetUrl;
-    authorName = extracted.authorName;
-    authorId = extracted.authorId;
-  }
+	if (article) {
+		const extracted = extractFromArticle(article);
+		tweetText = extracted.tweetText;
+		timestamp = extracted.timestamp;
+		tweetUrl = extracted.tweetUrl;
+		authorName = extracted.authorName;
+		authorId = extracted.authorId;
+	}
 
-  if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
-    const urlMetadata = extractMetadataFromUrl();
-    authorId = authorId || urlMetadata.authorId;
-    tweetUrl = urlMetadata.tweetUrl || tweetUrl;
-  }
+	if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
+		const urlMetadata = extractMetadataFromUrl();
+		authorId = authorId || urlMetadata.authorId;
+		tweetUrl = urlMetadata.tweetUrl || tweetUrl;
+	}
 
-  const targetUrl = determineTargetUrl(element, mediaType, tweetUrl);
+	const targetUrl = determineTargetUrl(element, mediaType, tweetUrl);
 
-  const authors: Author[] = [];
-  if (authorName || authorId) {
-    authors.push({
-      name: authorName || authorId,
-      accountId: authorId,
-    });
-  }
+	const authors: Author[] = [];
+	if (authorName || authorId) {
+		authors.push({
+			name: authorName || authorId,
+			accountId: authorId,
+		});
+	}
 
-  const sourceUrls = [tweetUrl];
-  if (mediaType === "IMAGE") {
-    sourceUrls.unshift(targetUrl);
-  }
+	const sourceUrls = [tweetUrl];
+	if (mediaType === "IMAGE") {
+		sourceUrls.unshift(targetUrl);
+	}
 
-  return {
-    targetUrl,
-    sourceUrls,
-    description: tweetText,
-    createdAt: timestamp,
-    authors,
-    userAgent: navigator.userAgent,
-  };
+	return {
+		targetUrl,
+		sourceUrls,
+		description: tweetText,
+		createdAt: timestamp,
+		authors,
+		userAgent: navigator.userAgent,
+	};
 }
 
 function determineTargetUrl(
-  element: HTMLElement,
-  mediaType: "IMAGE" | "VIDEO",
-  tweetUrl: string
+	element: HTMLElement,
+	mediaType: "IMAGE" | "VIDEO",
+	tweetUrl: string,
 ): string {
-  if (mediaType === "VIDEO") {
-    return tweetUrl;
-  }
+	if (mediaType === "VIDEO") {
+		return tweetUrl;
+	}
 
-  try {
-    const img = element as HTMLImageElement;
-    const url = new URL(img.src);
-    url.searchParams.set("name", "orig");
-    return url.toString();
-  } catch (_e) {
-    return (element as HTMLImageElement).src;
-  }
+	try {
+		const img = element as HTMLImageElement;
+		const url = new URL(img.src);
+		url.searchParams.set("name", "orig");
+		return url.toString();
+	} catch (_e) {
+		return (element as HTMLImageElement).src;
+	}
 }
 
 function extractFromArticle(article: HTMLElement) {
-  const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
-  const tweetText = tweetTextNode
-    ? (tweetTextNode as HTMLElement).innerText
-    : "";
+	const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
+	const tweetText = tweetTextNode
+		? (tweetTextNode as HTMLElement).innerText
+		: "";
 
-  const timeNode = article.querySelector("time");
-  const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
+	const timeNode = article.querySelector("time");
+	const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
 
-  let tweetUrl = window.location.href;
-  const timeLink = timeNode?.closest("a");
-  if (timeLink) {
-    tweetUrl = timeLink.href;
-  }
+	let tweetUrl = window.location.href;
+	const timeLink = timeNode?.closest("a");
+	if (timeLink) {
+		tweetUrl = timeLink.href;
+	}
 
-  const userNameNode = article.querySelector('div[data-testid="User-Name"]');
-  const authorName = userNameNode?.querySelector("span")?.innerText || "";
+	const userNameNode = article.querySelector('div[data-testid="User-Name"]');
+	const authorName = userNameNode?.querySelector("span")?.innerText || "";
 
-  let authorId = "";
-  const userAnchor = userNameNode?.querySelector("a");
-  if (userAnchor) {
-    try {
-      const url = new URL(userAnchor.href);
-      const pathParts = url.pathname.split("/").filter((p) => p);
-      if (pathParts.length > 0) {
-        authorId = `@${pathParts[0]}`;
-      }
-    } catch (_e) {
-      // Ignored
-    }
-  }
+	let authorId = "";
+	const userAnchor = userNameNode?.querySelector("a");
+	if (userAnchor) {
+		try {
+			const url = new URL(userAnchor.href);
+			const pathParts = url.pathname.split("/").filter((p) => p);
+			if (pathParts.length > 0) {
+				authorId = `@${pathParts[0]}`;
+			}
+		} catch (_e) {
+			// Ignored
+		}
+	}
 
-  if (!authorId) {
-    authorId = userNameNode?.textContent?.match(AUTHOR_ID_REGEX)?.[0] || "";
-  }
+	if (!authorId) {
+		authorId = userNameNode?.textContent?.match(AUTHOR_ID_REGEX)?.[0] || "";
+	}
 
-  return { tweetText, timestamp, tweetUrl, authorName, authorId };
+	return { tweetText, timestamp, tweetUrl, authorName, authorId };
 }

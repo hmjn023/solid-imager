@@ -19,6 +19,7 @@
     "includes": [
       "apps/**/src/**",
       "packages/**/src/**",
+      "xtracter/src/**",
       "!**/node_modules",
       "!**/dist",
       "!**/.vinxi",

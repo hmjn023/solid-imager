@@ -1,10 +1,25 @@
 import path from "node:path";
-import { crx } from "@crxjs/vite-plugin";
-import { defineConfig } from "vite-plus";
-import manifest from "./manifest.json" with { type: "json" };
+import { defineConfig } from "vite";
+import solidPlugin from "vite-plugin-solid";
 
 export default defineConfig({
-  plugins: [crx({ manifest })],
+  plugins: [solidPlugin()],
+  build: {
+    outDir: "dist",
+    emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        popup: path.resolve(__dirname, "src/popup/index.html"),
+        background: path.resolve(__dirname, "src/background/index.ts"),
+        content: path.resolve(__dirname, "src/content/index.ts"),
+      },
+      output: {
+        entryFileNames: "[name].js",
+        chunkFileNames: "[name].js",
+        assetFileNames: "[name].[ext]",
+      },
+    },
+  },
   resolve: {
     alias: {
       "@ext": path.resolve(__dirname, "./src"),
