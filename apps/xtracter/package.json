@@ -17,7 +17,6 @@
     "@types/node": "^20.11.24",
     "solid-js": "^1.9.12",
     "typescript": "^5.2.2",
-    "vite": "6.0.0",
     "vite-plugin-solid": "^2.11.11",
     "vite-plus": "latest"
   },
