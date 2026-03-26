@@ -29,7 +29,7 @@
   },
   "peerDependencies": {
     "zod": "^4.3.5",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

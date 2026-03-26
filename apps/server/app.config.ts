@@ -27,7 +27,8 @@ export default defineConfig({
         "cookie",
         "exact-mirror",
         "fast-decode-uri-component",
-        "solid-sonner"
+        "solid-sonner",
+        "solid-js"
       ],
       external: ["pg"],
     },
