@@ -16,9 +16,13 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SourcesIndexRouteImport } from './routes/sources/index'
+import { Route as ApiEventsRouteImport } from './routes/api/events'
 import { Route as SourcesMediaSourceIdIndexRouteImport } from './routes/sources/$mediaSourceId/index'
 import { Route as DocsSwaggerIndexRouteImport } from './routes/docs/swagger/index'
+import { Route as ApiRpcSplatRouteImport } from './routes/api/rpc.$'
 import { Route as SourcesMediaSourceIdMediaIdIndexRouteImport } from './routes/sources/$mediaSourceId/$mediaId/index'
+import { Route as ApiSourcesMediaSourceIdMediaIdRouteImport } from './routes/api/sources.$mediaSourceId.$mediaId'
+import { Route as ApiSourcesMediaSourceIdMediaIdThumbnailRouteImport } from './routes/api/sources.$mediaSourceId.$mediaId.thumbnail'
 
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
@@ -55,6 +59,11 @@ const SourcesIndexRoute = SourcesIndexRouteImport.update({
   path: '/sources/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEventsRoute = ApiEventsRouteImport.update({
+  id: '/api/events',
+  path: '/api/events',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SourcesMediaSourceIdIndexRoute =
   SourcesMediaSourceIdIndexRouteImport.update({
     id: '/sources/$mediaSourceId/',
@@ -66,11 +75,28 @@ const DocsSwaggerIndexRoute = DocsSwaggerIndexRouteImport.update({
   path: '/docs/swagger/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRpcSplatRoute = ApiRpcSplatRouteImport.update({
+  id: '/api/rpc/$',
+  path: '/api/rpc/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SourcesMediaSourceIdMediaIdIndexRoute =
   SourcesMediaSourceIdMediaIdIndexRouteImport.update({
     id: '/sources/$mediaSourceId/$mediaId/',
     path: '/sources/$mediaSourceId/$mediaId/',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSourcesMediaSourceIdMediaIdRoute =
+  ApiSourcesMediaSourceIdMediaIdRouteImport.update({
+    id: '/api/sources/$mediaSourceId/$mediaId',
+    path: '/api/sources/$mediaSourceId/$mediaId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiSourcesMediaSourceIdMediaIdThumbnailRoute =
+  ApiSourcesMediaSourceIdMediaIdThumbnailRouteImport.update({
+    id: '/thumbnail',
+    path: '/thumbnail',
+    getParentRoute: () => ApiSourcesMediaSourceIdMediaIdRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -80,10 +106,14 @@ export interface FileRoutesByFullPath {
   '/config': typeof ConfigRoute
   '/manager': typeof ManagerRoute
   '/search': typeof SearchRoute
+  '/api/events': typeof ApiEventsRoute
   '/sources/': typeof SourcesIndexRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/docs/swagger/': typeof DocsSwaggerIndexRoute
   '/sources/$mediaSourceId/': typeof SourcesMediaSourceIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId': typeof ApiSourcesMediaSourceIdMediaIdRouteWithChildren
   '/sources/$mediaSourceId/$mediaId/': typeof SourcesMediaSourceIdMediaIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId/thumbnail': typeof ApiSourcesMediaSourceIdMediaIdThumbnailRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,10 +122,14 @@ export interface FileRoutesByTo {
   '/config': typeof ConfigRoute
   '/manager': typeof ManagerRoute
   '/search': typeof SearchRoute
+  '/api/events': typeof ApiEventsRoute
   '/sources': typeof SourcesIndexRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/docs/swagger': typeof DocsSwaggerIndexRoute
   '/sources/$mediaSourceId': typeof SourcesMediaSourceIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId': typeof ApiSourcesMediaSourceIdMediaIdRouteWithChildren
   '/sources/$mediaSourceId/$mediaId': typeof SourcesMediaSourceIdMediaIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId/thumbnail': typeof ApiSourcesMediaSourceIdMediaIdThumbnailRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,10 +139,14 @@ export interface FileRoutesById {
   '/config': typeof ConfigRoute
   '/manager': typeof ManagerRoute
   '/search': typeof SearchRoute
+  '/api/events': typeof ApiEventsRoute
   '/sources/': typeof SourcesIndexRoute
+  '/api/rpc/$': typeof ApiRpcSplatRoute
   '/docs/swagger/': typeof DocsSwaggerIndexRoute
   '/sources/$mediaSourceId/': typeof SourcesMediaSourceIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId': typeof ApiSourcesMediaSourceIdMediaIdRouteWithChildren
   '/sources/$mediaSourceId/$mediaId/': typeof SourcesMediaSourceIdMediaIdIndexRoute
+  '/api/sources/$mediaSourceId/$mediaId/thumbnail': typeof ApiSourcesMediaSourceIdMediaIdThumbnailRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -119,10 +157,14 @@ export interface FileRouteTypes {
     | '/config'
     | '/manager'
     | '/search'
+    | '/api/events'
     | '/sources/'
+    | '/api/rpc/$'
     | '/docs/swagger/'
     | '/sources/$mediaSourceId/'
+    | '/api/sources/$mediaSourceId/$mediaId'
     | '/sources/$mediaSourceId/$mediaId/'
+    | '/api/sources/$mediaSourceId/$mediaId/thumbnail'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -131,10 +173,14 @@ export interface FileRouteTypes {
     | '/config'
     | '/manager'
     | '/search'
+    | '/api/events'
     | '/sources'
+    | '/api/rpc/$'
     | '/docs/swagger'
     | '/sources/$mediaSourceId'
+    | '/api/sources/$mediaSourceId/$mediaId'
     | '/sources/$mediaSourceId/$mediaId'
+    | '/api/sources/$mediaSourceId/$mediaId/thumbnail'
   id:
     | '__root__'
     | '/'
@@ -143,10 +189,14 @@ export interface FileRouteTypes {
     | '/config'
     | '/manager'
     | '/search'
+    | '/api/events'
     | '/sources/'
+    | '/api/rpc/$'
     | '/docs/swagger/'
     | '/sources/$mediaSourceId/'
+    | '/api/sources/$mediaSourceId/$mediaId'
     | '/sources/$mediaSourceId/$mediaId/'
+    | '/api/sources/$mediaSourceId/$mediaId/thumbnail'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -156,9 +206,12 @@ export interface RootRouteChildren {
   ConfigRoute: typeof ConfigRoute
   ManagerRoute: typeof ManagerRoute
   SearchRoute: typeof SearchRoute
+  ApiEventsRoute: typeof ApiEventsRoute
   SourcesIndexRoute: typeof SourcesIndexRoute
+  ApiRpcSplatRoute: typeof ApiRpcSplatRoute
   DocsSwaggerIndexRoute: typeof DocsSwaggerIndexRoute
   SourcesMediaSourceIdIndexRoute: typeof SourcesMediaSourceIdIndexRoute
+  ApiSourcesMediaSourceIdMediaIdRoute: typeof ApiSourcesMediaSourceIdMediaIdRouteWithChildren
   SourcesMediaSourceIdMediaIdIndexRoute: typeof SourcesMediaSourceIdMediaIdIndexRoute
 }
 
@@ -213,6 +266,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof SourcesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/events': {
+      id: '/api/events'
+      path: '/api/events'
+      fullPath: '/api/events'
+      preLoaderRoute: typeof ApiEventsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sources/$mediaSourceId/': {
       id: '/sources/$mediaSourceId/'
       path: '/sources/$mediaSourceId'
@@ -227,6 +287,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DocsSwaggerIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/rpc/$': {
+      id: '/api/rpc/$'
+      path: '/api/rpc/$'
+      fullPath: '/api/rpc/$'
+      preLoaderRoute: typeof ApiRpcSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sources/$mediaSourceId/$mediaId/': {
       id: '/sources/$mediaSourceId/$mediaId/'
       path: '/sources/$mediaSourceId/$mediaId'
@@ -234,8 +301,37 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof SourcesMediaSourceIdMediaIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/sources/$mediaSourceId/$mediaId': {
+      id: '/api/sources/$mediaSourceId/$mediaId'
+      path: '/api/sources/$mediaSourceId/$mediaId'
+      fullPath: '/api/sources/$mediaSourceId/$mediaId'
+      preLoaderRoute: typeof ApiSourcesMediaSourceIdMediaIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/sources/$mediaSourceId/$mediaId/thumbnail': {
+      id: '/api/sources/$mediaSourceId/$mediaId/thumbnail'
+      path: '/thumbnail'
+      fullPath: '/api/sources/$mediaSourceId/$mediaId/thumbnail'
+      preLoaderRoute: typeof ApiSourcesMediaSourceIdMediaIdThumbnailRouteImport
+      parentRoute: typeof ApiSourcesMediaSourceIdMediaIdRoute
+    }
   }
 }
+
+interface ApiSourcesMediaSourceIdMediaIdRouteChildren {
+  ApiSourcesMediaSourceIdMediaIdThumbnailRoute: typeof ApiSourcesMediaSourceIdMediaIdThumbnailRoute
+}
+
+const ApiSourcesMediaSourceIdMediaIdRouteChildren: ApiSourcesMediaSourceIdMediaIdRouteChildren =
+  {
+    ApiSourcesMediaSourceIdMediaIdThumbnailRoute:
+      ApiSourcesMediaSourceIdMediaIdThumbnailRoute,
+  }
+
+const ApiSourcesMediaSourceIdMediaIdRouteWithChildren =
+  ApiSourcesMediaSourceIdMediaIdRoute._addFileChildren(
+    ApiSourcesMediaSourceIdMediaIdRouteChildren,
+  )
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
@@ -244,9 +340,13 @@ const rootRouteChildren: RootRouteChildren = {
   ConfigRoute: ConfigRoute,
   ManagerRoute: ManagerRoute,
   SearchRoute: SearchRoute,
+  ApiEventsRoute: ApiEventsRoute,
   SourcesIndexRoute: SourcesIndexRoute,
+  ApiRpcSplatRoute: ApiRpcSplatRoute,
   DocsSwaggerIndexRoute: DocsSwaggerIndexRoute,
   SourcesMediaSourceIdIndexRoute: SourcesMediaSourceIdIndexRoute,
+  ApiSourcesMediaSourceIdMediaIdRoute:
+    ApiSourcesMediaSourceIdMediaIdRouteWithChildren,
   SourcesMediaSourceIdMediaIdIndexRoute: SourcesMediaSourceIdMediaIdIndexRoute,
 }
 export const routeTree = rootRouteImport

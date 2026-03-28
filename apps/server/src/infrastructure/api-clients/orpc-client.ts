@@ -1,23 +1,24 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";
+import { createIsomorphicFn } from "@tanstack/solid-start";
+import { getRequestHeaders } from "@tanstack/solid-start/server";
 import type { AppRouter } from "~/domain/shared/api-contract";
 
-/**
- * Get the base URL for oRPC
- * In browser: use current origin
- * In SSR: use localhost (fallback)
- */
-export function getBaseUrl(): string {
-	if (typeof window !== "undefined") {
-		return `${window.location.origin}/api/rpc`;
-	}
-	return "http://localhost:3000/api/rpc";
-}
-
-const link = new RPCLink({
-	url: getBaseUrl(),
-});
+const link = createIsomorphicFn()
+	.client(
+		() =>
+			new RPCLink({
+				url: `${window.location.origin}/api/rpc`,
+			}),
+	)
+	.server(
+		() =>
+			new RPCLink({
+				url: "http://localhost:3000/api/rpc",
+				headers: () => getRequestHeaders(),
+			}),
+	);
 
 /**
  * oRPC クライアント
