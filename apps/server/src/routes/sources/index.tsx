@@ -102,7 +102,7 @@ export default function Sources() {
 			return;
 		}
 		setIsSyncing(true);
-		toast(`Starting sync for ${source.name}...`);
+		toast.info(`Starting sync for ${source.name}...`);
 		try {
 			await syncMediaSources([source.id]);
 			toast.success(`Sync finished for ${source.name}`);
@@ -124,7 +124,7 @@ export default function Sources() {
 		}
 
 		setIsSyncing(true);
-		toast("Starting sync for all sources...");
+		toast.info("Starting sync for all sources...");
 		try {
 			const ids = sources.map((s) => s.id).filter(Boolean) as string[];
 			await syncMediaSources(ids);

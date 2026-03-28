@@ -634,7 +634,7 @@ export default function MediaListPage() {
 		}
 
 		setIsSyncingMedia(true);
-		toast("Starting batch sync for loaded media...");
+		toast.info("Starting batch sync for loaded media...");
 		try {
 			await syncMediaItems(mediaSourceId() || "", mediaIds);
 			toast.success(`Batch sync completed for ${mediaIds.length} items`);
@@ -648,7 +648,7 @@ export default function MediaListPage() {
 	};
 
 	const handleSyncSingleMedia = async (mediaId: string) => {
-		toast("Starting metadata sync...");
+		toast.info("Starting metadata sync...");
 		try {
 			await syncMediaItems(mediaSourceId() || "", [mediaId]);
 			toast.success("Metadata synced successfully");
