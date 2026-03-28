@@ -5,20 +5,14 @@ import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeaders } from "@tanstack/solid-start/server";
 import type { AppRouter } from "~/domain/shared/api-contract";
 
-const link = createIsomorphicFn()
-	.client(
-		() =>
-			new RPCLink({
-				url: `${window.location.origin}/api/rpc`,
-			}),
-	)
-	.server(
-		() =>
-			new RPCLink({
-				url: "http://localhost:3000/api/rpc",
-				headers: () => getRequestHeaders(),
-			}),
-	);
+const getHeaders = createIsomorphicFn()
+	.client(() => ({}))
+	.server(() => getRequestHeaders());
+
+const link = new RPCLink({
+	url: "/api/rpc",
+	headers: () => getHeaders(),
+});
 
 /**
  * oRPC クライアント
