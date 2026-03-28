@@ -5,7 +5,6 @@ import { createRouterClient } from "@orpc/server";
 import { createTanstackQueryUtils } from "@orpc/tanstack-query";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeaders } from "@tanstack/solid-start/server";
-import { isServer } from "solid-js/web";
 
 import { appRouter as router } from "~/domain/shared/api-contract";
 

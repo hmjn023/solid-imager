@@ -37,7 +37,9 @@ function initializeDb() {
 	const isTestEnv =
 		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-	console.log(`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`);
+	console.log(
+		`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`,
+	);
 
 	// テスト環境では必ずPGliteを使用
 	if (isTestEnv || dbHost === "pglite") {
