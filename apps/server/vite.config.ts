@@ -1,24 +1,18 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import { devtools } from "@tanstack/devtools-vite";
+import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
+import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import solidPlugin from "vite-plugin-solid";
 import { nitro } from "nitro/vite";
+import { devtools } from "@tanstack/devtools-vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
-  plugins: [
-    devtools(),
-    nitro(),
-    tailwindcss(),
-    tanstackStart(),
-    solidPlugin({ ssr: true }),
-  ],
   resolve: {
-    tsconfigPaths: true,
     alias: {
       "@solid-imager/core": path.resolve(
         __dirname,
@@ -28,37 +22,36 @@ export default defineConfig({
       "~": path.resolve(__dirname, "./src"),
     },
   },
+  plugins: [
+    devtools(),
+    nitro(),
+    viteTsConfigPaths({
+      projects: ["./tsconfig.json"],
+    }),
+    tanstackRouter({
+      target: "solid",
+      autoCodeSplitting: true,
+    }),
+    tailwindcss(),
+    tanstackStart(),
+    solidPlugin({ ssr: true }),
+  ],
   ssr: {
-    noExternal: [
-      "drizzle-orm",
-      "effect",
-      "memoirist",
-      "cookie",
-      "exact-mirror",
-      "fast-decode-uri-component",
-      "solid-sonner",
-      "solid-js",
+    external: [
+      "pg",
+      "sharp",
+      "ffmpeg-static",
+      "ffmpeg-static-static",
+      "fluent-ffmpeg",
+      "archiver"
     ],
-    external: ["pg"],
-  },
-  optimizeDeps: {
-    exclude: ["pg"],
-  },
-  build: {
-    rollupOptions: {
-      external: ["pg"],
-    },
-  },
-  server: {
-    watch: {
-      ignored: [
-        "**/node_modules/**",
-        "**/.git/**",
-        "**/.data/**",
-        "**/.thumbnails/**",
-        "**/data/**",
-        "**/tmp/**",
-      ],
-    },
+    noExternal: [
+      "@tanstack/solid-router",
+      "@tanstack/solid-start",
+      "@tanstack/router-core",
+      "@tanstack/history",
+      "solid-js",
+      "solid-sonner"
+    ],
   },
 });

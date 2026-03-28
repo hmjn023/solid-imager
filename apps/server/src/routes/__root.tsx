@@ -1,62 +1,33 @@
-import { Toaster } from "@solid-imager/ui/toast";
-import { type QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import {
-	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 	Scripts,
+	createRootRouteWithContext,
 } from "@tanstack/solid-router";
-import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
+import { Suspense } from "solid-js";
 import Nav from "~/components/nav";
-import "~/app.css";
+import styleCss from "~/app.css?url";
 
-interface RouterContext {
-	queryClient: QueryClient;
-}
-
-export const Route = createRootRouteWithContext<RouterContext>()({
+export const Route = createRootRouteWithContext()({
 	head: () => ({
-		meta: [
-			{
-				charset: "utf-8",
-			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: "Solid Imager",
-			},
-		],
-		links: [
-			{
-				rel: "icon",
-				href: "/favicon.ico",
-			},
-		],
+		links: [{ rel: "stylesheet", href: styleCss }],
 	}),
 	shellComponent: RootComponent,
 });
 
 function RootComponent() {
-	const context = Route.useRouteContext();
-	const queryClient = context().queryClient;
-
 	return (
 		<html lang="en">
 			<head>
 				<HydrationScript />
-				<HeadContent />
 			</head>
 			<body>
-				<QueryClientProvider client={queryClient}>
+				<HeadContent />
+				<Suspense>
 					<Nav />
-					<Toaster />
-					<Suspense>
-						<Outlet />
-					</Suspense>
-				</QueryClientProvider>
+					<Outlet />
+				</Suspense>
 				<Scripts />
 			</body>
 		</html>

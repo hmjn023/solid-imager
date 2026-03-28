@@ -1,6 +1,11 @@
 import { QueryClient } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
+import { isServer } from "solid-js/web";
 import { routeTree } from "./routeTree.gen";
+
+if (isServer) {
+	import("./infrastructure/bootstrap").then(({ bootstrap }) => bootstrap());
+}
 
 const SECONDS_PER_MINUTE = 60;
 const MS_PER_SECOND = 1000;
