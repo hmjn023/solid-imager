@@ -29,9 +29,10 @@ function getContext() {
 }
 
 export function getRouter() {
+	const context = getContext();
 	const router = createTanStackRouter({
 		routeTree,
-		context: getContext(),
+		context,
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,
