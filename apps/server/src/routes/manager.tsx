@@ -525,7 +525,6 @@ export default function ManagerPage() {
 								{(progress) => (
 									<div class="mt-4">
 										<Progress
-											// biome-ignore lint/style/noMagicNumbers: Percentage calculation
 											value={(progress().processed / progress().total) * 100}
 										/>
 									</div>

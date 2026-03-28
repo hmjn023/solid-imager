@@ -3,7 +3,6 @@ import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
-// biome-ignore lint/performance/noNamespaceImport: Drizzle ORM requires the schema as a single object.
 import * as schema from "./schema";
 
 export type NodePostgresDb = ReturnType<

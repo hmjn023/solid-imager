@@ -44,7 +44,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				}
 				when={props.media.mediaType === "image"}
 			>
-				{/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
 				<img
 					alt={props.media.fileName}
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"

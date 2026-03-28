@@ -188,7 +188,6 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										/>
 										<Show when={field().state.meta.errors.length > 0}>
 											<p class="text-red-500 text-sm">
-												{/* biome-ignore lint/suspicious/noExplicitAny: error object structure */}
 												{(field().state.meta.errors[0] as any)?.message ??
 													field().state.meta.errors[0]}
 											</p>
@@ -230,7 +229,6 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 												/>
 												<Show when={field().state.meta.errors.length > 0}>
 													<p class="text-red-500 text-sm">
-														{/* biome-ignore lint/suspicious/noExplicitAny: error object structure */}
 														{(field().state.meta.errors[0] as any)?.message ??
 															field().state.meta.errors[0]}
 													</p>
@@ -247,8 +245,6 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 							</div>
 							<Show when={previewUrl()}>
 								<div class="col-span-4 mt-2 flex justify-center">
-									{/* biome-ignore lint/performance/noImgElement: This is a preview image. */}
-									{/* biome-ignore lint: This is a preview image. */}
 									<img
 										alt="Fetched preview"
 										class="max-h-48"

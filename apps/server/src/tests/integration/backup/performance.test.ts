@@ -66,12 +66,9 @@ describe("BackupService Performance", () => {
 			modifiedAt: new Date().toISOString(),
 			tags: [
 				{ name: `Tag A ${i % 10}`, type: "positive" },
-				// biome-ignore lint/style/noMagicNumbers: test data generation
 				{ name: `Tag B ${i % 20}`, type: "positive" },
 			],
-			// biome-ignore lint/style/noMagicNumbers: test data generation
 			authors: [{ name: `Author ${i % 5}` }],
-			// biome-ignore lint/style/noMagicNumbers: test data generation
 			projects: [{ name: `Project ${i % 3}` }],
 		}));
 
@@ -93,7 +90,6 @@ describe("BackupService Performance", () => {
 
 		// Performance assertion (Soft limit: 1000 items should take less than 5 seconds on average hardware with in-memory DB)
 		// Adjust based on environment
-		// biome-ignore lint/style/noMagicNumbers: performance threshold
 		expect(duration).toBeLessThan(5000);
 	});
 });

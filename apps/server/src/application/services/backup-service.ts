@@ -85,11 +85,7 @@ export const BackupService = {
 	 * Restores media metadata from a JSON dump.
 	 * Optimized with Bulk Operations.
 	 */
-	async restoreSource(
-		mediaSourceId: string,
-		// biome-ignore lint/suspicious/noExplicitAny: complex dump structure but partially typed
-		items: any[],
-	) {
+	async restoreSource(mediaSourceId: string, items: any[]) {
 		const mediaSource = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});
@@ -174,7 +170,6 @@ export const BackupService = {
 		};
 	},
 
-	// biome-ignore lint/suspicious/noExplicitAny: complex structure
 	async _filterValidItems(items: any[], mediaSource: any) {
 		const connectionInfo = mediaSource.connectionInfo as { path: string };
 		const basePath = connectionInfo.path;
@@ -223,7 +218,6 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
 	async _restoreMasterData(validItems: MediaDumpItem[]) {
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, { accountId?: string | null }>();
@@ -311,9 +305,7 @@ export const BackupService = {
 	) {
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
-			// biome-ignore lint/style/noNonNullAssertion: Filtered in _filterValidItems
 			filePath: item.filePath!,
-			// biome-ignore lint/style/noNonNullAssertion: Filtered in _filterValidItems
 			fileName: item.fileName!,
 			description: item.description || null,
 			width: item.width ?? 0,
@@ -381,7 +373,6 @@ export const BackupService = {
 		return new Map(storedMedias.map((m) => [m.filePath, m.id]));
 	},
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: data processing
 	async _restoreRelations({
 		validItems,
 		mediaPathToId,
@@ -399,24 +390,16 @@ export const BackupService = {
 		ipMap: Map<string, string>;
 		charMap: Map<string, string>;
 	}) {
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure for db insert
 		const mediaTagsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaAuthorsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaProjectsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaCharsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const characterIpsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaIpsData: any[] = [];
 		// Track unique (mediaId, ipId) pairs to prevent duplicates
 		const seenMediaIps = new Set<string>();
 		// ... rest of data arrays
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaUrlsData: any[] = [];
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		const mediaGenInfoData: any[] = [];
 
 		for (const item of validItems) {
@@ -564,7 +547,6 @@ export const BackupService = {
 				.where(inArray(mediaGenerationInfo.mediaId, mediaIds));
 		}
 
-		// biome-ignore lint/suspicious/noExplicitAny: generic table and data
 		const insertChunked = async (table: any, data: any[]) => {
 			const BatchSize = 1000;
 			for (let i = 0; i < data.length; i += BatchSize) {
@@ -602,12 +584,9 @@ export const BackupService = {
 	},
 
 	async _ensureMasterData(
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		table: any,
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		nameColumn: any,
 		names: Set<string>,
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		defaults: any,
 	): Promise<Map<string, string>> {
 		const nameList = Array.from(names);
@@ -627,7 +606,6 @@ export const BackupService = {
 			.from(table)
 			.where(inArray(nameColumn, nameList));
 
-		// biome-ignore lint/suspicious/noExplicitAny: dynamic record
 		return new Map(records.map((r: any) => [r.name, r.id]));
 	},
 
@@ -635,11 +613,8 @@ export const BackupService = {
 	 * Ensures master data with extra fields (specifically for authors with accountId).
 	 * Authors table does NOT have unique constraint on name, so we need to handle this carefully.
 	 */
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: logic is slightly complex due to accountId priority
 	async _ensureMasterDataWithExtras(
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		table: any,
-		// biome-ignore lint/suspicious/noExplicitAny: complex structure
 		nameColumn: any,
 		dataMap: Map<string, { accountId?: string | null }>,
 	): Promise<Map<string, string>> {
@@ -733,7 +708,6 @@ export const BackupService = {
 		const loadZip = (): Promise<{
 			zipfile: yauzl.ZipFile;
 			entries: Map<string, yauzl.Entry>;
-			// biome-ignore lint/suspicious/noExplicitAny: dump data is any
 			dumpData: any;
 		}> => {
 			return new Promise((resolve, reject) => {
@@ -753,7 +727,6 @@ export const BackupService = {
 						openedZipfile.on("error", rejectAndClose);
 
 						const entries = new Map<string, yauzl.Entry>();
-						// biome-ignore lint/suspicious/noExplicitAny: dump data is any
 						let dumpData: any = null;
 						let dumpEntry: yauzl.Entry | null = null;
 
@@ -803,7 +776,6 @@ export const BackupService = {
 
 		let zipfile: yauzl.ZipFile;
 		let entries: Map<string, yauzl.Entry>;
-		// biome-ignore lint/suspicious/noExplicitAny: dump data is any
 		let dumpData: any;
 
 		const result = await loadZip();
@@ -939,7 +911,6 @@ export const BackupService = {
 
 		archive.pipe(passThrough);
 
-		// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Streaming logic is complex
 		(async () => {
 			let jsonStream: import("node:fs").WriteStream | undefined;
 			try {
@@ -1030,12 +1001,9 @@ export const BackupService = {
 	},
 
 	// Helper to transform media list to dump format
-	// biome-ignore lint/suspicious/noExplicitAny: complex structure
 	_transformMediaList(mediaList: any[]): MediaDumpItem[] {
-		// biome-ignore lint/suspicious/noExplicitAny: explicit any needed
 		return mediaList.map((media: any) => {
 			// Extract tags
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const simpleTags = media.tags.map((mt: any) => ({
 				name: mt.tag.name,
 				type: mt.tagType,
@@ -1044,25 +1012,21 @@ export const BackupService = {
 			}));
 
 			// Extract authors
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const simpleAuthors = media.authors.map((ma: any) => ({
 				name: ma.author.name,
 				accountId: ma.author.accountId,
 			}));
 
 			// Extract characters
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const simpleCharacters = media.characters.map((mc: any) => ({
 				name: mc.character.name,
 				description: mc.character.description,
 				confidence: mc.confidence,
-				// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 				linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
 				source: mc.source,
 			}));
 
 			// Extract IPs
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const simpleIps = media.ips.map((mi: any) => ({
 				name: mi.ip.name,
 				description: mi.ip.description,
@@ -1071,14 +1035,12 @@ export const BackupService = {
 			}));
 
 			// Extract Projects
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const simpleProjects = media.projects.map((mp: any) => ({
 				name: mp.project.name,
 				description: mp.project.description,
 			}));
 
 			// Extract source URLs
-			// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 			const sourceUrls = media.urls.map((u: any) => u.url);
 
 			return {

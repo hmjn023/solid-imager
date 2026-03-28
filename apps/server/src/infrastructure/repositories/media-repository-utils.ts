@@ -188,7 +188,6 @@ export const searchMedia = async (
 			.orderBy(orderByClause);
 
 		// Apply pagination if limit is provided
-		// biome-ignore lint/suspicious/noExplicitAny: Drizzle query builder type mismatch
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {
@@ -204,7 +203,6 @@ export const searchMedia = async (
 		const mediaList = results.map(
 			(r: InferSelectModel<typeof medias> & { totalCount: number }) => {
 				// Extract original media columns by removing totalCount
-				// biome-ignore lint/correctness/noUnusedVariables: Used to separate totalCount from rest
 				const { totalCount, ...mediaData } = r;
 				return mediaData;
 			},
@@ -317,7 +315,6 @@ export const globalSearchMedia = async (
 			.orderBy(orderByClause);
 
 		// Apply pagination if limit is provided
-		// biome-ignore lint/suspicious/noExplicitAny: Drizzle query builder type mismatch
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {

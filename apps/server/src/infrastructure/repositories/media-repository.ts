@@ -719,7 +719,6 @@ function buildSearchQuery(
 	}
 
 	if (node.type === "group") {
-		// biome-ignore lint/suspicious/noExplicitAny: complex type recursion
 		const children = node.children as any[];
 		const conditions = children
 			.map((child) => buildSearchQuery(child, depth + 1))
@@ -1106,7 +1105,6 @@ async function executeSearch(
 		query = query.leftJoin(
 			mediaDetails,
 			eq(mediaDetails.mediaId, medias.id),
-			// biome-ignore lint/suspicious/noExplicitAny: complex Drizzle query builder types
 		) as any;
 	}
 

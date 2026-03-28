@@ -330,7 +330,6 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		}
 	}
 
-	// biome-ignore lint: Repo method
 	async addToMedia(
 		mediaId: string,
 		characterId: string,

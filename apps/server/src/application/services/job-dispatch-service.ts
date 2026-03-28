@@ -12,7 +12,6 @@ export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
 	type: "processMedia" | "downloadImage";
-	// biome-ignore lint/suspicious/noExplicitAny: Flexible payload
 	payload?: any;
 };
 
@@ -24,7 +23,6 @@ export type DeferredJobs = {
 export type DeferredSse = {
 	mediaSourceId: string;
 	event: string;
-	// biome-ignore lint/suspicious/noExplicitAny: SSE payload is flexible
 	payload: any;
 };
 

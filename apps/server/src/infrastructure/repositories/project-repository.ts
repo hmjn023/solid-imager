@@ -105,15 +105,11 @@ export const ProjectRepository: IProjectRepository = {
 			.innerJoin(mediaProjects, eq(projects.id, mediaProjects.projectId))
 			.where(eq(mediaProjects.mediaId, mediaId));
 
-		return result.map(
-			/* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
-				p: any,
-			) => ({
-				...p,
-				createdAt: p.createdAt || new Date(),
-				updatedAt: p.updatedAt || new Date(),
-			}),
-		);
+		return result.map((p: any) => ({
+			...p,
+			createdAt: p.createdAt || new Date(),
+			updatedAt: p.updatedAt || new Date(),
+		}));
 	},
 
 	async addMedia(

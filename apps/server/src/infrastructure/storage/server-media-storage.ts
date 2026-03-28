@@ -113,7 +113,6 @@ export const ServerMediaStorage: IMediaStorage = {
 		try {
 			await fs.unlink(fullPath);
 		} catch (error: unknown) {
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "ENOENT") {
 				return; // Already deleted
 			}

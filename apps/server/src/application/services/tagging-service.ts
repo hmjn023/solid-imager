@@ -24,7 +24,6 @@ export class TaggingService {
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
 
-	// biome-ignore lint: Dependency injection
 	constructor(
 		aiClient: IAiClient,
 		sourceRepo: SourceRepository,
@@ -47,7 +46,6 @@ export class TaggingService {
 		return await this.aiClient.tagImage(imageBuffer);
 	}
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
 	async getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
@@ -153,7 +151,6 @@ export class TaggingService {
 		return response;
 	}
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Complex logic
 	private async saveTags(
 		mediaSourceId: string,
 		mediaId: string,

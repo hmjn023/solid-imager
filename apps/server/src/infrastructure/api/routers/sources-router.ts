@@ -18,7 +18,6 @@ import { logger } from "~/infrastructure/logger";
  */
 function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	const { connectionInfo, ...rest } = source;
-	// biome-ignore lint/suspicious/noExplicitAny: Dynamic connection info handling
 	const info = connectionInfo as any;
 
 	if (source.type === "local") {
@@ -322,7 +321,6 @@ export const sourcesRouter = {
 				// Stream the file to disk
 				const fileStream = input.file.stream();
 				await pipeline(
-					// biome-ignore lint/suspicious/noExplicitAny: Cast to any to assume compatibility with node stream if available in this environment
 					Readable.fromWeb(fileStream as any),
 					fs.createWriteStream(tempFilePath),
 				);
@@ -352,7 +350,6 @@ export const sourcesRouter = {
 		.output(mediaSourceStatusSchema)
 		.handler(async ({ input }) => {
 			const status = await MediaSourceService.getStatus(input.id);
-			// biome-ignore lint/suspicious/noExplicitAny: Service return type mismatch?
 			return status as any;
 		}),
 
@@ -374,11 +371,9 @@ export const sourcesRouter = {
 			yield { event: "connected", data: "connected" };
 
 			// Queue for events
-			// biome-ignore lint/suspicious/noExplicitAny: SSE payload
 			const queue: { event: string; data: any }[] = [];
 			let resolve: (() => void) | null = null;
 
-			// biome-ignore lint/suspicious/noExplicitAny: SSE payload is dynamic
 			const onEvent = (payload: { event: string; data: any }) => {
 				queue.push(payload);
 				if (resolve) {

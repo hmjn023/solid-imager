@@ -17,7 +17,6 @@ export default function MediaViewer(props: MediaViewerProps) {
 		<div class="flex h-full w-full items-center justify-center bg-black/5">
 			<Switch>
 				<Match when={props.media.mediaType === "video"}>
-					{/* biome-ignore lint/a11y/useMediaCaption: Tracks are not yet implemented */}
 					<video
 						class="max-h-full max-w-full"
 						controls
@@ -29,13 +28,11 @@ export default function MediaViewer(props: MediaViewerProps) {
 					</video>
 				</Match>
 				<Match when={props.media.mediaType === "audio"}>
-					{/* biome-ignore lint/a11y/useMediaCaption: Tracks are not yet implemented */}
 					<audio controls src={mediaUrl()}>
 						Your browser does not support the audio tag.
 					</audio>
 				</Match>
 				<Match when={true}>
-					{/* biome-ignore lint/performance/noImgElement: SolidStart does not have a dedicated Image component like Next.js */}
 					<img
 						alt={props.media.fileName}
 						class="max-h-full max-w-full object-contain"

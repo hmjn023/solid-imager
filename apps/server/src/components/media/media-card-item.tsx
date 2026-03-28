@@ -55,7 +55,6 @@ export function MediaCardItem(props: MediaCardItemProps) {
 						fallback={<div class="text-gray-400">{props.media.mediaType}</div>}
 						when={props.media.mediaType === "image"}
 					>
-						{/* biome-ignore lint/performance/noImgElement: Standard img for simplicity */}
 						<img
 							alt={props.media.fileName}
 							class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"

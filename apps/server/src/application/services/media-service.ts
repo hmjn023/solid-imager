@@ -104,7 +104,6 @@ export class MediaServiceImpl {
 	private readonly characterRepository: CharacterRepository;
 	private readonly ipRepository: IIpRepository;
 	private readonly mediaProcessingService: MediaProcessingServiceImpl;
-	// biome-ignore lint: Dependency injection
 	constructor(
 		mediaRepository: IMediaRepository,
 		sourceRepository: SourceRepository,

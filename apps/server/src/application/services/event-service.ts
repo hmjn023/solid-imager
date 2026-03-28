@@ -11,7 +11,6 @@ type EventMap = {
 };
 
 // Strongly-typed EventEmitter
-// biome-ignore lint/suspicious/noExplicitAny: Generic event map requires any
 class TypedEventEmitter<T extends Record<string, any>> {
 	private readonly emitter = new EventEmitter();
 

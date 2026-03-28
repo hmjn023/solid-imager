@@ -63,10 +63,8 @@ export default function Sources() {
 		const editing = editingSource();
 		try {
 			if (editing?.id) {
-				// biome-ignore lint/suspicious/noExplicitAny: Temporary fix for type mismatch
 				await updateMediaSource(editing.id, sourceData as any);
 			} else {
-				// biome-ignore lint/suspicious/noExplicitAny: Temporary fix for type mismatch
 				await createMediaSource(sourceData as any);
 			}
 			await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
@@ -153,7 +151,6 @@ export default function Sources() {
 			// Create a controller for this effect run (cancels previous run's streams)
 			const ac = new AbortController();
 
-			// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE handler logic
 			const startStreamForSource = async (id: string) => {
 				try {
 					const events = await orpc.sources.events(

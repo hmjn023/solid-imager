@@ -3,7 +3,6 @@
  * Provides configured fluent-ffmpeg instance with ffmpeg-static binary path
  */
 
-// biome-ignore lint/style/noExportedImports: used internally and exported
 import ffmpegPath from "ffmpeg-static";
 import ffmpeg from "fluent-ffmpeg";
 

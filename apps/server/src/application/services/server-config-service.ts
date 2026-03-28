@@ -127,7 +127,6 @@ export class ServerConfigService implements IConfigService {
 		await fsPromises.rename(tempPath, this.configPath);
 	}
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex mapping logic
 	private getEnvOverrides(): Record<string, unknown> {
 		const overrides: Record<string, unknown> = {};
 		const prefix = "CONFIG_";
@@ -137,9 +136,7 @@ export class ServerConfigService implements IConfigService {
 				continue;
 			}
 
-			// biome-ignore lint/suspicious/noExplicitAny: traversing setup
 			let currentSchemaNode = defaultAppConfig as any;
-			// biome-ignore lint/suspicious/noExplicitAny: overrides construction
 			let currentOverrideNode = overrides as any;
 			// CONFIG_AI_BASE_URL -> AIBASEURL
 			let remainingKey = envKey
@@ -178,7 +175,6 @@ export class ServerConfigService implements IConfigService {
 		return overrides;
 	}
 
-	// biome-ignore lint/suspicious/noExplicitAny: Deep merge requires flexible types
 	private deepMerge(target: any, source: any): any {
 		if (
 			typeof target !== "object" ||

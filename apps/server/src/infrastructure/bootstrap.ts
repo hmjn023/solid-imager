@@ -117,7 +117,6 @@ export function startBackgroundWorker() {
 	const jobRepo = services.getJobRepository();
 
 	// Singleton management for JobWorker to prevent duplicates during HMR
-	// biome-ignore lint/suspicious/noExplicitAny: Global augmentation
 	const globalAny = globalThis as any;
 	if (globalAny.__JOB_WORKER__) {
 		globalAny.__JOB_WORKER__.stop();

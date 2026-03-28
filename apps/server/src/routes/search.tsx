@@ -74,7 +74,6 @@ const buildSearchParams = (state: typeof searchState) => {
 const useStableConditionKey = () =>
 	createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
-// biome-ignore lint/style/noMagicNumbers: Standard time calculation
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
 export default function Search() {
@@ -242,7 +241,6 @@ export default function Search() {
 	return (
 		<main class="container mx-auto p-4">
 			<Show when={!isServer}>
-				{/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
 				<Portal mount={document.getElementById("nav-actions")!}>
 					<Dialog>
 						<DialogTrigger
@@ -251,7 +249,6 @@ export default function Search() {
 							size="icon"
 							variant="outline"
 						>
-							{/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
 							<svg
 								class="lucide lucide-filter"
 								fill="none"

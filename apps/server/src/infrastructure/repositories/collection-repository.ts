@@ -42,7 +42,6 @@ export const CollectionRepository: ICollectionRepository = {
 				.returning();
 			return result[0];
 		} catch (error: unknown) {
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "23505") {
 				throw new ResourceConflictError(
 					"Collection with this name already exists",
@@ -73,7 +72,6 @@ export const CollectionRepository: ICollectionRepository = {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "23505") {
 				throw new ResourceConflictError(
 					"Collection with this name already exists",
@@ -108,7 +106,6 @@ export const CollectionRepository: ICollectionRepository = {
 				displayOrder: item.displayOrder,
 			});
 		} catch (error: unknown) {
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "23505") {
 				throw new ResourceConflictError(
 					"Media already exists in this collection",

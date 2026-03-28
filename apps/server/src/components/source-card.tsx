@@ -37,7 +37,6 @@ const getTypeLabel = (type: string) => {
 };
 
 const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
-	// biome-ignore lint/suspicious/noExplicitAny: loose type check
 	const info = source.connectionInfo as any;
 
 	if (source.type === "local") {

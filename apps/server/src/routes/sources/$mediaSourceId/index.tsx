@@ -326,29 +326,26 @@ export default function MediaListPage() {
 			// Case 3: JSON is an object with an 'images' key (new handling for user's provided structure)
 			else if (jsonContent.images && Array.isArray(jsonContent.images)) {
 				items = jsonContent.images
-					.map(
-						// biome-ignore lint/suspicious/noExplicitAny: Dynamic JSON structure, any is acceptable here.
-						(image: any) => {
-							const imageUrl = image.originalUrl || image.displayUrl;
-							if (!imageUrl) {
-								return null; // Skip if no valid URL is found
-							}
+					.map((image: any) => {
+						const imageUrl = image.originalUrl || image.displayUrl;
+						if (!imageUrl) {
+							return null; // Skip if no valid URL is found
+						}
 
-							let tweetUrl: string | undefined;
-							if (image.source === "twitter" && image.metadata?.postId) {
-								tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
-							}
+						let tweetUrl: string | undefined;
+						if (image.source === "twitter" && image.metadata?.postId) {
+							tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
+						}
 
-							return {
-								imageUrl,
-								tweetUrl,
-								tweetText: image.metadata?.title,
-								authorName: image.metadata?.author,
-								timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
-								// Add other fields as needed from the provided JSON structure to match DownloadItem
-							};
-						},
-					)
+						return {
+							imageUrl,
+							tweetUrl,
+							tweetText: image.metadata?.title,
+							authorName: image.metadata?.author,
+							timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
+							// Add other fields as needed from the provided JSON structure to match DownloadItem
+						};
+					})
 					.filter(Boolean) as DownloadItem[]; // Filter out nulls
 			} else {
 				throw new Error(
@@ -744,7 +741,6 @@ export default function MediaListPage() {
 	});
 
 	return (
-		/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: This section is a drop zone, and the event handlers are necessary for its functionality. */
 		<section
 			aria-label="Media upload area"
 			class="container mx-auto min-h-[calc(100vh-2rem)] p-4"
@@ -752,7 +748,6 @@ export default function MediaListPage() {
 			onDrop={handleDrop}
 		>
 			<Show when={!isServer}>
-				{/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
 				<Portal mount={document.getElementById("nav-actions")!}>
 					<Button
 						class="mr-2 border-white text-white hover:bg-sky-700"
@@ -761,7 +756,6 @@ export default function MediaListPage() {
 						title="Download Backup JSON"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
 						<svg
 							class="lucide lucide-file-json"
 							fill="none"
@@ -787,7 +781,6 @@ export default function MediaListPage() {
 						title="Download Backup ZIP (with Images)"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
 						<svg
 							class="lucide lucide-archive"
 							fill="none"
@@ -812,7 +805,6 @@ export default function MediaListPage() {
 						title="Restore Metadata from Dump"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Upload Cloud icon */}
 						<svg
 							class="lucide lucide-upload-cloud"
 							fill="none"
@@ -837,7 +829,6 @@ export default function MediaListPage() {
 							size="icon"
 							variant="outline"
 						>
-							{/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
 							<svg
 								class="lucide lucide-filter"
 								fill="none"
@@ -945,7 +936,6 @@ export default function MediaListPage() {
 														href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
 														onContextMenu={() => setContextMenuMediaId(item.id)}
 													>
-														{/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
 														<img
 															alt={item.fileName}
 															class="h-full w-full object-cover"
