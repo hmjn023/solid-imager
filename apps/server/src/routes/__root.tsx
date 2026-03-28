@@ -1,15 +1,15 @@
+import { Toaster } from "@solid-imager/ui/toast";
+import type { QueryClient } from "@tanstack/solid-query";
 import {
 	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 	Scripts,
 } from "@tanstack/solid-router";
-import { QueryClient } from "@tanstack/solid-query";
-import { HydrationScript } from "solid-js/web";
 import { Suspense } from "solid-js";
-import Nav from "~/components/nav";
-import { Toaster } from "@solid-imager/ui/toast";
+import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
+import Nav from "~/components/nav";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -42,9 +42,9 @@ function RootComponent() {
 				<HeadContent />
 			</head>
 			<body>
+				<Toaster />
 				<Suspense>
 					<Nav />
-					<Toaster />
 					<Outlet />
 				</Suspense>
 				<Scripts />

@@ -21,7 +21,7 @@ interface ToastOptions {
 }
 
 const noop = () => "";
-const mockToast = {
+const mockToast: any = {
 	error: noop,
 	success: noop,
 	info: noop,
@@ -64,9 +64,9 @@ export const Toaster = () => {
 
 	return (
 		<Show when={Comp()}>
-			{(C) => {
-				const Component = C();
-				return <Component position="top-right" />;
+			{(ToasterComp) => {
+				const C = ToasterComp();
+				return <C position="top-right" />;
 			}}
 		</Show>
 	);
