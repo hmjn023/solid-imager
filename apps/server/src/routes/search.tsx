@@ -1,6 +1,12 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/search")({
+	component: Search,
+});
+
 import {
 	Card,
 	CardContent,

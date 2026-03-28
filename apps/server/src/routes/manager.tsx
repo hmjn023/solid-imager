@@ -13,6 +13,12 @@ import {
 	AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/manager")({
+	component: ManagerPage,
+});
+
 import {
 	Card,
 	CardContent,

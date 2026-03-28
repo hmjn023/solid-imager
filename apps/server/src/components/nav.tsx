@@ -1,4 +1,4 @@
-import { useLocation } from "@solidjs/router";
+import { useLocation } from "@tanstack/solid-router";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
 import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
@@ -11,7 +11,7 @@ import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
 export default function Nav() {
 	const location = useLocation();
 	const active = (path: string) =>
-		path === location.pathname
+		path === location().pathname
 			? "border-sky-600"
 			: "border-transparent hover:border-sky-600";
 

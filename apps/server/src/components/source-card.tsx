@@ -9,7 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
-import { A } from "@solidjs/router";
 
 /**
  * Props for the SourceCard component.
@@ -79,7 +78,7 @@ export default function SourceCard(props: SourceCardProps) {
 	};
 
 	return (
-		<A
+		<a
 			class="block text-current no-underline"
 			href={`/sources/${props.mediaSource.id}`}
 		>
@@ -135,6 +134,6 @@ export default function SourceCard(props: SourceCardProps) {
 					)}
 				</div>
 			</Card>
-		</A>
+		</a>
 	);
 }

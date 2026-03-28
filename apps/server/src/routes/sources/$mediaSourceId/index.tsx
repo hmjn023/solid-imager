@@ -28,7 +28,12 @@ import {
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { toast } from "@solid-imager/ui/toast";
-import { useParams } from "@solidjs/router";
+import { createFileRoute, useParams } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	component: MediaListPage,
+});
+
 import {
 	createInfiniteQuery,
 	createQuery,
@@ -81,10 +86,10 @@ const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 
 export default function MediaListPage() {
-	const params = useParams();
+	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const queryClient = useQueryClient();
 
-	const mediaSourceId = () => params.mediaSourceId;
+	const mediaSourceId = () => params().mediaSourceId;
 
 	// Enable auto-save/restore of search conditions
 	useCurrentSearchPersistence(mediaSourceId);

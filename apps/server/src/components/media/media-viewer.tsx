@@ -1,5 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import { useParams } from "@solidjs/router";
+import { useParams } from "@tanstack/solid-router";
 import { createMemo, Match, Switch } from "solid-js";
 
 type MediaViewerProps = {
@@ -7,10 +7,10 @@ type MediaViewerProps = {
 };
 
 export default function MediaViewer(props: MediaViewerProps) {
-	const params = useParams();
+	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
 
 	const mediaUrl = createMemo(
-		() => `/api/sources/${params.mediaSourceId}/${params.mediaId}`,
+		() => `/api/sources/${params().mediaSourceId}/${params().mediaId}`,
 	);
 
 	return (

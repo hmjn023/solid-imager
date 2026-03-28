@@ -1,6 +1,12 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { Button } from "@solid-imager/ui/button";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/config")({
+	component: ConfigPage,
+});
+
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import {
