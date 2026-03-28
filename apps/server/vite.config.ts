@@ -13,7 +13,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
   resolve: {
-    dedupe: ["solid-js", "@tanstack/solid-router", "@tanstack/solid-query"],
     alias: {
       "@solid-imager/core": path.resolve(
         __dirname,
@@ -38,25 +37,23 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   ssr: {
+    noExternal: [
+      "@tanstack/solid-router",
+      "@tanstack/solid-query",
+      "@tanstack/solid-start",
+      "@kobalte/core",
+      "solid-sonner",
+      "corvu",
+      "@solid-primitives/.*"
+    ],
     external: [
+      "@electric-sql/pglite",
       "pg",
       "sharp",
       "ffmpeg-static",
       "ffmpeg-static-static",
       "fluent-ffmpeg",
       "archiver"
-    ],
-    noExternal: [
-      "@tanstack/solid-router",
-      "@tanstack/solid-start",
-      "@tanstack/solid-query",
-      "@tanstack/router-core",
-      "@tanstack/history",
-      "solid-js",
-      "solid-sonner",
-      "corvu",
-      "@kobalte/core",
-      "@solid-primitives/.*"
     ],
   },
 });

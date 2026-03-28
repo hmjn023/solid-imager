@@ -16,13 +16,19 @@ import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { DrizzleCharacterRepository as DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository"; // Wait, fixing name clash
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
 
 export let isBootstrapped = false;
+export let isWorkerStarted = false;
 
-export function bootstrap() {
+/**
+ * Initializes all services and repositories.
+ * This should be called early in the server-side lifecycle (including SSR).
+ */
+export function initServices() {
 	if (isBootstrapped) {
 		return;
 	}
@@ -43,7 +49,7 @@ export function bootstrap() {
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);
-	services.registerSourceRepository(new DrizzleSourceRepository());
+	services.registerSourceRepository(new ActualSourceRepo());
 	services.registerTagRepository(TagRepository);
 	services.registerAuthorRepository(AuthorRepository);
 	services.registerProjectRepository(ProjectRepository);
@@ -94,12 +100,27 @@ export function bootstrap() {
 			configService,
 		),
 	);
+}
+
+/**
+ * Starts background worker and maintenance tasks.
+ * This should only be called once in the main server process, never during SSR request processing.
+ */
+export function startBackgroundWorker() {
+	if (isWorkerStarted) {
+		return;
+	}
+	isWorkerStarted = true;
+
+	initServices(); // Ensure services are initialized
+
+	const jobWorker = services.getJobWorker();
+	const jobRepo = services.getJobRepository();
 
 	// Singleton management for JobWorker to prevent duplicates during HMR
 	// biome-ignore lint/suspicious/noExplicitAny: Global augmentation
 	const globalAny = globalThis as any;
 	if (globalAny.__JOB_WORKER__) {
-		// console.log("[Bootstrap] Stopping existing JobWorker...");
 		globalAny.__JOB_WORKER__.stop();
 	}
 
@@ -120,7 +141,6 @@ export function bootstrap() {
 	// Cleanup on process exit
 	if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
 		const cleanup = () => {
-			// console.log("[Bootstrap] Cleaning up JobWorker...");
 			if (globalAny.__JOB_WORKER__) {
 				globalAny.__JOB_WORKER__.stop();
 			}
@@ -138,4 +158,13 @@ export function bootstrap() {
 
 		globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
 	}
+}
+
+/**
+ * Main bootstrap function for backward compatibility.
+ * In TanStack Start SSR, avoid calling this and call initServices instead.
+ */
+export function bootstrap() {
+	initServices();
+	startBackgroundWorker();
 }

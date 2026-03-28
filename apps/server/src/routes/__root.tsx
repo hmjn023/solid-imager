@@ -1,14 +1,21 @@
 import {
-	createRootRoute,
+	createRootRouteWithContext,
 	HeadContent,
 	Outlet,
 	Scripts,
 } from "@tanstack/solid-router";
+import { QueryClient } from "@tanstack/solid-query";
+import { HydrationScript } from "solid-js/web";
+import { Suspense } from "solid-js";
 import Nav from "~/components/nav";
 import { Toaster } from "@solid-imager/ui/toast";
 import styleCss from "~/app.css?url";
 
-export const Route = createRootRoute({
+interface MyRouterContext {
+	queryClient: QueryClient;
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
 	head: () => ({
 		meta: [
 			{
@@ -24,19 +31,22 @@ export const Route = createRootRoute({
 		],
 		links: [{ rel: "stylesheet", href: styleCss }],
 	}),
-	component: RootComponent,
+	shellComponent: RootComponent,
 });
 
 function RootComponent() {
 	return (
 		<html lang="ja">
 			<head>
+				<HydrationScript />
 				<HeadContent />
 			</head>
 			<body>
-				<Nav />
-				<Toaster />
-				<Outlet />
+				<Suspense>
+					<Nav />
+					<Toaster />
+					<Outlet />
+				</Suspense>
 				<Scripts />
 			</body>
 		</html>

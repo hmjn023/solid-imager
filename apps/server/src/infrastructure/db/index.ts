@@ -1,3 +1,4 @@
+import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
@@ -36,9 +37,19 @@ function initializeDb() {
 	const isTestEnv =
 		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
+	console.log(`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`);
+
 	// テスト環境では必ずPGliteを使用
 	if (isTestEnv || dbHost === "pglite") {
-		_queryClient = new PGlite("./.data/pglite");
+		const pglitePath =
+			process.env.PGLITE_DATA_DIR ||
+			path.join(process.cwd(), ".data", "pglite");
+		console.log(
+			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(
+				pglitePath,
+			)})`,
+		);
+		_queryClient = new PGlite(pglitePath);
 		_db = drizzlePglite(_queryClient, { schema });
 		return _db;
 	}
