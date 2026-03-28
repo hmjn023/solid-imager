@@ -1,21 +1,30 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { RouterClient } from "@orpc/server";
+import { createRouterClient } from "@orpc/server";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeaders } from "@tanstack/solid-start/server";
+import { isServer } from "solid-js/web";
 import type { AppRouter } from "~/domain/shared/api-contract";
-
-const getHeaders = createIsomorphicFn()
-	.client(() => ({}))
-	.server(() => getRequestHeaders());
-
-const link = new RPCLink({
-	url: "/api/rpc",
-	headers: () => getHeaders(),
-});
+import { appRouter } from "~/domain/shared/api-contract";
 
 /**
- * oRPC クライアント
- * 型安全な API 呼び出しを提供
+ * oRPC クライアントの生成
+ * サーバーサイドではルーターを直接呼び出し、クライアントサイドでは /api/rpc を介して fetch を行う
  */
-export const orpc: RouterClient<AppRouter> = createORPCClient(link);
+const getORPCClient = createIsomorphicFn()
+	.server(() => {
+		return createRouterClient(appRouter, {
+			context: () => ({
+				headers: getRequestHeaders(),
+			}),
+		}) as any;
+	})
+	.client((): RouterClient<AppRouter> => {
+		const link = new RPCLink({
+			url: `${window.location.origin}/api/rpc`,
+		});
+		return createORPCClient(link);
+	});
+
+export const orpc: RouterClient<AppRouter> = getORPCClient();
