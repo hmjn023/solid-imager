@@ -240,8 +240,8 @@ export default function Search() {
 
 	return (
 		<main class="container mx-auto p-4">
-			<Show when={!isServer}>
-				<Portal mount={document.getElementById("nav-actions")!}>
+			<Show when={!isServer && document.getElementById("nav-actions")}>
+				<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
 					<Dialog>
 						<DialogTrigger
 							as={Button}
@@ -261,6 +261,7 @@ export default function Search() {
 								width="24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
+								<title>Filter results</title>
 								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 							</svg>
 						</DialogTrigger>

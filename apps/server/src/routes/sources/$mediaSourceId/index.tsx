@@ -747,8 +747,8 @@ export default function MediaListPage() {
 			onDragOver={handleDragOver}
 			onDrop={handleDrop}
 		>
-			<Show when={!isServer}>
-				<Portal mount={document.getElementById("nav-actions")!}>
+			<Show when={!isServer && document.getElementById("nav-actions")}>
+				<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
 					<Button
 						class="mr-2 border-white text-white hover:bg-sky-700"
 						onClick={() => handleDumpDownload("json")}
@@ -768,6 +768,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Download JSON</title>
 							<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
 							<path d="M14 2v4a2 2 0 0 0 2 2h4" />
 							<path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
@@ -793,6 +794,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Download ZIP</title>
 							<rect height="5" rx="1" width="20" x="2" y="3" />
 							<path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
 							<path d="M10 12h4" />
@@ -817,6 +819,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Restore from cloud</title>
 							<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
 							<path d="M12 12v9" />
 							<path d="m16 16-4-4-4 4" />
@@ -841,6 +844,7 @@ export default function MediaListPage() {
 								width="24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
+								<title>Filter results</title>
 								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 							</svg>
 						</DialogTrigger>

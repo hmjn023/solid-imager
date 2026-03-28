@@ -24,11 +24,13 @@ export default function MediaViewer(props: MediaViewerProps) {
 						src={mediaUrl()}
 						width={props.media.width}
 					>
+						<track kind="captions" />
 						Your browser does not support the video tag.
 					</video>
 				</Match>
 				<Match when={props.media.mediaType === "audio"}>
 					<audio controls src={mediaUrl()}>
+						<track kind="captions" />
 						Your browser does not support the audio tag.
 					</audio>
 				</Match>

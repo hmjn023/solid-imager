@@ -57,6 +57,7 @@ const CommandInput: Component<VoidProps<CommandPrimitive.CommandInputProps>> = (
 				viewBox="0 0 24 24"
 				xmlns="http://www.w3.org/2000/svg"
 			>
+				<title>Search</title>
 				<circle cx="11" cy="11" r="8" />
 				<path d="m21 21-4.3-4.3" />
 			</svg>

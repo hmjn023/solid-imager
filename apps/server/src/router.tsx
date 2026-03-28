@@ -21,21 +21,26 @@ let clientQueryClient: QueryClient | undefined;
 
 export function getRouter() {
 	try {
-		const queryClient = isServer
-			? new QueryClient({
-					defaultOptions: {
-						queries: {
-							retry: false,
-						},
+		if (!isServer && !clientQueryClient) {
+			clientQueryClient = new QueryClient({
+				defaultOptions: {
+					queries: {
+						retry: false,
 					},
-				})
-			: (clientQueryClient ??= new QueryClient({
-					defaultOptions: {
-						queries: {
-							retry: false,
+				},
+			});
+		}
+
+		const queryClient =
+			isServer || !clientQueryClient
+				? new QueryClient({
+						defaultOptions: {
+							queries: {
+								retry: false,
+							},
 						},
-					},
-				}));
+					})
+				: clientQueryClient;
 
 		return createTanStackRouter({
 			routeTree,

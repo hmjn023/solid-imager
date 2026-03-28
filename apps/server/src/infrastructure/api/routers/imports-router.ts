@@ -95,7 +95,7 @@ export const bulkAddHandler = async ({
 		const jobValues = importItems.map((item) => ({
 			type: "import_request",
 			status: "pending" as const,
-			payload: { ...item, targetUrl: item.targetUrl! },
+			payload: { ...item, targetUrl: item.targetUrl ?? "" },
 			updatedAt: new Date(),
 		}));
 

@@ -305,8 +305,8 @@ export const BackupService = {
 	) {
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
-			filePath: item.filePath!,
-			fileName: item.fileName!,
+			filePath: item.filePath ?? "",
+			fileName: item.fileName ?? "",
 			description: item.description || null,
 			width: item.width ?? 0,
 			height: item.height ?? 0,
