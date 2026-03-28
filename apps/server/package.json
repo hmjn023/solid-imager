@@ -6,7 +6,7 @@
     "dev": "vp dev",
     "build": "vp build",
     "preview": "vp preview",
-    "start": "bun .output/server/index.mjs",
+    "start": "bun run db:migrate:pglite && bun .output/server/index.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
