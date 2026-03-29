@@ -25,14 +25,19 @@
     "check": "biome check --fix --unsafe ./src",
     "test:unit": "echo 'No unit tests yet'",
     "typecheck": "tsc --noEmit",
-    "lint": "biome lint ./src"
+    "lint": "biome lint ./src",
+    "test": "vp test run",
+    "test:unit": "vp test run"
   },
   "peerDependencies": {
     "zod": "^4.3.5",
-    "solid-js": "^1.9.10"
+    "solid-js": "^1.9.12"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "@types/node": "^24.10.4"
+    "@types/node": "^24.10.4",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
+    "vite-plus": "latest",
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }

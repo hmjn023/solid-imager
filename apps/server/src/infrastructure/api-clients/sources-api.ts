@@ -14,7 +14,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns Array of media sources
  */
 export function fetchMediaSources() {
-  return orpc.sources.list();
+	return orpc.sources.list();
 }
 
 /**
@@ -23,7 +23,7 @@ export function fetchMediaSources() {
  * @returns Media source
  */
 export function fetchMediaSource(id: string) {
-  return orpc.sources.get({ id });
+	return orpc.sources.get({ id });
 }
 
 /**
@@ -32,7 +32,7 @@ export function fetchMediaSource(id: string) {
  * @returns Created media source
  */
 export function createMediaSource(data: z.infer<typeof mediaSourceInfoSchema>) {
-  return orpc.sources.create(data);
+	return orpc.sources.create(data);
 }
 
 /**
@@ -42,13 +42,13 @@ export function createMediaSource(data: z.infer<typeof mediaSourceInfoSchema>) {
  * @returns Updated media source
  */
 export function updateMediaSource(
-  id: string,
-  data: Partial<z.infer<typeof mediaSourceInfoSchema>>
+	id: string,
+	data: Partial<z.infer<typeof mediaSourceInfoSchema>>,
 ) {
-  return orpc.sources.update({
-    id,
-    data,
-  });
+	return orpc.sources.update({
+		id,
+		data,
+	});
 }
 
 /**
@@ -56,7 +56,7 @@ export function updateMediaSource(
  * @param id - Media source ID
  */
 export async function deleteMediaSource(id: string): Promise<void> {
-  await orpc.sources.delete({ id });
+	await orpc.sources.delete({ id });
 }
 
 /**
@@ -65,7 +65,7 @@ export async function deleteMediaSource(id: string): Promise<void> {
  * @returns Sync results
  */
 export function syncMediaSources(ids: string[]) {
-  return orpc.sources.sync({ ids });
+	return orpc.sources.sync({ ids });
 }
 
 /**
@@ -75,26 +75,25 @@ export function syncMediaSources(ids: string[]) {
  * @returns Blob containing the dump
  */
 export async function fetchSourceDump(
-  id: string,
-  mode: "json" | "zip" = "json"
+	id: string,
+	mode: "json" | "zip" = "json",
 ): Promise<Blob> {
-  // Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
-  const url = `/api/sources/${id}/dump?mode=${mode}`;
-  const response = await fetch(url, {
-    method: "GET",
-  });
+	// Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
+	const url = `/api/sources/${id}/dump?mode=${mode}`;
+	const response = await fetch(url, {
+		method: "GET",
+	});
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
-  }
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
+	}
 
-  return response.blob();
+	return response.blob();
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: complex dump structure
 export function restoreSource(id: string, data: any) {
-  return orpc.sources.restore({ id, data });
+	return orpc.sources.restore({ id, data });
 }
 
 /**
@@ -104,20 +103,20 @@ export function restoreSource(id: string, data: any) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-  // Send raw file body to avoid FormData parsing issues in Vinxi/Node environment
-  const url = `/api/sources/${id}/import`;
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/zip",
-    },
-    body: file,
-  });
+	// Send raw file body to avoid FormData parsing issues in Vinxi/Node environment
+	const url = `/api/sources/${id}/import`;
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/zip",
+		},
+		body: file,
+	});
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
-  }
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
+	}
 
-  return await response.json();
+	return await response.json();
 }

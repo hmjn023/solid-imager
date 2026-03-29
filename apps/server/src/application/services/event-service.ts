@@ -3,34 +3,33 @@ import type { APIEvent } from "@solidjs/start/server";
 
 // Define event types
 type MediaUpdatePayload = {
-  mediaId: string;
+	mediaId: string;
 };
 
 type EventMap = {
-  "media:updated": MediaUpdatePayload;
+	"media:updated": MediaUpdatePayload;
 };
 
 // Strongly-typed EventEmitter
-// biome-ignore lint/suspicious/noExplicitAny: Generic event map requires any
 class TypedEventEmitter<T extends Record<string, any>> {
-  private readonly emitter = new EventEmitter();
+	private readonly emitter = new EventEmitter();
 
-  constructor() {
-    // Disable listener limit to prevent MaxListenersExceededWarning
-    this.emitter.setMaxListeners(0);
-  }
+	constructor() {
+		// Disable listener limit to prevent MaxListenersExceededWarning
+		this.emitter.setMaxListeners(0);
+	}
 
-  on<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
-    this.emitter.on(eventName as string, listener);
-  }
+	on<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
+		this.emitter.on(eventName as string, listener);
+	}
 
-  off<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
-    this.emitter.off(eventName as string, listener);
-  }
+	off<K extends keyof T>(eventName: K, listener: (payload: T[K]) => void) {
+		this.emitter.off(eventName as string, listener);
+	}
 
-  emit<K extends keyof T>(eventName: K, payload: T[K]) {
-    this.emitter.emit(eventName as string, payload);
-  }
+	emit<K extends keyof T>(eventName: K, payload: T[K]) {
+		this.emitter.emit(eventName as string, payload);
+	}
 }
 
 /**
@@ -40,68 +39,68 @@ class TypedEventEmitter<T extends Record<string, any>> {
  * Use SseManager for all SSE needs.
  */
 class EventService {
-  private static instance: EventService;
+	private static instance: EventService;
 
-  private readonly emitter = new TypedEventEmitter<EventMap>();
+	private readonly emitter = new TypedEventEmitter<EventMap>();
 
-  // Singleton pattern
-  static getInstance(): EventService {
-    if (!EventService.instance) {
-      EventService.instance = new EventService();
-    }
-    return EventService.instance;
-  }
+	// Singleton pattern
+	static getInstance(): EventService {
+		if (!EventService.instance) {
+			EventService.instance = new EventService();
+		}
+		return EventService.instance;
+	}
 
-  /**
-   * Creates a Server-Sent Events (SSE) stream.
-   * @param {APIEvent} event - The API event object from the request.
-   * @returns {Response} A response object with the SSE stream.
-   */
-  createSseStream(event: APIEvent): Response {
-    const stream = new ReadableStream({
-      start: (controller) => {
-        const handler = (payload: MediaUpdatePayload) => {
-          if (event.request.signal.aborted) {
-            return;
-          }
-          try {
-            const data = JSON.stringify(payload);
-            controller.enqueue(`data: ${data}\n\n`);
-          } catch (_error) {
-            // Controller might be closed or errored
-            // Remove listener to prevent future errors
-            this.emitter.off("media:updated", handler);
-          }
-        };
+	/**
+	 * Creates a Server-Sent Events (SSE) stream.
+	 * @param {APIEvent} event - The API event object from the request.
+	 * @returns {Response} A response object with the SSE stream.
+	 */
+	createSseStream(event: APIEvent): Response {
+		const stream = new ReadableStream({
+			start: (controller) => {
+				const handler = (payload: MediaUpdatePayload) => {
+					if (event.request.signal.aborted) {
+						return;
+					}
+					try {
+						const data = JSON.stringify(payload);
+						controller.enqueue(`data: ${data}\n\n`);
+					} catch (_error) {
+						// Controller might be closed or errored
+						// Remove listener to prevent future errors
+						this.emitter.off("media:updated", handler);
+					}
+				};
 
-        this.emitter.on("media:updated", handler);
+				this.emitter.on("media:updated", handler);
 
-        // Clean up on client disconnect
-        event.request.signal.addEventListener("abort", () => {
-          this.emitter.off("media:updated", handler);
-          controller.close();
-        });
-      },
-    });
+				// Clean up on client disconnect
+				event.request.signal.addEventListener("abort", () => {
+					this.emitter.off("media:updated", handler);
+					controller.close();
+				});
+			},
+		});
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache",
+		return new Response(stream, {
+			headers: {
+				"Content-Type": "text/event-stream",
+				"Cache-Control": "no-cache",
 
-        Connection: "keep-alive",
-      },
-    });
-  }
+				Connection: "keep-alive",
+			},
+		});
+	}
 
-  /**
-   * Sends an SSE event to all connected clients.
-   * @param {K} eventName - The name of the event.
-   * @param {T[K]} payload - The data to send with the event.
-   */
-  sendSseEvent<K extends keyof EventMap>(eventName: K, payload: EventMap[K]) {
-    this.emitter.emit(eventName, payload);
-  }
+	/**
+	 * Sends an SSE event to all connected clients.
+	 * @param {K} eventName - The name of the event.
+	 * @param {T[K]} payload - The data to send with the event.
+	 */
+	sendSseEvent<K extends keyof EventMap>(eventName: K, payload: EventMap[K]) {
+		this.emitter.emit(eventName, payload);
+	}
 }
 
 // Export a singleton instance

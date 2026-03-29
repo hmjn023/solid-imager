@@ -12,5 +12,5 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns Blob containing the fetched file
  */
 export function fetchFromUrl(url: string): Promise<Blob> {
-  return orpc.utils.fetchUrl({ url });
+	return orpc.utils.fetchUrl({ url });
 }

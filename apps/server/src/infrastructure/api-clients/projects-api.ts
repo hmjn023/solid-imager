@@ -7,40 +7,40 @@
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export function fetchAllProjects() {
-  return orpc.projects.list();
+	return orpc.projects.list();
 }
 
 export function createProject(data: { name: string; description?: string }) {
-  return orpc.projects.create(data);
+	return orpc.projects.create(data);
 }
 
 export function updateProject(
-  id: string,
-  data: { name?: string; description?: string }
+	id: string,
+	data: { name?: string; description?: string },
 ) {
-  return orpc.projects.update({ id, data });
+	return orpc.projects.update({ id, data });
 }
 
 export function deleteProject(id: string) {
-  return orpc.projects.delete({ id });
+	return orpc.projects.delete({ id });
 }
 
 export function fetchProjectsForMedia(_sourceId: string, mediaId: string) {
-  return orpc.projects.listForMedia({ mediaId });
+	return orpc.projects.listForMedia({ mediaId });
 }
 
 export function addProjectToMedia(
-  _sourceId: string,
-  mediaId: string,
-  projectId: string
+	_sourceId: string,
+	mediaId: string,
+	projectId: string,
 ) {
-  return orpc.projects.addToMedia({ mediaId, projectId });
+	return orpc.projects.addToMedia({ mediaId, projectId });
 }
 
 export function removeProjectFromMedia(
-  _sourceId: string,
-  mediaId: string,
-  projectId: string
+	_sourceId: string,
+	mediaId: string,
+	projectId: string,
 ) {
-  return orpc.projects.removeFromMedia({ mediaId, projectId });
+	return orpc.projects.removeFromMedia({ mediaId, projectId });
 }

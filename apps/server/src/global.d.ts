@@ -1,1 +1,6 @@
-/// <reference types="@solidjs/start/env" />
+/// <reference types="@tanstack/solid-start/env" />
+
+declare module "*?url" {
+	const content: string;
+	export default content;
+}

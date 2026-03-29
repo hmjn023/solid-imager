@@ -1,145 +1,157 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 import { eventService } from "~/application/services/event-service";
 
 describe("EventService", () => {
-  it("should create an SSE stream and enqueue events", () => {
-    // Mock controller
-    const mockController = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-    };
+	it("should create an SSE stream and enqueue events", () => {
+		// Mock controller
+		const mockController = {
+			enqueue: vi.fn(),
+			close: vi.fn(),
+		};
 
-    // Capture the start callback
+		// Capture the start callback
 
-    let startCallback: ((controller: any) => void) | undefined;
+		let startCallback: ((controller: any) => void) | undefined;
 
-    // Mock global ReadableStream
-    const MockReadableStream = vi.fn((strategies) => {
-      startCallback = strategies.start;
-      return {};
-    });
-    vi.stubGlobal("ReadableStream", MockReadableStream);
+		// Mock global ReadableStream
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
+			startCallback = strategies.start;
+			return {};
+		});
+		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-    // Mock global Response
-    const MockResponse = vi.fn((body, init) => ({ body, init }));
-    vi.stubGlobal("Response", MockResponse);
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
 
-    const mockSignal = {
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      aborted: false,
-    };
-    const mockRequest = { signal: mockSignal };
-    const mockEvent = { request: mockRequest };
+		vi.stubGlobal("Response", MockResponse);
 
-    // 1. Create Stream
+		const mockSignal = {
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			aborted: false,
+		};
+		const mockRequest = { signal: mockSignal };
+		const mockEvent = { request: mockRequest };
 
-    eventService.createSseStream(mockEvent as any);
+		// 1. Create Stream
 
-    if (!startCallback) {
-      throw new Error("startCallback is not defined");
-    }
+		eventService.createSseStream(mockEvent as any);
 
-    // 2. Initialize controller
-    startCallback(mockController);
+		if (!startCallback) {
+			throw new Error("startCallback is not defined");
+		}
 
-    // 3. Emit event
-    const payload = { mediaId: "test-media-id" };
-    eventService.sendSseEvent("media:updated", payload);
+		// 2. Initialize controller
+		startCallback(mockController);
 
-    expect(mockController.enqueue).toHaveBeenCalledWith(
-      expect.stringContaining(JSON.stringify(payload))
-    );
+		// 3. Emit event
+		const payload = { mediaId: "test-media-id" };
+		eventService.sendSseEvent("media:updated", payload);
 
-    vi.unstubAllGlobals();
-  });
+		expect(mockController.enqueue).toHaveBeenCalledWith(
+			expect.stringContaining(JSON.stringify(payload)),
+		);
 
-  it("should not enqueue if signal is aborted", () => {
-    // Mock controller
-    const mockController = {
-      enqueue: vi.fn(),
-      close: vi.fn(),
-    };
+		vi.unstubAllGlobals();
+	});
 
-    let startCallback: ((controller: any) => void) | undefined;
+	it("should not enqueue if signal is aborted", () => {
+		// Mock controller
+		const mockController = {
+			enqueue: vi.fn(),
+			close: vi.fn(),
+		};
 
-    const MockReadableStream = vi.fn((strategies) => {
-      startCallback = strategies.start;
-      return {};
-    });
-    vi.stubGlobal("ReadableStream", MockReadableStream);
+		let startCallback: ((controller: any) => void) | undefined;
 
-    // Mock global Response
-    const MockResponse = vi.fn((body, init) => ({ body, init }));
-    vi.stubGlobal("Response", MockResponse);
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
+			startCallback = strategies.start;
+			return {};
+		});
+		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-    const mockSignal = {
-      addEventListener: vi.fn(),
-      aborted: true, // Aborted!
-    };
-    const mockEvent = { request: { signal: mockSignal } };
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
 
-    eventService.createSseStream(mockEvent as any);
+		vi.stubGlobal("Response", MockResponse);
 
-    if (!startCallback) {
-      throw new Error("startCallback is not defined");
-    }
-    startCallback(mockController);
+		const mockSignal = {
+			addEventListener: vi.fn(),
+			aborted: true, // Aborted!
+		};
+		const mockEvent = { request: { signal: mockSignal } };
 
-    // Emit event
-    eventService.sendSseEvent("media:updated", { mediaId: "foo" });
+		eventService.createSseStream(mockEvent as any);
 
-    // Should NOT call enqueue
-    expect(mockController.enqueue).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
-  });
+		if (!startCallback) {
+			throw new Error("startCallback is not defined");
+		}
+		startCallback(mockController);
 
-  it("should handle controller error (closed) gracefully", () => {
-    // Mock controller
-    const mockController = {
-      enqueue: vi.fn().mockImplementation(() => {
-        throw new Error("Controller is already closed");
-      }),
-      close: vi.fn(),
-    };
+		// Emit event
+		eventService.sendSseEvent("media:updated", { mediaId: "foo" });
 
-    let startCallback: ((controller: any) => void) | undefined;
-    const MockReadableStream = vi.fn((strategies) => {
-      startCallback = strategies.start;
-      return {};
-    });
-    vi.stubGlobal("ReadableStream", MockReadableStream);
+		// Should NOT call enqueue
+		expect(mockController.enqueue).not.toHaveBeenCalled();
+		vi.unstubAllGlobals();
+	});
 
-    // Mock global Response
-    const MockResponse = vi.fn((body, init) => ({ body, init }));
-    vi.stubGlobal("Response", MockResponse);
+	it("should handle controller error (closed) gracefully", () => {
+		// Mock controller
+		const mockController = {
+			enqueue: vi.fn().mockImplementation(() => {
+				throw new Error("Controller is already closed");
+			}),
+			close: vi.fn(),
+		};
 
-    const mockSignal = {
-      addEventListener: vi.fn(),
-      aborted: false,
-    };
-    const mockEvent = { request: { signal: mockSignal } };
+		let startCallback: ((controller: any) => void) | undefined;
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
+			startCallback = strategies.start;
+			return {};
+		});
+		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-    eventService.createSseStream(mockEvent as any);
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
 
-    if (!startCallback) {
-      throw new Error("startCallback is not defined");
-    }
-    startCallback(mockController);
+		vi.stubGlobal("Response", MockResponse);
 
-    // Emit event -> should throw internally but be caught
-    expect(() => {
-      eventService.sendSseEvent("media:updated", { mediaId: "foo" });
-    }).not.toThrow();
+		const mockSignal = {
+			addEventListener: vi.fn(),
+			aborted: false,
+		};
+		const mockEvent = { request: { signal: mockSignal } };
 
-    // Enqueue was called (and failed)
-    expect(mockController.enqueue).toHaveBeenCalled();
+		eventService.createSseStream(mockEvent as any);
 
-    // Verify listener is removed
-    mockController.enqueue.mockClear();
-    eventService.sendSseEvent("media:updated", { mediaId: "bar" });
-    expect(mockController.enqueue).not.toHaveBeenCalled();
+		if (!startCallback) {
+			throw new Error("startCallback is not defined");
+		}
+		startCallback(mockController);
 
-    vi.unstubAllGlobals();
-  });
+		// Emit event -> should throw internally but be caught
+		expect(() => {
+			eventService.sendSseEvent("media:updated", { mediaId: "foo" });
+		}).not.toThrow();
+
+		// Enqueue was called (and failed)
+		expect(mockController.enqueue).toHaveBeenCalled();
+
+		// Verify listener is removed
+		mockController.enqueue.mockClear();
+		eventService.sendSseEvent("media:updated", { mediaId: "bar" });
+		expect(mockController.enqueue).not.toHaveBeenCalled();
+
+		vi.unstubAllGlobals();
+	});
 });

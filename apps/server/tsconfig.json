@@ -5,9 +5,10 @@
     "jsxImportSource": "solid-js",
     "allowJs": true,
     "noEmit": true,
-    "types": ["vinxi/types/client", "vitest/globals"],
+    "types": ["vitest/globals"],
     "isolatedModules": true,
     "skipLibCheck": true,
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],

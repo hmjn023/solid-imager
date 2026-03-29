@@ -4,50 +4,33 @@
   "type": "module",
   "workspaces": [
     "apps/*",
-    "packages/*",
-    "xtracter"
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
-    "lint": "bun --filter '*' lint",
-    "check": "bun --filter '*' check",
-    "format": "bun --filter '*' format",
-    "test": "bun --filter '*' test",
+    "lint": "vp run lint",
+    "check": "vp run check",
+    "format": "vp run format",
+    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
     "typecheck": "bun --filter '*' typecheck",
-    "prepare": "husky"
-  },
-  "lint-staged": {
-    "apps/server/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/server check",
-      "bun --filter @solid-imager/server test:unit",
-      "bash -c 'bun --filter @solid-imager/server typecheck'"
-    ],
-    "packages/core/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/core check",
-      "bun --filter @solid-imager/core test:unit",
-      "bash -c 'bun --filter @solid-imager/core typecheck'"
-    ],
-    "packages/ui/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter @solid-imager/ui check",
-      "bun --filter @solid-imager/ui test:unit",
-      "bash -c 'bun --filter @solid-imager/ui typecheck'"
-    ],
-    "xtracter/src/**/*.{ts,tsx,js,jsx,json}": [
-      "bun --filter xtracter check",
-      "bash -c 'bun --filter xtracter typecheck'"
-    ]
+    "prepare": "vp config"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.2.4",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.7",
-    "typescript": "^5.9.3"
+    "@biomejs/biome": "^2.4.9",
+    "@tanstack/cli": "^0.62.4",
+    "typescript": "^5.9.3",
+    "vite-plus": "latest"
   },
   "trustedDependencies": [
     "youtube-dl-exec",
     "ffmpeg-static"
-  ]
+  ],
+  "packageManager": "npm@11.11.1",
+  "overrides": {
+    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+  }
 }
