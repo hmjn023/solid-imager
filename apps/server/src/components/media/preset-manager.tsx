@@ -34,6 +34,7 @@ import { createEffect, createResource, createSignal, Show } from "solid-js";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
 	clearPresetFilters,
+	getSearchCondition,
 	loadPreset,
 	searchState,
 } from "~/presentation/store/search-store";
@@ -76,9 +77,6 @@ export function PresetManager(props: {
 		}
 
 		// Use current search state to build the preset value
-		const { getSearchCondition } = await import(
-			"~/presentation/store/search-store"
-		);
 		const condition = getSearchCondition();
 
 		if (!condition) {
