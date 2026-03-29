@@ -4,6 +4,10 @@ import { beforeAll, beforeEach, vi } from "vite-plus/test";
 
 // Bootstrap
 beforeAll(async () => {
+	// 1. Ensure DB migration is completed first
+	await mockDbFactory();
+
+	// 2. Then bootstrap the application
 	const { bootstrap } = await import("~/infrastructure/bootstrap");
 	bootstrap();
 });
