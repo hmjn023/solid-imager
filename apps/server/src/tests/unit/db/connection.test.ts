@@ -8,37 +8,42 @@ import {
 // Mock PGlite and postgres
 
 vi.mock("@electric-sql/pglite", () => {
-	const mockPgliteInstance = {
-		waitReady: Promise.resolve(),
-		close: vi.fn(() => Promise.resolve()),
-		query: vi.fn(() => Promise.resolve()),
-		constructor: { name: "PgLite" },
-	};
-	const PgLiteMock = vi.fn(() => mockPgliteInstance);
-	// Make the mock instance appear as an instance of PgLiteMock
-	Object.setPrototypeOf(mockPgliteInstance, PgLiteMock.prototype);
+        const mockPgliteInstance = {
+                waitReady: Promise.resolve(),
+                close: vi.fn(() => Promise.resolve()),
+                query: vi.fn(() => Promise.resolve()),
+                constructor: { name: "PgLite" },
+        };
+        // @biome-ignore lint/style/useArrowFunction: constructor mock
+        const PgLiteMock = vi.fn(function () {
+                return mockPgliteInstance;
+        });
+        // Make the mock instance appear as an instance of PgLiteMock
+        Object.setPrototypeOf(mockPgliteInstance, PgLiteMock.prototype);
 
-	return { PGlite: PgLiteMock };
+        return { PGlite: PgLiteMock };
 });
 
 vi.mock("pg", () => {
-	const mockClient = {
-		release: vi.fn(),
-		query: vi.fn(() => Promise.resolve({ rows: [] })),
-	};
-	const mockPool = {
-		connect: vi.fn(() => Promise.resolve(mockClient)),
-		end: vi.fn(() => Promise.resolve()),
-		query: vi.fn(() => Promise.resolve({ rows: [] })),
-		constructor: { name: "Pool" },
-	};
-	const MockPool = vi.fn(() => mockPool);
-	Object.setPrototypeOf(mockPool, MockPool.prototype);
-	return {
-		Pool: MockPool,
-	};
+        const mockClient = {
+                release: vi.fn(),
+                query: vi.fn(() => Promise.resolve({ rows: [] })),
+        };
+        const mockPool = {
+                connect: vi.fn(() => Promise.resolve(mockClient)),
+                end: vi.fn(() => Promise.resolve()),
+                query: vi.fn(() => Promise.resolve({ rows: [] })),
+                constructor: { name: "Pool" },
+        };
+        // @biome-ignore lint/style/useArrowFunction: constructor mock
+        const MockPool = vi.fn(function () {
+                return mockPool;
+        });
+        Object.setPrototypeOf(mockPool, MockPool.prototype);
+        return {
+                Pool: MockPool,
+        };
 });
-
 describe("createConnection", () => {
 	it("should create a PGlite connection when databaseType is pglite", async () => {
 		const config: DatabaseConfig = {

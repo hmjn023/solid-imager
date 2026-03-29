@@ -14,14 +14,18 @@ describe("EventService", () => {
 		let startCallback: ((controller: any) => void) | undefined;
 
 		// Mock global ReadableStream
-		const MockReadableStream = vi.fn((strategies: any) => {
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// Mock global Response
-		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
+
 		vi.stubGlobal("Response", MockResponse);
 
 		const mockSignal = {
@@ -63,14 +67,18 @@ describe("EventService", () => {
 
 		let startCallback: ((controller: any) => void) | undefined;
 
-		const MockReadableStream = vi.fn((strategies: any) => {
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// Mock global Response
-		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
+
 		vi.stubGlobal("Response", MockResponse);
 
 		const mockSignal = {
@@ -104,14 +112,18 @@ describe("EventService", () => {
 		};
 
 		let startCallback: ((controller: any) => void) | undefined;
-		const MockReadableStream = vi.fn((strategies: any) => {
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// Mock global Response
-		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
+		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		const MockResponse = vi.fn(function (body: any, init: any) {
+			return { body, init };
+		});
+
 		vi.stubGlobal("Response", MockResponse);
 
 		const mockSignal = {
