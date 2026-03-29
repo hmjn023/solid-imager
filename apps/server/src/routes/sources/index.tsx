@@ -3,6 +3,12 @@ import type {
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
 import { toast } from "@solid-imager/ui/toast";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/sources/")({
+	component: Sources,
+});
+
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -57,10 +63,8 @@ export default function Sources() {
 		const editing = editingSource();
 		try {
 			if (editing?.id) {
-				// biome-ignore lint/suspicious/noExplicitAny: Temporary fix for type mismatch
 				await updateMediaSource(editing.id, sourceData as any);
 			} else {
-				// biome-ignore lint/suspicious/noExplicitAny: Temporary fix for type mismatch
 				await createMediaSource(sourceData as any);
 			}
 			await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
@@ -96,7 +100,7 @@ export default function Sources() {
 			return;
 		}
 		setIsSyncing(true);
-		toast(`Starting sync for ${source.name}...`);
+		toast.info(`Starting sync for ${source.name}...`);
 		try {
 			await syncMediaSources([source.id]);
 			toast.success(`Sync finished for ${source.name}`);
@@ -118,7 +122,7 @@ export default function Sources() {
 		}
 
 		setIsSyncing(true);
-		toast("Starting sync for all sources...");
+		toast.info("Starting sync for all sources...");
 		try {
 			const ids = sources.map((s) => s.id).filter(Boolean) as string[];
 			await syncMediaSources(ids);
@@ -147,7 +151,6 @@ export default function Sources() {
 			// Create a controller for this effect run (cancels previous run's streams)
 			const ac = new AbortController();
 
-			// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: SSE handler logic
 			const startStreamForSource = async (id: string) => {
 				try {
 					const events = await orpc.sources.events(

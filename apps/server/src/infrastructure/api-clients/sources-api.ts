@@ -92,7 +92,6 @@ export async function fetchSourceDump(
 	return response.blob();
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: complex dump structure
 export function restoreSource(id: string, data: any) {
 	return orpc.sources.restore({ id, data });
 }

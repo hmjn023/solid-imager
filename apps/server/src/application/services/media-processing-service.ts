@@ -40,7 +40,6 @@ export class MediaProcessingServiceImpl {
 	private readonly jobRepo: IJobRepository;
 	private readonly configService: ServerConfigService;
 
-	// biome-ignore lint: DI requires multiple repositories
 	constructor(
 		sourceRepo: SourceRepository,
 		mediaRepo: IMediaRepository,
@@ -140,13 +139,11 @@ export class MediaProcessingServiceImpl {
 	/**
 	 * Executes the processMedia job.
 	 */
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Refactor legacy logic later
 	async executeProcessMediaJob(job: Job): Promise<void> {
 		if (job.type !== "processMedia") {
 			return;
 		}
 
-		// biome-ignore lint/suspicious/noExplicitAny: Payload structure known for this job type
 		const payload = job.payload as any;
 		const mediaId = payload?.mediaId;
 

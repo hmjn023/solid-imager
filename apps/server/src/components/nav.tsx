@@ -1,4 +1,4 @@
-import { useLocation } from "@solidjs/router";
+import { Link, useLocation } from "@tanstack/solid-router";
 import { createSignal, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
 import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
@@ -11,7 +11,7 @@ import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
 export default function Nav() {
 	const location = useLocation();
 	const active = (path: string) =>
-		path === location.pathname
+		path === location().pathname
 			? "border-sky-600"
 			: "border-transparent hover:border-sky-600";
 
@@ -69,19 +69,19 @@ export default function Nav() {
 				<div class="container relative flex items-center p-3">
 					<ul class="flex items-center text-gray-200">
 						<li class={`border-b-2 ${active("/")} mx-1.5 sm:mx-6`}>
-							<a href="/">Home</a>
+							<Link to="/">Home</Link>
 						</li>
 						<li class={`border-b-2 ${active("/about")} mx-1.5 sm:mx-6`}>
-							<a href="/about">About</a>
+							<Link to="/about">About</Link>
 						</li>
 						<li class={`border-b-2 ${active("/sources")} mx-1.5 sm:mx-6`}>
-							<a href="/sources">Sources</a>
+							<Link to="/sources">Sources</Link>
 						</li>
 						<li class={`border-b-2 ${active("/search")} mx-1.5 sm:mx-6`}>
-							<a href="/search">Search</a>
+							<Link to="/search">Search</Link>
 						</li>
 						<li class={`border-b-2 ${active("/manager")} mx-1.5 sm:mx-6`}>
-							<a href="/manager">Manager</a>
+							<Link to="/manager">Manager</Link>
 						</li>
 						<li class={`border-b-2 ${active("/docs")} mx-1.5 sm:mx-6`}>
 							<a
@@ -93,7 +93,7 @@ export default function Nav() {
 							</a>
 						</li>
 						<li class={`border-b-2 ${active("/config")} mx-1.5 sm:mx-6`}>
-							<a href="/config">Settings</a>
+							<Link to="/config">Settings</Link>
 						</li>
 					</ul>
 					<div class="ml-auto flex items-center gap-2" id="nav-actions">

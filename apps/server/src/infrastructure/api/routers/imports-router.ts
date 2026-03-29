@@ -12,7 +12,6 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
  */
 async function classifyBulkAddItems(
 	items: z.infer<typeof downloadItemSchema>[],
-	// biome-ignore lint/suspicious/noExplicitAny: dynamic import type
 	BackupService: any,
 ) {
 	const restoreGroups = new Map<string, z.infer<typeof downloadItemSchema>[]>();
@@ -96,8 +95,7 @@ export const bulkAddHandler = async ({
 		const jobValues = importItems.map((item) => ({
 			type: "import_request",
 			status: "pending" as const,
-			// biome-ignore lint/style/noNonNullAssertion: Checked above
-			payload: { ...item, targetUrl: item.targetUrl! },
+			payload: { ...item, targetUrl: item.targetUrl ?? "" },
 			updatedAt: new Date(),
 		}));
 
@@ -219,13 +217,11 @@ export const importsRouter = {
 		yield { event: "connected", data: "connected" };
 
 		// Queue for events
-		// biome-ignore lint/suspicious/noExplicitAny: SSE payload
 		const queue: { event: string; data: any }[] = [];
 		let resolve: (() => void) | null = null;
 
 		const mediaSourceId = "global-imports";
 
-		// biome-ignore lint/suspicious/noExplicitAny: SSE payload is dynamic
 		const onEvent = (payload: { event: string; data: any }) => {
 			queue.push(payload);
 			if (resolve) {

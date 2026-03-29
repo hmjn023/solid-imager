@@ -13,6 +13,12 @@ import {
 	AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/manager")({
+	component: ManagerPage,
+});
+
 import {
 	Card,
 	CardContent,
@@ -519,7 +525,6 @@ export default function ManagerPage() {
 								{(progress) => (
 									<div class="mt-4">
 										<Progress
-											// biome-ignore lint/style/noMagicNumbers: Percentage calculation
 											value={(progress().processed / progress().total) * 100}
 										/>
 									</div>

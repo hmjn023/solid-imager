@@ -18,7 +18,6 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;
 
-// biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_FILE_SIZE = 1024 * 1024;
 const TEST_WIDTH = 800;
 

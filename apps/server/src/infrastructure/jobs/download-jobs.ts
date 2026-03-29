@@ -45,7 +45,6 @@ type YtDlpOutput = {
 	filename: string;
 };
 
-// biome-ignore lint/suspicious/noExplicitAny: External cookie object structure is loose
 type Cookie = any;
 
 async function createNetscapeCookieFile(
@@ -55,7 +54,6 @@ async function createNetscapeCookieFile(
 		return null;
 	}
 
-	// biome-ignore lint/style/noMagicNumbers: Radix for random string
 	const randomSuffix = Math.random().toString(36).slice(2);
 	const cookieFilePath = path.join(
 		os.tmpdir(),
@@ -114,7 +112,6 @@ async function downloadWithYtDlp(
 			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-			// biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
 		} as any);
 
 		// output handling
@@ -193,7 +190,6 @@ async function fetchMetadataWithYtDlp(
 			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-			// biome-ignore lint/suspicious/noExplicitAny: library type definition missing flags
 		} as any);
 
 		return result as unknown as YtDlpOutput;
@@ -556,7 +552,6 @@ function getDownloadItemFromJob(job: Job): DownloadItem {
 	if (!job.payload) {
 		return {} as DownloadItem;
 	}
-	// biome-ignore lint/suspicious/noExplicitAny: Payload cast
 	const payload = job.payload as any;
 	const item = { ...payload } as unknown as DownloadItem;
 

@@ -9,7 +9,6 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
-import { A } from "@solidjs/router";
 
 /**
  * Props for the SourceCard component.
@@ -38,7 +37,6 @@ const getTypeLabel = (type: string) => {
 };
 
 const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
-	// biome-ignore lint/suspicious/noExplicitAny: loose type check
 	const info = source.connectionInfo as any;
 
 	if (source.type === "local") {
@@ -79,7 +77,7 @@ export default function SourceCard(props: SourceCardProps) {
 	};
 
 	return (
-		<A
+		<a
 			class="block text-current no-underline"
 			href={`/sources/${props.mediaSource.id}`}
 		>
@@ -135,6 +133,6 @@ export default function SourceCard(props: SourceCardProps) {
 					)}
 				</div>
 			</Card>
-		</A>
+		</a>
 	);
 }

@@ -1,7 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Card } from "@solid-imager/ui/card";
 import { Checkbox } from "@solid-imager/ui/checkbox";
-import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 
 type MediaCardItemProps = {
@@ -56,7 +55,6 @@ export function MediaCardItem(props: MediaCardItemProps) {
 						fallback={<div class="text-gray-400">{props.media.mediaType}</div>}
 						when={props.media.mediaType === "image"}
 					>
-						{/* biome-ignore lint/performance/noImgElement: Standard img for simplicity */}
 						<img
 							alt={props.media.fileName}
 							class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -97,13 +95,13 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				</div>
 
 				<Show when={!props.selectable}>
-					<A
+					<a
 						class="mt-2 block text-center text-primary text-sm hover:underline"
 						href={`/sources/${props.media.mediaSourceId}/${props.media.id}`}
 						onClick={(e) => e.stopPropagation()} // Prevent card click if we had one
 					>
 						Check Details
-					</A>
+					</a>
 				</Show>
 			</div>
 		</Card>

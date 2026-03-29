@@ -3,5 +3,5 @@
 export type Transaction = unknown;
 
 export type TransactionManager = {
-  transaction<T>(callback: (tx: Transaction) => Promise<T>): Promise<T>;
+	transaction<T>(callback: (tx: Transaction) => Promise<T>): Promise<T>;
 };

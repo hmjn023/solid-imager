@@ -1,6 +1,12 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
+import { createFileRoute } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/search")({
+	component: Search,
+});
+
 import {
 	Card,
 	CardContent,
@@ -68,7 +74,6 @@ const buildSearchParams = (state: typeof searchState) => {
 const useStableConditionKey = () =>
 	createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
-// biome-ignore lint/style/noMagicNumbers: Standard time calculation
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
 export default function Search() {
@@ -235,9 +240,8 @@ export default function Search() {
 
 	return (
 		<main class="container mx-auto p-4">
-			<Show when={!isServer}>
-				{/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
-				<Portal mount={document.getElementById("nav-actions")!}>
+			<Show when={!isServer && document.getElementById("nav-actions")}>
+				<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
 					<Dialog>
 						<DialogTrigger
 							as={Button}
@@ -245,7 +249,6 @@ export default function Search() {
 							size="icon"
 							variant="outline"
 						>
-							{/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
 							<svg
 								class="lucide lucide-filter"
 								fill="none"
@@ -258,6 +261,7 @@ export default function Search() {
 								width="24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
+								<title>Filter results</title>
 								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 							</svg>
 						</DialogTrigger>

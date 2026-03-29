@@ -89,7 +89,6 @@ export class JobRepository implements IJobRepository {
 			.update(jobs)
 			.set({
 				status: "completed",
-				// biome-ignore lint/suspicious/noExplicitAny: jsonb handles any
 				result: result as any,
 				updatedAt: new Date(),
 			})

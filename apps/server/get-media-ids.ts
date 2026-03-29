@@ -10,16 +10,12 @@ async function getMediaIds() {
 
         const media = await db.query.medias.findFirst();
         if (media) {
-            // biome-ignore lint/suspicious/noConsole: Script utility
             console.log(`mediaSourceId: ${media.mediaSourceId}`);
-            // biome-ignore lint/suspicious/noConsole: Script utility
             console.log(`mediaId: ${media.id}`);
         } else {
-            // biome-ignore lint/suspicious/noConsole: Script utility
             console.log("No media found in the database.");
         }
     } catch (error) {
-        // biome-ignore lint/suspicious/noConsole: Script utility
         console.error("An error occurred:", error);
     } finally {
         await pglite?.close();

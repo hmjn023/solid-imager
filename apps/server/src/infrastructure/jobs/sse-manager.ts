@@ -17,7 +17,6 @@ type FileWatcher = {
 
 // mediaSourceId -> Set of clients
 // HMR survival: use global map if available
-// biome-ignore lint/suspicious/noExplicitAny: Global augmentation for HMR
 const globalAny = globalThis as any;
 
 if (!globalAny.__SSE_CLIENTS_MAP__) {

@@ -1,12 +1,16 @@
-import { A } from "@solidjs/router";
+import { createFileRoute, Link } from "@tanstack/solid-router";
 import Counter from "~/components/counter";
+
+export const Route = createFileRoute("/about")({
+	component: About,
+});
 
 /**
  * The About page component.
  * Displays information about the application and includes a counter component.
  * @returns {JSX.Element} The rendered About page.
  */
-export default function About() {
+function About() {
 	return (
 		<main class="mx-auto p-4 text-center text-gray-700">
 			<h1 class="max-6-xs my-16 font-thin text-6xl text-sky-700 uppercase">
@@ -26,9 +30,9 @@ export default function About() {
 				to learn how to build Solid apps.
 			</p>
 			<p class="my-4">
-				<A class="text-sky-600 hover:underline" href="/">
+				<Link class="text-sky-600 hover:underline" to="/">
 					Home
-				</A>
+				</Link>
 				{" - "}
 				<span>About Page</span>
 			</p>

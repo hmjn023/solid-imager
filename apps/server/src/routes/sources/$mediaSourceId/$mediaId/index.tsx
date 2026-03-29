@@ -1,17 +1,21 @@
 import type { UUID } from "@solid-imager/core/domain/shared/schemas";
-import { useParams } from "@solidjs/router";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { Match, Switch } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
 
-export default function Media() {
-	const params = useParams();
+export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
+	component: Media,
+});
+
+function Media() {
+	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
 	const queryClient = useQueryClient();
-	const mediaSourceId = params.mediaSourceId as UUID;
-	const mediaId = params.mediaId as UUID;
+	const mediaSourceId = params().mediaSourceId as UUID;
+	const mediaId = params().mediaId as UUID;
 
 	const mediaDetails = createQuery(() => ({
 		queryKey: ["mediaDetails", mediaSourceId, mediaId],

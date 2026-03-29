@@ -1,5 +1,4 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { A } from "@solidjs/router";
 import { Show } from "solid-js";
 
 type MediaGridItemProps = {
@@ -31,7 +30,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 		).getTime()}`;
 
 	return (
-		<A
+		<a
 			class="group relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
 			data-media-id={props.media.id}
 			href={href()}
@@ -45,7 +44,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				}
 				when={props.media.mediaType === "image"}
 			>
-				{/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
 				<img
 					alt={props.media.fileName}
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
@@ -65,6 +63,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 					{props.media.fileName}
 				</p>
 			</div>
-		</A>
+		</a>
 	);
 }

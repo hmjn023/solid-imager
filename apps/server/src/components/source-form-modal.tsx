@@ -28,7 +28,6 @@ const DEFAULT_SFTP_PORT = 22;
 type SourceFormModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
-	// biome-ignore lint/suspicious/noExplicitAny: inferrence failing
 	onSubmit: (data: any) => void;
 	editingSource?: MediaSourceInfo | SafeMediaSource | null;
 };
@@ -54,7 +53,6 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				name: props.editingSource.name,
 				description: props.editingSource.description || "",
 				type: props.editingSource.type as "local" | "sftp" | "s3",
-				// biome-ignore lint/suspicious/noExplicitAny: complex object type
 				connectionInfo: (props.editingSource.connectionInfo as any) || {},
 			});
 		} else {
@@ -68,7 +66,6 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		setErrors({});
 	});
 
-	// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: Validation logic
 	const validate = () => {
 		const newErrors: Record<string, string> = {};
 		if (!formData.name.trim()) {

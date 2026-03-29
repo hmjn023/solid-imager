@@ -23,9 +23,7 @@ import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-re
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
-// biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_FILE_SIZE = 1024 * 1024;
-// biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_UPDATED_SIZE = 2048 * 1024;
 const TEST_WIDTH = 800;
 const TEST_UPDATED_WIDTH = 1200;

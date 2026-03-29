@@ -1,8 +1,12 @@
-import { clientOnly } from "@solidjs/start";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/solid-router";
 
-const SwaggerUi = clientOnly(() => import("~/components/swagger-ui"));
+const SwaggerUi = lazyRouteComponent(() => import("~/components/swagger-ui"));
 
-export default function SwaggerPage() {
+export const Route = createFileRoute("/docs/swagger/")({
+	component: SwaggerPage,
+});
+
+function SwaggerPage() {
 	return (
 		<div class="container mx-auto p-4">
 			<h1 class="mb-4 font-bold text-2xl">API Documentation</h1>

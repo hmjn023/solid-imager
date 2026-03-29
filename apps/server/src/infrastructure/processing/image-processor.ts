@@ -165,7 +165,6 @@ export class LocalImageProcessor implements IImageProcessor {
 				comments.push(...metadata.comments);
 			}
 			// Attempt to read from EXIF fields
-			// biome-ignore lint/suspicious/noExplicitAny: exif structure is dynamic
 			const exif = (metadata.exif as any)?.IFD0;
 			if (exif) {
 				if (exif.UserComment) {
@@ -285,7 +284,6 @@ export const VideoProcessor = {
 		// Note: ImageProcessor uses a fixed "10%" timestamp currently, ignoring _time.
 		// If precision is needed, ImageProcessor needs update.
 		// For now, using default implementation.
-		// biome-ignore lint/style/noMagicNumbers: default size
 		await ImageProcessor.generateThumbnail(videoPath, outputPath, 512, 80);
 	},
 

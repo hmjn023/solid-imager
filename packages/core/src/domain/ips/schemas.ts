@@ -8,9 +8,9 @@
 import { z } from "zod";
 
 export const newIpSchema = z.object({
-  name: z.string().min(1),
-  description: z.string().optional(),
-  source: z.string().optional(),
+	name: z.string().min(1),
+	description: z.string().optional(),
+	source: z.string().optional(),
 });
 
 export const updateIpSchema = newIpSchema.partial();
@@ -19,12 +19,12 @@ export type NewIp = z.infer<typeof newIpSchema>;
 export type UpdateIp = z.infer<typeof updateIpSchema>;
 
 export const ipSchema = z.object({
-  id: z.string().uuid(),
-  name: z.string(),
-  description: z.string().nullable(),
-  source: z.string(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
+	id: z.string().uuid(),
+	name: z.string(),
+	description: z.string().nullable(),
+	source: z.string(),
+	createdAt: z.coerce.date(),
+	updatedAt: z.coerce.date(),
 });
 
 export type Ip = z.infer<typeof ipSchema>;

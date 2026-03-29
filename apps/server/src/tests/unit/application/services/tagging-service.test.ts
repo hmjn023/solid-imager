@@ -6,7 +6,6 @@ import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-r
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { TaggingService } from "~/application/services/tagging-service";
 
-// biome-ignore lint/style/noMagicNumbers: Test data
 const MOCK_BUFFER_DATA = [1, 2, 3];
 const _NON_EXISTENT_ID = 999;
 

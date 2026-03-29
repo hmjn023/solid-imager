@@ -5,7 +5,6 @@ import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
-// biome-ignore lint/style/noMagicNumbers: test constants
 const TEST_FILE_SIZE = 1024 * 1024;
 const TEST_WIDTH = 800;
 

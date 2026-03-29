@@ -3,7 +3,6 @@ import SwaggerUiBundle from "swagger-ui-dist/swagger-ui-bundle.js";
 import "swagger-ui-dist/swagger-ui.css";
 
 export default function swaggerUiComponent() {
-	// biome-ignore lint/suspicious/noUnassignedVariables: Assigned by Solid.js ref
 	let swaggerUiRef: HTMLDivElement | undefined;
 
 	onMount(() => {

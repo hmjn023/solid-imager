@@ -90,7 +90,6 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	const payload = job.payload as BulkTaggingDispatchJobPayload;
 	const force = payload?.force ?? false;
-	// biome-ignore lint/style/noMagicNumbers: Default batch size
 	const batchSize = payload?.batchSize ?? 1000;
 	const mediaSourceId = payload?.mediaSourceId;
 

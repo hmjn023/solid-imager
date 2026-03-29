@@ -57,7 +57,6 @@ describe("ConfigService", () => {
 
 		service.load();
 
-		// biome-ignore lint/style/noMagicNumbers: Test assertion
 		expect(service.getConfig().jobs.concurrency).toBe(50);
 	});
 

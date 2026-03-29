@@ -28,7 +28,12 @@ import {
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { toast } from "@solid-imager/ui/toast";
-import { useParams } from "@solidjs/router";
+import { createFileRoute, useParams } from "@tanstack/solid-router";
+
+export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	component: MediaListPage,
+});
+
 import {
 	createInfiniteQuery,
 	createQuery,
@@ -81,10 +86,10 @@ const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 
 export default function MediaListPage() {
-	const params = useParams();
+	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const queryClient = useQueryClient();
 
-	const mediaSourceId = () => params.mediaSourceId;
+	const mediaSourceId = () => params().mediaSourceId;
 
 	// Enable auto-save/restore of search conditions
 	useCurrentSearchPersistence(mediaSourceId);
@@ -321,29 +326,26 @@ export default function MediaListPage() {
 			// Case 3: JSON is an object with an 'images' key (new handling for user's provided structure)
 			else if (jsonContent.images && Array.isArray(jsonContent.images)) {
 				items = jsonContent.images
-					.map(
-						// biome-ignore lint/suspicious/noExplicitAny: Dynamic JSON structure, any is acceptable here.
-						(image: any) => {
-							const imageUrl = image.originalUrl || image.displayUrl;
-							if (!imageUrl) {
-								return null; // Skip if no valid URL is found
-							}
+					.map((image: any) => {
+						const imageUrl = image.originalUrl || image.displayUrl;
+						if (!imageUrl) {
+							return null; // Skip if no valid URL is found
+						}
 
-							let tweetUrl: string | undefined;
-							if (image.source === "twitter" && image.metadata?.postId) {
-								tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
-							}
+						let tweetUrl: string | undefined;
+						if (image.source === "twitter" && image.metadata?.postId) {
+							tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
+						}
 
-							return {
-								imageUrl,
-								tweetUrl,
-								tweetText: image.metadata?.title,
-								authorName: image.metadata?.author,
-								timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
-								// Add other fields as needed from the provided JSON structure to match DownloadItem
-							};
-						},
-					)
+						return {
+							imageUrl,
+							tweetUrl,
+							tweetText: image.metadata?.title,
+							authorName: image.metadata?.author,
+							timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
+							// Add other fields as needed from the provided JSON structure to match DownloadItem
+						};
+					})
 					.filter(Boolean) as DownloadItem[]; // Filter out nulls
 			} else {
 				throw new Error(
@@ -629,7 +631,7 @@ export default function MediaListPage() {
 		}
 
 		setIsSyncingMedia(true);
-		toast("Starting batch sync for loaded media...");
+		toast.info("Starting batch sync for loaded media...");
 		try {
 			await syncMediaItems(mediaSourceId() || "", mediaIds);
 			toast.success(`Batch sync completed for ${mediaIds.length} items`);
@@ -643,7 +645,7 @@ export default function MediaListPage() {
 	};
 
 	const handleSyncSingleMedia = async (mediaId: string) => {
-		toast("Starting metadata sync...");
+		toast.info("Starting metadata sync...");
 		try {
 			await syncMediaItems(mediaSourceId() || "", [mediaId]);
 			toast.success("Metadata synced successfully");
@@ -739,16 +741,14 @@ export default function MediaListPage() {
 	});
 
 	return (
-		/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: This section is a drop zone, and the event handlers are necessary for its functionality. */
 		<section
 			aria-label="Media upload area"
 			class="container mx-auto min-h-[calc(100vh-2rem)] p-4"
 			onDragOver={handleDragOver}
 			onDrop={handleDrop}
 		>
-			<Show when={!isServer}>
-				{/* biome-ignore lint/style/noNonNullAssertion: nav-actions is guaranteed to exist in Nav component */}
-				<Portal mount={document.getElementById("nav-actions")!}>
+			<Show when={!isServer && document.getElementById("nav-actions")}>
+				<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
 					<Button
 						class="mr-2 border-white text-white hover:bg-sky-700"
 						onClick={() => handleDumpDownload("json")}
@@ -756,7 +756,6 @@ export default function MediaListPage() {
 						title="Download Backup JSON"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Download icon */}
 						<svg
 							class="lucide lucide-file-json"
 							fill="none"
@@ -769,6 +768,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Download JSON</title>
 							<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
 							<path d="M14 2v4a2 2 0 0 0 2 2h4" />
 							<path d="M10 12a1 1 0 0 0-1 1v1a1 1 0 0 0 1 1" />
@@ -782,7 +782,6 @@ export default function MediaListPage() {
 						title="Download Backup ZIP (with Images)"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Download ZIP icon */}
 						<svg
 							class="lucide lucide-archive"
 							fill="none"
@@ -795,6 +794,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Download ZIP</title>
 							<rect height="5" rx="1" width="20" x="2" y="3" />
 							<path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
 							<path d="M10 12h4" />
@@ -807,7 +807,6 @@ export default function MediaListPage() {
 						title="Restore Metadata from Dump"
 						variant="outline"
 					>
-						{/* biome-ignore lint/a11y/noSvgWithoutTitle: Upload Cloud icon */}
 						<svg
 							class="lucide lucide-upload-cloud"
 							fill="none"
@@ -820,6 +819,7 @@ export default function MediaListPage() {
 							width="20"
 							xmlns="http://www.w3.org/2000/svg"
 						>
+							<title>Restore from cloud</title>
 							<path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
 							<path d="M12 12v9" />
 							<path d="m16 16-4-4-4 4" />
@@ -832,7 +832,6 @@ export default function MediaListPage() {
 							size="icon"
 							variant="outline"
 						>
-							{/* biome-ignore lint/a11y/noSvgWithoutTitle: Filter icon */}
 							<svg
 								class="lucide lucide-filter"
 								fill="none"
@@ -845,6 +844,7 @@ export default function MediaListPage() {
 								width="24"
 								xmlns="http://www.w3.org/2000/svg"
 							>
+								<title>Filter results</title>
 								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 							</svg>
 						</DialogTrigger>
@@ -940,7 +940,6 @@ export default function MediaListPage() {
 														href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
 														onContextMenu={() => setContextMenuMediaId(item.id)}
 													>
-														{/* biome-ignore lint/performance/noImgElement: No optimized Image component available */}
 														<img
 															alt={item.fileName}
 															class="h-full w-full object-cover"

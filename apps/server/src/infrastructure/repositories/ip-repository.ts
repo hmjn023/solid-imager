@@ -59,7 +59,6 @@ export const IpRepository: IIpRepository = {
 			const result = await client.insert(ips).values(ip).returning();
 			return mapToDomain(result[0]);
 		} catch (error: unknown) {
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "23505") {
 				throw new ResourceConflictError("IP with this name already exists");
 			}
@@ -84,7 +83,6 @@ export const IpRepository: IIpRepository = {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			// biome-ignore lint/suspicious/noExplicitAny: Checking error code on unknown error
 			if ((error as any).code === "23505") {
 				throw new ResourceConflictError("IP with this name already exists");
 			}
@@ -115,15 +113,11 @@ export const IpRepository: IIpRepository = {
 			.innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
 			.where(eq(mediaIps.mediaId, mediaId));
 
-		return result.map(
-			/* biome-ignore lint/suspicious/noExplicitAny: DB result mapping */ (
-				i: any,
-			) => ({
-				...i,
-				createdAt: i.createdAt || new Date(),
-				updatedAt: i.updatedAt || new Date(),
-			}),
-		);
+		return result.map((i: any) => ({
+			...i,
+			createdAt: i.createdAt || new Date(),
+			updatedAt: i.updatedAt || new Date(),
+		}));
 	},
 
 	async getMediaIps(
@@ -155,7 +149,6 @@ export const IpRepository: IIpRepository = {
 		}));
 	},
 
-	// biome-ignore lint: Repo method
 	async addMedia(
 		mediaId: string,
 		ipId: string,
