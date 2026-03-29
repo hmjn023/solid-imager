@@ -333,6 +333,7 @@ export const BackupService = {
 					set: {
 						description: sql`excluded.description`,
 						modifiedAt: sql`excluded.modified_at`,
+						createdAt: sql`excluded.created_at`,
 						width: sql`excluded.width`,
 						height: sql`excluded.height`,
 						fileSize: sql`excluded.file_size`,
