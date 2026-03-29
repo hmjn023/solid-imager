@@ -52,6 +52,7 @@ import {
 	mediaProjects,
 	medias,
 	mediaTags,
+	mediaTechnicalInfo,
 	mediaUrls,
 	type NewMedia,
 	projects,
@@ -655,6 +656,39 @@ export const MediaRepository: IMediaRepository = {
 			);
 			throw new UnexpectedError(
 				`Failed to select media paths by source ID: ${mediaSourceId}`,
+				error,
+			);
+		}
+	},
+
+	async getSyncManifestData(
+		sourceId: string,
+		tx?: Transaction,
+	): Promise<
+		{
+			filePath: string;
+			hashMd5: string | null;
+			fileSize: number | null;
+			modifiedAt: Date;
+		}[]
+	> {
+		try {
+			const client = (tx as unknown as TransactionClient) || db;
+			const results = await client
+				.select({
+					filePath: medias.filePath,
+					hashMd5: mediaTechnicalInfo.hashMd5,
+					fileSize: medias.fileSize,
+					modifiedAt: medias.modifiedAt,
+				})
+				.from(medias)
+				.leftJoin(mediaTechnicalInfo, eq(medias.id, mediaTechnicalInfo.mediaId))
+				.where(eq(medias.mediaSourceId, sourceId));
+
+			return results;
+		} catch (error) {
+			throw new UnexpectedError(
+				`Failed to select sync manifest data for source ID: ${sourceId}`,
 				error,
 			);
 		}

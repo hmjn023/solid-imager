@@ -4,6 +4,7 @@ import { aiCmd } from "./commands/ai.ts";
 import { dbCmd } from "./commands/db.ts";
 import { jobCmd } from "./commands/job.ts";
 import { mediaCmd } from "./commands/media.ts";
+import { syncCmd } from "./commands/sync.ts";
 import { getClient } from "./orpc-client.ts";
 import { globalOptions } from "./utils.ts";
 
@@ -29,6 +30,7 @@ cli.command("ping", {
 });
 
 cli.command(mediaCmd);
+cli.command(syncCmd);
 cli.command(jobCmd);
 cli.command(aiCmd);
 cli.command(dbCmd);

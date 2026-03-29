@@ -543,3 +543,36 @@ export const updatePresetRequestSchema = z.object({
 });
 
 export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;
+
+// Sync Schemas
+export const syncManifestItemSchema = z.object({
+	filePath: z.string(),
+	hashMd5: z.string().nullable(),
+	fileSize: z.number().nullable(),
+	modifiedAt: z.coerce.date(),
+});
+
+export type SyncManifestItem = z.infer<typeof syncManifestItemSchema>;
+
+export const syncManifestSchema = z.object({
+	sourceId: z.string().uuid(),
+	items: z.array(syncManifestItemSchema),
+});
+
+export type SyncManifest = z.infer<typeof syncManifestSchema>;
+
+export const syncDiffSchema = z.object({
+	remoteSourceId: z.string().uuid(),
+	missingLocally: z.array(syncManifestItemSchema),
+	missingRemotely: z.array(syncManifestItemSchema),
+	updateLocally: z.array(syncManifestItemSchema),
+	updateRemotely: z.array(syncManifestItemSchema),
+	conflicts: z.array(
+		z.object({
+			local: syncManifestItemSchema,
+			remote: syncManifestItemSchema,
+		}),
+	),
+});
+
+export type SyncDiff = z.infer<typeof syncDiffSchema>;

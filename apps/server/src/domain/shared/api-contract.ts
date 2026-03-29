@@ -11,6 +11,7 @@ import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
+import { syncRouter } from "~/infrastructure/api/routers/sync-router";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 import { thumbnailsRouter } from "~/infrastructure/api/routers/thumbnails-router";
 import { utilsRouter } from "~/infrastructure/api/routers/utils-router";
@@ -25,6 +26,7 @@ export const appRouter = {
 	media: mediaRouter,
 	categories: categoriesRouter,
 	projects: projectsRouter,
+	sync: syncRouter,
 	characters: charactersRouter,
 	ips: ipsRouter,
 	thumbnails: thumbnailsRouter,

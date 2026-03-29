@@ -15,16 +15,14 @@ describe("EventService", () => {
 
 		// Mock global ReadableStream
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		const MockReadableStream = vi.fn((strategies: any) => {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -68,16 +66,14 @@ describe("EventService", () => {
 		let startCallback: ((controller: any) => void) | undefined;
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		const MockReadableStream = vi.fn((strategies: any) => {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -113,16 +109,14 @@ describe("EventService", () => {
 
 		let startCallback: ((controller: any) => void) | undefined;
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		const MockReadableStream = vi.fn((strategies: any) => {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn((body: any, init: any) => ({ body, init }));
 
 		vi.stubGlobal("Response", MockResponse);
 

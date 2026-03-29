@@ -90,4 +90,15 @@ export type IMediaRepository = {
 		sourceId: string,
 		tx?: Transaction,
 	): Promise<{ id: string; filePath: string }[]>;
+	getSyncManifestData(
+		sourceId: string,
+		tx?: Transaction,
+	): Promise<
+		{
+			filePath: string;
+			hashMd5: string | null;
+			fileSize: number | null;
+			modifiedAt: Date;
+		}[]
+	>;
 };
