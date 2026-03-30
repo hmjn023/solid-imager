@@ -740,14 +740,14 @@ export default function MediaListPage() {
 	return (
 		<section
 			aria-label="Media upload area"
-			class="container mx-auto min-h-[calc(100vh-2rem)] p-4"
+			class="container mx-auto min-h-[calc(100vh-2rem)] p-4 bg-[#131313] text-[#e5e2e1]"
 			onDragOver={handleDragOver}
 			onDrop={handleDrop}
 		>
 			<Show when={!isServer && document.getElementById("nav-actions")}>
 				<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
 					<Button
-						class="mr-2 border-white text-white hover:bg-sky-700"
+						class="mr-2 border-[#353534] bg-[#201f1f] text-[#a0c4ff] hover:bg-[#353534]"
 						onClick={() => handleDumpDownload("json")}
 						size="icon"
 						title="Download Backup JSON"
@@ -773,7 +773,7 @@ export default function MediaListPage() {
 						</svg>
 					</Button>
 					<Button
-						class="mr-2 border-white text-white hover:bg-sky-700"
+						class="mr-2 border-[#353534] bg-[#201f1f] text-[#a0c4ff] hover:bg-[#353534]"
 						onClick={() => handleDumpDownload("zip")}
 						size="icon"
 						title="Download Backup ZIP (with Images)"
@@ -798,7 +798,7 @@ export default function MediaListPage() {
 						</svg>
 					</Button>
 					<Button
-						class="mr-2 border-white text-white hover:bg-sky-700"
+						class="mr-2 border-[#353534] bg-[#201f1f] text-[#a0c4ff] hover:bg-[#353534]"
 						onClick={() => document.getElementById("restore-input")?.click()}
 						size="icon"
 						title="Restore Metadata from Dump"
@@ -825,7 +825,7 @@ export default function MediaListPage() {
 					<Dialog>
 						<DialogTrigger
 							as={Button}
-							class="border-white text-white hover:bg-sky-700 md:hidden"
+							class="border-[#353534] bg-[#201f1f] text-[#a0c4ff] hover:bg-[#353534] md:hidden"
 							size="icon"
 							variant="outline"
 						>
@@ -869,8 +869,11 @@ export default function MediaListPage() {
 			</Show>
 
 			<div class="mb-4 flex items-center justify-between">
-				<h1 class="font-bold text-2xl">Media in Source: {mediaSourceId()}</h1>
+				<h1 class="font-bold text-2xl text-[#a0c4ff]">
+					Media in Source: {mediaSourceId()}
+				</h1>
 				<Button
+					class="border-[#353534] bg-[#201f1f] text-[#a0c4ff] hover:bg-[#353534]"
 					disabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
 					onClick={handleSyncLoadedMedia}
 					variant="outline"
@@ -881,7 +884,7 @@ export default function MediaListPage() {
 
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
 				{/* Sidebar Filters (Desktop only) */}
-				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block bg-[#1c1b1b] border-none shadow-none">
 					<CardHeader>
 						<CardTitle>検索フィルター</CardTitle>
 					</CardHeader>
@@ -932,7 +935,7 @@ export default function MediaListPage() {
 
 												return (
 													<a
-														class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
+														class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-[#201f1f] transition-all duration-200 hover:scale-[1.02] hover:bg-[#353534] hover:shadow-[0_12px_40px_rgba(59,71,93,0.08)]"
 														data-media-id={item.id}
 														href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
 														onContextMenu={() => setContextMenuMediaId(item.id)}
@@ -1057,7 +1060,7 @@ export default function MediaListPage() {
 			{/* Floating add button */}
 			<button
 				aria-label="Add media"
-				class="fixed right-8 bottom-8 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl"
+				class="fixed right-8 bottom-8 flex h-14 w-14 items-center justify-center rounded-lg bg-gradient-to-br from-[#cedfff] to-[#a0c4ff] text-[#003060] shadow-lg transition-all hover:scale-105 hover:shadow-xl"
 				onClick={handleAddButtonClick}
 				type="button"
 			>

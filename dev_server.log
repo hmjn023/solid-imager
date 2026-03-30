@@ -1,0 +1,14 @@
+Resolving dependencies
+Resolved, downloaded and extracted [1684]
+Saved lockfile
+vinxi v0.5.11
+error: Cannot find module '@voidzero-dev/vite-plus-core/rolldown/parseAst' from '/app/node_modules/.cache/@voidzero-dev/vite-plus-core@0.1.14@@@1/dist/vite/node/chunks/node.js'
+
+ ERROR  undefined is not an object (evaluating 'app.config')
+
+    at run (/tmp/bunx-1001-vinxi@latest/node_modules/vinxi/bin/cli.mjs:79:5)
+    at processTicksAndRejections (native:7:39)
+
+
+
+ ERROR  undefined is not an object (evaluating 'app.config')

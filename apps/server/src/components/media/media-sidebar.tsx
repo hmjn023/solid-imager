@@ -48,7 +48,7 @@ function formatBytes(bytes: number, decimals = 2) {
 }
 
 const CodeBlock = (props: { content: string }) => (
-	<pre class="mt-2 max-h-96 overflow-y-auto rounded-md bg-gray-100 p-2">
+	<pre class="mt-2 max-h-96 overflow-y-auto rounded-lg bg-[#0e0e0e] p-3 text-[#c3c6d1]">
 		<code class="text-sm">{props.content}</code>
 	</pre>
 );
@@ -64,7 +64,7 @@ const _CollapsibleSection = (props: {
 
 	return (
 		<Collapsible.Root class="w-full">
-			<Collapsible.Trigger class="w-full cursor-pointer rounded-md bg-gray-200 px-3 py-2 text-left font-medium hover:bg-gray-300">
+			<Collapsible.Trigger class="w-full cursor-pointer rounded-lg bg-[#353534] px-3 py-2 text-left font-medium text-[#e5e2e1] hover:bg-[#43474f]">
 				{props.title}
 			</Collapsible.Trigger>
 			<Collapsible.Content>
@@ -224,15 +224,17 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
+		<aside class="h-full space-y-4 overflow-y-auto rounded-lg bg-[#201f1f] p-6 text-[#e5e2e1] shadow-[0_12px_40px_rgba(59,71,93,0.08)] border border-[#353534]/50">
 			<div>
-				<h1 class="font-bold text-xl">{props.media.fileName}</h1>
-				<p class="text-gray-500 text-sm">{props.media.filePath}</p>
+				<h1 class="font-bold text-xl text-[#a0c4ff] font-[Manrope]">
+					{props.media.fileName}
+				</h1>
+				<p class="text-[#a9b6cf] text-sm">{props.media.filePath}</p>
 			</div>
 
 			<div class="flex gap-2">
 				<button
-					class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
+					class="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-[#cedfff] to-[#a0c4ff] px-3 py-2 font-medium text-sm text-[#003060] transition-colors hover:scale-[1.02]"
 					onClick={() => setIsAiTaggingModalOpen(true)}
 					type="button"
 				>
@@ -351,7 +353,9 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 							{(author) => (
 								<li>
 									<div class="flex items-center gap-2">
-										<span class="font-medium">{author.name}</span>
+										<span class="font-medium text-[#e5e2e1]">
+											{author.name}
+										</span>
 										<Show when={author.accountId}>
 											<span class="text-gray-500 text-xs">
 												({author.accountId})
@@ -400,7 +404,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 			<Show when={positiveTags().length > 0}>
 				<div class="space-y-2">
 					<h2 class="font-semibold text-lg">Positive Tags</h2>
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap gap-2 mt-2">
 						<For each={positiveTags()}>
 							{(tag) => {
 								let badgeClass = "";
@@ -430,7 +434,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 			<Show when={negativeTags().length > 0}>
 				<div class="space-y-2">
 					<h2 class="font-semibold text-lg">Negative Tags</h2>
-					<div class="flex flex-wrap gap-2">
+					<div class="flex flex-wrap gap-2 mt-2">
 						<For each={negativeTags()}>
 							{(tag) => {
 								let badgeClass = "";

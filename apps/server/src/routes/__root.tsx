@@ -38,10 +38,14 @@ function RootComponent() {
 	return (
 		<html lang="ja">
 			<head>
+				<link
+					href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap"
+					rel="stylesheet"
+				/>
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body>
+			<body class="bg-[#131313] text-[#e5e2e1] min-h-screen">
 				<Toaster />
 				<Suspense>
 					<Nav />

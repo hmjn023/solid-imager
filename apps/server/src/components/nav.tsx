@@ -12,8 +12,8 @@ export default function Nav() {
 	const location = useLocation();
 	const active = (path: string) =>
 		path === location().pathname
-			? "border-sky-600"
-			: "border-transparent hover:border-sky-600";
+			? "border-[#a0c4ff] text-[#a0c4ff]"
+			: "border-transparent hover:border-[#a0c4ff] text-[#a0c4ff]";
 
 	const [isVisible, setIsVisible] = createSignal(true);
 	const [lastScrollY, setLastScrollY] = createSignal(0);
@@ -62,12 +62,12 @@ export default function Nav() {
 	return (
 		<>
 			<nav
-				class={`fixed top-0 right-0 left-0 z-50 w-full bg-sky-800 transition-transform duration-300 ${
+				class={`fixed top-0 right-0 left-0 z-50 w-full bg-[#131313]/60 backdrop-blur-xl border-b border-[#353534]/50 transition-transform duration-300 ${
 					isVisible() ? "translate-y-0" : "-translate-y-full"
 				}`}
 			>
 				<div class="container relative flex items-center p-3">
-					<ul class="flex items-center text-gray-200">
+					<ul class="flex items-center text-[#a9b6cf] font-[Manrope]">
 						<li class={`border-b-2 ${active("/")} mx-1.5 sm:mx-6`}>
 							<Link to="/">Home</Link>
 						</li>

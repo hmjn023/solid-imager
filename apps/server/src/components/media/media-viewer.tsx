@@ -14,7 +14,7 @@ export default function MediaViewer(props: MediaViewerProps) {
 	);
 
 	return (
-		<div class="flex h-full w-full items-center justify-center bg-black/5">
+		<div class="flex h-full w-full items-center justify-center bg-[#0e0e0e] rounded-lg shadow-inner">
 			<Switch>
 				<Match when={props.media.mediaType === "video"}>
 					<video

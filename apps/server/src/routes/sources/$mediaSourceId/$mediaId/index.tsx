@@ -75,7 +75,7 @@ function Media() {
 	});
 
 	return (
-		<div class="container mx-auto p-4">
+		<div class="container mx-auto min-h-[calc(100vh-2rem)] p-4 bg-[#131313] text-[#e5e2e1]">
 			<Switch>
 				{/* <Match when={mediaDetails.isLoading}>
           <div>Loading media...</div>
