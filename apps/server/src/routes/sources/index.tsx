@@ -6,6 +6,13 @@ import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/sources/")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context }) => {
+		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
+	},
 	component: Sources,
 });
 
@@ -16,10 +23,10 @@ import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
 	deleteMediaSource,
-	fetchMediaSources,
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
@@ -44,10 +51,7 @@ export default function Sources() {
 	const [isSyncing, setIsSyncing] = createSignal(false);
 
 	const queryClient = useQueryClient();
-	const mediaSources = createQuery(() => ({
-		queryKey: ["mediaSources"],
-		queryFn: fetchMediaSources,
-	}));
+	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
 
 	const handleAddSource = () => {
 		setEditingSource(null);
