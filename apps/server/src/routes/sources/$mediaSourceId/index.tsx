@@ -3,7 +3,6 @@ import {
 	getScrollPosition,
 	setScrollPosition,
 } from "@solid-imager/core/domain/sources/store";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
@@ -31,6 +30,19 @@ import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(tagsQueryOptions()),
+			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
+			context.queryClient.ensureQueryData(allIpsQueryOptions()),
+			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
+			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
+		]);
+	},
 	component: MediaListPage,
 });
 
@@ -56,10 +68,7 @@ import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
-import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
-import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
 import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
-import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
 import {
 	copyMedia,
 	deleteMedia,
@@ -67,14 +76,17 @@ import {
 	syncMediaItems,
 	uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
+import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
+import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
+import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 import { logger } from "~/infrastructure/logger";
 import {
 	getSearchCondition,
@@ -95,26 +107,11 @@ export default function MediaListPage() {
 	useCurrentSearchPersistence(mediaSourceId);
 
 	// Fetch filter data
-	const tags = createQuery<TagResponse[]>(() => ({
-		queryKey: ["tags"],
-		queryFn: fetchTags,
-	}));
-	const allProjects = createQuery(() => ({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	}));
-	const allIps = createQuery(() => ({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	}));
-	const allCharacters = createQuery(() => ({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	}));
-	const allAuthors = createQuery(() => ({
-		queryKey: ["allAuthors"],
-		queryFn: fetchAllAuthors,
-	}));
+	const tags = createQuery(() => tagsQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 
 	// Optimize query key to only include relevant search parameters.
 	// Serialize condition as JSON string to stabilize the key across mode toggles
