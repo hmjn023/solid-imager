@@ -144,7 +144,7 @@ export const DirectorySyncService = {
 					.map((ext) => ext.toLowerCase()),
 			);
 
-			const actualMediaPaths = fsPaths.filter((p) => {
+			const actualMediaPaths = fsPaths.filter((p: string) => {
 				const ext = path.extname(p).toLowerCase();
 				return allowedExts.has(ext);
 			});

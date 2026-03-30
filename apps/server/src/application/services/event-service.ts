@@ -1,5 +1,4 @@
 import { EventEmitter } from "node:events";
-import type { APIEvent } from "@solidjs/start/server";
 
 // Define event types
 type MediaUpdatePayload = {
@@ -53,10 +52,11 @@ class EventService {
 
 	/**
 	 * Creates a Server-Sent Events (SSE) stream.
-	 * @param {APIEvent} event - The API event object from the request.
+	 * @param {Object} event - The API event object with the request.
+	 * @param {Request} event.request - The incoming request object.
 	 * @returns {Response} A response object with the SSE stream.
 	 */
-	createSseStream(event: APIEvent): Response {
+	createSseStream(event: { request: Request }): Response {
 		const stream = new ReadableStream({
 			start: (controller) => {
 				const handler = (payload: MediaUpdatePayload) => {

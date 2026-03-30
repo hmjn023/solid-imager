@@ -23,7 +23,6 @@
   },
   "scripts": {
     "check": "biome check --fix --unsafe ./src",
-    "test:unit": "echo 'No unit tests yet'",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint ./src",
     "test": "vp test run",
