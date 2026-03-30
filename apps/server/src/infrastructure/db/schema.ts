@@ -28,6 +28,7 @@ export const mediaSourceTypeEnum = pgEnum("media_source_type", [
 	"local",
 	"sftp",
 	"s3",
+	"remote",
 ]);
 /**
  * Enum for media organization status.
@@ -566,6 +567,16 @@ export const mediaTechnicalInfo = pgTable(
 );
 
 /**
+ * Enum for sync direction.
+ * Defines the direction of synchronization between local and remote sources.
+ */
+export const syncDirectionEnum = pgEnum("sync_direction", [
+	"push",
+	"pull",
+	"bidirectional",
+]);
+
+/**
  * Schema for the media_sync table.
  * Manages synchronization and backup status for media items.
  */
@@ -584,6 +595,16 @@ export const mediaSync = pgTable("media_sync", {
 	syncAttempts: integer("sync_attempts").default(0),
 	/** 最後のエラーメッセージ */
 	lastError: text("last_error"),
+	/** リモートソースID */
+	remoteSourceId: uuid("remote_source_id").references(() => mediaSources.id, {
+		onDelete: "set null",
+	}),
+	/** 同期方向 */
+	syncDirection: syncDirectionEnum("sync_direction").default("bidirectional"),
+	/** 最後のリモート同期日時 */
+	lastRemoteSyncAt: timestamp("last_remote_sync_at"),
+	/** リモートサーバーでのメディアID */
+	remoteMediaId: text("remote_media_id"),
 });
 
 /**
