@@ -5,9 +5,21 @@ import { Match, Switch } from "solid-js";
 import MediaSidebar from "~/components/media/media-sidebar";
 import MediaViewer from "~/components/media/media-viewer";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
-import { fetchMediaDetails } from "~/infrastructure/api-clients/media-api";
+import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context, params }) => {
+		await context.queryClient.ensureQueryData(
+			mediaDetailsQueryOptions(
+				params.mediaSourceId as UUID,
+				params.mediaId as UUID,
+			),
+		);
+	},
 	component: Media,
 });
 
@@ -17,10 +29,9 @@ function Media() {
 	const mediaSourceId = params().mediaSourceId as UUID;
 	const mediaId = params().mediaId as UUID;
 
-	const mediaDetails = createQuery(() => ({
-		queryKey: ["mediaDetails", mediaSourceId, mediaId],
-		queryFn: () => fetchMediaDetails(mediaSourceId, mediaId),
-	}));
+	const mediaDetails = createQuery(() =>
+		mediaDetailsQueryOptions(mediaSourceId, mediaId),
+	);
 
 	const handleUpdate = async () => {
 		await queryClient.invalidateQueries({

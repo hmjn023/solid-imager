@@ -16,6 +16,18 @@ import { Button } from "@solid-imager/ui/button";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/manager")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
+			context.queryClient.ensureQueryData(allIpsQueryOptions()),
+			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
+			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
+		]);
+	},
 	component: ManagerPage,
 });
 
@@ -67,23 +79,23 @@ import { MediaCardItem } from "~/components/media/media-card-item";
 import {
 	createCharacter,
 	deleteCharacter,
-	fetchAllCharacters,
 	updateCharacter,
 } from "~/infrastructure/api-clients/characters-api";
 import {
 	createIp,
 	deleteIp,
-	fetchAllIps,
 	updateIp,
 } from "~/infrastructure/api-clients/ips-api";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createProject,
 	deleteProject,
-	fetchAllProjects,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
-import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
+import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 
 type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
@@ -135,22 +147,10 @@ export default function ManagerPage() {
 	});
 	const queryClient = useQueryClient();
 
-	const projects = createQuery(() => ({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	}));
-	const ips = createQuery(() => ({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	}));
-	const characters = createQuery(() => ({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	}));
-	const sources = createQuery(() => ({
-		queryKey: ["allSources"],
-		queryFn: fetchMediaSources,
-	}));
+	const projects = createQuery(() => allProjectsQueryOptions());
+	const ips = createQuery(() => allIpsQueryOptions());
+	const characters = createQuery(() => allCharactersQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
 
 	const invalidateQueries = () => {
 		if (activeTab() === "projects") {

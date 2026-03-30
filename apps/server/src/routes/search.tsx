@@ -1,9 +1,21 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/search")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(tagsQueryOptions()),
+			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
+			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
+			context.queryClient.ensureQueryData(allIpsQueryOptions()),
+			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
+			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
+		]);
+	},
 	component: Search,
 });
 
@@ -40,21 +52,18 @@ import { MediaGridItem } from "~/components/media/media-grid-item";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
-import { fetchAllAuthors } from "~/infrastructure/api-clients/authors-api";
-import { fetchAllCharacters } from "~/infrastructure/api-clients/characters-api";
-import { fetchAllIps } from "~/infrastructure/api-clients/ips-api";
-import { fetchAllProjects } from "~/infrastructure/api-clients/projects-api";
+import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
+import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
+import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
-import { fetchTags } from "~/infrastructure/api-clients/tags-api";
 import {
 	getSearchCondition,
 	searchState,
 	setSearchState,
 } from "~/presentation/store/search-store";
-
-// Type alias to avoid conflict with DOM MediaSource API
-type Source = SafeMediaSource;
 
 const buildSearchParams = (state: typeof searchState) => {
 	const condition = getSearchCondition();
@@ -117,30 +126,12 @@ export default function Search() {
 	});
 
 	// Fetch filter data
-	const tags = createQuery<TagResponse[]>(() => ({
-		queryKey: ["tags"],
-		queryFn: fetchTags,
-	}));
-	const sources = createQuery<Source[]>(() => ({
-		queryKey: ["mediaSources"],
-		queryFn: fetchMediaSources,
-	}));
-	const allProjects = createQuery(() => ({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	}));
-	const allIps = createQuery(() => ({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	}));
-	const allCharacters = createQuery(() => ({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	}));
-	const allAuthors = createQuery(() => ({
-		queryKey: ["allAuthors"],
-		queryFn: fetchAllAuthors,
-	}));
+	const tags = createQuery(() => tagsQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 
 	// Use only effective search params as query key to avoid unnecessary refetches
 	// (e.g., mode toggle with equivalent conditions should NOT refetch)

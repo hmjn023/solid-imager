@@ -4,6 +4,13 @@ import { Button } from "@solid-imager/ui/button";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/config")({
+	ssr: true,
+	beforeLoad: ({ context }) => {
+		void context;
+	},
+	loader: async ({ context }) => {
+		await context.queryClient.ensureQueryData(configQueryOptions());
+	},
 	component: ConfigPage,
 });
 
@@ -28,6 +35,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Show } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { configQueryOptions } from "~/infrastructure/api-clients/queries/config-query";
 
 function ConfigForm(props: { data: AppConfig }) {
 	const queryClient = useQueryClient();
@@ -489,10 +497,7 @@ function ConfigForm(props: { data: AppConfig }) {
 }
 
 export default function ConfigPage() {
-	const configQuery = createQuery(() => ({
-		queryKey: ["config"],
-		queryFn: async () => await orpc.config.get(),
-	}));
+	const configQuery = createQuery(() => configQueryOptions());
 
 	return (
 		<div class="container mx-auto max-w-4xl p-6">
