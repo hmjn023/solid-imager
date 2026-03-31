@@ -90,4 +90,10 @@ export type IMediaRepository = {
 		sourceId: string,
 		tx?: Transaction,
 	): Promise<{ id: string; filePath: string }[]>;
+
+	// Sync support
+	getMd5HashesBySourceId(
+		sourceId: string,
+		tx?: Transaction,
+	): Promise<Map<string, string>>;
 };

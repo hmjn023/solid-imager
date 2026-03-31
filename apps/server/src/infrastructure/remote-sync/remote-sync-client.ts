@@ -39,9 +39,21 @@ export class RemoteSyncClient {
 	}
 
 	/**
+	 * Ensure the client is initialized before making requests
+	 */
+	private ensureInitialized(): void {
+		if (!this.baseUrl) {
+			throw new Error(
+				"RemoteSyncClient not initialized. Call initialize() first.",
+			);
+		}
+	}
+
+	/**
 	 * Get media list from remote server
 	 */
 	async getMediaList(request: MediaListRequest): Promise<MediaListResponse> {
+		this.ensureInitialized();
 		const url = new URL("/api/sync/media-list", this.baseUrl);
 		url.searchParams.set("sourceId", request.sourceId);
 		if (request.cursor) {
@@ -70,6 +82,7 @@ export class RemoteSyncClient {
 	async getMediaMetadata(
 		request: MediaMetadataRequest,
 	): Promise<MediaMetadataResponse> {
+		this.ensureInitialized();
 		const url = new URL(
 			`/api/sync/media-metadata/${request.mediaId}`,
 			this.baseUrl,
@@ -94,6 +107,7 @@ export class RemoteSyncClient {
 	 * Push media to remote server
 	 */
 	async pushMedia(request: PushMediaRequest): Promise<PushMediaResponse> {
+		this.ensureInitialized();
 		const url = new URL("/api/sync/push", this.baseUrl);
 
 		const response = await fetch(url.toString(), {
@@ -116,6 +130,7 @@ export class RemoteSyncClient {
 	 * Pull media from remote server
 	 */
 	async pullMedia(request: PullMediaRequest): Promise<PullMediaResponse> {
+		this.ensureInitialized();
 		const url = new URL("/api/sync/pull", this.baseUrl);
 
 		const response = await fetch(url.toString(), {
@@ -138,6 +153,7 @@ export class RemoteSyncClient {
 	 * Execute bidirectional sync
 	 */
 	async sync(request: SyncRequest): Promise<SyncResponse> {
+		this.ensureInitialized();
 		const url = new URL("/api/sync/execute", this.baseUrl);
 
 		const response = await fetch(url.toString(), {
@@ -162,6 +178,7 @@ export class RemoteSyncClient {
 	async resolveConflict(
 		request: ConflictResolutionRequest,
 	): Promise<ConflictResolutionResponse> {
+		this.ensureInitialized();
 		const url = new URL("/api/sync/resolve-conflict", this.baseUrl);
 
 		const response = await fetch(url.toString(), {

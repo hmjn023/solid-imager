@@ -6,7 +6,9 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
+import { getDriver } from "~/infrastructure/storage/factory";
 
 /**
  * Media diff information
@@ -169,11 +171,12 @@ export class DiffDetectorServiceImpl {
 	 */
 	private async getLocalMediaForSource(sourceId: string): Promise<MediaDiff[]> {
 		const media = await this.mediaRepository.findAllBySourceId(sourceId);
+		const hashes = await this.mediaRepository.getMd5HashesBySourceId(sourceId);
 
 		return media.map((m: Media) => ({
 			mediaId: m.id,
 			filePath: m.filePath,
-			hashMd5: null, // Will be populated from technical info if available
+			hashMd5: hashes.get(m.id) ?? null,
 			modifiedAt: m.modifiedAt,
 			fileSize: m.fileSize,
 		}));
@@ -181,12 +184,15 @@ export class DiffDetectorServiceImpl {
 
 	/**
 	 * Calculate MD5 hash for a file
-	 * This is a placeholder - actual implementation will depend on file storage
 	 */
-	async calculateFileHash(filePath: string): Promise<string> {
-		// TODO: Implement file hash calculation
-		// This should read the file and calculate MD5 hash
-		logger.warn({ filePath }, "File hash calculation not implemented");
-		return "";
+	async calculateFileHash(sourceId: string, filePath: string): Promise<string> {
+		const source = await this.sourceRepository.findById(sourceId);
+		if (!source) {
+			throw new Error(`Source not found: ${sourceId}`);
+		}
+		const driver = getDriver(source as unknown as DbMediaSource);
+		const content = await driver.get(filePath);
+		const { createHash } = await import("node:crypto");
+		return createHash("md5").update(content).digest("hex");
 	}
 }

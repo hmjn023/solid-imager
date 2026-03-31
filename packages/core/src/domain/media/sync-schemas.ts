@@ -240,3 +240,114 @@ export const conflictResolutionResponseSchema = z.object({
 export type ConflictResolutionResponse = z.infer<
 	typeof conflictResolutionResponseSchema
 >;
+
+// ============================================================================
+// Sync Media Transfer Schemas
+// Full metadata context for server-to-server sync (aligned with MediaMetadataContext)
+// ============================================================================
+
+const syncMetadataFields = {
+	description: z.string().nullable().optional(),
+	createdAt: z.coerce.date().optional(),
+	sourceUrls: z.array(z.string().url()).optional(),
+	authors: z
+		.array(
+			z.object({
+				name: z.string(),
+				accountId: z.string().nullable().optional(),
+			}),
+		)
+		.optional(),
+	tags: z
+		.array(
+			z.object({
+				name: z.string(),
+				type: z.enum(["positive", "negative"]).optional(),
+				confidence: z.number().nullable().optional(),
+			}),
+		)
+		.optional(),
+	characters: z
+		.array(
+			z.object({
+				name: z.string(),
+				confidence: z.number().nullable().optional(),
+				linkedIps: z.array(z.string()).optional(),
+			}),
+		)
+		.optional(),
+	ips: z
+		.array(
+			z.object({
+				name: z.string(),
+				confidence: z.number().nullable().optional(),
+			}),
+		)
+		.optional(),
+	projects: z
+		.array(
+			z.object({
+				name: z.string(),
+				description: z.string().nullable().optional(),
+			}),
+		)
+		.optional(),
+	generationInfo: z
+		.object({
+			prompt: z.string().nullable().optional(),
+			negativePrompt: z.string().nullable().optional(),
+			modelName: z.string().optional(),
+			seed: z.number().optional(),
+			steps: z.number().optional(),
+			cfgScale: z.number().optional(),
+			aiGenerated: z.boolean().optional(),
+		})
+		.nullable()
+		.optional(),
+} as const;
+
+/**
+ * Zod schema for pushing a media file with full metadata.
+ * Used by BidirectionalSyncServiceImpl to transfer media to a remote server.
+ */
+export const pushMediaFileRequestSchema = z.object({
+	file: z.instanceof(File),
+	targetSourceId: z.string().uuid("Invalid target source ID"),
+	fileName: z.string().optional(),
+	...syncMetadataFields,
+});
+export type PushMediaFileRequest = z.infer<typeof pushMediaFileRequestSchema>;
+
+/**
+ * Zod schema for the push media file response.
+ */
+export const pushMediaFileResponseSchema = z.object({
+	success: z.boolean(),
+	mediaId: z.string().uuid().optional(),
+	error: z.string().optional(),
+});
+export type PushMediaFileResponse = z.infer<typeof pushMediaFileResponseSchema>;
+
+/**
+ * Zod schema for pulling a media file with full metadata.
+ * Used by BidirectionalSyncServiceImpl to retrieve media from a remote server.
+ */
+export const pullMediaFileRequestSchema = z.object({
+	mediaId: z.string().uuid("Invalid media ID"),
+	sourceId: z.string().uuid("Invalid source ID"),
+});
+export type PullMediaFileRequest = z.infer<typeof pullMediaFileRequestSchema>;
+
+/**
+ * Zod schema for the pull media file response.
+ * Returns base64-encoded file data and full metadata.
+ */
+export const pullMediaFileResponseSchema = z.object({
+	success: z.boolean(),
+	fileData: z.string().optional(),
+	fileName: z.string().optional(),
+	mimeType: z.string().optional(),
+	error: z.string().optional(),
+	...syncMetadataFields,
+});
+export type PullMediaFileResponse = z.infer<typeof pullMediaFileResponseSchema>;

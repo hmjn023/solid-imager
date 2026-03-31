@@ -3,12 +3,20 @@ import {
 	conflictResolutionRequestSchema,
 	mediaListRequestSchema,
 	mediaMetadataRequestSchema,
-	pullMediaRequestSchema,
-	pushMediaRequestSchema,
+	pullMediaFileRequestSchema,
+	pushMediaFileRequestSchema,
 	syncRequestSchema,
 } from "@solid-imager/core/domain/media/sync-schemas";
 import { z } from "zod";
+import { BidirectionalSyncServiceImpl } from "~/application/services/bidirectional-sync-service";
+import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { RemoteSyncService } from "~/application/services/remote-sync-service";
+import { logger } from "~/infrastructure/logger";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+
+const sourceRepo = new DrizzleSourceRepository();
 
 /**
  * Remote Sync Router Implementation
@@ -64,50 +72,170 @@ export const syncRouter = {
 		}),
 
 	/**
-	 * Push media to remote server
-	 * Uploads media file and metadata to the remote server
+	 * Push media file with full metadata to this server.
+	 * Used by remote servers to transfer media during sync.
 	 */
-	pushMedia: os
+	pushMediaFile: os
 		.meta({
 			openapi: {
 				tags: ["Sync"],
-				summary: "Push media to remote server",
+				summary: "Push media file with full metadata",
 				description:
-					"Uploads a media file and its metadata to a remote server.",
+					"Receives a media file and its complete metadata from a remote server for synchronization.",
 			},
 		})
-		.input(pushMediaRequestSchema)
+		.input(pushMediaFileRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.pushMedia(input);
+				const source = await sourceRepo.findById(input.targetSourceId);
+				if (!source || source.type !== "local") {
+					throw new Error(
+						`Target source not found or not local: ${input.targetSourceId}`,
+					);
+				}
+
+				const basePath = (source.connectionInfo as { path: string }).path;
+				const arrayBuffer = await input.file.arrayBuffer();
+
+				const fileInfo = await ServerMediaStorage.saveFile(
+					basePath,
+					{
+						name: input.fileName ?? input.file.name,
+						arrayBuffer: async () => arrayBuffer,
+					},
+					{
+						filename: input.fileName ?? input.file.name,
+						overwrite: false,
+						autoIncrement: true,
+					},
+				);
+
+				const media = await MediaProcessingService.registerAndProcess(
+					input.targetSourceId,
+					fileInfo.filePath,
+					{
+						description: input.description ?? undefined,
+						createdAt: input.createdAt,
+						sourceUrls: input.sourceUrls,
+						authors: input.authors,
+						tags: input.tags,
+						characters: input.characters,
+						ips: input.ips,
+						projects: input.projects,
+						generationInfo: input.generationInfo,
+					},
+				);
+
+				return { success: true, mediaId: media.id };
 			} catch (error) {
-				throw new ORPCError("REMOTE_SYNC_ERROR", {
-					message: `Failed to push media to remote: ${error instanceof Error ? error.message : "Unknown error"}`,
-				});
+				logger.error({ error }, "Failed to push media file");
+				return {
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+				};
 			}
 		}),
 
 	/**
-	 * Pull media from remote server
-	 * Downloads media file and metadata from the remote server
+	 * Pull media file with full metadata from this server.
+	 * Used by remote servers to retrieve media during sync.
 	 */
-	pullMedia: os
+	pullMediaFile: os
 		.meta({
 			openapi: {
 				tags: ["Sync"],
-				summary: "Pull media from remote server",
+				summary: "Pull media file with full metadata",
 				description:
-					"Downloads a media file and its metadata from a remote server.",
+					"Returns a media file (base64) and its complete metadata for a remote server to retrieve during synchronization.",
 			},
 		})
-		.input(pullMediaRequestSchema)
+		.input(pullMediaFileRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.pullMedia(input);
+				const source = await sourceRepo.findById(input.sourceId);
+				if (!source || source.type !== "local") {
+					throw new Error(`Source not found or not local: ${input.sourceId}`);
+				}
+
+				const details = await MediaRepository.getDetails(input.mediaId);
+				if (!details) {
+					throw new Error(`Media not found: ${input.mediaId}`);
+				}
+
+				const basePath = (source.connectionInfo as { path: string }).path;
+				const fileContent = await ServerMediaStorage.getFile(
+					basePath,
+					details.filePath,
+				);
+				const fileData = Buffer.from(fileContent).toString("base64");
+
+				const ext = details.fileName.split(".").pop()?.toLowerCase() ?? "";
+				const mimeMap: Record<string, string> = {
+					png: "image/png",
+					jpg: "image/jpeg",
+					jpeg: "image/jpeg",
+					gif: "image/gif",
+					webp: "image/webp",
+					mp4: "video/mp4",
+					webm: "video/webm",
+					mp3: "audio/mpeg",
+				};
+
+				return {
+					success: true,
+					fileData,
+					fileName: details.fileName,
+					mimeType: mimeMap[ext] ?? "application/octet-stream",
+					description: details.description,
+					createdAt: details.createdAt,
+					sourceUrls: details.urls.map((u: { url: string }) => u.url),
+					authors: details.authors.map(
+						(a: { name: string; accountId: string | null }) => ({
+							name: a.name,
+							accountId: a.accountId,
+						}),
+					),
+					tags: details.tags.map(
+						(t: {
+							name: string;
+							type: "positive" | "negative";
+							confidence?: number | null;
+						}) => ({
+							name: t.name,
+							type: t.type,
+							confidence: t.confidence,
+						}),
+					),
+					characters: details.characters.map(
+						(c: { name: string; confidence?: number | null }) => ({
+							name: c.name,
+							confidence: c.confidence,
+						}),
+					),
+					ips: details.ips.map(
+						(ip: { name: string; confidence?: number | null }) => ({
+							name: ip.name,
+							confidence: ip.confidence,
+						}),
+					),
+					generationInfo: details.generationInfo
+						? {
+								prompt: details.generationInfo.prompt,
+								negativePrompt: details.generationInfo.negativePrompt,
+								modelName: details.generationInfo.modelName,
+								seed: details.generationInfo.seed,
+								steps: details.generationInfo.steps,
+								cfgScale: details.generationInfo.cfgScale,
+								aiGenerated: details.generationInfo.aiGenerated,
+							}
+						: null,
+				};
 			} catch (error) {
-				throw new ORPCError("REMOTE_SYNC_ERROR", {
-					message: `Failed to pull media from remote: ${error instanceof Error ? error.message : "Unknown error"}`,
-				});
+				logger.error({ error }, "Failed to pull media file");
+				return {
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+				};
 			}
 		}),
 
@@ -127,7 +255,11 @@ export const syncRouter = {
 		.input(syncRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.sync(input);
+				const syncService = new BidirectionalSyncServiceImpl(
+					MediaRepository,
+					sourceRepo,
+				);
+				return await syncService.sync(input);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to execute sync: ${error instanceof Error ? error.message : "Unknown error"}`,

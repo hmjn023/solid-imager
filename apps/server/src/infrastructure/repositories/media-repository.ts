@@ -52,6 +52,7 @@ import {
 	mediaProjects,
 	medias,
 	mediaTags,
+	mediaTechnicalInfo,
 	mediaUrls,
 	type NewMedia,
 	projects,
@@ -655,6 +656,39 @@ export const MediaRepository: IMediaRepository = {
 			);
 			throw new UnexpectedError(
 				`Failed to select media paths by source ID: ${mediaSourceId}`,
+				error,
+			);
+		}
+	},
+
+	async getMd5HashesBySourceId(
+		mediaSourceId: string,
+		tx?: Transaction,
+	): Promise<Map<string, string>> {
+		try {
+			const client = (tx as unknown as TransactionClient) || db;
+			const results = await client
+				.select({
+					mediaId: mediaTechnicalInfo.mediaId,
+					hashMd5: mediaTechnicalInfo.hashMd5,
+				})
+				.from(mediaTechnicalInfo)
+				.innerJoin(medias, eq(medias.id, mediaTechnicalInfo.mediaId))
+				.where(eq(medias.mediaSourceId, mediaSourceId));
+			const map = new Map<string, string>();
+			for (const row of results) {
+				if (row.hashMd5) {
+					map.set(row.mediaId, row.hashMd5);
+				}
+			}
+			return map;
+		} catch (error) {
+			logger.error(
+				{ error, mediaSourceId },
+				"Database error in getMd5HashesBySourceId",
+			);
+			throw new UnexpectedError(
+				`Failed to select MD5 hashes by source ID: ${mediaSourceId}`,
 				error,
 			);
 		}
