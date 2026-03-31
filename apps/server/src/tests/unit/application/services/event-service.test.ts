@@ -22,9 +22,7 @@ describe("EventService", () => {
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -75,9 +73,7 @@ describe("EventService", () => {
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -120,9 +116,7 @@ describe("EventService", () => {
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
 		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) {
-			return { body, init };
-		});
+		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
 
 		vi.stubGlobal("Response", MockResponse);
 

@@ -116,7 +116,7 @@ function SyncManagement() {
 	};
 
 	// Resolve conflict
-	const handleResolveConflict = async (
+	const _handleResolveConflict = async (
 		localMediaId: string,
 		remoteMediaId: string,
 		resolution: "newer_wins" | "local_wins" | "remote_wins",
