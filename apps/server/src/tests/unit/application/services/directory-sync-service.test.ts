@@ -32,19 +32,22 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
 	},
 }));
 
-vi.mock("~/infrastructure/repositories/source-repository", () => ({
-        // @biome-ignore lint/style/useArrowFunction: constructor mock
-        DrizzleSourceRepository: vi.fn(function () {
-                return {
-                        findById: vi.fn().mockResolvedValue({
-                                id: "source-1",
-                                type: "local",
-                                connectionInfo: { path: "/fake/path" },
-                        }),
-                        findAll: vi.fn(),
-                };
-        }),
-}));
+vi.mock("~/infrastructure/repositories/source-repository", () => {
+	function createSourceRepository() {
+		return {
+			findById: vi.fn().mockResolvedValue({
+				id: "source-1",
+				type: "local",
+				connectionInfo: { path: "/fake/path" },
+			}),
+			findAll: vi.fn(),
+		};
+	}
+
+	return {
+		DrizzleSourceRepository: vi.fn(createSourceRepository),
+	};
+});
 vi.mock("~/application/services/media-processing-service", () => ({
 	MediaProcessingService: {
 		registerAndProcess: vi.fn(),
