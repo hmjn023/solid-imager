@@ -7,6 +7,7 @@ import { ServerConfigService } from "~/application/services/server-config-servic
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
+import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -42,9 +43,11 @@ export function initServices() {
 
 	// Initialize log level from config and subscribe to changes
 	updateLogLevel(config.logging.level);
-	configService.onChange((newConfig) =>
-		updateLogLevel(newConfig.logging.level),
-	);
+	updateDownloadRateLimitConfig(config.downloads);
+	configService.onChange((newConfig) => {
+		updateLogLevel(newConfig.logging.level);
+		updateDownloadRateLimitConfig(newConfig.downloads);
+	});
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);

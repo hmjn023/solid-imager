@@ -51,6 +51,33 @@ describe("ConfigService", () => {
 		expect(service.getConfig().jobs.concurrency).toBe(10);
 	});
 
+	it("should migrate existing config with new default fields", () => {
+		const legacyConfig = {
+			version: defaultAppConfig.version,
+			jobs: defaultAppConfig.jobs,
+			ai: defaultAppConfig.ai,
+			storage: defaultAppConfig.storage,
+			media: defaultAppConfig.media,
+			logging: defaultAppConfig.logging,
+		};
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(legacyConfig));
+
+		service.load();
+
+		expect(service.getConfig().downloads).toEqual(defaultAppConfig.downloads);
+		expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
+			"config.json",
+		);
+		expect(
+			JSON.parse(String(vi.mocked(fs.writeFileSync).mock.calls[0]?.[1])),
+		).toEqual({
+			...legacyConfig,
+			downloads: defaultAppConfig.downloads,
+		});
+	});
+
 	it("should override config with environment variables", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
 		vi.stubEnv("CONFIG_JOBS_CONCURRENCY", "50");
