@@ -80,16 +80,10 @@ export class DiffDetectorServiceImpl {
 
 		// Create maps for efficient lookup
 		const localByPath = new Map<string, MediaDiff>();
-		const localByHash = new Map<string, MediaDiff[]>();
 		const remoteByPath = new Map<string, MediaDiff>();
 
 		for (const media of localMedia) {
 			localByPath.set(media.filePath, media);
-			if (media.hashMd5) {
-				const existing = localByHash.get(media.hashMd5) || [];
-				existing.push(media);
-				localByHash.set(media.hashMd5, existing);
-			}
 		}
 
 		for (const media of remoteMediaList) {

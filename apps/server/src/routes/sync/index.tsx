@@ -18,16 +18,6 @@ export const Route = createFileRoute("/sync/")({
 	component: SyncManagement,
 });
 
-interface SourceSyncStatus {
-	sourceId: string;
-	sourceName: string;
-	totalMedia: number;
-	synced: number;
-	pending: number;
-	failed: number;
-	conflicts: number;
-}
-
 /**
  * Sync Management Page
  * Manages server-to-server media synchronization
