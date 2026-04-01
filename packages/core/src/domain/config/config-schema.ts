@@ -30,6 +30,20 @@ export const AiConfigSchema = z.object({
 });
 const defaultAiConfig = AiConfigSchema.parse({});
 
+const DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED = true;
+const DEFAULT_DOWNLOAD_REQUEST_INTERVAL_MS = 1_000;
+const MAX_DOWNLOAD_REQUEST_INTERVAL_MS = 60_000;
+
+export const DownloadsConfigSchema = z.object({
+	rateLimitEnabled: z.boolean().default(DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED),
+	requestIntervalMs: z
+		.number()
+		.min(0)
+		.max(MAX_DOWNLOAD_REQUEST_INTERVAL_MS)
+		.default(DEFAULT_DOWNLOAD_REQUEST_INTERVAL_MS),
+});
+const defaultDownloadsConfig = DownloadsConfigSchema.parse({});
+
 const DEFAULT_THUMB_DIR = ".cache/thumbnails";
 const DEFAULT_THUMB_SIZE = 512;
 const DEFAULT_THUMB_QUALITY = 80;
@@ -128,6 +142,7 @@ export const AppConfigSchema = z.object({
 	version: z.string().default("1.0.0"),
 	jobs: JobsConfigSchema.default(defaultJobsConfig),
 	ai: AiConfigSchema.default(defaultAiConfig),
+	downloads: DownloadsConfigSchema.default(defaultDownloadsConfig),
 	storage: StorageConfigSchema.default(defaultStorageConfig),
 	media: MediaConfigSchema.default(defaultMediaConfig),
 	logging: LoggingConfigSchema.default(defaultLoggingConfig),

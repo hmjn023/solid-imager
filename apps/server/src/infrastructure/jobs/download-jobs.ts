@@ -15,6 +15,7 @@ import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
+import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -244,6 +245,8 @@ async function handleYtDlpDownload(
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
 	try {
+		await waitForDownloadRateLimit();
+
 		const results = await downloadWithYtDlp(
 			item.targetUrl,
 			basePath,
@@ -434,6 +437,8 @@ async function handleDirectImageDownload(
 	try {
 		// Download the image
 		const headers = buildFetchHeaders(item);
+
+		await waitForDownloadRateLimit();
 
 		const response = await fetch(item.targetUrl, {
 			headers,

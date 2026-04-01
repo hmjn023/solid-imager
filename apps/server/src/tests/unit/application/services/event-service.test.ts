@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import { eventService } from "~/application/services/event-service";
 
+function createMockResponse(body: unknown, init: unknown) {
+	return { body, init };
+}
+
 describe("EventService", () => {
 	it("should create an SSE stream and enqueue events", () => {
 		// Mock controller
@@ -14,15 +18,14 @@ describe("EventService", () => {
 		let startCallback: ((controller: any) => void) | undefined;
 
 		// Mock global ReadableStream
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		function createMockReadableStream(strategies: any) {
 			startCallback = strategies.start;
 			return {};
-		});
+		}
+		const MockReadableStream = vi.fn(createMockReadableStream);
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
+		const MockResponse = vi.fn(createMockResponse);
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -65,15 +68,14 @@ describe("EventService", () => {
 
 		let startCallback: ((controller: any) => void) | undefined;
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		function createMockReadableStream(strategies: any) {
 			startCallback = strategies.start;
 			return {};
-		});
+		}
+		const MockReadableStream = vi.fn(createMockReadableStream);
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
+		const MockResponse = vi.fn(createMockResponse);
 
 		vi.stubGlobal("Response", MockResponse);
 
@@ -108,15 +110,14 @@ describe("EventService", () => {
 		};
 
 		let startCallback: ((controller: any) => void) | undefined;
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockReadableStream = vi.fn(function (strategies: any) {
+		function createMockReadableStream(strategies: any) {
 			startCallback = strategies.start;
 			return {};
-		});
+		}
+		const MockReadableStream = vi.fn(createMockReadableStream);
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
-		const MockResponse = vi.fn(function (body: any, init: any) { return { body, init }; });
+		const MockResponse = vi.fn(createMockResponse);
 
 		vi.stubGlobal("Response", MockResponse);
 

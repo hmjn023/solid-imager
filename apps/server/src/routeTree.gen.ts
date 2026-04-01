@@ -23,10 +23,16 @@ import { Route as SearchRouteImport } from "./routes/search";
 import { Route as SourcesMediaSourceIdMediaIdIndexRouteImport } from "./routes/sources/$mediaSourceId/$mediaId/index";
 import { Route as SourcesMediaSourceIdIndexRouteImport } from "./routes/sources/$mediaSourceId/index";
 import { Route as SourcesIndexRouteImport } from "./routes/sources/index";
+import { Route as SyncIndexRouteImport } from "./routes/sync/index";
 
 const SearchRoute = SearchRouteImport.update({
 	id: "/search",
 	path: "/search",
+	getParentRoute: () => rootRouteImport,
+} as any);
+const SyncIndexRoute = SyncIndexRouteImport.update({
+	id: "/sync/",
+	path: "/sync/",
 	getParentRoute: () => rootRouteImport,
 } as any);
 const ManagerRoute = ManagerRouteImport.update({
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
 	"/config": typeof ConfigRoute;
 	"/manager": typeof ManagerRoute;
 	"/search": typeof SearchRoute;
+	"/sync/": typeof SyncIndexRoute;
 	"/api/events": typeof ApiEventsRoute;
 	"/sources/": typeof SourcesIndexRoute;
 	"/api/rpc/$": typeof ApiRpcSplatRoute;
@@ -122,6 +129,7 @@ export interface FileRoutesByTo {
 	"/config": typeof ConfigRoute;
 	"/manager": typeof ManagerRoute;
 	"/search": typeof SearchRoute;
+	"/sync": typeof SyncIndexRoute;
 	"/api/events": typeof ApiEventsRoute;
 	"/sources": typeof SourcesIndexRoute;
 	"/api/rpc/$": typeof ApiRpcSplatRoute;
@@ -139,6 +147,7 @@ export interface FileRoutesById {
 	"/config": typeof ConfigRoute;
 	"/manager": typeof ManagerRoute;
 	"/search": typeof SearchRoute;
+	"/sync/": typeof SyncIndexRoute;
 	"/api/events": typeof ApiEventsRoute;
 	"/sources/": typeof SourcesIndexRoute;
 	"/api/rpc/$": typeof ApiRpcSplatRoute;
@@ -206,6 +215,7 @@ export interface RootRouteChildren {
 	ConfigRoute: typeof ConfigRoute;
 	ManagerRoute: typeof ManagerRoute;
 	SearchRoute: typeof SearchRoute;
+	SyncIndexRoute: typeof SyncIndexRoute;
 	ApiEventsRoute: typeof ApiEventsRoute;
 	SourcesIndexRoute: typeof SourcesIndexRoute;
 	ApiRpcSplatRoute: typeof ApiRpcSplatRoute;
@@ -229,6 +239,13 @@ declare module "@tanstack/solid-router" {
 			path: "/manager";
 			fullPath: "/manager";
 			preLoaderRoute: typeof ManagerRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/sync/": {
+			id: "/sync/";
+			path: "/sync";
+			fullPath: "/sync/";
+			preLoaderRoute: typeof SyncIndexRouteImport;
 			parentRoute: typeof rootRouteImport;
 		};
 		"/config": {
@@ -340,6 +357,7 @@ const rootRouteChildren: RootRouteChildren = {
 	ConfigRoute: ConfigRoute,
 	ManagerRoute: ManagerRoute,
 	SearchRoute: SearchRoute,
+	SyncIndexRoute: SyncIndexRoute,
 	ApiEventsRoute: ApiEventsRoute,
 	SourcesIndexRoute: SourcesIndexRoute,
 	ApiRpcSplatRoute: ApiRpcSplatRoute,
