@@ -147,31 +147,45 @@ export class BidirectionalSyncServiceImpl {
 	}
 
 	/**
-	 * Get remote media list via oRPC
+	 * Get remote media list via oRPC with pagination
 	 */
 	private async getRemoteMediaList(
 		remoteClient: RouterClient<AppRouter>,
 		remoteSourceId: string,
 	): Promise<MediaDiff[]> {
-		const result = await remoteClient.media.search({
-			sourceId: remoteSourceId,
-			params: { limit: 1000, offset: 0 },
-		});
+		const allMedia: MediaDiff[] = [];
+		let offset = 0;
+		const limit = 100;
+		let hasMore = true;
 
-		return result.media.map(
-			(m: {
-				id: string;
-				filePath: string;
-				modifiedAt: string | Date;
-				fileSize: number | null;
-			}) => ({
-				mediaId: m.id,
-				filePath: m.filePath,
-				hashMd5: null,
-				modifiedAt: new Date(m.modifiedAt),
-				fileSize: m.fileSize ?? null,
-			}),
-		);
+		while (hasMore) {
+			const result = await remoteClient.media.search({
+				sourceId: remoteSourceId,
+				params: { limit, offset },
+			});
+
+			const mediaDiffs = result.media.map(
+				(m: {
+					id: string;
+					filePath: string;
+					modifiedAt: string | Date;
+					fileSize: number | null;
+				}) => ({
+					mediaId: m.id,
+					filePath: m.filePath,
+					hashMd5: null,
+					modifiedAt: new Date(m.modifiedAt),
+					fileSize: m.fileSize ?? null,
+				}),
+			);
+
+			allMedia.push(...mediaDiffs);
+
+			hasMore = result.media.length === limit;
+			offset += limit;
+		}
+
+		return allMedia;
 	}
 
 	/**
