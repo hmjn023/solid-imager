@@ -92,6 +92,38 @@ export const LoggingConfigSchema = z.object({
 });
 const defaultLoggingConfig = LoggingConfigSchema.parse({});
 
+const DEFAULT_SYNC_INTERVAL = 0;
+const MIN_SYNC_INTERVAL = 0;
+const MAX_SYNC_INTERVAL = 86400000;
+const DEFAULT_CONCURRENT_SYNCS = 1;
+const MIN_CONCURRENT_SYNCS = 1;
+const MAX_CONCURRENT_SYNCS = 10;
+const DEFAULT_PAGINATION_LIMIT = 50;
+const MIN_PAGINATION_LIMIT = 1;
+const MAX_PAGINATION_LIMIT = 100;
+
+export const SyncConfigSchema = z.object({
+	defaultConflictResolution: z
+		.enum(["newer_wins", "local_wins", "remote_wins", "manual"])
+		.default("newer_wins"),
+	syncIntervalMs: z
+		.number()
+		.min(MIN_SYNC_INTERVAL)
+		.max(MAX_SYNC_INTERVAL)
+		.default(DEFAULT_SYNC_INTERVAL),
+	maxConcurrentSyncs: z
+		.number()
+		.min(MIN_CONCURRENT_SYNCS)
+		.max(MAX_CONCURRENT_SYNCS)
+		.default(DEFAULT_CONCURRENT_SYNCS),
+	paginationLimit: z
+		.number()
+		.min(MIN_PAGINATION_LIMIT)
+		.max(MAX_PAGINATION_LIMIT)
+		.default(DEFAULT_PAGINATION_LIMIT),
+});
+const defaultSyncConfig = SyncConfigSchema.parse({});
+
 export const AppConfigSchema = z.object({
 	version: z.string().default("1.0.0"),
 	jobs: JobsConfigSchema.default(defaultJobsConfig),
@@ -99,6 +131,7 @@ export const AppConfigSchema = z.object({
 	storage: StorageConfigSchema.default(defaultStorageConfig),
 	media: MediaConfigSchema.default(defaultMediaConfig),
 	logging: LoggingConfigSchema.default(defaultLoggingConfig),
+	sync: SyncConfigSchema.default(defaultSyncConfig),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
