@@ -42,7 +42,7 @@ export interface SyncStats {
 /**
  * Create an oRPC client for a remote server
  */
-function createRemoteClient(baseUrl: string): any {
+function createRemoteClient(baseUrl: string): RouterClient<AppRouter> {
 	const rpcUrl = new URL("/api/rpc/", baseUrl).toString();
 	const link = new RPCLink({
 		url: rpcUrl,
