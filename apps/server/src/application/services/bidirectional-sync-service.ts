@@ -408,10 +408,21 @@ export class BidirectionalSyncServiceImpl {
 			);
 		}
 
-		// Get remote source ID from the sync context
-		// We need to find the remote source that has this media
+		// Get remote source ID via global search
+		const searchResult = await remoteClient.media.search({
+			sourceId: null,
+			params: { limit: 1, offset: 0 },
+		});
+		const remoteMedia = searchResult.media.find(
+			(m: { id: string }) => m.id === remoteMediaId,
+		);
+		if (!remoteMedia) {
+			throw new Error(`Remote media not found: ${remoteMediaId}`);
+		}
+
+		// Get remote source ID from the found media
 		const remoteDetails = await remoteClient.media.getDetails({
-			sourceId: null as any, // Will use global search
+			sourceId: remoteMedia.mediaSourceId,
 			mediaId: remoteMediaId,
 		});
 
