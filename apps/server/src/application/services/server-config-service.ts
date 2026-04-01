@@ -55,6 +55,18 @@ export class ServerConfigService implements IConfigService {
 				fileContent = defaultAppConfig;
 			}
 
+			// Migration: add missing sync section for old config files
+			if (
+				fileContent &&
+				typeof fileContent === "object" &&
+				!("sync" in fileContent)
+			) {
+				(fileContent as Record<string, unknown>).sync = defaultAppConfig.sync;
+				logger.info(
+					"Added missing sync section to config (migration from old version)",
+				);
+			}
+
 			// Apply Env Overrides
 			const envOverrides = this.getEnvOverrides();
 			const mergedConfig = this.deepMerge(fileContent, envOverrides);
