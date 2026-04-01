@@ -70,9 +70,10 @@ function ConfigForm(props: { data: AppConfig }) {
 			</div>
 
 			<Tabs class="w-full" defaultValue="jobs">
-				<TabsList class="grid w-full grid-cols-5">
+				<TabsList class="grid w-full grid-cols-6">
 					<TabsTrigger value="jobs">Jobs</TabsTrigger>
 					<TabsTrigger value="ai">AI</TabsTrigger>
+					<TabsTrigger value="downloads">Downloads</TabsTrigger>
 					<TabsTrigger value="storage">Storage</TabsTrigger>
 					<TabsTrigger value="media">Media</TabsTrigger>
 					<TabsTrigger value="logging">Logging</TabsTrigger>
@@ -224,6 +225,57 @@ function ConfigForm(props: { data: AppConfig }) {
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="downloads">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
+
+							<form.Field name="downloads.rateLimitEnabled">
+								{(field) => (
+									<div class="flex items-center space-x-2">
+										<Switch
+											checked={(field().state.value as boolean) ?? false}
+											onChange={field().handleChange}
+										>
+											<SwitchControl>
+												<SwitchThumb />
+											</SwitchControl>
+											<SwitchLabel>レートリミット有効</SwitchLabel>
+										</Switch>
+									</div>
+								)}
+							</form.Field>
+
+							<form.Field name="downloads.requestIntervalMs">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>リクエスト間隔 (ms)</Label>
+										<Input
+											id={field().name}
+											max="60000"
+											min="0"
+											onBlur={field().handleBlur}
+											onInput={(e) => {
+												const val = e.target.value;
+												field().handleChange(
+													(val === ""
+														? undefined
+														: Number(val)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+										<Show when={field().state.meta.errors.length}>
+											<div class="text-red-500 text-sm">
+												{field().state.meta.errors[0]}
+											</div>
+										</Show>
 									</div>
 								)}
 							</form.Field>
