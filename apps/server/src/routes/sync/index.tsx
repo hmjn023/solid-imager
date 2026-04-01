@@ -34,9 +34,12 @@ interface SourceSyncStatus {
  */
 function SyncManagement() {
 	const queryClient = useQueryClient();
-	const [selectedSourceId, setSelectedSourceId] = createSignal<string | null>(
-		null,
-	);
+	const [selectedLocalSourceId, setSelectedLocalSourceId] = createSignal<
+		string | null
+	>(null);
+	const [selectedRemoteSourceId, setSelectedRemoteSourceId] = createSignal<
+		string | null
+	>(null);
 	const [isSyncing, setIsSyncing] = createSignal(false);
 
 	// Fetch media sources
@@ -45,28 +48,32 @@ function SyncManagement() {
 		queryFn: () => orpc.sources.list(),
 	}));
 
-	// Fetch sync status for selected source
+	// Fetch sync status for selected local source
 	const syncStatus = createQuery(() => ({
-		queryKey: ["syncStatus", selectedSourceId()],
+		queryKey: ["syncStatus", selectedLocalSourceId()],
 		queryFn: () => {
-			const sourceId = selectedSourceId();
+			const sourceId = selectedLocalSourceId();
 			if (!sourceId) return null;
-			return orpc.sync.getSourceSyncStatus({ sourceId });
+			return orpc.sync.getSourceSyncStatus({
+				sourceId,
+				remoteSourceId: selectedRemoteSourceId() ?? "",
+			});
 		},
-		enabled: !!selectedSourceId(),
+		enabled: !!selectedLocalSourceId() && !!selectedRemoteSourceId(),
 	}));
 
 	// Execute sync
 	const handleSync = async () => {
-		const sourceId = selectedSourceId();
-		if (!sourceId || isSyncing()) return;
+		const localSourceId = selectedLocalSourceId();
+		const remoteSourceId = selectedRemoteSourceId();
+		if (!localSourceId || !remoteSourceId || isSyncing()) return;
 
 		setIsSyncing(true);
 
 		try {
 			const result = await orpc.sync.sync({
-				localSourceId: sourceId,
-				remoteSourceId: sourceId,
+				localSourceId,
+				remoteSourceId,
 				direction: "bidirectional",
 				conflictResolution: "newer_wins",
 				dryRun: false,
@@ -82,7 +89,7 @@ function SyncManagement() {
 
 			// Refresh sync status
 			await queryClient.invalidateQueries({
-				queryKey: ["syncStatus", sourceId],
+				queryKey: ["syncStatus", localSourceId],
 			});
 		} catch (error) {
 			logger.error({ error }, "Sync failed");
@@ -94,13 +101,14 @@ function SyncManagement() {
 
 	// Dry run sync
 	const handleDryRun = async () => {
-		const sourceId = selectedSourceId();
-		if (!sourceId) return;
+		const localSourceId = selectedLocalSourceId();
+		const remoteSourceId = selectedRemoteSourceId();
+		if (!localSourceId || !remoteSourceId) return;
 
 		try {
 			const result = await orpc.sync.sync({
-				localSourceId: sourceId,
-				remoteSourceId: sourceId,
+				localSourceId,
+				remoteSourceId,
 				direction: "bidirectional",
 				conflictResolution: "newer_wins",
 				dryRun: true,
@@ -121,18 +129,22 @@ function SyncManagement() {
 		remoteMediaId: string,
 		resolution: "newer_wins" | "local_wins" | "remote_wins",
 	) => {
+		const remoteSourceId = selectedRemoteSourceId();
+		if (!remoteSourceId) return;
+
 		try {
 			const result = await orpc.sync.resolveConflict({
 				localMediaId,
 				remoteMediaId,
 				resolution,
+				remoteSourceId,
 			});
 
 			if (result.success) {
 				toast.success("コンフリクトが解決されました");
 				// Refresh sync status
 				await queryClient.invalidateQueries({
-					queryKey: ["syncStatus", selectedSourceId()],
+					queryKey: ["syncStatus", selectedLocalSourceId()],
 				});
 			}
 		} catch (error) {
@@ -151,28 +163,61 @@ function SyncManagement() {
 			</div>
 
 			<div class="grid gap-6 md:grid-cols-2">
-				{/* Source Selection */}
+				{/* Local Source Selection */}
 				<Card>
 					<CardHeader>
-						<CardTitle>ソース選択</CardTitle>
+						<CardTitle>ローカルソース選択</CardTitle>
 						<CardDescription>
-							同期するメディアソースを選択してください
+							同期元のローカルソースを選択してください
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div class="space-y-2">
-							<For each={sources.data}>
+							<For each={sources.data?.filter((s) => s.type === "local")}>
 								{(source) => (
 									<Button
 										variant={
-											selectedSourceId() === source.id ? "default" : "outline"
+											selectedLocalSourceId() === source.id
+												? "default"
+												: "outline"
 										}
 										class="w-full justify-start"
-										onClick={() => setSelectedSourceId(source.id ?? null)}
+										onClick={() => setSelectedLocalSourceId(source.id ?? null)}
 									>
-										<span class="mr-2">
-											{source.type === "remote" ? "🌐" : "📁"}
-										</span>
+										<span class="mr-2">📁</span>
+										{source.name}
+										<Badge variant="secondary" class="ml-auto">
+											{source.type}
+										</Badge>
+									</Button>
+								)}
+							</For>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Remote Source Selection */}
+				<Card>
+					<CardHeader>
+						<CardTitle>リモートソース選択</CardTitle>
+						<CardDescription>
+							同期先のリモートソースを選択してください
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<div class="space-y-2">
+							<For each={sources.data?.filter((s) => s.type === "remote")}>
+								{(source) => (
+									<Button
+										variant={
+											selectedRemoteSourceId() === source.id
+												? "default"
+												: "outline"
+										}
+										class="w-full justify-start"
+										onClick={() => setSelectedRemoteSourceId(source.id ?? null)}
+									>
+										<span class="mr-2">🌐</span>
 										{source.name}
 										<Badge variant="secondary" class="ml-auto">
 											{source.type}
@@ -194,7 +239,7 @@ function SyncManagement() {
 					</CardHeader>
 					<CardContent>
 						<Show
-							when={selectedSourceId()}
+							when={selectedLocalSourceId()}
 							fallback={
 								<p class="text-muted-foreground">ソースを選択してください</p>
 							}
@@ -268,14 +313,18 @@ function SyncManagement() {
 						<div class="flex gap-4">
 							<Button
 								onClick={handleDryRun}
-								disabled={!selectedSourceId()}
+								disabled={!selectedLocalSourceId() || !selectedRemoteSourceId()}
 								variant="outline"
 							>
 								ドライラン
 							</Button>
 							<Button
 								onClick={handleSync}
-								disabled={!selectedSourceId() || isSyncing()}
+								disabled={
+									!selectedLocalSourceId() ||
+									!selectedRemoteSourceId() ||
+									isSyncing()
+								}
 							>
 								{isSyncing() ? (
 									<>
