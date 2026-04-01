@@ -13,6 +13,11 @@ import type {
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
 import type {
+	ConflictResolutionRequest,
+	ConflictResolutionResponse,
+	GetSourceSyncStatusResponse,
+	GetSyncStatusResponse,
+	SyncConflictSummary,
 	SyncRequest,
 	SyncResponse,
 } from "@solid-imager/core/domain/media/sync-schemas";
@@ -152,6 +157,153 @@ export class BidirectionalSyncServiceImpl {
 			logger.error({ error, request }, "Bidirectional sync failed");
 			throw error;
 		}
+	}
+
+	async getSourceSyncStatus(
+		localSourceId: string,
+		remoteSourceId: string,
+	): Promise<GetSourceSyncStatusResponse> {
+		const { remoteClient, remoteSourceIdOnRemote } =
+			await this.getRemoteClient(remoteSourceId);
+		const remoteMediaList = await this.getRemoteMediaList(
+			remoteClient,
+			remoteSourceIdOnRemote,
+		);
+		const diffResult = await this.diffDetector.detectDiffs(
+			localSourceId,
+			remoteMediaList,
+		);
+
+		return {
+			totalMedia:
+				diffResult.localOnly.length +
+				diffResult.remoteOnly.length +
+				diffResult.conflicts.length +
+				diffResult.identical.length,
+			synced: diffResult.identical.length,
+			pending: diffResult.localOnly.length + diffResult.remoteOnly.length,
+			failed: 0,
+			conflicts: diffResult.conflicts.map((conflict) =>
+				this.mapConflictSummary(conflict),
+			),
+		};
+	}
+
+	async getSyncStatus(
+		mediaId: string,
+		remoteSourceId: string,
+	): Promise<GetSyncStatusResponse> {
+		const localMedia = await this.mediaRepository.findById(mediaId);
+		if (!localMedia) {
+			return { mediaId, status: "not_found" };
+		}
+
+		const sourceStatus = await this.getSourceSyncStatus(
+			localMedia.mediaSourceId,
+			remoteSourceId,
+		);
+		const conflict = sourceStatus.conflicts.find(
+			(item) => item.localMediaId === mediaId || item.remoteMediaId === mediaId,
+		);
+		if (conflict) {
+			return { mediaId, status: "conflict", conflict };
+		}
+
+		const { remoteClient, remoteSourceIdOnRemote } =
+			await this.getRemoteClient(remoteSourceId);
+		const remoteMediaList = await this.getRemoteMediaList(
+			remoteClient,
+			remoteSourceIdOnRemote,
+		);
+		const diffResult = await this.diffDetector.detectDiffs(
+			localMedia.mediaSourceId,
+			remoteMediaList,
+		);
+
+		if (diffResult.identical.some((item) => item.mediaId === mediaId)) {
+			return { mediaId, status: "synced" };
+		}
+		if (diffResult.localOnly.some((item) => item.mediaId === mediaId)) {
+			return { mediaId, status: "local_only" };
+		}
+		if (diffResult.remoteOnly.some((item) => item.mediaId === mediaId)) {
+			return { mediaId, status: "remote_only" };
+		}
+
+		return { mediaId, status: "not_found" };
+	}
+
+	async resolveConflict(
+		request: ConflictResolutionRequest,
+	): Promise<ConflictResolutionResponse> {
+		const localMedia = await this.mediaRepository.findById(
+			request.localMediaId,
+		);
+		if (!localMedia) {
+			throw new Error(`Local media not found: ${request.localMediaId}`);
+		}
+
+		const { remoteClient, remoteSourceIdOnRemote } = await this.getRemoteClient(
+			request.remoteSourceId,
+		);
+		const remoteMedia = await remoteClient.media.getDetails({
+			sourceId: remoteSourceIdOnRemote,
+			mediaId: request.remoteMediaId,
+		});
+		if (!remoteMedia) {
+			throw new Error(`Remote media not found: ${request.remoteMediaId}`);
+		}
+
+		const hashes = await this.mediaRepository.getMd5HashesBySourceId(
+			localMedia.mediaSourceId,
+		);
+		const conflict = {
+			id: `${request.localMediaId}-${request.remoteMediaId}`,
+			localMediaId: request.localMediaId,
+			remoteMediaId: request.remoteMediaId,
+			localFilePath: localMedia.filePath,
+			remoteFilePath: remoteMedia.filePath,
+			localModifiedAt: localMedia.modifiedAt,
+			remoteModifiedAt: remoteMedia.modifiedAt,
+			localHash: hashes.get(request.localMediaId) ?? null,
+			remoteHash: null,
+			conflictType: this.conflictResolver.detectConflictType(
+				hashes.get(request.localMediaId) ?? null,
+				null,
+				localMedia.modifiedAt,
+				remoteMedia.modifiedAt,
+			),
+			resolved: false,
+		};
+
+		const resolution = this.conflictResolver.resolveConflict(
+			conflict,
+			request.resolution as ConflictResolutionPolicy,
+		);
+		if (!resolution.success) {
+			return {
+				success: false,
+				error: resolution.error,
+			};
+		}
+
+		await this.executeResolution(
+			resolution,
+			{
+				localSourceId: localMedia.mediaSourceId,
+				remoteSourceId: request.remoteSourceId,
+				direction: "bidirectional",
+				conflictResolution: request.resolution,
+				dryRun: false,
+			},
+			remoteClient,
+			remoteSourceIdOnRemote,
+		);
+
+		return {
+			success: true,
+			resolvedMediaId: resolution.conflict.resolvedMediaId,
+		};
 	}
 
 	/**
@@ -354,6 +506,26 @@ export class BidirectionalSyncServiceImpl {
 		}
 
 		return stats;
+	}
+
+	private mapConflictSummary(
+		conflict: DiffResult["conflicts"][number],
+	): SyncConflictSummary {
+		return {
+			id: `${conflict.local.mediaId}-${conflict.remote.mediaId}`,
+			localMediaId: conflict.local.mediaId,
+			remoteMediaId: conflict.remote.mediaId,
+			localFilePath: conflict.local.filePath,
+			remoteFilePath: conflict.remote.filePath,
+			localModifiedAt: conflict.local.modifiedAt,
+			remoteModifiedAt: conflict.remote.modifiedAt,
+			conflictType:
+				conflict.difference === "hash"
+					? "hash_mismatch"
+					: conflict.difference === "timestamp"
+						? "timestamp_mismatch"
+						: "both_mismatch",
+		};
 	}
 
 	private createSyncMetadata(

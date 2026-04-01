@@ -1,3 +1,4 @@
+import type { ConflictResolution } from "@solid-imager/core/domain/media/sync-schemas";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -7,10 +8,25 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@solid-imager/ui/dialog";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@solid-imager/ui/select";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
@@ -31,6 +47,12 @@ function SyncManagement() {
 		string | null
 	>(null);
 	const [isSyncing, setIsSyncing] = createSignal(false);
+	const [isConflictDialogOpen, setIsConflictDialogOpen] = createSignal(false);
+	const [selectedConflictId, setSelectedConflictId] = createSignal<
+		string | null
+	>(null);
+	const [selectedResolution, setSelectedResolution] =
+		createSignal<ConflictResolution>("newer_wins");
 
 	// Fetch media sources
 	const sources = createQuery(() => ({
@@ -51,6 +73,33 @@ function SyncManagement() {
 		},
 		enabled: !!selectedLocalSourceId() && !!selectedRemoteSourceId(),
 	}));
+
+	const conflictOptions = createMemo(
+		() =>
+			syncStatus.data?.conflicts.map((conflict) => ({
+				value: conflict.id,
+				label: `${conflict.localFilePath} <> ${conflict.remoteFilePath}`,
+			})) ?? [],
+	);
+
+	const selectedConflict = createMemo(
+		() =>
+			syncStatus.data?.conflicts.find(
+				(conflict) => conflict.id === selectedConflictId(),
+			) ?? null,
+	);
+
+	createEffect(() => {
+		const firstConflict = syncStatus.data?.conflicts[0];
+		if (!firstConflict) {
+			setSelectedConflictId(null);
+			setIsConflictDialogOpen(false);
+			return;
+		}
+		if (!selectedConflict()) {
+			setSelectedConflictId(firstConflict.id);
+		}
+	});
 
 	// Execute sync
 	const handleSync = async () => {
@@ -116,31 +165,20 @@ function SyncManagement() {
 	// Resolve conflict
 	const handleResolveConflict = async () => {
 		const remoteSourceId = selectedRemoteSourceId();
-		if (!remoteSourceId) return;
-
-		// TODO: Show conflict list and allow user to select resolution
-		// For now, show a simple alert to select resolution policy
-		const resolution = prompt(
-			"解決ポリシーを入力してください (newer_wins, local_wins, remote_wins):",
-			"newer_wins",
-		) as "newer_wins" | "local_wins" | "remote_wins" | null;
-		if (!resolution) return;
-
-		// TODO: Get actual conflict details from sync status
-		// For now, use placeholder values
-		const localMediaId = "00000000-0000-0000-0000-000000000000";
-		const remoteMediaId = "00000000-0000-0000-0000-000000000000";
+		const conflict = selectedConflict();
+		if (!remoteSourceId || !conflict) return;
 
 		try {
 			const result = await orpc.sync.resolveConflict({
-				localMediaId,
-				remoteMediaId,
-				resolution,
+				localMediaId: conflict.localMediaId,
+				remoteMediaId: conflict.remoteMediaId,
+				resolution: selectedResolution(),
 				remoteSourceId,
 			});
 
 			if (result.success) {
 				toast.success("コンフリクトが解決されました");
+				setIsConflictDialogOpen(false);
 				// Refresh sync status
 				await queryClient.invalidateQueries({
 					queryKey: ["syncStatus", selectedLocalSourceId()],
@@ -278,12 +316,12 @@ function SyncManagement() {
 											</div>
 										</div>
 
-										<Show when={status().conflicts > 0}>
+										<Show when={status().conflicts.length > 0}>
 											<div class="rounded-lg border border-yellow-500 bg-yellow-50 p-3">
 												<div class="flex items-center justify-between">
 													<div>
 														<div class="font-semibold text-yellow-800">
-															{status().conflicts}件のコンフリクト
+															{status().conflicts.length}件のコンフリクト
 														</div>
 														<p class="text-xs text-yellow-700">
 															手動解決が必要です
@@ -292,7 +330,7 @@ function SyncManagement() {
 													<Button
 														variant="outline"
 														size="sm"
-														onClick={handleResolveConflict}
+														onClick={() => setIsConflictDialogOpen(true)}
 													>
 														解決する
 													</Button>
@@ -342,6 +380,107 @@ function SyncManagement() {
 					</CardContent>
 				</Card>
 			</div>
+
+			<Dialog
+				onOpenChange={setIsConflictDialogOpen}
+				open={isConflictDialogOpen()}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>コンフリクト解決</DialogTitle>
+						<DialogDescription>
+							実際のコンフリクト一覧から対象を選択して解決します。
+						</DialogDescription>
+					</DialogHeader>
+
+					<div class="space-y-4 py-2">
+						<Select
+							itemComponent={(itemProps) => (
+								<SelectItem item={itemProps.item}>
+									{(itemProps.item.rawValue as { label: string }).label}
+								</SelectItem>
+							)}
+							onChange={(value) => setSelectedConflictId(value?.value ?? null)}
+							options={conflictOptions()}
+							optionTextValue="label"
+							optionValue="value"
+							value={
+								conflictOptions().find(
+									(option) => option.value === selectedConflictId(),
+								) ?? null
+							}
+						>
+							<SelectTrigger>
+								<SelectValue<{ label: string; value: string }>>
+									{(state) =>
+										state.selectedOption()?.label ?? "コンフリクトを選択"
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent />
+						</Select>
+
+						<Show when={selectedConflict()}>
+							{(conflict) => (
+								<div class="rounded-lg border bg-muted/20 p-3 text-sm">
+									<p>local: {conflict().localFilePath}</p>
+									<p>remote: {conflict().remoteFilePath}</p>
+									<p>type: {conflict().conflictType}</p>
+								</div>
+							)}
+						</Show>
+
+						<Select
+							itemComponent={(itemProps) => (
+								<SelectItem item={itemProps.item}>
+									{(itemProps.item.rawValue as { label: string }).label}
+								</SelectItem>
+							)}
+							onChange={(value) =>
+								setSelectedResolution(
+									(value?.value as ConflictResolution | undefined) ??
+										"newer_wins",
+								)
+							}
+							options={[
+								{ value: "newer_wins", label: "newer_wins" },
+								{ value: "local_wins", label: "local_wins" },
+								{ value: "remote_wins", label: "remote_wins" },
+							]}
+							optionTextValue="label"
+							optionValue="value"
+							value={{
+								value: selectedResolution(),
+								label: selectedResolution(),
+							}}
+						>
+							<SelectTrigger>
+								<SelectValue<{ label: string; value: string }>>
+									{(state) =>
+										state.selectedOption()?.label ?? "解決ポリシーを選択"
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent />
+						</Select>
+					</div>
+
+					<DialogFooter>
+						<Button
+							onClick={() => setIsConflictDialogOpen(false)}
+							variant="outline"
+						>
+							キャンセル
+						</Button>
+						<Button
+							disabled={!selectedConflict()}
+							onClick={handleResolveConflict}
+						>
+							解決する
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

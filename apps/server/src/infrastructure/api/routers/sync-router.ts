@@ -1,22 +1,26 @@
 import { ORPCError, os } from "@orpc/server";
 import {
 	conflictResolutionRequestSchema,
+	getSourceSyncStatusRequestSchema,
+	getSyncStatusRequestSchema,
 	mediaListRequestSchema,
 	mediaMetadataRequestSchema,
 	pullMediaFileRequestSchema,
 	pushMediaFileRequestSchema,
 	syncRequestSchema,
 } from "@solid-imager/core/domain/media/sync-schemas";
-import { z } from "zod";
 import { BidirectionalSyncServiceImpl } from "~/application/services/bidirectional-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
-import { RemoteSyncService } from "~/application/services/remote-sync-service";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
+
+function createSyncService() {
+	return new BidirectionalSyncServiceImpl(MediaRepository, sourceRepo);
+}
 
 /**
  * Remote Sync Router Implementation
@@ -39,7 +43,41 @@ export const syncRouter = {
 		.input(mediaListRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getMediaList(input);
+				const source = await sourceRepo.findById(input.sourceId);
+				if (!source || source.type !== "local") {
+					throw new Error(`Source not found or not local: ${input.sourceId}`);
+				}
+
+				const offset = input.cursor ? Number.parseInt(input.cursor, 10) : 0;
+				const result = await MediaRepository.search(input.sourceId, {
+					limit: input.limit,
+					offset: Number.isNaN(offset) ? 0 : offset,
+					order: "desc",
+				});
+				const hashes = await MediaRepository.getMd5HashesBySourceId(
+					input.sourceId,
+				);
+				const nextOffset =
+					(Number.isNaN(offset) ? 0 : offset) + result.media.length;
+
+				return {
+					media: result.media.map((media) => ({
+						id: media.id,
+						filePath: media.filePath,
+						fileName: media.fileName,
+						fileSize: media.fileSize ?? 0,
+						mediaType: media.mediaType,
+						width: media.width,
+						height: media.height,
+						createdAt: media.createdAt,
+						modifiedAt: media.modifiedAt,
+						hashMd5: hashes.get(media.id) ?? null,
+						description: media.description,
+					})),
+					total: result.total,
+					hasMore: nextOffset < result.total,
+					cursor: nextOffset < result.total ? String(nextOffset) : undefined,
+				};
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to get media list from remote: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -63,7 +101,50 @@ export const syncRouter = {
 		.input(mediaMetadataRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getMediaMetadata(input, input.sourceId);
+				const source = await sourceRepo.findById(input.sourceId);
+				if (!source || source.type !== "local") {
+					throw new Error(`Source not found or not local: ${input.sourceId}`);
+				}
+
+				const details = await MediaRepository.getDetails(input.mediaId);
+				if (!details || details.mediaSourceId !== input.sourceId) {
+					throw new Error(`Media not found in source: ${input.mediaId}`);
+				}
+
+				const hashes = await MediaRepository.getMd5HashesBySourceId(
+					input.sourceId,
+				);
+				return {
+					media: {
+						id: details.id,
+						filePath: details.filePath,
+						fileName: details.fileName,
+						fileSize: details.fileSize ?? 0,
+						mediaType: details.mediaType,
+						width: details.width,
+						height: details.height,
+						createdAt: details.createdAt,
+						modifiedAt: details.modifiedAt,
+						hashMd5: hashes.get(details.id) ?? null,
+						description: details.description,
+					},
+					tags: details.tags.map((tag) => ({
+						id: tag.id,
+						name: tag.name,
+						category: tag.attribute,
+					})),
+					generationInfo: details.generationInfo
+						? {
+								prompt: details.generationInfo.prompt,
+								negativePrompt: details.generationInfo.negativePrompt,
+								workflow: details.generationInfo.workflow,
+								model: details.generationInfo.modelName,
+								steps: details.generationInfo.steps,
+								cfgScale: details.generationInfo.cfgScale,
+								seed: details.generationInfo.seed,
+							}
+						: null,
+				};
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to get media metadata from remote: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -255,10 +336,7 @@ export const syncRouter = {
 		.input(syncRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				const syncService = new BidirectionalSyncServiceImpl(
-					MediaRepository,
-					sourceRepo,
-				);
+				const syncService = createSyncService();
 				return await syncService.sync(input);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
@@ -283,10 +361,7 @@ export const syncRouter = {
 		.input(conflictResolutionRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.resolveConflict(
-					input,
-					input.remoteSourceId,
-				);
+				return await createSyncService().resolveConflict(input);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to resolve conflict: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -306,15 +381,10 @@ export const syncRouter = {
 				description: "Retrieves synchronization status for a media item.",
 			},
 		})
-		.input(
-			z.object({
-				mediaId: z.string().uuid("Invalid media ID"),
-				remoteSourceId: z.string().uuid("Invalid remote source ID"),
-			}),
-		)
+		.input(getSyncStatusRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getSyncStatus(
+				return await createSyncService().getSyncStatus(
 					input.mediaId,
 					input.remoteSourceId,
 				);
@@ -338,15 +408,10 @@ export const syncRouter = {
 					"Retrieves synchronization status summary for a media source.",
 			},
 		})
-		.input(
-			z.object({
-				sourceId: z.string().uuid("Invalid source ID"),
-				remoteSourceId: z.string().uuid("Invalid remote source ID"),
-			}),
-		)
+		.input(getSourceSyncStatusRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getSourceSyncStatus(
+				return await createSyncService().getSourceSyncStatus(
 					input.sourceId,
 					input.remoteSourceId,
 				);

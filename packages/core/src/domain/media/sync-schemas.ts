@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { conflictTypeSchema } from "./conflict-resolution";
 
 /**
  * Zod schema for validating sync direction.
@@ -217,6 +218,59 @@ export const syncResponseSchema = z.object({
 	),
 });
 export type SyncResponse = z.infer<typeof syncResponseSchema>;
+
+export const syncConflictSummarySchema = z.object({
+	id: z.string(),
+	localMediaId: z.string().uuid(),
+	remoteMediaId: z.string().uuid(),
+	localFilePath: z.string(),
+	remoteFilePath: z.string(),
+	localModifiedAt: z.coerce.date(),
+	remoteModifiedAt: z.coerce.date(),
+	conflictType: conflictTypeSchema,
+});
+export type SyncConflictSummary = z.infer<typeof syncConflictSummarySchema>;
+
+export const getSyncStatusRequestSchema = z.object({
+	mediaId: z.string().uuid("Invalid media ID"),
+	remoteSourceId: z.string().uuid("Invalid remote source ID"),
+});
+export type GetSyncStatusRequest = z.infer<typeof getSyncStatusRequestSchema>;
+
+export const syncItemStatusSchema = z.enum([
+	"synced",
+	"local_only",
+	"remote_only",
+	"conflict",
+	"not_found",
+]);
+export type SyncItemStatus = z.infer<typeof syncItemStatusSchema>;
+
+export const getSyncStatusResponseSchema = z.object({
+	mediaId: z.string().uuid(),
+	status: syncItemStatusSchema,
+	conflict: syncConflictSummarySchema.optional(),
+});
+export type GetSyncStatusResponse = z.infer<typeof getSyncStatusResponseSchema>;
+
+export const getSourceSyncStatusRequestSchema = z.object({
+	sourceId: z.string().uuid("Invalid source ID"),
+	remoteSourceId: z.string().uuid("Invalid remote source ID"),
+});
+export type GetSourceSyncStatusRequest = z.infer<
+	typeof getSourceSyncStatusRequestSchema
+>;
+
+export const getSourceSyncStatusResponseSchema = z.object({
+	totalMedia: z.number().int().nonnegative(),
+	synced: z.number().int().nonnegative(),
+	pending: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	conflicts: z.array(syncConflictSummarySchema),
+});
+export type GetSourceSyncStatusResponse = z.infer<
+	typeof getSourceSyncStatusResponseSchema
+>;
 
 /**
  * Zod schema for validating conflict resolution request.
