@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { IConfigService } from "@solid-imager/core";
 import {
 	type AppConfig,
@@ -48,9 +49,7 @@ export class ServerConfigService implements IConfigService {
 
 				const parsedFromFile = AppConfigSchema.safeParse(fileContent);
 				if (parsedFromFile.success) {
-					if (
-						JSON.stringify(parsedFromFile.data) !== JSON.stringify(fileContent)
-					) {
+					if (!isDeepStrictEqual(parsedFromFile.data, fileContent)) {
 						fs.writeFileSync(
 							this.configPath,
 							JSON.stringify(parsedFromFile.data, null, 2),

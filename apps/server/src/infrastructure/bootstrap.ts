@@ -43,13 +43,11 @@ export function initServices() {
 
 	// Initialize log level from config and subscribe to changes
 	updateLogLevel(config.logging.level);
-	configService.onChange((newConfig) =>
-		updateLogLevel(newConfig.logging.level),
-	);
 	updateDownloadRateLimitConfig(config.downloads);
-	configService.onChange((newConfig) =>
-		updateDownloadRateLimitConfig(newConfig.downloads),
-	);
+	configService.onChange((newConfig) => {
+		updateLogLevel(newConfig.logging.level);
+		updateDownloadRateLimitConfig(newConfig.downloads);
+	});
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);
