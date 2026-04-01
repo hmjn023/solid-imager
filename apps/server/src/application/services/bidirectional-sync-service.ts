@@ -326,6 +326,16 @@ export class BidirectionalSyncServiceImpl {
 		mediaId: string,
 		targetSourceId: string,
 		remoteClient: RouterClient<AppRouter>,
+		metadataOverride?: {
+			tags?: Array<{
+				name: string;
+				type?: "positive" | "negative";
+				confidence?: number | null;
+			}>;
+			authors?: Array<{ name: string; accountId?: string | null }>;
+			characters?: Array<{ name: string; confidence?: number | null }>;
+			ips?: Array<{ name: string; confidence?: number | null }>;
+		},
 	) {
 		// Get local source for file access
 		const localMedia = await this.mediaRepository.findById(mediaId);
@@ -371,23 +381,31 @@ export class BidirectionalSyncServiceImpl {
 			description: details?.description,
 			createdAt: localMedia.createdAt,
 			sourceUrls: details?.urls.map((u: any) => u.url),
-			authors: details?.authors.map((a: any) => ({
-				name: a.name,
-				accountId: a.accountId,
-			})),
-			tags: details?.tags.map((t: any) => ({
-				name: t.name,
-				type: t.type,
-				confidence: t.confidence,
-			})),
-			characters: details?.characters.map((c: any) => ({
-				name: c.name,
-				confidence: c.confidence,
-			})),
-			ips: details?.ips.map((ip: any) => ({
-				name: ip.name,
-				confidence: ip.confidence,
-			})),
+			authors:
+				metadataOverride?.authors ??
+				details?.authors.map((a: any) => ({
+					name: a.name,
+					accountId: a.accountId,
+				})),
+			tags:
+				metadataOverride?.tags ??
+				details?.tags.map((t: any) => ({
+					name: t.name,
+					type: t.type,
+					confidence: t.confidence,
+				})),
+			characters:
+				metadataOverride?.characters ??
+				details?.characters.map((c: any) => ({
+					name: c.name,
+					confidence: c.confidence,
+				})),
+			ips:
+				metadataOverride?.ips ??
+				details?.ips.map((ip: any) => ({
+					name: ip.name,
+					confidence: ip.confidence,
+				})),
 			generationInfo: details?.generationInfo
 				? {
 						prompt: details.generationInfo.prompt,
@@ -529,10 +547,47 @@ export class BidirectionalSyncServiceImpl {
 				break;
 			case "merged": {
 				// Merge metadata: keep local file, combine metadata from both sides
+				const localDetails = await this.mediaRepository.getDetails(
+					resolution.conflict.localMediaId,
+				);
+				const remoteDetails = await remoteClient.media.getDetails({
+					sourceId: request.remoteSourceId,
+					mediaId: resolution.conflict.remoteMediaId,
+				});
+
+				// Merge tags, authors, characters, ips
+				const mergedTags = this.mergeMetadata(
+					localDetails?.tags ?? [],
+					remoteDetails.tags ?? [],
+					(item) => `${item.name}:${item.type ?? ""}`,
+				);
+				const mergedAuthors = this.mergeMetadata(
+					localDetails?.authors ?? [],
+					remoteDetails.authors ?? [],
+					(item) => item.name,
+				);
+				const mergedCharacters = this.mergeMetadata(
+					localDetails?.characters ?? [],
+					remoteDetails.characters ?? [],
+					(item) => item.name,
+				);
+				const mergedIps = this.mergeMetadata(
+					localDetails?.ips ?? [],
+					remoteDetails.ips ?? [],
+					(item) => item.name,
+				);
+
+				// Use local file but merged metadata
 				await this.pushMedia(
 					resolution.conflict.localMediaId,
 					request.remoteSourceId,
 					remoteClient,
+					{
+						tags: mergedTags,
+						authors: mergedAuthors,
+						characters: mergedCharacters,
+						ips: mergedIps,
+					},
 				);
 				break;
 			}
@@ -548,5 +603,26 @@ export class BidirectionalSyncServiceImpl {
 				);
 				break;
 		}
+	}
+
+	/**
+	 * Merge two metadata arrays, removing duplicates based on a key function
+	 */
+	private mergeMetadata<T>(
+		local: T[],
+		remote: T[],
+		keyFn: (item: T) => string,
+	): T[] {
+		const merged = new Map<string, T>();
+		for (const item of local) {
+			merged.set(keyFn(item), item);
+		}
+		for (const item of remote) {
+			const key = keyFn(item);
+			if (!merged.has(key)) {
+				merged.set(key, item);
+			}
+		}
+		return Array.from(merged.values());
 	}
 }
