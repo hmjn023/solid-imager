@@ -124,13 +124,22 @@ function SyncManagement() {
 	};
 
 	// Resolve conflict
-	const _handleResolveConflict = async (
-		localMediaId: string,
-		remoteMediaId: string,
-		resolution: "newer_wins" | "local_wins" | "remote_wins",
-	) => {
+	const handleResolveConflict = async () => {
 		const remoteSourceId = selectedRemoteSourceId();
 		if (!remoteSourceId) return;
+
+		// TODO: Show conflict list and allow user to select resolution
+		// For now, show a simple alert to select resolution policy
+		const resolution = prompt(
+			"解決ポリシーを入力してください (newer_wins, local_wins, remote_wins):",
+			"newer_wins",
+		) as "newer_wins" | "local_wins" | "remote_wins" | null;
+		if (!resolution) return;
+
+		// TODO: Get actual conflict details from sync status
+		// For now, use placeholder values
+		const localMediaId = "00000000-0000-0000-0000-000000000000";
+		const remoteMediaId = "00000000-0000-0000-0000-000000000000";
 
 		try {
 			const result = await orpc.sync.resolveConflict({
@@ -290,7 +299,11 @@ function SyncManagement() {
 															手動解決が必要です
 														</p>
 													</div>
-													<Button variant="outline" size="sm">
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={handleResolveConflict}
+													>
 														解決する
 													</Button>
 												</div>
