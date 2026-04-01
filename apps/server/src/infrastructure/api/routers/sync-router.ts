@@ -63,7 +63,7 @@ export const syncRouter = {
 		.input(mediaMetadataRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getMediaMetadata(input);
+				return await RemoteSyncService.getMediaMetadata(input, input.sourceId);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to get media metadata from remote: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -283,7 +283,10 @@ export const syncRouter = {
 		.input(conflictResolutionRequestSchema)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.resolveConflict(input);
+				return await RemoteSyncService.resolveConflict(
+					input,
+					input.remoteSourceId,
+				);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to resolve conflict: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -306,11 +309,15 @@ export const syncRouter = {
 		.input(
 			z.object({
 				mediaId: z.string().uuid("Invalid media ID"),
+				remoteSourceId: z.string().uuid("Invalid remote source ID"),
 			}),
 		)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getSyncStatus(input.mediaId);
+				return await RemoteSyncService.getSyncStatus(
+					input.mediaId,
+					input.remoteSourceId,
+				);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to get sync status: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -334,11 +341,15 @@ export const syncRouter = {
 		.input(
 			z.object({
 				sourceId: z.string().uuid("Invalid source ID"),
+				remoteSourceId: z.string().uuid("Invalid remote source ID"),
 			}),
 		)
 		.handler(async ({ input }) => {
 			try {
-				return await RemoteSyncService.getSourceSyncStatus(input.sourceId);
+				return await RemoteSyncService.getSourceSyncStatus(
+					input.sourceId,
+					input.remoteSourceId,
+				);
 			} catch (error) {
 				throw new ORPCError("REMOTE_SYNC_ERROR", {
 					message: `Failed to get source sync status: ${error instanceof Error ? error.message : "Unknown error"}`,

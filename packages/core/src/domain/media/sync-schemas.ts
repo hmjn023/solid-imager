@@ -82,6 +82,7 @@ export type MediaListRequest = z.infer<typeof mediaListRequestSchema>;
  */
 export const mediaMetadataRequestSchema = z.object({
 	mediaId: z.string().uuid("Invalid media ID"),
+	sourceId: z.string().uuid("Invalid source ID"),
 });
 export type MediaMetadataRequest = z.infer<typeof mediaMetadataRequestSchema>;
 
@@ -224,6 +225,7 @@ export const conflictResolutionRequestSchema = z.object({
 	localMediaId: z.string().uuid("Invalid local media ID"),
 	remoteMediaId: z.string().uuid("Invalid remote media ID"),
 	resolution: conflictResolutionSchema,
+	remoteSourceId: z.string().uuid("Invalid remote source ID"),
 });
 export type ConflictResolutionRequest = z.infer<
 	typeof conflictResolutionRequestSchema
