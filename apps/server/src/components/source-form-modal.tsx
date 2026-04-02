@@ -17,13 +17,6 @@ import {
 } from "@solid-imager/ui/dialog";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@solid-imager/ui/select";
 import { createEffect, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { z } from "zod";
@@ -270,7 +263,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		}
 	};
 
-	const getTypeLabel = (type: string) => {
+	const _getTypeLabel = (type: string) => {
 		if (type === "local") {
 			return "Local Filesystem";
 		}
@@ -324,14 +317,10 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 
 					<div class="space-y-2">
 						<Label>Type</Label>
-						<Select
-							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.label}
-								</SelectItem>
-							)}
-							onChange={(v) => {
-								const newType = v?.value ?? "local";
+						<select
+							class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							onChange={(e) => {
+								const newType = e.currentTarget.value as MediaSourceTypeEnum;
 								setRemoteSourcesError(null);
 								if (newType !== "remote") {
 									setRemoteServerAddress("");
@@ -343,19 +332,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										newType === formData.type ? formData.connectionInfo : {},
 								});
 							}}
-							options={SOURCE_TYPE_OPTIONS}
-							value={{
-								value: formData.type,
-								label: getTypeLabel(formData.type),
-							}}
+							value={formData.type}
 						>
-							<SelectTrigger>
-								<SelectValue<{ value: string; label: string }>>
-									{(state) => state.selectedOption().label}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
+							{SOURCE_TYPE_OPTIONS.map((option) => (
+								<option value={option.value}>{option.label}</option>
+							))}
+						</select>
 					</div>
 
 					<div class="space-y-4 rounded-md border p-4">
@@ -607,39 +589,24 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 							</div>
 							<div class="space-y-2">
 								<Label>Remote Source</Label>
-								<Select
-									itemComponent={(itemProps) => (
-										<SelectItem item={itemProps.item}>
-											{(itemProps.item.rawValue as { label: string }).label}
-										</SelectItem>
-									)}
-									onChange={(value) =>
+								<select
+									class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+									onChange={(e) =>
 										setFormData(
 											"connectionInfo",
 											"remoteSourceId",
-											value?.value ?? "",
+											e.currentTarget.value,
 										)
 									}
-									optionTextValue="label"
-									optionValue="value"
-									options={remoteSourceOptions()}
 									value={
-										remoteSourceOptions().find(
-											(option) =>
-												option.value === formData.connectionInfo.remoteSourceId,
-										) ?? null
+										(formData.connectionInfo.remoteSourceId as string) || ""
 									}
 								>
-									<SelectTrigger>
-										<SelectValue<{ label: string; value: string }>>
-											{(state) =>
-												state.selectedOption()?.label ??
-												"Select a remote source"
-											}
-										</SelectValue>
-									</SelectTrigger>
-									<SelectContent />
-								</Select>
+									<option value="">Select a remote source</option>
+									{remoteSourceOptions().map((option) => (
+										<option value={option.value}>{option.label}</option>
+									))}
+								</select>
 								<p class="text-muted-foreground text-sm">
 									Only local sources on the remote server can be selected.
 								</p>
