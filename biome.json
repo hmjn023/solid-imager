@@ -47,6 +47,19 @@
 			"javascript": {
 				"globals": ["chrome", "window", "document", "navigator", "console"]
 			}
+		},
+		{
+			"includes": [
+				"**/*.test.ts",
+				"**/*.test.tsx",
+				"**/*.spec.ts",
+				"**/*.spec.tsx"
+			],
+			"linter": {
+				"rules": {
+					"style": {}
+				}
+			}
 		}
 	]
 }

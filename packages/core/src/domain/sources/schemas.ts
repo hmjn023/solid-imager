@@ -35,14 +35,26 @@ export const s3ConnectionSchema = z.object({
 });
 export type S3Connection = z.infer<typeof s3ConnectionSchema>;
 
+export const remoteConnectionSchema = z.object({
+	url: z.string().url("Invalid remote server URL"),
+	remoteSourceId: z.string().uuid("Invalid remote source ID"),
+});
+export type RemoteConnection = z.infer<typeof remoteConnectionSchema>;
+
 export const connectionInfoSchema = z.union([
 	localConnectionSchema,
 	sftpConnectionSchema,
 	s3ConnectionSchema,
+	remoteConnectionSchema,
 ]);
 export type ConnectionInfo = z.infer<typeof connectionInfoSchema>;
 
-export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
+export const mediaSourceTypeEnumSchema = z.enum([
+	"local",
+	"sftp",
+	"s3",
+	"remote",
+]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
 export const mediaSourceInfoSchema = z.object({

@@ -75,6 +75,7 @@ describe("ConfigService", () => {
 		).toEqual({
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
+			sync: defaultAppConfig.sync,
 		});
 	});
 
