@@ -23,6 +23,7 @@ import {
 } from "@solid-imager/ui/select";
 import { createEffect, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
+import { z } from "zod";
 
 const DEFAULT_SFTP_PORT = 22;
 const SOURCE_TYPE_OPTIONS: Array<{
@@ -115,9 +116,17 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		} else if (formData.type === "remote") {
 			if (!formData.connectionInfo.url) {
 				newErrors.url = "Server URL is required";
+			} else if (
+				!z.string().url().safeParse(formData.connectionInfo.url).success
+			) {
+				newErrors.url = "Invalid URL format";
 			}
 			if (!formData.connectionInfo.remoteSourceId) {
 				newErrors.remoteSourceId = "Remote source ID is required";
+			} else if (
+				!z.uuid().safeParse(formData.connectionInfo.remoteSourceId).success
+			) {
+				newErrors.remoteSourceId = "Invalid UUID format";
 			}
 		}
 
@@ -202,7 +211,14 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									{itemProps.item.rawValue.label}
 								</SelectItem>
 							)}
-							onChange={(v) => setFormData("type", v?.value ?? "local")}
+							onChange={(v) => {
+								const newType = v?.value ?? "local";
+								setFormData({
+									type: newType,
+									connectionInfo:
+										newType === formData.type ? formData.connectionInfo : {},
+								});
+							}}
 							options={SOURCE_TYPE_OPTIONS}
 							value={{
 								value: formData.type,
