@@ -119,6 +119,7 @@ export const safeConnectionInfoSchema = z.union([
 	localConnectionSchema,
 	safeSftpConnectionSchema,
 	safeS3ConnectionSchema,
+	remoteConnectionSchema,
 ]);
 
 export const safeMediaSourceSchema = mediaSourceInfoSchema.extend({

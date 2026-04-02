@@ -1,5 +1,6 @@
 import type {
 	MediaSourceInfo,
+	MediaSourceTypeEnum,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
@@ -24,6 +25,15 @@ import { createEffect, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 
 const DEFAULT_SFTP_PORT = 22;
+const SOURCE_TYPE_OPTIONS: Array<{
+	value: MediaSourceTypeEnum;
+	label: string;
+}> = [
+	{ value: "local", label: "Local Filesystem" },
+	{ value: "sftp", label: "SFTP" },
+	{ value: "s3", label: "S3 Compatible Storage" },
+	{ value: "remote", label: "Remote Server" },
+];
 
 type SourceFormModalProps = {
 	isOpen: boolean;
@@ -36,7 +46,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 	const [formData, setFormData] = createStore<{
 		name: string;
 		description: string;
-		type: "local" | "sftp" | "s3";
+		type: MediaSourceTypeEnum;
 		connectionInfo: Record<string, string | number>;
 	}>({
 		name: "",
@@ -52,7 +62,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 			setFormData({
 				name: props.editingSource.name,
 				description: props.editingSource.description || "",
-				type: props.editingSource.type as "local" | "sftp" | "s3",
+				type: props.editingSource.type,
 				connectionInfo: (props.editingSource.connectionInfo as any) || {},
 			});
 		} else {
@@ -102,6 +112,13 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 					newErrors.secretAccessKey = "Secret Access Key is required";
 				}
 			}
+		} else if (formData.type === "remote") {
+			if (!formData.connectionInfo.url) {
+				newErrors.url = "Server URL is required";
+			}
+			if (!formData.connectionInfo.remoteSourceId) {
+				newErrors.remoteSourceId = "Remote source ID is required";
+			}
 		}
 
 		setErrors(newErrors);
@@ -134,6 +151,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		}
 		if (type === "s3") {
 			return "S3 Compatible Storage";
+		}
+		if (type === "remote") {
+			return "Remote Server";
 		}
 		return type;
 	};
@@ -182,14 +202,8 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									{itemProps.item.rawValue.label}
 								</SelectItem>
 							)}
-							onChange={(v) =>
-								setFormData("type", v?.value as "local" | "sftp" | "s3")
-							}
-							options={[
-								{ value: "local", label: "Local Filesystem" },
-								{ value: "sftp", label: "SFTP" },
-								{ value: "s3", label: "S3 Compatible Storage" },
-							]}
+							onChange={(v) => setFormData("type", v?.value ?? "local")}
+							options={SOURCE_TYPE_OPTIONS}
 							value={{
 								value: formData.type,
 								label: getTypeLabel(formData.type),
@@ -407,6 +421,43 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									placeholder="photos/"
 									value={(formData.connectionInfo.prefix as string) || ""}
 								/>
+							</div>
+						</Show>
+
+						<Show when={formData.type === "remote"}>
+							<div class="space-y-2">
+								<Label for="url">Server URL</Label>
+								<Input
+									id="url"
+									onInput={(e) =>
+										setFormData("connectionInfo", "url", e.currentTarget.value)
+									}
+									placeholder="https://remote.example.com"
+									value={(formData.connectionInfo.url as string) || ""}
+								/>
+								<Show when={errors().url}>
+									<p class="text-red-500 text-sm">{errors().url}</p>
+								</Show>
+							</div>
+							<div class="space-y-2">
+								<Label for="remoteSourceId">Remote Source ID</Label>
+								<Input
+									id="remoteSourceId"
+									onInput={(e) =>
+										setFormData(
+											"connectionInfo",
+											"remoteSourceId",
+											e.currentTarget.value,
+										)
+									}
+									placeholder="00000000-0000-4000-8000-000000000000"
+									value={
+										(formData.connectionInfo.remoteSourceId as string) || ""
+									}
+								/>
+								<Show when={errors().remoteSourceId}>
+									<p class="text-red-500 text-sm">{errors().remoteSourceId}</p>
+								</Show>
 							</div>
 						</Show>
 					</div>
