@@ -31,6 +31,8 @@ const getTypeLabel = (type: string) => {
 			return "SFTP";
 		case "s3":
 			return "S3 Compatible Storage";
+		case "remote":
+			return "Remote Server";
 		default:
 			return type;
 	}
@@ -47,6 +49,9 @@ const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
 	}
 	if (source.type === "s3") {
 		return `S3: ${info.bucket || "?"} (${info.region || "?"})`;
+	}
+	if (source.type === "remote") {
+		return `Remote: ${info.url || "?"} (${info.remoteSourceId || "?"})`;
 	}
 	return "Unknown Connection";
 };

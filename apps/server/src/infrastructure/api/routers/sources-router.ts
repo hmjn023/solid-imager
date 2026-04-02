@@ -51,6 +51,16 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 			},
 		};
 	}
+	if (source.type === "remote") {
+		return {
+			...rest,
+			type: source.type,
+			connectionInfo: {
+				url: info.url,
+				remoteSourceId: info.remoteSourceId,
+			},
+		};
+	}
 	// Fallback for local
 	return {
 		...rest,
