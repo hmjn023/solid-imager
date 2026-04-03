@@ -18,6 +18,10 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 
 すべてのコマンドは `bun` を使用して実行します。
 
+### Vite+ (`vp`) 実行ルール
+
+このリポジトリでは Vite+ を使いますが、環境によっては `vp` バイナリが `PATH` に入っていません。`vp` が見つからない場合は `bun x vp` を同義として扱い、以後のコマンドも `bun x vp check`、`bun x vp test` のように実行してください。`vp` をそのまま打って失敗した場合も、同じコマンドを `bun x vp ...` に置き換えて続行します。
+
 1. **依存関係のインストール:**
    ```bash
    bun install
@@ -61,9 +65,9 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 ### コード品質
 コミットする前には、必ず **Biome** を使ってコードの品質をチェックしてください。
 ```bash
-bun run lint          # ルートでのチェック
-bun --filter @solid-imager/server check  # サーバー側（型チェック含む）
-bun run format        # フォーマットのみ
+bun x vp lint         # `vp` が PATH にあるなら `vp lint` でも可
+bun x vp check        # `vp` が PATH にあるなら `vp check` でも可
+bun x vp fmt          # `vp` が PATH にあるなら `vp fmt` でも可
 ```
 
 ### テスト

@@ -1,3 +1,6 @@
+import { createORPCClient } from "@orpc/client";
+import { RPCLink } from "@orpc/client/fetch";
+import type { RouterClient } from "@orpc/server";
 import type {
 	MediaSourceInfo,
 	MediaSourceTypeEnum,
@@ -14,16 +17,10 @@ import {
 } from "@solid-imager/ui/dialog";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@solid-imager/ui/select";
 import { createEffect, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { z } from "zod";
+import type { AppRouter } from "~/domain/shared/api-contract";
 
 const DEFAULT_SFTP_PORT = 22;
 const SOURCE_TYPE_OPTIONS: Array<{
@@ -35,6 +32,48 @@ const SOURCE_TYPE_OPTIONS: Array<{
 	{ value: "s3", label: "S3 Compatible Storage" },
 	{ value: "remote", label: "Remote Server" },
 ];
+const REMOTE_SOURCE_ID_SCHEMA = z.uuid();
+const REMOTE_URL_SCHEMA = z.string().url();
+const NATIVE_SELECT_CLASS =
+	"flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
+
+function extractRemoteServerAddress(url: string): string {
+	try {
+		const parsed = new URL(url);
+		const host = parsed.port
+			? `${parsed.hostname}:${parsed.port}`
+			: parsed.hostname;
+		const path = parsed.pathname === "/" ? "" : parsed.pathname;
+		return `${host}${path}`;
+	} catch {
+		return url;
+	}
+}
+
+function normalizeRemoteServerUrl(address: string): string {
+	const trimmed = address.trim();
+	if (!trimmed) {
+		return "";
+	}
+	const withProtocol = /^[a-z]+:\/\//i.test(trimmed)
+		? trimmed
+		: `http://${trimmed}`;
+	const parsed = new URL(withProtocol);
+	parsed.search = "";
+	parsed.hash = "";
+	parsed.pathname =
+		parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "");
+	return parsed.toString();
+}
+
+function createRemoteClient(baseUrl: string): RouterClient<AppRouter> {
+	const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+	const link = new RPCLink({
+		url: new URL("api/rpc", normalizedBaseUrl).toString(),
+		fetch,
+	});
+	return createORPCClient(link) as RouterClient<AppRouter>;
+}
 
 type SourceFormModalProps = {
 	isOpen: boolean;
@@ -57,15 +96,95 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 	});
 
 	const [errors, setErrors] = createSignal<Record<string, string>>({});
+	const [remoteServerAddress, setRemoteServerAddress] = createSignal("");
+	const [remoteSourceOptions, setRemoteSourceOptions] = createSignal<
+		Array<{ label: string; value: string }>
+	>([]);
+	const [isLoadingRemoteSources, setIsLoadingRemoteSources] =
+		createSignal(false);
+	const [remoteSourcesError, setRemoteSourcesError] = createSignal<
+		string | null
+	>(null);
+
+	const loadRemoteSources = async (address = remoteServerAddress()) => {
+		const trimmedAddress = address.trim();
+		if (!trimmedAddress) {
+			setRemoteSourceOptions([]);
+			setRemoteSourcesError("Remote server IP/host is required");
+			setFormData("connectionInfo", "url", "");
+			setFormData("connectionInfo", "remoteSourceId", "");
+			return;
+		}
+
+		let normalizedUrl = "";
+		try {
+			normalizedUrl = normalizeRemoteServerUrl(trimmedAddress);
+		} catch {
+			setRemoteSourceOptions([]);
+			setRemoteSourcesError("Invalid server address");
+			setFormData("connectionInfo", "url", trimmedAddress);
+			setFormData("connectionInfo", "remoteSourceId", "");
+			return;
+		}
+
+		setIsLoadingRemoteSources(true);
+		setRemoteSourcesError(null);
+		setFormData("connectionInfo", "url", normalizedUrl);
+
+		try {
+			const client = createRemoteClient(normalizedUrl);
+			const sources = await client.sources.list();
+			const options = sources
+				.filter((source) => source.type === "local" && source.id)
+				.map((source) => ({
+					label: source.name,
+					value: source.id as string,
+				}));
+
+			setRemoteSourceOptions(options);
+
+			const selectedRemoteSourceId = formData.connectionInfo.remoteSourceId;
+			if (
+				!selectedRemoteSourceId ||
+				!options.some((option) => option.value === selectedRemoteSourceId)
+			) {
+				setFormData("connectionInfo", "remoteSourceId", "");
+			}
+
+			if (options.length === 0) {
+				setRemoteSourcesError("No local sources found on the remote server");
+			}
+		} catch (error) {
+			setRemoteSourceOptions([]);
+			setRemoteSourcesError(
+				error instanceof Error
+					? error.message
+					: "Failed to load sources from the remote server",
+			);
+			setFormData("connectionInfo", "remoteSourceId", "");
+		} finally {
+			setIsLoadingRemoteSources(false);
+		}
+	};
 
 	createEffect(() => {
 		if (props.editingSource) {
+			const connectionInfo = (props.editingSource.connectionInfo as any) || {};
 			setFormData({
 				name: props.editingSource.name,
 				description: props.editingSource.description || "",
 				type: props.editingSource.type,
-				connectionInfo: (props.editingSource.connectionInfo as any) || {},
+				connectionInfo,
 			});
+			if (props.editingSource.type === "remote" && connectionInfo.url) {
+				const address = extractRemoteServerAddress(connectionInfo.url);
+				setRemoteServerAddress(address);
+				void loadRemoteSources(address);
+			} else {
+				setRemoteServerAddress("");
+				setRemoteSourceOptions([]);
+				setRemoteSourcesError(null);
+			}
 		} else {
 			setFormData({
 				name: "",
@@ -73,6 +192,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				type: "local",
 				connectionInfo: {},
 			});
+			setRemoteServerAddress("");
+			setRemoteSourceOptions([]);
+			setRemoteSourcesError(null);
 		}
 		setErrors({});
 	});
@@ -114,17 +236,19 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				}
 			}
 		} else if (formData.type === "remote") {
-			if (!formData.connectionInfo.url) {
-				newErrors.url = "Server URL is required";
+			if (!remoteServerAddress().trim()) {
+				newErrors.url = "Remote server IP/host is required";
 			} else if (
-				!z.string().url().safeParse(formData.connectionInfo.url).success
+				!REMOTE_URL_SCHEMA.safeParse(formData.connectionInfo.url).success
 			) {
 				newErrors.url = "Invalid URL format";
 			}
 			if (!formData.connectionInfo.remoteSourceId) {
 				newErrors.remoteSourceId = "Remote source ID is required";
 			} else if (
-				!z.uuid().safeParse(formData.connectionInfo.remoteSourceId).success
+				!REMOTE_SOURCE_ID_SCHEMA.safeParse(
+					formData.connectionInfo.remoteSourceId,
+				).success
 			) {
 				newErrors.remoteSourceId = "Invalid UUID format";
 			}
@@ -149,22 +273,6 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				},
 			});
 		}
-	};
-
-	const getTypeLabel = (type: string) => {
-		if (type === "local") {
-			return "Local Filesystem";
-		}
-		if (type === "sftp") {
-			return "SFTP";
-		}
-		if (type === "s3") {
-			return "S3 Compatible Storage";
-		}
-		if (type === "remote") {
-			return "Remote Server";
-		}
-		return type;
 	};
 
 	return (
@@ -204,34 +312,29 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 					</div>
 
 					<div class="space-y-2">
-						<Label>Type</Label>
-						<Select
-							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.label}
-								</SelectItem>
-							)}
-							onChange={(v) => {
-								const newType = v?.value ?? "local";
+						<Label for="sourceType">Type</Label>
+						<select
+							class={NATIVE_SELECT_CLASS}
+							id="sourceType"
+							onChange={(e) => {
+								const newType = e.currentTarget.value as MediaSourceTypeEnum;
+								setRemoteSourcesError(null);
+								if (newType !== "remote") {
+									setRemoteServerAddress("");
+									setRemoteSourceOptions([]);
+								}
 								setFormData({
 									type: newType,
 									connectionInfo:
 										newType === formData.type ? formData.connectionInfo : {},
 								});
 							}}
-							options={SOURCE_TYPE_OPTIONS}
-							value={{
-								value: formData.type,
-								label: getTypeLabel(formData.type),
-							}}
+							value={formData.type}
 						>
-							<SelectTrigger>
-								<SelectValue<{ value: string; label: string }>>
-									{(state) => state.selectedOption().label}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
+							{SOURCE_TYPE_OPTIONS.map((option) => (
+								<option value={option.value}>{option.label}</option>
+							))}
+						</select>
 					</div>
 
 					<div class="space-y-4 rounded-md border p-4">
@@ -442,35 +545,71 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 
 						<Show when={formData.type === "remote"}>
 							<div class="space-y-2">
-								<Label for="url">Server URL</Label>
-								<Input
-									id="url"
-									onInput={(e) =>
-										setFormData("connectionInfo", "url", e.currentTarget.value)
-									}
-									placeholder="https://remote.example.com"
-									value={(formData.connectionInfo.url as string) || ""}
-								/>
+								<Label for="remoteServerAddress">
+									Remote Server URL / Host
+								</Label>
+								<div class="flex gap-2">
+									<Input
+										id="remoteServerAddress"
+										onInput={(e) => {
+											const address = e.currentTarget.value;
+											setRemoteServerAddress(address);
+											setRemoteSourcesError(null);
+											try {
+												setFormData(
+													"connectionInfo",
+													"url",
+													normalizeRemoteServerUrl(address),
+												);
+											} catch {
+												setFormData("connectionInfo", "url", address);
+											}
+											setFormData("connectionInfo", "remoteSourceId", "");
+											setRemoteSourceOptions([]);
+										}}
+										placeholder="192.168.1.100:3000/app"
+										value={remoteServerAddress()}
+									/>
+									<Button
+										disabled={isLoadingRemoteSources()}
+										onClick={() => void loadRemoteSources()}
+										type="button"
+										variant="outline"
+									>
+										{isLoadingRemoteSources() ? "Loading..." : "Load Sources"}
+									</Button>
+								</div>
 								<Show when={errors().url}>
 									<p class="text-red-500 text-sm">{errors().url}</p>
 								</Show>
+								<Show when={remoteSourcesError()}>
+									<p class="text-red-500 text-sm">{remoteSourcesError()}</p>
+								</Show>
 							</div>
 							<div class="space-y-2">
-								<Label for="remoteSourceId">Remote Source ID</Label>
-								<Input
+								<Label for="remoteSourceId">Remote Source</Label>
+								<select
+									class={NATIVE_SELECT_CLASS}
 									id="remoteSourceId"
-									onInput={(e) =>
+									onChange={(e) =>
 										setFormData(
 											"connectionInfo",
 											"remoteSourceId",
 											e.currentTarget.value,
 										)
 									}
-									placeholder="00000000-0000-4000-8000-000000000000"
 									value={
 										(formData.connectionInfo.remoteSourceId as string) || ""
 									}
-								/>
+								>
+									<option value="">Select a remote source</option>
+									{remoteSourceOptions().map((option) => (
+										<option value={option.value}>{option.label}</option>
+									))}
+								</select>
+								<p class="text-muted-foreground text-sm">
+									Only local sources on the remote server can be selected.
+								</p>
 								<Show when={errors().remoteSourceId}>
 									<p class="text-red-500 text-sm">{errors().remoteSourceId}</p>
 								</Show>
