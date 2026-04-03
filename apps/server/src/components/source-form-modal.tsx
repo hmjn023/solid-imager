@@ -34,11 +34,17 @@ const SOURCE_TYPE_OPTIONS: Array<{
 ];
 const REMOTE_SOURCE_ID_SCHEMA = z.uuid();
 const REMOTE_URL_SCHEMA = z.string().url();
+const NATIVE_SELECT_CLASS =
+	"flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2";
 
 function extractRemoteServerAddress(url: string): string {
 	try {
 		const parsed = new URL(url);
-		return parsed.port ? `${parsed.hostname}:${parsed.port}` : parsed.hostname;
+		const host = parsed.port
+			? `${parsed.hostname}:${parsed.port}`
+			: parsed.hostname;
+		const path = parsed.pathname === "/" ? "" : parsed.pathname;
+		return `${host}${path}`;
 	} catch {
 		return url;
 	}
@@ -52,12 +58,18 @@ function normalizeRemoteServerUrl(address: string): string {
 	const withProtocol = /^[a-z]+:\/\//i.test(trimmed)
 		? trimmed
 		: `http://${trimmed}`;
-	return new URL(withProtocol).origin;
+	const parsed = new URL(withProtocol);
+	parsed.search = "";
+	parsed.hash = "";
+	parsed.pathname =
+		parsed.pathname === "/" ? "/" : parsed.pathname.replace(/\/+$/, "");
+	return parsed.toString();
 }
 
 function createRemoteClient(baseUrl: string): RouterClient<AppRouter> {
+	const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
 	const link = new RPCLink({
-		url: new URL("/api/rpc", baseUrl).toString(),
+		url: new URL("api/rpc", normalizedBaseUrl).toString(),
 		fetch,
 	});
 	return createORPCClient(link) as RouterClient<AppRouter>;
@@ -263,22 +275,6 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		}
 	};
 
-	const _getTypeLabel = (type: string) => {
-		if (type === "local") {
-			return "Local Filesystem";
-		}
-		if (type === "sftp") {
-			return "SFTP";
-		}
-		if (type === "s3") {
-			return "S3 Compatible Storage";
-		}
-		if (type === "remote") {
-			return "Remote Server";
-		}
-		return type;
-	};
-
 	return (
 		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
 			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[500px]">
@@ -316,9 +312,10 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 					</div>
 
 					<div class="space-y-2">
-						<Label>Type</Label>
+						<Label for="sourceType">Type</Label>
 						<select
-							class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							class={NATIVE_SELECT_CLASS}
+							id="sourceType"
 							onChange={(e) => {
 								const newType = e.currentTarget.value as MediaSourceTypeEnum;
 								setRemoteSourcesError(null);
@@ -548,7 +545,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 
 						<Show when={formData.type === "remote"}>
 							<div class="space-y-2">
-								<Label for="remoteServerAddress">Remote Server IP / Host</Label>
+								<Label for="remoteServerAddress">
+									Remote Server URL / Host
+								</Label>
 								<div class="flex gap-2">
 									<Input
 										id="remoteServerAddress"
@@ -568,7 +567,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 											setFormData("connectionInfo", "remoteSourceId", "");
 											setRemoteSourceOptions([]);
 										}}
-										placeholder="192.168.1.100:3000"
+										placeholder="192.168.1.100:3000/app"
 										value={remoteServerAddress()}
 									/>
 									<Button
@@ -588,9 +587,10 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								</Show>
 							</div>
 							<div class="space-y-2">
-								<Label>Remote Source</Label>
+								<Label for="remoteSourceId">Remote Source</Label>
 								<select
-									class="flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+									class={NATIVE_SELECT_CLASS}
+									id="remoteSourceId"
 									onChange={(e) =>
 										setFormData(
 											"connectionInfo",
