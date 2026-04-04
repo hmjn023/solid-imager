@@ -16,7 +16,7 @@ export const Route = createFileRoute("/search")({
 			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
 		]);
 	},
-	component: Search,
+	component: SearchRouteComponent,
 });
 
 import {
@@ -85,7 +85,7 @@ const useStableConditionKey = () =>
 
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
-export default function Search() {
+function SearchRouteComponent() {
 	const queryClient = useQueryClient();
 
 	// Enable search persistence for global search

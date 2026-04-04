@@ -11,7 +11,7 @@ export const Route = createFileRoute("/config")({
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(configQueryOptions());
 	},
-	component: ConfigPage,
+	component: ConfigRouteComponent,
 });
 
 import { Input } from "@solid-imager/ui/input";
@@ -548,7 +548,7 @@ function ConfigForm(props: { data: AppConfig }) {
 	);
 }
 
-export default function ConfigPage() {
+function ConfigRouteComponent() {
 	const configQuery = createQuery(() => configQueryOptions());
 
 	return (
