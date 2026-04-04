@@ -182,6 +182,10 @@ async function fetchMetadataWithYtDlp(
 	cookies?: Cookie[],
 	userAgent?: string,
 ): Promise<YtDlpOutput | null> {
+	if (__TAURI_BUILD__) {
+		return null;
+	}
+
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
@@ -237,6 +241,10 @@ async function handleYtDlpDownload(
 	mediaSourceId: string,
 	basePath: string,
 ) {
+	if (__TAURI_BUILD__) {
+		throw new Error("yt-dlp downloads are not supported in the Tauri build");
+	}
+
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
 	}
