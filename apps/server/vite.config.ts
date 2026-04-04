@@ -42,8 +42,8 @@ export default defineConfig(({ command }) => {
     define: {
       __TAURI_BUILD__: isTauriBuild,
     },
-    ...(isTauriBuild ? {} : {
-      ssr: {
+    ssr: {
+      ...(!isTauriBuild ? {
         noExternal: [
           "@tanstack/solid-router",
           "@tanstack/solid-query",
@@ -53,16 +53,16 @@ export default defineConfig(({ command }) => {
           "corvu",
           "@solid-primitives/.*"
         ],
-        external: [
-          "@electric-sql/pglite",
-          "pg",
-          "sharp",
-          "ffmpeg-static",
-          "ffmpeg-static-static",
-          "fluent-ffmpeg",
-          "archiver"
-        ],
-      },
-    }),
+      } : {}),
+      external: [
+        "@electric-sql/pglite",
+        "pg",
+        "sharp",
+        "ffmpeg-static",
+        "ffmpeg-static-static",
+        "fluent-ffmpeg",
+        "archiver"
+      ],
+    },
   };
 });
