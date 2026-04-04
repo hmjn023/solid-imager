@@ -9,7 +9,9 @@ import { appRouter } from "~/domain/shared/api-contract";
 
 /**
  * oRPC クライアントの生成
- * サーバーサイドではルーターを直接呼び出し、クライアントサイドでは /api/rpc を介して fetch を行う
+ * - SSRモード: ルーターを直接呼び出し (no HTTP)
+ * - Webモード (ブラウザ): /api/rpc を介して fetch
+ * - Tauriモード: 現時点では /api/rpc 経由 (Tauri direct call は #165 で対応予定)
  */
 const getORPCClient = createIsomorphicFn()
 	.server(() => {

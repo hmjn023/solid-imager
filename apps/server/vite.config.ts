@@ -11,49 +11,58 @@ import { devtools } from "@tanstack/devtools-vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@solid-imager/core": path.resolve(
-        __dirname,
-        "../../packages/core/src"
-      ),
-      "@": path.resolve(__dirname, "../../packages/core/src"),
-      "~": path.resolve(__dirname, "./src"),
+export default defineConfig(({ command }) => {
+  const isTauriBuild = process.env.VITE_TAURI === "true" && command === "build";
+
+  return {
+    resolve: {
+      alias: {
+        "@solid-imager/core": path.resolve(
+          __dirname,
+          "../../packages/core/src"
+        ),
+        "@": path.resolve(__dirname, "../../packages/core/src"),
+        "~": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  plugins: [
-    devtools(),
-    nitro(),
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
-    tanstackRouter({
-      target: "solid",
-      autoCodeSplitting: true,
-    }),
-    tailwindcss(),
-    tanstackStart(),
-    solidPlugin({ ssr: true }),
-  ],
-  ssr: {
-    noExternal: [
-      "@tanstack/solid-router",
-      "@tanstack/solid-query",
-      "@tanstack/solid-start",
-      "@kobalte/core",
-      "solid-sonner",
-      "corvu",
-      "@solid-primitives/.*"
+    plugins: [
+      devtools(),
+      ...(isTauriBuild ? [] : [nitro()]),
+      viteTsConfigPaths({
+        projects: ["./tsconfig.json"],
+      }),
+      tanstackRouter({
+        target: "solid",
+        autoCodeSplitting: true,
+      }),
+      tailwindcss(),
+      tanstackStart(isTauriBuild ? { spa: { enabled: true } } : undefined),
+      solidPlugin({ ssr: !isTauriBuild }),
     ],
-    external: [
-      "@electric-sql/pglite",
-      "pg",
-      "sharp",
-      "ffmpeg-static",
-      "ffmpeg-static-static",
-      "fluent-ffmpeg",
-      "archiver"
-    ],
-  },
+    define: {
+      __TAURI_BUILD__: isTauriBuild,
+    },
+    ...(isTauriBuild ? {} : {
+      ssr: {
+        noExternal: [
+          "@tanstack/solid-router",
+          "@tanstack/solid-query",
+          "@tanstack/solid-start",
+          "@kobalte/core",
+          "solid-sonner",
+          "corvu",
+          "@solid-primitives/.*"
+        ],
+        external: [
+          "@electric-sql/pglite",
+          "pg",
+          "sharp",
+          "ffmpeg-static",
+          "ffmpeg-static-static",
+          "fluent-ffmpeg",
+          "archiver"
+        ],
+      },
+    }),
+  };
 });

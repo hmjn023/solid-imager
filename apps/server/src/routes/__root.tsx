@@ -38,7 +38,7 @@ function RootComponent() {
 	return (
 		<html lang="ja">
 			<head>
-				<HydrationScript />
+				{!__TAURI_BUILD__ && <HydrationScript />}
 				<HeadContent />
 			</head>
 			<body>
