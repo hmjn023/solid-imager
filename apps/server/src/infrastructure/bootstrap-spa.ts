@@ -1,9 +1,10 @@
+import { core } from "@tauri-apps/api";
 import { services } from "~/application/registry";
 
 let isBootstrapped = false;
 
 export function isTauriEnvironment(): boolean {
-	return typeof window !== "undefined" && "__TAURI__" in window;
+	return core.isTauri();
 }
 
 export async function bootstrapSpa(): Promise<void> {

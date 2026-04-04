@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { bootstrap } from "~/infrastructure/bootstrap";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 export const Route = createFileRoute("/api/events")({
 	server: {
 		handlers: {
 			GET: async ({ request }) => {
+				const [{ bootstrap }, { SseManager }] = await Promise.all([
+					import("~/infrastructure/bootstrap"),
+					import("~/infrastructure/jobs/sse-manager"),
+				]);
 				bootstrap();
 				const url = new URL(request.url);
 				const channels = url.searchParams.get("channels")?.split(",") ?? [
