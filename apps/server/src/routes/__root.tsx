@@ -39,7 +39,7 @@ function RootComponent() {
 	return (
 		<html lang="ja">
 			<head>
-				{!__TAURI_BUILD__ && <HydrationScript />}
+				{!__TAURI_SPA__ && <HydrationScript />}
 				<HeadContent />
 			</head>
 			<body>

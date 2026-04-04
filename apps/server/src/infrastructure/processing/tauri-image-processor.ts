@@ -9,7 +9,7 @@ import type {
 } from "@solid-imager/core/domain/services/metadata-extractor";
 import type { IThumbnailGenerator } from "@solid-imager/core/domain/services/thumbnail-generator";
 import { invoke } from "@tauri-apps/api/core";
-import { createImageProcessorFacade } from "./image-processor";
+import { createImageProcessorFacade } from "./image-processor-facade";
 
 export class TauriThumbnailGenerator implements IThumbnailGenerator {
 	async generate(

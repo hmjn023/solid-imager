@@ -5,3 +5,4 @@ interface ImportMetaEnv {
 }
 
 declare const __TAURI_BUILD__: boolean;
+declare const __TAURI_SPA__: boolean;

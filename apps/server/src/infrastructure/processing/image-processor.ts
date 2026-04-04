@@ -12,7 +12,6 @@ sharp.cache({ memory: 100, items: 200, files: 20 });
 
 import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { IMediaProbe } from "@solid-imager/core/domain/services/media-probe";
 import type {
 	ExtractedMediaMetadata,
@@ -22,6 +21,7 @@ import type { IThumbnailGenerator } from "@solid-imager/core/domain/services/thu
 import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
+import { createImageProcessorFacade } from "./image-processor-facade";
 
 const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
@@ -271,19 +271,6 @@ export class NodeMediaProbe implements IMediaProbe {
 			modifiedAt: stats.mtime,
 		};
 	}
-}
-
-export function createImageProcessorFacade(deps: {
-	metadataExtractor: IMetadataExtractor;
-	thumbnailGenerator: IThumbnailGenerator;
-	mediaProbe: IMediaProbe;
-}): IImageProcessor {
-	return {
-		generateThumbnail: (mediaPath, outputPath, size, quality) =>
-			deps.thumbnailGenerator.generate(mediaPath, outputPath, size, quality),
-		extractMetadata: (mediaPath) => deps.metadataExtractor.extract(mediaPath),
-		getDimensions: (mediaPath) => deps.mediaProbe.getDimensions(mediaPath),
-	};
 }
 
 export const metadataExtractor = new NodeMetadataExtractor();

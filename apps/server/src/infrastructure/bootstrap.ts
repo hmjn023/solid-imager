@@ -14,6 +14,7 @@ import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-ra
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import * as processingModule from "~/infrastructure/processing/image-processor";
+import { createImageProcessorFacade } from "~/infrastructure/processing/image-processor-facade";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
@@ -106,30 +107,11 @@ const registeredMediaProbe =
 				},
 			};
 
-const registeredImageProcessor: IImageProcessor =
-	"createImageProcessorFacade" in processingModule
-		? processingModule.createImageProcessorFacade({
-				metadataExtractor: registeredMetadataExtractor,
-				thumbnailGenerator: registeredThumbnailGenerator,
-				mediaProbe: registeredMediaProbe,
-			})
-		: ((
-				processingModule as {
-					ImageProcessor: {
-						generateThumbnail(
-							mediaPath: string,
-							outputPath: string,
-							size: number,
-							quality: number,
-						): Promise<void>;
-						extractMetadata(mediaPath: string): Promise<unknown>;
-						getDimensions(mediaPath: string): Promise<{
-							width: number;
-							height: number;
-						}>;
-					};
-				}
-			).ImageProcessor as IImageProcessor);
+const registeredImageProcessor: IImageProcessor = createImageProcessorFacade({
+	metadataExtractor: registeredMetadataExtractor,
+	thumbnailGenerator: registeredThumbnailGenerator,
+	mediaProbe: registeredMediaProbe,
+});
 
 /**
  * Initializes all services and repositories.

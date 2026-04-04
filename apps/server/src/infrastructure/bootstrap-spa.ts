@@ -1,7 +1,7 @@
 import { core } from "@tauri-apps/api";
 import { services } from "~/application/registry";
 import { UnsupportedDownloadBackend } from "~/infrastructure/downloads/unsupported-download-backend";
-import { createImageProcessorFacade } from "~/infrastructure/processing/image-processor";
+import { createImageProcessorFacade } from "~/infrastructure/processing/image-processor-facade";
 
 let isBootstrapped = false;
 

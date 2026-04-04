@@ -10,9 +10,10 @@ import { nitro } from "nitro/vite";
 import { devtools } from "@tanstack/devtools-vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 export default defineConfig(({ command }) => {
-  const isTauriBuild = process.env.VITE_TAURI === "true" && command === "build";
+  const isTauriRuntime = process.env.VITE_TAURI === "true";
+  const isTauriSpaBuild = isTauriRuntime && command === "build";
+  const isTauriDev = isTauriRuntime && command === "serve";
 
   return {
     resolve: {
@@ -25,9 +26,20 @@ export default defineConfig(({ command }) => {
         "~": path.resolve(__dirname, "./src"),
       },
     },
+    optimizeDeps: isTauriDev
+      ? {
+          force: true,
+          include: [
+            "@tauri-apps/api",
+            "@tauri-apps/api/core",
+            "@tauri-apps/api/path",
+            "@tauri-apps/plugin-fs",
+          ],
+        }
+      : undefined,
     plugins: [
       devtools(),
-      ...(isTauriBuild ? [] : [nitro()]),
+      ...(isTauriSpaBuild ? [] : [nitro()]),
       viteTsConfigPaths({
         projects: ["./tsconfig.json"],
       }),
@@ -36,14 +48,21 @@ export default defineConfig(({ command }) => {
         autoCodeSplitting: true,
       }),
       tailwindcss(),
-      tanstackStart(isTauriBuild ? { spa: { enabled: true } } : undefined),
-      solidPlugin({ ssr: !isTauriBuild }),
+      tanstackStart(
+        isTauriSpaBuild
+          ? {
+              spa: { enabled: true },
+            }
+          : undefined,
+      ),
+      solidPlugin({ ssr: !isTauriSpaBuild }),
     ],
     define: {
-      __TAURI_BUILD__: isTauriBuild,
+      __TAURI_BUILD__: isTauriRuntime,
+      __TAURI_SPA__: isTauriSpaBuild,
     },
     ssr: {
-      ...(!isTauriBuild ? {
+      ...(!isTauriSpaBuild ? {
         noExternal: [
           "@tanstack/solid-router",
           "@tanstack/solid-query",
