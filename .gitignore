@@ -54,3 +54,6 @@ config.json
 dev.log
 
 .playwright-cli/
+
+# Generated route tree
+apps/server/src/routeTree.gen.ts
