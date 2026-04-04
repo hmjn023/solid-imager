@@ -1,11 +1,13 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { MediaService } from "~/application/services/media-service";
-import { bootstrap } from "~/infrastructure/bootstrap";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
+				const [{ MediaService }, { bootstrap }] = await Promise.all([
+					import("~/application/services/media-service"),
+					import("~/infrastructure/bootstrap"),
+				]);
 				bootstrap();
 				const { mediaSourceId, mediaId } = params;
 				const { buffer, contentType } = await MediaService.getMediaContent(

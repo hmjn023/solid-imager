@@ -10,6 +10,7 @@ import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
 import Nav from "~/components/nav";
+import { runtimeCapabilities } from "~/infrastructure/app-client";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -38,14 +39,31 @@ function RootComponent() {
 	return (
 		<html lang="ja">
 			<head>
-				<HydrationScript />
+				{!__TAURI_SPA__ && <HydrationScript />}
 				<HeadContent />
 			</head>
 			<body>
 				<Toaster />
 				<Suspense>
-					<Nav />
-					<Outlet />
+					{runtimeCapabilities.supportsRpcBackend ? (
+						<>
+							<Nav />
+							<Outlet />
+						</>
+					) : (
+						<main class="mx-auto flex min-h-screen max-w-2xl flex-col justify-center gap-4 px-6 py-16">
+							<h1 class="font-bold text-3xl">Desktop Runtime Not Ready</h1>
+							<p class="text-muted-foreground">
+								This Tauri build no longer falls through to the web RPC layer.
+								Local runtime wiring is still missing, so the desktop app is
+								intentionally blocked instead of failing at runtime.
+							</p>
+							<p class="text-muted-foreground">
+								Planned next steps are local persistence, AppClient-backed
+								operations, and capability-aware feature enablement.
+							</p>
+						</main>
+					)}
 				</Suspense>
 				<Scripts />
 			</body>

@@ -1,4 +1,4 @@
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { services } from "~/application/registry";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 /**
@@ -11,7 +11,7 @@ export async function extractTags(
 	mediaPath: string,
 	mediaId: string,
 ): Promise<void> {
-	const metadata = await ImageProcessor.extractMetadata(mediaPath);
+	const metadata = await services.getMetadataExtractor().extract(mediaPath);
 	const tagsToInsert = metadata.tags.map((tag) => ({
 		name: tag.name,
 		type: tag.type,

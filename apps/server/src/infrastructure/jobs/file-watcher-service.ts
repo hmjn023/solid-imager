@@ -13,7 +13,6 @@ import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
 
@@ -127,7 +126,7 @@ async function handleFileChanged(
 		}
 
 		// Update file metadata (size, dimensions, mtime)
-		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
+		const fileMetadata = await services.getMediaProbe().probe(fullPath);
 		await MediaRepository.update(media.id, {
 			width: fileMetadata.width,
 			height: fileMetadata.height,

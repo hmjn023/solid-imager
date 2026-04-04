@@ -43,7 +43,7 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
 		]);
 	},
-	component: MediaListPage,
+	component: MediaListRouteComponent,
 });
 
 import {
@@ -97,7 +97,7 @@ const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 
-export default function MediaListPage() {
+function MediaListRouteComponent() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const queryClient = useQueryClient();
 

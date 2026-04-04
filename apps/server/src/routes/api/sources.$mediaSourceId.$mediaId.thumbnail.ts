@@ -1,7 +1,4 @@
-import fs from "node:fs/promises";
 import { createFileRoute } from "@tanstack/solid-router";
-import { bootstrap } from "~/infrastructure/bootstrap";
-import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 
 export const Route = createFileRoute(
 	"/api/sources/$mediaSourceId/$mediaId/thumbnail",
@@ -9,6 +6,11 @@ export const Route = createFileRoute(
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
+				const [fs, { bootstrap }, { getThumbnailPath }] = await Promise.all([
+					import("node:fs/promises"),
+					import("~/infrastructure/bootstrap"),
+					import("~/infrastructure/jobs/thumbnails"),
+				]);
 				bootstrap();
 				const { mediaSourceId, mediaId } = params;
 				const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);

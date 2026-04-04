@@ -19,6 +19,7 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import { services } from "~/application/registry";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -26,8 +27,6 @@ import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 export class MediaProcessingServiceImpl {
 	private readonly sourceRepo: SourceRepository;
@@ -85,7 +84,7 @@ export class MediaProcessingServiceImpl {
 		const fullPath = path.join(basePath, relativePath);
 
 		// Get file metadata
-		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
+		const fileMetadata = await services.getMediaProbe().probe(fullPath);
 
 		// Determine media type
 		const ext = path.extname(relativePath).toLowerCase();
@@ -169,7 +168,9 @@ export class MediaProcessingServiceImpl {
 		// Step 1: Metadata extraction
 		if (!payload?.skipMetadataExtraction) {
 			try {
-				const metadata = await ImageProcessor.extractMetadata(mediaPath);
+				const metadata = await services
+					.getMetadataExtractor()
+					.extract(mediaPath);
 
 				await this.mediaRepo.upsertGenerationInfo(
 					media.id,

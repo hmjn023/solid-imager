@@ -11,7 +11,11 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
+import type { IDownloadBackend } from "@solid-imager/core/domain/services/download-backend";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IMediaProbe } from "@solid-imager/core/domain/services/media-probe";
+import type { IMetadataExtractor } from "@solid-imager/core/domain/services/metadata-extractor";
+import type { IThumbnailGenerator } from "@solid-imager/core/domain/services/thumbnail-generator";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -25,6 +29,10 @@ export class ServiceRegistry {
 	private fileSystem?: IFileSystem;
 	private tagRepository?: TagRepositoryDef;
 	private imageProcessor?: IImageProcessor;
+	private metadataExtractor?: IMetadataExtractor;
+	private thumbnailGenerator?: IThumbnailGenerator;
+	private mediaProbe?: IMediaProbe;
+	private downloadBackend?: IDownloadBackend;
 	private aiClient?: IAiClient;
 	private authorRepository?: IAuthorRepository;
 	private projectRepository?: IProjectRepository;
@@ -67,6 +75,22 @@ export class ServiceRegistry {
 
 	registerImageProcessor(processor: IImageProcessor): void {
 		this.imageProcessor = processor;
+	}
+
+	registerMetadataExtractor(extractor: IMetadataExtractor): void {
+		this.metadataExtractor = extractor;
+	}
+
+	registerThumbnailGenerator(generator: IThumbnailGenerator): void {
+		this.thumbnailGenerator = generator;
+	}
+
+	registerMediaProbe(probe: IMediaProbe): void {
+		this.mediaProbe = probe;
+	}
+
+	registerDownloadBackend(backend: IDownloadBackend): void {
+		this.downloadBackend = backend;
 	}
 
 	registerAiClient(client: IAiClient): void {
@@ -130,6 +154,34 @@ export class ServiceRegistry {
 			throw new Error("ImageProcessor has not been registered.");
 		}
 		return this.imageProcessor;
+	}
+
+	getMetadataExtractor(): IMetadataExtractor {
+		if (!this.metadataExtractor) {
+			throw new Error("MetadataExtractor has not been registered.");
+		}
+		return this.metadataExtractor;
+	}
+
+	getThumbnailGenerator(): IThumbnailGenerator {
+		if (!this.thumbnailGenerator) {
+			throw new Error("ThumbnailGenerator has not been registered.");
+		}
+		return this.thumbnailGenerator;
+	}
+
+	getMediaProbe(): IMediaProbe {
+		if (!this.mediaProbe) {
+			throw new Error("MediaProbe has not been registered.");
+		}
+		return this.mediaProbe;
+	}
+
+	getDownloadBackend(): IDownloadBackend {
+		if (!this.downloadBackend) {
+			throw new Error("DownloadBackend has not been registered.");
+		}
+		return this.downloadBackend;
 	}
 
 	getTagRepository(): TagRepositoryDef {
@@ -233,6 +285,10 @@ export class ServiceRegistry {
 		this.fileSystem = undefined;
 		this.tagRepository = undefined;
 		this.imageProcessor = undefined;
+		this.metadataExtractor = undefined;
+		this.thumbnailGenerator = undefined;
+		this.mediaProbe = undefined;
+		this.downloadBackend = undefined;
 		this.aiClient = undefined;
 		this.authorRepository = undefined;
 		this.projectRepository = undefined;

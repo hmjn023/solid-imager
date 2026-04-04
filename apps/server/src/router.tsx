@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
+import { bootstrapSpa } from "~/infrastructure/bootstrap-spa";
 import { routeTree } from "./routeTree.gen";
 
 if (import.meta.env.SSR) {
@@ -15,6 +16,10 @@ if (import.meta.env.SSR) {
 		.catch((err) => {
 			console.error("[Router] Failed to initialize services:", err);
 		});
+}
+
+if (!import.meta.env.SSR) {
+	bootstrapSpa();
 }
 
 let clientQueryClient: QueryClient | undefined;

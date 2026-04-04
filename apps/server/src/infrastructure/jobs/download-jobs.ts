@@ -3,7 +3,6 @@
  */
 
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import type {
 	AddMediaRequest,
@@ -11,199 +10,29 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import ffmpegPath from "ffmpeg-static";
-import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
+import type { YtDlpOutput } from "~/infrastructure/downloads/yt-dlp-download-backend";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
-
-// ffmpeg-static may return null on unsupported platforms
-const resolvedFfmpegPath = ffmpegPath ?? undefined;
-
-type YtDlpOutput = {
-	id: string;
-
-	title: string;
-	description: string;
-	duration?: number;
-	width?: number;
-	height?: number;
-	ext: string;
-	uploader?: string;
-
-	uploader_id?: string;
-
-	upload_date?: string;
-	_filename?: string;
-	filename: string;
-};
-
-type Cookie = any;
-
-async function createNetscapeCookieFile(
-	cookies: Cookie[],
-): Promise<string | null> {
-	if (!Array.isArray(cookies) || cookies.length === 0) {
-		return null;
-	}
-
-	const randomSuffix = Math.random().toString(36).slice(2);
-	const cookieFilePath = path.join(
-		os.tmpdir(),
-		`cookies-${Date.now()}-${randomSuffix}.txt`,
-	);
-
-	try {
-		const lines = ["# Netscape HTTP Cookie File"];
-
-		for (const cookie of cookies) {
-			const domain = cookie.domain;
-			const flag = domain.startsWith(".") ? "TRUE" : "FALSE";
-			const cookiePath = cookie.path;
-			const secure = cookie.secure ? "TRUE" : "FALSE";
-			const expiration = cookie.expirationDate
-				? Math.floor(cookie.expirationDate)
-				: 0;
-			const name = cookie.name;
-			const value = cookie.value;
-
-			lines.push(
-				`${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${name}\t${value}`,
-			);
-		}
-
-		await fs.writeFile(cookieFilePath, lines.join("\n"));
-		return cookieFilePath;
-	} catch (e) {
-		logger.warn({ err: e }, "Failed to create cookie file");
-		return null;
-	}
-}
-
-/**
- * Downloads video/media using yt-dlp via youtube-dl-exec
- */
-async function downloadWithYtDlp(
-	url: string,
-	outputDir: string,
-	cookies?: Cookie[],
-	userAgent?: string,
-): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
-	await fs.mkdir(outputDir, { recursive: true });
-
-	const template = "%(id)s.%(ext)s";
-	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-
-	try {
-		const result = await youtubedl(url, {
-			noSimulate: true,
-			printJson: true,
-			paths: outputDir,
-			output: template,
-			format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-			mergeOutputFormat: "mp4",
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
-			...(userAgent && { userAgent }),
-			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as any);
-
-		// output handling
-		const outputs = parseYtDlpOutput(result);
-
-		return outputs.map((metadata) => {
-			let finalPath = metadata.filename || metadata._filename || "";
-			if (finalPath && !path.isAbsolute(finalPath)) {
-				finalPath = path.join(outputDir, finalPath);
-			}
-			return { filePath: finalPath, metadata };
-		});
-	} catch (error) {
-		// youtube-dl-exec errors include stderr
-		if (error instanceof Error && "stderr" in error) {
-			logger.error(
-				{ stderr: (error as Error & { stderr: string }).stderr },
-				"yt-dlp execution failed",
-			);
-		} else {
-			logger.error({ err: error }, "yt-dlp execution failed");
-		}
-		throw new Error(`yt-dlp failed: ${error}`);
-	} finally {
-		if (cookieFilePath) {
-			fs.unlink(cookieFilePath).catch((err) =>
-				logger.warn({ err }, "Failed to clean up cookie file"),
-			);
-		}
-	}
-}
-
-function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
-	let outputs: YtDlpOutput[] = [];
-
-	if (typeof result === "string") {
-		const lines = (result as string)
-			.split("\n")
-			.filter((line) => line.trim().length > 0);
-		outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
-			try {
-				acc.push(JSON.parse(line));
-			} catch (e) {
-				logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
-			}
-			return acc;
-		}, []);
-	} else if (Array.isArray(result)) {
-		outputs = result as unknown as YtDlpOutput[];
-	} else if (typeof result === "object" && result !== null) {
-		outputs = [result as unknown as YtDlpOutput];
-	} else {
-		logger.warn(
-			{ resultType: typeof result, result },
-			"Unexpected yt-dlp output type",
-		);
-		throw new Error(`Unexpected yt-dlp output type: ${typeof result}`);
-	}
-	return outputs;
-}
 
 /**
  * Fetches metadata using yt-dlp without downloading the file.
  */
 async function fetchMetadataWithYtDlp(
 	url: string,
-	cookies?: Cookie[],
+	cookies?: unknown[],
 	userAgent?: string,
 ): Promise<YtDlpOutput | null> {
-	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-
-	try {
-		const result = await youtubedl(url, {
-			dumpSingleJson: true,
-			noDownload: true,
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
-			...(userAgent && { userAgent }),
-			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as any);
-
-		return result as unknown as YtDlpOutput;
-	} catch (error) {
-		logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
-		return null;
-	} finally {
-		if (cookieFilePath) {
-			fs.unlink(cookieFilePath).catch((err) =>
-				logger.warn({ err }, "Failed to clean up cookie file"),
-			);
-		}
-	}
+	return (await services
+		.getDownloadBackend()
+		.fetchMetadata(url, cookies, userAgent)) as YtDlpOutput | null;
 }
 
 /**
@@ -247,12 +76,14 @@ async function handleYtDlpDownload(
 	try {
 		await waitForDownloadRateLimit();
 
-		const results = await downloadWithYtDlp(
-			item.targetUrl,
-			basePath,
-			item.cookies,
-			item.userAgent,
-		);
+		const results = (await services
+			.getDownloadBackend()
+			.download(
+				item.targetUrl,
+				basePath,
+				item.cookies,
+				item.userAgent,
+			)) as Array<{ filePath: string; metadata: YtDlpOutput }>;
 
 		logger.info(
 			{ count: results.length },
@@ -335,7 +166,7 @@ async function _processSingleYtDlpResult(params: {
 	);
 
 	// Get file metadata
-	const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
+	const fileMeta = await services.getMediaProbe().probe(filePath);
 
 	const newMedia: AddMediaRequest = {
 		mediaSourceId,
@@ -460,7 +291,7 @@ async function handleDirectImageDownload(
 		const arrayBuffer = await response.arrayBuffer();
 
 		// Use ServerMediaStorage to save with autoIncrement
-		const fileInfo = await ServerMediaStorage.saveFile(
+		const fileInfo = await services.getMediaStorage().saveFile(
 			basePath,
 			{
 				name: filename,

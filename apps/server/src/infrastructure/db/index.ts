@@ -1,24 +1,20 @@
-import path from "node:path";
-import { PGlite } from "@electric-sql/pglite";
-import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
-import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
-import { Pool } from "pg";
-import * as schema from "./schema";
+import { getExecutionRuntime } from "~/infrastructure/runtime/execution-runtime";
+import {
+	createDatabase,
+	type DbInstance,
+	type NodePostgresDb,
+	type PgLiteDb,
+} from "./runtime-database";
 
-export type NodePostgresDb = ReturnType<
-	typeof drizzleNodePostgres<typeof schema>
->;
-export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
-export type DbInstance = NodePostgresDb | PgLiteDb;
-
-/**
- * Type representing either a database instance or a transaction client.
- * In Drizzle, both share the same common interface for queries.
- */
-export type TransactionClient = NodePostgresDb | PgLiteDb;
+export type {
+	DbInstance,
+	NodePostgresDb,
+	PgLiteDb,
+	TransactionClient,
+} from "./runtime-database";
 
 let _db: DbInstance | null = null;
-let _queryClient: Pool | PGlite | null = null;
+let _queryClient: unknown | null = null;
 
 /**
  * Initializes and returns the Drizzle ORM database instance.
@@ -32,43 +28,10 @@ function initializeDb() {
 		return _db;
 	}
 
-	const dbHost = process.env.DB_HOST;
-	const isTestEnv =
-		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
-
-	console.log(
-		`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`,
-	);
-
-	// テスト環境では必ずPGliteを使用
-	if (isTestEnv || dbHost === "pglite") {
-		const pglitePath =
-			process.env.PGLITE_DATA_DIR ||
-			path.join(process.cwd(), ".data", "pglite");
-		console.log(
-			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(
-				pglitePath,
-			)})`,
-		);
-		_queryClient = new PGlite(pglitePath);
-		_db = drizzlePglite(_queryClient, { schema });
-		return _db;
-	}
-
-	const dbPort = process.env.DB_PORT || "5432";
-	const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
-	const dbUser = process.env.DB_USER;
-	const dbPassword = process.env.DB_PASSWORD;
-
-	if (!(dbHost && dbName && dbUser && dbPassword)) {
-		throw new Error(
-			"Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)",
-		);
-	}
-
-	const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-	_queryClient = new Pool({ connectionString });
-	_db = drizzleNodePostgres(_queryClient, { schema });
+	const runtime = getExecutionRuntime();
+	const initialized = createDatabase(runtime, process.env);
+	_queryClient = initialized.queryClient;
+	_db = initialized.db;
 	return _db;
 }
 

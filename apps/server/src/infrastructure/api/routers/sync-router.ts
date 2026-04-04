@@ -9,13 +9,13 @@ import {
 	pushMediaFileRequestSchema,
 	syncRequestSchema,
 } from "@solid-imager/core/domain/media/sync-schemas";
+import { services } from "~/application/registry";
 import { BidirectionalSyncServiceImpl } from "~/application/services/bidirectional-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const sourceRepo = new DrizzleSourceRepository();
 
@@ -195,7 +195,7 @@ export const syncRouter = {
 				const basePath = (source.connectionInfo as { path: string }).path;
 				const arrayBuffer = await input.file.arrayBuffer();
 
-				const fileInfo = await ServerMediaStorage.saveFile(
+				const fileInfo = await services.getMediaStorage().saveFile(
 					basePath,
 					{
 						name: input.fileName ?? input.file.name,
@@ -266,10 +266,9 @@ export const syncRouter = {
 				}
 
 				const basePath = (source.connectionInfo as { path: string }).path;
-				const fileContent = await ServerMediaStorage.getFile(
-					basePath,
-					details.filePath,
-				);
+				const fileContent = await services
+					.getMediaStorage()
+					.getFile(basePath, details.filePath);
 				const fileData = Buffer.from(fileContent).toString("base64");
 
 				const ext = details.fileName.split(".").pop()?.toLowerCase() ?? "";

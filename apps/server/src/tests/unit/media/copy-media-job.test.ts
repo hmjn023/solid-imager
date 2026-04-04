@@ -142,6 +142,25 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerMediaRepository(MediaRepository);
 		services.registerMediaStorage(mockStorageService as any);
 		services.registerImageProcessor(mockImageProcessor as any);
+		services.registerMetadataExtractor({
+			extract: mockImageProcessor.extractMetadata,
+		} as any);
+		services.registerThumbnailGenerator({
+			generate: mockImageProcessor.generateThumbnail,
+		} as any);
+		services.registerMediaProbe({
+			probe: vi.fn().mockResolvedValue({
+				width: 800,
+				height: 600,
+				size: 1024,
+				createdAt: new Date(),
+				modifiedAt: new Date(),
+			}),
+			getDimensions: vi.fn().mockResolvedValue({
+				width: 800,
+				height: 600,
+			}),
+		} as any);
 		services.registerAiClient(mockAiClient as any);
 
 		// Mock ConfigService

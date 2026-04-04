@@ -10,50 +10,78 @@ import { nitro } from "nitro/vite";
 import { devtools } from "@tanstack/devtools-vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export default defineConfig(({ command }) => {
+  const isTauriRuntime = process.env.VITE_TAURI === "true";
+  const isTauriSpaBuild = isTauriRuntime && command === "build";
+  const isTauriDev = isTauriRuntime && command === "serve";
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      "@solid-imager/core": path.resolve(
-        __dirname,
-        "../../packages/core/src"
-      ),
-      "@": path.resolve(__dirname, "../../packages/core/src"),
-      "~": path.resolve(__dirname, "./src"),
+  return {
+    resolve: {
+      alias: {
+        "@solid-imager/core": path.resolve(
+          __dirname,
+          "../../packages/core/src"
+        ),
+        "@": path.resolve(__dirname, "../../packages/core/src"),
+        "~": path.resolve(__dirname, "./src"),
+      },
     },
-  },
-  plugins: [
-    devtools(),
-    nitro(),
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
-    tanstackRouter({
-      target: "solid",
-      autoCodeSplitting: true,
-    }),
-    tailwindcss(),
-    tanstackStart(),
-    solidPlugin({ ssr: true }),
-  ],
-  ssr: {
-    noExternal: [
-      "@tanstack/solid-router",
-      "@tanstack/solid-query",
-      "@tanstack/solid-start",
-      "@kobalte/core",
-      "solid-sonner",
-      "corvu",
-      "@solid-primitives/.*"
+    optimizeDeps: isTauriDev
+      ? {
+          force: true,
+          include: [
+            "@tauri-apps/api",
+            "@tauri-apps/api/core",
+            "@tauri-apps/api/path",
+            "@tauri-apps/plugin-fs",
+          ],
+        }
+      : undefined,
+    plugins: [
+      devtools(),
+      ...(isTauriSpaBuild ? [] : [nitro()]),
+      viteTsConfigPaths({
+        projects: ["./tsconfig.json"],
+      }),
+      tanstackRouter({
+        target: "solid",
+        autoCodeSplitting: true,
+      }),
+      tailwindcss(),
+      tanstackStart(
+        isTauriSpaBuild
+          ? {
+              spa: { enabled: true },
+            }
+          : undefined,
+      ),
+      solidPlugin({ ssr: !isTauriSpaBuild }),
     ],
-    external: [
-      "@electric-sql/pglite",
-      "pg",
-      "sharp",
-      "ffmpeg-static",
-      "ffmpeg-static-static",
-      "fluent-ffmpeg",
-      "archiver"
-    ],
-  },
+    define: {
+      __TAURI_BUILD__: isTauriRuntime,
+      __TAURI_SPA__: isTauriSpaBuild,
+    },
+    ssr: {
+      ...(!isTauriSpaBuild ? {
+        noExternal: [
+          "@tanstack/solid-router",
+          "@tanstack/solid-query",
+          "@tanstack/solid-start",
+          "@kobalte/core",
+          "solid-sonner",
+          "corvu",
+          "@solid-primitives/.*"
+        ],
+      } : {}),
+      external: [
+        "@electric-sql/pglite",
+        "pg",
+        "sharp",
+        "ffmpeg-static",
+        "ffmpeg-static-static",
+        "fluent-ffmpeg",
+        "archiver"
+      ],
+    },
+  };
 });
