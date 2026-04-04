@@ -13,6 +13,12 @@ sharp.cache({ memory: 100, items: 200, files: 20 });
 import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IMediaProbe } from "@solid-imager/core/domain/services/media-probe";
+import type {
+	ExtractedMediaMetadata,
+	IMetadataExtractor,
+} from "@solid-imager/core/domain/services/metadata-extractor";
+import type { IThumbnailGenerator } from "@solid-imager/core/domain/services/thumbnail-generator";
 import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
@@ -21,17 +27,10 @@ const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
 
 /**
- * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
+ * Node-backed thumbnail generation.
  */
-export class LocalImageProcessor implements IImageProcessor {
-	/**
-	 * Generates a thumbnail for a given image.
-	 * @param {string} mediaPath - The path to the source image file.
-	 * @param {string} outputPath - The path where the thumbnail will be saved.
-	 * @param {number} size - The desired size for the thumbnail (e.g., width or height, depending on implementation).
-	 * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
-	 */
-	async generateThumbnail(
+export class NodeThumbnailGenerator implements IThumbnailGenerator {
+	async generate(
 		mediaPath: string,
 		outputPath: string,
 		size: number,
@@ -122,17 +121,13 @@ export class LocalImageProcessor implements IImageProcessor {
 			throw error;
 		}
 	}
+}
 
-	/**
-	 * Extracts metadata from an image file.
-	 * @param {string} mediaPath - The path to the source image file.
-	 * @returns {Promise<void>} A promise that resolves when the metadata has been extracted and stored.
-	 */
-	async extractMetadata(mediaPath: string): Promise<{
-		tags: { name: string; type: "positive" | "negative" }[];
-		prompt: unknown;
-		workflow: unknown;
-	}> {
+/**
+ * Node-backed metadata extraction.
+ */
+export class NodeMetadataExtractor implements IMetadataExtractor {
+	async extract(mediaPath: string): Promise<ExtractedMediaMetadata> {
 		if (!mediaPath) {
 			throw new Error("Image path is required");
 		}
@@ -218,12 +213,12 @@ export class LocalImageProcessor implements IImageProcessor {
 			return { tags: [], prompt: null, workflow: null };
 		}
 	}
+}
 
-	/**
-	 * Retrieves the dimensions (width and height) of an image.
-	 * @param {string} mediaPath - The path to the source image file.
-	 * @returns {Promise<{ width: number; height: number }>} A promise that resolves with an object containing the width and height.
-	 */
+/**
+ * Node-backed media probing.
+ */
+export class NodeMediaProbe implements IMediaProbe {
 	async getDimensions(
 		mediaPath: string,
 	): Promise<{ width: number; height: number }> {
@@ -260,9 +255,45 @@ export class LocalImageProcessor implements IImageProcessor {
 			height: metadata.height,
 		};
 	}
+
+	async probe(mediaPath: string) {
+		const fs = (await import("node:fs/promises")).default;
+		const stats = await fs.stat(mediaPath);
+		const dimensions = await this.getDimensions(mediaPath).catch(() => ({
+			width: 0,
+			height: 0,
+		}));
+		return {
+			width: dimensions.width,
+			height: dimensions.height,
+			size: stats.size,
+			createdAt: stats.birthtime,
+			modifiedAt: stats.mtime,
+		};
+	}
 }
 
-export const ImageProcessor = new LocalImageProcessor();
+export function createImageProcessorFacade(deps: {
+	metadataExtractor: IMetadataExtractor;
+	thumbnailGenerator: IThumbnailGenerator;
+	mediaProbe: IMediaProbe;
+}): IImageProcessor {
+	return {
+		generateThumbnail: (mediaPath, outputPath, size, quality) =>
+			deps.thumbnailGenerator.generate(mediaPath, outputPath, size, quality),
+		extractMetadata: (mediaPath) => deps.metadataExtractor.extract(mediaPath),
+		getDimensions: (mediaPath) => deps.mediaProbe.getDimensions(mediaPath),
+	};
+}
+
+export const metadataExtractor = new NodeMetadataExtractor();
+export const thumbnailGenerator = new NodeThumbnailGenerator();
+export const mediaProbe = new NodeMediaProbe();
+export const ImageProcessor = createImageProcessorFacade({
+	metadataExtractor,
+	thumbnailGenerator,
+	mediaProbe,
+});
 
 /**
  * Provides video processing functionalities such as thumbnail generation from video.

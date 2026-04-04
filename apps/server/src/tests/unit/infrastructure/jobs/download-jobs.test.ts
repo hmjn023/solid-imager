@@ -174,6 +174,30 @@ describe("processDownloadJob", () => {
 		services.getJobRepository = vi.fn().mockReturnValue({
 			create: vi.fn(),
 		});
+		services.registerMediaStorage({
+			saveFile: mockSaveFile,
+			getFileMetadata: mockGetFileMetadata,
+			getFile: vi.fn(),
+			scanDirectory: vi.fn(),
+			copyFile: vi.fn(),
+			deleteFile: vi.fn(),
+		} as any);
+		services.registerMediaProbe({
+			probe: mockGetFileMetadata,
+			getDimensions: vi.fn().mockResolvedValue({
+				width: 800,
+				height: 600,
+			}),
+		} as any);
+		services.registerDownloadBackend({
+			getCapabilities: vi.fn().mockReturnValue({
+				kind: "local",
+				supportsMetadata: true,
+				supportsDownload: true,
+			}),
+			fetchMetadata: vi.fn().mockResolvedValue(null),
+			download: vi.fn(),
+		} as any);
 	});
 
 	it("should process a direct image download via MediaProcessingService", async () => {

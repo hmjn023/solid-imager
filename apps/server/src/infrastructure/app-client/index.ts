@@ -6,10 +6,12 @@ import { serverAppClient } from "./server-app-client.server";
 import { tauriAppClient } from "./tauri-app-client";
 import { webAppClient } from "./web-app-client";
 
+const isTauriBuild = typeof __TAURI_BUILD__ !== "undefined" && __TAURI_BUILD__;
+
 const getAppClient = createIsomorphicFn()
 	.server(() => serverAppClient)
 	.client((): RouterClient<AppRouter> => {
-		if (__TAURI_BUILD__) {
+		if (isTauriBuild) {
 			return tauriAppClient;
 		}
 

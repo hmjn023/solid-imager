@@ -1,3 +1,4 @@
+import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { services } from "~/application/registry";
 import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
@@ -6,11 +7,13 @@ import { MediaProcessingServiceImpl } from "~/application/services/media-process
 import { ServerConfigService } from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
+import { UnsupportedDownloadBackend } from "~/infrastructure/downloads/unsupported-download-backend";
+import { YtDlpDownloadBackend } from "~/infrastructure/downloads/yt-dlp-download-backend";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import * as processingModule from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
@@ -23,6 +26,110 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 
 export let isBootstrapped = false;
 export let isWorkerStarted = false;
+
+function isTauriBuild(): boolean {
+	return typeof __TAURI_BUILD__ !== "undefined" && __TAURI_BUILD__;
+}
+
+const registeredMetadataExtractor =
+	"metadataExtractor" in processingModule
+		? processingModule.metadataExtractor
+		: {
+				extract: (mediaPath: string) =>
+					processingModule.ImageProcessor.extractMetadata(mediaPath),
+			};
+
+const registeredThumbnailGenerator =
+	"thumbnailGenerator" in processingModule
+		? processingModule.thumbnailGenerator
+		: {
+				generate: (
+					mediaPath: string,
+					outputPath: string,
+					size: number,
+					quality: number,
+				) =>
+					processingModule.ImageProcessor.generateThumbnail(
+						mediaPath,
+						outputPath,
+						size,
+						quality,
+					),
+			};
+
+const registeredMediaProbe =
+	"mediaProbe" in processingModule
+		? processingModule.mediaProbe
+		: {
+				getDimensions: (mediaPath: string) => {
+					const legacyImageProcessor = (
+						processingModule as {
+							ImageProcessor?: {
+								getDimensions(mediaPath: string): Promise<{
+									width: number;
+									height: number;
+								}>;
+							};
+						}
+					).ImageProcessor;
+					if (!legacyImageProcessor) {
+						return Promise.resolve({ width: 0, height: 0 });
+					}
+					return legacyImageProcessor.getDimensions(mediaPath);
+				},
+				async probe(mediaPath: string) {
+					const stats = await import("node:fs/promises").then((module) =>
+						module.default.stat(mediaPath),
+					);
+					const legacyImageProcessor = (
+						processingModule as {
+							ImageProcessor?: {
+								getDimensions(mediaPath: string): Promise<{
+									width: number;
+									height: number;
+								}>;
+							};
+						}
+					).ImageProcessor;
+					const dimensions = legacyImageProcessor
+						? await legacyImageProcessor
+								.getDimensions(mediaPath)
+								.catch(() => ({ width: 0, height: 0 }))
+						: { width: 0, height: 0 };
+					return {
+						width: dimensions.width,
+						height: dimensions.height,
+						size: stats.size,
+						createdAt: stats.birthtime,
+						modifiedAt: stats.mtime,
+					};
+				},
+			};
+
+const registeredImageProcessor: IImageProcessor =
+	"createImageProcessorFacade" in processingModule
+		? processingModule.createImageProcessorFacade({
+				metadataExtractor: registeredMetadataExtractor,
+				thumbnailGenerator: registeredThumbnailGenerator,
+				mediaProbe: registeredMediaProbe,
+			})
+		: ((
+				processingModule as {
+					ImageProcessor: {
+						generateThumbnail(
+							mediaPath: string,
+							outputPath: string,
+							size: number,
+							quality: number,
+						): Promise<void>;
+						extractMetadata(mediaPath: string): Promise<unknown>;
+						getDimensions(mediaPath: string): Promise<{
+							width: number;
+							height: number;
+						}>;
+					};
+				}
+			).ImageProcessor as IImageProcessor);
 
 /**
  * Initializes all services and repositories.
@@ -62,9 +169,19 @@ export function initServices() {
 	services.registerJobRepository(jobRepo);
 
 	// Register Services
-	services.registerMediaStorage(ServerMediaStorage);
 	services.registerFileSystem(new NodeFileSystem());
-	services.registerImageProcessor(ImageProcessor);
+	services.registerMetadataExtractor(registeredMetadataExtractor);
+	services.registerThumbnailGenerator(registeredThumbnailGenerator);
+	services.registerMediaProbe(registeredMediaProbe);
+	services.registerImageProcessor(registeredImageProcessor);
+	services.registerMediaStorage(ServerMediaStorage);
+	services.registerDownloadBackend(
+		isTauriBuild()
+			? new UnsupportedDownloadBackend(
+					"Tauri runtime download backend is not wired yet.",
+				)
+			: new YtDlpDownloadBackend(),
+	);
 
 	// Initialize PythonClient with config values
 	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);

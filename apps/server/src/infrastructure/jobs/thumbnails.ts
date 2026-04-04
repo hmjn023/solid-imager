@@ -6,7 +6,6 @@ import { services } from "~/application/registry";
 //   selectMediaBySourceId,
 // } from "~/infrastructure/db/queries/media"; // Removed
 import type { Media } from "~/infrastructure/db/schema";
-import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
@@ -82,7 +81,9 @@ export async function generateThumbnail(
 	const inputPath = path.join(sourcePath, media.filePath);
 	const outputPath = getThumbnailPath(mediaSourceId, media.id);
 
-	await ImageProcessor.generateThumbnail(inputPath, outputPath, size, quality);
+	await services
+		.getThumbnailGenerator()
+		.generate(inputPath, outputPath, size, quality);
 }
 
 /**

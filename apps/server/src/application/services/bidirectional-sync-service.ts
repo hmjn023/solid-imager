@@ -24,6 +24,7 @@ import type {
 import { remoteSourceConnectionInfoSchema } from "@solid-imager/core/domain/media/sync-schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import { services } from "~/application/registry";
 import {
 	DiffDetectorServiceImpl,
 	type DiffResult,
@@ -34,7 +35,6 @@ import type { AppRouter } from "~/domain/shared/api-contract";
 import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
-import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 /**
  * Sync statistics
@@ -676,7 +676,7 @@ export class BidirectionalSyncServiceImpl {
 		const basePath = (targetSource.connectionInfo as { path: string }).path;
 		const fileName = pullResult.fileName ?? remoteDetails.fileName;
 
-		const fileInfo = await ServerMediaStorage.saveFile(
+		const fileInfo = await services.getMediaStorage().saveFile(
 			basePath,
 			{
 				name: fileName,
