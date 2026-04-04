@@ -11,6 +11,7 @@ import {
 } from "@solid-imager/core/domain/media/sync-schemas";
 import { BidirectionalSyncServiceImpl } from "~/application/services/bidirectional-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -175,6 +176,22 @@ export const syncRouter = {
 					);
 				}
 
+				let targetFileName = input.fileName ?? input.file.name;
+				if (input.replaceMediaId) {
+					const existingMedia = await MediaRepository.findById(
+						input.replaceMediaId,
+					);
+					if (
+						!existingMedia ||
+						existingMedia.mediaSourceId !== input.targetSourceId
+					) {
+						throw new Error(
+							`Target media not found for replacement: ${input.replaceMediaId}`,
+						);
+					}
+					targetFileName = existingMedia.filePath;
+				}
+
 				const basePath = (source.connectionInfo as { path: string }).path;
 				const arrayBuffer = await input.file.arrayBuffer();
 
@@ -185,11 +202,16 @@ export const syncRouter = {
 						arrayBuffer: async () => arrayBuffer,
 					},
 					{
-						filename: input.fileName ?? input.file.name,
-						overwrite: false,
-						autoIncrement: true,
+						filename: targetFileName,
+						overwrite: Boolean(input.replaceMediaId),
+						autoIncrement: !input.replaceMediaId,
 					},
 				);
+
+				if (input.replaceMediaId) {
+					await deleteThumbnail(input.targetSourceId, input.replaceMediaId);
+					await MediaRepository.delete(input.replaceMediaId);
+				}
 
 				const media = await MediaProcessingService.registerAndProcess(
 					input.targetSourceId,

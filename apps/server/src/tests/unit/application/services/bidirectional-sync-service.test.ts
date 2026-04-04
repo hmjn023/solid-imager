@@ -4,13 +4,22 @@ const mockCreateORPCClient = vi.fn();
 const mockDetectDiffs = vi.fn();
 const mockResolveConflict = vi.fn();
 const mockGetDriver = vi.fn();
+const mockDeleteThumbnail = vi.fn();
+const mockRPCLink = vi.fn();
 
 vi.mock("@orpc/client", () => ({
 	createORPCClient: mockCreateORPCClient,
 }));
 
 vi.mock("@orpc/client/fetch", () => ({
-	RPCLink: class RPCLink {},
+	RPCLink: class RPCLink {
+		url: string;
+
+		constructor(config: { url: string }) {
+			this.url = config.url;
+			mockRPCLink(config);
+		}
+	},
 }));
 
 vi.mock(
@@ -41,13 +50,20 @@ vi.mock("~/infrastructure/storage/factory", () => ({
 	getDriver: mockGetDriver,
 }));
 
+vi.mock("~/infrastructure/jobs/thumbnails", () => ({
+	deleteThumbnail: mockDeleteThumbnail,
+}));
+
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
 		info: vi.fn(),
 		error: vi.fn(),
 		debug: vi.fn(),
 		warn: vi.fn(),
+		trace: vi.fn(),
+		fatal: vi.fn(),
 	},
+	updateLogLevel: vi.fn(),
 }));
 
 describe("BidirectionalSyncServiceImpl", () => {
@@ -57,8 +73,8 @@ describe("BidirectionalSyncServiceImpl", () => {
 
 	it("uses remote source ID from connection info when listing remote media", async () => {
 		const remoteClient = {
-			media: {
-				search: vi.fn().mockResolvedValue({
+			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
 					media: [],
 					total: 0,
 				}),
@@ -99,21 +115,70 @@ describe("BidirectionalSyncServiceImpl", () => {
 			dryRun: true,
 		});
 
-		expect(remoteClient.media.search).toHaveBeenCalledWith({
+		expect(remoteClient.sync.getMediaList).toHaveBeenCalledWith({
 			sourceId: "22222222-2222-4222-8222-222222222222",
-			params: { limit: 100, offset: 0 },
+			cursor: undefined,
+			limit: 100,
 		});
 	});
 
-	it("pushes local media to remote source ID resolved from connection info", async () => {
+	it("preserves remote base paths when creating the oRPC client", async () => {
 		const remoteClient = {
-			media: {
-				search: vi.fn().mockResolvedValue({
+			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
 					media: [],
 					total: 0,
 				}),
 			},
+		};
+		mockCreateORPCClient.mockReturnValue(remoteClient);
+		mockDetectDiffs.mockResolvedValue({
+			localOnly: [],
+			remoteOnly: [],
+			conflicts: [],
+			identical: [],
+		});
+
+		const sourceRepository = {
+			findById: vi.fn().mockResolvedValue({
+				id: "11111111-1111-4111-8111-111111111111",
+				connectionInfo: {
+					url: "http://remote.example.com:3000/imager",
+					remoteSourceId: "22222222-2222-4222-8222-222222222222",
+				},
+			}),
+		};
+
+		const { BidirectionalSyncServiceImpl } = await import(
+			"~/application/services/bidirectional-sync-service"
+		);
+		const service = new BidirectionalSyncServiceImpl(
+			{} as any,
+			sourceRepository as any,
+		);
+
+		await service.sync({
+			localSourceId: "33333333-3333-4333-8333-333333333333",
+			remoteSourceId: "11111111-1111-4111-8111-111111111111",
+			direction: "bidirectional",
+			conflictResolution: "newer_wins",
+			dryRun: true,
+		});
+
+		expect(mockRPCLink).toHaveBeenCalledWith(
+			expect.objectContaining({
+				url: "http://remote.example.com:3000/imager/api/rpc",
+			}),
+		);
+	});
+
+	it("pushes local media to remote source ID resolved from connection info", async () => {
+		const remoteClient = {
 			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
+					media: [],
+					total: 0,
+				}),
 				pushMediaFile: vi.fn().mockResolvedValue({ success: true }),
 			},
 		};
@@ -203,10 +268,6 @@ describe("BidirectionalSyncServiceImpl", () => {
 	it("uses remote source ID from connection info for merged conflict details lookup", async () => {
 		const remoteClient = {
 			media: {
-				search: vi.fn().mockResolvedValue({
-					media: [],
-					total: 0,
-				}),
 				getDetails: vi.fn().mockResolvedValue({
 					fileName: "remote.png",
 					tags: [{ name: "tag-a", type: "positive", confidence: 1 }],
@@ -216,6 +277,10 @@ describe("BidirectionalSyncServiceImpl", () => {
 				}),
 			},
 			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
+					media: [],
+					total: 0,
+				}),
 				pushMediaFile: vi.fn().mockResolvedValue({ success: true }),
 			},
 		};
@@ -319,14 +384,15 @@ describe("BidirectionalSyncServiceImpl", () => {
 		expect(remoteClient.sync.pushMediaFile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				targetSourceId: "22222222-2222-4222-8222-222222222222",
+				replaceMediaId: "66666666-6666-4666-8666-666666666666",
 			}),
 		);
 	});
 
 	it("returns conflict summaries for source sync status", async () => {
 		const remoteClient = {
-			media: {
-				search: vi.fn().mockResolvedValue({
+			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
 					media: [],
 					total: 0,
 				}),
@@ -416,6 +482,10 @@ describe("BidirectionalSyncServiceImpl", () => {
 				}),
 			},
 			sync: {
+				getMediaList: vi.fn().mockResolvedValue({
+					media: [],
+					total: 0,
+				}),
 				pushMediaFile: vi.fn().mockResolvedValue({ success: true }),
 			},
 		};
@@ -501,6 +571,7 @@ describe("BidirectionalSyncServiceImpl", () => {
 		expect(remoteClient.sync.pushMediaFile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				targetSourceId: "22222222-2222-4222-8222-222222222222",
+				replaceMediaId: "66666666-6666-4666-8666-666666666666",
 			}),
 		);
 	});

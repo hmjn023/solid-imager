@@ -369,6 +369,7 @@ const syncMetadataFields = {
 export const pushMediaFileRequestSchema = z.object({
 	file: z.instanceof(File),
 	targetSourceId: z.string().uuid("Invalid target source ID"),
+	replaceMediaId: z.string().uuid("Invalid media ID").optional(),
 	fileName: z.string().optional(),
 	...syncMetadataFields,
 });

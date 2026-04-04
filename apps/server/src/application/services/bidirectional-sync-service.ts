@@ -32,6 +32,7 @@ import {
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import type { AppRouter } from "~/domain/shared/api-contract";
 import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
@@ -67,7 +68,8 @@ type MetadataOverride = {
  * Create an oRPC client for a remote server
  */
 function createRemoteClient(baseUrl: string): RouterClient<AppRouter> {
-	const rpcUrl = new URL("/api/rpc/", baseUrl).toString();
+	const normalizedBaseUrl = baseUrl.endsWith("/") ? baseUrl : `${baseUrl}/`;
+	const rpcUrl = new URL("api/rpc", normalizedBaseUrl).toString();
 	const link = new RPCLink({
 		url: rpcUrl,
 		fetch: fetch,
@@ -339,25 +341,19 @@ export class BidirectionalSyncServiceImpl {
 		let total = Number.POSITIVE_INFINITY;
 
 		while (offset < total) {
-			const result = await remoteClient.media.search({
+			const result = await remoteClient.sync.getMediaList({
 				sourceId: remoteSourceIdOnRemote,
-				params: { limit, offset },
+				cursor: offset > 0 ? String(offset) : undefined,
+				limit,
 			});
 
-			const mediaDiffs = result.media.map(
-				(m: {
-					id: string;
-					filePath: string;
-					modifiedAt: string | Date;
-					fileSize: number | null;
-				}) => ({
-					mediaId: m.id,
-					filePath: m.filePath,
-					hashMd5: null,
-					modifiedAt: new Date(m.modifiedAt),
-					fileSize: m.fileSize ?? null,
-				}),
-			);
+			const mediaDiffs = result.media.map((m) => ({
+				mediaId: m.id,
+				filePath: m.filePath,
+				hashMd5: m.hashMd5 ?? null,
+				modifiedAt: new Date(m.modifiedAt),
+				fileSize: m.fileSize ?? null,
+			}));
 
 			allMedia.push(...mediaDiffs);
 			total = result.total;
@@ -581,6 +577,7 @@ export class BidirectionalSyncServiceImpl {
 		mediaId: string,
 		targetSourceId: string,
 		remoteClient: RouterClient<AppRouter>,
+		replaceMediaId?: string,
 		metadataOverride?: MetadataOverride,
 	) {
 		// Get local source for file access
@@ -623,6 +620,7 @@ export class BidirectionalSyncServiceImpl {
 		const result = await remoteClient.sync.pushMediaFile({
 			file,
 			targetSourceId,
+			replaceMediaId,
 			fileName: localMedia.fileName,
 			createdAt: localMedia.createdAt,
 			...this.createSyncMetadata(details, metadataOverride),
@@ -641,6 +639,7 @@ export class BidirectionalSyncServiceImpl {
 		targetSourceId: string,
 		remoteClient: RouterClient<AppRouter>,
 		remoteSourceIdOnRemote: string,
+		replaceMediaId?: string,
 	) {
 		// Get target source info
 		const targetSource = await this.sourceRepository.findById(targetSourceId);
@@ -674,7 +673,20 @@ export class BidirectionalSyncServiceImpl {
 
 		// Save to local storage
 		const basePath = (targetSource.connectionInfo as { path: string }).path;
-		const fileName = pullResult.fileName ?? remoteDetails.fileName;
+		let fileName = pullResult.fileName ?? remoteDetails.fileName;
+		if (replaceMediaId) {
+			const existingLocalMedia =
+				await this.mediaRepository.findById(replaceMediaId);
+			if (
+				!existingLocalMedia ||
+				existingLocalMedia.mediaSourceId !== targetSourceId
+			) {
+				throw new Error(
+					`Local media not found for replacement: ${replaceMediaId}`,
+				);
+			}
+			fileName = existingLocalMedia.filePath;
+		}
 
 		const fileInfo = await ServerMediaStorage.saveFile(
 			basePath,
@@ -684,10 +696,15 @@ export class BidirectionalSyncServiceImpl {
 			},
 			{
 				filename: fileName,
-				overwrite: false,
-				autoIncrement: true,
+				overwrite: Boolean(replaceMediaId),
+				autoIncrement: !replaceMediaId,
 			},
 		);
+
+		if (replaceMediaId) {
+			await deleteThumbnail(targetSourceId, replaceMediaId);
+			await this.mediaRepository.delete(replaceMediaId);
+		}
 
 		// Register with full metadata using the unified registration flow
 		const contextMetadata: Partial<MediaMetadataContext> = {
@@ -734,6 +751,7 @@ export class BidirectionalSyncServiceImpl {
 					resolution.conflict.localMediaId,
 					remoteSourceIdOnRemote,
 					remoteClient,
+					resolution.conflict.remoteMediaId,
 				);
 				break;
 			case "kept_remote":
@@ -742,6 +760,7 @@ export class BidirectionalSyncServiceImpl {
 					request.localSourceId,
 					remoteClient,
 					remoteSourceIdOnRemote,
+					resolution.conflict.localMediaId,
 				);
 				break;
 			case "merged": {
@@ -781,6 +800,7 @@ export class BidirectionalSyncServiceImpl {
 					resolution.conflict.localMediaId,
 					remoteSourceIdOnRemote,
 					remoteClient,
+					resolution.conflict.remoteMediaId,
 					{
 						tags: mergedTags,
 						authors: mergedAuthors,

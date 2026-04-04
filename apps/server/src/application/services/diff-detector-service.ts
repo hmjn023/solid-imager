@@ -164,7 +164,25 @@ export class DiffDetectorServiceImpl {
 	 * Get local media information for diff detection
 	 */
 	private async getLocalMediaForSource(sourceId: string): Promise<MediaDiff[]> {
-		const media = await this.mediaRepository.findAllBySourceId(sourceId);
+		const media: Media[] = [];
+		const pageSize = 100;
+		let offset = 0;
+
+		while (true) {
+			const page = await this.mediaRepository.findAllBySourceId(
+				sourceId,
+				pageSize,
+				offset,
+			);
+			media.push(...page);
+
+			if (page.length < pageSize) {
+				break;
+			}
+
+			offset += page.length;
+		}
+
 		const hashes = await this.mediaRepository.getMd5HashesBySourceId(sourceId);
 
 		return media.map((m: Media) => ({
