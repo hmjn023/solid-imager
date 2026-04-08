@@ -49,10 +49,14 @@ export class ServerConfigService implements IConfigService {
 
 				const parsedFromFile = AppConfigSchema.safeParse(fileContent);
 				if (parsedFromFile.success) {
-					if (!isDeepStrictEqual(parsedFromFile.data, fileContent)) {
+					// unknown フィールドを保持しつつ新しいスキーマデフォルトをマージ。
+					// safeParse はスキーマ外フィールドを除去するため、直接比較すると
+					// ユーザーが手動追加したフィールドが原因で常に不一致となる。
+					const merged = this.deepMerge(fileContent, parsedFromFile.data);
+					if (!isDeepStrictEqual(merged, fileContent)) {
 						fs.writeFileSync(
 							this.configPath,
-							JSON.stringify(parsedFromFile.data, null, 2),
+							JSON.stringify(merged, null, 2),
 						);
 						logger.info("config.json migrated with new default fields");
 					}

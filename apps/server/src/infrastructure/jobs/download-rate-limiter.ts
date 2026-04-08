@@ -22,7 +22,11 @@ export async function waitForDownloadRateLimit(): Promise<void> {
 
 	const previous = pendingChain;
 	pendingChain = (async () => {
-		await previous;
+		try {
+			await previous;
+		} catch {
+			// 前のチェーンのエラーでレートリミッターが機能停止しないよう無視
+		}
 		const elapsed = Date.now() - lastRequestTime;
 		const delay = config.requestIntervalMs - elapsed;
 		if (delay > 0) {
