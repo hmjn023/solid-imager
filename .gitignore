@@ -49,6 +49,9 @@ __pycache__/
 *.pyc
 public/docs/
 
+# TanStack Router generated
+routeTree.gen.ts
+
 # Config
 config.json
 dev.log
