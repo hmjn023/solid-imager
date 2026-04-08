@@ -41,9 +41,11 @@ function resolveInvoke(): TauriInvoke {
 }
 
 export function createTauriCommandClient(): TauriCommandClient {
+	const invoke = resolveInvoke();
+
 	return {
 		invoke<TResponse>(command: string, payload?: Record<string, unknown>) {
-			return resolveInvoke()<TResponse>(command, payload);
+			return invoke<TResponse>(command, payload);
 		},
 	};
 }
