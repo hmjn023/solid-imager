@@ -1,32 +1,41 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter } from "@tanstack/solid-router";
+import type { TauriAppServices } from "./bootstrap";
 import { routeTree } from "./routeTree.gen";
 
-const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			retry: false,
-		},
-	},
-});
+export type AppRouterContext = {
+	queryClient: QueryClient;
+	services: TauriAppServices;
+};
 
-export const router = createRouter({
-	routeTree,
-	context: {
-		queryClient,
-	},
-	scrollRestoration: true,
-	defaultPreload: "intent",
-	defaultPreloadStaleTime: 0,
-	Wrap: (props) => (
-		<QueryClientProvider client={queryClient}>
-			{props.children}
-		</QueryClientProvider>
-	),
-});
+export function createAppRouter(services: TauriAppServices) {
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: false,
+			},
+		},
+	});
+
+	return createRouter({
+		routeTree,
+		context: {
+			queryClient,
+			services,
+		},
+		scrollRestoration: true,
+		defaultPreload: "intent",
+		defaultPreloadStaleTime: 0,
+		Wrap: (props) => (
+			<QueryClientProvider client={queryClient}>
+				{props.children}
+			</QueryClientProvider>
+		),
+	});
+}
 
 declare module "@tanstack/solid-router" {
 	interface Register {
-		router: typeof router;
+		router: ReturnType<typeof createAppRouter>;
 	}
 }

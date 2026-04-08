@@ -8,6 +8,10 @@ type TauriFileStat = {
 	isDirectory: boolean;
 };
 
+function toUint8Array(data: Uint8Array | number[]): Uint8Array {
+	return data instanceof Uint8Array ? data : new Uint8Array(data);
+}
+
 export class TauriFileSystem implements IFileSystem {
 	constructor(private readonly commandClient: TauriCommandClient) {}
 
@@ -16,7 +20,12 @@ export class TauriFileSystem implements IFileSystem {
 	}
 
 	async readFile(path: string) {
-		return this.commandClient.invoke<Uint8Array>("fs_read_file", { path });
+		const data = await this.commandClient.invoke<Uint8Array | number[]>(
+			"fs_read_file",
+			{ path },
+		);
+
+		return toUint8Array(data);
 	}
 
 	async readTextFile(path: string, encoding: "utf-8" = "utf-8") {
@@ -27,7 +36,10 @@ export class TauriFileSystem implements IFileSystem {
 	}
 
 	async writeFile(path: string, data: string | Uint8Array) {
-		await this.commandClient.invoke("fs_write_file", { path, data });
+		await this.commandClient.invoke("fs_write_file", {
+			path,
+			data: data instanceof Uint8Array ? Array.from(data) : data,
+		});
 	}
 
 	async mkdir(path: string, options?: { recursive?: boolean }) {
