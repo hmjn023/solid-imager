@@ -1,0 +1,38 @@
+{
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "main-capability",
+	"description": "Main window access for local media management.",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"core:webview:allow-create-webview-window",
+		"core:webview:allow-webview-close",
+		"fs:read-all",
+		"fs:write-all",
+		{
+			"identifier": "fs:scope",
+			"allow": [
+				{ "path": "$APPCONFIG" },
+				{ "path": "$APPCONFIG/**" },
+				{ "path": "$APPDATA" },
+				{ "path": "$APPDATA/**" },
+				{ "path": "$APPCACHE" },
+				{ "path": "$APPCACHE/**" },
+				{ "path": "$HOME" },
+				{ "path": "$HOME/**" },
+				{ "path": "$PICTURE" },
+				{ "path": "$PICTURE/**" },
+				{ "path": "$VIDEO" },
+				{ "path": "$VIDEO/**" },
+				{ "path": "$DOCUMENT" },
+				{ "path": "$DOCUMENT/**" },
+				{ "path": "$DOWNLOAD" },
+				{ "path": "$DOWNLOAD/**" },
+				{ "path": "$DESKTOP" },
+				{ "path": "$DESKTOP/**" },
+				{ "path": "$TEMP" },
+				{ "path": "$TEMP/**" }
+			]
+		}
+	]
+}
