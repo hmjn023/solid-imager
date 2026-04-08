@@ -45,10 +45,15 @@ struct ExtractMetadataResult {
 	workflow: Option<Value>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone, Copy)]
 struct MediaDimensions {
 	width: u32,
 	height: u32,
+}
+
+struct ImageHeaderInfo {
+	dimensions: MediaDimensions,
+	mime_type: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -110,26 +115,25 @@ fn load_image(path: &str) -> Result<DynamicImage, String> {
 		.map_err(|error| with_path_context("Decoding image", path, error))
 }
 
-fn guess_image_format(path: &str) -> Result<Option<ImageFormat>, String> {
+fn inspect_image_header(path: &str) -> Result<ImageHeaderInfo, String> {
 	let reader = ImageReader::open(path)
 		.map_err(|error| with_path_context("Opening image", path, error))?
 		.with_guessed_format()
 		.map_err(|error| with_path_context("Guessing image format", path, error))?;
-
-	Ok(reader.format())
-}
-
-fn get_dimensions_from_header(path: &str) -> Result<MediaDimensions, String> {
-	let reader = ImageReader::open(path)
-		.map_err(|error| with_path_context("Opening image", path, error))?
-		.with_guessed_format()
-		.map_err(|error| with_path_context("Guessing image format", path, error))?;
+	let mime_type = mime_type_from_format(reader.format());
 
 	let (width, height) = reader
 		.into_dimensions()
 		.map_err(|error| with_path_context("Reading image dimensions", path, error))?;
 
-	Ok(MediaDimensions { width, height })
+	Ok(ImageHeaderInfo {
+		dimensions: MediaDimensions { width, height },
+		mime_type,
+	})
+}
+
+fn get_dimensions_from_header(path: &str) -> Result<MediaDimensions, String> {
+	Ok(inspect_image_header(path)?.dimensions)
 }
 
 fn mime_type_from_format(format: Option<ImageFormat>) -> Option<String> {
@@ -283,20 +287,19 @@ fn image_get_dimensions(media_path: String) -> Result<MediaDimensions, String> {
 }
 
 #[tauri::command]
-fn get_dimensions(media_path: String) -> Result<MediaDimensions, String> {
-	image_get_dimensions(media_path)
-}
-
-#[tauri::command]
 fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
 	let metadata = fs::metadata(&media_path)
 		.map_err(|error| with_path_context("Reading file metadata", &media_path, error))?;
-	let dimensions = get_dimensions_from_header(&media_path).unwrap_or(MediaDimensions {
+	let header = inspect_image_header(&media_path).ok();
+	let dimensions = header
+		.as_ref()
+		.map(|value| value.dimensions)
+		.unwrap_or(MediaDimensions {
 		width: 0,
 		height: 0,
 	});
-	let format = guess_image_format(&media_path)?;
-	let mime_type = mime_type_from_format(format)
+	let mime_type = header
+		.and_then(|value| value.mime_type)
 		.or_else(|| mime_guess::from_path(&media_path).first_raw().map(|value| value.to_string()));
 
 	Ok(ProbeMediaResult {
@@ -318,11 +321,6 @@ fn image_extract_metadata(_media_path: String) -> ExtractMetadataResult {
 		prompt: None,
 		workflow: None,
 	}
-}
-
-#[tauri::command]
-fn extract_metadata(media_path: String) -> ExtractMetadataResult {
-	image_extract_metadata(media_path)
 }
 
 #[tauri::command]
@@ -370,16 +368,6 @@ fn image_generate_thumbnail(
 }
 
 #[tauri::command]
-fn generate_thumbnail(
-	media_path: String,
-	output_path: String,
-	size: u32,
-	quality: u8,
-) -> Result<(), String> {
-	image_generate_thumbnail(media_path, output_path, size, quality)
-}
-
-#[tauri::command]
 fn api_call(procedure: String, _input: Option<Value>) -> Result<Value, String> {
 	Err(format!("Unsupported Tauri API procedure: {procedure}"))
 }
@@ -400,7 +388,6 @@ fn main() {
 	configure_linux_webview_environment();
 
 	tauri::Builder::default()
-		.plugin(tauri_plugin_fs::init())
 		.invoke_handler(tauri::generate_handler![
 			api_call,
 			fs_exists,
@@ -418,9 +405,6 @@ fn main() {
 			image_generate_thumbnail,
 			image_extract_metadata,
 			image_get_dimensions,
-			generate_thumbnail,
-			extract_metadata,
-			get_dimensions,
 			probe_media
 		])
 		.run(tauri::generate_context!())
