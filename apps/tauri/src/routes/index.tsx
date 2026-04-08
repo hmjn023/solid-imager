@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
+import { For } from "solid-js";
 
 const phaseItems = [
 	"Remove remaining `isServer` assumptions outside `apps/server`.",
@@ -31,12 +32,14 @@ function HomeRoute() {
 			<div class="grid gap-4 rounded-xl border border-border bg-card p-6 shadow-sm">
 				<h2 class="font-medium text-xl">Next steps</h2>
 				<ul class="grid gap-3 text-muted-foreground">
-					{phaseItems.map((item) => (
-						<li class="flex gap-3">
-							<span class="mt-1.5 size-2 rounded-full bg-sky-600" />
-							<span>{item}</span>
-						</li>
-					))}
+					<For each={phaseItems}>
+						{(item) => (
+							<li class="flex gap-3">
+								<span class="mt-1.5 size-2 rounded-full bg-sky-600" />
+								<span>{item}</span>
+							</li>
+						)}
+					</For>
 				</ul>
 			</div>
 		</section>

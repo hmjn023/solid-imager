@@ -15,9 +15,9 @@
   "dependencies": {
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
-    "@tanstack/router-plugin": "latest",
-    "@tanstack/solid-query": "latest",
-    "@tanstack/solid-router": "latest",
+    "@tanstack/router-plugin": "1.167.12",
+    "@tanstack/solid-query": "5.96.2",
+    "@tanstack/solid-router": "1.168.9",
     "solid-js": "^1.9.12"
   },
   "devDependencies": {
@@ -28,6 +28,6 @@
     "typescript": "^5.9.3",
     "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11",
-    "vite-plus": "latest"
+    "vite-plus": "0.1.16"
   }
 }
