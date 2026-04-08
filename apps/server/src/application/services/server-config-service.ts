@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import type { IConfigService } from "@solid-imager/core";
 import {
 	type AppConfig,
@@ -44,6 +45,19 @@ export class ServerConfigService implements IConfigService {
 							error instanceof Error ? error.message : String(error)
 						}`,
 					);
+				}
+
+				const parsedFromFile = AppConfigSchema.safeParse(fileContent);
+				if (parsedFromFile.success) {
+					// unknown フィールドを保持しつつ新しいスキーマデフォルトをマージ。
+					// safeParse はスキーマ外フィールドを除去するため、直接比較すると
+					// ユーザーが手動追加したフィールドが原因で常に不一致となる。
+					const merged = this.deepMerge(fileContent, parsedFromFile.data);
+					if (!isDeepStrictEqual(merged, fileContent)) {
+						fs.writeFileSync(this.configPath, JSON.stringify(merged, null, 2));
+						logger.info("config.json migrated with new default fields");
+					}
+					fileContent = merged;
 				}
 			} else {
 				logger.info("config.json not found, creating default");

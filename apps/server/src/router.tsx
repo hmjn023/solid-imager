@@ -3,7 +3,7 @@ import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
 import { routeTree } from "./routeTree.gen";
 
-if (import.meta.env.SSR) {
+if (isServer) {
 	console.log("[Router] Server-side initialization starting...");
 	// Initialize services on server startup.
 	// We don't use top-level await here to avoid module format issues with CJS dependencies.
