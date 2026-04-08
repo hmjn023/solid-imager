@@ -8,7 +8,7 @@
     "check": "biome check --fix --unsafe ./src",
     "test": "vp test run",
     "test:unit": "vp test run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "sh -c 'tsc --noEmit'"
   },
   "exports": {
     "./*": "./src/*"
