@@ -1,14 +1,10 @@
 import { Toaster } from "@solid-imager/ui/toast";
-import type { QueryClient } from "@tanstack/solid-query";
 import {
 	createRootRouteWithContext,
 	Link,
 	Outlet,
 } from "@tanstack/solid-router";
-
-type AppRouterContext = {
-	queryClient: QueryClient;
-};
+import type { AppRouterContext } from "../router";
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
 	component: RootRouteComponent,

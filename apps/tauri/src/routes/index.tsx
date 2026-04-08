@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { For } from "solid-js";
 
 const phaseItems = [
-	"Remove remaining `isServer` assumptions outside `apps/server`.",
-	"Add IPC-backed infrastructure under `src/infrastructure/tauri`.",
+	"Wire `fileSystem`, `imageProcessor`, and `apiClient` in `bootstrap.ts`.",
+	"Keep Tauri IPC behind `src/infrastructure/tauri` and `src/infrastructure/api`.",
 	"Port UI routes from `apps/server/src/routes` into this SPA tree.",
 ];
 
@@ -25,7 +25,7 @@ function HomeRoute() {
 					<p class="max-w-2xl text-lg text-muted-foreground">
 						This app is the new standalone client boundary for the desktop
 						runtime. Nitro and TanStack Start stay in `apps/server`; Tauri UI
-						moves here.
+						moves here, with platform services assembled in `bootstrap.ts`.
 					</p>
 				</div>
 			</div>
