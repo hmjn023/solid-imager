@@ -14,14 +14,14 @@ describe("EventService", () => {
 		let startCallback: ((controller: any) => void) | undefined;
 
 		// Mock global ReadableStream
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockResponse = vi.fn(function (body: any, init: any) {
 			return { body, init };
 		});
@@ -67,14 +67,14 @@ describe("EventService", () => {
 
 		let startCallback: ((controller: any) => void) | undefined;
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockResponse = vi.fn(function (body: any, init: any) {
 			return { body, init };
 		});
@@ -112,14 +112,14 @@ describe("EventService", () => {
 		};
 
 		let startCallback: ((controller: any) => void) | undefined;
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockReadableStream = vi.fn(function (strategies: any) {
 			startCallback = strategies.start;
 			return {};
 		});
 		vi.stubGlobal("ReadableStream", MockReadableStream);
 
-		// @biome-ignore lint/style/useArrowFunction: constructor mock
+		// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 		const MockResponse = vi.fn(function (body: any, init: any) {
 			return { body, init };
 		});
