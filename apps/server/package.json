@@ -22,7 +22,7 @@
     "test:unit": "vp test run -c vitest.unit.config.ts",
     "test:integration": "vp test run -c vitest.integration.config.ts",
     "test:e2e": "playwright test",
-    "typecheck": "tsc --noEmit --project ./tsconfig.json",
+    "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
     "docs:generate": "typedoc"
   },
@@ -89,7 +89,7 @@
     "typedoc": "^0.28.18",
     "typescript": "^5.9.3",
     "ultracite": "5.4.4",
-    "vite": "^0.1.14",
+    "vite": "^8.0.0",
     "vite-plugin-solid": "^2.11.11",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
     "vite-plus": "latest"

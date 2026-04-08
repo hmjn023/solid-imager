@@ -1,5 +1,8 @@
 import { EventEmitter } from "node:events";
-import type { APIEvent } from "@solidjs/start/server";
+
+// SSE ハンドラに渡されるリクエストイベントの最小型。
+// 旧 @solidjs/start/server の APIEvent 依存を排除するためにローカル定義。
+type APIEvent = { request: Request };
 
 // Define event types
 type MediaUpdatePayload = {

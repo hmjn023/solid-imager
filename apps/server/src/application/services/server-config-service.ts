@@ -54,13 +54,10 @@ export class ServerConfigService implements IConfigService {
 					// ユーザーが手動追加したフィールドが原因で常に不一致となる。
 					const merged = this.deepMerge(fileContent, parsedFromFile.data);
 					if (!isDeepStrictEqual(merged, fileContent)) {
-						fs.writeFileSync(
-							this.configPath,
-							JSON.stringify(merged, null, 2),
-						);
+						fs.writeFileSync(this.configPath, JSON.stringify(merged, null, 2));
 						logger.info("config.json migrated with new default fields");
 					}
-					fileContent = parsedFromFile.data;
+					fileContent = merged;
 				}
 			} else {
 				logger.info("config.json not found, creating default");
