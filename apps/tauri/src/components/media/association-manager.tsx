@@ -9,15 +9,20 @@ import {
 	CommandList,
 } from "@solid-imager/ui/command";
 import { createSignal, For, Show } from "solid-js";
-import type { MockAssociation } from "../../mocks/demo-data";
+
+type Item = {
+	id: string;
+	name: string;
+	description?: string | null;
+};
 
 type AssociationManagerProps = {
 	title: string;
-	items: MockAssociation[];
-	availableItems: Array<MockAssociation & { description?: string | null }>;
-	onAdd: (id: string) => void;
-	onRemove: (id: string) => void;
-	onCreate?: (name: string) => void;
+	items: Item[];
+	availableItems: Item[];
+	onAdd: (id: string) => void | Promise<void>;
+	onRemove: (id: string) => void | Promise<void>;
+	onCreate?: (name: string) => void | Promise<void>;
 	isLoading?: boolean;
 };
 
@@ -46,10 +51,26 @@ export function AssociationManager(props: AssociationManagerProps) {
 							<button
 								class="ml-1 rounded-full p-0.5 hover:bg-secondary-foreground/20"
 								disabled={props.isLoading}
-								onClick={() => props.onRemove(item.id)}
+								onClick={() => {
+									void props.onRemove(item.id);
+								}}
 								type="button"
 							>
-								×<span class="sr-only">Remove</span>
+								<svg
+									class="size-3"
+									fill="none"
+									stroke="currentColor"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									stroke-width="2"
+									viewBox="0 0 24 24"
+									xmlns="http://www.w3.org/2000/svg"
+								>
+									<title>Remove</title>
+									<path d="M18 6 6 18" />
+									<path d="m6 6 12 12" />
+								</svg>
+								<span class="sr-only">Remove</span>
 							</button>
 						</Badge>
 					)}
@@ -77,7 +98,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 								<Button
 									class="w-full justify-start"
 									onClick={() => {
-										props.onCreate?.(search());
+										void props.onCreate?.(search());
 										setOpen(false);
 										setSearch("");
 									}}
@@ -95,13 +116,13 @@ export function AssociationManager(props: AssociationManagerProps) {
 						<For
 							each={props.availableItems.filter(
 								(item) =>
-									!props.items.some((current) => current.id === item.id),
+									!props.items.some((candidate) => candidate.id === item.id),
 							)}
 						>
 							{(item) => (
 								<CommandItem
 									onSelect={() => {
-										props.onAdd(item.id);
+										void props.onAdd(item.id);
 										setOpen(false);
 										setSearch("");
 									}}

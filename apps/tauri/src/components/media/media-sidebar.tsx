@@ -1,21 +1,37 @@
+import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
-import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import {
-	type MockAssociation,
-	type MockMedia,
-	mockCharacters,
-	mockIps,
-	mockProjects,
-} from "../../mocks/demo-data";
+	addCharacterToMedia,
+	createCharacter,
+	fetchAllCharacters,
+	removeCharacterFromMedia,
+} from "../../infrastructure/api-clients/characters-api";
+import {
+	addIpToMedia,
+	createIp,
+	fetchAllIps,
+	removeIpFromMedia,
+} from "../../infrastructure/api-clients/ips-api";
+import { updateMedia } from "../../infrastructure/api-clients/media-api";
+import {
+	addProjectToMedia,
+	createProject,
+	fetchAllProjects,
+	fetchProjectsForMedia,
+	removeProjectFromMedia,
+} from "../../infrastructure/api-clients/projects-api";
 import { AssociationManager } from "./association-manager";
 
 type MediaSidebarProps = {
-	media: MockMedia;
+	media: MediaDetails;
+	isUpdating?: boolean;
+	onUpdate?: () => void;
 };
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -30,61 +46,152 @@ function formatBytes(bytes: number, decimals = 2) {
 }
 
 export function MediaSidebar(props: MediaSidebarProps) {
+	const queryClient = useQueryClient();
+	const tags = createMemo(() => props.media.tags || []);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
-		props.media.description,
+		props.media.description || "",
 	);
-	const [description, setDescription] = createSignal(props.media.description);
-	const [projects, setProjects] = createSignal(props.media.projects);
-	const [ips, setIps] = createSignal(props.media.ips);
-	const [characters, setCharacters] = createSignal(props.media.characters);
-	const positiveTags = createMemo(() => props.media.positiveTags);
-	const negativeTags = createMemo(() => props.media.negativeTags);
+
+	createEffect(() => {
+		setDescriptionValue(props.media.description || "");
+	});
+
+	const positiveTags = createMemo(() =>
+		tags().filter((tag) => tag.type === "positive"),
+	);
+	const negativeTags = createMemo(() =>
+		tags().filter((tag) => tag.type === "negative"),
+	);
 	const genInfo = createMemo(() => props.media.generationInfo);
 
+	const projects = createQuery(() => ({
+		queryKey: ["projectsForMedia", props.media.id],
+		queryFn: () =>
+			fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
+	}));
+	const allProjects = createQuery(() => ({
+		queryKey: ["allProjects"],
+		queryFn: fetchAllProjects,
+	}));
+	const allIps = createQuery(() => ({
+		queryKey: ["allIps"],
+		queryFn: fetchAllIps,
+	}));
+	const allCharacters = createQuery(() => ({
+		queryKey: ["allCharacters"],
+		queryFn: fetchAllCharacters,
+	}));
+
 	const availableCharacters = createMemo(() => {
-		const currentIps = ips();
+		const currentIps = props.media.ips || [];
+		const characters = allCharacters.data || [];
 		if (currentIps.length === 0) {
-			return mockCharacters;
+			return characters;
 		}
-		const ipIds = new Set(currentIps.map((item) => item.id));
-		return mockCharacters.filter((character) =>
-			character.ipIds.some((ipId) => ipIds.has(ipId)),
+		const ipIds = new Set(currentIps.map((ip) => ip.id));
+		return characters.filter((character) =>
+			character.ips.some((ip) => ipIds.has(ip.id)),
 		);
 	});
 
-	const saveDescription = () => {
-		setDescription(descriptionValue());
-		setIsEditingDescription(false);
-		toast.success("Description updated in mock sidebar");
+	const handleSaveDescription = async () => {
+		try {
+			await updateMedia(props.media.mediaSourceId, props.media.id, {
+				description: descriptionValue(),
+			});
+			props.onUpdate?.();
+			setIsEditingDescription(false);
+		} catch (error) {
+			toast.error(`Failed to update description: ${(error as Error).message}`);
+		}
 	};
 
-	const cancelDescription = () => {
-		setDescriptionValue(description());
+	const handleCancelEdit = () => {
+		setDescriptionValue(props.media.description || "");
 		setIsEditingDescription(false);
 	};
 
-	const addAssociation = (
-		setter: (items: MockAssociation[]) => void,
-		items: MockAssociation[],
-		nextItem: MockAssociation,
-		successMessage: string,
-	) => {
-		if (items.some((item) => item.id === nextItem.id)) {
+	const handleAddProject = async (projectId: string) => {
+		await addProjectToMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			projectId,
+		);
+		await queryClient.invalidateQueries({
+			queryKey: ["projectsForMedia", props.media.id],
+		});
+	};
+
+	const handleRemoveProject = async (projectId: string) => {
+		await removeProjectFromMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			projectId,
+		);
+		await queryClient.invalidateQueries({
+			queryKey: ["projectsForMedia", props.media.id],
+		});
+	};
+
+	const handleCreateProject = async (name: string) => {
+		const project = await createProject({ name });
+		await handleAddProject(project.id);
+		await queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+	};
+
+	const handleAddIp = async (ipId: string) => {
+		await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
+		props.onUpdate?.();
+	};
+
+	const handleRemoveIp = async (ipId: string) => {
+		await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
+		props.onUpdate?.();
+	};
+
+	const handleCreateIp = async (name: string) => {
+		const ip = await createIp({ name });
+		await handleAddIp(ip.id);
+		await queryClient.invalidateQueries({ queryKey: ["allIps"] });
+	};
+
+	const handleAddCharacter = async (characterId: string) => {
+		await addCharacterToMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			characterId,
+		);
+		props.onUpdate?.();
+
+		const character = allCharacters.data?.find(
+			(item) => item.id === characterId,
+		);
+		if (!character) {
 			return;
 		}
-		setter([...items, nextItem]);
-		toast.success(successMessage);
+
+		const currentIpIds = new Set((props.media.ips || []).map((ip) => ip.id));
+		for (const ip of character.ips) {
+			if (!currentIpIds.has(ip.id)) {
+				await handleAddIp(ip.id);
+			}
+		}
 	};
 
-	const removeAssociation = (
-		setter: (items: MockAssociation[]) => void,
-		items: MockAssociation[],
-		id: string,
-		successMessage: string,
-	) => {
-		setter(items.filter((item) => item.id !== id));
-		toast.success(successMessage);
+	const handleRemoveCharacter = async (characterId: string) => {
+		await removeCharacterFromMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			characterId,
+		);
+		props.onUpdate?.();
+	};
+
+	const handleCreateCharacter = async (name: string) => {
+		const character = await createCharacter({ name });
+		await handleAddCharacter(character.id);
+		await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
 	};
 
 	return (
@@ -97,7 +204,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<div class="flex gap-2">
 				<button
 					class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
-					onClick={() => toast.success("Mock AI extraction started")}
+					onClick={() =>
+						toast.error("Extract Tags (AI) is not implemented in Tauri yet.")
+					}
 					type="button"
 				>
 					<span class="i-lucide-sparkles" />
@@ -113,7 +222,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						{props.media.width} x {props.media.height}
 					</dd>
 					<dt class="font-medium text-gray-600">File Size</dt>
-					<dd class="text-gray-800">{formatBytes(props.media.fileSize)}</dd>
+					<dd class="text-gray-800">
+						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
+					</dd>
 					<dt class="font-medium text-gray-600">Status</dt>
 					<dd class="text-gray-800">{props.media.status}</dd>
 				</dl>
@@ -138,28 +249,30 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							No description
 						</div>
 					}
-					when={isEditingDescription() || description()}
+					when={isEditingDescription() || props.media.description}
 				>
 					<Show
 						fallback={
 							<div class="whitespace-pre-wrap rounded-md bg-gray-100 p-3 text-sm">
-								{description()}
+								{props.media.description}
 							</div>
 						}
 						when={isEditingDescription()}
 					>
-						<Textarea
+						<textarea
+							class="w-full rounded-md border border-gray-300 p-2 text-sm"
 							onInput={(event) =>
 								setDescriptionValue(event.currentTarget.value)
 							}
+							placeholder="Enter description..."
 							rows={6}
 							value={descriptionValue()}
 						/>
 						<div class="flex gap-2">
-							<Button onClick={saveDescription} size="sm">
+							<Button onClick={handleSaveDescription} size="sm">
 								Save
 							</Button>
-							<Button onClick={cancelDescription} size="sm" variant="outline">
+							<Button onClick={handleCancelEdit} size="sm" variant="outline">
 								Cancel
 							</Button>
 						</div>
@@ -167,7 +280,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</Show>
 			</div>
 
-			<Show when={props.media.urls.length > 0}>
+			<Show when={props.media.urls?.length > 0}>
 				<div class="space-y-2">
 					<h2 class="font-semibold text-lg">Source URLs</h2>
 					<ul class="space-y-1">
@@ -189,7 +302,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 			</Show>
 
-			<Show when={props.media.authors.length > 0}>
+			<Show when={props.media.authors?.length > 0}>
 				<div class="space-y-2">
 					<h2 class="font-semibold text-lg">Authors</h2>
 					<ul class="space-y-1">
@@ -213,98 +326,32 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 			<div class="space-y-4">
 				<AssociationManager
-					availableItems={mockProjects}
-					items={projects()}
-					onAdd={(id) => {
-						const project = mockProjects.find((item) => item.id === id);
-						if (project) {
-							addAssociation(
-								setProjects,
-								projects(),
-								{ id: project.id, name: project.name },
-								"Project added",
-							);
-						}
-					}}
-					onCreate={(name) => {
-						addAssociation(
-							setProjects,
-							projects(),
-							{ id: `project-${name}`, name },
-							"Project created",
-						);
-					}}
-					onRemove={(id) =>
-						removeAssociation(setProjects, projects(), id, "Project removed")
-					}
+					availableItems={allProjects.data || []}
+					isLoading={projects.isLoading || props.isUpdating}
+					items={projects.data || []}
+					onAdd={handleAddProject}
+					onCreate={handleCreateProject}
+					onRemove={handleRemoveProject}
 					title="Projects"
 				/>
+
 				<AssociationManager
-					availableItems={mockIps}
-					items={ips()}
-					onAdd={(id) => {
-						const ip = mockIps.find((item) => item.id === id);
-						if (ip) {
-							addAssociation(
-								setIps,
-								ips(),
-								{ id: ip.id, name: ip.name },
-								"IP added",
-							);
-						}
-					}}
-					onCreate={(name) => {
-						addAssociation(
-							setIps,
-							ips(),
-							{ id: `ip-${name}`, name },
-							"IP created",
-						);
-					}}
-					onRemove={(id) => removeAssociation(setIps, ips(), id, "IP removed")}
+					availableItems={allIps.data || []}
+					isLoading={props.isUpdating}
+					items={props.media.ips || []}
+					onAdd={handleAddIp}
+					onCreate={handleCreateIp}
+					onRemove={handleRemoveIp}
 					title="IPs"
 				/>
+
 				<AssociationManager
 					availableItems={availableCharacters()}
-					items={characters()}
-					onAdd={(id) => {
-						const character = mockCharacters.find((item) => item.id === id);
-						if (character) {
-							addAssociation(
-								setCharacters,
-								characters(),
-								{ id: character.id, name: character.name },
-								"Character added",
-							);
-							for (const ipId of character.ipIds) {
-								const ip = mockIps.find((item) => item.id === ipId);
-								if (ip) {
-									addAssociation(
-										setIps,
-										ips(),
-										{ id: ip.id, name: ip.name },
-										"Related IP added",
-									);
-								}
-							}
-						}
-					}}
-					onCreate={(name) => {
-						addAssociation(
-							setCharacters,
-							characters(),
-							{ id: `character-${name}`, name },
-							"Character created",
-						);
-					}}
-					onRemove={(id) =>
-						removeAssociation(
-							setCharacters,
-							characters(),
-							id,
-							"Character removed",
-						)
-					}
+					isLoading={props.isUpdating}
+					items={props.media.characters || []}
+					onAdd={handleAddCharacter}
+					onCreate={handleCreateCharacter}
+					onRemove={handleRemoveCharacter}
 					title="Characters"
 				/>
 			</div>
@@ -410,7 +457,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">Workflow:</span>
 										<ClipboardCopy
-											text={JSON.stringify(genInfo()?.workflow ?? {})}
+											text={
+												genInfo()?.workflow
+													? JSON.stringify(genInfo()?.workflow)
+													: ""
+											}
 										/>
 									</div>
 									<pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">

@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Card } from "@solid-imager/ui/card";
 import {
 	Checkbox,
@@ -5,16 +6,18 @@ import {
 	CheckboxLabel,
 } from "@solid-imager/ui/checkbox";
 import { Show } from "solid-js";
-import type { MockMedia } from "../../mocks/demo-data";
 
 type MediaCardItemProps = {
-	media: MockMedia;
+	media: Media;
 	selectable?: boolean;
 	selected?: boolean;
 	onToggle?: (id: string) => void;
 };
 
-function formatSize(bytes: number) {
+function formatSize(bytes: number | null) {
+	if (!bytes) {
+		return "N/A";
+	}
 	return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
