@@ -1,159 +1,249 @@
-import { Badge } from "@solid-imager/ui/badge";
+import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
 	CardContent,
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
-import { Input } from "@solid-imager/ui/input";
-import { PaginationControls } from "@solid-imager/ui/pagination-controls";
 import {
-	Switch,
-	SwitchControl,
-	SwitchLabel,
-	SwitchThumb,
-} from "@solid-imager/ui/switch";
-import { createFileRoute, Link, useParams } from "@tanstack/solid-router";
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@solid-imager/ui/dialog";
+import { toast } from "@solid-imager/ui/toast";
+import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { MediaGridItem } from "../../../components/media/media-grid-item";
+import {
+	SearchControlPanel,
+	type TauriSearchMode,
+	type TauriSortBy,
+	type TauriSortOrder,
+} from "../../../components/media/search-control-panel";
 import {
 	getMockMediaBySource,
 	getMockSource,
-	type MockMedia,
+	type MockMediaStatus,
+	mockSearchTags,
 } from "../../../mocks/demo-data";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
-	component: SourceDetailRoute,
+	component: SourceMediaRoute,
 });
 
-function SourceDetailRoute() {
+function SourceMediaRoute() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
-	const [query, setQuery] = createSignal("");
-	const [onlyTagged, setOnlyTagged] = createSignal(false);
-	const [currentPage, setCurrentPage] = createSignal(1);
-	const pageSize = 4;
+	const [mode, setMode] = createSignal<TauriSearchMode>("simple");
+	const [searchQuery, setSearchQuery] = createSignal("");
+	const [advancedQuery, setAdvancedQuery] = createSignal("");
+	const [selectedStatus, setSelectedStatus] =
+		createSignal<MockMediaStatus | null>(null);
+	const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
+	const [favoritesOnly, setFavoritesOnly] = createSignal(false);
+	const [sortBy, setSortBy] = createSignal<TauriSortBy>("updatedAt");
+	const [sortOrder, setSortOrder] = createSignal<TauriSortOrder>("desc");
 
 	const source = createMemo(() => getMockSource(params().mediaSourceId));
-	const filteredMedia = createMemo(() => {
-		const loweredQuery = query().trim().toLowerCase();
-		return getMockMediaBySource(params().mediaSourceId).filter((item) => {
-			if (onlyTagged() && item.status !== "tagged") {
-				return false;
-			}
-			if (!loweredQuery) {
-				return true;
-			}
-			return [item.title, item.summary, ...item.tags]
-				.join(" ")
-				.toLowerCase()
-				.includes(loweredQuery);
-		});
+	const advancedFilters = createMemo(() => {
+		if (mode() !== "pro") {
+			return {};
+		}
+		try {
+			return JSON.parse(advancedQuery()) as {
+				author?: string;
+				status?: MockMediaStatus;
+				tag?: string;
+			};
+		} catch {
+			return {};
+		}
 	});
 
-	const totalPages = createMemo(() =>
-		Math.max(1, Math.ceil(filteredMedia().length / pageSize)),
-	);
-	const pagedMedia = createMemo(() => {
-		const start = (currentPage() - 1) * pageSize;
-		return filteredMedia().slice(start, start + pageSize);
+	const mediaResults = createMemo(() => {
+		const loweredQuery = searchQuery().trim().toLowerCase();
+		const filters = advancedFilters();
+
+		return getMockMediaBySource(params().mediaSourceId)
+			.filter((media) => {
+				if (selectedStatus() && media.status !== selectedStatus()) {
+					return false;
+				}
+				if (favoritesOnly() && !media.favorite) {
+					return false;
+				}
+				if (
+					selectedTags().length > 0 &&
+					!selectedTags().every((tag) => media.tags.includes(tag))
+				) {
+					return false;
+				}
+				if (
+					filters.author &&
+					!media.authors.some((author) =>
+						author.name
+							.toLowerCase()
+							.includes(filters.author?.toLowerCase() ?? ""),
+					)
+				) {
+					return false;
+				}
+				if (filters.status && media.status !== filters.status) {
+					return false;
+				}
+				if (filters.tag && !media.tags.includes(filters.tag)) {
+					return false;
+				}
+				if (!loweredQuery) {
+					return true;
+				}
+				return [
+					media.fileName,
+					media.title,
+					media.summary,
+					...media.tags,
+					...media.authors.map((author) => author.name),
+				]
+					.join(" ")
+					.toLowerCase()
+					.includes(loweredQuery);
+			})
+			.slice()
+			.sort((left, right) => {
+				const direction = sortOrder() === "asc" ? 1 : -1;
+				switch (sortBy()) {
+					case "createdAt":
+					case "updatedAt":
+						return left.updatedAt.localeCompare(right.updatedAt) * direction;
+					case "fileName":
+						return left.fileName.localeCompare(right.fileName) * direction;
+					case "rating":
+						return (left.rating - right.rating) * direction;
+					default:
+						return 0;
+				}
+			});
 	});
+
+	const handleSearch = () => {
+		window.scrollTo({ top: 0 });
+	};
+
+	const handleModeChange = (nextMode: TauriSearchMode) => {
+		setMode(nextMode);
+		if (nextMode === "simple") {
+			setAdvancedQuery("");
+		} else if (!advancedQuery()) {
+			setAdvancedQuery('{ "status": "review", "tag": "reference" }');
+		}
+	};
+
+	const toggleTag = (tag: string) => {
+		setSelectedTags((tags) =>
+			tags.includes(tag) ? tags.filter((item) => item !== tag) : [...tags, tag],
+		);
+	};
+
+	const panel = (
+		<SearchControlPanel
+			advancedQuery={advancedQuery()}
+			context="source"
+			favoritesOnly={favoritesOnly()}
+			mode={mode()}
+			onAdvancedQueryChange={setAdvancedQuery}
+			onFavoritesOnlyChange={setFavoritesOnly}
+			onModeChange={handleModeChange}
+			onSearch={handleSearch}
+			onSortByChange={setSortBy}
+			onSortOrderChange={setSortOrder}
+			onStatusChange={setSelectedStatus}
+			onTagToggle={toggleTag}
+			onTextQueryChange={setSearchQuery}
+			searchQuery={searchQuery()}
+			selectedStatus={selectedStatus()}
+			selectedTags={selectedTags()}
+			sortBy={sortBy()}
+			sortOrder={sortOrder()}
+			tags={mockSearchTags}
+		/>
+	);
 
 	return (
-		<section class="grid gap-6">
-			<div class="flex items-start justify-between gap-4">
-				<div class="grid gap-3">
-					<Link class="text-sky-700 text-sm hover:underline" to="/sources">
-						Back to sources
-					</Link>
-					<h1 class="font-semibold text-4xl tracking-tight">
-						{source()?.name ?? "Unknown Source"}
+		<main class="container mx-auto p-4">
+			<div class="mb-8 flex items-center justify-between">
+				<div>
+					<h1 class="mb-2 font-bold text-3xl">
+						{source()?.name ?? "Media Source"}
 					</h1>
-					<p class="max-w-3xl text-muted-foreground">
-						{source()?.description ??
-							"This source was not found in the mock dataset."}
-					</p>
+					<p class="text-gray-600">{source()?.description}</p>
 				</div>
-				<Show when={source()}>
-					{(item) => <Badge variant="outline">{item().mediaCount} items</Badge>}
-				</Show>
-			</div>
-
-			<div class="grid gap-4 rounded-2xl border bg-card p-5 md:grid-cols-[1fr_auto] md:items-end">
-				<div class="grid gap-2">
-					<label class="font-medium text-sm" for="source-search">
-						Filter media
-					</label>
-					<Input
-						id="source-search"
-						onInput={(event) => {
-							setQuery(event.currentTarget.value);
-							setCurrentPage(1);
-						}}
-						placeholder="Search within this source"
-						value={query()}
-					/>
-				</div>
-				<Switch checked={onlyTagged()} onChange={setOnlyTagged}>
-					<div class="flex items-center gap-3">
-						<SwitchControl>
-							<SwitchThumb />
-						</SwitchControl>
-						<SwitchLabel>Only tagged</SwitchLabel>
-					</div>
-				</Switch>
-			</div>
-
-			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-				<For each={pagedMedia()}>
-					{(item) => <SourceMediaCard item={item} />}
-				</For>
-			</div>
-
-			<Show when={pagedMedia().length === 0}>
-				<Card>
-					<CardContent class="py-10 text-center text-muted-foreground">
-						No media matched this source filter.
-					</CardContent>
-				</Card>
-			</Show>
-
-			<PaginationControls
-				class="justify-end"
-				currentPage={currentPage()}
-				onPageChange={setCurrentPage}
-				totalPages={totalPages()}
-			/>
-		</section>
-	);
-}
-
-function SourceMediaCard(props: { item: MockMedia }) {
-	return (
-		<Card class="overflow-hidden">
-			<div class="h-28 w-full" style={{ background: props.item.accent }} />
-			<CardHeader class="gap-3">
-				<div class="flex items-center justify-between gap-3">
-					<CardTitle class="text-xl">{props.item.title}</CardTitle>
-					<Badge variant="outline">{props.item.status}</Badge>
-				</div>
-				<p class="text-muted-foreground text-sm">{props.item.summary}</p>
-			</CardHeader>
-			<CardContent class="grid gap-3">
 				<div class="flex flex-wrap gap-2">
-					<For each={props.item.tags}>
-						{(tag) => <Badge variant="secondary">{tag}</Badge>}
-					</For>
+					<Button onClick={() => toast.success("Mock upload flow opened")}>
+						Add Media
+					</Button>
+					<Button
+						onClick={() => toast.success("Mock JSON dump download started")}
+						variant="outline"
+					>
+						Dump JSON
+					</Button>
+					<Button
+						onClick={() => toast.success("Mock ZIP dump download started")}
+						variant="outline"
+					>
+						Dump ZIP
+					</Button>
+					<Button
+						onClick={() => toast.success("Mock restore flow opened")}
+						variant="outline"
+					>
+						Restore
+					</Button>
+					<div class="md:hidden">
+						<Dialog>
+							<DialogTrigger as={Button} variant="outline">
+								Filters
+							</DialogTrigger>
+							<DialogContent class="max-h-[80vh] overflow-y-auto">
+								<DialogHeader>
+									<DialogTitle>検索フィルター</DialogTitle>
+								</DialogHeader>
+								<div class="space-y-4">{panel}</div>
+							</DialogContent>
+						</Dialog>
+					</div>
 				</div>
-				<Link
-					class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
-					params={{
-						mediaId: props.item.id,
-						mediaSourceId: props.item.sourceId,
-					}}
-					to="/sources/$mediaSourceId/$mediaId"
-				>
-					Open Detail
-				</Link>
-			</CardContent>
-		</Card>
+			</div>
+
+			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
+				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+					<CardHeader>
+						<CardTitle>検索フィルター</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">{panel}</CardContent>
+				</Card>
+
+				<div class="space-y-4">
+					<div class="mb-4 flex items-center justify-between">
+						<p class="text-gray-600 text-sm">
+							{mediaResults().length} 件の結果
+						</p>
+					</div>
+
+					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+						<For each={mediaResults()}>
+							{(media) => <MediaGridItem media={media} />}
+						</For>
+					</div>
+
+					<Show when={mediaResults().length === 0}>
+						<div class="py-12 text-center text-gray-500">
+							検索結果が見つかりませんでした
+						</div>
+					</Show>
+				</div>
+			</div>
+		</main>
 	);
 }

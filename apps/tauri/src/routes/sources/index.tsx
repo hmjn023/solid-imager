@@ -1,25 +1,11 @@
-import { Badge } from "@solid-imager/ui/badge";
-import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@solid-imager/ui/dialog";
-import { Input } from "@solid-imager/ui/input";
-import { Label } from "@solid-imager/ui/label";
-import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
-import { createFileRoute, Link } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal, For } from "solid-js";
-import { type MockSource, mockSources } from "../../mocks/demo-data";
+import { SourceCard } from "../../components/source-card";
+import { SourceDeleteModal } from "../../components/source-delete-modal";
+import { SourceFormModal } from "../../components/source-form-modal";
+import type { MockSource } from "../../mocks/demo-data";
+import { mockSources } from "../../mocks/demo-data";
 
 export const Route = createFileRoute("/sources/")({
 	component: SourcesRoute,
@@ -27,184 +13,146 @@ export const Route = createFileRoute("/sources/")({
 
 function SourcesRoute() {
 	const [sources, setSources] = createSignal(
-		mockSources.map((item) => ({ ...item })),
+		mockSources.map((source) => ({ ...source })),
 	);
-	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
-	const [editingId, setEditingId] = createSignal<string | null>(null);
-	const [draftName, setDraftName] = createSignal("");
-	const [draftPath, setDraftPath] = createSignal("");
-	const [draftDescription, setDraftDescription] = createSignal("");
+	const [showFormModal, setShowFormModal] = createSignal(false);
+	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
+	const [editingSource, setEditingSource] = createSignal<MockSource | null>(
+		null,
+	);
+	const [deletingSource, setDeletingSource] = createSignal<MockSource | null>(
+		null,
+	);
+	const [isSyncing, setIsSyncing] = createSignal(false);
 
-	const openCreate = () => {
-		setEditingId(null);
-		setDraftName("");
-		setDraftPath("");
-		setDraftDescription("");
-		setIsDialogOpen(true);
+	const handleAddSource = () => {
+		setEditingSource(null);
+		setShowFormModal(true);
 	};
 
-	const openEdit = (source: MockSource) => {
-		setEditingId(source.id);
-		setDraftName(source.name);
-		setDraftPath(source.path);
-		setDraftDescription(source.description);
-		setIsDialogOpen(true);
+	const handleEditSource = (source: MockSource) => {
+		setEditingSource(source);
+		setShowFormModal(true);
 	};
 
-	const saveSource = () => {
-		const payload: MockSource = {
-			id: editingId() ?? `source-${Date.now()}`,
-			name: draftName() || "Untitled Source",
-			path: draftPath() || "/mnt/media/new-source",
-			description: draftDescription() || "Added from the Tauri mock page.",
-			type: "folder",
-			status: "idle",
-			lastSync: "just now",
-			mediaCount: 0,
-			accent: "linear-gradient(135deg, #164e63, #38bdf8)",
-		};
-
-		setSources((items) =>
-			editingId()
-				? items.map((item) => (item.id === payload.id ? payload : item))
-				: [payload, ...items],
-		);
-		setIsDialogOpen(false);
-		toast.success(`${editingId() ? "Updated" : "Created"} source card`);
+	const handleFormSubmit = (sourceData: {
+		connectionInfo: MockSource["connectionInfo"];
+		description: string | null;
+		name: string;
+		type: MockSource["type"];
+	}) => {
+		if (editingSource()?.id) {
+			setSources((items) =>
+				items.map((item) =>
+					item.id === editingSource()?.id
+						? {
+								...item,
+								...sourceData,
+							}
+						: item,
+				),
+			);
+			toast.success("Source updated");
+		} else {
+			setSources((items) => [
+				{
+					...sourceData,
+					id: `source-${Date.now()}`,
+					lastSync: "just now",
+					mediaCount: 0,
+					status: "idle",
+				},
+				...items,
+			]);
+			toast.success("Source created");
+		}
+		setShowFormModal(false);
 	};
 
-	const deleteSource = (sourceId: string) => {
+	const handleDeleteSource = (source: MockSource) => {
+		setDeletingSource(source);
+		setShowDeleteModal(true);
+	};
+
+	const handleDeleteConfirm = (sourceId: string) => {
 		setSources((items) => items.filter((item) => item.id !== sourceId));
-		toast.success("Deleted source card");
+		setShowDeleteModal(false);
+		setDeletingSource(null);
+		toast.success("Source deleted");
 	};
 
-	const syncSource = (source: MockSource) => {
-		toast.success(`Mock sync started for ${source.name}`);
+	const handleSyncSource = (source: MockSource) => {
+		if (isSyncing()) {
+			return;
+		}
+		setIsSyncing(true);
+		toast.info(`Starting sync for ${source.name}...`);
+		window.setTimeout(() => {
+			setIsSyncing(false);
+			toast.success(`Sync finished for ${source.name}`);
+		}, 600);
 	};
 
-	const syncAll = () => {
-		toast.success(`Mock sync started for ${sources().length} sources`);
+	const handleSyncAll = () => {
+		if (isSyncing() || sources().length === 0) {
+			return;
+		}
+		setIsSyncing(true);
+		toast.info("Starting sync for all sources...");
+		window.setTimeout(() => {
+			setIsSyncing(false);
+			toast.success("Sync finished for all sources");
+		}, 700);
 	};
 
 	return (
-		<section class="grid gap-6">
-			<div class="flex items-center justify-between gap-4">
-				<div class="grid gap-2">
-					<h1 class="font-semibold text-4xl tracking-tight">Media Sources</h1>
-					<p class="text-muted-foreground">
-						Source card, dialog, sync action, and detail route transitions are
-						available here with mock state only.
-					</p>
-				</div>
-				<div class="flex gap-2">
-					<Button onClick={syncAll} variant="outline">
-						Sync All
-					</Button>
-					<Button onClick={openCreate}>Add Source</Button>
+		<div class="container mx-auto p-6">
+			<div class="mb-6 flex items-center justify-between">
+				<h1 class="font-bold text-3xl">Media Sources</h1>
+				<div class="flex items-center gap-2">
+					<button
+						class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+						disabled={isSyncing() || sources().length === 0}
+						onClick={handleSyncAll}
+						type="button"
+					>
+						{isSyncing() ? "Syncing..." : "Sync All"}
+					</button>
+					<button
+						class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
+						onClick={handleAddSource}
+						type="button"
+					>
+						Add Source
+					</button>
 				</div>
 			</div>
 
-			<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 				<For each={sources()}>
 					{(source) => (
-						<Card class="overflow-hidden">
-							<div class="h-28 w-full" style={{ background: source.accent }} />
-							<CardHeader class="gap-3">
-								<div class="flex items-center justify-between gap-3">
-									<CardTitle>{source.name}</CardTitle>
-									<Badge
-										variant={
-											source.status === "attention"
-												? "destructive"
-												: source.status === "watching"
-													? "secondary"
-													: "outline"
-										}
-									>
-										{source.status}
-									</Badge>
-								</div>
-								<p class="text-muted-foreground text-sm">
-									{source.description}
-								</p>
-							</CardHeader>
-							<CardContent class="grid gap-4">
-								<div class="grid gap-1 text-muted-foreground text-sm">
-									<span>{source.path}</span>
-									<span>
-										{source.mediaCount} items · last sync {source.lastSync}
-									</span>
-								</div>
-								<div class="flex flex-wrap gap-2">
-									<Link
-										class="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 font-medium text-primary-foreground text-sm hover:bg-primary/90"
-										params={{ mediaSourceId: source.id }}
-										to="/sources/$mediaSourceId"
-									>
-										Open
-									</Link>
-									<Button onClick={() => syncSource(source)} variant="outline">
-										Sync
-									</Button>
-									<Button onClick={() => openEdit(source)} variant="outline">
-										Edit
-									</Button>
-									<Button
-										onClick={() => deleteSource(source.id)}
-										variant="destructive"
-									>
-										Delete
-									</Button>
-								</div>
-							</CardContent>
-						</Card>
+						<SourceCard
+							mediaSource={source}
+							onDelete={handleDeleteSource}
+							onEdit={handleEditSource}
+							onSync={handleSyncSource}
+						/>
 					)}
 				</For>
 			</div>
 
-			<Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen()}>
-				<DialogContent>
-					<DialogHeader>
-						<DialogTitle>
-							{editingId() ? "Edit source" : "Create source"}
-						</DialogTitle>
-					</DialogHeader>
-					<div class="grid gap-4">
-						<div class="grid gap-2">
-							<Label for="source-name">Name</Label>
-							<Input
-								id="source-name"
-								onInput={(event) => setDraftName(event.currentTarget.value)}
-								value={draftName()}
-							/>
-						</div>
-						<div class="grid gap-2">
-							<Label for="source-path">Path</Label>
-							<Input
-								id="source-path"
-								onInput={(event) => setDraftPath(event.currentTarget.value)}
-								value={draftPath()}
-							/>
-						</div>
-						<div class="grid gap-2">
-							<Label for="source-description">Description</Label>
-							<Textarea
-								id="source-description"
-								onInput={(event) =>
-									setDraftDescription(event.currentTarget.value)
-								}
-								value={draftDescription()}
-							/>
-						</div>
-					</div>
-					<DialogFooter>
-						<Button onClick={() => setIsDialogOpen(false)} variant="outline">
-							Cancel
-						</Button>
-						<Button onClick={saveSource}>Save</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</section>
+			<SourceFormModal
+				editingSource={editingSource()}
+				isOpen={showFormModal()}
+				onClose={() => setShowFormModal(false)}
+				onSubmit={handleFormSubmit}
+			/>
+			<SourceDeleteModal
+				isOpen={showDeleteModal()}
+				onClose={() => setShowDeleteModal(false)}
+				onConfirm={handleDeleteConfirm}
+				sourceToDelete={deletingSource()}
+			/>
+		</div>
 	);
 }

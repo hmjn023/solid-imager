@@ -76,7 +76,7 @@ function ManagerRoute() {
 	let timer: ReturnType<typeof setInterval> | undefined;
 
 	const taggingCandidates = createMemo(() =>
-		mockMedia.filter((item) => item.sourceId === selectedSourceId()),
+		mockMedia.filter((item) => item.mediaSourceId === selectedSourceId()),
 	);
 
 	const openCreateDialog = () => {
