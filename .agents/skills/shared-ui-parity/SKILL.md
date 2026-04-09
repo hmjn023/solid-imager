@@ -1,6 +1,6 @@
 ---
 name: shared-ui-parity
-description: `apps/server` と `apps/tauri` の UI 構成を同期するための手順。どちらか片側の route や UI コンポーネントを変更し、もう片側への移植・追従・差分確認が必要なときに使用してください。
+description: "`apps/server` と `apps/tauri` の UI 構成を同期するための手順。どちらか片側の route や UI コンポーネントを変更し、もう片側への移植・追従・差分確認が必要なときに使用してください。"
 ---
 
 # shared-ui-parity
