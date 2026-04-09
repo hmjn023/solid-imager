@@ -1,13 +1,17 @@
+mod backend;
+
 use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use backend::LocalBackend;
 use chrono::{DateTime, Utc};
 use image::codecs::jpeg::JpegEncoder;
 use image::{DynamicImage, ImageFormat, ImageReader};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tauri::{Manager, State};
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -54,6 +58,10 @@ struct MediaDimensions {
 struct ImageHeaderInfo {
 	dimensions: MediaDimensions,
 	mime_type: Option<String>,
+}
+
+struct AppState {
+	backend: LocalBackend,
 }
 
 #[derive(Deserialize)]
@@ -368,8 +376,13 @@ fn image_generate_thumbnail(
 }
 
 #[tauri::command]
-fn api_call(procedure: String, _input: Option<Value>) -> Result<Value, String> {
-	Err(format!("Unsupported Tauri API procedure: {procedure}"))
+fn api_call(
+	app: tauri::AppHandle,
+	state: State<'_, AppState>,
+	procedure: String,
+	input: Option<Value>,
+) -> Result<Value, String> {
+	state.backend.handle_call(&app, &procedure, input)
 }
 
 #[cfg(target_os = "linux")]
@@ -388,6 +401,11 @@ fn main() {
 	configure_linux_webview_environment();
 
 	tauri::Builder::default()
+		.setup(|app| {
+			let backend = LocalBackend::new(&app.handle())?;
+			app.manage(AppState { backend });
+			Ok(())
+		})
 		.invoke_handler(tauri::generate_handler![
 			api_call,
 			fs_exists,

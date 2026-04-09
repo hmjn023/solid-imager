@@ -17,6 +17,7 @@
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "1.167.12",
