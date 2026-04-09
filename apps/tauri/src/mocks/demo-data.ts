@@ -76,6 +76,7 @@ export interface MockMedia {
 	title: string;
 	updatedAt: string;
 	urls: MockMediaUrl[];
+	viewCount: number;
 	width: number;
 	generationInfo?: MockGenerationInfo;
 }
@@ -267,6 +268,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Aurora Room",
 		updatedAt: "2026-04-09 09:20",
 		urls: [{ url: "https://example.com/aurora-room" }],
+		viewCount: 182,
 		width: 1536,
 	},
 	{
@@ -307,6 +309,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Rain Alley",
 		updatedAt: "2026-04-09 08:52",
 		urls: [{ url: "https://example.com/rain-alley" }],
+		viewCount: 146,
 		width: 1216,
 	},
 	{
@@ -345,6 +348,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Botanical Study",
 		updatedAt: "2026-04-08 21:13",
 		urls: [{ url: "https://example.com/botanical-study" }],
+		viewCount: 39,
 		width: 1024,
 	},
 	{
@@ -385,6 +389,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Hero Sheet",
 		updatedAt: "2026-04-08 18:31",
 		urls: [{ url: "https://example.com/hero-sheet" }],
+		viewCount: 221,
 		width: 2048,
 	},
 	{
@@ -422,6 +427,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Prop Board",
 		updatedAt: "2026-04-08 14:05",
 		urls: [{ url: "https://example.com/prop-board" }],
+		viewCount: 87,
 		width: 1600,
 	},
 	{
@@ -462,6 +468,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Courtyard Dawn",
 		updatedAt: "2026-04-08 11:10",
 		urls: [{ url: "https://example.com/courtyard-dawn" }],
+		viewCount: 28,
 		width: 1344,
 	},
 	{
@@ -502,6 +509,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Signal Lab",
 		updatedAt: "2026-04-07 23:44",
 		urls: [{ url: "https://example.com/signal-lab" }],
+		viewCount: 113,
 		width: 1792,
 	},
 	{
@@ -541,6 +549,7 @@ export const mockMedia: MockMedia[] = [
 		title: "Mecha Note",
 		updatedAt: "2026-04-07 20:02",
 		urls: [{ url: "https://example.com/mecha-note" }],
+		viewCount: 167,
 		width: 1400,
 	},
 ];

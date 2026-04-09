@@ -5,7 +5,14 @@ import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
 import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
 import { createMemo, createSignal, For, Show } from "solid-js";
-import type { MockMedia } from "../../mocks/demo-data";
+import {
+	type MockAssociation,
+	type MockMedia,
+	mockCharacters,
+	mockIps,
+	mockProjects,
+} from "../../mocks/demo-data";
+import { AssociationManager } from "./association-manager";
 
 type MediaSidebarProps = {
 	media: MockMedia;
@@ -27,17 +34,57 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description,
 	);
+	const [description, setDescription] = createSignal(props.media.description);
+	const [projects, setProjects] = createSignal(props.media.projects);
+	const [ips, setIps] = createSignal(props.media.ips);
+	const [characters, setCharacters] = createSignal(props.media.characters);
 	const positiveTags = createMemo(() => props.media.positiveTags);
 	const negativeTags = createMemo(() => props.media.negativeTags);
+	const genInfo = createMemo(() => props.media.generationInfo);
+
+	const availableCharacters = createMemo(() => {
+		const currentIps = ips();
+		if (currentIps.length === 0) {
+			return mockCharacters;
+		}
+		const ipIds = new Set(currentIps.map((item) => item.id));
+		return mockCharacters.filter((character) =>
+			character.ipIds.some((ipId) => ipIds.has(ipId)),
+		);
+	});
 
 	const saveDescription = () => {
+		setDescription(descriptionValue());
 		setIsEditingDescription(false);
 		toast.success("Description updated in mock sidebar");
 	};
 
 	const cancelDescription = () => {
-		setDescriptionValue(props.media.description);
+		setDescriptionValue(description());
 		setIsEditingDescription(false);
+	};
+
+	const addAssociation = (
+		setter: (items: MockAssociation[]) => void,
+		items: MockAssociation[],
+		nextItem: MockAssociation,
+		successMessage: string,
+	) => {
+		if (items.some((item) => item.id === nextItem.id)) {
+			return;
+		}
+		setter([...items, nextItem]);
+		toast.success(successMessage);
+	};
+
+	const removeAssociation = (
+		setter: (items: MockAssociation[]) => void,
+		items: MockAssociation[],
+		id: string,
+		successMessage: string,
+	) => {
+		setter(items.filter((item) => item.id !== id));
+		toast.success(successMessage);
 	};
 
 	return (
@@ -53,6 +100,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					onClick={() => toast.success("Mock AI extraction started")}
 					type="button"
 				>
+					<span class="i-lucide-sparkles" />
 					Extract Tags (AI)
 				</button>
 			</div>
@@ -90,12 +138,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							No description
 						</div>
 					}
-					when={isEditingDescription() || props.media.description}
+					when={isEditingDescription() || description()}
 				>
 					<Show
 						fallback={
 							<div class="whitespace-pre-wrap rounded-md bg-gray-100 p-3 text-sm">
-								{props.media.description}
+								{description()}
 							</div>
 						}
 						when={isEditingDescription()}
@@ -164,9 +212,101 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</Show>
 
 			<div class="space-y-4">
-				<AssociationSection items={props.media.projects} title="Projects" />
-				<AssociationSection items={props.media.ips} title="IPs" />
-				<AssociationSection items={props.media.characters} title="Characters" />
+				<AssociationManager
+					availableItems={mockProjects}
+					items={projects()}
+					onAdd={(id) => {
+						const project = mockProjects.find((item) => item.id === id);
+						if (project) {
+							addAssociation(
+								setProjects,
+								projects(),
+								{ id: project.id, name: project.name },
+								"Project added",
+							);
+						}
+					}}
+					onCreate={(name) => {
+						addAssociation(
+							setProjects,
+							projects(),
+							{ id: `project-${name}`, name },
+							"Project created",
+						);
+					}}
+					onRemove={(id) =>
+						removeAssociation(setProjects, projects(), id, "Project removed")
+					}
+					title="Projects"
+				/>
+				<AssociationManager
+					availableItems={mockIps}
+					items={ips()}
+					onAdd={(id) => {
+						const ip = mockIps.find((item) => item.id === id);
+						if (ip) {
+							addAssociation(
+								setIps,
+								ips(),
+								{ id: ip.id, name: ip.name },
+								"IP added",
+							);
+						}
+					}}
+					onCreate={(name) => {
+						addAssociation(
+							setIps,
+							ips(),
+							{ id: `ip-${name}`, name },
+							"IP created",
+						);
+					}}
+					onRemove={(id) => removeAssociation(setIps, ips(), id, "IP removed")}
+					title="IPs"
+				/>
+				<AssociationManager
+					availableItems={availableCharacters()}
+					items={characters()}
+					onAdd={(id) => {
+						const character = mockCharacters.find((item) => item.id === id);
+						if (character) {
+							addAssociation(
+								setCharacters,
+								characters(),
+								{ id: character.id, name: character.name },
+								"Character added",
+							);
+							for (const ipId of character.ipIds) {
+								const ip = mockIps.find((item) => item.id === ipId);
+								if (ip) {
+									addAssociation(
+										setIps,
+										ips(),
+										{ id: ip.id, name: ip.name },
+										"Related IP added",
+									);
+								}
+							}
+						}
+					}}
+					onCreate={(name) => {
+						addAssociation(
+							setCharacters,
+							characters(),
+							{ id: `character-${name}`, name },
+							"Character created",
+						);
+					}}
+					onRemove={(id) =>
+						removeAssociation(
+							setCharacters,
+							characters(),
+							id,
+							"Character removed",
+						)
+					}
+					title="Characters"
+				/>
 			</div>
 
 			<Show when={positiveTags().length > 0}>
@@ -174,16 +314,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<h2 class="font-semibold text-lg">Positive Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
-							{(tag) => (
-								<Badge title={`Source: ${tag.source}`} variant="secondary">
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
-							)}
+							{(tag) => {
+								let badgeClass = "";
+								if (tag.source === "AI") {
+									badgeClass =
+										"bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+								} else if (tag.source === "comfyui_workflow") {
+									badgeClass =
+										"bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+								}
+								return (
+									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
+										{tag.name}
+										<ClipboardCopy
+											class="ml-1.5 p-0.5"
+											iconSize={12}
+											text={tag.name}
+										/>
+									</Badge>
+								);
+							}}
 						</For>
 					</div>
 				</div>
@@ -194,73 +344,77 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<h2 class="font-semibold text-lg">Negative Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
-							{(tag) => (
-								<Badge title={`Source: ${tag.source}`} variant="destructive">
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
-							)}
+							{(tag) => {
+								let badgeClass = "";
+								if (tag.source === "AI") {
+									badgeClass =
+										"bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
+								} else if (tag.source === "comfyui_workflow") {
+									badgeClass =
+										"bg-green-50 text-green-800 hover:bg-green-100 border-green-200 border";
+								}
+								return (
+									<Badge
+										class={badgeClass}
+										title={`Source: ${tag.source}`}
+										variant="destructive"
+									>
+										{tag.name}
+										<ClipboardCopy
+											class="ml-1.5 p-0.5"
+											iconSize={12}
+											text={tag.name}
+										/>
+									</Badge>
+								);
+							}}
 						</For>
 					</div>
 				</div>
 			</Show>
 
-			<Show when={props.media.generationInfo}>
+			<Show when={genInfo()}>
 				<div class="space-y-2">
 					<Collapsible.Root>
 						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-lg">
 							Generation Info
-							<span class="text-sm">Toggle</span>
+							<span class="i-lucide-chevron-down ui-expanded:rotate-180 transition-transform" />
 						</Collapsible.Trigger>
 						<Collapsible.Content class="space-y-2 text-sm">
-							<Show when={props.media.generationInfo?.prompt}>
+							<Show when={genInfo()?.prompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">Prompt:</span>
-										<ClipboardCopy
-											text={props.media.generationInfo?.prompt ?? ""}
-										/>
+										<ClipboardCopy text={genInfo()?.prompt ?? ""} />
 									</div>
 									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
-										{props.media.generationInfo?.prompt}
+										{genInfo()?.prompt}
 									</p>
 								</div>
 							</Show>
-							<Show when={props.media.generationInfo?.negativePrompt}>
+							<Show when={genInfo()?.negativePrompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">
 											Negative Prompt:
 										</span>
-										<ClipboardCopy
-											text={props.media.generationInfo?.negativePrompt ?? ""}
-										/>
+										<ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
 									</div>
 									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
-										{props.media.generationInfo?.negativePrompt}
+										{genInfo()?.negativePrompt}
 									</p>
 								</div>
 							</Show>
-							<Show when={props.media.generationInfo?.workflow}>
+							<Show when={genInfo()?.workflow}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">Workflow:</span>
 										<ClipboardCopy
-											text={JSON.stringify(
-												props.media.generationInfo?.workflow ?? {},
-											)}
+											text={JSON.stringify(genInfo()?.workflow ?? {})}
 										/>
 									</div>
 									<pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
-										{JSON.stringify(
-											props.media.generationInfo?.workflow,
-											null,
-											2,
-										)}
+										{JSON.stringify(genInfo()?.workflow, null, 2)}
 									</pre>
 								</div>
 							</Show>
@@ -269,24 +423,5 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 			</Show>
 		</aside>
-	);
-}
-
-function AssociationSection(props: {
-	items: MockMedia["projects"];
-	title: string;
-}) {
-	return (
-		<div class="space-y-2">
-			<h2 class="font-semibold text-lg">{props.title}</h2>
-			<div class="flex flex-wrap gap-2">
-				<For each={props.items}>
-					{(item) => <Badge variant="outline">{item.name}</Badge>}
-				</For>
-				<Show when={props.items.length === 0}>
-					<span class="text-gray-500 text-sm">No items assigned</span>
-				</Show>
-			</div>
-		</div>
 	);
 }

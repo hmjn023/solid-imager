@@ -15,17 +15,20 @@ import {
 import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { createStore } from "solid-js/store";
 import { MediaGridItem } from "../../../components/media/media-grid-item";
 import {
 	SearchControlPanel,
 	type TauriSearchMode,
 	type TauriSortBy,
-	type TauriSortOrder,
 } from "../../../components/media/search-control-panel";
+import type { TauriSearchFilterState } from "../../../components/media/search-filters";
 import {
 	getMockMediaBySource,
 	getMockSource,
-	type MockMediaStatus,
+	mockCharacters,
+	mockIps,
+	mockProjects,
 	mockSearchTags,
 } from "../../../mocks/demo-data";
 
@@ -36,14 +39,20 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 function SourceMediaRoute() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const [mode, setMode] = createSignal<TauriSearchMode>("simple");
-	const [searchQuery, setSearchQuery] = createSignal("");
 	const [advancedQuery, setAdvancedQuery] = createSignal("");
-	const [selectedStatus, setSelectedStatus] =
-		createSignal<MockMediaStatus | null>(null);
-	const [selectedTags, setSelectedTags] = createSignal<string[]>([]);
-	const [favoritesOnly, setFavoritesOnly] = createSignal(false);
-	const [sortBy, setSortBy] = createSignal<TauriSortBy>("updatedAt");
-	const [sortOrder, setSortOrder] = createSignal<TauriSortOrder>("desc");
+	const [state, setState] = createStore<TauriSearchFilterState>({
+		searchQuery: "",
+		selectedTags: [],
+		excludeTags: [],
+		selectedProjects: [],
+		selectedIps: [],
+		selectedCharacters: [],
+		selectedAuthors: [],
+		selectedStatus: null,
+		favoritesOnly: false,
+		sortBy: "date",
+		sortOrder: "desc",
+	});
 
 	const source = createMemo(() => getMockSource(params().mediaSourceId));
 	const advancedFilters = createMemo(() => {
@@ -52,40 +61,95 @@ function SourceMediaRoute() {
 		}
 		try {
 			return JSON.parse(advancedQuery()) as {
-				author?: string;
-				status?: MockMediaStatus;
+				authorId?: string;
+				status?: "queued" | "review" | "tagged";
 				tag?: string;
+				projectId?: string;
+				favorite?: boolean;
 			};
 		} catch {
 			return {};
 		}
 	});
 
+	const filterData = createMemo(() => {
+		const mediaList = getMockMediaBySource(params().mediaSourceId);
+		const authorMap = new Map();
+
+		for (const media of mediaList) {
+			for (const author of media.authors) {
+				authorMap.set(author.id, author);
+			}
+		}
+
+		return {
+			authors: Array.from(authorMap.values()),
+			characters: mockCharacters.map((item) => ({
+				id: item.id,
+				name: item.name,
+			})),
+			ips: mockIps.map((item) => ({ id: item.id, name: item.name })),
+			projects: mockProjects.map((item) => ({ id: item.id, name: item.name })),
+			tags: mockSearchTags,
+		};
+	});
+
 	const mediaResults = createMemo(() => {
-		const loweredQuery = searchQuery().trim().toLowerCase();
+		const loweredQuery = state.searchQuery.trim().toLowerCase();
 		const filters = advancedFilters();
 
 		return getMockMediaBySource(params().mediaSourceId)
 			.filter((media) => {
-				if (selectedStatus() && media.status !== selectedStatus()) {
+				if (state.selectedStatus && media.status !== state.selectedStatus) {
 					return false;
 				}
-				if (favoritesOnly() && !media.favorite) {
+				if (state.favoritesOnly && !media.favorite) {
 					return false;
 				}
 				if (
-					selectedTags().length > 0 &&
-					!selectedTags().every((tag) => media.tags.includes(tag))
+					state.selectedTags.length > 0 &&
+					!state.selectedTags.every((tag) => media.tags.includes(tag))
+				) {
+					return false;
+				}
+				if (state.excludeTags.some((tag) => media.tags.includes(tag))) {
+					return false;
+				}
+				if (
+					state.selectedProjects.length > 0 &&
+					!state.selectedProjects.every((projectId) =>
+						media.projects.some((project) => project.id === projectId),
+					)
 				) {
 					return false;
 				}
 				if (
-					filters.author &&
-					!media.authors.some((author) =>
-						author.name
-							.toLowerCase()
-							.includes(filters.author?.toLowerCase() ?? ""),
+					state.selectedIps.length > 0 &&
+					!state.selectedIps.every((ipId) =>
+						media.ips.some((ip) => ip.id === ipId),
 					)
+				) {
+					return false;
+				}
+				if (
+					state.selectedCharacters.length > 0 &&
+					!state.selectedCharacters.every((characterId) =>
+						media.characters.some((character) => character.id === characterId),
+					)
+				) {
+					return false;
+				}
+				if (
+					state.selectedAuthors.length > 0 &&
+					!state.selectedAuthors.every((authorId) =>
+						media.authors.some((author) => author.id === authorId),
+					)
+				) {
+					return false;
+				}
+				if (
+					filters.authorId &&
+					!media.authors.some((author) => author.id === filters.authorId)
 				) {
 					return false;
 				}
@@ -93,6 +157,18 @@ function SourceMediaRoute() {
 					return false;
 				}
 				if (filters.tag && !media.tags.includes(filters.tag)) {
+					return false;
+				}
+				if (
+					filters.projectId &&
+					!media.projects.some((project) => project.id === filters.projectId)
+				) {
+					return false;
+				}
+				if (
+					filters.favorite !== undefined &&
+					media.favorite !== filters.favorite
+				) {
 					return false;
 				}
 				if (!loweredQuery) {
@@ -104,6 +180,9 @@ function SourceMediaRoute() {
 					media.summary,
 					...media.tags,
 					...media.authors.map((author) => author.name),
+					...media.projects.map((project) => project.name),
+					...media.ips.map((ip) => ip.name),
+					...media.characters.map((character) => character.name),
 				]
 					.join(" ")
 					.toLowerCase()
@@ -111,15 +190,18 @@ function SourceMediaRoute() {
 			})
 			.slice()
 			.sort((left, right) => {
-				const direction = sortOrder() === "asc" ? 1 : -1;
-				switch (sortBy()) {
-					case "createdAt":
-					case "updatedAt":
-						return left.updatedAt.localeCompare(right.updatedAt) * direction;
-					case "fileName":
+				const direction = state.sortOrder === "asc" ? 1 : -1;
+				switch (state.sortBy as TauriSortBy) {
+					case "date":
+						return left.modifiedAt.localeCompare(right.modifiedAt) * direction;
+					case "name":
 						return left.fileName.localeCompare(right.fileName) * direction;
+					case "size":
+						return (left.fileSize - right.fileSize) * direction;
 					case "rating":
 						return (left.rating - right.rating) * direction;
+					case "viewCount":
+						return (left.viewCount - right.viewCount) * direction;
 					default:
 						return 0;
 				}
@@ -139,33 +221,17 @@ function SourceMediaRoute() {
 		}
 	};
 
-	const toggleTag = (tag: string) => {
-		setSelectedTags((tags) =>
-			tags.includes(tag) ? tags.filter((item) => item !== tag) : [...tags, tag],
-		);
-	};
-
 	const panel = (
 		<SearchControlPanel
 			advancedQuery={advancedQuery()}
 			context="source"
-			favoritesOnly={favoritesOnly()}
+			filterData={filterData()}
 			mode={mode()}
 			onAdvancedQueryChange={setAdvancedQuery}
-			onFavoritesOnlyChange={setFavoritesOnly}
 			onModeChange={handleModeChange}
 			onSearch={handleSearch}
-			onSortByChange={setSortBy}
-			onSortOrderChange={setSortOrder}
-			onStatusChange={setSelectedStatus}
-			onTagToggle={toggleTag}
-			onTextQueryChange={setSearchQuery}
-			searchQuery={searchQuery()}
-			selectedStatus={selectedStatus()}
-			selectedTags={selectedTags()}
-			sortBy={sortBy()}
-			sortOrder={sortOrder()}
-			tags={mockSearchTags}
+			setState={setState}
+			state={state}
 		/>
 	);
 
