@@ -93,6 +93,7 @@ export interface MockCharacter extends MockEntity {
 }
 
 export interface MockConfig {
+	version: string;
 	ai: {
 		autoAnalyzePrompt: boolean;
 		baseUrl: string;
@@ -109,14 +110,29 @@ export interface MockConfig {
 		pollIntervalMs: number;
 	};
 	logging: {
-		enableConsoleMirror: boolean;
-		level: "debug" | "info" | "warn";
-		retentionDays: number;
+		enableConsoleMirror?: boolean;
+		level: "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+		retentionDays?: number;
+	};
+	media: {
+		supportedExtensions: {
+			image: string[];
+			video: string[];
+			audio: string[];
+		};
+		tagExtraction: {
+			comfyui: {
+				positiveNodeTypes: string[];
+				negativeKeywords: string[];
+				negativeTags: string[];
+			};
+		};
 	};
 	storage: {
-		originalDir: string;
 		thumbnailDir: string;
 		thumbnailSize: number;
+		thumbnailQuality: number;
+		originalDir?: string;
 	};
 }
 
@@ -555,6 +571,7 @@ export const mockMedia: MockMedia[] = [
 ];
 
 export const mockConfig: MockConfig = {
+	version: "0.1.0-tauri-preview",
 	ai: {
 		autoAnalyzePrompt: true,
 		baseUrl: "http://127.0.0.1:8000",
@@ -575,10 +592,25 @@ export const mockConfig: MockConfig = {
 		level: "info",
 		retentionDays: 14,
 	},
+	media: {
+		supportedExtensions: {
+			image: [".jpg", ".jpeg", ".png", ".webp"],
+			video: [".mp4", ".webm", ".mov"],
+			audio: [".mp3", ".wav"],
+		},
+		tagExtraction: {
+			comfyui: {
+				negativeKeywords: ["negative", "neg"],
+				negativeTags: ["lowres", "blurry"],
+				positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
+			},
+		},
+	},
 	storage: {
 		originalDir: "/mnt/media/originals",
 		thumbnailDir: "/mnt/media/.thumbs",
 		thumbnailSize: 640,
+		thumbnailQuality: 82,
 	},
 };
 

@@ -1,38 +1,63 @@
-import { Badge } from "@solid-imager/ui/badge";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
 	CardContent,
+	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
 import {
+	Checkbox,
+	CheckboxControl,
+	CheckboxLabel,
+} from "@solid-imager/ui/checkbox";
+import {
+	Combobox,
+	ComboboxContent,
+	ComboboxControl,
+	ComboboxInput,
+	ComboboxItem,
+	ComboboxItemIndicator,
+	ComboboxItemLabel,
+	ComboboxTrigger,
+} from "@solid-imager/ui/combobox";
+import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
+import { PaginationControls } from "@solid-imager/ui/pagination-controls";
 import { Progress } from "@solid-imager/ui/progress";
 import {
-	Switch,
-	SwitchControl,
-	SwitchLabel,
-	SwitchThumb,
-} from "@solid-imager/ui/switch";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "@solid-imager/ui/tabs";
-import { Textarea } from "@solid-imager/ui/textarea";
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@solid-imager/ui/select";
 import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createSignal, For, onCleanup, Show } from "solid-js";
+import { MediaCardItem } from "../components/media/media-card-item";
 import {
+	type MockAssociation,
+	type MockCharacter,
+	type MockEntity,
 	mockCharacters,
 	mockIps,
 	mockMedia,
@@ -40,134 +65,174 @@ import {
 	mockSources,
 } from "../mocks/demo-data";
 
-type EntityTab = "projects" | "ips" | "characters";
-type EditableEntity = {
-	id: string;
-	name: string;
-	description: string;
-	itemCount: number;
-};
+type EntityType = "projects" | "ips" | "characters" | "tagging";
+type Entity = MockEntity | MockCharacter;
+
+function isMockCharacter(item: Entity): item is MockCharacter {
+	return "ipIds" in item;
+}
 
 export const Route = createFileRoute("/manager")({
-	component: ManagerRoute,
+	component: ManagerPage,
 });
 
-function ManagerRoute() {
-	const [activeTab, setActiveTab] = createSignal<EntityTab>("projects");
+export default function ManagerPage() {
+	const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
+	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+	const [editingItem, setEditingItem] = createSignal<Entity | null>(null);
+	const [itemToDelete, setItemToDelete] = createSignal<Entity | null>(null);
+
 	const [projects, setProjects] = createSignal(
 		mockProjects.map((item) => ({ ...item })),
 	);
 	const [ips, setIps] = createSignal(mockIps.map((item) => ({ ...item })));
 	const [characters, setCharacters] = createSignal(
-		mockCharacters.map((item) => ({ ...item })),
+		mockCharacters.map((item) => ({ ...item, ipIds: [...item.ipIds] })),
 	);
-	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
-	const [editingId, setEditingId] = createSignal<string | null>(null);
-	const [draftName, setDraftName] = createSignal("");
-	const [draftDescription, setDraftDescription] = createSignal("");
-	const [selectedSourceId, setSelectedSourceId] = createSignal(
-		mockSources[0].id,
-	);
-	const [selectedMediaIds, setSelectedMediaIds] = createSignal<string[]>([]);
+
+	const [formData, setFormData] = createSignal<{
+		name: string;
+		description: string;
+		ipIds?: string[];
+	}>({ name: "", description: "" });
+
+	const [selectedSourceId, setSelectedSourceId] = createSignal<
+		string | undefined
+	>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
-	const [progressValue, setProgressValue] = createSignal(0);
-	const [isRunning, setIsRunning] = createSignal(false);
+	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
+	const [scannedMedia, setScannedMedia] = createSignal<typeof mockMedia>([]);
+	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
+		new Set(),
+	);
+	const [jobProgress, setJobProgress] = createSignal<{
+		processed: number;
+		total: number;
+	} | null>(null);
+	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
+	const [currentPage, setCurrentPage] = createSignal(1);
+	const itemsPerPage = 6;
 
 	let timer: ReturnType<typeof setInterval> | undefined;
 
-	const taggingCandidates = createMemo(() =>
-		mockMedia.filter((item) => item.mediaSourceId === selectedSourceId()),
-	);
+	const totalPages = () =>
+		Math.max(1, Math.ceil(scannedMedia().length / itemsPerPage));
+	const paginatedMedia = () => {
+		const start = (currentPage() - 1) * itemsPerPage;
+		return scannedMedia().slice(start, start + itemsPerPage);
+	};
+
+	const resetForm = () => setFormData({ name: "", description: "", ipIds: [] });
 
 	const openCreateDialog = () => {
-		setEditingId(null);
-		setDraftName("");
-		setDraftDescription("");
+		setEditingItem(null);
+		resetForm();
 		setIsDialogOpen(true);
 	};
 
-	const openEditDialog = (item: EditableEntity) => {
-		setEditingId(item.id);
-		setDraftName(item.name);
-		setDraftDescription(item.description);
+	const openEditDialog = (item: Entity) => {
+		setEditingItem(item);
+		setFormData({
+			description: item.description || "",
+			ipIds: "ipIds" in item ? [...item.ipIds] : [],
+			name: item.name,
+		});
 		setIsDialogOpen(true);
 	};
 
-	const closeDialog = () => {
-		setIsDialogOpen(false);
-		setEditingId(null);
+	const getActiveItems = () => {
+		switch (activeTab()) {
+			case "projects":
+				return projects();
+			case "ips":
+				return ips();
+			case "characters":
+				return characters();
+			default:
+				return [];
+		}
 	};
 
 	const saveEntity = () => {
-		const payload = {
-			id: editingId() ?? `${activeTab()}-${Date.now()}`,
-			name: draftName() || "Untitled",
-			description: draftDescription() || "No description yet.",
-			itemCount: 0,
-		};
+		const data = formData();
+		const currentId = editingItem()?.id ?? `${activeTab()}-${Date.now()}`;
 
-		const updateCollection = (items: EditableEntity[]) =>
-			editingId()
-				? items.map((item) =>
-						item.id === payload.id ? { ...item, ...payload } : item,
-					)
-				: [payload, ...items];
-
-		switch (activeTab()) {
-			case "projects":
-				setProjects(updateCollection);
-				break;
-			case "ips":
-				setIps(updateCollection);
-				break;
-			case "characters":
-				setCharacters((items) =>
-					editingId()
-						? items.map((item) =>
-								item.id === payload.id
-									? {
-											...item,
-											description: payload.description,
-											itemCount: payload.itemCount,
-											name: payload.name,
-										}
-									: item,
-							)
-						: [...items, { ...payload, ipIds: [] }],
-				);
-				break;
+		if (activeTab() === "projects") {
+			setProjects((items) =>
+				upsertEntity(items, {
+					description: data.description,
+					id: currentId,
+					itemCount: editingItem()?.itemCount ?? 0,
+					name: data.name,
+				}),
+			);
+		} else if (activeTab() === "ips") {
+			setIps((items) =>
+				upsertEntity(items, {
+					description: data.description,
+					id: currentId,
+					itemCount: editingItem()?.itemCount ?? 0,
+					name: data.name,
+				}),
+			);
+		} else if (activeTab() === "characters") {
+			setCharacters((items) =>
+				upsertEntity(items, {
+					description: data.description,
+					id: currentId,
+					ipIds: [...(data.ipIds ?? [])],
+					itemCount: editingItem()?.itemCount ?? 0,
+					name: data.name,
+				}),
+			);
 		}
 
-		toast.success(`${editingId() ? "Updated" : "Created"} ${activeTab()} item`);
-		closeDialog();
-	};
-
-	const removeEntity = (id: string) => {
-		switch (activeTab()) {
-			case "projects":
-				setProjects((items) => items.filter((item) => item.id !== id));
-				break;
-			case "ips":
-				setIps((items) => items.filter((item) => item.id !== id));
-				break;
-			case "characters":
-				setCharacters((items) => items.filter((item) => item.id !== id));
-				break;
-		}
-		toast.success(`Removed ${activeTab()} item`);
-	};
-
-	const toggleMediaSelection = (mediaId: string) => {
-		setSelectedMediaIds((items) =>
-			items.includes(mediaId)
-				? items.filter((item) => item !== mediaId)
-				: [...items, mediaId],
+		toast.success(
+			editingItem() ? "Updated successfully" : "Created successfully",
 		);
+		setIsDialogOpen(false);
+		setEditingItem(null);
+		resetForm();
 	};
 
-	const startBatchTagging = () => {
-		if (selectedMediaIds().length === 0) {
-			toast.error("Select at least one media item");
+	const handleConfirmDelete = () => {
+		const item = itemToDelete();
+		if (!item) {
+			return;
+		}
+
+		if (activeTab() === "projects") {
+			setProjects((items) =>
+				items.filter((candidate) => candidate.id !== item.id),
+			);
+		} else if (activeTab() === "ips") {
+			setIps((items) => items.filter((candidate) => candidate.id !== item.id));
+		} else if (activeTab() === "characters") {
+			setCharacters((items) =>
+				items.filter((candidate) => candidate.id !== item.id),
+			);
+		}
+
+		toast.success("Deleted successfully");
+		setIsDeleteDialogOpen(false);
+		setItemToDelete(null);
+	};
+
+	const handleScan = () => {
+		setTaggingStatus("Scanning...");
+		const results = selectedSourceId()
+			? mockMedia.filter((item) => item.mediaSourceId === selectedSourceId())
+			: mockMedia;
+		setScannedMedia(results);
+		setSelectedMedia(new Set(results.map((item) => item.id)));
+		setCurrentPage(1);
+		setTaggingStatus(`${results.length} items found.`);
+	};
+
+	const handleStartBatchTagging = () => {
+		if (selectedMedia().size === 0) {
+			toast.error("No media selected");
 			return;
 		}
 
@@ -175,23 +240,56 @@ function ManagerRoute() {
 			clearInterval(timer);
 		}
 
-		setProgressValue(0);
-		setIsRunning(true);
+		const total = selectedMedia().size;
+		setTaggingStatus("Batch tagging in progress...");
+		setActiveJobId(`mock-job-${Date.now()}`);
+		setJobProgress({ processed: 0, total });
+
 		timer = setInterval(() => {
-			setProgressValue((value) => {
-				const nextValue = Math.min(100, value + 20);
-				if (nextValue === 100) {
+			setJobProgress((progress) => {
+				if (!progress) {
+					return progress;
+				}
+				const next = {
+					processed: Math.min(progress.total, progress.processed + 1),
+					total: progress.total,
+				};
+				setTaggingStatus(
+					`Processing: ${next.processed} / ${next.total} tagged.`,
+				);
+				if (next.processed >= next.total) {
 					if (timer) {
 						clearInterval(timer);
 					}
-					setIsRunning(false);
+					setActiveJobId(null);
 					toast.success(
-						`Mock batch tagging finished${forceRetag() ? " with force retag" : ""}`,
+						`Batch tagging completed${forceRetag() ? " with force retag" : ""}.`,
 					);
+					setTaggingStatus("Batch tagging completed successfully.");
 				}
-				return nextValue;
+				return next;
 			});
-		}, 400);
+		}, 350);
+	};
+
+	const toggleMediaSelection = (mediaId: string) => {
+		setSelectedMedia((previous) => {
+			const next = new Set(previous);
+			if (next.has(mediaId)) {
+				next.delete(mediaId);
+			} else {
+				next.add(mediaId);
+			}
+			return next;
+		});
+	};
+
+	const toggleSelectAll = () => {
+		if (selectedMedia().size === scannedMedia().length) {
+			setSelectedMedia(new Set<string>());
+		} else {
+			setSelectedMedia(new Set(scannedMedia().map((item) => item.id)));
+		}
 	};
 
 	onCleanup(() => {
@@ -201,237 +299,342 @@ function ManagerRoute() {
 	});
 
 	return (
-		<section class="grid gap-6">
-			<div class="flex items-center justify-between gap-4">
-				<div class="grid gap-2">
-					<h1 class="font-semibold text-4xl tracking-tight">Manager</h1>
-					<p class="text-muted-foreground">
-						Server 側の entity 管理と batch tagging の構成をローカル state で
-						再現しています。
-					</p>
-				</div>
-				<Button onClick={openCreateDialog}>New Item</Button>
+		<div class="container mx-auto p-8">
+			<div class="mb-8 flex items-center justify-between">
+				<h1 class="font-bold text-3xl">Entity Manager</h1>
+				<Show when={activeTab() !== "tagging"}>
+					<Button onClick={openCreateDialog}>Create New</Button>
+				</Show>
 			</div>
 
-			<Tabs
-				class="grid gap-4"
-				onChange={(value) => {
-					if (
-						value === "projects" ||
-						value === "ips" ||
-						value === "characters"
-					) {
-						setActiveTab(value);
-					}
-				}}
-				value={activeTab()}
-			>
-				<TabsList class="grid h-auto grid-cols-2 gap-2 p-1 md:grid-cols-4">
-					<TabsTrigger value="projects">Projects</TabsTrigger>
-					<TabsTrigger value="ips">IPs</TabsTrigger>
-					<TabsTrigger value="characters">Characters</TabsTrigger>
-					<TabsTrigger value="tagging">Tagging</TabsTrigger>
-				</TabsList>
+			<div class="mb-6 flex space-x-4 border-b">
+				{(["projects", "ips", "characters", "tagging"] as const).map((tab) => (
+					<button
+						class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+							activeTab() === tab
+								? "border-primary text-primary"
+								: "border-transparent text-muted-foreground hover:text-foreground"
+						}`}
+						onClick={() => setActiveTab(tab)}
+						type="button"
+					>
+						{tab === "tagging"
+							? "Batch Tagging"
+							: tab === "ips"
+								? "IPs"
+								: tab.charAt(0).toUpperCase() + tab.slice(1)}
+					</button>
+				))}
+			</div>
 
-				<TabsContent value="projects">
-					<EntityGrid
-						items={projects()}
-						onDelete={removeEntity}
-						onEdit={openEditDialog}
-					/>
-				</TabsContent>
-				<TabsContent value="ips">
-					<EntityGrid
-						items={ips()}
-						onDelete={removeEntity}
-						onEdit={openEditDialog}
-					/>
-				</TabsContent>
-				<TabsContent value="characters">
-					<EntityGrid
-						items={characters().map((item) => ({
-							description: `${item.description} (${item.ipIds.length} linked IPs)`,
-							id: item.id,
-							itemCount: item.itemCount,
-							name: item.name,
-						}))}
-						onDelete={removeEntity}
-						onEdit={openEditDialog}
-					/>
-				</TabsContent>
-				<TabsContent value="tagging">
+			<Show when={activeTab() === "tagging"}>
+				<div class="space-y-6">
 					<Card>
 						<CardHeader>
-							<CardTitle>Batch Tagging</CardTitle>
+							<CardTitle>Batch AI Tagging</CardTitle>
+							<CardDescription>
+								Analyze and tag images across your media sources using AI.
+							</CardDescription>
 						</CardHeader>
-						<CardContent class="grid gap-6">
-							<div class="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
-								<div class="grid gap-2">
-									<Label for="tagging-source">Source</Label>
-									<div class="flex flex-wrap gap-2">
-										<For each={mockSources}>
-											{(source) => (
-												<Button
-													onClick={() => {
-														setSelectedSourceId(source.id);
-														setSelectedMediaIds([]);
-													}}
-													variant={
-														selectedSourceId() === source.id
-															? "default"
-															: "outline"
-													}
-												>
-													{source.name}
-												</Button>
-											)}
-										</For>
-									</div>
-								</div>
-								<Switch checked={forceRetag()} onChange={setForceRetag}>
-									<div class="flex items-center gap-3">
-										<SwitchControl>
-											<SwitchThumb />
-										</SwitchControl>
-										<SwitchLabel>Force retag</SwitchLabel>
-									</div>
-								</Switch>
+						<CardContent class="space-y-4">
+							<div class="grid gap-2">
+								<Label>Target Media Source (Optional)</Label>
+								<Select
+									itemComponent={(props) => (
+										<SelectItem item={props.item}>
+											{props.item.rawValue.name}
+										</SelectItem>
+									)}
+									onChange={(value) => setSelectedSourceId(value?.id)}
+									options={mockSources}
+									optionTextValue="name"
+									optionValue="id"
+									placeholder="All Sources"
+									value={
+										selectedSourceId()
+											? mockSources.find(
+													(source) => source.id === selectedSourceId(),
+												)
+											: null
+									}
+								>
+									<SelectTrigger>
+										<SelectValue<unknown>>
+											{(state) => {
+												const option = state.selectedOption();
+												return option &&
+													typeof option === "object" &&
+													"name" in option
+													? (option as { name: string }).name
+													: "All Sources";
+											}}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+								<p class="text-muted-foreground text-xs">
+									Leave empty to process all sources.
+								</p>
 							</div>
 
-							<div class="grid gap-3 rounded-xl border p-4">
-								<div class="flex items-center justify-between">
-									<h2 class="font-medium">Candidate Media</h2>
-									<Badge variant="outline">
-										{selectedMediaIds().length} selected
-									</Badge>
-								</div>
-								<div class="grid gap-3 md:grid-cols-2">
-									<For each={taggingCandidates()}>
-										{(item) => (
-											<label class="flex cursor-pointer items-start gap-3 rounded-xl border p-4">
-												<input
-													checked={selectedMediaIds().includes(item.id)}
-													onChange={() => toggleMediaSelection(item.id)}
-													type="checkbox"
-												/>
-												<div class="grid gap-1">
-													<span class="font-medium">{item.title}</span>
-													<span class="text-muted-foreground text-sm">
-														{item.summary}
-													</span>
-												</div>
-											</label>
-										)}
-									</For>
-								</div>
+							<div class="flex items-center space-x-2">
+								<Checkbox
+									checked={forceRetag()}
+									class="flex items-center space-x-2"
+									onChange={setForceRetag}
+								>
+									<CheckboxControl />
+									<CheckboxLabel>Force Re-tagging</CheckboxLabel>
+								</Checkbox>
+							</div>
+							<p class="text-muted-foreground text-xs">
+								If checked, existing AI tags will be ignored and images will be
+								re-analyzed.
+							</p>
+
+							<div class="flex items-center gap-x-2 pt-2">
+								<Button onClick={handleScan}>Scan for Targets</Button>
+								<Button
+									disabled={scannedMedia().length === 0}
+									onClick={handleStartBatchTagging}
+								>
+									Start Batch Tagging ({selectedMedia().size})
+								</Button>
 							</div>
 
-							<div class="grid gap-3 rounded-xl border p-4">
-								<div class="flex items-center justify-between">
-									<span class="font-medium">Mock job progress</span>
-									<span class="text-muted-foreground text-sm">
-										{progressValue()}%
-									</span>
+							<Show when={taggingStatus()}>
+								<div class="mt-4 rounded bg-muted p-2 text-sm">
+									{taggingStatus()}
 								</div>
-								<Progress value={progressValue()} />
-								<div class="flex gap-3">
-									<Button disabled={isRunning()} onClick={startBatchTagging}>
-										{isRunning() ? "Running..." : "Start Batch Tagging"}
-									</Button>
-									<Button
-										onClick={() => {
-											setSelectedMediaIds(
-												taggingCandidates().map((item) => item.id),
-											);
-										}}
-										variant="outline"
-									>
-										Select All
-									</Button>
-								</div>
-							</div>
+							</Show>
+							<Show when={jobProgress()}>
+								{(progress) => (
+									<div class="mt-4">
+										<Progress
+											value={(progress().processed / progress().total) * 100}
+										/>
+									</div>
+								)}
+							</Show>
+							<Show when={activeJobId()}>
+								<p class="text-muted-foreground text-xs">
+									Active job: {activeJobId()}
+								</p>
+							</Show>
 						</CardContent>
 					</Card>
-				</TabsContent>
-			</Tabs>
+
+					<Show when={scannedMedia().length > 0}>
+						<div class="mt-4">
+							<div class="mb-2 flex items-center justify-between">
+								<h3 class="font-bold text-lg">
+									Scanned Media ({scannedMedia().length})
+								</h3>
+								<div class="flex items-center gap-2">
+									<PaginationControls
+										currentPage={currentPage()}
+										onPageChange={setCurrentPage}
+										totalPages={totalPages()}
+									/>
+									<Button onClick={toggleSelectAll} size="sm" variant="outline">
+										{selectedMedia().size === scannedMedia().length
+											? "Deselect All"
+											: "Select All"}
+									</Button>
+								</div>
+							</div>
+							<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+								<For each={paginatedMedia()}>
+									{(media) => (
+										<MediaCardItem
+											media={media}
+											onToggle={toggleMediaSelection}
+											selectable
+											selected={selectedMedia().has(media.id)}
+										/>
+									)}
+								</For>
+							</div>
+							<div class="mt-4 flex justify-center">
+								<PaginationControls
+									currentPage={currentPage()}
+									onPageChange={setCurrentPage}
+									totalPages={totalPages()}
+								/>
+							</div>
+						</div>
+					</Show>
+				</div>
+			</Show>
+
+			<Show when={activeTab() !== "tagging"}>
+				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+					<For each={getActiveItems()}>
+						{(item) => (
+							<Card>
+								<CardHeader>
+									<CardTitle>{item.name}</CardTitle>
+									<Show when={item.description}>
+										<CardDescription>{item.description}</CardDescription>
+									</Show>
+										<Show
+											when={
+												activeTab() === "characters" &&
+												isMockCharacter(item) &&
+												item.ipIds.length > 0
+											}
+										>
+											<CardDescription>
+												IPs:{" "}
+												{(isMockCharacter(item) ? item.ipIds : [])
+													.map(
+														(ipId: string) =>
+															mockIps.find((ip) => ip.id === ipId)?.name ?? ipId,
+													)
+													.join(", ")}
+											</CardDescription>
+									</Show>
+								</CardHeader>
+								<CardContent>
+									<div class="flex justify-end space-x-2">
+										<Button
+											onClick={() => openEditDialog(item)}
+											size="sm"
+											variant="outline"
+										>
+											Edit
+										</Button>
+										<Button
+											onClick={() => {
+												setItemToDelete(item);
+												setIsDeleteDialogOpen(true);
+											}}
+											size="sm"
+											variant="destructive"
+										>
+											Delete
+										</Button>
+									</div>
+								</CardContent>
+							</Card>
+						)}
+					</For>
+				</div>
+			</Show>
 
 			<Dialog onOpenChange={setIsDialogOpen} open={isDialogOpen()}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>
-							{editingId() ? "Edit manager item" : "Create manager item"}
+							{editingItem() ? "Edit" : "Create"}{" "}
+							{activeTab().slice(0, -1).toUpperCase()}
 						</DialogTitle>
+						<DialogDescription>
+							{editingItem()
+								? "Update the details of the item."
+								: "Enter the details for the new item."}
+						</DialogDescription>
 					</DialogHeader>
-					<div class="grid gap-4">
-						<div class="grid gap-2">
-							<Label for="manager-name">Name</Label>
+					<div class="grid gap-4 py-4">
+						<div class="grid grid-cols-4 items-center gap-4">
+							<Label class="text-right">Name</Label>
 							<Input
-								id="manager-name"
-								onInput={(event) => setDraftName(event.currentTarget.value)}
-								value={draftName()}
-							/>
-						</div>
-						<div class="grid gap-2">
-							<Label for="manager-description">Description</Label>
-							<Textarea
-								id="manager-description"
+								class="col-span-3"
 								onInput={(event) =>
-									setDraftDescription(event.currentTarget.value)
+									setFormData({
+										...formData(),
+										name: event.currentTarget.value,
+									})
 								}
-								value={draftDescription()}
+								value={formData().name}
 							/>
 						</div>
+						<div class="grid grid-cols-4 items-center gap-4">
+							<Label class="text-right">Description</Label>
+							<Input
+								class="col-span-3"
+								onInput={(event) =>
+									setFormData({
+										...formData(),
+										description: event.currentTarget.value,
+									})
+								}
+								value={formData().description}
+							/>
+						</div>
+						<Show when={activeTab() === "characters"}>
+							<div class="grid grid-cols-4 items-center gap-4">
+								<Label class="text-right">IPs</Label>
+								<div class="col-span-3">
+									<Combobox<MockAssociation>
+										itemComponent={(props) => (
+											<ComboboxItem item={props.item}>
+												<ComboboxItemLabel>
+													{props.item.rawValue.name}
+												</ComboboxItemLabel>
+												<ComboboxItemIndicator />
+											</ComboboxItem>
+										)}
+										multiple
+										onChange={(values) =>
+											setFormData({
+												...formData(),
+												ipIds: values.map((value) => value.id),
+											})
+										}
+										optionLabel="name"
+										options={mockIps}
+										optionTextValue="name"
+										optionValue="id"
+										value={mockIps.filter((ip) =>
+											formData().ipIds?.includes(ip.id),
+										)}
+									>
+										<ComboboxControl>
+											<ComboboxInput placeholder="Select IPs..." />
+											<ComboboxTrigger />
+										</ComboboxControl>
+										<ComboboxContent />
+									</Combobox>
+								</div>
+							</div>
+						</Show>
 					</div>
 					<DialogFooter>
-						<Button onClick={closeDialog} variant="outline">
-							Cancel
-						</Button>
 						<Button onClick={saveEntity}>Save</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
-		</section>
+
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. This will permanently delete the{" "}
+							{activeTab().slice(0, -1)} and remove it from our preview data.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={handleConfirmDelete}
+						>
+							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</div>
 	);
 }
 
-function EntityGrid(props: {
-	items: EditableEntity[];
-	onEdit: (item: EditableEntity) => void;
-	onDelete: (id: string) => void;
-}) {
-	return (
-		<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-			<For each={props.items}>
-				{(item) => (
-					<Card>
-						<CardHeader class="gap-3">
-							<div class="flex items-center justify-between gap-3">
-								<CardTitle>{item.name}</CardTitle>
-								<Badge variant="outline">{item.itemCount}</Badge>
-							</div>
-							<p class="text-muted-foreground text-sm">{item.description}</p>
-						</CardHeader>
-						<CardContent class="flex gap-2">
-							<Button onClick={() => props.onEdit(item)} variant="outline">
-								Edit
-							</Button>
-							<Button
-								onClick={() => props.onDelete(item.id)}
-								variant="destructive"
-							>
-								Delete
-							</Button>
-						</CardContent>
-					</Card>
-				)}
-			</For>
-			<Show when={props.items.length === 0}>
-				<Card>
-					<CardContent class="py-10 text-center text-muted-foreground">
-						No items in this tab.
-					</CardContent>
-				</Card>
-			</Show>
-		</div>
-	);
+function upsertEntity<T extends Entity>(items: T[], nextItem: T) {
+	return items.some((item) => item.id === nextItem.id)
+		? items.map((item) => (item.id === nextItem.id ? nextItem : item))
+		: [nextItem, ...items];
 }

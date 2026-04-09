@@ -1,10 +1,4 @@
 import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import {
@@ -19,49 +13,54 @@ import {
 	TabsList,
 	TabsTrigger,
 } from "@solid-imager/ui/tabs";
+import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute } from "@tanstack/solid-router";
+import { Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { mockConfig } from "../mocks/demo-data";
 
 export const Route = createFileRoute("/config")({
-	component: ConfigRoute,
+	component: ConfigPage,
 });
 
-function ConfigRoute() {
+function parseList(value: string) {
+	return value
+		.split(",")
+		.map((item) => item.trim())
+		.filter(Boolean);
+}
+
+export default function ConfigPage() {
 	const [config, setConfig] = createStore(structuredClone(mockConfig));
 
 	return (
-		<section class="grid gap-6">
-			<div class="flex items-center justify-between gap-4">
-				<div class="grid gap-2">
-					<h1 class="font-semibold text-4xl tracking-tight">Settings</h1>
-					<p class="text-muted-foreground">
-						`apps/server/src/routes/config.tsx` の構成に寄せたローカル編集 UI
-						です。保存は mock toast のみ返します。
-					</p>
-				</div>
-				<Button onClick={() => toast.success("Saved local config preview")}>
+		<div class="container mx-auto max-w-4xl p-6">
+			<div class="mb-6 flex items-center justify-between">
+				<h1 class="font-bold text-3xl">Settings</h1>
+				<Button
+					onClick={() => toast.success("Configuration saved successfully")}
+				>
 					Save Changes
 				</Button>
 			</div>
 
-			<Tabs class="grid gap-4" defaultValue="jobs">
-				<TabsList class="grid h-auto grid-cols-2 gap-2 p-1 md:grid-cols-5">
+			<Tabs class="w-full" defaultValue="jobs">
+				<TabsList class="grid w-full grid-cols-6">
 					<TabsTrigger value="jobs">Jobs</TabsTrigger>
 					<TabsTrigger value="ai">AI</TabsTrigger>
 					<TabsTrigger value="downloads">Downloads</TabsTrigger>
 					<TabsTrigger value="storage">Storage</TabsTrigger>
+					<TabsTrigger value="media">Media</TabsTrigger>
 					<TabsTrigger value="logging">Logging</TabsTrigger>
 				</TabsList>
 
-				<TabsContent value="jobs">
-					<Card>
-						<CardHeader>
-							<CardTitle>Job Processing</CardTitle>
-						</CardHeader>
-						<CardContent class="grid gap-4 md:grid-cols-3">
-							<div class="grid gap-2">
+				<div class="mt-6 space-y-6">
+					<TabsContent value="jobs">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
+
+							<div class="space-y-2">
 								<Label for="jobs-concurrency">Concurrency</Label>
 								<Input
 									id="jobs-concurrency"
@@ -75,8 +74,12 @@ function ConfigRoute() {
 									type="number"
 									value={config.jobs.concurrency}
 								/>
+								<div class="text-muted-foreground text-xs">
+									Number of concurrent downloads/processings.
+								</div>
 							</div>
-							<div class="grid gap-2">
+
+							<div class="space-y-2">
 								<Label for="jobs-ai-concurrency">AI Concurrency</Label>
 								<Input
 									id="jobs-ai-concurrency"
@@ -90,8 +93,12 @@ function ConfigRoute() {
 									type="number"
 									value={config.jobs.aiConcurrency}
 								/>
+								<div class="text-muted-foreground text-xs">
+									Number of concurrent AI tagging jobs.
+								</div>
 							</div>
-							<div class="grid gap-2">
+
+							<div class="space-y-2">
 								<Label for="jobs-poll">Poll Interval (ms)</Label>
 								<Input
 									id="jobs-poll"
@@ -106,32 +113,25 @@ function ConfigRoute() {
 									value={config.jobs.pollIntervalMs}
 								/>
 							</div>
-							<div class="md:col-span-3">
-								<Switch
-									checked={config.jobs.enableAutoTagging}
-									onChange={(checked) =>
-										setConfig("jobs", "enableAutoTagging", checked)
-									}
-								>
-									<div class="flex items-center gap-3">
-										<SwitchControl>
-											<SwitchThumb />
-										</SwitchControl>
-										<SwitchLabel>Enable Auto Tagging</SwitchLabel>
-									</div>
-								</Switch>
-							</div>
-						</CardContent>
-					</Card>
-				</TabsContent>
 
-				<TabsContent value="ai">
-					<Card>
-						<CardHeader>
-							<CardTitle>AI Service</CardTitle>
-						</CardHeader>
-						<CardContent class="grid gap-4 md:grid-cols-2">
-							<div class="grid gap-2">
+							<Switch
+								checked={config.jobs.enableAutoTagging}
+								onChange={(checked) =>
+									setConfig("jobs", "enableAutoTagging", checked)
+								}
+							>
+								<SwitchControl>
+									<SwitchThumb />
+								</SwitchControl>
+								<SwitchLabel>Enable Auto Tagging</SwitchLabel>
+							</Switch>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="ai">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
+							<div class="space-y-2">
 								<Label for="ai-base-url">Base URL</Label>
 								<Input
 									id="ai-base-url"
@@ -141,7 +141,7 @@ function ConfigRoute() {
 									value={config.ai.baseUrl}
 								/>
 							</div>
-							<div class="grid gap-2">
+							<div class="space-y-2">
 								<Label for="ai-timeout">Timeout (ms)</Label>
 								<Input
 									id="ai-timeout"
@@ -156,46 +156,42 @@ function ConfigRoute() {
 									value={config.ai.timeoutMs}
 								/>
 							</div>
-							<Switch
-								checked={config.ai.autoAnalyzePrompt}
-								onChange={(checked) =>
-									setConfig("ai", "autoAnalyzePrompt", checked)
-								}
-							>
-								<div class="flex items-center gap-3">
+							<Show when={"autoAnalyzePrompt" in config.ai}>
+								<Switch
+									checked={config.ai.autoAnalyzePrompt}
+									onChange={(checked) =>
+										setConfig("ai", "autoAnalyzePrompt", checked)
+									}
+								>
 									<SwitchControl>
 										<SwitchThumb />
 									</SwitchControl>
-									<SwitchLabel>Auto analyze prompts after import</SwitchLabel>
-								</div>
-							</Switch>
-						</CardContent>
-					</Card>
-				</TabsContent>
+									<SwitchLabel>Auto analyze prompt</SwitchLabel>
+								</Switch>
+							</Show>
+						</div>
+					</TabsContent>
 
-				<TabsContent value="downloads">
-					<Card>
-						<CardHeader>
-							<CardTitle>Downloads</CardTitle>
-						</CardHeader>
-						<CardContent class="grid gap-4 md:grid-cols-2">
+					<TabsContent value="downloads">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
 							<Switch
 								checked={config.downloads.rateLimitEnabled}
 								onChange={(checked) =>
 									setConfig("downloads", "rateLimitEnabled", checked)
 								}
 							>
-								<div class="flex items-center gap-3">
-									<SwitchControl>
-										<SwitchThumb />
-									</SwitchControl>
-									<SwitchLabel>Enable request throttling</SwitchLabel>
-								</div>
+								<SwitchControl>
+									<SwitchThumb />
+								</SwitchControl>
+								<SwitchLabel>レートリミット有効</SwitchLabel>
 							</Switch>
-							<div class="grid gap-2">
-								<Label for="request-interval">Request Interval (ms)</Label>
+							<div class="space-y-2">
+								<Label for="downloads-request-interval">
+									リクエスト間隔 (ms)
+								</Label>
 								<Input
-									id="request-interval"
+									id="downloads-request-interval"
 									onInput={(event) =>
 										setConfig(
 											"downloads",
@@ -207,20 +203,16 @@ function ConfigRoute() {
 									value={config.downloads.requestIntervalMs}
 								/>
 							</div>
-						</CardContent>
-					</Card>
-				</TabsContent>
+						</div>
+					</TabsContent>
 
-				<TabsContent value="storage">
-					<Card>
-						<CardHeader>
-							<CardTitle>Storage</CardTitle>
-						</CardHeader>
-						<CardContent class="grid gap-4 md:grid-cols-2">
-							<div class="grid gap-2 md:col-span-2">
-								<Label for="thumbnail-dir">Thumbnail Directory</Label>
+					<TabsContent value="storage">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
+							<div class="space-y-2">
+								<Label for="storage-thumbnail-dir">Thumbnail Directory</Label>
 								<Input
-									id="thumbnail-dir"
+									id="storage-thumbnail-dir"
 									onInput={(event) =>
 										setConfig(
 											"storage",
@@ -231,91 +223,192 @@ function ConfigRoute() {
 									value={config.storage.thumbnailDir}
 								/>
 							</div>
-							<div class="grid gap-2">
-								<Label for="thumbnail-size">Thumbnail Size</Label>
-								<Input
-									id="thumbnail-size"
-									onInput={(event) =>
-										setConfig(
-											"storage",
-											"thumbnailSize",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.storage.thumbnailSize}
-								/>
-							</div>
-							<div class="grid gap-2">
-								<Label for="original-dir">Original Directory</Label>
-								<Input
-									id="original-dir"
-									onInput={(event) =>
-										setConfig(
-											"storage",
-											"originalDir",
-											event.currentTarget.value,
-										)
-									}
-									value={config.storage.originalDir}
-								/>
-							</div>
-						</CardContent>
-					</Card>
-				</TabsContent>
 
-				<TabsContent value="logging">
-					<Card>
-						<CardHeader>
-							<CardTitle>Logging</CardTitle>
-						</CardHeader>
-						<CardContent class="grid gap-4 md:grid-cols-2">
-							<div class="grid gap-2">
-								<Label for="log-level">Level</Label>
-								<Input
-									id="log-level"
+							<div class="grid grid-cols-2 gap-4">
+								<div class="space-y-2">
+									<Label for="storage-thumbnail-size">
+										Thumbnail Size (px)
+									</Label>
+									<Input
+										id="storage-thumbnail-size"
+										onInput={(event) =>
+											setConfig(
+												"storage",
+												"thumbnailSize",
+												Number(event.currentTarget.value),
+											)
+										}
+										type="number"
+										value={config.storage.thumbnailSize}
+									/>
+								</div>
+								<div class="space-y-2">
+									<Label for="storage-thumbnail-quality">
+										Thumbnail Quality (1-100)
+									</Label>
+									<Input
+										id="storage-thumbnail-quality"
+										onInput={(event) =>
+											setConfig(
+												"storage",
+												"thumbnailQuality",
+												Number(event.currentTarget.value),
+											)
+										}
+										type="number"
+										value={config.storage.thumbnailQuality}
+									/>
+								</div>
+							</div>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="media">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Media Extensions</h2>
+
+							<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+								<div class="space-y-2">
+									<Label for="media-ext-image">Image Extensions</Label>
+									<Textarea
+										id="media-ext-image"
+										onInput={(event) =>
+											setConfig(
+												"media",
+												"supportedExtensions",
+												"image",
+												parseList(event.currentTarget.value),
+											)
+										}
+										value={config.media.supportedExtensions.image.join(", ")}
+									/>
+									<div class="text-muted-foreground text-xs">
+										Comma separated
+									</div>
+								</div>
+								<div class="space-y-2">
+									<Label for="media-ext-video">Video Extensions</Label>
+									<Textarea
+										id="media-ext-video"
+										onInput={(event) =>
+											setConfig(
+												"media",
+												"supportedExtensions",
+												"video",
+												parseList(event.currentTarget.value),
+											)
+										}
+										value={config.media.supportedExtensions.video.join(", ")}
+									/>
+								</div>
+								<div class="space-y-2">
+									<Label for="media-ext-audio">Audio Extensions</Label>
+									<Textarea
+										id="media-ext-audio"
+										onInput={(event) =>
+											setConfig(
+												"media",
+												"supportedExtensions",
+												"audio",
+												parseList(event.currentTarget.value),
+											)
+										}
+										value={config.media.supportedExtensions.audio.join(", ")}
+									/>
+								</div>
+							</div>
+
+							<h3 class="mt-6 mb-2 font-semibold text-lg">
+								Tag Extraction (ComfyUI)
+							</h3>
+							<div class="space-y-2">
+								<Label for="media-positive-node-types">
+									Positive Node Types
+								</Label>
+								<Textarea
+									id="media-positive-node-types"
+									onInput={(event) =>
+										setConfig(
+											"media",
+											"tagExtraction",
+											"comfyui",
+											"positiveNodeTypes",
+											parseList(event.currentTarget.value),
+										)
+									}
+									value={config.media.tagExtraction.comfyui.positiveNodeTypes.join(
+										", ",
+									)}
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label for="media-negative-keywords">Negative Keywords</Label>
+								<Textarea
+									id="media-negative-keywords"
+									onInput={(event) =>
+										setConfig(
+											"media",
+											"tagExtraction",
+											"comfyui",
+											"negativeKeywords",
+											parseList(event.currentTarget.value),
+										)
+									}
+									value={config.media.tagExtraction.comfyui.negativeKeywords.join(
+										", ",
+									)}
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label for="media-negative-tags">Negative Tags</Label>
+								<Textarea
+									id="media-negative-tags"
+									onInput={(event) =>
+										setConfig(
+											"media",
+											"tagExtraction",
+											"comfyui",
+											"negativeTags",
+											parseList(event.currentTarget.value),
+										)
+									}
+									value={config.media.tagExtraction.comfyui.negativeTags.join(
+										", ",
+									)}
+								/>
+							</div>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="logging">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Logging</h2>
+							<div class="space-y-2">
+								<Label for="logging-level">Log Level</Label>
+								<select
+									class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+									id="logging-level"
 									onInput={(event) =>
 										setConfig(
 											"logging",
 											"level",
-											event.currentTarget.value as "debug" | "info" | "warn",
+											event.currentTarget.value as typeof config.logging.level,
 										)
 									}
 									value={config.logging.level}
-								/>
+								>
+									<option value="trace">Trace</option>
+									<option value="debug">Debug</option>
+									<option value="info">Info</option>
+									<option value="warn">Warn</option>
+									<option value="error">Error</option>
+									<option value="fatal">Fatal</option>
+								</select>
 							</div>
-							<div class="grid gap-2">
-								<Label for="retention-days">Retention Days</Label>
-								<Input
-									id="retention-days"
-									onInput={(event) =>
-										setConfig(
-											"logging",
-											"retentionDays",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.logging.retentionDays}
-								/>
-							</div>
-							<Switch
-								checked={config.logging.enableConsoleMirror}
-								onChange={(checked) =>
-									setConfig("logging", "enableConsoleMirror", checked)
-								}
-							>
-								<div class="flex items-center gap-3">
-									<SwitchControl>
-										<SwitchThumb />
-									</SwitchControl>
-									<SwitchLabel>Mirror logs to console</SwitchLabel>
-								</div>
-							</Switch>
-						</CardContent>
-					</Card>
-				</TabsContent>
+						</div>
+					</TabsContent>
+				</div>
 			</Tabs>
-		</section>
+		</div>
 	);
 }
