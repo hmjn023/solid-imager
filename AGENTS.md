@@ -40,6 +40,14 @@
 - **データベース:** 全テーブルUUID (v4)。中間テーブルは `media_{entity}` 命名。
 - **API:** oRPCを使用。スキーマ駆動開発を徹底する。
 
+### UI同期ルール (`apps/server` / `apps/tauri`)
+
+- `apps/server` と `apps/tauri` の route は、可能な限り同じ画面責務と情報構造を維持する。
+- 片側の画面だけに新機能や新フィールドを追加して完了扱いにしない。もう片側への影響を同一タスクで確認する。
+- 共通化できる UI 部品は、各 app の route に直書きせず `packages/ui` または app 内の再利用コンポーネントへ寄せる。
+- mock 実装は暫定扱いとし、後続の API 接続を見据えて props shape と state 名を server 側に寄せる。
+- server 側の route / component を移植または追従するときは `.agents/skills/shared-ui-parity/SKILL.md` の手順に従う。
+
 ## スキル一覧
 
 | スキル名 | 説明 | ロード条件 |
@@ -55,6 +63,7 @@
 | `repository-rules` | リポジトリ層ルール（明示的マッピング） | リポジトリ実装時 |
 | `schema-driven-dev` | ZodによるSchema-Driven Development | スキーマ定義時 |
 | `ui-components` | solid-ui (shadcn/ui ポート) コンポーネント開発 | UIコンポーネント変更時 |
+| `shared-ui-parity` | `apps/server` と `apps/tauri` の UI 構成同期と移植手順 | 片側のUI変更をもう片側へ反映するとき |
 | `vite-plus` | Vite+ CLI操作（既存） | Vite+関連タスク時 |
 | `cli` | imager-cli コマンド開発 | CLIコマンド追加・変更時 |
 | `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
