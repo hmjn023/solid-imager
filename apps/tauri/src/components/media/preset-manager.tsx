@@ -1,3 +1,4 @@
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -27,6 +28,7 @@ import {
 } from "@solid-imager/ui/select";
 import { toast } from "@solid-imager/ui/toast";
 import { createMemo, createSignal, Show } from "solid-js";
+import { cloneSearchGroup } from "../../lib/mock-pro-search";
 import type { TauriSearchMode } from "./search-control-panel";
 import type { TauriSearchFilterState } from "./search-filters";
 
@@ -34,14 +36,14 @@ type MockPreset = {
 	id: number;
 	name: string;
 	mode: TauriSearchMode;
-	advancedQuery: string;
+	advancedCondition: SearchGroup | null;
 	state: TauriSearchFilterState;
 };
 
 type PresetManagerProps = {
 	currentMode: TauriSearchMode;
 	currentState: TauriSearchFilterState;
-	advancedQuery: string;
+	advancedCondition: SearchGroup | null;
 	onLoadPreset: (preset: MockPreset) => void;
 	class?: string;
 	onAction?: () => void;
@@ -65,7 +67,7 @@ export function PresetManager(props: PresetManagerProps) {
 			id: 1,
 			name: "レビュー待ち",
 			mode: "simple",
-			advancedQuery: "",
+			advancedCondition: null,
 			state: {
 				searchQuery: "",
 				selectedTags: [],
@@ -84,8 +86,24 @@ export function PresetManager(props: PresetManagerProps) {
 			id: 2,
 			name: "nova tagged",
 			mode: "pro",
-			advancedQuery:
-				'{ "authorId": "author-nova", "status": "tagged", "favorite": true }',
+			advancedCondition: {
+				type: "group",
+				operator: "and",
+				children: [
+					{
+						type: "criterion",
+						target: "author",
+						operator: "equals",
+						value: "author-nova",
+					},
+					{
+						type: "criterion",
+						target: "favorite",
+						operator: "equals",
+						value: true,
+					},
+				],
+			},
 			state: {
 				searchQuery: "",
 				selectedTags: [],
@@ -94,7 +112,7 @@ export function PresetManager(props: PresetManagerProps) {
 				selectedIps: [],
 				selectedCharacters: [],
 				selectedAuthors: ["author-nova"],
-				selectedStatus: "tagged",
+				selectedStatus: null,
 				favoritesOnly: true,
 				sortBy: "rating",
 				sortOrder: "desc",
@@ -125,7 +143,7 @@ export function PresetManager(props: PresetManagerProps) {
 				id: Date.now(),
 				name: newPresetName().trim(),
 				mode: props.currentMode,
-				advancedQuery: props.advancedQuery,
+				advancedCondition: cloneSearchGroup(props.advancedCondition),
 				state: cloneState(props.currentState),
 			},
 		]);
@@ -236,6 +254,7 @@ export function PresetManager(props: PresetManagerProps) {
 							}
 							props.onLoadPreset({
 								...preset,
+								advancedCondition: cloneSearchGroup(preset.advancedCondition),
 								state: cloneState(preset.state),
 							});
 							toast.success("プリセットを読み込みました");

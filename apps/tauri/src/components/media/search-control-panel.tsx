@@ -1,3 +1,4 @@
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import { Label } from "@solid-imager/ui/label";
 import {
@@ -36,12 +37,12 @@ type SearchControlPanelProps = {
 	onModeChange: (mode: TauriSearchMode) => void;
 	onSearch: () => void;
 	onSelectSource?: (id: string) => void;
-	onAdvancedQueryChange: (value: string) => void;
+	onAdvancedConditionChange: (value: SearchGroup | null) => void;
 	selectedSource?: string;
 	setState: SetStoreFunction<TauriSearchFilterState>;
 	state: TauriSearchFilterState;
 	sources?: MockSource[];
-	advancedQuery: string;
+	advancedCondition: SearchGroup | null;
 	class?: string;
 };
 
@@ -168,20 +169,21 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			<Show when={props.mode === "pro"}>
 				<div class="space-y-4">
 					<PresetManager
-						advancedQuery={props.advancedQuery}
+						advancedCondition={props.advancedCondition}
 						currentMode={props.mode}
 						currentState={props.state}
 						onAction={props.onSearch}
 						onLoadPreset={(preset) => {
 							props.setState(reconcile(preset.state));
 							props.onModeChange(preset.mode);
-							props.onAdvancedQueryChange(preset.advancedQuery);
+							props.onAdvancedConditionChange(preset.advancedCondition);
 						}}
 					/>
 					<ProSearchDialog
-						onChange={props.onAdvancedQueryChange}
+						filterData={props.filterData}
+						onChange={props.onAdvancedConditionChange}
 						onSearch={props.onSearch}
-						value={props.advancedQuery}
+						value={props.advancedCondition}
 					/>
 				</div>
 			</Show>

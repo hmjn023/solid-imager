@@ -1,3 +1,4 @@
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
@@ -24,6 +25,10 @@ import {
 } from "../../../components/media/search-control-panel";
 import type { TauriSearchFilterState } from "../../../components/media/search-filters";
 import {
+	createDefaultAdvancedCondition,
+	matchesSearchGroup,
+} from "../../../lib/mock-pro-search";
+import {
 	getMockMediaBySource,
 	getMockSource,
 	mockCharacters,
@@ -39,7 +44,8 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 function SourceMediaRoute() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const [mode, setMode] = createSignal<TauriSearchMode>("simple");
-	const [advancedQuery, setAdvancedQuery] = createSignal("");
+	const [advancedCondition, setAdvancedCondition] =
+		createSignal<SearchGroup | null>(null);
 	const [state, setState] = createStore<TauriSearchFilterState>({
 		searchQuery: "",
 		selectedTags: [],
@@ -55,22 +61,6 @@ function SourceMediaRoute() {
 	});
 
 	const source = createMemo(() => getMockSource(params().mediaSourceId));
-	const advancedFilters = createMemo(() => {
-		if (mode() !== "pro") {
-			return {};
-		}
-		try {
-			return JSON.parse(advancedQuery()) as {
-				authorId?: string;
-				status?: "queued" | "review" | "tagged";
-				tag?: string;
-				projectId?: string;
-				favorite?: boolean;
-			};
-		} catch {
-			return {};
-		}
-	});
 
 	const filterData = createMemo(() => {
 		const mediaList = getMockMediaBySource(params().mediaSourceId);
@@ -96,10 +86,13 @@ function SourceMediaRoute() {
 
 	const mediaResults = createMemo(() => {
 		const loweredQuery = state.searchQuery.trim().toLowerCase();
-		const filters = advancedFilters();
+		const currentAdvancedCondition = advancedCondition();
 
 		return getMockMediaBySource(params().mediaSourceId)
 			.filter((media) => {
+				if (mode() === "pro") {
+					return matchesSearchGroup(media, currentAdvancedCondition);
+				}
 				if (state.selectedStatus && media.status !== state.selectedStatus) {
 					return false;
 				}
@@ -147,30 +140,6 @@ function SourceMediaRoute() {
 				) {
 					return false;
 				}
-				if (
-					filters.authorId &&
-					!media.authors.some((author) => author.id === filters.authorId)
-				) {
-					return false;
-				}
-				if (filters.status && media.status !== filters.status) {
-					return false;
-				}
-				if (filters.tag && !media.tags.includes(filters.tag)) {
-					return false;
-				}
-				if (
-					filters.projectId &&
-					!media.projects.some((project) => project.id === filters.projectId)
-				) {
-					return false;
-				}
-				if (
-					filters.favorite !== undefined &&
-					media.favorite !== filters.favorite
-				) {
-					return false;
-				}
 				if (!loweredQuery) {
 					return true;
 				}
@@ -214,20 +183,18 @@ function SourceMediaRoute() {
 
 	const handleModeChange = (nextMode: TauriSearchMode) => {
 		setMode(nextMode);
-		if (nextMode === "simple") {
-			setAdvancedQuery("");
-		} else if (!advancedQuery()) {
-			setAdvancedQuery('{ "status": "review", "tag": "reference" }');
+		if (nextMode === "pro" && !advancedCondition()) {
+			setAdvancedCondition(createDefaultAdvancedCondition(state));
 		}
 	};
 
 	const panel = (
 		<SearchControlPanel
-			advancedQuery={advancedQuery()}
+			advancedCondition={advancedCondition()}
 			context="source"
 			filterData={filterData()}
 			mode={mode()}
-			onAdvancedQueryChange={setAdvancedQuery}
+			onAdvancedConditionChange={setAdvancedCondition}
 			onModeChange={handleModeChange}
 			onSearch={handleSearch}
 			setState={setState}

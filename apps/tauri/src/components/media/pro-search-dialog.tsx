@@ -1,3 +1,4 @@
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -7,13 +8,14 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
-import { Label } from "@solid-imager/ui/label";
-import { Textarea } from "@solid-imager/ui/textarea";
 import { createSignal } from "solid-js";
+import { ProSearchBuilder } from "./pro-search-builder";
+import type { TauriSearchFilterData } from "./search-filters";
 
 type Props = {
-	value: string;
-	onChange: (value: string) => void;
+	filterData: TauriSearchFilterData;
+	value: SearchGroup | null;
+	onChange: (value: SearchGroup | null) => void;
 	onSearch: () => void;
 };
 
@@ -25,23 +27,16 @@ export function ProSearchDialog(props: Props) {
 			<DialogTrigger as={Button} class="w-full" variant="outline">
 				詳細条件を編集
 			</DialogTrigger>
-			<DialogContent class="flex max-h-[90vh] max-w-3xl flex-col">
+			<DialogContent class="flex max-h-[90vh] max-w-5xl flex-col">
 				<DialogHeader>
 					<DialogTitle>詳細検索条件の編集</DialogTitle>
 				</DialogHeader>
-				<div class="flex-1 space-y-3 overflow-y-auto p-1">
-					<p class="text-muted-foreground text-sm">
-						mock では JSON 条件を直接編集します。例:{" "}
-						<code>{'{ "authorId": "author-nova", "status": "review" }'}</code>
-					</p>
-					<div class="space-y-2">
-						<Label>詳細条件</Label>
-						<Textarea
-							onInput={(event) => props.onChange(event.currentTarget.value)}
-							rows={12}
-							value={props.value}
-						/>
-					</div>
+				<div class="flex-1 overflow-y-auto p-1">
+					<ProSearchBuilder
+						filterData={props.filterData}
+						onChange={props.onChange}
+						value={props.value}
+					/>
 				</div>
 				<DialogFooter>
 					<Button
