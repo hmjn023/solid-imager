@@ -1,4 +1,4 @@
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type { Preset } from "@solid-imager/core/domain/media/schemas";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -13,12 +13,14 @@ import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
 	DialogContent,
+	DialogDescription,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { Input } from "@solid-imager/ui/input";
+import { Label } from "@solid-imager/ui/label";
 import {
 	Select,
 	SelectContent,
@@ -27,282 +29,263 @@ import {
 	SelectValue,
 } from "@solid-imager/ui/select";
 import { toast } from "@solid-imager/ui/toast";
-import { createMemo, createSignal, Show } from "solid-js";
-import { cloneSearchGroup } from "../../lib/mock-pro-search";
-import type { TauriSearchMode } from "./search-control-panel";
-import type { TauriSearchFilterState } from "./search-filters";
+import { cn } from "@solid-imager/ui/utils/cn";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { PresetClient } from "../../infrastructure/api/clients/preset-client";
+import {
+	clearPresetFilters,
+	getSearchCondition,
+	loadPreset,
+	searchState,
+} from "../../presentation/store/search-store";
 
-type MockPreset = {
-	id: number;
-	name: string;
-	mode: TauriSearchMode;
-	advancedCondition: SearchGroup | null;
-	state: TauriSearchFilterState;
-};
-
-type PresetManagerProps = {
-	currentMode: TauriSearchMode;
-	currentState: TauriSearchFilterState;
-	advancedCondition: SearchGroup | null;
-	onLoadPreset: (preset: MockPreset) => void;
+export function PresetManager(props: {
 	class?: string;
 	onAction?: () => void;
-};
+}) {
+	const [data, { refetch }] = createResource(PresetClient.list);
+	const presets = () =>
+		data()?.filter((preset) => !preset.name.startsWith("current"));
 
-function cloneState(state: TauriSearchFilterState): TauriSearchFilterState {
-	return {
-		...state,
-		excludeTags: [...state.excludeTags],
-		selectedAuthors: [...state.selectedAuthors],
-		selectedCharacters: [...state.selectedCharacters],
-		selectedIps: [...state.selectedIps],
-		selectedProjects: [...state.selectedProjects],
-		selectedTags: [...state.selectedTags],
-	};
-}
-
-export function PresetManager(props: PresetManagerProps) {
-	const [presets, setPresets] = createSignal<MockPreset[]>([
-		{
-			id: 1,
-			name: "レビュー待ち",
-			mode: "simple",
-			advancedCondition: null,
-			state: {
-				searchQuery: "",
-				selectedTags: [],
-				excludeTags: [],
-				selectedProjects: [],
-				selectedIps: [],
-				selectedCharacters: [],
-				selectedAuthors: [],
-				selectedStatus: "review",
-				favoritesOnly: false,
-				sortBy: "date",
-				sortOrder: "desc",
-			},
-		},
-		{
-			id: 2,
-			name: "nova tagged",
-			mode: "pro",
-			advancedCondition: {
-				type: "group",
-				operator: "and",
-				children: [
-					{
-						type: "criterion",
-						target: "author",
-						operator: "equals",
-						value: "author-nova",
-					},
-					{
-						type: "criterion",
-						target: "favorite",
-						operator: "equals",
-						value: true,
-					},
-				],
-			},
-			state: {
-				searchQuery: "",
-				selectedTags: [],
-				excludeTags: [],
-				selectedProjects: [],
-				selectedIps: [],
-				selectedCharacters: [],
-				selectedAuthors: ["author-nova"],
-				selectedStatus: null,
-				favoritesOnly: true,
-				sortBy: "rating",
-				sortOrder: "desc",
-			},
-		},
-	]);
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
+	const [newPresetName, setNewPresetName] = createSignal("");
 	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
 		null,
 	);
-	const [newPresetName, setNewPresetName] = createSignal("");
 
-	const selectedPreset = createMemo(() =>
-		presets().find((preset) => String(preset.id) === selectedPresetId()),
-	);
-
-	const handleSave = (event: Event) => {
-		event.preventDefault();
-		if (!newPresetName().trim()) {
-			return;
-		}
-
-		setPresets((current) => [
-			...current,
-			{
-				id: Date.now(),
-				name: newPresetName().trim(),
-				mode: props.currentMode,
-				advancedCondition: cloneSearchGroup(props.advancedCondition),
-				state: cloneState(props.currentState),
-			},
-		]);
-		setNewPresetName("");
-		setIsSaveDialogOpen(false);
-		toast.success("プリセットを保存しました");
-		props.onAction?.();
-	};
-
-	const executeDelete = () => {
-		const targetId = presetToDelete();
-		if (!targetId) {
-			return;
-		}
-
-		setPresets((current) => current.filter((preset) => preset.id !== targetId));
-		if (selectedPresetId() === String(targetId)) {
+	createEffect(() => {
+		const active = searchState.activePresetId;
+		if (active) {
+			setSelectedPresetId(String(active));
+		} else {
 			setSelectedPresetId(null);
 		}
-		setPresetToDelete(null);
-		setIsDeleteDialogOpen(false);
-		toast.success("プリセットを削除しました");
+	});
+
+	const handleSave = async (event: Event) => {
+		event.preventDefault();
+		if (!newPresetName()) {
+			return;
+		}
+
+		const condition = getSearchCondition();
+		if (!condition) {
+			toast.error("検索条件がありません");
+			return;
+		}
+
+		try {
+			await PresetClient.create({
+				name: newPresetName(),
+				value: condition,
+				sort: searchState.sortBy,
+				order: searchState.sortOrder,
+				mode: searchState.mode,
+			});
+			setIsSaveDialogOpen(false);
+			setNewPresetName("");
+			refetch();
+			toast.success("プリセットを保存しました");
+			props.onAction?.();
+		} catch {
+			toast.error("プリセットの保存に失敗しました");
+		}
+	};
+
+	const confirmDelete = (id: number) => {
+		setPresetToDelete(id);
+		setIsDeleteDialogOpen(true);
+	};
+
+	const executeDelete = async () => {
+		const id = presetToDelete();
+		if (!id) {
+			return;
+		}
+		try {
+			await PresetClient.delete(id);
+			if (selectedPresetId() === String(id)) {
+				setSelectedPresetId(null);
+			}
+			refetch();
+		} catch {
+			toast.error("プリセットの削除に失敗しました");
+		} finally {
+			setIsDeleteDialogOpen(false);
+			setPresetToDelete(null);
+		}
+	};
+
+	const handleLoad = () => {
+		const id = selectedPresetId();
+		if (!id) {
+			return;
+		}
+		const preset = presets()?.find(
+			(candidate: Preset) => candidate.id === Number(id),
+		);
+		if (preset) {
+			loadPreset(preset);
+			props.onAction?.();
+		}
+	};
+
+	const handleClearSelection = () => {
+		setSelectedPresetId(null);
+		clearPresetFilters();
 		props.onAction?.();
 	};
 
 	return (
-		<div class={props.class}>
-			<div class="flex w-full flex-col gap-2">
-				<AlertDialog
-					onOpenChange={setIsDeleteDialogOpen}
-					open={isDeleteDialogOpen()}
-				>
-					<AlertDialogContent>
-						<AlertDialogHeader>
-							<AlertDialogTitle>プリセットの削除</AlertDialogTitle>
-							<AlertDialogDescription>
-								本当にこのプリセットを削除しますか？この操作は取り消せません。
-							</AlertDialogDescription>
-						</AlertDialogHeader>
-						<AlertDialogFooter>
-							<AlertDialogCancel>キャンセル</AlertDialogCancel>
-							<AlertDialogAction
-								class="bg-red-500 hover:bg-red-600"
-								onClick={executeDelete}
-							>
-								削除する
-							</AlertDialogAction>
-						</AlertDialogFooter>
-					</AlertDialogContent>
-				</AlertDialog>
+		<div class={cn("flex w-full flex-col gap-2", props.class)}>
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>プリセットの削除</AlertDialogTitle>
+						<AlertDialogDescription>
+							本当にこのプリセットを削除しますか？この操作は取り消せません。
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>キャンセル</AlertDialogCancel>
+						<AlertDialogAction
+							class="bg-red-500 hover:bg-red-600"
+							onClick={executeDelete}
+						>
+							削除する
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
-				<div class="flex items-center gap-2">
-					<div class="min-w-0 flex-1">
-						<Select
-							itemComponent={(itemProps) => {
-								const preset = presets().find(
-									(candidate) =>
-										String(candidate.id) ===
-										(itemProps.item.rawValue as string),
-								);
-								return (
-									<SelectItem item={itemProps.item}>
-										<span>{preset?.name}</span>
-									</SelectItem>
-								);
-							}}
-							onChange={setSelectedPresetId}
-							options={presets().map((preset) => String(preset.id))}
-							placeholder="プリセットを選択..."
-							value={selectedPresetId()}
-						>
-							<SelectTrigger class="w-full">
-								<SelectValue<string>>
-									{(state) => {
-										const preset = presets().find(
-											(candidate) =>
-												String(candidate.id) ===
-												(state.selectedOption() as string),
-										);
-										return preset ? preset.name : "プリセットを選択...";
-									}}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
-					</div>
-					<Show when={selectedPresetId()}>
-						<Button
-							class="h-10 w-10 shrink-0"
-							onClick={() => setSelectedPresetId(null)}
-							size="icon"
-							title="選択解除"
-							variant="ghost"
-						>
-							×
-						</Button>
-					</Show>
+			<div class="flex items-center gap-2">
+				<div class="min-w-0 flex-1">
+					<Select
+						itemComponent={(itemProps) => {
+							const preset = presets()?.find(
+								(candidate: Preset) =>
+									String(candidate.id) ===
+									(itemProps.item as { rawValue: string }).rawValue,
+							);
+							return (
+								<SelectItem
+									class="flex w-full justify-between gap-2"
+									item={itemProps.item}
+								>
+									<span>{preset?.name}</span>
+								</SelectItem>
+							);
+						}}
+						onChange={setSelectedPresetId}
+						options={
+							presets()?.map((preset: Preset) => String(preset.id)) || []
+						}
+						placeholder="プリセットを選択..."
+						value={selectedPresetId()}
+					>
+						<SelectTrigger class="w-full">
+							<SelectValue<string>>
+								{(state) => {
+									const preset = presets()?.find(
+										(candidate: Preset) =>
+											String(candidate.id) ===
+											(state.selectedOption() as string),
+									);
+									return (
+										<span class="truncate">
+											{preset ? preset.name : "プリセットを選択..."}
+										</span>
+									);
+								}}
+							</SelectValue>
+						</SelectTrigger>
+						<SelectContent />
+					</Select>
 				</div>
 
-				<div class="flex w-full items-center gap-2">
+				<Show when={selectedPresetId()}>
 					<Button
-						class="flex-1"
-						disabled={!selectedPreset()}
-						onClick={() => {
-							const preset = selectedPreset();
-							if (!preset) {
-								return;
-							}
-							props.onLoadPreset({
-								...preset,
-								advancedCondition: cloneSearchGroup(preset.advancedCondition),
-								state: cloneState(preset.state),
-							});
-							toast.success("プリセットを読み込みました");
-							props.onAction?.();
-						}}
-						variant="outline"
+						class="h-10 w-10 shrink-0"
+						onClick={handleClearSelection}
+						size="icon"
+						title="選択解除"
+						variant="ghost"
 					>
-						読込
+						<svg
+							class="lucide lucide-x"
+							fill="none"
+							height="16"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+							width="16"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<title>選択解除</title>
+							<path d="M18 6 6 18" />
+							<path d="m6 6 12 12" />
+						</svg>
 					</Button>
+				</Show>
+			</div>
 
-					<Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
-						<DialogTrigger as={Button} class="flex-1" variant="secondary">
-							保存
-						</DialogTrigger>
-						<DialogContent>
-							<DialogHeader>
-								<DialogTitle>プリセットの保存</DialogTitle>
-							</DialogHeader>
-							<form class="space-y-4" onSubmit={handleSave}>
+			<div class="flex w-full items-center gap-2">
+				<Button
+					class="flex-1"
+					disabled={!selectedPresetId()}
+					onClick={handleLoad}
+					variant="outline"
+				>
+					読込
+				</Button>
+
+				<Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
+					<DialogTrigger as={Button} class="flex-1" variant="secondary">
+						保存
+					</DialogTrigger>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>現在の検索条件を保存</DialogTitle>
+							<DialogDescription>
+								現在の検索条件に名前を付けて保存します。
+							</DialogDescription>
+						</DialogHeader>
+						<div class="grid gap-4 py-4">
+							<div class="grid grid-cols-4 items-center gap-4">
+								<Label class="text-right">名前</Label>
 								<Input
+									class="col-span-3"
 									onInput={(event) =>
 										setNewPresetName(event.currentTarget.value)
 									}
-									placeholder="プリセット名"
 									value={newPresetName()}
 								/>
-								<DialogFooter>
-									<Button type="submit">保存</Button>
-								</DialogFooter>
-							</form>
-						</DialogContent>
-					</Dialog>
+							</div>
+						</div>
+						<DialogFooter>
+							<Button onClick={handleSave}>保存する</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 
+				<Show when={selectedPresetId()}>
 					<Button
-						class="flex-1"
-						disabled={!selectedPreset()}
-						onClick={() => {
-							const preset = selectedPreset();
-							if (preset) {
-								setPresetToDelete(preset.id);
-								setIsDeleteDialogOpen(true);
-							}
-						}}
-						variant="destructive"
+						class="hover:border-red-200 hover:bg-red-50"
+						onClick={() => confirmDelete(Number(selectedPresetId()))}
+						size="icon"
+						title="プリセット削除"
+						variant="outline"
 					>
-						削除
+						<span class="i-lucide-trash-2 h-4 w-4 text-red-500" />
 					</Button>
-				</div>
+				</Show>
 			</div>
 		</div>
 	);

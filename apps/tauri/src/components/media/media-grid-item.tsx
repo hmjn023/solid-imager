@@ -1,10 +1,10 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
-import type { MockMedia } from "../../mocks/demo-data";
 
 type MediaGridItemProps = {
 	linkPrefix?: string;
-	media: MockMedia;
+	media: Media;
 	onContextMenu?: (event: MouseEvent) => void;
 	priority?: boolean;
 };
@@ -30,15 +30,13 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				when={props.media.mediaType === "image"}
 			>
 				<div
-					class="h-full w-full bg-cover bg-center transition-transform duration-300 group-hover:scale-105"
+					class="flex h-full w-full items-center justify-center text-white/80 text-xs uppercase tracking-[0.3em]"
 					style={{
 						background:
 							"linear-gradient(135deg, rgba(15,23,42,0.18), rgba(15,23,42,0.02)), linear-gradient(135deg, #0f766e, #60a5fa)",
 					}}
 				>
-					<div class="flex h-full w-full items-center justify-center text-white/80 text-xs uppercase tracking-[0.3em]">
-						Preview
-					</div>
+					Preview
 				</div>
 			</Show>
 

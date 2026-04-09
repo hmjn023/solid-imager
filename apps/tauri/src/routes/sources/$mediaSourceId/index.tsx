@@ -1,4 +1,4 @@
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
@@ -14,191 +14,161 @@ import {
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { toast } from "@solid-imager/ui/toast";
+import {
+	createInfiniteQuery,
+	createQuery,
+	keepPreviousData,
+} from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
-import { createMemo, createSignal, For, Show } from "solid-js";
-import { createStore } from "solid-js/store";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	Show,
+} from "solid-js";
 import { MediaGridItem } from "../../../components/media/media-grid-item";
+import { SearchControlPanel } from "../../../components/media/search-control-panel";
+import { useMediaSourceEvents } from "../../../hooks/use-media-source-events";
+import { allAuthorsQueryOptions } from "../../../infrastructure/api-clients/queries/authors-query";
+import { allCharactersQueryOptions } from "../../../infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "../../../infrastructure/api-clients/queries/ips-query";
+import { allProjectsQueryOptions } from "../../../infrastructure/api-clients/queries/projects-query";
+import { mediaSourcesQueryOptions } from "../../../infrastructure/api-clients/queries/sources-query";
+import { tagsQueryOptions } from "../../../infrastructure/api-clients/queries/tags-query";
+import { searchMedia } from "../../../infrastructure/api-clients/search-api";
 import {
-	SearchControlPanel,
-	type TauriSearchMode,
-	type TauriSortBy,
-} from "../../../components/media/search-control-panel";
-import type { TauriSearchFilterState } from "../../../components/media/search-filters";
-import {
-	createDefaultAdvancedCondition,
-	matchesSearchGroup,
-} from "../../../lib/mock-pro-search";
-import {
-	getMockMediaBySource,
-	getMockSource,
-	mockCharacters,
-	mockIps,
-	mockProjects,
-	mockSearchTags,
-} from "../../../mocks/demo-data";
+	getSearchCondition,
+	searchState,
+} from "../../../presentation/store/search-store";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(tagsQueryOptions()),
+			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
+			context.queryClient.ensureQueryData(allIpsQueryOptions()),
+			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
+			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
+			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
+		]);
+	},
 	component: SourceMediaRoute,
 });
 
 function SourceMediaRoute() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
-	const [mode, setMode] = createSignal<TauriSearchMode>("simple");
-	const [advancedCondition, setAdvancedCondition] =
-		createSignal<SearchGroup | null>(null);
-	const [state, setState] = createStore<TauriSearchFilterState>({
-		searchQuery: "",
-		selectedTags: [],
-		excludeTags: [],
-		selectedProjects: [],
-		selectedIps: [],
-		selectedCharacters: [],
-		selectedAuthors: [],
-		selectedStatus: null,
-		favoritesOnly: false,
-		sortBy: "date",
-		sortOrder: "desc",
-	});
+	const mediaSourceId = () => params().mediaSourceId;
 
-	const source = createMemo(() => getMockSource(params().mediaSourceId));
+	const tags = createQuery(() => tagsQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
 
-	const filterData = createMemo(() => {
-		const mediaList = getMockMediaBySource(params().mediaSourceId);
-		const authorMap = new Map();
+	const source = createMemo(() =>
+		sources.data?.find((item) => item.id === mediaSourceId()),
+	);
 
-		for (const media of mediaList) {
-			for (const author of media.authors) {
-				authorMap.set(author.id, author);
+	const searchConditionKey = createMemo(() =>
+		JSON.stringify(getSearchCondition() ?? null),
+	);
+
+	const mediaQuery = createInfiniteQuery<MediaSearchResponse>(() => ({
+		queryKey: [
+			"media",
+			mediaSourceId(),
+			searchConditionKey(),
+			searchState.sortBy,
+			searchState.sortOrder,
+		],
+		queryFn: ({ pageParam }) =>
+			searchMedia(mediaSourceId(), {
+				condition: getSearchCondition() || undefined,
+				sort: searchState.sortBy,
+				order: searchState.sortOrder,
+				limit: 100,
+				offset: Number(pageParam ?? 0),
+			}),
+		initialPageParam: 0,
+		getNextPageParam: (lastPage, allPages) => {
+			const loadedCount = allPages.reduce(
+				(sum, page) => sum + page.media.length,
+				0,
+			);
+			if (loadedCount < lastPage.total) {
+				return loadedCount;
 			}
-		}
+			return;
+		},
+		placeholderData: keepPreviousData,
+	}));
 
-		return {
-			authors: Array.from(authorMap.values()),
-			characters: mockCharacters.map((item) => ({
-				id: item.id,
-				name: item.name,
-			})),
-			ips: mockIps.map((item) => ({ id: item.id, name: item.name })),
-			projects: mockProjects.map((item) => ({ id: item.id, name: item.name })),
-			tags: mockSearchTags,
-		};
+	useMediaSourceEvents(mediaSourceId, {
+		onMediaAdded: () => {
+			void mediaQuery.refetch();
+		},
+		onMediaDeleted: () => {
+			void mediaQuery.refetch();
+		},
+		onMediaChanged: () => {
+			void mediaQuery.refetch();
+		},
 	});
 
 	const mediaResults = createMemo(() => {
-		const loweredQuery = state.searchQuery.trim().toLowerCase();
-		const currentAdvancedCondition = advancedCondition();
-
-		return getMockMediaBySource(params().mediaSourceId)
-			.filter((media) => {
-				if (mode() === "pro") {
-					return matchesSearchGroup(media, currentAdvancedCondition);
-				}
-				if (state.selectedStatus && media.status !== state.selectedStatus) {
+		const seen = new Set<string>();
+		return (mediaQuery.data?.pages.flatMap((page) => page.media) || []).filter(
+			(media) => {
+				if (seen.has(media.id)) {
 					return false;
 				}
-				if (state.favoritesOnly && !media.favorite) {
-					return false;
-				}
-				if (
-					state.selectedTags.length > 0 &&
-					!state.selectedTags.every((tag) => media.tags.includes(tag))
-				) {
-					return false;
-				}
-				if (state.excludeTags.some((tag) => media.tags.includes(tag))) {
-					return false;
-				}
-				if (
-					state.selectedProjects.length > 0 &&
-					!state.selectedProjects.every((projectId) =>
-						media.projects.some((project) => project.id === projectId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedIps.length > 0 &&
-					!state.selectedIps.every((ipId) =>
-						media.ips.some((ip) => ip.id === ipId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedCharacters.length > 0 &&
-					!state.selectedCharacters.every((characterId) =>
-						media.characters.some((character) => character.id === characterId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedAuthors.length > 0 &&
-					!state.selectedAuthors.every((authorId) =>
-						media.authors.some((author) => author.id === authorId),
-					)
-				) {
-					return false;
-				}
-				if (!loweredQuery) {
-					return true;
-				}
-				return [
-					media.fileName,
-					media.title,
-					media.summary,
-					...media.tags,
-					...media.authors.map((author) => author.name),
-					...media.projects.map((project) => project.name),
-					...media.ips.map((ip) => ip.name),
-					...media.characters.map((character) => character.name),
-				]
-					.join(" ")
-					.toLowerCase()
-					.includes(loweredQuery);
-			})
-			.slice()
-			.sort((left, right) => {
-				const direction = state.sortOrder === "asc" ? 1 : -1;
-				switch (state.sortBy as TauriSortBy) {
-					case "date":
-						return left.modifiedAt.localeCompare(right.modifiedAt) * direction;
-					case "name":
-						return left.fileName.localeCompare(right.fileName) * direction;
-					case "size":
-						return (left.fileSize - right.fileSize) * direction;
-					case "rating":
-						return (left.rating - right.rating) * direction;
-					case "viewCount":
-						return (left.viewCount - right.viewCount) * direction;
-					default:
-						return 0;
-				}
-			});
+				seen.add(media.id);
+				return true;
+			},
+		);
 	});
 
 	const handleSearch = () => {
-		window.scrollTo({ top: 0 });
+		window.scrollTo(0, 0);
 	};
 
-	const handleModeChange = (nextMode: TauriSearchMode) => {
-		setMode(nextMode);
-		if (nextMode === "pro" && !advancedCondition()) {
-			setAdvancedCondition(createDefaultAdvancedCondition(state));
+	const [loadMoreRef, setLoadMoreRef] = createSignal<
+		HTMLDivElement | undefined
+	>(undefined);
+
+	createEffect(() => {
+		const element = loadMoreRef();
+		if (!element) {
+			return;
 		}
-	};
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
+					void mediaQuery.fetchNextPage();
+				}
+			},
+			{ threshold: 0.5, rootMargin: "1000px" },
+		);
+
+		observer.observe(element);
+		onCleanup(() => observer.disconnect());
+	});
 
 	const panel = (
 		<SearchControlPanel
-			advancedCondition={advancedCondition()}
 			context="source"
-			filterData={filterData()}
-			mode={mode()}
-			onAdvancedConditionChange={setAdvancedCondition}
-			onModeChange={handleModeChange}
+			filterData={{
+				tags: tags.data,
+				projects: allProjects.data,
+				ips: allIps.data,
+				characters: allCharacters.data,
+				authors: allAuthors.data,
+			}}
 			onSearch={handleSearch}
-			setState={setState}
-			state={state}
 		/>
 	);
 
@@ -212,23 +182,33 @@ function SourceMediaRoute() {
 					<p class="text-gray-600">{source()?.description}</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					<Button onClick={() => toast.success("Mock upload flow opened")}>
+					<Button
+						onClick={() =>
+							toast.error("Add Media is not implemented in Tauri yet.")
+						}
+					>
 						Add Media
 					</Button>
 					<Button
-						onClick={() => toast.success("Mock JSON dump download started")}
+						onClick={() =>
+							toast.error("Dump JSON is not implemented in Tauri yet.")
+						}
 						variant="outline"
 					>
 						Dump JSON
 					</Button>
 					<Button
-						onClick={() => toast.success("Mock ZIP dump download started")}
+						onClick={() =>
+							toast.error("Dump ZIP is not implemented in Tauri yet.")
+						}
 						variant="outline"
 					>
 						Dump ZIP
 					</Button>
 					<Button
-						onClick={() => toast.success("Mock restore flow opened")}
+						onClick={() =>
+							toast.error("Restore is not implemented in Tauri yet.")
+						}
 						variant="outline"
 					>
 						Restore
@@ -260,7 +240,7 @@ function SourceMediaRoute() {
 				<div class="space-y-4">
 					<div class="mb-4 flex items-center justify-between">
 						<p class="text-gray-600 text-sm">
-							{mediaResults().length} 件の結果
+							{mediaQuery.data?.pages[0]?.total ?? 0} 件の結果
 						</p>
 					</div>
 
@@ -270,11 +250,13 @@ function SourceMediaRoute() {
 						</For>
 					</div>
 
-					<Show when={mediaResults().length === 0}>
+					<Show when={mediaResults().length === 0 && !mediaQuery.isLoading}>
 						<div class="py-12 text-center text-gray-500">
 							検索結果が見つかりませんでした
 						</div>
 					</Show>
+
+					<div ref={setLoadMoreRef} />
 				</div>
 			</div>
 		</main>

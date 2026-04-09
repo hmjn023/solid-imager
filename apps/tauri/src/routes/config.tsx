@@ -1,3 +1,7 @@
+import {
+	type AppConfig,
+	defaultAppConfig,
+} from "@solid-imager/core/domain/config/config-schema";
 import { Button } from "@solid-imager/ui/button";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
@@ -15,12 +19,17 @@ import {
 } from "@solid-imager/ui/tabs";
 import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { Show } from "solid-js";
-import { createStore } from "solid-js/store";
-import { mockConfig } from "../mocks/demo-data";
+import { createEffect } from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
+import { orpc } from "../infrastructure/api-clients/orpc-client";
+import { configQueryOptions } from "../infrastructure/api-clients/queries/config-query";
 
 export const Route = createFileRoute("/config")({
+	loader: async ({ context }) => {
+		await context.queryClient.ensureQueryData(configQueryOptions());
+	},
 	component: ConfigPage,
 });
 
@@ -32,17 +41,29 @@ function parseList(value: string) {
 }
 
 export default function ConfigPage() {
-	const [config, setConfig] = createStore(structuredClone(mockConfig));
+	const queryClient = useQueryClient();
+	const configQuery = createQuery(() => configQueryOptions());
+	const [config, setConfig] = createStore<AppConfig>(
+		structuredClone(defaultAppConfig),
+	);
+
+	createEffect(() => {
+		if (configQuery.data) {
+			setConfig(reconcile(structuredClone(configQuery.data as AppConfig)));
+		}
+	});
+
+	const handleSave = async () => {
+		await orpc.config.update(config);
+		toast.success("Configuration saved successfully");
+		await queryClient.invalidateQueries({ queryKey: ["config"] });
+	};
 
 	return (
 		<div class="container mx-auto max-w-4xl p-6">
 			<div class="mb-6 flex items-center justify-between">
 				<h1 class="font-bold text-3xl">Settings</h1>
-				<Button
-					onClick={() => toast.success("Configuration saved successfully")}
-				>
-					Save Changes
-				</Button>
+				<Button onClick={handleSave}>Save Changes</Button>
 			</div>
 
 			<Tabs class="w-full" defaultValue="jobs">
@@ -156,19 +177,6 @@ export default function ConfigPage() {
 									value={config.ai.timeoutMs}
 								/>
 							</div>
-							<Show when={"autoAnalyzePrompt" in config.ai}>
-								<Switch
-									checked={config.ai.autoAnalyzePrompt}
-									onChange={(checked) =>
-										setConfig("ai", "autoAnalyzePrompt", checked)
-									}
-								>
-									<SwitchControl>
-										<SwitchThumb />
-									</SwitchControl>
-									<SwitchLabel>Auto analyze prompt</SwitchLabel>
-								</Switch>
-							</Show>
 						</div>
 					</TabsContent>
 

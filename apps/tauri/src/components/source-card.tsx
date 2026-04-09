@@ -1,3 +1,7 @@
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import {
 	Card,
 	CardContent,
@@ -5,17 +9,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@solid-imager/ui/card";
-import { Link } from "@tanstack/solid-router";
-import type { MockConnectionInfo, MockSource } from "../mocks/demo-data";
 
 type SourceCardProps = {
-	mediaSource: MockSource;
-	onDelete?: (source: MockSource) => void;
-	onEdit?: (source: MockSource) => void;
-	onSync?: (source: MockSource) => void;
+	mediaSource: SafeMediaSource | MediaSourceInfo;
+	onEdit?: (source: SafeMediaSource | MediaSourceInfo) => void;
+	onDelete?: (source: SafeMediaSource | MediaSourceInfo) => void;
+	onSync?: (source: SafeMediaSource | MediaSourceInfo) => void;
 };
 
-const getTypeLabel = (type: MockSource["type"]) => {
+const getTypeLabel = (type: string) => {
 	switch (type) {
 		case "local":
 			return "Local Filesystem";
@@ -23,58 +25,49 @@ const getTypeLabel = (type: MockSource["type"]) => {
 			return "SFTP";
 		case "s3":
 			return "S3 Compatible Storage";
+		default:
+			return type;
 	}
 };
 
-const getConnectionDetails = (source: MockSource) => {
-	if (isLocalConnection(source.connectionInfo)) {
-		return `Path: ${source.connectionInfo.path}`;
+const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
+	const info = source.connectionInfo as Record<string, string>;
+
+	if (source.type === "local") {
+		return `Path: ${info.path || "N/A"}`;
 	}
-	if (isSftpConnection(source.connectionInfo)) {
-		return `SFTP: ${source.connectionInfo.host}:${source.connectionInfo.remotePath}`;
+	if (source.type === "sftp") {
+		return `SFTP: ${info.host || "?"}:${info.remotePath || "?"}`;
 	}
-	return `S3: ${source.connectionInfo.bucket} (${source.connectionInfo.region})`;
+	if (source.type === "s3") {
+		return `S3: ${info.bucket || "?"} (${info.region || "?"})`;
+	}
+	return "Unknown Connection";
 };
-
-function isLocalConnection(
-	connectionInfo: MockConnectionInfo,
-): connectionInfo is Extract<MockConnectionInfo, { path: string }> {
-	return "path" in connectionInfo;
-}
-
-function isSftpConnection(
-	connectionInfo: MockConnectionInfo,
-): connectionInfo is Extract<
-	MockConnectionInfo,
-	{ host: string; port: number; remotePath: string; username: string }
-> {
-	return "host" in connectionInfo;
-}
 
 export function SourceCard(props: SourceCardProps) {
 	const handleEditClick = (event: MouseEvent) => {
-		event.preventDefault();
 		event.stopPropagation();
+		event.preventDefault();
 		props.onEdit?.(props.mediaSource);
 	};
 
 	const handleSyncClick = (event: MouseEvent) => {
-		event.preventDefault();
 		event.stopPropagation();
+		event.preventDefault();
 		props.onSync?.(props.mediaSource);
 	};
 
 	const handleDeleteClick = (event: MouseEvent) => {
-		event.preventDefault();
 		event.stopPropagation();
+		event.preventDefault();
 		props.onDelete?.(props.mediaSource);
 	};
 
 	return (
-		<Link
+		<a
 			class="block text-current no-underline"
-			params={{ mediaSourceId: props.mediaSource.id }}
-			to="/sources/$mediaSourceId"
+			href={`/sources/${props.mediaSource.id}`}
 		>
 			<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
 				<CardHeader>
@@ -95,7 +88,7 @@ export function SourceCard(props: SourceCardProps) {
 					</div>
 				</CardContent>
 				<div class="absolute top-2 right-2 z-10 flex gap-1">
-					{props.onSync ? (
+					{props.onSync && (
 						<button
 							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
 							onClick={handleSyncClick}
@@ -103,8 +96,8 @@ export function SourceCard(props: SourceCardProps) {
 						>
 							Sync
 						</button>
-					) : null}
-					{props.onEdit ? (
+					)}
+					{props.onEdit && (
 						<button
 							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
 							onClick={handleEditClick}
@@ -112,8 +105,8 @@ export function SourceCard(props: SourceCardProps) {
 						>
 							Edit
 						</button>
-					) : null}
-					{props.onDelete ? (
+					)}
+					{props.onDelete && (
 						<button
 							class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
 							onClick={handleDeleteClick}
@@ -121,9 +114,9 @@ export function SourceCard(props: SourceCardProps) {
 						>
 							Delete
 						</button>
-					) : null}
+					)}
 				</div>
 			</Card>
-		</Link>
+		</a>
 	);
 }

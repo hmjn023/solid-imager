@@ -1,4 +1,4 @@
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
@@ -13,198 +13,192 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import {
+	createInfiniteQuery,
+	createQuery,
+	keepPreviousData,
+	useQueryClient,
+} from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createMemo, createSignal, For, Show } from "solid-js";
-import { createStore } from "solid-js/store";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	Show,
+} from "solid-js";
 import { MediaGridItem } from "../components/media/media-grid-item";
+import { SearchControlPanel } from "../components/media/search-control-panel";
+import { useMediaSourceEvents } from "../hooks/use-media-source-events";
+import { allAuthorsQueryOptions } from "../infrastructure/api-clients/queries/authors-query";
+import { allCharactersQueryOptions } from "../infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "../infrastructure/api-clients/queries/ips-query";
+import { allProjectsQueryOptions } from "../infrastructure/api-clients/queries/projects-query";
+import { mediaSourcesQueryOptions } from "../infrastructure/api-clients/queries/sources-query";
+import { tagsQueryOptions } from "../infrastructure/api-clients/queries/tags-query";
+import { searchMedia } from "../infrastructure/api-clients/search-api";
 import {
-	SearchControlPanel,
-	type TauriSearchMode,
-	type TauriSortBy,
-} from "../components/media/search-control-panel";
-import type { TauriSearchFilterState } from "../components/media/search-filters";
-import {
-	createDefaultAdvancedCondition,
-	matchesSearchGroup,
-} from "../lib/mock-pro-search";
-import {
-	mockCharacters,
-	mockIps,
-	mockMedia,
-	mockProjects,
-	mockSearchTags,
-	mockSources,
-} from "../mocks/demo-data";
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "../presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.ensureQueryData(tagsQueryOptions()),
+			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
+			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
+			context.queryClient.ensureQueryData(allIpsQueryOptions()),
+			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
+			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
+		]);
+	},
 	component: SearchRoute,
 });
 
+const QUERY_GC_TIME = 1000 * 60 * 5;
+
 function SearchRoute() {
-	const [mode, setMode] = createSignal<TauriSearchMode>("simple");
-	const [advancedCondition, setAdvancedCondition] =
-		createSignal<SearchGroup | null>(null);
-	const [selectedSource, setSelectedSource] = createSignal("");
-	const [state, setState] = createStore<TauriSearchFilterState>({
-		searchQuery: "",
-		selectedTags: [],
-		excludeTags: [],
-		selectedProjects: [],
-		selectedIps: [],
-		selectedCharacters: [],
-		selectedAuthors: [],
-		selectedStatus: null,
-		favoritesOnly: false,
-		sortBy: "date",
-		sortOrder: "desc",
-	});
+	const queryClient = useQueryClient();
+	const [isRestored, setIsRestored] = createSignal(false);
 
-	const filterData = createMemo(() => {
-		const sourceId = selectedSource();
-		const mediaList = sourceId
-			? mockMedia.filter((media) => media.mediaSourceId === sourceId)
-			: mockMedia;
-		const authorMap = new Map();
+	const tags = createQuery(() => tagsQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 
-		for (const media of mediaList) {
-			for (const author of media.authors) {
-				authorMap.set(author.id, author);
-			}
-		}
+	const conditionKey = createMemo(() =>
+		JSON.stringify(getSearchCondition() ?? null),
+	);
 
+	const searchResultQuery = createInfiniteQuery<MediaSearchResponse>(() => {
+		const source = searchState.selectedSource || undefined;
 		return {
-			authors: Array.from(authorMap.values()),
-			characters: mockCharacters.map((item) => ({
-				id: item.id,
-				name: item.name,
-			})),
-			ips: mockIps.map((item) => ({ id: item.id, name: item.name })),
-			projects: mockProjects.map((item) => ({ id: item.id, name: item.name })),
-			tags: mockSearchTags,
+			queryKey: [
+				"searchResults",
+				source,
+				conditionKey(),
+				searchState.sortBy,
+				searchState.sortOrder,
+				searchState.limit,
+			],
+			queryFn: async ({ pageParam }) =>
+				await searchMedia(source, {
+					condition: getSearchCondition() || undefined,
+					sort: searchState.sortBy,
+					order: searchState.sortOrder,
+					limit: searchState.limit,
+					offset: Number(pageParam ?? 0),
+				}),
+			initialPageParam: 0,
+			getNextPageParam: (lastPage, allPages) => {
+				const loadedCount = allPages.reduce(
+					(sum, page) => sum + page.media.length,
+					0,
+				);
+				if (loadedCount < lastPage.total) {
+					return loadedCount;
+				}
+			},
+			placeholderData: keepPreviousData,
+			gcTime: QUERY_GC_TIME,
 		};
 	});
 
-	const searchResults = createMemo(() => {
-		const loweredQuery = state.searchQuery.trim().toLowerCase();
-		const currentAdvancedCondition = advancedCondition();
+	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+		onMediaAdded: () => {
+			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+		},
+		onMediaDeleted: () => {
+			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+		},
+		onMediaChanged: () => {
+			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+		},
+	});
 
-		return mockMedia
-			.filter((media) => {
-				if (selectedSource() && media.mediaSourceId !== selectedSource()) {
-					return false;
-				}
-				if (mode() === "pro") {
-					return matchesSearchGroup(media, currentAdvancedCondition);
-				}
-				if (state.selectedStatus && media.status !== state.selectedStatus) {
-					return false;
-				}
-				if (state.favoritesOnly && !media.favorite) {
-					return false;
-				}
-				if (
-					state.selectedTags.length > 0 &&
-					!state.selectedTags.every((tag) => media.tags.includes(tag))
-				) {
-					return false;
-				}
-				if (state.excludeTags.some((tag) => media.tags.includes(tag))) {
-					return false;
-				}
-				if (
-					state.selectedProjects.length > 0 &&
-					!state.selectedProjects.every((projectId) =>
-						media.projects.some((project) => project.id === projectId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedIps.length > 0 &&
-					!state.selectedIps.every((ipId) =>
-						media.ips.some((ip) => ip.id === ipId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedCharacters.length > 0 &&
-					!state.selectedCharacters.every((characterId) =>
-						media.characters.some((character) => character.id === characterId),
-					)
-				) {
-					return false;
-				}
-				if (
-					state.selectedAuthors.length > 0 &&
-					!state.selectedAuthors.every((authorId) =>
-						media.authors.some((author) => author.id === authorId),
-					)
-				) {
-					return false;
-				}
-				if (!loweredQuery) {
-					return true;
-				}
-				return [
-					media.fileName,
-					media.title,
-					media.summary,
-					...media.tags,
-					...media.authors.map((author) => author.name),
-					...media.projects.map((project) => project.name),
-					...media.ips.map((ip) => ip.name),
-					...media.characters.map((character) => character.name),
-				]
-					.join(" ")
-					.toLowerCase()
-					.includes(loweredQuery);
-			})
-			.slice()
-			.sort((left, right) => {
-				const direction = state.sortOrder === "asc" ? 1 : -1;
-				switch (state.sortBy as TauriSortBy) {
-					case "date":
-						return left.modifiedAt.localeCompare(right.modifiedAt) * direction;
-					case "name":
-						return left.fileName.localeCompare(right.fileName) * direction;
-					case "size":
-						return (left.fileSize - right.fileSize) * direction;
-					case "rating":
-						return (left.rating - right.rating) * direction;
-					case "viewCount":
-						return (left.viewCount - right.viewCount) * direction;
-					default:
-						return 0;
-				}
+	const searchResults = createMemo(() => {
+		const seen = new Set<string>();
+		return (
+			searchResultQuery.data?.pages.flatMap((page) => page.media) || []
+		).filter((media) => {
+			if (seen.has(media.id)) {
+				return false;
+			}
+			seen.add(media.id);
+			return true;
+		});
+	});
+
+	createEffect(() => {
+		if (
+			!(searchResultQuery.isLoading || isRestored()) &&
+			searchResultQuery.data &&
+			searchResultQuery.data.pages.length > 0 &&
+			searchState.scrollY > 0
+		) {
+			requestAnimationFrame(() => {
+				window.scrollTo(0, searchState.scrollY);
 			});
+			setIsRestored(true);
+		}
+	});
+
+	onCleanup(() => {
+		setSearchState("scrollY", window.scrollY);
 	});
 
 	const handleSearch = () => {
-		window.scrollTo({ top: 0 });
+		setSearchState("offset", 0);
+		setSearchState("scrollY", 0);
+		window.scrollTo(0, 0);
 	};
 
-	const handleModeChange = (nextMode: TauriSearchMode) => {
-		setMode(nextMode);
-		if (nextMode === "pro" && !advancedCondition()) {
-			setAdvancedCondition(createDefaultAdvancedCondition(state));
+	const [loadMoreRef, setLoadMoreRef] = createSignal<
+		HTMLDivElement | undefined
+	>(undefined);
+
+	createEffect(() => {
+		const element = loadMoreRef();
+		if (!element) {
+			return;
 		}
-	};
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (
+					entries[0].isIntersecting &&
+					searchResultQuery.hasNextPage &&
+					!searchResultQuery.isFetchingNextPage
+				) {
+					void searchResultQuery.fetchNextPage();
+				}
+			},
+			{ threshold: 0.5, rootMargin: "1000px" },
+		);
+
+		observer.observe(element);
+		onCleanup(() => observer.disconnect());
+	});
 
 	const panel = (
 		<SearchControlPanel
-			advancedCondition={advancedCondition()}
 			context="global"
-			filterData={filterData()}
-			mode={mode()}
-			onAdvancedConditionChange={setAdvancedCondition}
-			onModeChange={handleModeChange}
+			filterData={{
+				tags: tags.data,
+				projects: allProjects.data,
+				ips: allIps.data,
+				characters: allCharacters.data,
+				authors: allAuthors.data,
+			}}
 			onSearch={handleSearch}
-			onSelectSource={setSelectedSource}
-			selectedSource={selectedSource()}
-			setState={setState}
-			state={state}
-			sources={mockSources}
+			onSelectSource={(id) => setSearchState("selectedSource", id)}
+			selectedSource={searchState.selectedSource}
+			sources={sources.data}
 		/>
 	);
 
@@ -241,7 +235,7 @@ function SearchRoute() {
 				<div class="space-y-4">
 					<div class="mb-4 flex items-center justify-between">
 						<p class="text-gray-600 text-sm">
-							{searchResults().length} 件の結果
+							{searchResultQuery.data?.pages[0]?.total ?? 0} 件の結果
 						</p>
 					</div>
 
@@ -251,11 +245,15 @@ function SearchRoute() {
 						</For>
 					</div>
 
-					<Show when={searchResults().length === 0}>
+					<Show
+						when={searchResults().length === 0 && !searchResultQuery.isLoading}
+					>
 						<div class="py-12 text-center text-gray-500">
 							検索結果が見つかりませんでした
 						</div>
 					</Show>
+
+					<div ref={setLoadMoreRef} />
 				</div>
 			</div>
 		</main>

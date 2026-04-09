@@ -1,4 +1,9 @@
+import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -10,10 +15,13 @@ import {
 } from "@solid-imager/ui/dialog";
 import { createSignal } from "solid-js";
 import { ProSearchBuilder } from "./pro-search-builder";
-import type { TauriSearchFilterData } from "./search-filters";
 
 type Props = {
-	filterData: TauriSearchFilterData;
+	tags?: TagResponse[];
+	projects?: Project[];
+	ips?: Ip[];
+	characters?: Character[];
+	authors?: Author[];
 	value: SearchGroup | null;
 	onChange: (value: SearchGroup | null) => void;
 	onSearch: () => void;
@@ -33,8 +41,12 @@ export function ProSearchDialog(props: Props) {
 				</DialogHeader>
 				<div class="flex-1 overflow-y-auto p-1">
 					<ProSearchBuilder
-						filterData={props.filterData}
+						authors={props.authors}
+						characters={props.characters}
+						ips={props.ips}
 						onChange={props.onChange}
+						projects={props.projects}
+						tags={props.tags}
 						value={props.value}
 					/>
 				</div>

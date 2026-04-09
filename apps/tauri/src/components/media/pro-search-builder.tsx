@@ -1,7 +1,12 @@
+import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type {
 	SearchCriterion,
 	SearchGroup,
 } from "@solid-imager/core/domain/media/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
 import { Card, CardContent } from "@solid-imager/ui/card";
 import {
@@ -20,9 +25,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
+import { cn } from "@solid-imager/ui/utils/cn";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
-import type { MockAssociation, MockAuthor } from "../../mocks/demo-data";
-import type { TauriSearchFilterData } from "./search-filters";
 
 const TARGET_LABELS: Record<string, string> = {
 	fileName: "ファイル名",
@@ -39,10 +43,7 @@ const TARGET_LABELS: Record<string, string> = {
 	viewCount: "閲覧数",
 	fileSize: "ファイルサイズ",
 	createdAt: "作成日",
-	width: "幅",
-	height: "高さ",
 	aiGenerated: "AI生成",
-	favorite: "お気に入り",
 };
 
 const OPERATOR_LABELS: Record<string, string> = {
@@ -75,14 +76,15 @@ const BOOLEAN_OPERATORS = ["equals"];
 type Props = {
 	value: SearchGroup | null;
 	onChange: (value: SearchGroup | null) => void;
-	filterData: TauriSearchFilterData;
+	tags?: TagResponse[];
+	projects?: Project[];
+	ips?: Ip[];
+	characters?: Character[];
+	authors?: Author[];
 	className?: string;
 };
 
-type RelationOption =
-	| MockAssociation
-	| MockAuthor
-	| { id: string; name: string };
+type RelationOption = TagResponse | Project | Ip | Character | Author;
 
 export function ProSearchBuilder(props: Props) {
 	const rootGroup = createMemo<SearchGroup>(
@@ -95,14 +97,18 @@ export function ProSearchBuilder(props: Props) {
 	);
 
 	return (
-		<div class={props.className}>
+		<div class={cn("space-y-4", props.className)}>
 			<GroupBuilder
+				authors={props.authors}
+				characters={props.characters}
 				depth={0}
-				filterData={props.filterData}
 				group={rootGroup()}
+				ips={props.ips}
 				isRoot
 				onChange={props.onChange}
 				onRemove={() => props.onChange(null)}
+				projects={props.projects}
+				tags={props.tags}
 			/>
 		</div>
 	);
@@ -131,7 +137,7 @@ function getValidOperators(target: string) {
 	) {
 		return NUMERIC_OPERATORS;
 	}
-	if (["aiGenerated", "favorite"].includes(target)) {
+	if (["aiGenerated", "favorite", "isArchived"].includes(target)) {
 		return BOOLEAN_OPERATORS;
 	}
 	return Object.keys(OPERATOR_LABELS);
@@ -143,7 +149,11 @@ function GroupBuilder(props: {
 	onRemove: () => void;
 	depth: number;
 	isRoot?: boolean;
-	filterData: TauriSearchFilterData;
+	tags?: TagResponse[];
+	projects?: Project[];
+	ips?: Ip[];
+	characters?: Character[];
+	authors?: Author[];
 }) {
 	const addChild = (type: "criterion" | "group") => {
 		const nextChildren = [...props.group.children];
@@ -178,11 +188,10 @@ function GroupBuilder(props: {
 
 	return (
 		<Card
-			class={
-				props.depth % 2 === 0
-					? "border-l-2 border-l-blue-500"
-					: "border-l-2 border-l-green-500"
-			}
+			class={cn(
+				"border-l-2",
+				props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500",
+			)}
 		>
 			<CardContent class="space-y-4 p-2 sm:p-4">
 				<div class="flex flex-col gap-2">
@@ -252,20 +261,28 @@ function GroupBuilder(props: {
 							<Show
 								fallback={
 									<CriterionBuilder
+										authors={props.authors}
+										characters={props.characters}
 										criterion={child() as SearchCriterion}
-										filterData={props.filterData}
+										ips={props.ips}
 										onChange={(value) => updateChild(index, value)}
 										onRemove={() => removeChild(index)}
+										projects={props.projects}
+										tags={props.tags}
 									/>
 								}
 								when={child().type === "group"}
 							>
 								<GroupBuilder
+									authors={props.authors}
+									characters={props.characters}
 									depth={props.depth + 1}
-									filterData={props.filterData}
 									group={child() as SearchGroup}
+									ips={props.ips}
 									onChange={(value) => updateChild(index, value)}
 									onRemove={() => removeChild(index)}
+									projects={props.projects}
+									tags={props.tags}
 								/>
 							</Show>
 						)}
@@ -285,23 +302,29 @@ function CriterionBuilder(props: {
 	criterion: SearchCriterion;
 	onChange: (value: SearchCriterion) => void;
 	onRemove: () => void;
-	filterData: TauriSearchFilterData;
+	tags?: TagResponse[];
+	projects?: Project[];
+	ips?: Ip[];
+	characters?: Character[];
+	authors?: Author[];
 }) {
-	const getAuthorLabel = (author: MockAuthor) =>
-		author.accountId ? `${author.name}: ${author.accountId}` : author.name;
+	const getAuthorLabel = (author: Author) =>
+		author.accountId
+			? `${author.name}：(twitter)${author.accountId}`
+			: author.name;
 
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {
 			case "tag":
-				return props.filterData.tags.map((tag) => ({ id: tag, name: tag }));
+				return props.tags;
 			case "project":
-				return props.filterData.projects;
+				return props.projects;
 			case "ip":
-				return props.filterData.ips;
+				return props.ips;
 			case "character":
-				return props.filterData.characters;
+				return props.characters;
 			case "author":
-				return props.filterData.authors;
+				return props.authors;
 			default:
 				return undefined;
 		}
@@ -318,7 +341,7 @@ function CriterionBuilder(props: {
 		].includes(props.criterion.target),
 	);
 	const isBooleanTarget = createMemo(() =>
-		["aiGenerated", "favorite"].includes(props.criterion.target),
+		["aiGenerated", "favorite", "isArchived"].includes(props.criterion.target),
 	);
 
 	return (
@@ -338,7 +361,9 @@ function CriterionBuilder(props: {
 						...props.criterion,
 						target: value as SearchCriterion["target"],
 						operator: (operators[0] || "equals") as SearchCriterion["operator"],
-						value: ["aiGenerated", "favorite"].includes(value) ? true : "",
+						value: ["aiGenerated", "favorite", "isArchived"].includes(value)
+							? true
+							: "",
 					});
 				}}
 				options={Object.keys(TARGET_LABELS)}
@@ -395,25 +420,21 @@ function CriterionBuilder(props: {
 						)}
 						onChange={(value) => {
 							if (value) {
-								props.onChange({ ...props.criterion, value: value.id });
+								props.onChange({ ...props.criterion, value: value.name });
 							}
 						}}
 						optionLabel={(item) =>
-							"id" in item && "accountId" in item
-								? getAuthorLabel(item as MockAuthor)
-								: item.name
+							"accountId" in item ? getAuthorLabel(item as Author) : item.name
 						}
 						options={autocompleteItems() || []}
 						optionTextValue={(item) =>
-							"id" in item && "accountId" in item
-								? getAuthorLabel(item as MockAuthor)
-								: item.name
+							"accountId" in item ? getAuthorLabel(item as Author) : item.name
 						}
-						optionValue={(item) => item.id}
+						optionValue={(item) => item.name}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(
-							(item) => item.id === props.criterion.value,
+							(item) => item.name === props.criterion.value,
 						)}
 					>
 						<ComboboxControl>

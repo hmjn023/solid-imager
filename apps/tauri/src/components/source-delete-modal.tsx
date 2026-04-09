@@ -1,3 +1,7 @@
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -7,13 +11,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
-import type { MockSource } from "../mocks/demo-data";
 
 type SourceDeleteModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
 	onConfirm: (id: string) => void;
-	sourceToDelete?: MockSource | null;
+	sourceToDelete?: MediaSourceInfo | SafeMediaSource | null;
 };
 
 export function SourceDeleteModal(props: SourceDeleteModalProps) {
@@ -29,15 +32,14 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
-					<Button onClick={props.onClose} variant="outline">
+					<Button onClick={() => props.onClose()} variant="outline">
 						Cancel
 					</Button>
 					<Button
-						onClick={() => {
-							if (props.sourceToDelete?.id) {
-								props.onConfirm(props.sourceToDelete.id);
-							}
-						}}
+						onClick={() =>
+							props.sourceToDelete?.id &&
+							props.onConfirm(props.sourceToDelete.id)
+						}
 						variant="destructive"
 					>
 						Delete
