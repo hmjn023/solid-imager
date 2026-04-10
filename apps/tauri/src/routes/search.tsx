@@ -30,6 +30,7 @@ import {
 } from "solid-js";
 import { MediaGridItem } from "../components/media/media-grid-item";
 import { SearchControlPanel } from "../components/media/search-control-panel";
+import { useCurrentSearchPersistence } from "../hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "../hooks/use-media-source-events";
 import { allAuthorsQueryOptions } from "../infrastructure/api-clients/queries/authors-query";
 import { allCharactersQueryOptions } from "../infrastructure/api-clients/queries/characters-query";
@@ -63,6 +64,8 @@ const QUERY_GC_TIME = 1000 * 60 * 5;
 function SearchRoute() {
 	const queryClient = useQueryClient();
 	const [isRestored, setIsRestored] = createSignal(false);
+
+	useCurrentSearchPersistence("all");
 
 	const tags = createQuery(() => tagsQueryOptions());
 	const sources = createQuery(() => mediaSourcesQueryOptions());

@@ -112,6 +112,7 @@ function MediaDetailRoute() {
 									isUpdating={mediaDetails.isRefetching}
 									media={details()}
 									onUpdate={handleUpdate}
+									sourceRootPath={sourceRootPath()}
 								/>
 							</div>
 						</div>

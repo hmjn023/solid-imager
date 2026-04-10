@@ -28,9 +28,9 @@ function AboutRoute() {
 					About This SPA Port
 				</h1>
 				<p class="max-w-3xl text-lg text-muted-foreground">
-					The Tauri app now owns its own route tree and mock interaction
-					surfaces. This page documents what is intentionally verified before
-					the real API client replaces the local demo state.
+					The Tauri app now owns its own route tree and local interaction
+					surfaces. This page documents the areas currently being aligned with
+					the server implementation.
 				</p>
 			</div>
 			<Card>

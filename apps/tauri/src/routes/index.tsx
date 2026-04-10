@@ -18,8 +18,7 @@ import {
 const dashboardLinks = [
 	{
 		title: "Search",
-		description:
-			"Filter mock media, open previews, and jump into detail pages.",
+		description: "Filter media, open previews, and jump into detail pages.",
 		to: "/search",
 		count: `${mockMedia.length} items`,
 	},
@@ -40,7 +39,7 @@ const dashboardLinks = [
 	{
 		title: "Settings",
 		description:
-			"Edit local-only configuration tabs and save via toast feedback.",
+			"Edit configuration tabs and save changes through the local backend.",
 		to: "/config",
 		count: "5 sections",
 	},
@@ -66,9 +65,9 @@ function HomeRoute() {
 						</h1>
 						<p class="max-w-2xl text-lg text-muted-foreground">
 							This dashboard mirrors the major `apps/server` pages inside the
-							Tauri route tree using local mock state. Use it to verify page
-							transitions, dialogs, filters, and basic control flows before the
-							real API wiring lands.
+							Tauri route tree. Use it to verify page transitions, dialogs,
+							filters, and core local workflows while server parity is being
+							closed.
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-3">
@@ -82,7 +81,7 @@ function HomeRoute() {
 				</div>
 				<Card>
 					<CardHeader>
-						<CardTitle>Current Mock State</CardTitle>
+						<CardTitle>Current Local State</CardTitle>
 					</CardHeader>
 					<CardContent class="grid gap-4 text-sm">
 						<div class="flex items-center justify-between rounded-lg border px-4 py-3">
