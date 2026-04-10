@@ -71,6 +71,14 @@ function SourceMediaRoute() {
 	const source = createMemo(() =>
 		sources.data?.find((item) => item.id === mediaSourceId()),
 	);
+	const sourceRootPath = createMemo(() => {
+		const current = source();
+		if (current?.type !== "local") {
+			return undefined;
+		}
+		const connectionInfo = current.connectionInfo as { path?: string };
+		return connectionInfo.path;
+	});
 
 	const searchConditionKey = createMemo(() =>
 		JSON.stringify(getSearchCondition() ?? null),
@@ -246,7 +254,12 @@ function SourceMediaRoute() {
 
 					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 						<For each={mediaResults()}>
-							{(media) => <MediaGridItem media={media} />}
+							{(media) => (
+								<MediaGridItem
+									media={media}
+									sourceRootPath={sourceRootPath()}
+								/>
+							)}
 						</For>
 					</div>
 

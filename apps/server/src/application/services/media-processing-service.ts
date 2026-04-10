@@ -20,6 +20,11 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
+import {
+	hasMediaProcessingStep,
+	type MediaProcessingJobPayload,
+	queueMediaProcessingJob,
+} from "~/application/services/media-processing-job";
 import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
@@ -117,14 +122,11 @@ export class MediaProcessingServiceImpl {
 		}
 
 		// Step 3: Queue processMedia job
-		await this.jobRepo.create({
-			type: "processMedia",
+		await queueMediaProcessingJob({
+			jobRepo: this.jobRepo,
+			mediaId: media.id,
 			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
+			sourcePath: basePath,
 		});
 
 		// Notify clients
@@ -144,7 +146,7 @@ export class MediaProcessingServiceImpl {
 			return;
 		}
 
-		const payload = job.payload as any;
+		const payload = job.payload as MediaProcessingJobPayload | null;
 		const mediaId = payload?.mediaId;
 
 		if (!mediaId) {
@@ -167,7 +169,7 @@ export class MediaProcessingServiceImpl {
 		}
 
 		// Step 1: Metadata extraction
-		if (!payload?.skipMetadataExtraction) {
+		if (hasMediaProcessingStep(payload, "extractMetadata")) {
 			try {
 				const metadata = await ImageProcessor.extractMetadata(mediaPath);
 
@@ -195,19 +197,21 @@ export class MediaProcessingServiceImpl {
 		}
 
 		// Step 2: Thumbnail generation
-		try {
-			await generateThumbnail(media, payload.sourcePath, mediaSourceId);
-			SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
-				mediaId: media.id,
-			});
-		} catch (e) {
-			logger.error({ err: e, mediaId }, "Thumbnail generation failed");
+		if (hasMediaProcessingStep(payload, "generateThumbnail")) {
+			try {
+				await generateThumbnail(media, payload.sourcePath, mediaSourceId);
+				SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
+					mediaId: media.id,
+				});
+			} catch (e) {
+				logger.error({ err: e, mediaId }, "Thumbnail generation failed");
+			}
 		}
 
 		// Step 3: AI tagging
 		if (
 			this.enableAutoTagging &&
-			!payload?.skipMetadataExtraction &&
+			hasMediaProcessingStep(payload, "queueAutoTagging") &&
 			media.mediaType === "image"
 		) {
 			try {

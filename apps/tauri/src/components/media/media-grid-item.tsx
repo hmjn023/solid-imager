@@ -1,12 +1,14 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
+import { ThumbnailImage } from "./thumbnail-image";
 
 type MediaGridItemProps = {
 	linkPrefix?: string;
 	media: Media;
 	onContextMenu?: (event: MouseEvent) => void;
 	priority?: boolean;
+	sourceRootPath?: string;
 };
 
 export function MediaGridItem(props: MediaGridItemProps) {
@@ -29,15 +31,12 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				}
 				when={props.media.mediaType === "image"}
 			>
-				<div
-					class="flex h-full w-full items-center justify-center text-white/80 text-xs uppercase tracking-[0.3em]"
-					style={{
-						background:
-							"linear-gradient(135deg, rgba(15,23,42,0.18), rgba(15,23,42,0.02)), linear-gradient(135deg, #0f766e, #60a5fa)",
-					}}
-				>
-					Preview
-				</div>
+				<ThumbnailImage
+					alt={props.media.fileName}
+					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+					media={props.media}
+					sourceRootPath={props.sourceRootPath}
+				/>
 			</Show>
 
 			<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">

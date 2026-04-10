@@ -70,6 +70,14 @@ function SearchRoute() {
 	const allIps = createQuery(() => allIpsQueryOptions());
 	const allCharacters = createQuery(() => allCharactersQueryOptions());
 	const allAuthors = createQuery(() => allAuthorsQueryOptions());
+	const getSourceRootPath = (mediaSourceId: string) => {
+		const source = sources.data?.find((item) => item.id === mediaSourceId);
+		if (source?.type !== "local") {
+			return undefined;
+		}
+		const connectionInfo = source.connectionInfo as { path?: string };
+		return connectionInfo.path;
+	};
 
 	const conditionKey = createMemo(() =>
 		JSON.stringify(getSearchCondition() ?? null),
@@ -241,7 +249,12 @@ function SearchRoute() {
 
 					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 						<For each={searchResults()}>
-							{(media) => <MediaGridItem media={media} />}
+							{(media) => (
+								<MediaGridItem
+									media={media}
+									sourceRootPath={getSourceRootPath(media.mediaSourceId)}
+								/>
+							)}
 						</For>
 					</div>
 

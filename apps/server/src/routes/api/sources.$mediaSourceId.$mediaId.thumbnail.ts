@@ -15,10 +15,16 @@ export const Route = createFileRoute(
 				try {
 					const thumbnailBuffer = await fs.readFile(thumbnailPath);
 					return new Response(thumbnailBuffer, {
-						headers: { "Content-Type": "image/webp" },
+						headers: {
+							"Cache-Control": "private, max-age=60",
+							"Content-Type": "image/webp",
+						},
 					});
 				} catch {
-					return new Response("Thumbnail not found", { status: 404 });
+					return new Response("Thumbnail not found", {
+						headers: { "Cache-Control": "no-store" },
+						status: 404,
+					});
 				}
 			},
 		},

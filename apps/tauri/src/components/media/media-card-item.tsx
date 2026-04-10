@@ -6,12 +6,14 @@ import {
 	CheckboxLabel,
 } from "@solid-imager/ui/checkbox";
 import { Show } from "solid-js";
+import { ThumbnailImage } from "./thumbnail-image";
 
 type MediaCardItemProps = {
 	media: Media;
 	selectable?: boolean;
 	selected?: boolean;
 	onToggle?: (id: string) => void;
+	sourceRootPath?: string;
 };
 
 function formatSize(bytes: number | null) {
@@ -30,10 +32,18 @@ export function MediaCardItem(props: MediaCardItemProps) {
 			onClick={() => props.selectable && props.onToggle?.(props.media.id)}
 		>
 			<div class="relative">
-				<div class="flex aspect-video items-center justify-center bg-muted text-muted-foreground text-sm">
-					{props.media.mediaType === "image"
-						? props.media.fileName
-						: props.media.mediaType}
+				<div class="flex aspect-video items-center justify-center overflow-hidden bg-muted text-muted-foreground text-sm">
+					<Show
+						fallback={<div>{props.media.mediaType}</div>}
+						when={props.media.mediaType === "image"}
+					>
+						<ThumbnailImage
+							alt={props.media.fileName}
+							class="h-full w-full object-cover"
+							media={props.media}
+							sourceRootPath={props.sourceRootPath}
+						/>
+					</Show>
 				</div>
 				<Show when={props.selectable}>
 					<div class="absolute top-2 right-2 rounded bg-background/90 p-1">

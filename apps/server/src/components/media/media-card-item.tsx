@@ -2,6 +2,7 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Card } from "@solid-imager/ui/card";
 import { Checkbox } from "@solid-imager/ui/checkbox";
 import { Show } from "solid-js";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 
 type MediaCardItemProps = {
 	media: Media;
@@ -24,11 +25,6 @@ type MediaCardItemProps = {
 };
 
 export function MediaCardItem(props: MediaCardItemProps) {
-	const thumbnailUrl = () =>
-		`/api/sources/${props.media.mediaSourceId}/${props.media.id}/thumbnail?t=${new Date(
-			props.media.modifiedAt,
-		).getTime()}`;
-
 	const fileSizeStr = () => {
 		if (!props.media.fileSize) {
 			return "N/A";
@@ -53,14 +49,16 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				<div class="flex aspect-video w-full items-center justify-center overflow-hidden bg-gray-100">
 					<Show
 						fallback={<div class="text-gray-400">{props.media.mediaType}</div>}
-						when={props.media.mediaType === "image"}
+						when={props.media.mediaType !== "audio"}
 					>
-						<img
+						<ThumbnailImage
 							alt={props.media.fileName}
 							class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
 							height={props.media.height}
 							loading={props.priority ? "eager" : "lazy"}
-							src={thumbnailUrl()}
+							mediaId={props.media.id}
+							mediaSourceId={props.media.mediaSourceId}
+							modifiedAt={props.media.modifiedAt}
 							width={props.media.width}
 						/>
 					</Show>

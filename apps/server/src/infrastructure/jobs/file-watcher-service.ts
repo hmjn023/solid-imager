@@ -7,6 +7,7 @@
 import path from "node:path";
 import { services } from "~/application/registry";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
+import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -137,14 +138,11 @@ async function handleFileChanged(
 
 		// Queue processMedia job for thumbnail regeneration and metadata re-extraction
 		const jobRepo = services.getJobRepository();
-		await jobRepo.create({
-			type: "processMedia",
+		await queueMediaProcessingJob({
+			jobRepo,
+			mediaId: media.id,
 			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
+			sourcePath: basePath,
 		});
 
 		// Notify
