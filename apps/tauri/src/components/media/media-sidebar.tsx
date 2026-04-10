@@ -337,7 +337,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={allIps.data || []}
-					isLoading={props.isUpdating}
+					isLoading={allIps.isLoading || props.isUpdating}
 					items={props.media.ips || []}
 					onAdd={handleAddIp}
 					onCreate={handleCreateIp}
@@ -347,7 +347,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={availableCharacters()}
-					isLoading={props.isUpdating}
+					isLoading={allCharacters.isLoading || props.isUpdating}
 					items={props.media.characters || []}
 					onAdd={handleAddCharacter}
 					onCreate={handleCreateCharacter}
