@@ -49,6 +49,14 @@
 - mock 実装は暫定扱いとし、後続の API 接続を見据えて props shape と state 名を server 側に寄せる。
 - server 側の route / component / backend を移植または追従するときは `.agents/skills/shared-ui-parity/SKILL.md` の手順に従う。
 
+### 現在の parity 例外
+
+- 当面は `apps/tauri` の `index` / `about` など shell ページ差分は parity 対象から外してよい。
+- 当面は Tauri の remote source (`sftp` / `s3`) は parity 対象から外してよい。
+- 当面は Tauri standalone で AI を完結させる実装は parity 対象から外してよい。AI は server 委譲を正とする。
+- ただしトップの navigation bar は `apps/tauri` 側の UI を優先し、server 側へ寄せない。
+- 上記以外の主機能 (`sources` / `search` / `detail` / `manager` / `config` など) は引き続き `apps/server` と `apps/tauri` を可能な限り揃える。
+
 ## スキル一覧
 
 | スキル名 | 説明 | ロード条件 |
