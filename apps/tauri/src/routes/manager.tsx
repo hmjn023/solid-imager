@@ -157,8 +157,7 @@ export default function ManagerPage() {
 	const characters = createQuery(() => allCharactersQueryOptions());
 	const sources = createQuery(() => mediaSourcesQueryOptions());
 
-	const totalPages = () =>
-		Math.max(1, Math.ceil(scannedMedia().length / itemsPerPage));
+	const totalPages = () => Math.ceil(scannedMedia().length / itemsPerPage);
 
 	const paginatedMedia = () => {
 		const start = (currentPage() - 1) * itemsPerPage;
@@ -171,13 +170,13 @@ export default function ManagerPage() {
 		}
 	});
 
-	const invalidateQueries = async () => {
+	const invalidateQueries = () => {
 		if (activeTab() === "projects") {
-			await queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+			void queryClient.invalidateQueries({ queryKey: ["allProjects"] });
 		} else if (activeTab() === "ips") {
-			await queryClient.invalidateQueries({ queryKey: ["allIps"] });
+			void queryClient.invalidateQueries({ queryKey: ["allIps"] });
 		} else if (activeTab() === "characters") {
-			await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
+			void queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
 		}
 	};
 
@@ -217,19 +216,36 @@ export default function ManagerPage() {
 		}
 	};
 
-	const saveEntity = async () => {
+	const handleCreate = async () => {
+		const data = formData();
+		try {
+			if (activeTab() === "projects") {
+				await createProject(data);
+			} else if (activeTab() === "ips") {
+				await createIp(data);
+			} else if (activeTab() === "characters") {
+				await createCharacter(data);
+			}
+
+			invalidateQueries();
+			toast.success("Created successfully");
+			setIsDialogOpen(false);
+			setEditingItem(null);
+			resetForm();
+		} catch (error) {
+			toast.error(`Failed to save: ${(error as Error).message}`);
+		}
+	};
+
+	const handleUpdate = async () => {
 		const data = formData();
 		const current = editingItem();
+		if (!current) {
+			return;
+		}
+
 		try {
-			if (!current) {
-				if (activeTab() === "projects") {
-					await createProject(data);
-				} else if (activeTab() === "ips") {
-					await createIp(data);
-				} else if (activeTab() === "characters") {
-					await createCharacter(data);
-				}
-			} else if (activeTab() === "projects") {
+			if (activeTab() === "projects") {
 				await updateProject(current.id, data);
 			} else if (activeTab() === "ips") {
 				await updateIp(current.id, data);
@@ -237,10 +253,8 @@ export default function ManagerPage() {
 				await updateCharacter(current.id, data);
 			}
 
-			await invalidateQueries();
-			toast.success(
-				editingItem() ? "Updated successfully" : "Created successfully",
-			);
+			invalidateQueries();
+			toast.success("Updated successfully");
 			setIsDialogOpen(false);
 			setEditingItem(null);
 			resetForm();
@@ -263,7 +277,7 @@ export default function ManagerPage() {
 			} else if (activeTab() === "characters") {
 				await deleteCharacter(item.id);
 			}
-			await invalidateQueries();
+			invalidateQueries();
 			toast.success("Deleted successfully");
 		} catch (error) {
 			toast.error(`Failed to delete: ${(error as Error).message}`);
@@ -519,11 +533,6 @@ export default function ManagerPage() {
 									</div>
 								)}
 							</Show>
-							<Show when={activeJobId()}>
-								<p class="text-muted-foreground text-xs">
-									Active job: {activeJobId()}
-								</p>
-							</Show>
 						</CardContent>
 					</Card>
 
@@ -622,11 +631,9 @@ export default function ManagerPage() {
 					<DialogHeader>
 						<DialogTitle>
 							{editingItem() ? "Edit" : "Create"}{" "}
-							{activeTab() === "projects"
-								? "PROJECT"
-								: activeTab() === "ips"
-									? "IP"
-									: "CHARACTER"}
+							{activeTab() === "tagging"
+								? "TAGGING"
+								: activeTab().slice(0, -1).toUpperCase()}
 						</DialogTitle>
 						<DialogDescription>
 							{editingItem()
@@ -700,7 +707,9 @@ export default function ManagerPage() {
 						</Show>
 					</div>
 					<DialogFooter>
-						<Button onClick={saveEntity}>Save</Button>
+						<Button onClick={editingItem() ? handleUpdate : handleCreate}>
+							Save
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
@@ -714,7 +723,7 @@ export default function ManagerPage() {
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
 						<AlertDialogDescription>
 							This action cannot be undone. This will permanently delete the{" "}
-							{activeTab().slice(0, -1)}.
+							{activeTab().slice(0, -1)} and remove it from our servers.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
