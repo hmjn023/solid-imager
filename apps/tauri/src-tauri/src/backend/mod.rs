@@ -20,7 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, Runtime};
 pub const DB_FILE_NAME: &str = "metadata.sqlite3";
-pub const CONFIG_FILE_NAME: &str = "config.json";
+pub const LEGACY_CONFIG_FILE_NAME: &str = "config.json";
 pub const AI_SOURCE: &str = "AI";
 pub const COMFYUI_WORKFLOW_SOURCE: &str = "comfyui_workflow";
 pub const TAG_SOURCE_LOCAL: &str = "local";
@@ -29,7 +29,7 @@ pub const TAG_SOURCE_LOCAL: &str = "local";
 pub struct LocalBackend {
     pub data_dir: PathBuf,
     pub db_path: PathBuf,
-    pub config_path: PathBuf,
+    pub legacy_config_path: PathBuf,
 }
 
 impl LocalBackend {
@@ -43,7 +43,7 @@ impl LocalBackend {
 
         let backend = Self {
             db_path: data_dir.join(DB_FILE_NAME),
-            config_path: data_dir.join(CONFIG_FILE_NAME),
+            legacy_config_path: data_dir.join(LEGACY_CONFIG_FILE_NAME),
             data_dir,
         };
         backend.initialize()?;

@@ -1,7 +1,7 @@
 use crate::backend::helpers::*;
 use crate::backend::types::*;
+use rusqlite::params;
 use serde_json::{json, Value};
-use std::fs;
 
 impl super::LocalBackend {
     pub fn handle_config_update(&self, input: Option<Value>) -> Result<Value, String> {
@@ -16,15 +16,28 @@ impl super::LocalBackend {
     }
 
     pub fn read_config(&self) -> Result<AppConfig, String> {
-        let text = fs::read_to_string(&self.config_path)
-            .map_err(|error| format!("Reading config file failed: {error}"))?;
-        serde_json::from_str(&text).map_err(|error| format!("Parsing config file failed: {error}"))
+        let conn = self.open_connection()?;
+        let text: String = conn
+            .query_row(
+                "SELECT value_json FROM app_config WHERE id = 1",
+                [],
+                |row| row.get(0),
+            )
+            .map_err(|error| format!("Reading config from database failed: {error}"))?;
+        serde_json::from_str(&text)
+            .map_err(|error| format!("Parsing stored config failed: {error}"))
     }
 
     pub fn write_config(&self, config: &AppConfig) -> Result<(), String> {
+        let conn = self.open_connection()?;
         let text = serde_json::to_string_pretty(config)
             .map_err(|error| format!("Serializing config failed: {error}"))?;
-        fs::write(&self.config_path, text)
-            .map_err(|error| format!("Writing config file failed: {error}"))
+        conn.execute(
+            "INSERT INTO app_config (id, value_json, updated_at) VALUES (1, ?1, ?2)
+             ON CONFLICT(id) DO UPDATE SET value_json = excluded.value_json, updated_at = excluded.updated_at",
+            params![text, now_iso()],
+        )
+        .map_err(|error| format!("Writing config to database failed: {error}"))?;
+        Ok(())
     }
 }

@@ -1,10 +1,9 @@
 use crate::backend::types::*;
+use rusqlite::OptionalExtension;
+use std::fs;
 
 impl super::LocalBackend {
     pub fn initialize(&self) -> Result<(), String> {
-        if !self.config_path.exists() {
-            self.write_config(&AppConfig::default())?;
-        }
         let conn = self.open_connection()?;
         conn.execute_batch(
             r#"
@@ -177,9 +176,52 @@ impl super::LocalBackend {
 				mode TEXT,
 				created_at TEXT NOT NULL
 			);
+
+			CREATE TABLE IF NOT EXISTS app_config (
+				id INTEGER PRIMARY KEY CHECK (id = 1),
+				value_json TEXT NOT NULL,
+				updated_at TEXT NOT NULL
+			);
 			"#,
         )
         .map_err(|error| format!("Initializing local database failed: {error}"))?;
+        self.ensure_config_storage(&conn)?;
+        Ok(())
+    }
+
+    fn ensure_config_storage(&self, conn: &rusqlite::Connection) -> Result<(), String> {
+        let exists = conn
+            .query_row("SELECT 1 FROM app_config WHERE id = 1", [], |_row| Ok(()))
+            .optional()
+            .map_err(|error| format!("Checking app config storage failed: {error}"))?
+            .is_some();
+
+        if exists {
+            return Ok(());
+        }
+
+        let config = if self.legacy_config_path.exists() {
+            let text = fs::read_to_string(&self.legacy_config_path)
+                .map_err(|error| format!("Reading legacy config file failed: {error}"))?;
+            serde_json::from_str::<AppConfig>(&text)
+                .map_err(|error| format!("Parsing legacy config file failed: {error}"))?
+        } else {
+            AppConfig::default()
+        };
+
+        let value_json = serde_json::to_string_pretty(&config)
+            .map_err(|error| format!("Serializing default config failed: {error}"))?;
+
+        conn.execute(
+            "INSERT INTO app_config (id, value_json, updated_at) VALUES (1, ?1, ?2)",
+            rusqlite::params![value_json, super::helpers::now_iso()],
+        )
+        .map_err(|error| format!("Seeding app config failed: {error}"))?;
+
+        if self.legacy_config_path.exists() {
+            let _ = fs::remove_file(&self.legacy_config_path);
+        }
+
         Ok(())
     }
 }
