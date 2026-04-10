@@ -1,4 +1,6 @@
 use super::utils::*;
+use crate::backend::metadata::extract_metadata_from_path;
+use crate::backend::types::ComfyUiTagExtractionConfig;
 use image::codecs::jpeg::JpegEncoder;
 use image::ImageFormat;
 use std::fs::{self, File};
@@ -41,12 +43,8 @@ pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
 }
 
 #[tauri::command]
-pub fn image_extract_metadata(_media_path: String) -> ExtractMetadataResult {
-    ExtractMetadataResult {
-        tags: Vec::new(),
-        prompt: None,
-        workflow: None,
-    }
+pub fn image_extract_metadata(media_path: String) -> Result<ExtractMetadataResult, String> {
+    extract_metadata_from_path(&media_path, &ComfyUiTagExtractionConfig::default())
 }
 
 #[tauri::command]

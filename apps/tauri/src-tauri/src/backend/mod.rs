@@ -6,6 +6,8 @@ pub mod db;
 pub mod helpers;
 pub mod ips;
 pub mod media;
+pub mod media_processing;
+pub mod metadata;
 pub mod presets;
 pub mod projects;
 pub mod sources;
@@ -20,6 +22,8 @@ use tauri::{AppHandle, Manager, Runtime};
 pub const DB_FILE_NAME: &str = "metadata.sqlite3";
 pub const CONFIG_FILE_NAME: &str = "config.json";
 pub const AI_SOURCE: &str = "AI";
+pub const COMFYUI_WORKFLOW_SOURCE: &str = "comfyui_workflow";
+pub const TAG_SOURCE_LOCAL: &str = "local";
 
 #[derive(Clone)]
 pub struct LocalBackend {

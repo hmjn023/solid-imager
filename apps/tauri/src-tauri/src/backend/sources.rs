@@ -274,6 +274,9 @@ impl super::LocalBackend {
 						],
 					)
 					.map_err(|error| format!("Updating media metadata failed: {error}"))?;
+                    if media_type == "image" {
+                        self.sync_media_analysis(&conn, &existing_media.id, entry.path())?;
+                    }
                     summary.updated += 1;
                     let _ = app.emit(
                         "media-changed",
@@ -304,6 +307,9 @@ impl super::LocalBackend {
 					],
 				)
 				.map_err(|error| format!("Creating media entry failed: {error}"))?;
+                if media_type == "image" {
+                    self.sync_media_analysis(&conn, &media_id, entry.path())?;
+                }
                 summary.added += 1;
                 let _ = app.emit(
                     "media-added",

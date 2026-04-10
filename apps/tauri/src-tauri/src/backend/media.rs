@@ -286,7 +286,7 @@ impl super::LocalBackend {
     ) -> Result<Value, String> {
         let mut stmt = conn
 			.prepare(
-				"SELECT t.id, t.name, t.description, t.attribute, t.color, t.source, t.author_id, t.created_at, t.updated_at, mt.type, mt.confidence FROM tags t INNER JOIN media_tags mt ON mt.tag_id = t.id WHERE mt.media_id = ?1 ORDER BY t.name ASC",
+				"SELECT t.id, t.name, t.description, t.attribute, t.color, mt.source, t.author_id, t.created_at, t.updated_at, mt.type, mt.confidence FROM tags t INNER JOIN media_tags mt ON mt.tag_id = t.id WHERE mt.media_id = ?1 ORDER BY t.name ASC",
 			)
 			.map_err(|error| format!("Preparing media tag query failed: {error}"))?;
         let rows = stmt
