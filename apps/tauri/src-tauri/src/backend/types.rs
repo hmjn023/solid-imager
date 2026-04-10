@@ -252,6 +252,9 @@ pub struct MediaContext {
     pub characters: Vec<String>,
     pub prompt: Option<String>,
     pub ai_generated: bool,
+    pub favorite: Option<bool>,
+    pub rating: Option<f64>,
+    pub view_count: Option<f64>,
 }
 
 #[derive(Debug, Clone)]

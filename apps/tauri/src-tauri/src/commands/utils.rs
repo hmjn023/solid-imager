@@ -128,10 +128,6 @@ pub fn inspect_image_header(path: &str) -> Result<ImageHeaderInfo, String> {
     })
 }
 
-pub fn get_dimensions_from_header(path: &str) -> Result<MediaDimensions, String> {
-    Ok(inspect_image_header(path)?.dimensions)
-}
-
 pub fn mime_type_from_format(format: Option<ImageFormat>) -> Option<String> {
     match format {
         Some(ImageFormat::Jpeg) => Some("image/jpeg".to_string()),

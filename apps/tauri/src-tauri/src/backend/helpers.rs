@@ -231,8 +231,9 @@ pub fn evaluate_criterion(
             compare_string(&folder, operator, value)
         }
         "aiGenerated" => compare_bool(item.ai_generated, operator, value),
-        "favorite" => compare_bool(false, operator, value),
-        "rating" | "viewCount" => compare_number(0.0, operator, value),
+        "favorite" => compare_optional_bool(item.favorite, operator, value),
+        "rating" => compare_optional_number(item.rating, operator, value),
+        "viewCount" => compare_optional_number(item.view_count, operator, value),
         _ => false,
     }
 }
@@ -341,6 +342,13 @@ pub fn compare_bool(value: bool, operator: &str, input: Option<&Value>) -> bool 
     }
 }
 
+pub fn compare_optional_bool(value: Option<bool>, operator: &str, input: Option<&Value>) -> bool {
+    match value {
+        Some(value) => compare_bool(value, operator, input),
+        None => matches!(operator, "isEmpty"),
+    }
+}
+
 pub fn compare_number(value: f64, operator: &str, input: Option<&Value>) -> bool {
     let candidate = input.and_then(|value| value.as_f64());
     match operator {
@@ -353,6 +361,13 @@ pub fn compare_number(value: f64, operator: &str, input: Option<&Value>) -> bool
         _ => candidate
             .map(|other| (value - other).abs() < f64::EPSILON)
             .unwrap_or(false),
+    }
+}
+
+pub fn compare_optional_number(value: Option<f64>, operator: &str, input: Option<&Value>) -> bool {
+    match value {
+        Some(value) => compare_number(value, operator, input),
+        None => matches!(operator, "isEmpty"),
     }
 }
 

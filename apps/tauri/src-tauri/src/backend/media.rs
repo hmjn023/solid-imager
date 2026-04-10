@@ -1,7 +1,8 @@
 use crate::backend::helpers::*;
 use crate::backend::types::*;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 use serde_json::{json, Value};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
@@ -105,41 +106,41 @@ impl super::LocalBackend {
                 .map_err(|error| format!("Querying media search failed: {error}"))?
         };
         let summaries = collect_typed_rows(rows)?;
+        let media_ids = summaries
+            .iter()
+            .map(|summary| summary.id.clone())
+            .collect::<Vec<_>>();
+        let tags_by_media = self.load_tag_names_by_media(&conn, &media_ids)?;
+        let authors_by_media = self.load_author_names_by_media(&conn, &media_ids)?;
+        let projects_by_media = self.load_project_names_by_media(&conn, &media_ids)?;
+        let ips_by_media = self.load_ip_names_by_media(&conn, &media_ids)?;
+        let characters_by_media = self.load_character_names_by_media(&conn, &media_ids)?;
+        let generation_info_by_media =
+            self.load_generation_search_data_by_media(&conn, &media_ids)?;
         let mut contexts = Vec::with_capacity(summaries.len());
         for summary in summaries {
-            let tags = self.list_tag_names_for_media(&conn, &summary.id)?;
-            let authors = self.list_author_names_for_media(&conn, &summary.id)?;
-            let projects = self.list_project_names_for_media(&conn, &summary.id)?;
-            let ips = self.list_ip_names_for_media(&conn, &summary.id)?;
-            let characters = self.list_character_names_for_media(&conn, &summary.id)?;
-            let prompt = conn
-                .query_row(
-                    "SELECT prompt FROM generation_infos WHERE media_id = ?1",
-                    params![summary.id.clone()],
-                    |row| row.get::<_, Option<String>>(0),
-                )
-                .optional()
-                .map_err(|error| format!("Querying generation prompt failed: {error}"))?
-                .flatten();
-            let ai_generated = conn
-                .query_row(
-                    "SELECT ai_generated FROM generation_infos WHERE media_id = ?1",
-                    params![summary.id.clone()],
-                    |row| row.get::<_, i64>(0),
-                )
-                .optional()
-                .map_err(|error| format!("Querying AI generated flag failed: {error}"))?
-                .unwrap_or(0)
-                != 0;
+            let media_id = summary.id.clone();
+            let generation_info = generation_info_by_media.get(&media_id);
             contexts.push(MediaContext {
                 summary,
-                tags,
-                authors,
-                projects,
-                ips,
-                characters,
-                prompt,
-                ai_generated,
+                tags: tags_by_media.get(&media_id).cloned().unwrap_or_default(),
+                authors: authors_by_media.get(&media_id).cloned().unwrap_or_default(),
+                projects: projects_by_media
+                    .get(&media_id)
+                    .cloned()
+                    .unwrap_or_default(),
+                ips: ips_by_media.get(&media_id).cloned().unwrap_or_default(),
+                characters: characters_by_media
+                    .get(&media_id)
+                    .cloned()
+                    .unwrap_or_default(),
+                prompt: generation_info.and_then(|info| info.prompt.clone()),
+                ai_generated: generation_info
+                    .map(|info| info.ai_generated)
+                    .unwrap_or(false),
+                favorite: None,
+                rating: None,
+                view_count: None,
             });
         }
         Ok(contexts)
@@ -513,4 +514,138 @@ impl super::LocalBackend {
             .ok_or_else(|| "Local source path is missing".to_string())?;
         Ok(Path::new(root).join(file_path))
     }
+
+    fn load_related_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+        sql: &str,
+        relation_name: &str,
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        if media_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let placeholders = std::iter::repeat_n("?", media_ids.len())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let query = sql.replace("{media_ids}", &placeholders);
+        let mut stmt = conn
+            .prepare(&query)
+            .map_err(|error| format!("Preparing {relation_name} batch query failed: {error}"))?;
+        let rows = stmt
+            .query_map(params_from_iter(media_ids.iter()), |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })
+            .map_err(|error| format!("Querying {relation_name} batch rows failed: {error}"))?;
+        let pairs = collect_typed_rows(rows)?;
+        let mut values_by_media = HashMap::new();
+        for (media_id, value) in pairs {
+            values_by_media
+                .entry(media_id)
+                .or_insert_with(Vec::new)
+                .push(value);
+        }
+        Ok(values_by_media)
+    }
+
+    fn load_tag_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        self.load_related_names_by_media(
+            conn,
+            media_ids,
+            "SELECT mt.media_id, t.name FROM tags t INNER JOIN media_tags mt ON mt.tag_id = t.id WHERE mt.media_id IN ({media_ids}) ORDER BY mt.media_id ASC, t.name ASC",
+            "tag names",
+        )
+    }
+
+    fn load_author_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        self.load_related_names_by_media(
+            conn,
+            media_ids,
+            "SELECT ma.media_id, a.name FROM authors a INNER JOIN media_authors ma ON ma.author_id = a.id WHERE ma.media_id IN ({media_ids}) ORDER BY ma.media_id ASC, a.name ASC",
+            "author names",
+        )
+    }
+
+    fn load_project_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        self.load_related_names_by_media(
+            conn,
+            media_ids,
+            "SELECT mp.media_id, p.name FROM projects p INNER JOIN media_projects mp ON mp.project_id = p.id WHERE mp.media_id IN ({media_ids}) ORDER BY mp.media_id ASC, p.name ASC",
+            "project names",
+        )
+    }
+
+    fn load_ip_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        self.load_related_names_by_media(
+            conn,
+            media_ids,
+            "SELECT mi.media_id, i.name FROM ips i INNER JOIN media_ips mi ON mi.ip_id = i.id WHERE mi.media_id IN ({media_ids}) ORDER BY mi.media_id ASC, i.name ASC",
+            "IP names",
+        )
+    }
+
+    fn load_character_names_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, Vec<String>>, String> {
+        self.load_related_names_by_media(
+            conn,
+            media_ids,
+            "SELECT mc.media_id, c.name FROM characters c INNER JOIN media_characters mc ON mc.character_id = c.id WHERE mc.media_id IN ({media_ids}) ORDER BY mc.media_id ASC, c.name ASC",
+            "character names",
+        )
+    }
+
+    fn load_generation_search_data_by_media(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<HashMap<String, GenerationSearchData>, String> {
+        if media_ids.is_empty() {
+            return Ok(HashMap::new());
+        }
+        let placeholders = std::iter::repeat_n("?", media_ids.len())
+            .collect::<Vec<_>>()
+            .join(", ");
+        let query = format!(
+            "SELECT media_id, prompt, ai_generated FROM generation_infos WHERE media_id IN ({placeholders})"
+        );
+        let mut stmt = conn
+            .prepare(&query)
+            .map_err(|error| format!("Preparing generation search batch query failed: {error}"))?;
+        let rows = stmt
+            .query_map(params_from_iter(media_ids.iter()), |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    GenerationSearchData {
+                        prompt: row.get::<_, Option<String>>(1)?,
+                        ai_generated: row.get::<_, i64>(2)? != 0,
+                    },
+                ))
+            })
+            .map_err(|error| format!("Querying generation search batch rows failed: {error}"))?;
+        Ok(collect_typed_rows(rows)?.into_iter().collect())
+    }
+}
+
+struct GenerationSearchData {
+    prompt: Option<String>,
+    ai_generated: bool,
 }

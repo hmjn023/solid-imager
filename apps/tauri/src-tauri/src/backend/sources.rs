@@ -1,7 +1,7 @@
 use crate::backend::helpers::*;
 use crate::backend::types::*;
 use crate::commands::utils::{
-    get_dimensions_from_header, metadata_created_or_modified, metadata_modified,
+    inspect_image_header, metadata_created_or_modified, metadata_modified,
 };
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
@@ -234,9 +234,19 @@ impl super::LocalBackend {
                 metadata_created_or_modified(&entry.path().to_string_lossy(), &metadata)?;
             let modified_at = metadata_modified(&entry.path().to_string_lossy(), &metadata)?;
             let (width, height) = if media_type == "image" {
-                match get_dimensions_from_header(&entry.path().to_string_lossy()) {
-                    Ok(dimensions) => (i64::from(dimensions.width), i64::from(dimensions.height)),
-                    Err(_) => (0, 0),
+                match inspect_image_header(&entry.path().to_string_lossy()) {
+                    Ok(header) => (
+                        i64::from(header.dimensions.width),
+                        i64::from(header.dimensions.height),
+                    ),
+                    Err(error) => {
+                        eprintln!(
+                            "Failed to inspect image header for {}: {}",
+                            entry.path().display(),
+                            error
+                        );
+                        (0, 0)
+                    }
                 }
             } else {
                 (0, 0)

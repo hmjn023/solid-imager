@@ -7,7 +7,7 @@ use std::path::Path;
 
 #[tauri::command]
 pub fn image_get_dimensions(media_path: String) -> Result<MediaDimensions, String> {
-    get_dimensions_from_header(&media_path)
+    Ok(inspect_image_header(&media_path)?.dimensions)
 }
 
 #[tauri::command]
