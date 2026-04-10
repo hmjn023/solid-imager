@@ -316,6 +316,28 @@ pub struct SyncSourcesInput {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct SourceRestoreInput {
+    pub id: String,
+    pub data: Vec<Value>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SourceImportZipInput {
+    pub id: String,
+    pub bytes: Vec<u8>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BinaryFilePayload {
+    pub file_name: String,
+    pub mime_type: String,
+    pub data: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MediaAssociationInput {
     pub media_id: String,
     pub project_id: Option<String>,

@@ -317,7 +317,9 @@ function SourceMediaRoute() {
 				file.type === "application/zip" ||
 				file.type === "application/x-zip-compressed"
 			) {
-				await importSourceZip();
+				await importSourceZip(mediaSourceId(), file);
+				await invalidateMediaQueries();
+				toast.success("ZIP restore completed");
 				return;
 			}
 			const data = JSON.parse(await file.text());

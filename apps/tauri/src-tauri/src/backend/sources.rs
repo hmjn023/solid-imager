@@ -7,10 +7,13 @@ use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::fs;
+use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Runtime};
 use uuid::Uuid;
 use walkdir::WalkDir;
+use zip::write::SimpleFileOptions;
+use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 impl super::LocalBackend {
     pub fn handle_sources_list(&self) -> Result<Value, String> {
@@ -168,6 +171,144 @@ impl super::LocalBackend {
             }
         }
         Ok(json!({ "results": results }))
+    }
+
+    pub fn handle_sources_restore<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        let payload: SourceRestoreInput = parse_input(input)?;
+        let _ = self.sync_source(app, &payload.id)?;
+        self.restore_source_data(&payload.id, &payload.data)
+    }
+
+    pub fn handle_sources_dump_zip(&self, input: Option<Value>) -> Result<Value, String> {
+        let payload: IdInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, &payload.id)?
+            .ok_or_else(|| format!("Source not found: {}", payload.id))?;
+        let dump_items = self.build_source_dump_items(&conn, &payload.id)?;
+        let mut writer = ZipWriter::new(Cursor::new(Vec::<u8>::new()));
+        let file_options =
+            SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+
+        writer
+            .start_file("dump.json", file_options)
+            .map_err(|error| format!("Creating dump.json in ZIP failed: {error}"))?;
+        let dump_bytes = serde_json::to_vec_pretty(&dump_items)
+            .map_err(|error| format!("Serializing ZIP dump failed: {error}"))?;
+        writer
+            .write_all(&dump_bytes)
+            .map_err(|error| format!("Writing dump.json failed: {error}"))?;
+
+        for item in &dump_items {
+            let Some(file_path) = item.get("filePath").and_then(Value::as_str) else {
+                continue;
+            };
+            let full_path = self.resolve_media_path(&source, file_path)?;
+            let bytes = match fs::read(&full_path) {
+                Ok(bytes) => bytes,
+                Err(_) => continue,
+            };
+            writer
+                .start_file(format!("images/{file_path}"), file_options)
+                .map_err(|error| format!("Adding {file_path} to ZIP failed: {error}"))?;
+            writer
+                .write_all(&bytes)
+                .map_err(|error| format!("Writing {file_path} to ZIP failed: {error}"))?;
+        }
+
+        let cursor = writer
+            .finish()
+            .map_err(|error| format!("Finalizing ZIP dump failed: {error}"))?;
+
+        Ok(json!(BinaryFilePayload {
+            file_name: format!("source-{}-dump.zip", payload.id),
+            mime_type: "application/zip".to_string(),
+            data: cursor.into_inner(),
+        }))
+    }
+
+    pub fn handle_sources_import_zip<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        let payload: SourceImportZipInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, &payload.id)?
+            .ok_or_else(|| format!("Source not found: {}", payload.id))?;
+        let root = self.local_source_root_path(&source)?;
+
+        let cursor = Cursor::new(payload.bytes);
+        let mut archive =
+            ZipArchive::new(cursor).map_err(|error| format!("Opening ZIP failed: {error}"))?;
+        let mut dump_data: Option<Vec<Value>> = None;
+
+        for index in 0..archive.len() {
+            let mut entry = archive
+                .by_index(index)
+                .map_err(|error| format!("Reading ZIP entry failed: {error}"))?;
+
+            if entry.name() == "dump.json" {
+                let mut text = String::new();
+                entry
+                    .read_to_string(&mut text)
+                    .map_err(|error| format!("Reading dump.json failed: {error}"))?;
+                dump_data = Some(
+                    serde_json::from_str::<Vec<Value>>(&text)
+                        .map_err(|error| format!("Parsing dump.json failed: {error}"))?,
+                );
+                continue;
+            }
+
+            let Some(enclosed_name) = entry.enclosed_name().map(|path| path.to_path_buf()) else {
+                continue;
+            };
+            let Some(relative_path) = enclosed_name
+                .strip_prefix("images")
+                .ok()
+                .map(normalize_relative_path)
+            else {
+                continue;
+            };
+            if relative_path.is_empty() {
+                continue;
+            }
+
+            let destination = root.join(&relative_path);
+            if let Some(parent) = destination.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|error| format!("Creating ZIP restore directory failed: {error}"))?;
+            }
+            let mut output = fs::File::create(&destination)
+                .map_err(|error| format!("Creating restored file failed: {error}"))?;
+            std::io::copy(&mut entry, &mut output)
+                .map_err(|error| format!("Extracting ZIP file failed: {error}"))?;
+        }
+
+        let dump_data = dump_data.ok_or_else(|| "dump.json not found in ZIP".to_string())?;
+        let _ = self.sync_source(app, &payload.id)?;
+        let restore_result = self.restore_source_data(&payload.id, &dump_data)?;
+        let processed = restore_result
+            .get("processed")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let skipped = restore_result
+            .get("skipped")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+
+        Ok(json!({
+            "success": true,
+            "importedCount": processed,
+            "skippedCount": skipped,
+            "errors": restore_result.get("errors").cloned().unwrap_or(Value::Array(Vec::new())),
+            "message": format!("Successfully imported {processed} items (Skipped: {skipped})"),
+        }))
     }
 
     pub fn sync_source<R: Runtime>(
@@ -370,4 +511,433 @@ impl super::LocalBackend {
         .optional()
         .map_err(|error| format!("Looking up source failed: {error}"))
     }
+
+    fn local_source_root_path(&self, source: &Value) -> Result<PathBuf, String> {
+        let source_type = source
+            .get("type")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Source type is missing".to_string())?;
+        if source_type != "local" {
+            return Err("Tauri currently supports only local sources.".to_string());
+        }
+        source
+            .get("connectionInfo")
+            .and_then(|value| value.get("path"))
+            .and_then(Value::as_str)
+            .map(PathBuf::from)
+            .ok_or_else(|| "Local source path is missing".to_string())
+    }
+
+    fn build_source_dump_items(
+        &self,
+        conn: &Connection,
+        source_id: &str,
+    ) -> Result<Vec<Value>, String> {
+        let media = self.list_media_by_source(conn, source_id)?;
+        let mut items = Vec::with_capacity(media.len());
+
+        for summary in media {
+            let details = self
+                .get_media_details_value(conn, source_id, &summary.id)?
+                .ok_or_else(|| format!("Media not found while building dump: {}", summary.id))?;
+            let projects = self.list_projects_for_media_value(conn, &summary.id)?;
+            let source_urls = details
+                .get("urls")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|url| url.get("url").and_then(Value::as_str))
+                .map(|url| Value::String(url.to_string()))
+                .collect::<Vec<_>>();
+
+            items.push(json!({
+                "id": summary.id,
+                "filePath": summary.file_path,
+                "fileName": summary.file_name,
+                "description": summary.description,
+                "width": summary.width,
+                "height": summary.height,
+                "fileSize": summary.file_size,
+                "mediaType": summary.media_type,
+                "createdAt": summary.created_at,
+                "modifiedAt": summary.modified_at,
+                "sourceUrls": source_urls,
+                "generationInfo": details.get("generationInfo").cloned().unwrap_or(Value::Null),
+                "tags": details.get("tags").cloned().unwrap_or(Value::Array(Vec::new())),
+                "authors": details.get("authors").cloned().unwrap_or(Value::Array(Vec::new())),
+                "characters": details.get("characters").cloned().unwrap_or(Value::Array(Vec::new())),
+                "ips": details.get("ips").cloned().unwrap_or(Value::Array(Vec::new())),
+                "projects": projects,
+            }));
+        }
+
+        Ok(items)
+    }
+
+    fn restore_source_data(&self, source_id: &str, items: &[Value]) -> Result<Value, String> {
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, source_id)?
+            .ok_or_else(|| format!("Source not found: {source_id}"))?;
+        let root = self.local_source_root_path(&source)?;
+
+        let mut processed = 0usize;
+        let mut skipped = 0usize;
+        let mut errors = Vec::new();
+
+        for item in items {
+            let Some(file_path) = item.get("filePath").and_then(Value::as_str) else {
+                skipped += 1;
+                errors.push("Skipped item without filePath".to_string());
+                continue;
+            };
+            if !is_safe_relative_path(file_path) {
+                skipped += 1;
+                errors.push(format!("Invalid path in backup: {file_path}"));
+                continue;
+            }
+            if !root.join(file_path).exists() {
+                skipped += 1;
+                continue;
+            }
+            let Some(summary) =
+                self.find_media_summary_by_source_and_path(&conn, source_id, file_path)?
+            else {
+                skipped += 1;
+                errors.push(format!("Media record not found after sync: {file_path}"));
+                continue;
+            };
+
+            self.restore_media_record(&conn, &summary, item)?;
+            processed += 1;
+        }
+
+        Ok(json!({
+            "processed": processed,
+            "skipped": skipped,
+            "errors": errors,
+        }))
+    }
+
+    fn restore_media_record(
+        &self,
+        conn: &Connection,
+        summary: &MediaSummary,
+        item: &Value,
+    ) -> Result<(), String> {
+        conn.execute(
+            "UPDATE medias SET description = ?1, indexed_at = ?2 WHERE id = ?3",
+            params![
+                item.get("description").and_then(Value::as_str),
+                now_iso(),
+                summary.id,
+            ],
+        )
+        .map_err(|error| format!("Updating restored media failed: {error}"))?;
+
+        conn.execute(
+            "DELETE FROM media_urls WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media URLs failed: {error}"))?;
+        if let Some(urls) = item.get("sourceUrls").and_then(Value::as_array) {
+            for url in urls.iter().filter_map(Value::as_str) {
+                let now = now_iso();
+                conn.execute(
+                    "INSERT INTO media_urls (id, media_id, url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![Uuid::new_v4().to_string(), summary.id, url, now, now],
+                )
+                .map_err(|error| format!("Restoring media URL failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM media_authors WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media authors failed: {error}"))?;
+        if let Some(authors) = item.get("authors").and_then(Value::as_array) {
+            for author in authors {
+                let Some(name) = author.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                let author_id = self.ensure_author(
+                    conn,
+                    name,
+                    author.get("accountId").and_then(Value::as_str),
+                )?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO media_authors (media_id, author_id) VALUES (?1, ?2)",
+                    params![summary.id, author_id],
+                )
+                .map_err(|error| format!("Restoring media author failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM media_projects WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media projects failed: {error}"))?;
+        if let Some(projects) = item.get("projects").and_then(Value::as_array) {
+            for project in projects {
+                let Some(name) = project.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                let project_id = self.ensure_project(
+                    conn,
+                    name,
+                    project.get("description").and_then(Value::as_str),
+                )?;
+                conn.execute(
+                    "INSERT OR IGNORE INTO media_projects (media_id, project_id) VALUES (?1, ?2)",
+                    params![summary.id, project_id],
+                )
+                .map_err(|error| format!("Restoring media project failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM media_tags WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media tags failed: {error}"))?;
+        if let Some(tags) = item.get("tags").and_then(Value::as_array) {
+            for tag in tags {
+                let Some(name) = tag.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                let source = tag
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .unwrap_or("restored");
+                let tag_id = self.ensure_tag(conn, name, source)?;
+                let tag_type = tag
+                    .get("type")
+                    .and_then(Value::as_str)
+                    .unwrap_or("positive");
+                conn.execute(
+                    "INSERT OR REPLACE INTO media_tags (media_id, tag_id, type, confidence, source) VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![
+                        summary.id,
+                        tag_id,
+                        tag_type,
+                        tag.get("confidence").and_then(Value::as_f64),
+                        source,
+                    ],
+                )
+                .map_err(|error| format!("Restoring media tag failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM media_ips WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media IPs failed: {error}"))?;
+        if let Some(ips) = item.get("ips").and_then(Value::as_array) {
+            for ip in ips {
+                let Some(name) = ip.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                let source = ip
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .unwrap_or("restored");
+                let ip_id = self.ensure_ip(
+                    conn,
+                    name,
+                    ip.get("description").and_then(Value::as_str),
+                    source,
+                )?;
+                conn.execute(
+                    "INSERT OR REPLACE INTO media_ips (media_id, ip_id, confidence, source) VALUES (?1, ?2, ?3, ?4)",
+                    params![
+                        summary.id,
+                        ip_id,
+                        ip.get("confidence").and_then(Value::as_f64),
+                        source,
+                    ],
+                )
+                .map_err(|error| format!("Restoring media IP failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM media_characters WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing media characters failed: {error}"))?;
+        if let Some(characters) = item.get("characters").and_then(Value::as_array) {
+            for character in characters {
+                let Some(name) = character.get("name").and_then(Value::as_str) else {
+                    continue;
+                };
+                let source = character
+                    .get("source")
+                    .and_then(Value::as_str)
+                    .unwrap_or("restored");
+                let linked_ip_ids = character
+                    .get("linkedIps")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(Value::as_str)
+                    .map(|ip_name| self.ensure_ip(conn, ip_name, None, source))
+                    .collect::<Result<Vec<_>, _>>()?;
+                let character_id = self.ensure_character(conn, name, source, &linked_ip_ids)?;
+                conn.execute(
+                    "INSERT OR REPLACE INTO media_characters (media_id, character_id, confidence, source) VALUES (?1, ?2, ?3, ?4)",
+                    params![
+                        summary.id,
+                        character_id,
+                        character.get("confidence").and_then(Value::as_f64),
+                        source,
+                    ],
+                )
+                .map_err(|error| format!("Restoring media character failed: {error}"))?;
+            }
+        }
+
+        conn.execute(
+            "DELETE FROM generation_infos WHERE media_id = ?1",
+            params![summary.id],
+        )
+        .map_err(|error| format!("Clearing generation info failed: {error}"))?;
+        if let Some(generation_info) = item.get("generationInfo").filter(|value| !value.is_null()) {
+            conn.execute(
+                "INSERT INTO generation_infos (media_id, metadata_json, prompt, negative_prompt, workflow_json, loras_json, vae, hypernetworks_json, embeddings_json, ai_generated, model_name, seed, cfg_scale, steps) VALUES (?1, ?2, ?3, ?4, ?5, NULL, NULL, NULL, NULL, ?6, ?7, ?8, ?9, ?10)",
+                params![
+                    summary.id,
+                    stringify_json_value(generation_info.get("metadata")),
+                    generation_info.get("prompt").and_then(Value::as_str),
+                    generation_info.get("negativePrompt").and_then(Value::as_str),
+                    stringify_json_value(generation_info.get("workflow")),
+                    generation_info
+                        .get("aiGenerated")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
+                    generation_info
+                        .get("modelName")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                    generation_info.get("seed").and_then(Value::as_f64).unwrap_or(0.0),
+                    generation_info
+                        .get("cfgScale")
+                        .and_then(Value::as_f64)
+                        .unwrap_or(0.0),
+                    generation_info.get("steps").and_then(Value::as_f64).unwrap_or(0.0),
+                ],
+            )
+            .map_err(|error| format!("Restoring generation info failed: {error}"))?;
+        }
+
+        Ok(())
+    }
+
+    fn find_media_summary_by_source_and_path(
+        &self,
+        conn: &Connection,
+        source_id: &str,
+        file_path: &str,
+    ) -> Result<Option<MediaSummary>, String> {
+        conn
+            .query_row(
+                "SELECT id, media_source_id, file_path, file_name, media_type, width, height, file_size, description, created_at, modified_at, indexed_at, status FROM medias WHERE media_source_id = ?1 AND file_path = ?2",
+                params![source_id, file_path],
+                media_summary_from_row,
+            )
+            .optional()
+            .map_err(|error| format!("Looking up media by path failed: {error}"))
+    }
+
+    fn ensure_author(
+        &self,
+        conn: &Connection,
+        name: &str,
+        account_id: Option<&str>,
+    ) -> Result<String, String> {
+        if let Some(id) = conn
+            .query_row(
+                "SELECT id FROM authors WHERE name = ?1",
+                params![name],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| format!("Looking up author failed: {error}"))?
+        {
+            if account_id.is_some() {
+                conn.execute(
+                    "UPDATE authors SET account_id = COALESCE(?1, account_id), updated_at = ?2 WHERE id = ?3",
+                    params![account_id, now_iso(), id],
+                )
+                .map_err(|error| format!("Updating author failed: {error}"))?;
+            }
+            return Ok(id);
+        }
+
+        let id = Uuid::new_v4().to_string();
+        let now = now_iso();
+        conn.execute(
+            "INSERT INTO authors (id, name, account_id, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![id, name, account_id, now, now],
+        )
+        .map_err(|error| format!("Creating author failed: {error}"))?;
+        Ok(id)
+    }
+
+    fn ensure_project(
+        &self,
+        conn: &Connection,
+        name: &str,
+        description: Option<&str>,
+    ) -> Result<String, String> {
+        if let Some(id) = conn
+            .query_row(
+                "SELECT id FROM projects WHERE name = ?1",
+                params![name],
+                |row| row.get::<_, String>(0),
+            )
+            .optional()
+            .map_err(|error| format!("Looking up project failed: {error}"))?
+        {
+            if description.is_some() {
+                conn.execute(
+                    "UPDATE projects SET description = COALESCE(?1, description), updated_at = ?2 WHERE id = ?3",
+                    params![description, now_iso(), id],
+                )
+                .map_err(|error| format!("Updating project failed: {error}"))?;
+            }
+            return Ok(id);
+        }
+
+        let id = Uuid::new_v4().to_string();
+        let now = now_iso();
+        conn.execute(
+            "INSERT INTO projects (id, name, description, created_at, updated_at, archived_at) VALUES (?1, ?2, ?3, ?4, ?5, NULL)",
+            params![id, name, description, now, now],
+        )
+        .map_err(|error| format!("Creating project failed: {error}"))?;
+        Ok(id)
+    }
+}
+
+fn is_safe_relative_path(path: &str) -> bool {
+    let candidate = Path::new(path);
+    !candidate.is_absolute()
+        && candidate.components().all(|component| {
+            matches!(
+                component,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )
+        })
+}
+
+fn stringify_json_value(value: Option<&Value>) -> Option<String> {
+    value
+        .filter(|inner| !inner.is_null())
+        .map(serde_json::to_string)
+        .transpose()
+        .ok()
+        .flatten()
 }

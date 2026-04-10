@@ -1,6 +1,4 @@
 import type { MediaSourceInfo } from "@solid-imager/core/domain/sources/schemas";
-import { getTauriAppServices } from "~/app-services";
-import { joinLocalPath } from "../path-utils";
 import { orpc } from "./orpc-client";
 
 export function fetchMediaSources() {
@@ -32,7 +30,10 @@ export async function fetchSourceDump(
 	mode: "json" | "zip" = "json",
 ): Promise<Blob> {
 	if (mode === "zip") {
-		throw new Error("ZIP dump is not supported in Tauri yet.");
+		const result = await orpc.sources.dumpZip({ id });
+		return new Blob([new Uint8Array(result.data)], {
+			type: result.mimeType,
+		});
 	}
 	const source = await fetchMediaSource(id);
 	const result = await orpc.media.search({
@@ -54,35 +55,20 @@ export async function fetchSourceDump(
 }
 
 export async function restoreSource(id: string, data: unknown) {
-	const source = await fetchMediaSource(id);
-	if (source.type !== "local") {
-		throw new Error("Only local sources are supported in Tauri.");
-	}
-	const rootPath = (source.connectionInfo as { path?: string }).path;
-	if (!rootPath) {
-		throw new Error("Source path is missing.");
-	}
-	const payload = data as {
-		media?: Array<{ filePath?: string; fileName?: string }>;
-	};
-	const items = payload.media || [];
-	for (const item of items) {
-		const targetName = item.fileName || item.filePath;
-		if (!targetName) {
-			continue;
-		}
-		const targetPath = joinLocalPath(rootPath, targetName);
-		if (!(await getTauriAppServices().fileSystem.exists(targetPath))) {
-		}
-	}
-	const result = await syncMediaSources([id]);
-	return {
-		processed: items.length,
-		skipped: 0,
-		result,
-	};
+	const payload = data as
+		| {
+				media?: unknown[];
+		  }
+		| unknown[];
+	const items = Array.isArray(payload)
+		? payload
+		: Array.isArray(payload.media)
+			? payload.media
+			: [];
+	return orpc.sources.restore({ id, data: items });
 }
 
-export async function importSourceZip() {
-	throw new Error("ZIP restore is not supported in Tauri yet.");
+export async function importSourceZip(id: string, file: File) {
+	const bytes = new Uint8Array(await file.arrayBuffer());
+	return orpc.sources.importZip({ id, bytes: Array.from(bytes) });
 }
