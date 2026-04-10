@@ -19,6 +19,7 @@ import {
 	type SafeMediaSource,
 	safeMediaSourceSchema,
 } from "@solid-imager/core/domain/sources/schemas";
+import type { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { tagResponseSchema } from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
@@ -200,6 +201,10 @@ export const orpc = {
 			invoke("presets.delete", input, mutationSuccessSchema),
 	},
 	ai: {
+		applyTags: (input: {
+			mediaId: string;
+			response: ReturnType<typeof taggingResponseSchema.parse>;
+		}) => invoke("ai.applyTags", input, mutationSuccessSchema),
 		scanBatchTaggingTargets: (input: {
 			force?: boolean;
 			mediaSourceId?: string;

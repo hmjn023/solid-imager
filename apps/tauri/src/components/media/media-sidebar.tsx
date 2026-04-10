@@ -6,6 +6,7 @@ import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
+import { getTauriAppServices } from "../../app-services";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -26,12 +27,15 @@ import {
 	fetchProjectsForMedia,
 	removeProjectFromMedia,
 } from "../../infrastructure/api-clients/projects-api";
+import { serverOrpc } from "../../infrastructure/api-clients/server-orpc-client";
+import { joinLocalPath } from "../../infrastructure/path-utils";
 import { AssociationManager } from "./association-manager";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
 	isUpdating?: boolean;
 	onUpdate?: () => void;
+	sourceRootPath?: string;
 };
 
 function formatBytes(bytes: number, decimals = 2) {
@@ -194,6 +198,37 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
 	};
 
+	const handleExtractTags = async () => {
+		const sourceRootPath = props.sourceRootPath;
+		if (!sourceRootPath) {
+			toast.error("Source root path is not available.");
+			return;
+		}
+		try {
+			const bytes = await getTauriAppServices().fileSystem.readFile(
+				joinLocalPath(sourceRootPath, props.media.filePath),
+			);
+			const buffer = new ArrayBuffer(bytes.byteLength);
+			new Uint8Array(buffer).set(bytes);
+			const file = new File([buffer], props.media.fileName);
+			const response = await serverOrpc.ai.tag({ file });
+			await getTauriAppServices().apiClient.call("ai.applyTags", {
+				mediaId: props.media.id,
+				response,
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["mediaDetails", props.media.mediaSourceId, props.media.id],
+			});
+			await queryClient.invalidateQueries({
+				queryKey: ["media", props.media.mediaSourceId],
+			});
+			props.onUpdate?.();
+			toast.success("AI tags extracted via server");
+		} catch (error) {
+			toast.error(`Failed to extract tags: ${(error as Error).message}`);
+		}
+	};
+
 	return (
 		<aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
 			<div>
@@ -204,9 +239,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<div class="flex gap-2">
 				<button
 					class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
-					onClick={() =>
-						toast.error("Extract Tags (AI) is not implemented in Tauri yet.")
-					}
+					onClick={() => void handleExtractTags()}
 					type="button"
 				>
 					<span class="i-lucide-sparkles" />

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "@tanstack/solid-router";
 import { createSignal, onCleanup, onMount } from "solid-js";
+import { PendingDownloadsIndicator } from "./imports/pending-downloads-indicator";
 
 const navigationItems = [
 	{ to: "/", label: "Home" },
@@ -69,6 +70,9 @@ export function Nav() {
 							</li>
 						))}
 					</ul>
+					<div class="ml-4">
+						<PendingDownloadsIndicator />
+					</div>
 				</div>
 			</nav>
 			<div class="h-[60px]" />

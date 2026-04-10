@@ -14,6 +14,16 @@ use tauri::{AppHandle, Emitter, Runtime};
 use uuid::Uuid;
 
 impl super::LocalBackend {
+    pub fn handle_ai_apply_tags(&self, input: Option<Value>) -> Result<Value, String> {
+        let payload: ApplyAiTagsInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let summary = self
+            .find_media_summary_by_id(&conn, &payload.media_id)?
+            .ok_or_else(|| format!("Media not found: {}", payload.media_id))?;
+        self.save_ai_tags(&conn, &summary, payload.response)?;
+        Ok(json!({ "success": true }))
+    }
+
     pub fn handle_ai_scan(&self, input: Option<Value>) -> Result<Value, String> {
         let payload: BatchTaggingScanInput = parse_input(input)?;
         let force = payload.force.unwrap_or(false);

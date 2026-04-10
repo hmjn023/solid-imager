@@ -102,6 +102,7 @@ impl LocalBackend {
             "presets.create" => self.handle_presets_create(input),
             "presets.update" => self.handle_presets_update(input),
             "presets.delete" => self.handle_presets_delete(input),
+            "ai.applyTags" => self.handle_ai_apply_tags(input),
             "ai.scanBatchTaggingTargets" => self.handle_ai_scan(input),
             "ai.startBatchTaggingWithIds" => self.handle_ai_start(app, input),
             _ => Err(format!("Unsupported Tauri API procedure: {procedure}")),

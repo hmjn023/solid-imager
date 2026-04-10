@@ -373,6 +373,13 @@ pub struct BatchTaggingStartInput {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ApplyAiTagsInput {
+    pub media_id: String,
+    pub response: TaggingResponse,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct PresetIdInput {
     pub id: i64,
 }

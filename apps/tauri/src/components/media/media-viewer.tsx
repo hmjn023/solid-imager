@@ -15,6 +15,11 @@ type MediaViewerProps = {
 };
 
 const MIME_BY_EXTENSION: Record<string, string> = {
+	mp4: "video/mp4",
+	webm: "video/webm",
+	mov: "video/quicktime",
+	mp3: "audio/mpeg",
+	wav: "audio/wav",
 	jpg: "image/jpeg",
 	jpeg: "image/jpeg",
 	png: "image/png",
@@ -51,7 +56,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		let currentUrl: string | null = null;
 		let disposed = false;
 
-		if (!(media.mediaType === "image" && rootPath)) {
+		if (!rootPath) {
 			setMediaUrl(null);
 			return;
 		}
@@ -89,14 +94,36 @@ export function MediaViewer(props: MediaViewerProps) {
 		<div class="flex h-full w-full items-center justify-center bg-black/5">
 			<Switch>
 				<Match when={props.media.mediaType === "video"}>
-					<div class="flex h-full max-h-full w-full items-center justify-center rounded-lg bg-slate-900 text-white">
-						Video preview placeholder
-					</div>
+					<Show
+						fallback={
+							<div class="flex h-full max-h-full w-full items-center justify-center rounded-lg bg-slate-900 text-white">
+								Video preview unavailable
+							</div>
+						}
+						when={mediaUrl()}
+					>
+						{(url) => (
+							<video class="max-h-full max-w-full" controls src={url()}>
+								<track kind="captions" />
+							</video>
+						)}
+					</Show>
 				</Match>
 				<Match when={props.media.mediaType === "audio"}>
-					<div class="rounded-lg bg-slate-900 px-8 py-6 text-white">
-						Audio preview placeholder
-					</div>
+					<Show
+						fallback={
+							<div class="rounded-lg bg-slate-900 px-8 py-6 text-white">
+								Audio preview unavailable
+							</div>
+						}
+						when={mediaUrl()}
+					>
+						{(url) => (
+							<audio controls src={url()}>
+								<track kind="captions" />
+							</audio>
+						)}
+					</Show>
 				</Match>
 				<Match when={true}>
 					<Show
