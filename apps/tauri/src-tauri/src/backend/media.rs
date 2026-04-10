@@ -6,6 +6,8 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
+const SQLITE_BATCH_VARIABLE_LIMIT: usize = 900;
+
 impl super::LocalBackend {
     pub fn handle_media_search(&self, input: Option<Value>) -> Result<Value, String> {
         let payload: SearchRequestInput = parse_input(input)?;
@@ -138,9 +140,9 @@ impl super::LocalBackend {
                 ai_generated: generation_info
                     .map(|info| info.ai_generated)
                     .unwrap_or(false),
-                favorite: None,
-                rating: None,
-                view_count: None,
+                favorite: Some(false),
+                rating: Some(0.0),
+                view_count: Some(0.0),
             });
         }
         Ok(contexts)
@@ -525,25 +527,27 @@ impl super::LocalBackend {
         if media_ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let placeholders = std::iter::repeat_n("?", media_ids.len())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = sql.replace("{media_ids}", &placeholders);
-        let mut stmt = conn
-            .prepare(&query)
-            .map_err(|error| format!("Preparing {relation_name} batch query failed: {error}"))?;
-        let rows = stmt
-            .query_map(params_from_iter(media_ids.iter()), |row| {
-                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-            })
-            .map_err(|error| format!("Querying {relation_name} batch rows failed: {error}"))?;
-        let pairs = collect_typed_rows(rows)?;
         let mut values_by_media = HashMap::new();
-        for (media_id, value) in pairs {
-            values_by_media
-                .entry(media_id)
-                .or_insert_with(Vec::new)
-                .push(value);
+        for media_ids_chunk in media_ids.chunks(SQLITE_BATCH_VARIABLE_LIMIT) {
+            let placeholders = std::iter::repeat_n("?", media_ids_chunk.len())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let query = sql.replace("{media_ids}", &placeholders);
+            let mut stmt = conn.prepare(&query).map_err(|error| {
+                format!("Preparing {relation_name} batch query failed: {error}")
+            })?;
+            let rows = stmt
+                .query_map(params_from_iter(media_ids_chunk.iter()), |row| {
+                    Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+                })
+                .map_err(|error| format!("Querying {relation_name} batch rows failed: {error}"))?;
+            let pairs = collect_typed_rows(rows)?;
+            for (media_id, value) in pairs {
+                values_by_media
+                    .entry(media_id)
+                    .or_insert_with(Vec::new)
+                    .push(value);
+            }
         }
         Ok(values_by_media)
     }
@@ -621,27 +625,35 @@ impl super::LocalBackend {
         if media_ids.is_empty() {
             return Ok(HashMap::new());
         }
-        let placeholders = std::iter::repeat_n("?", media_ids.len())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let query = format!(
-            "SELECT media_id, prompt, ai_generated FROM generation_infos WHERE media_id IN ({placeholders})"
-        );
-        let mut stmt = conn
-            .prepare(&query)
-            .map_err(|error| format!("Preparing generation search batch query failed: {error}"))?;
-        let rows = stmt
-            .query_map(params_from_iter(media_ids.iter()), |row| {
-                Ok((
-                    row.get::<_, String>(0)?,
-                    GenerationSearchData {
-                        prompt: row.get::<_, Option<String>>(1)?,
-                        ai_generated: row.get::<_, i64>(2)? != 0,
-                    },
-                ))
-            })
-            .map_err(|error| format!("Querying generation search batch rows failed: {error}"))?;
-        Ok(collect_typed_rows(rows)?.into_iter().collect())
+        let mut values_by_media = HashMap::new();
+        for media_ids_chunk in media_ids.chunks(SQLITE_BATCH_VARIABLE_LIMIT) {
+            let placeholders = std::iter::repeat_n("?", media_ids_chunk.len())
+                .collect::<Vec<_>>()
+                .join(", ");
+            let query = format!(
+                "SELECT media_id, prompt, ai_generated FROM generation_infos WHERE media_id IN ({placeholders})"
+            );
+            let mut stmt = conn.prepare(&query).map_err(|error| {
+                format!("Preparing generation search batch query failed: {error}")
+            })?;
+            let rows = stmt
+                .query_map(params_from_iter(media_ids_chunk.iter()), |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        GenerationSearchData {
+                            prompt: row.get::<_, Option<String>>(1)?,
+                            ai_generated: row.get::<_, i64>(2)? != 0,
+                        },
+                    ))
+                })
+                .map_err(|error| {
+                    format!("Querying generation search batch rows failed: {error}")
+                })?;
+            for (media_id, data) in collect_typed_rows(rows)? {
+                values_by_media.insert(media_id, data);
+            }
+        }
+        Ok(values_by_media)
     }
 }
 
