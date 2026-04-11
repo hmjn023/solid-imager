@@ -353,7 +353,16 @@ function SourceMediaRoute() {
 
 	const handleZipDumpDownload = async () => {
 		try {
-			await fetchSourceDump(mediaSourceId(), "zip");
+			const blob = await fetchSourceDump(mediaSourceId(), "zip");
+			const url = window.URL.createObjectURL(blob);
+			const anchor = document.createElement("a");
+			anchor.href = url;
+			anchor.download = `source-${mediaSourceId()}-dump.zip`;
+			document.body.append(anchor);
+			anchor.click();
+			document.body.removeChild(anchor);
+			window.URL.revokeObjectURL(url);
+			toast.success("Dump ZIP downloaded successfully");
 		} catch (error) {
 			toast.error((error as Error).message);
 		}
