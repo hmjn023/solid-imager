@@ -2,10 +2,11 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { listen } from "@tauri-apps/api/event";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal, For } from "solid-js";
+import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import { SourceCard } from "../../components/source-card";
 import { SourceDeleteModal } from "../../components/source-delete-modal";
 import { SourceFormModal } from "../../components/source-form-modal";
@@ -107,6 +108,52 @@ function SourcesRoute() {
 			setIsSyncing(false);
 		}
 	};
+
+	createEffect(() => {
+		const sources = mediaSources.data;
+		if (!sources?.length) {
+			return;
+		}
+
+		const sourceIds = new Set(
+			sources.map((source) => source.id).filter((id): id is string => Boolean(id)),
+		);
+		const unlistenPromises = [
+			listen("all-jobs-completed", (event) => {
+				const payload = event.payload as {
+					mediaSourceId?: string;
+					processed?: number;
+				};
+				if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
+					return;
+				}
+				toast.success(
+					`Jobs for source ${payload.mediaSourceId.slice(0, 4)}... completed! Processed: ${payload.processed ?? "N/A"}`,
+				);
+				void queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
+			}),
+			listen("watcher-error", (event) => {
+				const payload = event.payload as {
+					mediaSourceId?: string;
+					error?: string;
+				};
+				if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
+					return;
+				}
+				toast.error(
+					`Watcher Error for ${payload.mediaSourceId.slice(0, 4)}...: ${payload.error || "Unknown error"}`,
+				);
+			}),
+		];
+
+		onCleanup(() => {
+			void Promise.all(unlistenPromises).then((unlisteners) => {
+				for (const unlisten of unlisteners) {
+					unlisten();
+				}
+			});
+		});
+	});
 
 	return (
 		<div class="container mx-auto p-6">

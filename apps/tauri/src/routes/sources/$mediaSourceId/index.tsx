@@ -162,6 +162,31 @@ function SourceMediaRoute() {
 		onMediaChanged: () => {
 			void mediaQuery.refetch();
 		},
+		onMediaCopied: () => {
+			void queryClient.invalidateQueries({
+				queryKey: ["media", mediaSourceId()],
+			});
+		},
+		onMediaMoved: () => {
+			void queryClient.invalidateQueries({
+				queryKey: ["media", mediaSourceId()],
+			});
+		},
+		onThumbnailGenerated: () => {
+			toast.success("Thumbnail generated");
+			void queryClient.invalidateQueries({
+				queryKey: ["media", mediaSourceId()],
+			});
+		},
+		onAllJobsCompleted: (data) => {
+			toast.success(`All jobs completed! Processed: ${data.processed ?? "N/A"}`);
+			void queryClient.invalidateQueries({
+				queryKey: ["media", mediaSourceId()],
+			});
+		},
+		onWatcherError: (data) => {
+			toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
+		},
 	});
 
 	const mediaResults = createMemo(() => {
@@ -252,16 +277,45 @@ function SourceMediaRoute() {
 			} else if (jsonContent.images && Array.isArray(jsonContent.images)) {
 				items = jsonContent.images
 					.map((image: Record<string, unknown>) => {
+						const metadata =
+							typeof image.metadata === "object" && image.metadata
+								? (image.metadata as Record<string, unknown>)
+								: undefined;
 						const imageUrl =
 							(typeof image.originalUrl === "string" && image.originalUrl) ||
 							(typeof image.displayUrl === "string" && image.displayUrl);
 						if (!imageUrl) {
 							return null;
 						}
+						const postId =
+							metadata && typeof metadata.postId === "string"
+								? metadata.postId
+								: undefined;
+						const tweetUrl =
+							image.source === "twitter" && postId
+								? `https://twitter.com/i/web/status/${postId}`
+								: undefined;
+						const author =
+							metadata && typeof metadata.author === "string"
+								? metadata.author
+								: undefined;
+						const timestamp =
+							metadata && typeof metadata.timestamp === "string"
+								? metadata.timestamp
+								: typeof image.date === "string"
+									? image.date
+									: undefined;
 						return {
 							targetUrl: imageUrl,
 							description:
-								typeof image.title === "string" ? image.title : undefined,
+								(metadata && typeof metadata.title === "string"
+									? metadata.title
+									: typeof image.title === "string"
+										? image.title
+										: undefined) ?? undefined,
+							sourceUrls: tweetUrl ? [tweetUrl] : undefined,
+							authors: author ? [{ name: author }] : undefined,
+							createdAt: timestamp,
 						};
 					})
 					.filter(Boolean) as DownloadItem[];
@@ -457,13 +511,18 @@ function SourceMediaRoute() {
 			return;
 		}
 		const action = moveCopyMode() === "copy" ? copyMedia : moveMedia;
-		try {
-			await action(mediaSourceId(), id, targetSourceId);
+			try {
+				await action(mediaSourceId(), id, targetSourceId);
 			toast.success(
 				`Media ${moveCopyMode() === "copy" ? "copied" : "moved"} successfully`,
 			);
-			await invalidateMediaQueries();
-		} catch (error) {
+				await invalidateMediaQueries();
+				if (targetSourceId !== mediaSourceId()) {
+					await queryClient.invalidateQueries({
+						queryKey: ["media", targetSourceId],
+					});
+				}
+			} catch (error) {
 			toast.error(
 				`Failed to ${moveCopyMode()} media: ${(error as Error).message}`,
 			);

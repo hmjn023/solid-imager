@@ -1,7 +1,5 @@
-import {
-	type AppConfig,
-	defaultAppConfig,
-} from "@solid-imager/core/domain/config/config-schema";
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { Button } from "@solid-imager/ui/button";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
@@ -19,10 +17,11 @@ import {
 } from "@solid-imager/ui/tabs";
 import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
+import { createForm } from "@tanstack/solid-form";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createEffect } from "solid-js";
-import { createStore, reconcile, unwrap } from "solid-js/store";
+import { zodValidator } from "@tanstack/zod-form-adapter";
+import { Show } from "solid-js";
 import { orpc } from "../infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "../infrastructure/api-clients/queries/config-query";
 
@@ -33,37 +32,35 @@ export const Route = createFileRoute("/config")({
 	component: ConfigPage,
 });
 
-function parseList(value: string) {
-	return value
-		.split(",")
-		.map((item) => item.trim())
-		.filter(Boolean);
-}
-
-export default function ConfigPage() {
+function ConfigForm(props: { data: AppConfig }) {
 	const queryClient = useQueryClient();
-	const configQuery = createQuery(() => configQueryOptions());
-	const [config, setConfig] = createStore<AppConfig>(
-		structuredClone(defaultAppConfig),
-	);
-
-	createEffect(() => {
-		if (configQuery.data) {
-			setConfig(reconcile(structuredClone(unwrap(configQuery.data))));
-		}
-	});
-
-	const handleSave = async () => {
-		await orpc.config.update(config);
-		toast.success("Configuration saved successfully");
-		await queryClient.invalidateQueries({ queryKey: ["config"] });
-	};
+	const form = createForm(() => ({
+		defaultValues: props.data,
+		validatorAdapter: zodValidator(),
+		validators: {
+			onChange: AppConfigSchema as never,
+		},
+		onSubmit: async ({ value }) => {
+			try {
+				await orpc.config.update(value as Partial<AppConfig>);
+				toast.success("Configuration saved successfully");
+				await queryClient.invalidateQueries({ queryKey: ["config"] });
+			} catch {
+				toast.error("Failed to save configuration");
+			}
+		},
+	}));
 
 	return (
-		<div class="container mx-auto max-w-4xl p-6">
+		<>
 			<div class="mb-6 flex items-center justify-between">
 				<h1 class="font-bold text-3xl">Settings</h1>
-				<Button onClick={handleSave}>Save Changes</Button>
+				<Button
+					disabled={form.state.isSubmitting}
+					onClick={() => void form.handleSubmit()}
+				>
+					{form.state.isSubmitting ? "Saving..." : "Save Changes"}
+				</Button>
 			</div>
 
 			<Tabs class="w-full" defaultValue="jobs">
@@ -76,347 +73,482 @@ export default function ConfigPage() {
 					<TabsTrigger value="logging">Logging</TabsTrigger>
 				</TabsList>
 
-				<div class="mt-6 space-y-6">
-					<TabsContent value="jobs">
-						<div class="space-y-4 rounded-md border p-4">
-							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
+					<div class="mt-6 space-y-6">
+						<TabsContent value="jobs">
+							<div class="space-y-4 rounded-md border p-4">
+								<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
 
-							<div class="space-y-2">
-								<Label for="jobs-concurrency">Concurrency</Label>
-								<Input
-									id="jobs-concurrency"
-									onInput={(event) =>
-										setConfig(
-											"jobs",
-											"concurrency",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.jobs.concurrency}
-								/>
-								<div class="text-muted-foreground text-xs">
-									Number of concurrent downloads/processings.
+								<form.Field name="jobs.concurrency">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Concurrency</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
+											<Show when={field().state.meta.errors.length}>
+												<div class="text-red-500 text-sm">
+													{field().state.meta.errors[0]}
+												</div>
+											</Show>
+											<div class="text-muted-foreground text-xs">
+												Number of concurrent downloads/processings.
+											</div>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.aiConcurrency">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>AI Concurrency</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
+											<Show when={field().state.meta.errors.length}>
+												<div class="text-red-500 text-sm">
+													{field().state.meta.errors[0]}
+												</div>
+											</Show>
+											<div class="text-muted-foreground text-xs">
+												Number of concurrent AI tagging jobs.
+											</div>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.pollIntervalMs">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Poll Interval (ms)</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
+											<Show when={field().state.meta.errors.length}>
+												<div class="text-red-500 text-sm">
+													{field().state.meta.errors[0]}
+												</div>
+											</Show>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.enableAutoTagging">
+									{(field) => (
+										<div class="flex items-center space-x-2">
+											<Switch
+												checked={(field().state.value as boolean) ?? false}
+												onChange={field().handleChange}
+											>
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel>Enable Auto Tagging</SwitchLabel>
+											</Switch>
+										</div>
+									)}
+								</form.Field>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="ai">
+							<div class="space-y-4 rounded-md border p-4">
+								<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
+								<form.Field name="ai.baseUrl">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Base URL</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) =>
+													field().handleChange(event.currentTarget.value)
+												}
+												value={(field().state.value as string) ?? ""}
+											/>
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="ai.timeoutMs">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Timeout (ms)</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
+										</div>
+									)}
+								</form.Field>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="downloads">
+							<div class="space-y-4 rounded-md border p-4">
+								<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
+								<form.Field name="downloads.rateLimitEnabled">
+									{(field) => (
+										<div class="flex items-center space-x-2">
+											<Switch
+												checked={(field().state.value as boolean) ?? false}
+												onChange={field().handleChange}
+											>
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel>レートリミット有効</SwitchLabel>
+											</Switch>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="downloads.requestIntervalMs">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>リクエスト間隔 (ms)</Label>
+											<Input
+												id={field().name}
+												max="60000"
+												min="0"
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
+											<Show when={field().state.meta.errors.length}>
+												<div class="text-red-500 text-sm">
+													{field().state.meta.errors[0]}
+												</div>
+											</Show>
+										</div>
+									)}
+								</form.Field>
+							</div>
+						</TabsContent>
+
+						<TabsContent value="storage">
+							<div class="space-y-4 rounded-md border p-4">
+								<h2 class="mb-4 font-semibold text-xl">Storage</h2>
+								<form.Field name="storage.thumbnailDir">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Thumbnail Directory</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) =>
+													field().handleChange(event.currentTarget.value)
+												}
+												value={(field().state.value as string) ?? ""}
+											/>
+										</div>
+									)}
+								</form.Field>
+
+								<div class="grid grid-cols-2 gap-4">
+									<form.Field name="storage.thumbnailSize">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>Thumbnail Size (px)</Label>
+												<Input
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(event) => {
+														const value = event.currentTarget.value;
+														field().handleChange(
+															(value === ""
+																? undefined
+																: Number(value)) as unknown as number,
+														);
+													}}
+													type="number"
+													value={(field().state.value as number) ?? ""}
+												/>
+											</div>
+										)}
+									</form.Field>
+									<form.Field name="storage.thumbnailQuality">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>
+													Thumbnail Quality (1-100)
+												</Label>
+												<Input
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(event) => {
+														const value = event.currentTarget.value;
+														field().handleChange(
+															(value === ""
+																? undefined
+																: Number(value)) as unknown as number,
+														);
+													}}
+													type="number"
+													value={(field().state.value as number) ?? ""}
+												/>
+											</div>
+										)}
+									</form.Field>
 								</div>
 							</div>
-
-							<div class="space-y-2">
-								<Label for="jobs-ai-concurrency">AI Concurrency</Label>
-								<Input
-									id="jobs-ai-concurrency"
-									onInput={(event) =>
-										setConfig(
-											"jobs",
-											"aiConcurrency",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.jobs.aiConcurrency}
-								/>
-								<div class="text-muted-foreground text-xs">
-									Number of concurrent AI tagging jobs.
-								</div>
-							</div>
-
-							<div class="space-y-2">
-								<Label for="jobs-poll">Poll Interval (ms)</Label>
-								<Input
-									id="jobs-poll"
-									onInput={(event) =>
-										setConfig(
-											"jobs",
-											"pollIntervalMs",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.jobs.pollIntervalMs}
-								/>
-							</div>
-
-							<Switch
-								checked={config.jobs.enableAutoTagging}
-								onChange={(checked) =>
-									setConfig("jobs", "enableAutoTagging", checked)
-								}
-							>
-								<SwitchControl>
-									<SwitchThumb />
-								</SwitchControl>
-								<SwitchLabel>Enable Auto Tagging</SwitchLabel>
-							</Switch>
-						</div>
-					</TabsContent>
-
-					<TabsContent value="ai">
-						<div class="space-y-4 rounded-md border p-4">
-							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
-							<div class="space-y-2">
-								<Label for="ai-base-url">Base URL</Label>
-								<Input
-									id="ai-base-url"
-									onInput={(event) =>
-										setConfig("ai", "baseUrl", event.currentTarget.value)
-									}
-									value={config.ai.baseUrl}
-								/>
-							</div>
-							<div class="space-y-2">
-								<Label for="ai-timeout">Timeout (ms)</Label>
-								<Input
-									id="ai-timeout"
-									onInput={(event) =>
-										setConfig(
-											"ai",
-											"timeoutMs",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.ai.timeoutMs}
-								/>
-							</div>
-						</div>
-					</TabsContent>
-
-					<TabsContent value="downloads">
-						<div class="space-y-4 rounded-md border p-4">
-							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
-							<Switch
-								checked={config.downloads.rateLimitEnabled}
-								onChange={(checked) =>
-									setConfig("downloads", "rateLimitEnabled", checked)
-								}
-							>
-								<SwitchControl>
-									<SwitchThumb />
-								</SwitchControl>
-								<SwitchLabel>レートリミット有効</SwitchLabel>
-							</Switch>
-							<div class="space-y-2">
-								<Label for="downloads-request-interval">
-									リクエスト間隔 (ms)
-								</Label>
-								<Input
-									id="downloads-request-interval"
-									onInput={(event) =>
-										setConfig(
-											"downloads",
-											"requestIntervalMs",
-											Number(event.currentTarget.value),
-										)
-									}
-									type="number"
-									value={config.downloads.requestIntervalMs}
-								/>
-							</div>
-						</div>
-					</TabsContent>
-
-					<TabsContent value="storage">
-						<div class="space-y-4 rounded-md border p-4">
-							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
-							<div class="space-y-2">
-								<Label for="storage-thumbnail-dir">Thumbnail Directory</Label>
-								<Input
-									id="storage-thumbnail-dir"
-									onInput={(event) =>
-										setConfig(
-											"storage",
-											"thumbnailDir",
-											event.currentTarget.value,
-										)
-									}
-									value={config.storage.thumbnailDir}
-								/>
-							</div>
-
-							<div class="grid grid-cols-2 gap-4">
-								<div class="space-y-2">
-									<Label for="storage-thumbnail-size">
-										Thumbnail Size (px)
-									</Label>
-									<Input
-										id="storage-thumbnail-size"
-										onInput={(event) =>
-											setConfig(
-												"storage",
-												"thumbnailSize",
-												Number(event.currentTarget.value),
-											)
-										}
-										type="number"
-										value={config.storage.thumbnailSize}
-									/>
-								</div>
-								<div class="space-y-2">
-									<Label for="storage-thumbnail-quality">
-										Thumbnail Quality (1-100)
-									</Label>
-									<Input
-										id="storage-thumbnail-quality"
-										onInput={(event) =>
-											setConfig(
-												"storage",
-												"thumbnailQuality",
-												Number(event.currentTarget.value),
-											)
-										}
-										type="number"
-										value={config.storage.thumbnailQuality}
-									/>
-								</div>
-							</div>
-						</div>
-					</TabsContent>
+						</TabsContent>
 
 					<TabsContent value="media">
 						<div class="space-y-4 rounded-md border p-4">
 							<h2 class="mb-4 font-semibold text-xl">Media Extensions</h2>
 
 							<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
-								<div class="space-y-2">
-									<Label for="media-ext-image">Image Extensions</Label>
-									<Textarea
-										id="media-ext-image"
-										onInput={(event) =>
-											setConfig(
-												"media",
-												"supportedExtensions",
-												"image",
-												parseList(event.currentTarget.value),
-											)
-										}
-										value={config.media.supportedExtensions.image.join(", ")}
-									/>
-									<div class="text-muted-foreground text-xs">
-										Comma separated
-									</div>
-								</div>
-								<div class="space-y-2">
-									<Label for="media-ext-video">Video Extensions</Label>
-									<Textarea
-										id="media-ext-video"
-										onInput={(event) =>
-											setConfig(
-												"media",
-												"supportedExtensions",
-												"video",
-												parseList(event.currentTarget.value),
-											)
-										}
-										value={config.media.supportedExtensions.video.join(", ")}
-									/>
-								</div>
-								<div class="space-y-2">
-									<Label for="media-ext-audio">Audio Extensions</Label>
-									<Textarea
-										id="media-ext-audio"
-										onInput={(event) =>
-											setConfig(
-												"media",
-												"supportedExtensions",
-												"audio",
-												parseList(event.currentTarget.value),
-											)
-										}
-										value={config.media.supportedExtensions.audio.join(", ")}
-									/>
-								</div>
+								<form.Field name="media.supportedExtensions.image">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Image Extensions</Label>
+											<Textarea
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const list = event.currentTarget.value
+														.split(",")
+														.map((item) => item.trim())
+														.filter(Boolean);
+													field().handleChange(list);
+												}}
+												placeholder=".jpg, .png"
+												value={
+													(field().state.value as string[] | undefined)?.join(
+														", ",
+													) ?? ""
+												}
+											/>
+											<div class="text-muted-foreground text-xs">
+												Comma separated
+											</div>
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="media.supportedExtensions.video">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Video Extensions</Label>
+											<Textarea
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const list = event.currentTarget.value
+														.split(",")
+														.map((item) => item.trim())
+														.filter(Boolean);
+													field().handleChange(list);
+												}}
+												placeholder=".mp4, .webm"
+												value={
+													(field().state.value as string[] | undefined)?.join(
+														", ",
+													) ?? ""
+												}
+											/>
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="media.supportedExtensions.audio">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Audio Extensions</Label>
+											<Textarea
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const list = event.currentTarget.value
+														.split(",")
+														.map((item) => item.trim())
+														.filter(Boolean);
+													field().handleChange(list);
+												}}
+												placeholder=".mp3, .wav"
+												value={
+													(field().state.value as string[] | undefined)?.join(
+														", ",
+													) ?? ""
+												}
+											/>
+										</div>
+									)}
+								</form.Field>
 							</div>
 
 							<h3 class="mt-6 mb-2 font-semibold text-lg">
 								Tag Extraction (ComfyUI)
 							</h3>
-							<div class="space-y-2">
-								<Label for="media-positive-node-types">
-									Positive Node Types
-								</Label>
-								<Textarea
-									id="media-positive-node-types"
-									onInput={(event) =>
-										setConfig(
-											"media",
-											"tagExtraction",
-											"comfyui",
-											"positiveNodeTypes",
-											parseList(event.currentTarget.value),
-										)
-									}
-									value={config.media.tagExtraction.comfyui.positiveNodeTypes.join(
-										", ",
-									)}
-								/>
-							</div>
-							<div class="space-y-2">
-								<Label for="media-negative-keywords">Negative Keywords</Label>
-								<Textarea
-									id="media-negative-keywords"
-									onInput={(event) =>
-										setConfig(
-											"media",
-											"tagExtraction",
-											"comfyui",
-											"negativeKeywords",
-											parseList(event.currentTarget.value),
-										)
-									}
-									value={config.media.tagExtraction.comfyui.negativeKeywords.join(
-										", ",
-									)}
-								/>
-							</div>
-							<div class="space-y-2">
-								<Label for="media-negative-tags">Negative Tags</Label>
-								<Textarea
-									id="media-negative-tags"
-									onInput={(event) =>
-										setConfig(
-											"media",
-											"tagExtraction",
-											"comfyui",
-											"negativeTags",
-											parseList(event.currentTarget.value),
-										)
-									}
-									value={config.media.tagExtraction.comfyui.negativeTags.join(
-										", ",
-									)}
-								/>
-							</div>
+							<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Positive Node Types</Label>
+										<Textarea
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const list = event.currentTarget.value
+													.split(",")
+													.map((item) => item.trim())
+													.filter(Boolean);
+												field().handleChange(list);
+											}}
+											value={
+												(field().state.value as string[] | undefined)?.join(
+													", ",
+												) ?? ""
+											}
+										/>
+									</div>
+								)}
+							</form.Field>
+							<form.Field name="media.tagExtraction.comfyui.negativeKeywords">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Negative Keywords</Label>
+										<Textarea
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const list = event.currentTarget.value
+													.split(",")
+													.map((item) => item.trim())
+													.filter(Boolean);
+												field().handleChange(list);
+											}}
+											value={
+												(field().state.value as string[] | undefined)?.join(
+													", ",
+												) ?? ""
+											}
+										/>
+									</div>
+								)}
+							</form.Field>
+							<form.Field name="media.tagExtraction.comfyui.negativeTags">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Negative Tags</Label>
+										<Textarea
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const list = event.currentTarget.value
+													.split(",")
+													.map((item) => item.trim())
+													.filter(Boolean);
+												field().handleChange(list);
+											}}
+											value={
+												(field().state.value as string[] | undefined)?.join(
+													", ",
+												) ?? ""
+											}
+										/>
+									</div>
+								)}
+							</form.Field>
 						</div>
 					</TabsContent>
 
 					<TabsContent value="logging">
 						<div class="space-y-4 rounded-md border p-4">
 							<h2 class="mb-4 font-semibold text-xl">Logging</h2>
-							<div class="space-y-2">
-								<Label for="logging-level">Log Level</Label>
-								<select
-									class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-									id="logging-level"
-									onInput={(event) =>
-										setConfig(
-											"logging",
-											"level",
-											event.currentTarget.value as typeof config.logging.level,
-										)
-									}
-									value={config.logging.level}
-								>
-									<option value="trace">Trace</option>
-									<option value="debug">Debug</option>
-									<option value="info">Info</option>
-									<option value="warn">Warn</option>
-									<option value="error">Error</option>
-									<option value="fatal">Fatal</option>
-								</select>
-							</div>
+							<form.Field name="logging.level">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Log Level</Label>
+										<select
+											class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+											id={field().name}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value as never)
+											}
+											value={(field().state.value as string) ?? ""}
+										>
+											<option value="trace">Trace</option>
+											<option value="debug">Debug</option>
+											<option value="info">Info</option>
+											<option value="warn">Warn</option>
+											<option value="error">Error</option>
+											<option value="fatal">Fatal</option>
+										</select>
+									</div>
+								)}
+							</form.Field>
 						</div>
 					</TabsContent>
 				</div>
 			</Tabs>
+		</>
+	);
+}
+
+export default function ConfigPage() {
+	const configQuery = createQuery(() => configQueryOptions());
+
+	return (
+		<div class="container mx-auto max-w-4xl p-6">
+			<Show when={configQuery.isLoading}>
+				<div class="py-10 text-center">Loading settings...</div>
+			</Show>
+
+			<Show when={configQuery.isError}>
+				<div class="py-10 text-red-500">Error loading settings.</div>
+			</Show>
+
+			<Show when={configQuery.data}>
+				{(data) => <ConfigForm data={data()} />}
+			</Show>
 		</div>
 	);
 }

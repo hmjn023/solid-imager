@@ -13,6 +13,7 @@ type PendingImportJob = {
 	id: string;
 	item: DownloadItem;
 	createdAt: string;
+	targetSourceId?: string;
 };
 
 const IMPORT_QUEUE_KEY = "solid-imager.pending-imports";
@@ -43,11 +44,22 @@ async function emitImportEvent(
 	await emit(event, payload);
 }
 
-function createPendingJob(item: DownloadItem): PendingImportJob {
+function resolveDownloadTarget(item: DownloadItem) {
+	if (item.targetUrl) {
+		return item.targetUrl;
+	}
+	return item.sourceUrls?.[0];
+}
+
+function createPendingJob(
+	item: DownloadItem,
+	targetSourceId?: string,
+): PendingImportJob {
 	return {
 		id: crypto.randomUUID(),
 		item,
 		createdAt: new Date().toISOString(),
+		targetSourceId,
 	};
 }
 
@@ -55,16 +67,17 @@ async function downloadItemToSource(
 	targetSourceId: string,
 	item: DownloadItem,
 ) {
-	if (!item.targetUrl) {
-		throw new Error("targetUrl is required");
+	const downloadTarget = resolveDownloadTarget(item);
+	if (!downloadTarget) {
+		throw new Error("targetUrl or sourceUrls[0] is required");
 	}
 	const source = await fetchMediaSource(targetSourceId);
 	if (source.type !== "local") {
 		throw new Error("Only local sources are supported in Tauri.");
 	}
-	const response = await fetch(item.targetUrl);
+	const response = await fetch(downloadTarget);
 	if (!response.ok) {
-		throw new Error(`Failed to download ${item.targetUrl}: ${response.status}`);
+		throw new Error(`Failed to download ${downloadTarget}: ${response.status}`);
 	}
 	const bytes = new Uint8Array(await response.arrayBuffer());
 	const targetRoot = (source.connectionInfo as { path?: string }).path;
@@ -74,14 +87,13 @@ async function downloadItemToSource(
 
 	const sourceFileName =
 		item.fileName ||
-		basenameFromUrl(item.targetUrl) ||
+		basenameFromUrl(downloadTarget) ||
 		`${crypto.randomUUID()}${guessExtension(response)}`;
 	const targetPath = await resolveUniqueTargetPath(targetRoot, sourceFileName);
 	await getTauriAppServices().fileSystem.mkdir(dirname(targetPath), {
 		recursive: true,
 	});
 	await getTauriAppServices().fileSystem.writeFile(targetPath, bytes);
-	await syncMediaSources([targetSourceId]);
 }
 
 function basenameFromUrl(url: string) {
@@ -118,8 +130,22 @@ async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
 	}
 }
 
-export async function bulkAddImportItems(items: DownloadItem[]) {
-	const queue = [...readQueue(), ...items.map(createPendingJob)];
+export async function processImportItemsToSource(
+	targetSourceId: string,
+	items: DownloadItem[],
+) {
+	for (const item of items) {
+		await downloadItemToSource(targetSourceId, item);
+	}
+	await syncMediaSources([targetSourceId]);
+	return { success: true, processedCount: items.length };
+}
+
+export async function bulkAddImportItems(
+	items: DownloadItem[],
+	targetSourceId?: string,
+) {
+	const queue = [...readQueue(), ...items.map((item) => createPendingJob(item, targetSourceId))];
 	writeQueue(queue);
 	await emitImportEvent("import-request:created", { count: items.length });
 	return { addedCount: items.length, skippedCount: 0, restoredCount: 0 };
@@ -131,12 +157,22 @@ export async function listPendingImports() {
 
 export async function processPendingImports(
 	jobIds: string[],
-	targetSourceId: string,
+	targetSourceId?: string,
 ) {
 	const queue = readQueue();
 	const selectedJobs = queue.filter((job) => jobIds.includes(job.id));
+	const itemsByTargetSource = new Map<string, DownloadItem[]>();
 	for (const job of selectedJobs) {
-		await downloadItemToSource(targetSourceId, job.item);
+		const resolvedTargetSourceId = targetSourceId || job.targetSourceId;
+		if (!resolvedTargetSourceId) {
+			throw new Error("Target source is required");
+		}
+		const existingItems = itemsByTargetSource.get(resolvedTargetSourceId) || [];
+		existingItems.push(job.item);
+		itemsByTargetSource.set(resolvedTargetSourceId, existingItems);
+	}
+	for (const [resolvedTargetSourceId, items] of itemsByTargetSource) {
+		await processImportItemsToSource(resolvedTargetSourceId, items);
 	}
 	const remaining = queue.filter((job) => !jobIds.includes(job.id));
 	writeQueue(remaining);

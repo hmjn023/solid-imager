@@ -19,11 +19,28 @@ const watcherErrorSchema = z.object({
 	error: z.string().optional(),
 });
 
+const mediaCopiedSchema = z.object({
+	sourceId: z.string(),
+	targetId: z.string().optional(),
+	mediaId: z.string().optional(),
+	timestamp: z.string().optional(),
+});
+
+const mediaMovedSchema = z.object({
+	type: z.enum(["source", "target"]),
+	sourceId: z.string().optional(),
+	targetId: z.string().optional(),
+	mediaId: z.string().optional(),
+	timestamp: z.string().optional(),
+});
+
 type MediaSourceEventsOptions = {
 	enabled?: boolean | Accessor<boolean>;
 	onMediaAdded?: (data: z.infer<typeof baseEventSchema>) => void;
 	onMediaDeleted?: (data: z.infer<typeof baseEventSchema>) => void;
 	onMediaChanged?: (data: z.infer<typeof baseEventSchema>) => void;
+	onMediaCopied?: (data: z.infer<typeof mediaCopiedSchema>) => void;
+	onMediaMoved?: (data: z.infer<typeof mediaMovedSchema>) => void;
 	onThumbnailGenerated?: (data: z.infer<typeof baseEventSchema>) => void;
 	onAllJobsCompleted?: (data: z.infer<typeof allJobsCompletedSchema>) => void;
 	onWatcherError?: (data: z.infer<typeof watcherErrorSchema>) => void;
@@ -60,6 +77,24 @@ export function useMediaSourceEvents(
 				const parsed = baseEventSchema.safeParse(event.payload);
 				if (parsed.success && parsed.data.mediaSourceId === id) {
 					options.onMediaChanged?.(parsed.data);
+				}
+			}),
+			listen("media-copied", (event) => {
+				const parsed = mediaCopiedSchema.safeParse(event.payload);
+				if (
+					parsed.success &&
+					(parsed.data.sourceId === id || parsed.data.targetId === id)
+				) {
+					options.onMediaCopied?.(parsed.data);
+				}
+			}),
+			listen("media-moved", (event) => {
+				const parsed = mediaMovedSchema.safeParse(event.payload);
+				if (
+					parsed.success &&
+					(parsed.data.sourceId === id || parsed.data.targetId === id)
+				) {
+					options.onMediaMoved?.(parsed.data);
 				}
 			}),
 			listen("thumbnail-generated", (event) => {

@@ -27,8 +27,8 @@ import {
 	fetchProjectsForMedia,
 	removeProjectFromMedia,
 } from "../../infrastructure/api-clients/projects-api";
-import { serverOrpc } from "../../infrastructure/api-clients/server-orpc-client";
 import { joinLocalPath } from "../../infrastructure/path-utils";
+import { AiTaggingModal } from "./ai-tagging-modal";
 import { AssociationManager } from "./association-manager";
 
 type MediaSidebarProps = {
@@ -52,6 +52,7 @@ function formatBytes(bytes: number, decimals = 2) {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const tags = createMemo(() => props.media.tags || []);
+	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
@@ -198,35 +199,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
 	};
 
-	const handleExtractTags = async () => {
+	const loadMediaFile = async () => {
 		const sourceRootPath = props.sourceRootPath;
 		if (!sourceRootPath) {
-			toast.error("Source root path is not available.");
-			return;
+			throw new Error("Source root path is not available.");
 		}
-		try {
-			const bytes = await getTauriAppServices().fileSystem.readFile(
-				joinLocalPath(sourceRootPath, props.media.filePath),
-			);
-			const buffer = new ArrayBuffer(bytes.byteLength);
-			new Uint8Array(buffer).set(bytes);
-			const file = new File([buffer], props.media.fileName);
-			const response = await serverOrpc.ai.tag({ file });
-			await getTauriAppServices().apiClient.call("ai.applyTags", {
-				mediaId: props.media.id,
-				response,
-			});
-			await queryClient.invalidateQueries({
-				queryKey: ["mediaDetails", props.media.mediaSourceId, props.media.id],
-			});
-			await queryClient.invalidateQueries({
-				queryKey: ["media", props.media.mediaSourceId],
-			});
-			props.onUpdate?.();
-			toast.success("AI tags extracted via server");
-		} catch (error) {
-			toast.error(`Failed to extract tags: ${(error as Error).message}`);
-		}
+		const bytes = await getTauriAppServices().fileSystem.readFile(
+			joinLocalPath(sourceRootPath, props.media.filePath),
+		);
+		const buffer = new ArrayBuffer(bytes.byteLength);
+		new Uint8Array(buffer).set(bytes);
+		return new File([buffer], props.media.fileName);
 	};
 
 	return (
@@ -239,13 +222,20 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<div class="flex gap-2">
 				<button
 					class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
-					onClick={() => void handleExtractTags()}
+					onClick={() => setIsAiTaggingModalOpen(true)}
 					type="button"
 				>
 					<span class="i-lucide-sparkles" />
 					Extract Tags (AI)
 				</button>
 			</div>
+
+			<AiTaggingModal
+				fileName={props.media.fileName}
+				isOpen={isAiTaggingModalOpen()}
+				loadFile={loadMediaFile}
+				onClose={() => setIsAiTaggingModalOpen(false)}
+			/>
 
 			<div class="space-y-2">
 				<h2 class="font-semibold text-lg">Details</h2>

@@ -1,6 +1,8 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
+import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import { dirname, joinLocalPath, splitStemAndExt } from "../path-utils";
+import { processImportItemsToSource } from "./imports-api";
 import { orpc } from "./orpc-client";
 import { searchMedia } from "./search-api";
 import { fetchMediaSource, syncMediaSources } from "./sources-api";
@@ -144,6 +146,30 @@ async function copyOrMoveMedia(
 	await syncMediaSources(
 		mode === "copy" ? [targetSourceId] : [sourceId, targetSourceId],
 	);
+	const timestamp = new Date().toISOString();
+	if (mode === "copy") {
+		await emit("media-copied", {
+			sourceId,
+			targetId: targetSourceId,
+			mediaId,
+			timestamp,
+		});
+	} else {
+		await emit("media-moved", {
+			type: "source",
+			sourceId,
+			targetId: targetSourceId,
+			mediaId,
+			timestamp,
+		});
+		await emit("media-moved", {
+			type: "target",
+			sourceId,
+			targetId: targetSourceId,
+			mediaId,
+			timestamp,
+		});
+	}
 	return { success: true };
 }
 
@@ -168,14 +194,13 @@ export async function syncMediaItems(sourceId: string, _mediaIds: string[]) {
 }
 
 export async function startDownloadJobs(
-	_mediaSourceId: string,
+	mediaSourceId: string,
 	items: DownloadItem[],
 ) {
-	const { bulkAddImportItems } = await import("./imports-api");
-	const result = await bulkAddImportItems(items);
+	const result = await processImportItemsToSource(mediaSourceId, items);
 	return {
 		success: true,
-		jobCount: result.addedCount,
-		message: `Queued ${result.addedCount} download jobs`,
+		jobCount: result.processedCount,
+		message: `Started ${result.processedCount} download jobs`,
 	};
 }
