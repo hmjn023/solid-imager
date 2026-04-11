@@ -91,7 +91,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			<div class="flex items-center justify-between">
 				<h2 class="font-semibold text-lg">{props.title}</h2>
 				<Button
-					disabled={isBusy()}
+					disabled={isMutating()}
 					onClick={() => setOpen(true)}
 					size="sm"
 					variant="outline"
