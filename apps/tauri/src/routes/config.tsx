@@ -22,7 +22,7 @@ import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createEffect } from "solid-js";
-import { createStore, reconcile } from "solid-js/store";
+import { createStore, reconcile, unwrap } from "solid-js/store";
 import { orpc } from "../infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "../infrastructure/api-clients/queries/config-query";
 
@@ -49,7 +49,7 @@ export default function ConfigPage() {
 
 	createEffect(() => {
 		if (configQuery.data) {
-			setConfig(reconcile(structuredClone(configQuery.data as AppConfig)));
+			setConfig(reconcile(structuredClone(unwrap(configQuery.data))));
 		}
 	});
 
