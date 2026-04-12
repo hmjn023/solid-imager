@@ -1,3 +1,4 @@
+import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {
@@ -44,8 +45,9 @@ function RootComponent() {
 			<body>
 				<Toaster />
 				<Suspense>
-					<Nav />
-					<Outlet />
+					<AppShell nav={<Nav />}>
+						<Outlet />
+					</AppShell>
 				</Suspense>
 				<Scripts />
 			</body>

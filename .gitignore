@@ -57,3 +57,4 @@ config.json
 dev.log
 
 .playwright-cli/
+apps/tauri/src-tauri/target/

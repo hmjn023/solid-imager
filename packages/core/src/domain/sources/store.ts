@@ -1,5 +1,4 @@
 import { createStore } from "solid-js/store";
-import { isServer } from "solid-js/web";
 
 export type SourcesState = {
 	// Map of mediaSourceId to scrollY position
@@ -11,10 +10,11 @@ const defaultState: SourcesState = {
 };
 
 const STORAGE_KEY = "solid-imager-scroll-positions";
+const canUseSessionStorage = typeof sessionStorage !== "undefined";
 
 // Initialize state from sessionStorage if available
 const getInitialState = (): SourcesState => {
-	if (isServer) {
+	if (!canUseSessionStorage) {
 		return defaultState;
 	}
 	try {
@@ -31,7 +31,7 @@ export const [sourcesState, setSourcesState] = createStore<SourcesState>(
 
 // Helper to persist to sessionStorage
 const persistToStorage = () => {
-	if (isServer) {
+	if (!canUseSessionStorage) {
 		return;
 	}
 	const data = JSON.stringify(sourcesState);
