@@ -3,6 +3,7 @@ use crate::backend::types::*;
 use crate::commands::utils::{
     inspect_image_header, metadata_created_or_modified, metadata_modified,
 };
+use rayon::prelude::*;
 use rusqlite::{params, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
@@ -24,7 +25,75 @@ struct RestoreCaches {
     character_ids: HashMap<String, String>,
 }
 
+struct SourceScanCandidate {
+    relative: String,
+    path: PathBuf,
+    media_type: String,
+}
+
+struct IndexedSourceEntry {
+    relative: String,
+    media_type: String,
+    file_name: String,
+    file_size: i64,
+    created_at: String,
+    modified_at: String,
+    width: i64,
+    height: i64,
+    analysis: Option<super::media_processing::PreparedMediaAnalysis>,
+}
+
 impl super::LocalBackend {
+    fn index_source_entry(
+        candidate: SourceScanCandidate,
+        tag_extraction_config: &ComfyUiTagExtractionConfig,
+    ) -> Result<IndexedSourceEntry, String> {
+        let metadata = fs::metadata(&candidate.path)
+            .map_err(|error| format!("Reading file metadata failed: {error}"))?;
+        let path_text = candidate.path.to_string_lossy().to_string();
+        let created_at = metadata_created_or_modified(&path_text, &metadata)?;
+        let modified_at = metadata_modified(&path_text, &metadata)?;
+        let (width, height, analysis) = if candidate.media_type == "image" {
+            let (width, height) = match inspect_image_header(&path_text) {
+                Ok(header) => (
+                    i64::from(header.dimensions.width),
+                    i64::from(header.dimensions.height),
+                ),
+                Err(error) => {
+                    eprintln!(
+                        "Failed to inspect image header for {}: {}",
+                        candidate.path.display(),
+                        error
+                    );
+                    (0, 0)
+                }
+            };
+            let analysis = Some(Self::prepare_media_analysis(
+                &candidate.path,
+                tag_extraction_config,
+            )?);
+            (width, height, analysis)
+        } else {
+            (0, 0, None)
+        };
+
+        Ok(IndexedSourceEntry {
+            relative: candidate.relative,
+            media_type: candidate.media_type,
+            file_name: candidate
+                .path
+                .file_name()
+                .map(|value| value.to_string_lossy().to_string())
+                .unwrap_or_default(),
+            file_size: i64::try_from(metadata.len()).unwrap_or(i64::MAX),
+            created_at,
+            modified_at,
+            width,
+            height,
+            analysis,
+        })
+    }
+
     pub fn handle_sources_list(&self) -> Result<Value, String> {
         let conn = self.open_connection()?;
         let mut stmt = conn
@@ -188,7 +257,7 @@ impl super::LocalBackend {
         input: Option<Value>,
     ) -> Result<Value, String> {
         let payload: SourceRestoreInput = parse_input(input)?;
-        let _ = self.sync_source(app, &payload.id)?;
+        let _ = self.sync_source_internal(app, &payload.id, false)?;
         self.restore_source_data(&payload.id, &payload.data)
     }
 
@@ -307,7 +376,7 @@ impl super::LocalBackend {
         }
 
         let dump_data = dump_data.ok_or_else(|| "dump.json not found in ZIP".to_string())?;
-        let _ = self.sync_source(app, &payload.id)?;
+        let _ = self.sync_source_internal(app, &payload.id, false)?;
         let restore_result = self.restore_source_data(&payload.id, &dump_data)?;
         let processed = restore_result
             .get("processed")
@@ -331,6 +400,15 @@ impl super::LocalBackend {
         &self,
         app: &AppHandle<R>,
         source_id: &str,
+    ) -> Result<SyncSummary, String> {
+        self.sync_source_internal(app, source_id, true)
+    }
+
+    fn sync_source_internal<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        source_id: &str,
+        emit_events: bool,
     ) -> Result<SyncSummary, String> {
         let conn = self.open_connection()?;
         let source = self
@@ -356,14 +434,12 @@ impl super::LocalBackend {
             .into_iter()
             .map(|item| (item.file_path.clone(), item))
             .collect::<HashMap<_, _>>();
-        let mut seen = HashSet::new();
-        let mut summary = SyncSummary {
-            added: 0,
-            updated: 0,
-            deleted: 0,
-            processed: 0,
-        };
-
+        let tag_extraction_config = config.media.tag_extraction.comfyui.clone();
+        let concurrency = usize::try_from(config.jobs.concurrency)
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(1);
+        let mut candidates = Vec::new();
         for entry in WalkDir::new(&root).into_iter().filter_map(Result::ok) {
             if !entry.file_type().is_file() {
                 continue;
@@ -383,67 +459,70 @@ impl super::LocalBackend {
                     .strip_prefix(&root)
                     .map_err(|error| format!("Calculating relative path failed: {error}"))?,
             );
+            candidates.push(SourceScanCandidate {
+                relative,
+                path: entry.path().to_path_buf(),
+                media_type,
+            });
+        }
+
+        let indexed_entries = rayon::ThreadPoolBuilder::new()
+            .num_threads(concurrency)
+            .build()
+            .map_err(|error| format!("Creating source sync thread pool failed: {error}"))?
+            .install(|| {
+                candidates
+                    .into_par_iter()
+                    .map(|candidate| Self::index_source_entry(candidate, &tag_extraction_config))
+                    .collect::<Result<Vec<_>, _>>()
+            })?;
+        let mut seen = HashSet::new();
+        let mut summary = SyncSummary {
+            added: 0,
+            updated: 0,
+            deleted: 0,
+            processed: indexed_entries.len(),
+        };
+
+        for entry in indexed_entries {
+            let relative = entry.relative.clone();
             seen.insert(relative.clone());
-            summary.processed += 1;
-            let metadata = fs::metadata(entry.path())
-                .map_err(|error| format!("Reading file metadata failed: {error}"))?;
-            let created_at =
-                metadata_created_or_modified(&entry.path().to_string_lossy(), &metadata)?;
-            let modified_at = metadata_modified(&entry.path().to_string_lossy(), &metadata)?;
-            let (width, height) = if media_type == "image" {
-                match inspect_image_header(&entry.path().to_string_lossy()) {
-                    Ok(header) => (
-                        i64::from(header.dimensions.width),
-                        i64::from(header.dimensions.height),
-                    ),
-                    Err(error) => {
-                        eprintln!(
-                            "Failed to inspect image header for {}: {}",
-                            entry.path().display(),
-                            error
-                        );
-                        (0, 0)
-                    }
-                }
-            } else {
-                (0, 0)
-            };
-            let file_name = entry.file_name().to_string_lossy().to_string();
-            let file_size = i64::try_from(metadata.len()).unwrap_or(i64::MAX);
             if let Some(existing_media) = existing_by_path.remove(&relative) {
-                if existing_media.modified_at != modified_at
-                    || existing_media.file_size != Some(file_size)
-                    || existing_media.width != width
-                    || existing_media.height != height
+                if existing_media.modified_at != entry.modified_at
+                    || existing_media.file_size != Some(entry.file_size)
+                    || existing_media.width != entry.width
+                    || existing_media.height != entry.height
                 {
                     conn.execute(
 						"UPDATE medias SET file_name = ?1, media_type = ?2, width = ?3, height = ?4, file_size = ?5, created_at = ?6, modified_at = ?7, indexed_at = ?8, status = 'active' WHERE id = ?9",
 						params![
-							file_name,
-							media_type,
-							width,
-							height,
-							file_size,
-							created_at,
-							modified_at,
+							entry.file_name,
+							entry.media_type,
+							entry.width,
+							entry.height,
+							entry.file_size,
+							entry.created_at,
+							entry.modified_at,
 							now_iso(),
 							existing_media.id,
 						],
 					)
 					.map_err(|error| format!("Updating media metadata failed: {error}"))?;
-                    if media_type == "image" {
-                        self.sync_media_analysis(&conn, &existing_media.id, entry.path())?;
+                    if let Some(analysis) = entry.analysis.as_ref() {
+                        self.apply_media_analysis(&conn, &existing_media.id, analysis)?;
                     }
                     summary.updated += 1;
-                    let _ = app.emit(
-                        "media-changed",
-                        SourceEventPayload {
-                            media_source_id: source_id.to_string(),
-                            file_path: relative.clone(),
-                            media_id: Some(existing_media.id),
-                            timestamp: now_iso(),
-                        },
-                    );
+                    if emit_events {
+                        let _ = app.emit(
+                            "media-changed",
+                            SourceEventPayload {
+                                media_source_id: source_id.to_string(),
+                                file_path: relative.clone(),
+                                media_id: Some(existing_media.id),
+                                timestamp: now_iso(),
+                            },
+                        );
+                    }
                 }
             } else {
                 let media_id = Uuid::new_v4().to_string();
@@ -453,30 +532,32 @@ impl super::LocalBackend {
 						media_id,
 						source_id,
 						relative,
-						file_name,
-						media_type,
-						width,
-						height,
-						file_size,
-						created_at,
-						modified_at,
+						entry.file_name,
+						entry.media_type,
+						entry.width,
+						entry.height,
+						entry.file_size,
+						entry.created_at,
+						entry.modified_at,
 						now_iso(),
 					],
-				)
+                )
 				.map_err(|error| format!("Creating media entry failed: {error}"))?;
-                if media_type == "image" {
-                    self.sync_media_analysis(&conn, &media_id, entry.path())?;
+                if let Some(analysis) = entry.analysis.as_ref() {
+                    self.apply_media_analysis(&conn, &media_id, analysis)?;
                 }
                 summary.added += 1;
-                let _ = app.emit(
-                    "media-added",
-                    SourceEventPayload {
-                        media_source_id: source_id.to_string(),
-                        file_path: relative,
-                        media_id: Some(media_id),
-                        timestamp: now_iso(),
-                    },
-                );
+                if emit_events {
+                    let _ = app.emit(
+                        "media-added",
+                        SourceEventPayload {
+                            media_source_id: source_id.to_string(),
+                            file_path: relative,
+                            media_id: Some(media_id),
+                            timestamp: now_iso(),
+                        },
+                    );
+                }
             }
         }
 
@@ -487,24 +568,28 @@ impl super::LocalBackend {
             conn.execute("DELETE FROM medias WHERE id = ?1", params![media.id])
                 .map_err(|error| format!("Deleting removed media failed: {error}"))?;
             summary.deleted += 1;
+            if emit_events {
+                let _ = app.emit(
+                    "media-deleted",
+                    SourceEventPayload {
+                        media_source_id: source_id.to_string(),
+                        file_path,
+                        media_id: Some(media.id),
+                        timestamp: now_iso(),
+                    },
+                );
+            }
+        }
+
+        if emit_events {
             let _ = app.emit(
-                "media-deleted",
-                SourceEventPayload {
+                "all-jobs-completed",
+                AllJobsCompletedPayload {
                     media_source_id: source_id.to_string(),
-                    file_path,
-                    media_id: Some(media.id),
-                    timestamp: now_iso(),
+                    processed: summary.processed,
                 },
             );
         }
-
-        let _ = app.emit(
-            "all-jobs-completed",
-            AllJobsCompletedPayload {
-                media_source_id: source_id.to_string(),
-                processed: summary.processed,
-            },
-        );
         Ok(summary)
     }
 

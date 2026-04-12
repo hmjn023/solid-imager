@@ -78,6 +78,8 @@ import {
 	searchState,
 } from "../../../presentation/store/search-store";
 
+const DEBOUNCE_DELAY_MS = 1000;
+
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	loader: async ({ context }) => {
 		await Promise.all([
@@ -154,7 +156,25 @@ function SourceMediaRoute() {
 
 	useMediaSourceEvents(mediaSourceId, {
 		onMediaAdded: () => {
-			void mediaQuery.refetch();
+			setAddedCount((prev) => prev + 1);
+
+			const timer = debounceTimer();
+			if (timer) {
+				clearTimeout(timer);
+			}
+
+			setDebounceTimer(
+				setTimeout(() => {
+					const count = addedCount();
+					if (count > 0) {
+						toast.success(`${count} new media detected. Refreshing list...`);
+						setAddedCount(0);
+					}
+					void queryClient.invalidateQueries({
+						queryKey: ["media", mediaSourceId()],
+					});
+				}, DEBOUNCE_DELAY_MS),
+			);
 		},
 		onMediaDeleted: () => {
 			void mediaQuery.refetch();
@@ -223,6 +243,10 @@ function SourceMediaRoute() {
 	>(null);
 	const [isSyncingMedia, setIsSyncingMedia] = createSignal(false);
 	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
+	const [addedCount, setAddedCount] = createSignal(0);
+	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	let fileInputRef: HTMLInputElement | undefined;
 
@@ -243,6 +267,13 @@ function SourceMediaRoute() {
 			}),
 		]);
 	};
+
+	onCleanup(() => {
+		const timer = debounceTimer();
+		if (timer) {
+			clearTimeout(timer);
+		}
+	});
 
 	const handleUpload = async (options: UploadOptions) => {
 		await uploadMedia(mediaSourceId(), options.file, options);
