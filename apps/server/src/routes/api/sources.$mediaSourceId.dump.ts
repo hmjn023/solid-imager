@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { BackupService } from "~/application/services/backup-service";
-import { bootstrap } from "~/infrastructure/bootstrap";
+import { initServices } from "~/infrastructure/bootstrap";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 	server: {
 		handlers: {
 			GET: async ({ params, request }) => {
-				bootstrap();
+				initServices();
 
 				const { mediaSourceId } = params;
 				const { searchParams } = new URL(request.url);
