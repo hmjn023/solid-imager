@@ -78,6 +78,8 @@ import {
 	searchState,
 } from "../../../presentation/store/search-store";
 
+const MEDIA_ITEMS_PER_PAGE = 200;
+const INFINITE_SCROLL_ROOT_MARGIN = "1000px";
 const DEBOUNCE_DELAY_MS = 1000;
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
@@ -137,7 +139,7 @@ function SourceMediaRoute() {
 				condition: getSearchCondition() || undefined,
 				sort: searchState.sortBy,
 				order: searchState.sortOrder,
-				limit: 100,
+				limit: MEDIA_ITEMS_PER_PAGE,
 				offset: Number(pageParam ?? 0),
 			}),
 		initialPageParam: 0,
@@ -199,7 +201,9 @@ function SourceMediaRoute() {
 			});
 		},
 		onAllJobsCompleted: (data) => {
-			toast.success(`All jobs completed! Processed: ${data.processed ?? "N/A"}`);
+			toast.success(
+				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
+			);
 			void queryClient.invalidateQueries({
 				queryKey: ["media", mediaSourceId()],
 			});
@@ -551,18 +555,18 @@ function SourceMediaRoute() {
 			return;
 		}
 		const action = moveCopyMode() === "copy" ? copyMedia : moveMedia;
-			try {
-				await action(mediaSourceId(), id, targetSourceId);
+		try {
+			await action(mediaSourceId(), id, targetSourceId);
 			toast.success(
 				`Media ${moveCopyMode() === "copy" ? "copied" : "moved"} successfully`,
 			);
-				await invalidateMediaQueries();
-				if (targetSourceId !== mediaSourceId()) {
-					await queryClient.invalidateQueries({
-						queryKey: ["media", targetSourceId],
-					});
-				}
-			} catch (error) {
+			await invalidateMediaQueries();
+			if (targetSourceId !== mediaSourceId()) {
+				await queryClient.invalidateQueries({
+					queryKey: ["media", targetSourceId],
+				});
+			}
+		} catch (error) {
 			toast.error(
 				`Failed to ${moveCopyMode()} media: ${(error as Error).message}`,
 			);
@@ -616,11 +620,15 @@ function SourceMediaRoute() {
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
+				if (
+					entries[0].isIntersecting &&
+					mediaQuery.hasNextPage &&
+					!mediaQuery.isFetchingNextPage
+				) {
 					void mediaQuery.fetchNextPage();
 				}
 			},
-			{ threshold: 0.5, rootMargin: "1000px" },
+			{ threshold: 0.5, rootMargin: INFINITE_SCROLL_ROOT_MARGIN },
 		);
 
 		observer.observe(element);

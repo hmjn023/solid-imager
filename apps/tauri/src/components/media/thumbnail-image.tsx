@@ -4,6 +4,8 @@ import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { getTauriAppServices } from "../../app-services";
 import { configQueryOptions } from "../../infrastructure/api-clients/queries/config-query";
 
+const THUMBNAIL_ROOT_MARGIN = "1200px";
+
 type ThumbnailImageProps = {
 	alt: string;
 	class?: string;
@@ -50,6 +52,28 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	const services = getTauriAppServices();
 	const configQuery = createQuery(() => configQueryOptions());
 	const [thumbnailUrl, setThumbnailUrl] = createSignal<string | null>(null);
+	const [isInViewport, setIsInViewport] = createSignal(false);
+	let imageRef: HTMLImageElement | HTMLDivElement | undefined;
+
+	createEffect(() => {
+		const element = imageRef;
+		if (!element) {
+			return;
+		}
+
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) {
+					setIsInViewport(true);
+					observer.disconnect();
+				}
+			},
+			{ rootMargin: THUMBNAIL_ROOT_MARGIN },
+		);
+
+		observer.observe(element);
+		onCleanup(() => observer.disconnect());
+	});
 
 	createEffect(() => {
 		const rootPath = props.sourceRootPath;
@@ -64,6 +88,12 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				currentUrl = null;
 			}
 		};
+
+		if (!isInViewport()) {
+			revokeCurrentUrl();
+			setThumbnailUrl(null);
+			return;
+		}
 
 		if (!(rootPath && storage && media.mediaType === "image")) {
 			revokeCurrentUrl();
@@ -123,7 +153,12 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	return (
 		<Show
 			fallback={
-				<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+				<div
+					class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400"
+					ref={(element) => {
+						imageRef = element;
+					}}
+				>
 					{props.fallback ?? props.media.mediaType}
 				</div>
 			}
@@ -134,6 +169,9 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					alt={props.alt}
 					class={props.class}
 					height={props.height ?? undefined}
+					ref={(element) => {
+						imageRef = element;
+					}}
 					src={url()}
 					width={props.width ?? undefined}
 				/>
