@@ -35,20 +35,7 @@ export async function fetchSourceDump(
 			type: result.mimeType,
 		});
 	}
-	const source = await fetchMediaSource(id);
-	const result = await orpc.media.search({
-		sourceId: id,
-		params: {
-			limit: 10_000,
-			offset: 0,
-			order: "desc",
-		},
-	});
-	const data = {
-		source,
-		media: result.media,
-		exportedAt: new Date().toISOString(),
-	};
+	const data = await orpc.sources.dump({ id });
 	return new Blob([JSON.stringify(data, null, 2)], {
 		type: "application/json",
 	});

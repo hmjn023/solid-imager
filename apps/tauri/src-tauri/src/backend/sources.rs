@@ -231,6 +231,13 @@ impl super::LocalBackend {
         }))
     }
 
+    pub fn handle_sources_dump(&self, input: Option<Value>) -> Result<Value, String> {
+        let payload: IdInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let items = self.build_source_dump_items(&conn, &payload.id)?;
+        Ok(Value::Array(items))
+    }
+
     pub fn handle_sources_import_zip<R: Runtime>(
         &self,
         app: &AppHandle<R>,
@@ -817,13 +824,17 @@ impl super::LocalBackend {
         .map_err(|error| format!("Clearing generation info failed: {error}"))?;
         if let Some(generation_info) = item.get("generationInfo").filter(|value| !value.is_null()) {
             conn.execute(
-                "INSERT INTO generation_infos (media_id, metadata_json, prompt, negative_prompt, workflow_json, loras_json, vae, hypernetworks_json, embeddings_json, ai_generated, model_name, seed, cfg_scale, steps) VALUES (?1, ?2, ?3, ?4, ?5, NULL, NULL, NULL, NULL, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT INTO generation_infos (media_id, metadata_json, prompt, negative_prompt, workflow_json, loras_json, vae, hypernetworks_json, embeddings_json, ai_generated, model_name, seed, cfg_scale, steps) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     summary.id,
                     stringify_json_value(generation_info.get("metadata")),
                     generation_info.get("prompt").and_then(Value::as_str),
                     generation_info.get("negativePrompt").and_then(Value::as_str),
                     stringify_json_value(generation_info.get("workflow")),
+                    stringify_json_value(generation_info.get("loras")),
+                    generation_info.get("vae").and_then(Value::as_str),
+                    stringify_json_value(generation_info.get("hypernetworks")),
+                    stringify_json_value(generation_info.get("embeddings")),
                     generation_info
                         .get("aiGenerated")
                         .and_then(Value::as_bool)

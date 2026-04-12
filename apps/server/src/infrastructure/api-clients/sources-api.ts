@@ -93,7 +93,17 @@ export async function fetchSourceDump(
 }
 
 export function restoreSource(id: string, data: any) {
-	return orpc.sources.restore({ id, data });
+	const payload = data as
+		| {
+				media?: unknown[];
+		  }
+		| unknown[];
+	const items = Array.isArray(payload)
+		? payload
+		: Array.isArray(payload.media)
+			? payload.media
+			: [];
+	return orpc.sources.restore({ id, data: items });
 }
 
 /**

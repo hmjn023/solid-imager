@@ -110,6 +110,7 @@ export const orpc = {
 			invoke("sources.sync", input, syncSourcesResponseSchema),
 		restore: (input: { id: string; data: unknown[] }) =>
 			invoke("sources.restore", input, z.any()),
+		dump: (input: { id: string }) => invoke("sources.dump", input, z.any()),
 		dumpZip: (input: { id: string }) =>
 			invoke("sources.dumpZip", input, binaryFilePayloadSchema),
 		importZip: (input: { id: string; bytes: number[] }) =>

@@ -71,6 +71,7 @@ impl LocalBackend {
             "sources.delete" => self.handle_sources_delete(input),
             "sources.sync" => self.handle_sources_sync(app, input),
             "sources.restore" => self.handle_sources_restore(app, input),
+            "sources.dump" => self.handle_sources_dump(input),
             "sources.dumpZip" => self.handle_sources_dump_zip(input),
             "sources.importZip" => self.handle_sources_import_zip(app, input),
             "media.search" => self.handle_media_search(input),
