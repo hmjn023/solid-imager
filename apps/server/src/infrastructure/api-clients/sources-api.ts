@@ -2,7 +2,7 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * NOTE: This file is migrated to use oRPC ✅
+ * NOTE: Most operations use oRPC, but dump/import still use dedicated HTTP routes.
  */
 
 import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
