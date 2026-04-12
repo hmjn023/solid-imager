@@ -15,6 +15,15 @@ use walkdir::WalkDir;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
+#[derive(Default)]
+struct RestoreCaches {
+    author_ids: HashMap<String, String>,
+    project_ids: HashMap<String, String>,
+    tag_ids: HashMap<String, String>,
+    ip_ids: HashMap<String, String>,
+    character_ids: HashMap<String, String>,
+}
+
 impl super::LocalBackend {
     pub fn handle_sources_list(&self) -> Result<Value, String> {
         let conn = self.open_connection()?;
@@ -582,15 +591,21 @@ impl super::LocalBackend {
     }
 
     fn restore_source_data(&self, source_id: &str, items: &[Value]) -> Result<Value, String> {
-        let conn = self.open_connection()?;
+        let mut conn = self.open_connection()?;
         let source = self
             .find_source_value(&conn, source_id)?
             .ok_or_else(|| format!("Source not found: {source_id}"))?;
-        let root = self.local_source_root_path(&source)?;
+        self.local_source_root_path(&source)?;
+        let media_by_path = self
+            .list_media_by_source(&conn, source_id)?
+            .into_iter()
+            .map(|summary| (summary.file_path.clone(), summary))
+            .collect::<HashMap<_, _>>();
 
         let mut processed = 0usize;
         let mut skipped = 0usize;
         let mut errors = Vec::new();
+        let mut restore_targets = Vec::new();
 
         for item in items {
             let Some(file_path) = item.get("filePath").and_then(Value::as_str) else {
@@ -603,21 +618,32 @@ impl super::LocalBackend {
                 errors.push(format!("Invalid path in backup: {file_path}"));
                 continue;
             }
-            if !root.join(file_path).exists() {
-                skipped += 1;
-                continue;
-            }
-            let Some(summary) =
-                self.find_media_summary_by_source_and_path(&conn, source_id, file_path)?
-            else {
+            let Some(summary) = media_by_path.get(file_path) else {
                 skipped += 1;
                 errors.push(format!("Media record not found after sync: {file_path}"));
                 continue;
             };
+            restore_targets.push((summary.clone(), item));
+        }
 
-            self.restore_media_record(&conn, &summary, item)?;
+        let tx = conn
+            .transaction()
+            .map_err(|error| format!("Starting restore transaction failed: {error}"))?;
+        let mut caches = RestoreCaches::default();
+        let media_ids = restore_targets
+            .iter()
+            .map(|(summary, _)| summary.id.clone())
+            .collect::<Vec<_>>();
+
+        self.clear_restore_relations(&tx, &media_ids)?;
+
+        for (summary, item) in restore_targets {
+            self.restore_media_record(&tx, &summary, item, &mut caches)?;
             processed += 1;
         }
+
+        tx.commit()
+            .map_err(|error| format!("Committing restore transaction failed: {error}"))?;
 
         Ok(json!({
             "processed": processed,
@@ -631,6 +657,7 @@ impl super::LocalBackend {
         conn: &Connection,
         summary: &MediaSummary,
         item: &Value,
+        caches: &mut RestoreCaches,
     ) -> Result<(), String> {
         let restored_created_at = item
             .get("createdAt")
@@ -653,11 +680,6 @@ impl super::LocalBackend {
         )
         .map_err(|error| format!("Updating restored media failed: {error}"))?;
 
-        conn.execute(
-            "DELETE FROM media_urls WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media URLs failed: {error}"))?;
         if let Some(urls) = item.get("sourceUrls").and_then(Value::as_array) {
             for url in urls.iter().filter_map(Value::as_str) {
                 let now = now_iso();
@@ -669,18 +691,14 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM media_authors WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media authors failed: {error}"))?;
         if let Some(authors) = item.get("authors").and_then(Value::as_array) {
             for author in authors {
                 let Some(name) = author.get("name").and_then(Value::as_str) else {
                     continue;
                 };
-                let author_id = self.ensure_author(
+                let author_id = self.ensure_author_cached(
                     conn,
+                    caches,
                     name,
                     author.get("accountId").and_then(Value::as_str),
                 )?;
@@ -692,18 +710,14 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM media_projects WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media projects failed: {error}"))?;
         if let Some(projects) = item.get("projects").and_then(Value::as_array) {
             for project in projects {
                 let Some(name) = project.get("name").and_then(Value::as_str) else {
                     continue;
                 };
-                let project_id = self.ensure_project(
+                let project_id = self.ensure_project_cached(
                     conn,
+                    caches,
                     name,
                     project.get("description").and_then(Value::as_str),
                 )?;
@@ -715,11 +729,6 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM media_tags WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media tags failed: {error}"))?;
         if let Some(tags) = item.get("tags").and_then(Value::as_array) {
             for tag in tags {
                 let Some(name) = tag.get("name").and_then(Value::as_str) else {
@@ -729,7 +738,7 @@ impl super::LocalBackend {
                     .get("source")
                     .and_then(Value::as_str)
                     .unwrap_or("restored");
-                let tag_id = self.ensure_tag(conn, name, source)?;
+                let tag_id = self.ensure_tag_cached(conn, caches, name, source)?;
                 let tag_type = tag
                     .get("type")
                     .and_then(Value::as_str)
@@ -748,11 +757,6 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM media_ips WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media IPs failed: {error}"))?;
         if let Some(ips) = item.get("ips").and_then(Value::as_array) {
             for ip in ips {
                 let Some(name) = ip.get("name").and_then(Value::as_str) else {
@@ -762,8 +766,9 @@ impl super::LocalBackend {
                     .get("source")
                     .and_then(Value::as_str)
                     .unwrap_or("restored");
-                let ip_id = self.ensure_ip(
+                let ip_id = self.ensure_ip_cached(
                     conn,
+                    caches,
                     name,
                     ip.get("description").and_then(Value::as_str),
                     source,
@@ -781,11 +786,6 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM media_characters WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing media characters failed: {error}"))?;
         if let Some(characters) = item.get("characters").and_then(Value::as_array) {
             for character in characters {
                 let Some(name) = character.get("name").and_then(Value::as_str) else {
@@ -801,9 +801,10 @@ impl super::LocalBackend {
                     .into_iter()
                     .flatten()
                     .filter_map(Value::as_str)
-                    .map(|ip_name| self.ensure_ip(conn, ip_name, None, source))
+                    .map(|ip_name| self.ensure_ip_cached(conn, caches, ip_name, None, source))
                     .collect::<Result<Vec<_>, _>>()?;
-                let character_id = self.ensure_character(conn, name, source, &linked_ip_ids)?;
+                let character_id =
+                    self.ensure_character_cached(conn, caches, name, source, &linked_ip_ids)?;
                 conn.execute(
                     "INSERT OR REPLACE INTO media_characters (media_id, character_id, confidence, source) VALUES (?1, ?2, ?3, ?4)",
                     params![
@@ -817,11 +818,6 @@ impl super::LocalBackend {
             }
         }
 
-        conn.execute(
-            "DELETE FROM generation_infos WHERE media_id = ?1",
-            params![summary.id],
-        )
-        .map_err(|error| format!("Clearing generation info failed: {error}"))?;
         if let Some(generation_info) = item.get("generationInfo").filter(|value| !value.is_null()) {
             conn.execute(
                 "INSERT INTO generation_infos (media_id, metadata_json, prompt, negative_prompt, workflow_json, loras_json, vae, hypernetworks_json, embeddings_json, ai_generated, model_name, seed, cfg_scale, steps) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
@@ -855,6 +851,121 @@ impl super::LocalBackend {
         }
 
         Ok(())
+    }
+
+    fn clear_restore_relations(
+        &self,
+        conn: &Connection,
+        media_ids: &[String],
+    ) -> Result<(), String> {
+        if media_ids.is_empty() {
+            return Ok(());
+        }
+
+        let placeholders = (0..media_ids.len())
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        for table in [
+            "media_urls",
+            "media_authors",
+            "media_projects",
+            "media_tags",
+            "media_ips",
+            "media_characters",
+            "generation_infos",
+        ] {
+            let sql = format!("DELETE FROM {table} WHERE media_id IN ({placeholders})");
+            conn.execute(&sql, rusqlite::params_from_iter(media_ids.iter()))
+                .map_err(|error| format!("Clearing {table} failed: {error}"))?;
+        }
+
+        Ok(())
+    }
+
+    fn ensure_author_cached(
+        &self,
+        conn: &Connection,
+        caches: &mut RestoreCaches,
+        name: &str,
+        account_id: Option<&str>,
+    ) -> Result<String, String> {
+        if let Some(id) = caches.author_ids.get(name) {
+            return Ok(id.clone());
+        }
+        let id = self.ensure_author(conn, name, account_id)?;
+        caches.author_ids.insert(name.to_string(), id.clone());
+        Ok(id)
+    }
+
+    fn ensure_project_cached(
+        &self,
+        conn: &Connection,
+        caches: &mut RestoreCaches,
+        name: &str,
+        description: Option<&str>,
+    ) -> Result<String, String> {
+        if let Some(id) = caches.project_ids.get(name) {
+            return Ok(id.clone());
+        }
+        let id = self.ensure_project(conn, name, description)?;
+        caches.project_ids.insert(name.to_string(), id.clone());
+        Ok(id)
+    }
+
+    fn ensure_tag_cached(
+        &self,
+        conn: &Connection,
+        caches: &mut RestoreCaches,
+        name: &str,
+        source: &str,
+    ) -> Result<String, String> {
+        if let Some(id) = caches.tag_ids.get(name) {
+            return Ok(id.clone());
+        }
+        let id = self.ensure_tag(conn, name, source)?;
+        caches.tag_ids.insert(name.to_string(), id.clone());
+        Ok(id)
+    }
+
+    fn ensure_ip_cached(
+        &self,
+        conn: &Connection,
+        caches: &mut RestoreCaches,
+        name: &str,
+        description: Option<&str>,
+        source: &str,
+    ) -> Result<String, String> {
+        if let Some(id) = caches.ip_ids.get(name) {
+            return Ok(id.clone());
+        }
+        let id = self.ensure_ip(conn, name, description, source)?;
+        caches.ip_ids.insert(name.to_string(), id.clone());
+        Ok(id)
+    }
+
+    fn ensure_character_cached(
+        &self,
+        conn: &Connection,
+        caches: &mut RestoreCaches,
+        name: &str,
+        source: &str,
+        ip_ids: &[String],
+    ) -> Result<String, String> {
+        if let Some(id) = caches.character_ids.get(name) {
+            for ip_id in ip_ids {
+                conn.execute(
+                    "INSERT OR IGNORE INTO character_ips (character_id, ip_id) VALUES (?1, ?2)",
+                    params![id.clone(), ip_id],
+                )
+                .map_err(|error| format!("Linking character to IP failed: {error}"))?;
+            }
+            return Ok(id.clone());
+        }
+        let id = self.ensure_character(conn, name, source, ip_ids)?;
+        caches.character_ids.insert(name.to_string(), id.clone());
+        Ok(id)
     }
 
     fn find_media_summary_by_source_and_path(
