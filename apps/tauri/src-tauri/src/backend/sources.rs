@@ -625,10 +625,21 @@ impl super::LocalBackend {
         summary: &MediaSummary,
         item: &Value,
     ) -> Result<(), String> {
+        let restored_created_at = item
+            .get("createdAt")
+            .and_then(Value::as_str)
+            .unwrap_or(&summary.created_at);
+        let restored_modified_at = item
+            .get("modifiedAt")
+            .and_then(Value::as_str)
+            .unwrap_or(&summary.modified_at);
+
         conn.execute(
-            "UPDATE medias SET description = ?1, indexed_at = ?2 WHERE id = ?3",
+            "UPDATE medias SET description = ?1, created_at = ?2, modified_at = ?3, indexed_at = ?4 WHERE id = ?5",
             params![
                 item.get("description").and_then(Value::as_str),
+                restored_created_at,
+                restored_modified_at,
                 now_iso(),
                 summary.id,
             ],
