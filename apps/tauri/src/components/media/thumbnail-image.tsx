@@ -1,8 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createQuery } from "@tanstack/solid-query";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
-import { getTauriAppServices } from "../../app-services";
 import { configQueryOptions } from "../../infrastructure/api-clients/queries/config-query";
 
 type ThumbnailImageProps = {
@@ -44,17 +44,11 @@ async function resolveThumbnailBasePath(basePath: string) {
 	return join(await appDataDir(), basePath);
 }
 
-function toObjectUrl(bytes: Uint8Array, mimeType: string) {
-	const buffer = new ArrayBuffer(bytes.byteLength);
-	new Uint8Array(buffer).set(bytes);
-	return URL.createObjectURL(new Blob([buffer], { type: mimeType }));
-}
-
 export function ThumbnailImage(props: ThumbnailImageProps) {
-	const services = getTauriAppServices();
 	const configQuery = createQuery(() => configQueryOptions());
 	const [thumbnailUrl, setThumbnailUrl] = createSignal<string | null>(null);
 	const [shouldLoad, setShouldLoad] = createSignal(props.loading === "eager");
+	const [originalUrl, setOriginalUrl] = createSignal<string | null>(null);
 	let visibilityRef: HTMLDivElement | undefined;
 
 	createEffect(() => {
@@ -94,19 +88,10 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		const storage = configQuery.data?.storage;
 		const media = props.media;
 		const loadNow = shouldLoad();
-		let disposed = false;
-		let currentUrl: string | null = null;
-
-		const revokeCurrentUrl = () => {
-			if (currentUrl) {
-				URL.revokeObjectURL(currentUrl);
-				currentUrl = null;
-			}
-		};
 
 		if (!(loadNow && rootPath && storage && media.mediaType === "image")) {
-			revokeCurrentUrl();
 			setThumbnailUrl(null);
+			setOriginalUrl(null);
 			return;
 		}
 
@@ -121,44 +106,21 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				media.id,
 			);
 
-			try {
-				const thumbnailBytes = await services.fileSystem.readFile(outputPath);
-				if (disposed) {
-					return;
-				}
-				revokeCurrentUrl();
-				currentUrl = toObjectUrl(thumbnailBytes, "image/webp");
-				setThumbnailUrl(currentUrl);
-			} catch {
-				if (props.disableOriginalFallback) {
-					if (!disposed) {
-						revokeCurrentUrl();
-						setThumbnailUrl(null);
-					}
-					return;
-				}
-				try {
-					const originalBytes = await services.fileSystem.readFile(inputPath);
-					if (disposed) {
-						return;
-					}
-					revokeCurrentUrl();
-					currentUrl = toObjectUrl(originalBytes, "application/octet-stream");
-					setThumbnailUrl(currentUrl);
-				} catch {
-					if (!disposed) {
-						revokeCurrentUrl();
-						setThumbnailUrl(null);
-					}
-				}
-			}
+			setOriginalUrl(
+				props.disableOriginalFallback ? null : convertFileSrc(inputPath),
+			);
+			setThumbnailUrl(convertFileSrc(outputPath));
 		})();
-
-		onCleanup(() => {
-			disposed = true;
-			revokeCurrentUrl();
-		});
 	});
+
+	const handleImageError = () => {
+		const fallbackUrl = originalUrl();
+		if (!(fallbackUrl && thumbnailUrl() !== fallbackUrl)) {
+			setThumbnailUrl(null);
+			return;
+		}
+		setThumbnailUrl(fallbackUrl);
+	};
 
 	return (
 		<Show
@@ -180,6 +142,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					class={props.class}
 					height={props.height ?? undefined}
 					loading={props.loading}
+					onError={handleImageError}
 					src={url()}
 					width={props.width ?? undefined}
 				/>
