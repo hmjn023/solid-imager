@@ -34,8 +34,11 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				<ThumbnailImage
 					alt={props.media.fileName}
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+					height={props.media.height}
+					loading={props.priority ? "eager" : "lazy"}
 					media={props.media}
 					sourceRootPath={props.sourceRootPath}
+					width={props.media.width}
 				/>
 			</Show>
 

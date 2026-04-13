@@ -80,7 +80,7 @@ import {
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const DEBOUNCE_DELAY_MS = 1000;
-const LOAD_MORE_THRESHOLD_PX = 1200;
+const SCROLL_RESTORE_DELAY = 100;
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	loader: async ({ context }) => {
@@ -226,15 +226,12 @@ function SourceMediaRoute() {
 		);
 	});
 
-	const [mediaListScrollRef, setMediaListScrollRef] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
 	const [loadMoreRef, setLoadMoreRef] = createSignal<
 		HTMLDivElement | undefined
 	>(undefined);
 
 	const handleSearch = () => {
-		mediaListScrollRef()?.scrollTo({ top: 0 });
+		window.scrollTo(0, 0);
 	};
 
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
@@ -615,64 +612,37 @@ function SourceMediaRoute() {
 		}
 	};
 
-	const maybeFetchNextPage = () => {
-		if (mediaQuery.hasNextPage && !mediaQuery.isFetchingNextPage) {
-			void mediaQuery.fetchNextPage();
-		}
-	};
-
 	createEffect(() => {
-		const loadMoreElement = loadMoreRef();
-		const scrollElement = mediaListScrollRef();
-		if (!(loadMoreElement && scrollElement)) {
+		const element = loadMoreRef();
+		if (!element) {
 			return;
 		}
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0]?.isIntersecting) {
-					maybeFetchNextPage();
+				if (
+					entries[0]?.isIntersecting &&
+					mediaQuery.hasNextPage &&
+					!mediaQuery.isFetchingNextPage
+				) {
+					void mediaQuery.fetchNextPage();
 				}
 			},
-			{
-				root: scrollElement,
-				threshold: 0.1,
-				rootMargin: "1000px",
-			},
+			{ threshold: 0.5, rootMargin: "1000px" },
 		);
 
-		observer.observe(loadMoreElement);
+		observer.observe(element);
 
 		onCleanup(() => {
 			observer.disconnect();
 		});
 	});
 
-	createEffect(() => {
-		const scrollElement = mediaListScrollRef();
-		if (!scrollElement) {
-			return;
+	onMount(() => {
+		if ("scrollRestoration" in history) {
+			history.scrollRestoration = "manual";
 		}
 
-		const handleScroll = () => {
-			const remainingDistance =
-				scrollElement.scrollHeight -
-				scrollElement.scrollTop -
-				scrollElement.clientHeight;
-			if (remainingDistance <= LOAD_MORE_THRESHOLD_PX) {
-				maybeFetchNextPage();
-			}
-		};
-
-		scrollElement.addEventListener("scroll", handleScroll, { passive: true });
-		handleScroll();
-
-		onCleanup(() => {
-			scrollElement.removeEventListener("scroll", handleScroll);
-		});
-	});
-
-	onMount(() => {
 		document.addEventListener("paste", handlePaste);
 		onCleanup(() => {
 			document.removeEventListener("paste", handlePaste);
@@ -685,19 +655,18 @@ function SourceMediaRoute() {
 		}
 
 		const id = mediaSourceId();
-		const scrollElement = mediaListScrollRef();
-		if (!(id && scrollElement && mediaQuery.data && !mediaQuery.isLoading)) {
+		if (!(id && mediaQuery.data && !mediaQuery.isLoading)) {
 			return;
 		}
 
-		const targetScrollTop = getScrollPosition(id);
-		if (targetScrollTop > 0) {
+		const targetScrollY = getScrollPosition(id);
+		if (targetScrollY > 0) {
 			setTimeout(() => {
 				requestAnimationFrame(() => {
-					scrollElement.scrollTo({ top: targetScrollTop });
+					window.scrollTo(0, targetScrollY);
 					setIsScrollRestored(true);
 				});
-			}, 100);
+			}, SCROLL_RESTORE_DELAY);
 			return;
 		}
 
@@ -706,9 +675,8 @@ function SourceMediaRoute() {
 
 	onCleanup(() => {
 		const id = mediaSourceId();
-		const scrollElement = mediaListScrollRef();
-		if (id && scrollElement) {
-			setScrollPosition(id, scrollElement.scrollTop);
+		if (id) {
+			setScrollPosition(id, window.scrollY);
 		}
 	});
 
@@ -810,31 +778,16 @@ function SourceMediaRoute() {
 
 					<ContextMenu>
 						<ContextMenuTrigger class="block w-full">
-							<div
-								class="h-[calc(100vh-16rem)] overflow-auto pr-2"
-								ref={(element) => {
-									setMediaListScrollRef(element);
-								}}
-							>
-								<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-									<For each={mediaResults()}>
-										{(media) => (
-											<MediaGridItem
-												media={media}
-												onContextMenu={() => setContextMenuMediaId(media.id)}
-												sourceRootPath={sourceRootPath()}
-											/>
-										)}
-									</For>
-								</div>
-								<div
-									class="flex h-10 w-full items-center justify-center text-gray-500"
-									ref={setLoadMoreRef}
-								>
-									<Show when={mediaQuery.isFetchingNextPage}>
-										Loading more...
-									</Show>
-								</div>
+							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+								<For each={mediaResults()}>
+									{(media) => (
+										<MediaGridItem
+											media={media}
+											onContextMenu={() => setContextMenuMediaId(media.id)}
+											sourceRootPath={sourceRootPath()}
+										/>
+									)}
+								</For>
 							</div>
 						</ContextMenuTrigger>
 						<ContextMenuContent>
@@ -895,6 +848,13 @@ function SourceMediaRoute() {
 							検索結果が見つかりませんでした
 						</div>
 					</Show>
+
+					<div
+						class="flex h-10 w-full items-center justify-center text-gray-500"
+						ref={setLoadMoreRef}
+					>
+						<Show when={mediaQuery.isFetchingNextPage}>Loading more...</Show>
+					</div>
 				</div>
 			</div>
 
