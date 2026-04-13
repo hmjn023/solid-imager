@@ -10,6 +10,7 @@ import {
 } from "@solid-imager/core/domain/ips/schemas";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	ips,
 	mediaIps,
@@ -119,7 +120,9 @@ export const TauriIpRepository = {
 		ipId: string,
 		confidence?: number,
 		source = "manual",
+		tx?: TauriDbExecutor,
 	): Promise<void> {
+		const executor = tx ?? getTauriAppServices().db;
 		let sourceUpdateSql = sql`excluded.source`;
 		let confidenceUpdateSql = sql`excluded.confidence`;
 
@@ -131,8 +134,8 @@ export const TauriIpRepository = {
 			confidenceUpdateSql = sql`CASE WHEN media_ips.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_ips.confidence END`;
 		}
 
-		await getTauriAppServices()
-			.db.insert(mediaIps)
+		await executor
+			.insert(mediaIps)
 			.values({
 				mediaId,
 				ipId,

@@ -11,6 +11,7 @@ import {
 } from "@solid-imager/core/domain/errors";
 import { and, eq, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	characterIps,
 	characters,
@@ -25,8 +26,11 @@ function toCharacter(
 	return characterSchema.parse(row);
 }
 
-async function findCharacterWithIps(id: string): Promise<Character | null> {
-	const row = await getTauriAppServices().db.query.characters.findFirst({
+async function findCharacterWithIps(
+	id: string,
+	executor: TauriDbExecutor = getTauriAppServices().db,
+): Promise<Character | null> {
+	const row = await executor.query.characters.findFirst({
 		where: eq(characters.id, id),
 		with: {
 			ips: {
@@ -53,6 +57,7 @@ async function findCharacterWithIps(id: string): Promise<Character | null> {
 export const TauriCharacterRepository = {
 	async findAll(): Promise<Character[]> {
 		const rows = await getTauriAppServices().db.query.characters.findMany({
+			orderBy: (characters, { asc }) => [asc(characters.name)],
 			with: {
 				ips: {
 					with: {
@@ -62,21 +67,19 @@ export const TauriCharacterRepository = {
 			},
 		});
 
-		return rows
-			.map((row) =>
-				toCharacter({
-					...row,
-					ips: row.ips.map((item) => ({
-						id: item.ip.id,
-						name: item.ip.name,
-					})),
-				}),
-			)
-			.sort((a, b) => a.name.localeCompare(b.name));
+		return rows.map((row) =>
+			toCharacter({
+				...row,
+				ips: row.ips.map((item) => ({
+					id: item.ip.id,
+					name: item.ip.name,
+				})),
+			}),
+		);
 	},
 
-	async findById(id: string): Promise<Character | null> {
-		return await findCharacterWithIps(id);
+	async findById(id: string, tx?: TauriDbExecutor): Promise<Character | null> {
+		return await findCharacterWithIps(id, tx);
 	},
 
 	async findByName(name: string): Promise<Character | null> {
@@ -230,6 +233,7 @@ export const TauriCharacterRepository = {
 
 	async findByMediaId(mediaId: string): Promise<Character[]> {
 		const rows = await getTauriAppServices().db.query.mediaCharacters.findMany({
+			orderBy: (mediaCharacters, { asc }) => [asc(mediaCharacters.characterId)],
 			where: eq(mediaCharacters.mediaId, mediaId),
 			with: {
 				character: {
@@ -244,17 +248,15 @@ export const TauriCharacterRepository = {
 			},
 		});
 
-		return rows
-			.map((row) =>
-				toCharacter({
-					...row.character,
-					ips: row.character.ips.map((item) => ({
-						id: item.ip.id,
-						name: item.ip.name,
-					})),
-				}),
-			)
-			.sort((a, b) => a.name.localeCompare(b.name));
+		return rows.map((row) =>
+			toCharacter({
+				...row.character,
+				ips: row.character.ips.map((item) => ({
+					id: item.ip.id,
+					name: item.ip.name,
+				})),
+			}),
+		);
 	},
 
 	async addMedia(
@@ -262,7 +264,9 @@ export const TauriCharacterRepository = {
 		characterId: string,
 		confidence?: number,
 		source = "manual",
+		tx?: TauriDbExecutor,
 	): Promise<void> {
+		const executor = tx ?? getTauriAppServices().db;
 		let sourceUpdateSql = sql`excluded.source`;
 		let confidenceUpdateSql = sql`excluded.confidence`;
 
@@ -274,8 +278,8 @@ export const TauriCharacterRepository = {
 			confidenceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_characters.confidence END`;
 		}
 
-		await getTauriAppServices()
-			.db.insert(mediaCharacters)
+		await executor
+			.insert(mediaCharacters)
 			.values({
 				mediaId,
 				characterId,

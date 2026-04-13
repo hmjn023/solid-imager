@@ -3,6 +3,7 @@ import type {
 	NewCharacter,
 	UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
+import { getTauriAppServices } from "~/app-services";
 import { TauriCharacterRepository } from "../repositories/character-repository";
 import { TauriIpRepository } from "../repositories/ip-repository";
 
@@ -32,21 +33,33 @@ export const TauriCharacterService = {
 	},
 
 	async addToMedia(mediaId: string, characterId: string): Promise<void> {
-		const character = await TauriCharacterRepository.findById(characterId);
-		if (!character) {
-			throw new Error(`Character not found: ${characterId}`);
-		}
-
-		await TauriCharacterRepository.addMedia(mediaId, characterId);
-
-		for (const ip of character.ips) {
-			await TauriIpRepository.addMedia(
-				mediaId,
-				ip.id,
-				undefined,
-				"character_link",
+		await getTauriAppServices().db.transaction(async (tx) => {
+			const character = await TauriCharacterRepository.findById(
+				characterId,
+				tx,
 			);
-		}
+			if (!character) {
+				throw new Error(`Character not found: ${characterId}`);
+			}
+
+			await TauriCharacterRepository.addMedia(
+				mediaId,
+				characterId,
+				undefined,
+				"manual",
+				tx,
+			);
+
+			for (const ip of character.ips) {
+				await TauriIpRepository.addMedia(
+					mediaId,
+					ip.id,
+					undefined,
+					"character_link",
+					tx,
+				);
+			}
+		});
 	},
 
 	async removeFromMedia(mediaId: string, characterId: string): Promise<void> {
