@@ -282,6 +282,18 @@ pub struct UpdateMediaInput {
     pub data: UpdateMediaData,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaUploadInput {
+    pub source_id: String,
+    pub bytes: Vec<u8>,
+    pub filename: Option<String>,
+    pub description: Option<String>,
+    pub source_url: Option<String>,
+    pub overwrite: Option<String>,
+    pub auto_increment: Option<String>,
+}
+
 #[derive(Debug, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateMediaData {
@@ -306,6 +318,13 @@ pub struct IdInput {
 pub struct MediaIdInput {
     pub source_id: String,
     pub media_id: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MediaTransferInput {
+    pub media_id: String,
+    pub target_source_id: String,
 }
 
 #[derive(Debug, Deserialize)]

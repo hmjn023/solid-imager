@@ -1150,22 +1150,6 @@ impl super::LocalBackend {
         Ok(id)
     }
 
-    fn find_media_summary_by_source_and_path(
-        &self,
-        conn: &Connection,
-        source_id: &str,
-        file_path: &str,
-    ) -> Result<Option<MediaSummary>, String> {
-        conn
-            .query_row(
-                "SELECT id, media_source_id, file_path, file_name, media_type, width, height, file_size, description, created_at, modified_at, indexed_at, status FROM medias WHERE media_source_id = ?1 AND file_path = ?2",
-                params![source_id, file_path],
-                media_summary_from_row,
-            )
-            .optional()
-            .map_err(|error| format!("Looking up media by path failed: {error}"))
-    }
-
     fn ensure_author(
         &self,
         conn: &Connection,

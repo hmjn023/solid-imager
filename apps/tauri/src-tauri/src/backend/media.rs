@@ -3,7 +3,9 @@ use crate::backend::types::*;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 use serde_json::{json, Value};
 use std::collections::HashMap;
+use std::fs;
 use std::path::{Path, PathBuf};
+use tauri::{AppHandle, Emitter, Runtime};
 use uuid::Uuid;
 
 const SQLITE_BATCH_VARIABLE_LIMIT: usize = 900;
@@ -42,6 +44,72 @@ impl super::LocalBackend {
             .ok_or_else(|| format!("Media not found: {}", payload.media_id))
     }
 
+    pub fn handle_media_upload<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        let payload: MediaUploadInput = parse_input(input)?;
+        let requested_path = payload
+            .filename
+            .clone()
+            .filter(|value| !value.trim().is_empty())
+            .ok_or_else(|| "Filename is required".to_string())?;
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, &payload.source_id)?
+            .ok_or_else(|| format!("Source not found: {}", payload.source_id))?;
+        let root_path = self.local_source_root_path_from_value(&source)?;
+        let overwrite = parse_optional_bool(payload.overwrite.as_deref());
+        let auto_increment = parse_optional_bool(payload.auto_increment.as_deref());
+        let (relative_path, full_path) = resolve_upload_target_path(
+            &root_path,
+            &requested_path,
+            overwrite,
+            auto_increment,
+        )?;
+
+        if let Some(parent) = full_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("Creating upload directory failed: {error}"))?;
+        }
+        fs::write(&full_path, payload.bytes)
+            .map_err(|error| format!("Writing uploaded media failed: {error}"))?;
+
+        let _ = self.sync_source(app, &payload.source_id)?;
+
+        let conn = self.open_connection()?;
+        let media = self
+            .find_media_summary_by_source_and_path_public(
+                &conn,
+                &payload.source_id,
+                &relative_path,
+            )?
+            .ok_or_else(|| format!("Uploaded media not found after sync: {relative_path}"))?;
+
+        if payload.description.is_some() {
+            conn.execute(
+                "UPDATE medias SET description = ?1, indexed_at = ?2 WHERE id = ?3 AND media_source_id = ?4",
+                params![payload.description, now_iso(), media.id, payload.source_id],
+            )
+            .map_err(|error| format!("Updating uploaded media description failed: {error}"))?;
+        }
+
+        if let Some(source_url) = payload.source_url.filter(|value| !value.is_empty()) {
+            let now = now_iso();
+            conn.execute(
+                "INSERT INTO media_urls (id, media_id, url, created_at, updated_at) VALUES (?1, ?2, ?3, ?4, ?5)",
+                params![Uuid::new_v4().to_string(), media.id, source_url, now, now],
+            )
+            .map_err(|error| format!("Saving uploaded media source URL failed: {error}"))?;
+        }
+
+        Ok(json!({
+            "success": true,
+            "filePath": relative_path,
+        }))
+    }
+
     pub fn handle_media_update(&self, input: Option<Value>) -> Result<Value, String> {
         let payload: UpdateMediaInput = parse_input(input)?;
         let conn = self.open_connection()?;
@@ -69,6 +137,51 @@ impl super::LocalBackend {
         }
         self.get_media_details_value(&conn, &payload.source_id, &payload.media_id)?
             .ok_or_else(|| format!("Media not found: {}", payload.media_id))
+    }
+
+    pub fn handle_media_delete<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        let payload: MediaIdInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, &payload.source_id)?
+            .ok_or_else(|| format!("Source not found: {}", payload.source_id))?;
+        let media = self
+            .get_media_details_value(&conn, &payload.source_id, &payload.media_id)?
+            .ok_or_else(|| format!("Media not found: {}", payload.media_id))?;
+        let file_path = media
+            .get("filePath")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Media file path is missing".to_string())?;
+        let full_path = self.resolve_media_path(&source, file_path)?;
+
+        if full_path.exists() {
+            fs::remove_file(&full_path)
+                .map_err(|error| format!("Deleting media file failed: {error}"))?;
+        }
+
+        let _ = self.sync_source(app, &payload.source_id)?;
+
+        Ok(json!({ "success": true }))
+    }
+
+    pub fn handle_media_copy<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        self.handle_media_transfer(app, input, "copy")
+    }
+
+    pub fn handle_media_move<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+    ) -> Result<Value, String> {
+        self.handle_media_transfer(app, input, "move")
     }
 
     pub fn list_media_by_source(
@@ -508,6 +621,90 @@ impl super::LocalBackend {
         collect_typed_rows(rows)
     }
 
+    fn handle_media_transfer<R: Runtime>(
+        &self,
+        app: &AppHandle<R>,
+        input: Option<Value>,
+        mode: &str,
+    ) -> Result<Value, String> {
+        let payload: MediaTransferInput = parse_input(input)?;
+        let conn = self.open_connection()?;
+        let media = self
+            .find_media_summary_by_id(&conn, &payload.media_id)?
+            .ok_or_else(|| format!("Media not found: {}", payload.media_id))?;
+        let source = self
+            .find_source_value(&conn, &media.media_source_id)?
+            .ok_or_else(|| format!("Source not found: {}", media.media_source_id))?;
+        let target_source = self
+            .find_source_value(&conn, &payload.target_source_id)?
+            .ok_or_else(|| format!("Source not found: {}", payload.target_source_id))?;
+        let source_path = self.resolve_media_path(&source, &media.file_path)?;
+        let target_root = self.local_source_root_path_from_value(&target_source)?;
+        let (target_relative_path, target_path) =
+            resolve_upload_target_path(&target_root, &media.file_name, false, true)?;
+
+        if let Some(parent) = target_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|error| format!("Creating target directory failed: {error}"))?;
+        }
+
+        if mode == "copy" {
+            fs::copy(&source_path, &target_path)
+                .map_err(|error| format!("Copying media file failed: {error}"))?;
+            let _ = self.sync_source(app, &payload.target_source_id)?;
+            let lookup_conn = self.open_connection()?;
+            let copied_media = self.find_media_summary_by_source_and_path_public(
+                &lookup_conn,
+                &payload.target_source_id,
+                &target_relative_path,
+            )?;
+            let _ = app.emit(
+                "media-copied",
+                json!({
+                    "sourceId": media.media_source_id,
+                    "targetId": payload.target_source_id,
+                    "sourceMediaId": payload.media_id,
+                    "mediaId": copied_media.as_ref().map(|item| item.id.clone()),
+                    "timestamp": now_iso(),
+                }),
+            );
+            return Ok(json!({ "success": true }));
+        }
+
+        fs::rename(&source_path, &target_path)
+            .map_err(|error| format!("Moving media file failed: {error}"))?;
+        let _ = self.sync_source(app, &media.media_source_id)?;
+        let _ = self.sync_source(app, &payload.target_source_id)?;
+        let lookup_conn = self.open_connection()?;
+        let moved_media = self.find_media_summary_by_source_and_path_public(
+            &lookup_conn,
+            &payload.target_source_id,
+            &target_relative_path,
+        )?;
+        let timestamp = now_iso();
+        let _ = app.emit(
+            "media-moved",
+            json!({
+                "type": "source",
+                "sourceId": media.media_source_id,
+                "targetId": payload.target_source_id,
+                "mediaId": payload.media_id,
+                "timestamp": timestamp,
+            }),
+        );
+        let _ = app.emit(
+            "media-moved",
+            json!({
+                "type": "target",
+                "sourceId": media.media_source_id,
+                "targetId": payload.target_source_id,
+                "mediaId": moved_media.as_ref().map(|item| item.id.clone()),
+                "timestamp": now_iso(),
+            }),
+        );
+        Ok(json!({ "success": true }))
+    }
+
     pub fn resolve_media_path(&self, source: &Value, file_path: &str) -> Result<PathBuf, String> {
         let root = source
             .get("connectionInfo")
@@ -515,6 +712,38 @@ impl super::LocalBackend {
             .and_then(Value::as_str)
             .ok_or_else(|| "Local source path is missing".to_string())?;
         Ok(Path::new(root).join(file_path))
+    }
+
+    fn local_source_root_path_from_value(&self, source: &Value) -> Result<PathBuf, String> {
+        let source_type = source
+            .get("type")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "Source type is missing".to_string())?;
+        if source_type != "local" {
+            return Err("Tauri currently supports only local sources.".to_string());
+        }
+        source
+            .get("connectionInfo")
+            .and_then(|value| value.get("path"))
+            .and_then(Value::as_str)
+            .map(PathBuf::from)
+            .ok_or_else(|| "Local source path is missing".to_string())
+    }
+
+    fn find_media_summary_by_source_and_path_public(
+        &self,
+        conn: &Connection,
+        source_id: &str,
+        file_path: &str,
+    ) -> Result<Option<MediaSummary>, String> {
+        conn
+            .query_row(
+                "SELECT id, media_source_id, file_path, file_name, media_type, width, height, file_size, description, created_at, modified_at, indexed_at, status FROM medias WHERE media_source_id = ?1 AND file_path = ?2",
+                params![source_id, file_path],
+                media_summary_from_row,
+            )
+            .optional()
+            .map_err(|error| format!("Looking up media by path failed: {error}"))
     }
 
     fn load_related_names_by_media(
@@ -654,6 +883,70 @@ impl super::LocalBackend {
             }
         }
         Ok(values_by_media)
+    }
+}
+
+fn parse_optional_bool(value: Option<&str>) -> bool {
+    matches!(
+        value.map(|item| item.trim().to_ascii_lowercase()),
+        Some(item) if item == "true"
+    )
+}
+
+fn is_safe_relative_upload_path(path: &Path) -> bool {
+    !path.is_absolute()
+        && path.components().all(|component| {
+            matches!(
+                component,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )
+        })
+}
+
+fn resolve_upload_target_path(
+    root_path: &Path,
+    requested_path: &str,
+    overwrite: bool,
+    auto_increment: bool,
+) -> Result<(String, PathBuf), String> {
+    let requested = Path::new(requested_path);
+    if !is_safe_relative_upload_path(requested) {
+        return Err(format!("Invalid upload path: {requested_path}"));
+    }
+
+    let normalized_requested = normalize_relative_path(requested);
+    let requested_full_path = root_path.join(&normalized_requested);
+    if overwrite || !requested_full_path.exists() {
+        return Ok((normalized_requested, requested_full_path));
+    }
+
+    if !auto_increment {
+        return Err(format!("File already exists: {normalized_requested}"));
+    }
+
+    let parent = requested
+        .parent()
+        .map(|value| value.to_path_buf())
+        .unwrap_or_default();
+    let stem = requested
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .ok_or_else(|| format!("Invalid filename: {requested_path}"))?;
+    let extension = requested
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| format!(".{value}"))
+        .unwrap_or_default();
+
+    let mut index = 1usize;
+    loop {
+        let candidate_file_name = format!("{stem}-{index}{extension}");
+        let candidate_relative = normalize_relative_path(&parent.join(candidate_file_name));
+        let candidate_full_path = root_path.join(&candidate_relative);
+        if !candidate_full_path.exists() {
+            return Ok((candidate_relative, candidate_full_path));
+        }
+        index += 1;
     }
 }
 

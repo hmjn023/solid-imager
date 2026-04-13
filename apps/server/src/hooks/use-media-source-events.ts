@@ -1,62 +1,25 @@
+import {
+	type AllJobsCompletedEvent,
+	allJobsCompletedEventSchema,
+	type MediaAddedEvent,
+	mediaAddedEventSchema,
+	type MediaChangedEvent,
+	mediaChangedEventSchema,
+	type MediaCopiedEvent,
+	mediaCopiedEventSchema,
+	type MediaDeletedEvent,
+	mediaDeletedEventSchema,
+	type MediaMovedEvent,
+	mediaMovedEventSchema,
+	type ThumbnailGeneratedEvent,
+	thumbnailGeneratedEventSchema,
+	type WatcherErrorEvent,
+	watcherErrorEventSchema,
+} from "@solid-imager/core/domain/sources/events";
 import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
-import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
-
-export const MediaAddedEventSchema = z.object({
-	filePath: z.string(),
-	mediaId: z.string().optional(),
-	timestamp: z.string().optional(),
-});
-export type MediaAddedEvent = z.infer<typeof MediaAddedEventSchema>;
-
-export const MediaDeletedEventSchema = z.object({
-	filePath: z.string(),
-	timestamp: z.string().optional(),
-});
-export type MediaDeletedEvent = z.infer<typeof MediaDeletedEventSchema>;
-
-export const MediaChangedEventSchema = z.object({
-	filePath: z.string(),
-	mediaId: z.string().optional(),
-	timestamp: z.string().optional(),
-});
-export type MediaChangedEvent = z.infer<typeof MediaChangedEventSchema>;
-
-export const MediaCopiedEventSchema = z.object({
-	sourceId: z.string(),
-	media: z.unknown(),
-	timestamp: z.string(),
-});
-export type MediaCopiedEvent = z.infer<typeof MediaCopiedEventSchema>;
-
-export const MediaMovedEventSchema = z.object({
-	type: z.enum(["source", "target"]),
-	mediaId: z.string().optional(),
-	targetId: z.string().optional(),
-	media: z.unknown().optional(),
-	sourceId: z.string().optional(),
-	timestamp: z.string(),
-});
-export type MediaMovedEvent = z.infer<typeof MediaMovedEventSchema>;
-
-export const ThumbnailGeneratedEventSchema = z.object({
-	mediaId: z.string(),
-});
-export type ThumbnailGeneratedEvent = z.infer<
-	typeof ThumbnailGeneratedEventSchema
->;
-
-export const AllJobsCompletedEventSchema = z.object({
-	processed: z.number(),
-});
-export type AllJobsCompletedEvent = z.infer<typeof AllJobsCompletedEventSchema>;
-
-export const WatcherErrorEventSchema = z.object({
-	error: z.string().optional(),
-});
-export type WatcherErrorEvent = z.infer<typeof WatcherErrorEventSchema>;
 
 type MediaSourceEventsOptions = {
 	enabled?: boolean | Accessor<boolean>;
@@ -70,10 +33,12 @@ type MediaSourceEventsOptions = {
 	onWatcherError?: (data: WatcherErrorEvent) => void;
 };
 
-/**
- * Hook to subscribe to SSE events for a specific media source.
- * Handles connection management, cleanup, and event dispatching.
- */
+type SafeParseSchema<T> = {
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
+};
+
 export function useMediaSourceEvents(
 	mediaSourceId: Accessor<string | undefined>,
 	options: MediaSourceEventsOptions = {},
@@ -96,7 +61,7 @@ export function useMediaSourceEvents(
 		const ac = new AbortController();
 
 		const validateAndDispatch = <T>(
-			schema: z.ZodSchema<T>,
+			schema: SafeParseSchema<T>,
 			rawData: unknown,
 			callback?: (data: T) => void,
 			eventName?: string,
@@ -104,19 +69,20 @@ export function useMediaSourceEvents(
 			const result = schema.safeParse(rawData);
 			if (result.success) {
 				callback?.(result.data);
-			} else {
-				logger.warn(
-					{ event: eventName, error: result.error, data: rawData },
-					"Received invalid event data",
-				);
+				return;
 			}
+
+			logger.warn(
+				{ event: eventName, error: result.error, data: rawData },
+				"Received invalid event data",
+			);
 		};
 
 		const handleEvent = (event: string, data: unknown) => {
 			switch (event) {
 				case "media-added":
 					validateAndDispatch(
-						MediaAddedEventSchema,
+						mediaAddedEventSchema,
 						data,
 						options.onMediaAdded,
 						event,
@@ -124,7 +90,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-deleted":
 					validateAndDispatch(
-						MediaDeletedEventSchema,
+						mediaDeletedEventSchema,
 						data,
 						options.onMediaDeleted,
 						event,
@@ -132,7 +98,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-changed":
 					validateAndDispatch(
-						MediaChangedEventSchema,
+						mediaChangedEventSchema,
 						data,
 						options.onMediaChanged,
 						event,
@@ -140,7 +106,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-copied":
 					validateAndDispatch(
-						MediaCopiedEventSchema,
+						mediaCopiedEventSchema,
 						data,
 						options.onMediaCopied,
 						event,
@@ -148,7 +114,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-moved":
 					validateAndDispatch(
-						MediaMovedEventSchema,
+						mediaMovedEventSchema,
 						data,
 						options.onMediaMoved,
 						event,
@@ -156,7 +122,7 @@ export function useMediaSourceEvents(
 					break;
 				case "thumbnail-generated":
 					validateAndDispatch(
-						ThumbnailGeneratedEventSchema,
+						thumbnailGeneratedEventSchema,
 						data,
 						options.onThumbnailGenerated,
 						event,
@@ -164,7 +130,7 @@ export function useMediaSourceEvents(
 					break;
 				case "all-jobs-completed":
 					validateAndDispatch(
-						AllJobsCompletedEventSchema,
+						allJobsCompletedEventSchema,
 						data,
 						options.onAllJobsCompleted,
 						event,
@@ -172,18 +138,16 @@ export function useMediaSourceEvents(
 					break;
 				case "watcher-error":
 					validateAndDispatch(
-						WatcherErrorEventSchema,
+						watcherErrorEventSchema,
 						data,
 						options.onWatcherError,
 						event,
 					);
 					break;
 				case "connected":
-					// Connection established
 					break;
 				default:
 					logger.debug({ event, data }, "Unknown event received");
-					break;
 			}
 		};
 
@@ -196,18 +160,16 @@ export function useMediaSourceEvents(
 						break;
 					}
 
-					const { event, data } = msg;
-					handleEvent(event, data);
+					handleEvent(msg.event, msg.data);
 				}
-			} catch (err) {
+			} catch (error) {
 				if (!ac.signal.aborted) {
-					logger.error({ err }, "Event stream error");
-					// TODO: Implement retry logic if needed
+					logger.error({ err: error }, "Event stream error");
 				}
 			}
 		};
 
-		startEventStream();
+		void startEventStream();
 
 		onCleanup(() => {
 			ac.abort();

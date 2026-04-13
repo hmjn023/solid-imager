@@ -7,11 +7,13 @@ import {
 	type MediaDetails,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
+	type UpdateMediaRequest,
 	mediaDetailsSchema,
 	mediaSchema,
 	mediaSearchResponseSchema,
 	type Preset,
 	presetSchema,
+	uploadResponseSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { projectSchema } from "@solid-imager/core/domain/projects/schemas";
 import {
@@ -121,14 +123,26 @@ export const orpc = {
 			invoke("media.search", input, mediaSearchResponseSchema),
 		getDetails: (input: { sourceId: string; mediaId: string }) =>
 			invoke("media.getDetails", input, mediaDetailsSchema),
+		upload: (input: {
+			sourceId: string;
+			bytes: number[];
+			filename?: string;
+			description?: string;
+			sourceUrl?: string;
+			overwrite?: string;
+			autoIncrement?: string;
+		}) => invoke("media.upload", input, uploadResponseSchema),
 		update: (input: {
 			sourceId: string;
 			mediaId: string;
-			data: {
-				description?: string | null;
-				sourceUrls?: string[];
-			};
+			data: UpdateMediaRequest;
 		}) => invoke("media.update", input, mediaDetailsSchema),
+		delete: (input: { sourceId: string; mediaId: string }) =>
+			invoke("media.delete", input, mutationSuccessSchema),
+		copy: (input: { mediaId: string; targetSourceId: string }) =>
+			invoke("media.copy", input, mutationSuccessSchema),
+		move: (input: { mediaId: string; targetSourceId: string }) =>
+			invoke("media.move", input, mutationSuccessSchema),
 	},
 	projects: {
 		list: () => invoke("projects.list", undefined, projectListSchema),

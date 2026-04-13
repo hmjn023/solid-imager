@@ -1,50 +1,46 @@
+import {
+	type AllJobsCompletedEvent,
+	allJobsCompletedEventSchema,
+	type MediaAddedEvent,
+	mediaAddedEventSchema,
+	type MediaChangedEvent,
+	mediaChangedEventSchema,
+	type MediaCopiedEvent,
+	mediaCopiedEventSchema,
+	type MediaDeletedEvent,
+	mediaDeletedEventSchema,
+	type MediaMovedEvent,
+	mediaMovedEventSchema,
+	type ThumbnailGeneratedEvent,
+	thumbnailGeneratedEventSchema,
+	type WatcherErrorEvent,
+	watcherErrorEventSchema,
+} from "@solid-imager/core/domain/sources/events";
 import { listen } from "@tauri-apps/api/event";
 import { type Accessor, createEffect, onCleanup } from "solid-js";
-import { z } from "zod";
-
-const baseEventSchema = z.object({
-	mediaSourceId: z.string().optional(),
-	filePath: z.string().optional(),
-	mediaId: z.string().optional(),
-	timestamp: z.string().optional(),
-});
-
-const allJobsCompletedSchema = z.object({
-	mediaSourceId: z.string().optional(),
-	processed: z.number(),
-});
-
-const watcherErrorSchema = z.object({
-	mediaSourceId: z.string().optional(),
-	error: z.string().optional(),
-});
-
-const mediaCopiedSchema = z.object({
-	sourceId: z.string(),
-	targetId: z.string().optional(),
-	mediaId: z.string().optional(),
-	timestamp: z.string().optional(),
-});
-
-const mediaMovedSchema = z.object({
-	type: z.enum(["source", "target"]),
-	sourceId: z.string().optional(),
-	targetId: z.string().optional(),
-	mediaId: z.string().optional(),
-	timestamp: z.string().optional(),
-});
 
 type MediaSourceEventsOptions = {
 	enabled?: boolean | Accessor<boolean>;
-	onMediaAdded?: (data: z.infer<typeof baseEventSchema>) => void;
-	onMediaDeleted?: (data: z.infer<typeof baseEventSchema>) => void;
-	onMediaChanged?: (data: z.infer<typeof baseEventSchema>) => void;
-	onMediaCopied?: (data: z.infer<typeof mediaCopiedSchema>) => void;
-	onMediaMoved?: (data: z.infer<typeof mediaMovedSchema>) => void;
-	onThumbnailGenerated?: (data: z.infer<typeof baseEventSchema>) => void;
-	onAllJobsCompleted?: (data: z.infer<typeof allJobsCompletedSchema>) => void;
-	onWatcherError?: (data: z.infer<typeof watcherErrorSchema>) => void;
+	onMediaAdded?: (data: MediaAddedEvent) => void;
+	onMediaDeleted?: (data: MediaDeletedEvent) => void;
+	onMediaChanged?: (data: MediaChangedEvent) => void;
+	onMediaCopied?: (data: MediaCopiedEvent) => void;
+	onMediaMoved?: (data: MediaMovedEvent) => void;
+	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
+	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
+	onWatcherError?: (data: WatcherErrorEvent) => void;
 };
+
+type SafeParseSchema<T> = {
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
+};
+
+function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
+	const result = schema.safeParse(payload);
+	return result.success ? result.data : null;
+}
 
 export function useMediaSourceEvents(
 	mediaSourceId: Accessor<string | undefined>,
@@ -62,57 +58,63 @@ export function useMediaSourceEvents(
 
 		const unlistenPromises = [
 			listen("media-added", (event) => {
-				const parsed = baseEventSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onMediaAdded?.(parsed.data);
+				const payload = parseEventPayload(mediaAddedEventSchema, event.payload);
+				if (payload && payload.mediaSourceId === id) {
+					options.onMediaAdded?.(payload);
 				}
 			}),
 			listen("media-deleted", (event) => {
-				const parsed = baseEventSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onMediaDeleted?.(parsed.data);
+				const payload = parseEventPayload(mediaDeletedEventSchema, event.payload);
+				if (payload && payload.mediaSourceId === id) {
+					options.onMediaDeleted?.(payload);
 				}
 			}),
 			listen("media-changed", (event) => {
-				const parsed = baseEventSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onMediaChanged?.(parsed.data);
+				const payload = parseEventPayload(mediaChangedEventSchema, event.payload);
+				if (payload && payload.mediaSourceId === id) {
+					options.onMediaChanged?.(payload);
 				}
 			}),
 			listen("media-copied", (event) => {
-				const parsed = mediaCopiedSchema.safeParse(event.payload);
+				const payload = parseEventPayload(mediaCopiedEventSchema, event.payload);
 				if (
-					parsed.success &&
-					(parsed.data.sourceId === id || parsed.data.targetId === id)
+					payload &&
+					(payload.sourceId === id || payload.targetId === id)
 				) {
-					options.onMediaCopied?.(parsed.data);
+					options.onMediaCopied?.(payload);
 				}
 			}),
 			listen("media-moved", (event) => {
-				const parsed = mediaMovedSchema.safeParse(event.payload);
+				const payload = parseEventPayload(mediaMovedEventSchema, event.payload);
 				if (
-					parsed.success &&
-					(parsed.data.sourceId === id || parsed.data.targetId === id)
+					payload &&
+					(payload.sourceId === id || payload.targetId === id)
 				) {
-					options.onMediaMoved?.(parsed.data);
+					options.onMediaMoved?.(payload);
 				}
 			}),
 			listen("thumbnail-generated", (event) => {
-				const parsed = baseEventSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onThumbnailGenerated?.(parsed.data);
+				const payload = parseEventPayload(
+					thumbnailGeneratedEventSchema,
+					event.payload,
+				);
+				if (payload && payload.mediaSourceId === id) {
+					options.onThumbnailGenerated?.(payload);
 				}
 			}),
 			listen("all-jobs-completed", (event) => {
-				const parsed = allJobsCompletedSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onAllJobsCompleted?.(parsed.data);
+				const payload = parseEventPayload(
+					allJobsCompletedEventSchema,
+					event.payload,
+				);
+				if (payload && payload.mediaSourceId === id) {
+					options.onAllJobsCompleted?.(payload);
 				}
 			}),
 			listen("watcher-error", (event) => {
-				const parsed = watcherErrorSchema.safeParse(event.payload);
-				if (parsed.success && parsed.data.mediaSourceId === id) {
-					options.onWatcherError?.(parsed.data);
+				const payload = parseEventPayload(watcherErrorEventSchema, event.payload);
+				if (payload && payload.mediaSourceId === id) {
+					options.onWatcherError?.(payload);
 				}
 			}),
 		];

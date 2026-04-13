@@ -3,6 +3,14 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import {
+	type JobCompletedEvent,
+	jobCompletedEventSchema,
+	type JobFailedEvent,
+	jobFailedEventSchema,
+	type JobProgressEvent,
+	jobProgressEventSchema,
+} from "@solid-imager/core/domain/sources/events";
+import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -83,32 +91,20 @@ import { mediaSourcesQueryOptions } from "../infrastructure/api-clients/queries/
 
 type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
-type JobProgress = {
-	jobId?: string;
-	processed: number;
-	total: number;
-};
-type JobCompleted = {
-	jobId?: string;
-	message?: string;
-};
-type JobFailed = {
-	jobId?: string;
-	error?: string;
-};
 
 function isCharacter(item: Entity): item is Character {
 	return "ips" in item;
 }
 
-function parseEventPayload<T>(
-	payload: unknown,
-	guard: (value: Record<string, unknown>) => boolean,
-): T | null {
-	if (!payload || typeof payload !== "object") {
-		return null;
-	}
-	return guard(payload as Record<string, unknown>) ? (payload as T) : null;
+type SafeParseSchema<T> = {
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
+};
+
+function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
+	const result = schema.safeParse(payload);
+	return result.success ? result.data : null;
 }
 
 export const Route = createFileRoute("/manager")({
@@ -144,7 +140,7 @@ export default function ManagerPage() {
 	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
 		new Set(),
 	);
-	const [jobProgress, setJobProgress] = createSignal<JobProgress | null>(null);
+	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(null);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 
 	const [currentPage, setCurrentPage] = createSignal(1);
@@ -342,13 +338,7 @@ export default function ManagerPage() {
 
 		const unlistenPromises = [
 			listen("job-progress", (event) => {
-				const data = parseEventPayload<JobProgress>(
-					event.payload,
-					(value): value is JobProgress =>
-						typeof value.processed === "number" &&
-						typeof value.total === "number" &&
-						(value.jobId === undefined || typeof value.jobId === "string"),
-				);
+				const data = parseEventPayload(jobProgressEventSchema, event.payload);
 				if (data?.jobId === jobId) {
 					setJobProgress(data);
 					setTaggingStatus(
@@ -357,10 +347,9 @@ export default function ManagerPage() {
 				}
 			}),
 			listen("job-completed", (event) => {
-				const data = parseEventPayload<JobCompleted>(
+				const data = parseEventPayload<JobCompletedEvent>(
+					jobCompletedEventSchema,
 					event.payload,
-					(value): value is JobCompleted =>
-						value.jobId === undefined || typeof value.jobId === "string",
 				);
 				if (data?.jobId === jobId) {
 					toast.success(data.message || "Batch tagging completed!");
@@ -370,11 +359,9 @@ export default function ManagerPage() {
 				}
 			}),
 			listen("job-failed", (event) => {
-				const data = parseEventPayload<JobFailed>(
+				const data = parseEventPayload<JobFailedEvent>(
+					jobFailedEventSchema,
 					event.payload,
-					(value): value is JobFailed =>
-						(value.jobId === undefined || typeof value.jobId === "string") &&
-						(value.error === undefined || typeof value.error === "string"),
 				);
 				if (data?.jobId === jobId) {
 					toast.error(`Job failed: ${data.error || "unknown error"}`);

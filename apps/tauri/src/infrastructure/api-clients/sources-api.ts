@@ -1,61 +1,14 @@
-import type { MediaSourceInfo } from "@solid-imager/core/domain/sources/schemas";
-import { orpc } from "./orpc-client";
+import { createSourcesApi } from "@solid-imager/core/interfaces/media-manager-client";
+import { tauriSourcesApiContract } from "./app-client";
 
-export function fetchMediaSources() {
-	return orpc.sources.list();
-}
+const sourcesApi = createSourcesApi(tauriSourcesApiContract);
 
-export function fetchMediaSource(id: string) {
-	return orpc.sources.get({ id });
-}
-
-export function createMediaSource(data: MediaSourceInfo) {
-	return orpc.sources.create(data);
-}
-
-export function updateMediaSource(id: string, data: Partial<MediaSourceInfo>) {
-	return orpc.sources.update({ id, data });
-}
-
-export async function deleteMediaSource(id: string): Promise<void> {
-	await orpc.sources.delete({ id });
-}
-
-export function syncMediaSources(ids: string[]) {
-	return orpc.sources.sync({ ids });
-}
-
-export async function fetchSourceDump(
-	id: string,
-	mode: "json" | "zip" = "json",
-): Promise<Blob> {
-	if (mode === "zip") {
-		const result = await orpc.sources.dumpZip({ id });
-		return new Blob([new Uint8Array(result.data)], {
-			type: result.mimeType,
-		});
-	}
-	const data = await orpc.sources.dump({ id });
-	return new Blob([JSON.stringify(data, null, 2)], {
-		type: "application/json",
-	});
-}
-
-export async function restoreSource(id: string, data: unknown) {
-	const payload = data as
-		| {
-				media?: unknown[];
-		  }
-		| unknown[];
-	const items = Array.isArray(payload)
-		? payload
-		: Array.isArray(payload.media)
-			? payload.media
-			: [];
-	return orpc.sources.restore({ id, data: items });
-}
-
-export async function importSourceZip(id: string, file: File) {
-	const bytes = new Uint8Array(await file.arrayBuffer());
-	return orpc.sources.importZip({ id, bytes: Array.from(bytes) });
-}
+export const fetchMediaSources = sourcesApi.fetchMediaSources;
+export const fetchMediaSource = sourcesApi.fetchMediaSource;
+export const createMediaSource = sourcesApi.createMediaSource;
+export const updateMediaSource = sourcesApi.updateMediaSource;
+export const deleteMediaSource = sourcesApi.deleteMediaSource;
+export const syncMediaSources = sourcesApi.syncMediaSources;
+export const fetchSourceDump = sourcesApi.fetchSourceDump;
+export const restoreSource = sourcesApi.restoreSource;
+export const importSourceZip = sourcesApi.importSourceZip;
