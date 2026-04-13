@@ -7,12 +7,12 @@ import {
 	type MediaDetails,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
-	type UpdateMediaRequest,
 	mediaDetailsSchema,
 	mediaSchema,
 	mediaSearchResponseSchema,
 	type Preset,
 	presetSchema,
+	type UpdateMediaRequest,
 	uploadResponseSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { projectSchema } from "@solid-imager/core/domain/projects/schemas";
@@ -25,6 +25,7 @@ import type { taggingResponseSchema } from "@solid-imager/core/domain/tagging/sc
 import { tagResponseSchema } from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
+import { invokeLocalProcedure, isLocalProcedure } from "./local-procedures";
 
 const mutationSuccessSchema = z.object({ success: z.boolean() });
 const syncSourcesResponseSchema = z.object({
@@ -78,6 +79,10 @@ async function invoke<TInput, TOutput>(
 	input: TInput,
 	schema: Parser<TOutput>,
 ): Promise<TOutput> {
+	if (isLocalProcedure(procedure)) {
+		return schema.parse(await invokeLocalProcedure(procedure, input));
+	}
+
 	const result = await getTauriAppServices().apiClient.call<TInput, unknown>(
 		procedure as `${string}.${string}`,
 		input,
@@ -86,6 +91,11 @@ async function invoke<TInput, TOutput>(
 }
 
 async function invokeVoid<TInput>(procedure: string, input: TInput) {
+	if (isLocalProcedure(procedure)) {
+		await invokeLocalProcedure(procedure, input);
+		return;
+	}
+
 	await getTauriAppServices().apiClient.call<TInput, unknown>(
 		procedure as `${string}.${string}`,
 		input,
@@ -197,15 +207,46 @@ export const orpc = {
 	},
 	authors: {
 		list: () => invoke("authors.list", undefined, authorListSchema),
+		get: (input: { id: string }) =>
+			invoke("authors.get", input, authorSchema.nullable()),
+		create: (input: { name: string; accountId?: string | null }) =>
+			invoke("authors.create", input, authorSchema),
+		update: (input: {
+			id: string;
+			data: { name?: string; accountId?: string | null };
+		}) => invoke("authors.update", input, authorSchema),
+		delete: (input: { id: string }) =>
+			invoke("authors.delete", input, mutationSuccessSchema),
 	},
 	tags: {
 		list: () => invoke("tags.list", undefined, tagListSchema),
+		get: (input: { id: string }) =>
+			invoke("tags.get", input, tagResponseSchema.nullable()),
+		create: (input: {
+			name: string;
+			description?: string;
+			attribute?: string;
+			color?: string;
+			source?: string;
+		}) => invoke("tags.create", input, tagResponseSchema),
+		update: (input: {
+			id: string;
+			data: {
+				name?: string;
+				description?: string;
+				attribute?: string;
+				color?: string;
+				source?: string;
+			};
+		}) => invoke("tags.update", input, tagResponseSchema),
+		delete: (input: { id: string }) =>
+			invoke("tags.delete", input, mutationSuccessSchema),
 	},
 	presets: {
 		list: () => invoke("presets.list", undefined, presetListSchema),
 		get: (input: { id: number }) => invoke("presets.get", input, presetSchema),
 		getByName: (input: { name: string }) =>
-			invoke("presets.getByName", input, presetSchema),
+			invoke("presets.getByName", input, presetSchema.nullable()),
 		create: (input: {
 			name: string;
 			value: unknown;
