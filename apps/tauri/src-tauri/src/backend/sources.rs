@@ -1,5 +1,6 @@
 use crate::backend::helpers::*;
 use crate::backend::types::*;
+use crate::commands::media::image_generate_thumbnail;
 use crate::commands::utils::{
     inspect_image_header, metadata_created_or_modified, metadata_modified,
 };
@@ -44,6 +45,83 @@ struct IndexedSourceEntry {
 }
 
 impl super::LocalBackend {
+    fn resolve_thumbnail_dir(&self) -> Result<PathBuf, String> {
+        let config = self.read_config()?;
+        let thumbnail_dir = PathBuf::from(config.storage.thumbnail_dir);
+        if thumbnail_dir.is_absolute() {
+            return Ok(thumbnail_dir);
+        }
+        Ok(self.data_dir().join(thumbnail_dir))
+    }
+
+    fn thumbnail_output_path(
+        &self,
+        media_source_id: &str,
+        media_id: &str,
+    ) -> Result<PathBuf, String> {
+        Ok(self
+            .resolve_thumbnail_dir()?
+            .join(media_source_id)
+            .join(format!("{media_id}.webp")))
+    }
+
+    fn prewarm_source_thumbnail_cache(&self, source_id: &str) -> Result<usize, String> {
+        let conn = self.open_connection()?;
+        let source = self
+            .find_source_value(&conn, source_id)?
+            .ok_or_else(|| format!("Source not found: {source_id}"))?;
+        let root_path = self.local_source_root_path(&source)?;
+        let media_items = self.list_media_by_source(&conn, source_id)?;
+        let config = self.read_config()?;
+        let jobs = media_items
+            .into_iter()
+            .filter(|media| media.media_type == "image")
+            .map(|media| {
+                let input_path = root_path.join(&media.file_path);
+                let output_path = self.thumbnail_output_path(source_id, &media.id)?;
+                Ok((input_path, output_path))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+
+        let concurrency = usize::try_from(config.jobs.concurrency)
+            .ok()
+            .filter(|value| *value > 0)
+            .unwrap_or(1);
+
+        let generated = rayon::ThreadPoolBuilder::new()
+            .num_threads(concurrency)
+            .build()
+            .map_err(|error| format!("Creating thumbnail prewarm thread pool failed: {error}"))?
+            .install(|| {
+                jobs.par_iter()
+                    .map(|(input_path, output_path)| {
+                        if output_path.exists() {
+                            return 0usize;
+                        }
+
+                        match image_generate_thumbnail(
+                            input_path.to_string_lossy().into_owned(),
+                            output_path.to_string_lossy().into_owned(),
+                            config.storage.thumbnail_size,
+                            config.storage.thumbnail_quality,
+                        ) {
+                            Ok(()) => 1usize,
+                            Err(error) => {
+                                eprintln!(
+                                    "Failed to prewarm thumbnail cache for {}: {}",
+                                    input_path.display(),
+                                    error
+                                );
+                                0usize
+                            }
+                        }
+                    })
+                    .sum()
+            });
+
+        Ok(generated)
+    }
+
     fn index_source_entry(
         candidate: SourceScanCandidate,
         tag_extraction_config: &ComfyUiTagExtractionConfig,
@@ -176,6 +254,7 @@ impl super::LocalBackend {
             .find_source_value(&conn, &id)?
             .ok_or_else(|| "Created source could not be loaded".to_string())?;
         let _ = self.sync_source(app, &id);
+        let _ = self.prewarm_source_thumbnail_cache(&id);
         Ok(result)
     }
 

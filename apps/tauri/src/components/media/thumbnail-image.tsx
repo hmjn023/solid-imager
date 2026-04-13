@@ -1,10 +1,9 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createQuery } from "@tanstack/solid-query";
+import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { getTauriAppServices } from "../../app-services";
 import { configQueryOptions } from "../../infrastructure/api-clients/queries/config-query";
-
-const THUMBNAIL_ROOT_MARGIN = "1200px";
 
 type ThumbnailImageProps = {
 	alt: string;
@@ -36,49 +35,28 @@ function joinOutputPath(
 	return `${normalizedBase}${separator}${mediaSourceId}${separator}${mediaId}.webp`;
 }
 
-function toObjectUrl(bytes: Uint8Array) {
-	const buffer = new ArrayBuffer(bytes.byteLength);
-	new Uint8Array(buffer).set(bytes);
-	return URL.createObjectURL(new Blob([buffer], { type: "image/webp" }));
+async function resolveThumbnailBasePath(basePath: string) {
+	if (await isAbsolute(basePath)) {
+		return basePath;
+	}
+	return join(await appDataDir(), basePath);
 }
 
-function toOriginalObjectUrl(bytes: Uint8Array) {
+function toObjectUrl(bytes: Uint8Array, mimeType: string) {
 	const buffer = new ArrayBuffer(bytes.byteLength);
 	new Uint8Array(buffer).set(bytes);
-	return URL.createObjectURL(new Blob([buffer]));
+	return URL.createObjectURL(new Blob([buffer], { type: mimeType }));
 }
 
 export function ThumbnailImage(props: ThumbnailImageProps) {
 	const services = getTauriAppServices();
 	const configQuery = createQuery(() => configQueryOptions());
 	const [thumbnailUrl, setThumbnailUrl] = createSignal<string | null>(null);
-	const [isInViewport, setIsInViewport] = createSignal(false);
-	let imageRef: HTMLImageElement | HTMLDivElement | undefined;
-
-	createEffect(() => {
-		const element = imageRef;
-		if (!element) {
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0]?.isIntersecting) {
-					setIsInViewport(true);
-					observer.disconnect();
-				}
-			},
-			{ rootMargin: THUMBNAIL_ROOT_MARGIN },
-		);
-
-		observer.observe(element);
-		onCleanup(() => observer.disconnect());
-	});
 
 	createEffect(() => {
 		const rootPath = props.sourceRootPath;
-		const media = props.media;
 		const storage = configQuery.data?.storage;
+		const media = props.media;
 		let disposed = false;
 		let currentUrl: string | null = null;
 
@@ -89,12 +67,6 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 			}
 		};
 
-		if (!isInViewport()) {
-			revokeCurrentUrl();
-			setThumbnailUrl(null);
-			return;
-		}
-
 		if (!(rootPath && storage && media.mediaType === "image")) {
 			revokeCurrentUrl();
 			setThumbnailUrl(null);
@@ -103,28 +75,22 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 
 		void (async () => {
 			const inputPath = joinLocalPath(rootPath, media.filePath);
-			const outputPath = joinOutputPath(
+			const thumbnailBasePath = await resolveThumbnailBasePath(
 				storage.thumbnailDir,
+			);
+			const outputPath = joinOutputPath(
+				thumbnailBasePath,
 				media.mediaSourceId,
 				media.id,
 			);
 
 			try {
-				if (!(await services.fileSystem.exists(outputPath))) {
-					await services.imageProcessor.generateThumbnail(
-						inputPath,
-						outputPath,
-						storage.thumbnailSize,
-						storage.thumbnailQuality,
-					);
-				}
-
 				const thumbnailBytes = await services.fileSystem.readFile(outputPath);
 				if (disposed) {
 					return;
 				}
 				revokeCurrentUrl();
-				currentUrl = toObjectUrl(thumbnailBytes);
+				currentUrl = toObjectUrl(thumbnailBytes, "image/webp");
 				setThumbnailUrl(currentUrl);
 			} catch {
 				try {
@@ -133,7 +99,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 						return;
 					}
 					revokeCurrentUrl();
-					currentUrl = toOriginalObjectUrl(originalBytes);
+					currentUrl = toObjectUrl(originalBytes, "application/octet-stream");
 					setThumbnailUrl(currentUrl);
 				} catch {
 					if (!disposed) {
@@ -153,12 +119,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	return (
 		<Show
 			fallback={
-				<div
-					class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400"
-					ref={(element) => {
-						imageRef = element;
-					}}
-				>
+				<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
 					{props.fallback ?? props.media.mediaType}
 				</div>
 			}
@@ -169,9 +130,6 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					alt={props.alt}
 					class={props.class}
 					height={props.height ?? undefined}
-					ref={(element) => {
-						imageRef = element;
-					}}
 					src={url()}
 					width={props.width ?? undefined}
 				/>

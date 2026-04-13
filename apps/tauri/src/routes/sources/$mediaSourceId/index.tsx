@@ -37,6 +37,7 @@ import {
 	useQueryClient,
 } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
+import { createVirtualizer } from "@tanstack/solid-virtual";
 import {
 	createEffect,
 	createMemo,
@@ -79,8 +80,10 @@ import {
 } from "../../../presentation/store/search-store";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
-const INFINITE_SCROLL_ROOT_MARGIN = "1000px";
 const DEBOUNCE_DELAY_MS = 1000;
+const GRID_GAP_PX = 16;
+const GRID_ITEM_ASPECT_RATIO = 4 / 3;
+const VIRTUAL_ROWS_OVERSCAN = 3;
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	loader: async ({ context }) => {
@@ -226,8 +229,63 @@ function SourceMediaRoute() {
 		);
 	});
 
+	const [windowWidth, setWindowWidth] = createSignal(0);
+	const [mediaGridWidth, setMediaGridWidth] = createSignal(0);
+	let mediaGridRef: HTMLDivElement | undefined;
+	let mediaListScrollRef: HTMLDivElement | undefined;
+
+	const columnCount = createMemo(() => {
+		const width = windowWidth();
+		if (width >= 1024) {
+			return 5;
+		}
+		if (width >= 768) {
+			return 3;
+		}
+		return 2;
+	});
+
+	const mediaItemWidth = createMemo(() => {
+		const width = mediaGridWidth();
+		const columns = columnCount();
+		if (!(width > 0 && columns > 0)) {
+			return 0;
+		}
+		return Math.max((width - GRID_GAP_PX * (columns - 1)) / columns, 0);
+	});
+
+	const mediaItemHeight = createMemo(() => {
+		const itemWidth = mediaItemWidth();
+		if (itemWidth <= 0) {
+			return 0;
+		}
+		return itemWidth * GRID_ITEM_ASPECT_RATIO;
+	});
+
+	const rowCount = createMemo(() =>
+		Math.ceil(mediaResults().length / columnCount()),
+	);
+
+	const mediaRowVirtualizer = createVirtualizer<HTMLDivElement, HTMLDivElement>(
+		{
+			count: rowCount(),
+			estimateSize: () => mediaItemHeight() || 320,
+			gap: GRID_GAP_PX,
+			getScrollElement: () => mediaListScrollRef ?? null,
+			getItemKey: (index) => index,
+			overscan: VIRTUAL_ROWS_OVERSCAN,
+		},
+	);
+
+	const useVirtualGrid = createMemo(
+		() =>
+			mediaResults().length > 0 &&
+			mediaItemWidth() > 0 &&
+			mediaRowVirtualizer.getVirtualItems().length > 0,
+	);
+
 	const handleSearch = () => {
-		window.scrollTo(0, 0);
+		mediaListScrollRef?.scrollTo({ top: 0 });
 	};
 
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
@@ -251,6 +309,14 @@ function SourceMediaRoute() {
 	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
 		typeof setTimeout
 	> | null>(null);
+
+	const updateMediaGridMetrics = () => {
+		const element = mediaGridRef;
+		if (!element) {
+			return;
+		}
+		setMediaGridWidth(element.getBoundingClientRect().width);
+	};
 
 	let fileInputRef: HTMLInputElement | undefined;
 
@@ -608,40 +674,51 @@ function SourceMediaRoute() {
 		}
 	};
 
-	const [loadMoreRef, setLoadMoreRef] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
-
 	createEffect(() => {
-		const element = loadMoreRef();
-		if (!element) {
+		const virtualRows = mediaRowVirtualizer.getVirtualItems();
+		const lastRow = virtualRows[virtualRows.length - 1];
+		if (!lastRow) {
 			return;
 		}
+		const lastVisibleIndex = (lastRow.index + 1) * columnCount() - 1;
+		if (
+			lastVisibleIndex >= mediaResults().length - columnCount() * 2 &&
+			mediaQuery.hasNextPage &&
+			!mediaQuery.isFetchingNextPage
+		) {
+			void mediaQuery.fetchNextPage();
+		}
+	});
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (
-					entries[0].isIntersecting &&
-					mediaQuery.hasNextPage &&
-					!mediaQuery.isFetchingNextPage
-				) {
-					void mediaQuery.fetchNextPage();
-				}
-			},
-			{ threshold: 0.5, rootMargin: INFINITE_SCROLL_ROOT_MARGIN },
-		);
-
-		observer.observe(element);
-		onCleanup(() => observer.disconnect());
+	createEffect(() => {
+		void mediaResults().length;
+		void columnCount();
+		requestAnimationFrame(() => {
+			updateMediaGridMetrics();
+		});
 	});
 
 	onMount(() => {
-		if ("scrollRestoration" in history) {
-			history.scrollRestoration = "manual";
+		setWindowWidth(window.innerWidth);
+		updateMediaGridMetrics();
+
+		const handleResize = () => {
+			setWindowWidth(window.innerWidth);
+			updateMediaGridMetrics();
+		};
+		window.addEventListener("resize", handleResize);
+
+		const resizeObserver = new ResizeObserver(() => {
+			updateMediaGridMetrics();
+		});
+		if (mediaGridRef) {
+			resizeObserver.observe(mediaGridRef);
 		}
 
 		document.addEventListener("paste", handlePaste);
 		onCleanup(() => {
+			window.removeEventListener("resize", handleResize);
+			resizeObserver.disconnect();
 			document.removeEventListener("paste", handlePaste);
 		});
 	});
@@ -652,15 +729,16 @@ function SourceMediaRoute() {
 		}
 
 		const id = mediaSourceId();
-		if (!(id && mediaQuery.data && !mediaQuery.isLoading)) {
+		const scrollElement = mediaListScrollRef;
+		if (!(id && scrollElement && mediaQuery.data && !mediaQuery.isLoading)) {
 			return;
 		}
 
-		const targetScrollY = getScrollPosition(id);
-		if (targetScrollY > 0) {
+		const targetScrollTop = getScrollPosition(id);
+		if (targetScrollTop > 0) {
 			setTimeout(() => {
 				requestAnimationFrame(() => {
-					window.scrollTo(0, targetScrollY);
+					scrollElement.scrollTo({ top: targetScrollTop });
 					setIsScrollRestored(true);
 				});
 			}, 100);
@@ -672,8 +750,9 @@ function SourceMediaRoute() {
 
 	onCleanup(() => {
 		const id = mediaSourceId();
-		if (id) {
-			setScrollPosition(id, window.scrollY);
+		const scrollElement = mediaListScrollRef;
+		if (id && scrollElement) {
+			setScrollPosition(id, scrollElement.scrollTop);
 		}
 	});
 
@@ -766,7 +845,7 @@ function SourceMediaRoute() {
 					<CardContent class="space-y-4">{panel}</CardContent>
 				</Card>
 
-				<div class="space-y-4">
+				<div class="min-h-0 space-y-4">
 					<div class="mb-4 flex items-center justify-between">
 						<p class="text-gray-600 text-sm">
 							{mediaQuery.data?.pages[0]?.total ?? 0} 件の結果
@@ -774,17 +853,83 @@ function SourceMediaRoute() {
 					</div>
 
 					<ContextMenu>
-						<ContextMenuTrigger class="h-full w-full">
-							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-								<For each={mediaResults()}>
-									{(media) => (
-										<MediaGridItem
-											media={media}
-											onContextMenu={() => setContextMenuMediaId(media.id)}
-											sourceRootPath={sourceRootPath()}
-										/>
-									)}
-								</For>
+						<ContextMenuTrigger class="block w-full">
+							<div
+								class="h-[calc(100vh-16rem)] overflow-auto pr-2"
+								ref={(element) => {
+									mediaListScrollRef = element;
+								}}
+							>
+								<div
+									class="relative w-full"
+									ref={(element) => {
+										mediaGridRef = element;
+										requestAnimationFrame(() => {
+											updateMediaGridMetrics();
+										});
+									}}
+									style={{
+										height: useVirtualGrid()
+											? `${mediaRowVirtualizer.getTotalSize()}px`
+											: undefined,
+									}}
+								>
+									<Show
+										fallback={
+											<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+												<For
+													each={mediaResults().slice(0, MEDIA_ITEMS_PER_PAGE)}
+												>
+													{(media) => (
+														<MediaGridItem
+															media={media}
+															onContextMenu={() =>
+																setContextMenuMediaId(media.id)
+															}
+															sourceRootPath={sourceRootPath()}
+														/>
+													)}
+												</For>
+											</div>
+										}
+										when={useVirtualGrid()}
+									>
+										<For each={mediaRowVirtualizer.getVirtualItems()}>
+											{(virtualRow) => {
+												const rowMedia = () => {
+													const startIndex = virtualRow.index * columnCount();
+													return mediaResults().slice(
+														startIndex,
+														startIndex + columnCount(),
+													);
+												};
+												return (
+													<div
+														class="absolute left-0 top-0 grid gap-4"
+														style={{
+															"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
+															height: `${virtualRow.size}px`,
+															transform: `translateY(${virtualRow.start}px)`,
+															width: "100%",
+														}}
+													>
+														<For each={rowMedia()}>
+															{(media) => (
+																<MediaGridItem
+																	media={media}
+																	onContextMenu={() =>
+																		setContextMenuMediaId(media.id)
+																	}
+																	sourceRootPath={sourceRootPath()}
+																/>
+															)}
+														</For>
+													</div>
+												);
+											}}
+										</For>
+									</Show>
+								</div>
 							</div>
 						</ContextMenuTrigger>
 						<ContextMenuContent>
@@ -845,8 +990,6 @@ function SourceMediaRoute() {
 							検索結果が見つかりませんでした
 						</div>
 					</Show>
-
-					<div ref={setLoadMoreRef} />
 				</div>
 			</div>
 
