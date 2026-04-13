@@ -8,6 +8,7 @@ import { configQueryOptions } from "../../infrastructure/api-clients/queries/con
 type ThumbnailImageProps = {
 	alt: string;
 	class?: string;
+	disableOriginalFallback?: boolean;
 	fallback?: string;
 	height?: number | null;
 	loading?: "eager" | "lazy";
@@ -129,6 +130,13 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				currentUrl = toObjectUrl(thumbnailBytes, "image/webp");
 				setThumbnailUrl(currentUrl);
 			} catch {
+				if (props.disableOriginalFallback) {
+					if (!disposed) {
+						revokeCurrentUrl();
+						setThumbnailUrl(null);
+					}
+					return;
+				}
 				try {
 					const originalBytes = await services.fileSystem.readFile(inputPath);
 					if (disposed) {
