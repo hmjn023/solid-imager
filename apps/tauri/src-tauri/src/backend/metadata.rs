@@ -1,6 +1,6 @@
 use crate::backend::types::ComfyUiTagExtractionConfig;
 use crate::commands::utils::{ExtractMetadataResult, ExtractedTag};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::fs;
 use std::io::{Cursor, Read};
 
