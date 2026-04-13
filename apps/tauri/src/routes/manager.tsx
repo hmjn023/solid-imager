@@ -4,10 +4,10 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import {
 	type JobCompletedEvent,
-	jobCompletedEventSchema,
 	type JobFailedEvent,
-	jobFailedEventSchema,
 	type JobProgressEvent,
+	jobCompletedEventSchema,
+	jobFailedEventSchema,
 	jobProgressEventSchema,
 } from "@solid-imager/core/domain/sources/events";
 import {
@@ -102,7 +102,10 @@ type SafeParseSchema<T> = {
 	) => { success: true; data: T } | { success: false; error: unknown };
 };
 
-function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
+function parseEventPayload<T>(
+	schema: SafeParseSchema<T>,
+	payload: unknown,
+): T | null {
 	const result = schema.safeParse(payload);
 	return result.success ? result.data : null;
 }
@@ -140,7 +143,9 @@ export default function ManagerPage() {
 	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
 		new Set(),
 	);
-	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(null);
+	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
+		null,
+	);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 
 	const [currentPage, setCurrentPage] = createSignal(1);

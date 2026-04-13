@@ -145,7 +145,10 @@ export async function bulkAddImportItems(
 	items: DownloadItem[],
 	targetSourceId?: string,
 ) {
-	const queue = [...readQueue(), ...items.map((item) => createPendingJob(item, targetSourceId))];
+	const queue = [
+		...readQueue(),
+		...items.map((item) => createPendingJob(item, targetSourceId)),
+	];
 	writeQueue(queue);
 	await emitImportEvent("import-request:created", { count: items.length });
 	return { addedCount: items.length, skippedCount: 0, restoredCount: 0 };

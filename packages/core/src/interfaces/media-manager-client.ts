@@ -7,14 +7,17 @@ import type {
 	UpdateMediaRequest,
 	UploadMediaRequest,
 	UploadResponse,
-} from '../domain/media/schemas';
-import type { MediaSourceInfo, SafeMediaSource } from '../domain/sources/schemas';
+} from "../domain/media/schemas";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "../domain/sources/schemas";
 
 export type {
 	UpdateMediaRequest,
 	UploadMediaRequest,
 	UploadResponse,
-} from '../domain/media/schemas';
+} from "../domain/media/schemas";
 
 export type MutationSuccess = {
 	success: boolean;
@@ -74,10 +77,7 @@ export type MediaApiContract = {
 		mediaId: string,
 		updates: UpdateMediaRequest,
 	) => Promise<MediaDetails>;
-	deleteMedia: (
-		sourceId: string,
-		mediaId: string,
-	) => Promise<MutationSuccess>;
+	deleteMedia: (sourceId: string, mediaId: string) => Promise<MutationSuccess>;
 	copyMedia: (
 		sourceId: string,
 		mediaId: string,
@@ -108,7 +108,7 @@ export type SourcesApiContract = {
 	) => Promise<SafeMediaSource>;
 	deleteMediaSource: (id: string) => Promise<MutationSuccess>;
 	syncMediaSources: (ids: string[]) => Promise<SyncSourcesResponse>;
-	fetchSourceDump: (id: string, mode?: 'json' | 'zip') => Promise<Blob>;
+	fetchSourceDump: (id: string, mode?: "json" | "zip") => Promise<Blob>;
 	restoreSource: (id: string, data: unknown) => Promise<unknown>;
 	importSourceZip: (id: string, file: File) => Promise<unknown>;
 };
@@ -119,31 +119,23 @@ export function createMediaApi(contract: MediaApiContract) {
 			const result = await contract.searchMedia(sourceId, {
 				offset: 0,
 				limit: 100,
-				sort: 'date',
-				order: 'desc',
+				sort: "date",
+				order: "desc",
 			});
 			return result.media;
 		},
-		fetchMediaListInfinite(
-			sourceId: string,
-			pageParam = 0,
-			limit = 50,
-		) {
+		fetchMediaListInfinite(sourceId: string, pageParam = 0, limit = 50) {
 			return contract.searchMedia(sourceId, {
 				offset: pageParam,
 				limit,
-				sort: 'date',
-				order: 'desc',
+				sort: "date",
+				order: "desc",
 			});
 		},
 		fetchMediaDetails(sourceId: string, mediaId: string) {
 			return contract.fetchMediaDetails(sourceId, mediaId);
 		},
-		uploadMedia(
-			sourceId: string,
-			file: File,
-			options?: UploadMediaRequest,
-		) {
+		uploadMedia(sourceId: string, file: File, options?: UploadMediaRequest) {
 			return contract.uploadMedia(sourceId, file, options);
 		},
 		updateMedia(
@@ -156,18 +148,10 @@ export function createMediaApi(contract: MediaApiContract) {
 		deleteMedia(sourceId: string, mediaId: string) {
 			return contract.deleteMedia(sourceId, mediaId);
 		},
-		copyMedia(
-			sourceId: string,
-			mediaId: string,
-			targetSourceId: string,
-		) {
+		copyMedia(sourceId: string, mediaId: string, targetSourceId: string) {
 			return contract.copyMedia(sourceId, mediaId, targetSourceId);
 		},
-		moveMedia(
-			sourceId: string,
-			mediaId: string,
-			targetSourceId: string,
-		) {
+		moveMedia(sourceId: string, mediaId: string, targetSourceId: string) {
 			return contract.moveMedia(sourceId, mediaId, targetSourceId);
 		},
 		syncMediaItems(sourceId: string, mediaIds: string[]) {
@@ -199,7 +183,7 @@ export function createSourcesApi(contract: SourcesApiContract) {
 		syncMediaSources(ids: string[]) {
 			return contract.syncMediaSources(ids);
 		},
-		fetchSourceDump(id: string, mode: 'json' | 'zip' = 'json') {
+		fetchSourceDump(id: string, mode: "json" | "zip" = "json") {
 			return contract.fetchSourceDump(id, mode);
 		},
 		restoreSource(id: string, data: unknown) {

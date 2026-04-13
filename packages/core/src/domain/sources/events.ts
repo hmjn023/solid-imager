@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 const sourceScopedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
@@ -27,7 +27,7 @@ export const mediaCopiedEventSchema = z.object({
 export type MediaCopiedEvent = z.infer<typeof mediaCopiedEventSchema>;
 
 export const mediaMovedEventSchema = z.object({
-	type: z.enum(['source', 'target']),
+	type: z.enum(["source", "target"]),
 	sourceId: z.string().uuid().optional(),
 	targetId: z.string().uuid().optional(),
 	mediaId: z.string().uuid().optional(),
@@ -50,9 +50,7 @@ export const allJobsCompletedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
 	processed: z.number(),
 });
-export type AllJobsCompletedEvent = z.infer<
-	typeof allJobsCompletedEventSchema
->;
+export type AllJobsCompletedEvent = z.infer<typeof allJobsCompletedEventSchema>;
 
 export const watcherErrorEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),

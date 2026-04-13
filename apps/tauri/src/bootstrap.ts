@@ -4,10 +4,7 @@ import {
 	createTauriApiClient,
 	type TauriApiClient,
 } from "./infrastructure/api/tauri-api-client";
-import {
-	initializeTauriDb,
-	type TauriDb,
-} from "./infrastructure/db/client";
+import { initializeTauriDb, type TauriDb } from "./infrastructure/db/client";
 import {
 	createTauriCommandClient,
 	type TauriCommandClient,

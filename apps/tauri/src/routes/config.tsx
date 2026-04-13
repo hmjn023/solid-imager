@@ -23,8 +23,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Show } from "solid-js";
 import { orpc } from "../infrastructure/api-clients/orpc-client";
-import { resetThumbnailRuntimeCache } from "../infrastructure/media/thumbnail-runtime";
 import { configQueryOptions } from "../infrastructure/api-clients/queries/config-query";
+import { resetThumbnailRuntimeCache } from "../infrastructure/media/thumbnail-runtime";
 
 export const Route = createFileRoute("/config")({
 	loader: async ({ context }) => {
@@ -75,75 +75,232 @@ function ConfigForm(props: { data: AppConfig }) {
 					<TabsTrigger value="logging">Logging</TabsTrigger>
 				</TabsList>
 
-					<div class="mt-6 space-y-6">
-						<TabsContent value="jobs">
-							<div class="space-y-4 rounded-md border p-4">
-								<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
+				<div class="mt-6 space-y-6">
+					<TabsContent value="jobs">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
 
-								<form.Field name="jobs.concurrency">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>Concurrency</Label>
-											<Input
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) => {
-													const value = event.currentTarget.value;
-													field().handleChange(
-														(value === ""
-															? undefined
-															: Number(value)) as unknown as number,
-													);
-												}}
-												type="number"
-												value={(field().state.value as number) ?? ""}
-											/>
-											<Show when={field().state.meta.errors.length}>
-												<div class="text-red-500 text-sm">
-													{field().state.meta.errors[0]}
-												</div>
-											</Show>
-											<div class="text-muted-foreground text-xs">
-												Number of concurrent downloads/processings.
+							<form.Field name="jobs.concurrency">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Concurrency</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const value = event.currentTarget.value;
+												field().handleChange(
+													(value === ""
+														? undefined
+														: Number(value)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+										<Show when={field().state.meta.errors.length}>
+											<div class="text-red-500 text-sm">
+												{field().state.meta.errors[0]}
 											</div>
+										</Show>
+										<div class="text-muted-foreground text-xs">
+											Number of concurrent downloads/processings.
 										</div>
-									)}
-								</form.Field>
+									</div>
+								)}
+							</form.Field>
 
-								<form.Field name="jobs.aiConcurrency">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>AI Concurrency</Label>
-											<Input
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) => {
-													const value = event.currentTarget.value;
-													field().handleChange(
-														(value === ""
-															? undefined
-															: Number(value)) as unknown as number,
-													);
-												}}
-												type="number"
-												value={(field().state.value as number) ?? ""}
-											/>
-											<Show when={field().state.meta.errors.length}>
-												<div class="text-red-500 text-sm">
-													{field().state.meta.errors[0]}
-												</div>
-											</Show>
-											<div class="text-muted-foreground text-xs">
-												Number of concurrent AI tagging jobs.
+							<form.Field name="jobs.aiConcurrency">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>AI Concurrency</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const value = event.currentTarget.value;
+												field().handleChange(
+													(value === ""
+														? undefined
+														: Number(value)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+										<Show when={field().state.meta.errors.length}>
+											<div class="text-red-500 text-sm">
+												{field().state.meta.errors[0]}
 											</div>
+										</Show>
+										<div class="text-muted-foreground text-xs">
+											Number of concurrent AI tagging jobs.
 										</div>
-									)}
-								</form.Field>
+									</div>
+								)}
+							</form.Field>
 
-								<form.Field name="jobs.pollIntervalMs">
+							<form.Field name="jobs.pollIntervalMs">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Poll Interval (ms)</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const value = event.currentTarget.value;
+												field().handleChange(
+													(value === ""
+														? undefined
+														: Number(value)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+										<Show when={field().state.meta.errors.length}>
+											<div class="text-red-500 text-sm">
+												{field().state.meta.errors[0]}
+											</div>
+										</Show>
+									</div>
+								)}
+							</form.Field>
+
+							<form.Field name="jobs.enableAutoTagging">
+								{(field) => (
+									<div class="flex items-center space-x-2">
+										<Switch
+											checked={(field().state.value as boolean) ?? false}
+											onChange={field().handleChange}
+										>
+											<SwitchControl>
+												<SwitchThumb />
+											</SwitchControl>
+											<SwitchLabel>Enable Auto Tagging</SwitchLabel>
+										</Switch>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="ai">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
+							<form.Field name="ai.baseUrl">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Base URL</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value)
+											}
+											value={(field().state.value as string) ?? ""}
+										/>
+									</div>
+								)}
+							</form.Field>
+							<form.Field name="ai.timeoutMs">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Timeout (ms)</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const value = event.currentTarget.value;
+												field().handleChange(
+													(value === ""
+														? undefined
+														: Number(value)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="downloads">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
+							<form.Field name="downloads.rateLimitEnabled">
+								{(field) => (
+									<div class="flex items-center space-x-2">
+										<Switch
+											checked={(field().state.value as boolean) ?? false}
+											onChange={field().handleChange}
+										>
+											<SwitchControl>
+												<SwitchThumb />
+											</SwitchControl>
+											<SwitchLabel>レートリミット有効</SwitchLabel>
+										</Switch>
+									</div>
+								)}
+							</form.Field>
+
+							<form.Field name="downloads.requestIntervalMs">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>リクエスト間隔 (ms)</Label>
+										<Input
+											id={field().name}
+											max="60000"
+											min="0"
+											onBlur={field().handleBlur}
+											onInput={(event) => {
+												const value = event.currentTarget.value;
+												field().handleChange(
+													(value === ""
+														? undefined
+														: Number(value)) as unknown as number,
+												);
+											}}
+											type="number"
+											value={(field().state.value as number) ?? ""}
+										/>
+										<Show when={field().state.meta.errors.length}>
+											<div class="text-red-500 text-sm">
+												{field().state.meta.errors[0]}
+											</div>
+										</Show>
+									</div>
+								)}
+							</form.Field>
+						</div>
+					</TabsContent>
+
+					<TabsContent value="storage">
+						<div class="space-y-4 rounded-md border p-4">
+							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
+							<form.Field name="storage.thumbnailDir">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Thumbnail Directory</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value)
+											}
+											value={(field().state.value as string) ?? ""}
+										/>
+									</div>
+								)}
+							</form.Field>
+
+							<div class="grid grid-cols-2 gap-4">
+								<form.Field name="storage.thumbnailSize">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Poll Interval (ms)</Label>
+											<Label for={field().name}>Thumbnail Size (px)</Label>
 											<Input
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -158,192 +315,35 @@ function ConfigForm(props: { data: AppConfig }) {
 												type="number"
 												value={(field().state.value as number) ?? ""}
 											/>
-											<Show when={field().state.meta.errors.length}>
-												<div class="text-red-500 text-sm">
-													{field().state.meta.errors[0]}
-												</div>
-											</Show>
 										</div>
 									)}
 								</form.Field>
-
-								<form.Field name="jobs.enableAutoTagging">
+								<form.Field name="storage.thumbnailQuality">
 									{(field) => (
-										<div class="flex items-center space-x-2">
-											<Switch
-												checked={(field().state.value as boolean) ?? false}
-												onChange={field().handleChange}
-											>
-												<SwitchControl>
-													<SwitchThumb />
-												</SwitchControl>
-												<SwitchLabel>Enable Auto Tagging</SwitchLabel>
-											</Switch>
+										<div class="space-y-2">
+											<Label for={field().name}>
+												Thumbnail Quality (1-100)
+											</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) => {
+													const value = event.currentTarget.value;
+													field().handleChange(
+														(value === ""
+															? undefined
+															: Number(value)) as unknown as number,
+													);
+												}}
+												type="number"
+												value={(field().state.value as number) ?? ""}
+											/>
 										</div>
 									)}
 								</form.Field>
 							</div>
-						</TabsContent>
-
-						<TabsContent value="ai">
-							<div class="space-y-4 rounded-md border p-4">
-								<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
-								<form.Field name="ai.baseUrl">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>Base URL</Label>
-											<Input
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) =>
-													field().handleChange(event.currentTarget.value)
-												}
-												value={(field().state.value as string) ?? ""}
-											/>
-										</div>
-									)}
-								</form.Field>
-								<form.Field name="ai.timeoutMs">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>Timeout (ms)</Label>
-											<Input
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) => {
-													const value = event.currentTarget.value;
-													field().handleChange(
-														(value === ""
-															? undefined
-															: Number(value)) as unknown as number,
-													);
-												}}
-												type="number"
-												value={(field().state.value as number) ?? ""}
-											/>
-										</div>
-									)}
-								</form.Field>
-							</div>
-						</TabsContent>
-
-						<TabsContent value="downloads">
-							<div class="space-y-4 rounded-md border p-4">
-								<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
-								<form.Field name="downloads.rateLimitEnabled">
-									{(field) => (
-										<div class="flex items-center space-x-2">
-											<Switch
-												checked={(field().state.value as boolean) ?? false}
-												onChange={field().handleChange}
-											>
-												<SwitchControl>
-													<SwitchThumb />
-												</SwitchControl>
-												<SwitchLabel>レートリミット有効</SwitchLabel>
-											</Switch>
-										</div>
-									)}
-								</form.Field>
-
-								<form.Field name="downloads.requestIntervalMs">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>リクエスト間隔 (ms)</Label>
-											<Input
-												id={field().name}
-												max="60000"
-												min="0"
-												onBlur={field().handleBlur}
-												onInput={(event) => {
-													const value = event.currentTarget.value;
-													field().handleChange(
-														(value === ""
-															? undefined
-															: Number(value)) as unknown as number,
-													);
-												}}
-												type="number"
-												value={(field().state.value as number) ?? ""}
-											/>
-											<Show when={field().state.meta.errors.length}>
-												<div class="text-red-500 text-sm">
-													{field().state.meta.errors[0]}
-												</div>
-											</Show>
-										</div>
-									)}
-								</form.Field>
-							</div>
-						</TabsContent>
-
-						<TabsContent value="storage">
-							<div class="space-y-4 rounded-md border p-4">
-								<h2 class="mb-4 font-semibold text-xl">Storage</h2>
-								<form.Field name="storage.thumbnailDir">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>Thumbnail Directory</Label>
-											<Input
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) =>
-													field().handleChange(event.currentTarget.value)
-												}
-												value={(field().state.value as string) ?? ""}
-											/>
-										</div>
-									)}
-								</form.Field>
-
-								<div class="grid grid-cols-2 gap-4">
-									<form.Field name="storage.thumbnailSize">
-										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>Thumbnail Size (px)</Label>
-												<Input
-													id={field().name}
-													onBlur={field().handleBlur}
-													onInput={(event) => {
-														const value = event.currentTarget.value;
-														field().handleChange(
-															(value === ""
-																? undefined
-																: Number(value)) as unknown as number,
-														);
-													}}
-													type="number"
-													value={(field().state.value as number) ?? ""}
-												/>
-											</div>
-										)}
-									</form.Field>
-									<form.Field name="storage.thumbnailQuality">
-										{(field) => (
-											<div class="space-y-2">
-												<Label for={field().name}>
-													Thumbnail Quality (1-100)
-												</Label>
-												<Input
-													id={field().name}
-													onBlur={field().handleBlur}
-													onInput={(event) => {
-														const value = event.currentTarget.value;
-														field().handleChange(
-															(value === ""
-																? undefined
-																: Number(value)) as unknown as number,
-														);
-													}}
-													type="number"
-													value={(field().state.value as number) ?? ""}
-												/>
-											</div>
-										)}
-									</form.Field>
-								</div>
-							</div>
-						</TabsContent>
+						</div>
+					</TabsContent>
 
 					<TabsContent value="media">
 						<div class="space-y-4 rounded-md border p-4">

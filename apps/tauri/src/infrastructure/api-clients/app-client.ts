@@ -1,7 +1,7 @@
 import type {
 	MediaApiContract,
-	SyncMediaItemsResponse,
 	SourcesApiContract,
+	SyncMediaItemsResponse,
 	UploadMediaRequest,
 } from "@solid-imager/core/interfaces/media-manager-client";
 import { processImportItemsToSource } from "./imports-api";
@@ -40,7 +40,9 @@ export const tauriMediaApiContract: MediaApiContract = {
 		orpc.media.move({ mediaId, targetSourceId }),
 	async syncMediaItems(sourceId, mediaIds) {
 		const syncResult = await orpc.sources.sync({ ids: [sourceId] });
-		const sourceResult = syncResult.results.find((item) => item.id === sourceId);
+		const sourceResult = syncResult.results.find(
+			(item) => item.id === sourceId,
+		);
 
 		const response: SyncMediaItemsResponse = {
 			results: mediaIds.map((id) => ({

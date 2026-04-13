@@ -164,7 +164,10 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					);
 					setOriginalUrl((currentUrl) => {
 						revokeObjectUrl(currentUrl);
-						return createObjectUrl(bytes, resolveMimeType(props.media.fileName));
+						return createObjectUrl(
+							bytes,
+							resolveMimeType(props.media.fileName),
+						);
 					});
 					clearRetryTimer();
 				} catch {

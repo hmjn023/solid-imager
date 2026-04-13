@@ -2,10 +2,10 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
-import { listen } from "@tauri-apps/api/event";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { listen } from "@tauri-apps/api/event";
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
 import { SourceCard } from "../../components/source-card";
 import { SourceDeleteModal } from "../../components/source-delete-modal";
@@ -116,7 +116,9 @@ function SourcesRoute() {
 		}
 
 		const sourceIds = new Set(
-			sources.map((source) => source.id).filter((id): id is string => Boolean(id)),
+			sources
+				.map((source) => source.id)
+				.filter((id): id is string => Boolean(id)),
 		);
 		const unlistenPromises = [
 			listen("all-jobs-completed", (event) => {
