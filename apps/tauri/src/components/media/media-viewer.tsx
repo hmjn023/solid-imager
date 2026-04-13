@@ -8,6 +8,7 @@ import {
 	Switch,
 } from "solid-js";
 import { getTauriAppServices } from "../../app-services";
+import { joinLocalPath } from "../../infrastructure/path-utils";
 
 type MediaViewerProps = {
 	media: MediaDetails;
@@ -34,16 +35,6 @@ function resolveMimeType(fileName: string) {
 	return (
 		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
 	);
-}
-
-function joinLocalPath(rootPath: string, relativePath: string) {
-	if (/^(?:[A-Za-z]:[\\/]|\/)/.test(relativePath)) {
-		return relativePath;
-	}
-	const separator = rootPath.includes("\\") ? "\\" : "/";
-	const normalizedRoot = rootPath.replace(/[\\/]+$/, "");
-	const normalizedRelative = relativePath.replace(/^[\\/]+/, "");
-	return `${normalizedRoot}${separator}${normalizedRelative.replace(/[\\/]/g, separator)}`;
 }
 
 export function MediaViewer(props: MediaViewerProps) {

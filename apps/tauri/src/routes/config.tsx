@@ -23,6 +23,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { zodValidator } from "@tanstack/zod-form-adapter";
 import { Show } from "solid-js";
 import { orpc } from "../infrastructure/api-clients/orpc-client";
+import { resetThumbnailRuntimeCache } from "../infrastructure/media/thumbnail-runtime";
 import { configQueryOptions } from "../infrastructure/api-clients/queries/config-query";
 
 export const Route = createFileRoute("/config")({
@@ -43,6 +44,7 @@ function ConfigForm(props: { data: AppConfig }) {
 		onSubmit: async ({ value }) => {
 			try {
 				await orpc.config.update(value as Partial<AppConfig>);
+				resetThumbnailRuntimeCache();
 				toast.success("Configuration saved successfully");
 				await queryClient.invalidateQueries({ queryKey: ["config"] });
 			} catch {

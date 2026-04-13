@@ -223,7 +223,6 @@ function SourceMediaRoute() {
 			},
 		);
 	});
-
 	const [windowWidth, setWindowWidth] = createSignal(0);
 	const [mediaGridWidth, setMediaGridWidth] = createSignal(0);
 	const [loadMoreRef, setLoadMoreRef] = createSignal<
@@ -259,12 +258,22 @@ function SourceMediaRoute() {
 		return width * GRID_ITEM_ASPECT_RATIO;
 	});
 
-	const rowCount = createMemo(() =>
-		Math.ceil(mediaResults().length / columnCount()),
-	);
+	const mediaRows = createMemo(() => {
+		const results = mediaResults();
+		const columns = columnCount();
+		const rows: typeof results[] = [];
+		for (let index = 0; index < results.length; index += columns) {
+			rows.push(results.slice(index, index + columns));
+		}
+		return rows;
+	});
+
+	const rowCount = createMemo(() => mediaRows().length);
 
 	const mediaRowVirtualizer = createWindowVirtualizer<HTMLDivElement>({
-		count: rowCount(),
+		get count() {
+			return rowCount();
+		},
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
@@ -273,10 +282,7 @@ function SourceMediaRoute() {
 	});
 
 	const useVirtualGrid = createMemo(
-		() =>
-			mediaResults().length > MEDIA_ITEMS_PER_PAGE &&
-			mediaItemWidth() > 0 &&
-			mediaRowVirtualizer.getVirtualItems().length > 0,
+		() => mediaResults().length > MEDIA_ITEMS_PER_PAGE && mediaItemWidth() > 0,
 	);
 
 	const updateMediaGridMetrics = () => {
@@ -717,6 +723,13 @@ function SourceMediaRoute() {
 	});
 
 	createEffect(() => {
+		rowCount();
+		mediaItemHeight();
+		columnCount();
+		mediaRowVirtualizer.measure();
+	});
+
+	createEffect(() => {
 		const virtualRows = mediaRowVirtualizer.getVirtualItems();
 		const lastRow = virtualRows[virtualRows.length - 1];
 		if (!lastRow) {
@@ -907,29 +920,23 @@ function SourceMediaRoute() {
 									fallback={
 										<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 											<For each={mediaResults()}>
-												{(media) => (
-													<MediaGridItem
-														media={media}
-														onContextMenu={() =>
-															setContextMenuMediaId(media.id)
-														}
-														sourceRootPath={sourceRootPath()}
-													/>
-												)}
-											</For>
+											{(media) => (
+												<MediaGridItem
+													media={media}
+													onContextMenu={() =>
+														setContextMenuMediaId(media.id)
+													}
+													sourceRootPath={sourceRootPath()}
+												/>
+											)}
+										</For>
 										</div>
 									}
 									when={useVirtualGrid()}
 								>
 									<For each={mediaRowVirtualizer.getVirtualItems()}>
 										{(virtualRow) => {
-											const rowMedia = () => {
-												const startIndex = virtualRow.index * columnCount();
-												return mediaResults().slice(
-													startIndex,
-													startIndex + columnCount(),
-												);
-											};
+											const rowMedia = () => mediaRows()[virtualRow.index] || [];
 											return (
 												<div
 													class="absolute left-0 top-0 grid gap-4"
@@ -942,15 +949,15 @@ function SourceMediaRoute() {
 												>
 													<For each={rowMedia()}>
 														{(media) => (
-															<MediaGridItem
-																media={media}
-																onContextMenu={() =>
-																	setContextMenuMediaId(media.id)
-																}
-																sourceRootPath={sourceRootPath()}
-															/>
-														)}
-													</For>
+														<MediaGridItem
+															media={media}
+															onContextMenu={() =>
+																setContextMenuMediaId(media.id)
+															}
+															sourceRootPath={sourceRootPath()}
+														/>
+													)}
+												</For>
 												</div>
 											);
 										}}
