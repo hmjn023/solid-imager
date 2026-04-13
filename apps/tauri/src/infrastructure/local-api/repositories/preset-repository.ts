@@ -9,10 +9,27 @@ import { eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { presets } from "../../../../../server/src/infrastructure/db/schema";
 
+const validSorts = new Set(["date", "name", "size", "rating", "viewCount"]);
+const validOrders = new Set(["asc", "desc"]);
+const validModes = new Set(["simple", "pro"]);
+
+function normalizeOptionalEnum<T extends string>(
+	value: string | null,
+	validValues: Set<T>,
+): T | undefined {
+	if (!value || !validValues.has(value as T)) {
+		return undefined;
+	}
+	return value as T;
+}
+
 function toPreset(row: typeof presets.$inferSelect): Preset {
 	return presetSchema.parse({
 		...row,
 		value: row.value as SearchGroup,
+		sort: normalizeOptionalEnum(row.sort, validSorts),
+		order: normalizeOptionalEnum(row.order, validOrders),
+		mode: normalizeOptionalEnum(row.mode, validModes),
 	});
 }
 
