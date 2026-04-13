@@ -8,7 +8,8 @@ import {
 	CommandItem,
 	CommandList,
 } from "@solid-imager/ui/command";
-import { createSignal, For, Show } from "solid-js";
+import { toast } from "@solid-imager/ui/toast";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 type Item = {
 	id: string;
@@ -29,13 +30,68 @@ type AssociationManagerProps = {
 export default function AssociationManager(props: AssociationManagerProps) {
 	const [open, setOpen] = createSignal(false);
 	const [search, setSearch] = createSignal("");
+	const [isMutating, setIsMutating] = createSignal(false);
+	const selectableItems = createMemo(() =>
+		props.availableItems.filter(
+			(item) => !props.items.some((candidate) => candidate.id === item.id),
+		),
+	);
+	const isBusy = () => Boolean(props.isLoading) || isMutating();
+
+	const handleRemove = async (id: string) => {
+		setIsMutating(true);
+		try {
+			await props.onRemove(id);
+		} catch (error) {
+			toast.error(
+				`${props.title} の削除に失敗しました: ${(error as Error).message}`,
+			);
+		} finally {
+			setIsMutating(false);
+		}
+	};
+
+	const handleAdd = async (id: string) => {
+		setIsMutating(true);
+		try {
+			await props.onAdd(id);
+			setOpen(false);
+			setSearch("");
+		} catch (error) {
+			toast.error(
+				`${props.title} の追加に失敗しました: ${(error as Error).message}`,
+			);
+		} finally {
+			setIsMutating(false);
+		}
+	};
+
+	const handleCreate = async () => {
+		const name = search().trim();
+		if (!props.onCreate || name.length === 0) {
+			return;
+		}
+
+		setIsMutating(true);
+		try {
+			await props.onCreate(name);
+			setOpen(false);
+			setSearch("");
+		} catch (error) {
+			toast.error(
+				`${props.title} の作成に失敗しました: ${(error as Error).message}`,
+			);
+		} finally {
+			setIsMutating(false);
+		}
+	};
 
 	return (
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
 				<h2 class="font-semibold text-lg">{props.title}</h2>
 				<Button
-					disabled={props.isLoading}
+					disabled={isBusy()}
 					onClick={() => setOpen(true)}
 					size="sm"
 					variant="outline"
@@ -50,8 +106,10 @@ export default function AssociationManager(props: AssociationManagerProps) {
 							{item.name}
 							<button
 								class="ml-1 rounded-full p-0.5 hover:bg-secondary-foreground/20"
-								disabled={props.isLoading}
-								onClick={() => props.onRemove(item.id)}
+								disabled={isBusy()}
+								onClick={() => {
+									void handleRemove(item.id);
+								}}
 								type="button"
 							>
 								<svg
@@ -82,11 +140,17 @@ export default function AssociationManager(props: AssociationManagerProps) {
 
 			<CommandDialog onOpenChange={setOpen} open={open()}>
 				<CommandInput
+					disabled={isBusy()}
 					onValueChange={setSearch}
 					placeholder={`Search ${props.title.toLowerCase()}...`}
 					value={search()}
 				/>
 				<CommandList>
+					<Show when={props.isLoading}>
+						<div class="px-2 py-6 text-center text-muted-foreground text-sm">
+							Loading {props.title.toLowerCase()}...
+						</div>
+					</Show>
 					<CommandEmpty>
 						<Show when={props.onCreate && search().length > 0}>
 							<div class="p-2">
@@ -95,10 +159,9 @@ export default function AssociationManager(props: AssociationManagerProps) {
 								</p>
 								<Button
 									class="w-full justify-start"
+									disabled={isBusy()}
 									onClick={() => {
-										props.onCreate?.(search());
-										setOpen(false);
-										setSearch("");
+										void handleCreate();
 									}}
 									variant="outline"
 								>
@@ -111,17 +174,11 @@ export default function AssociationManager(props: AssociationManagerProps) {
 						</Show>
 					</CommandEmpty>
 					<CommandGroup heading="Available">
-						<For
-							each={props.availableItems.filter(
-								(item) => !props.items.some((i) => i.id === item.id),
-							)}
-						>
+						<For each={selectableItems()}>
 							{(item) => (
 								<CommandItem
 									onSelect={() => {
-										props.onAdd(item.id);
-										setOpen(false);
-										setSearch("");
+										void handleAdd(item.id);
 									}}
 								>
 									<div class="flex flex-col">

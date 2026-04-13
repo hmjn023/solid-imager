@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Show } from "solid-js";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 
 type MediaGridItemProps = {
 	media: Media;
@@ -24,11 +25,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			? `${props.linkPrefix}/${props.media.id}`
 			: `/sources/${props.media.mediaSourceId}/${props.media.id}`;
 
-	const thumbnailUrl = () =>
-		`/api/sources/${props.media.mediaSourceId}/${props.media.id}/thumbnail?t=${new Date(
-			props.media.modifiedAt,
-		).getTime()}`;
-
 	return (
 		<a
 			class="group relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
@@ -42,14 +38,16 @@ export function MediaGridItem(props: MediaGridItemProps) {
 						{props.media.mediaType}
 					</div>
 				}
-				when={props.media.mediaType === "image"}
+				when={props.media.mediaType !== "audio"}
 			>
-				<img
+				<ThumbnailImage
 					alt={props.media.fileName}
 					class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
 					height={props.media.height}
 					loading={props.priority ? "eager" : "lazy"}
-					src={thumbnailUrl()}
+					mediaId={props.media.id}
+					mediaSourceId={props.media.mediaSourceId}
+					modifiedAt={props.media.modifiedAt}
 					width={props.media.width}
 				/>
 			</Show>

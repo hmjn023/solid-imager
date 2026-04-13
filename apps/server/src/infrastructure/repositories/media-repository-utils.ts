@@ -142,18 +142,27 @@ function buildWhereClause(
 function buildOrderByClause(
 	sort?: "date" | "name" | "size",
 	order: "asc" | "desc" = "desc",
-): SQL {
+): SQL[] {
 	if (sort === "date") {
-		return order === "asc" ? asc(medias.createdAt) : desc(medias.createdAt);
+		return [
+			order === "asc" ? asc(medias.createdAt) : desc(medias.createdAt),
+			order === "asc" ? asc(medias.id) : desc(medias.id),
+		];
 	}
 	if (sort === "name") {
-		return order === "asc" ? asc(medias.fileName) : desc(medias.fileName);
+		return [
+			order === "asc" ? asc(medias.fileName) : desc(medias.fileName),
+			order === "asc" ? asc(medias.id) : desc(medias.id),
+		];
 	}
 	if (sort === "size") {
-		return order === "asc" ? asc(medias.fileSize) : desc(medias.fileSize);
+		return [
+			order === "asc" ? asc(medias.fileSize) : desc(medias.fileSize),
+			order === "asc" ? asc(medias.id) : desc(medias.id),
+		];
 	}
 	// Default sort
-	return desc(medias.createdAt);
+	return [desc(medias.createdAt), desc(medias.id)];
 }
 
 /**
@@ -185,7 +194,7 @@ export const searchMedia = async (
 			})
 			.from(medias)
 			.where(whereClause)
-			.orderBy(orderByClause);
+			.orderBy(...orderByClause);
 
 		// Apply pagination if limit is provided
 		let pagedQuery: any = query;
@@ -312,7 +321,7 @@ export const globalSearchMedia = async (
 			.select()
 			.from(medias)
 			.where(whereClause)
-			.orderBy(orderByClause);
+			.orderBy(...orderByClause);
 
 		// Apply pagination if limit is provided
 		let pagedQuery: any = query;

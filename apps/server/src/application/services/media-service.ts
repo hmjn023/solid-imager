@@ -40,6 +40,7 @@ import {
 	type DeferredSse,
 	executeDeferredActions,
 } from "~/application/services/job-dispatch-service";
+import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 // import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -243,14 +244,11 @@ export class MediaServiceImpl {
 		// 4. Trigger processMedia Job (unified processing)
 		// 4. Trigger processMedia Job (unified processing)
 		const jobRepo = services.getJobRepository();
-		await jobRepo.create({
-			type: "processMedia",
+		await queueMediaProcessingJob({
+			jobRepo,
+			mediaId: insertedMedia.id,
 			mediaSourceId: validatedSourceId,
-			payload: {
-				mediaId: insertedMedia.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
+			sourcePath: basePath,
 		});
 
 		this.startProcessing(validatedSourceId);
@@ -398,14 +396,11 @@ export class MediaServiceImpl {
 			const jobRepo = services.getJobRepository();
 
 			for (const item of newMediaItems) {
-				await jobRepo.create({
-					type: "processMedia",
+				await queueMediaProcessingJob({
+					jobRepo,
+					mediaId: item.id,
 					mediaSourceId: validatedSourceId,
-					payload: {
-						mediaId: item.id,
-						sourcePath: directoryPath,
-						type: "processMedia",
-					},
+					sourcePath: directoryPath,
 				});
 			}
 
@@ -674,14 +669,11 @@ export class MediaServiceImpl {
 		// Note: jobs type was old Job[], now deferredJob is DeferredJob.
 		// Let's use jobRepo directly.
 		const jobRepo = services.getJobRepository();
-		await jobRepo.create({
-			type: "processMedia",
+		await queueMediaProcessingJob({
+			jobRepo,
+			mediaId: newMediaEntry.id,
 			mediaSourceId: validatedTargetSourceId,
-			payload: {
-				mediaId: newMediaEntry.id,
-				sourcePath,
-				type: "processMedia",
-			},
+			sourcePath,
 		});
 
 		SseManager.notifyMediaCopied(

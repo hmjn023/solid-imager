@@ -65,6 +65,7 @@ import { isServer, Portal } from "solid-js/web";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -937,16 +938,25 @@ export default function MediaListPage() {
 														href={`/sources/${mediaSourceId()}/${item.id}`} // Link to detail page
 														onContextMenu={() => setContextMenuMediaId(item.id)}
 													>
-														<img
-															alt={item.fileName}
-															class="h-full w-full object-cover"
-															height={item.height}
-															loading="lazy"
-															src={`/api/sources/${mediaSourceId()}/${item.id}/thumbnail?t=${new Date(
-																item.modifiedAt,
-															).getTime()}`}
-															width={item.width}
-														/>
+														<Show
+															fallback={
+																<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+																	{item.mediaType}
+																</div>
+															}
+															when={item.mediaType !== "audio"}
+														>
+															<ThumbnailImage
+																alt={item.fileName}
+																class="h-full w-full object-cover"
+																height={item.height}
+																loading="lazy"
+																mediaId={item.id}
+																mediaSourceId={mediaSourceId()}
+																modifiedAt={item.modifiedAt}
+																width={item.width}
+															/>
+														</Show>
 													</a>
 												);
 											}}

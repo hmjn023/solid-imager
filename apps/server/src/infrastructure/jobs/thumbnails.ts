@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { services } from "~/application/registry";
+import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
 // import {
 //   selectMediaById,
 //   selectMediaBySourceId,
@@ -148,14 +149,11 @@ export async function generateThumbnailsForSource(
 	const basePath = (mediaSource.connectionInfo as { path: string }).path;
 
 	for (const media of mediaItems) {
-		await jobRepo.create({
-			type: "processMedia",
+		await queueMediaProcessingJob({
+			jobRepo,
+			mediaId: media.id,
 			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
+			sourcePath: basePath,
 		});
 	}
 
