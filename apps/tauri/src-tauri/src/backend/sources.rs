@@ -254,7 +254,6 @@ impl super::LocalBackend {
             .find_source_value(&conn, &id)?
             .ok_or_else(|| "Created source could not be loaded".to_string())?;
         let _ = self.sync_source(app, &id);
-        let _ = self.prewarm_source_thumbnail_cache(&id);
         Ok(result)
     }
 
@@ -480,7 +479,9 @@ impl super::LocalBackend {
         app: &AppHandle<R>,
         source_id: &str,
     ) -> Result<SyncSummary, String> {
-        self.sync_source_internal(app, source_id, true)
+        let summary = self.sync_source_internal(app, source_id, true)?;
+        let _ = self.prewarm_source_thumbnail_cache(source_id);
+        Ok(summary)
     }
 
     fn sync_source_internal<R: Runtime>(
