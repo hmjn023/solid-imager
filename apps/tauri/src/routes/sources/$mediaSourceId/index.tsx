@@ -82,6 +82,7 @@ import {
 const MEDIA_ITEMS_PER_PAGE = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 const SCROLL_RESTORE_DELAY = 100;
+const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 const GRID_GAP_PX = 16;
 const GRID_ITEM_ASPECT_RATIO = 4 / 3;
 const VIRTUAL_ROWS_OVERSCAN = 4;
@@ -183,26 +184,19 @@ function SourceMediaRoute() {
 			);
 		},
 		onMediaDeleted: () => {
-			void mediaQuery.refetch();
+			scheduleMediaRefresh();
 		},
 		onMediaChanged: () => {
-			void mediaQuery.refetch();
+			scheduleMediaRefresh();
 		},
 		onMediaCopied: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["media", mediaSourceId()],
-			});
+			scheduleMediaRefresh();
 		},
 		onMediaMoved: () => {
-			void queryClient.invalidateQueries({
-				queryKey: ["media", mediaSourceId()],
-			});
+			scheduleMediaRefresh();
 		},
 		onThumbnailGenerated: () => {
-			toast.success("Thumbnail generated");
-			void queryClient.invalidateQueries({
-				queryKey: ["media", mediaSourceId()],
-			});
+			scheduleMediaRefresh();
 		},
 		onAllJobsCompleted: (data) => {
 			toast.success(
@@ -317,6 +311,9 @@ function SourceMediaRoute() {
 	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
 		typeof setTimeout
 	> | null>(null);
+	const [mediaRefreshTimer, setMediaRefreshTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	let fileInputRef: HTMLInputElement | undefined;
 
@@ -338,10 +335,29 @@ function SourceMediaRoute() {
 		]);
 	};
 
+	const scheduleMediaRefresh = () => {
+		const timer = mediaRefreshTimer();
+		if (timer) {
+			clearTimeout(timer);
+		}
+		setMediaRefreshTimer(
+			setTimeout(() => {
+				void queryClient.invalidateQueries({
+					queryKey: ["media", mediaSourceId()],
+				});
+				setMediaRefreshTimer(null);
+			}, MEDIA_REFRESH_DEBOUNCE_MS),
+		);
+	};
+
 	onCleanup(() => {
 		const timer = debounceTimer();
 		if (timer) {
 			clearTimeout(timer);
+		}
+		const refreshTimer = mediaRefreshTimer();
+		if (refreshTimer) {
+			clearTimeout(refreshTimer);
 		}
 	});
 

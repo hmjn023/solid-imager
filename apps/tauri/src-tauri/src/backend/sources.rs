@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::{Cursor, Read, Write};
 use std::path::{Path, PathBuf};
+use std::thread;
 use tauri::{AppHandle, Emitter, Runtime};
 use uuid::Uuid;
 use walkdir::WalkDir;
@@ -125,6 +126,7 @@ impl super::LocalBackend {
     fn index_source_entry(
         candidate: SourceScanCandidate,
         tag_extraction_config: &ComfyUiTagExtractionConfig,
+        include_analysis: bool,
     ) -> Result<IndexedSourceEntry, String> {
         let metadata = fs::metadata(&candidate.path)
             .map_err(|error| format!("Reading file metadata failed: {error}"))?;
@@ -146,10 +148,14 @@ impl super::LocalBackend {
                     (0, 0)
                 }
             };
-            let analysis = Some(Self::prepare_media_analysis(
-                &candidate.path,
-                tag_extraction_config,
-            )?);
+            let analysis = if include_analysis {
+                Some(Self::prepare_media_analysis(
+                    &candidate.path,
+                    tag_extraction_config,
+                )?)
+            } else {
+                None
+            };
             (width, height, analysis)
         } else {
             (0, 0, None)
@@ -335,7 +341,7 @@ impl super::LocalBackend {
         input: Option<Value>,
     ) -> Result<Value, String> {
         let payload: SourceRestoreInput = parse_input(input)?;
-        let _ = self.sync_source_internal(app, &payload.id, false)?;
+        let _ = self.sync_source_internal(app, &payload.id, false, false)?;
         self.restore_source_data(&payload.id, &payload.data)
     }
 
@@ -454,7 +460,7 @@ impl super::LocalBackend {
         }
 
         let dump_data = dump_data.ok_or_else(|| "dump.json not found in ZIP".to_string())?;
-        let _ = self.sync_source_internal(app, &payload.id, false)?;
+        let _ = self.sync_source_internal(app, &payload.id, false, false)?;
         let restore_result = self.restore_source_data(&payload.id, &dump_data)?;
         let processed = restore_result
             .get("processed")
@@ -479,8 +485,21 @@ impl super::LocalBackend {
         app: &AppHandle<R>,
         source_id: &str,
     ) -> Result<SyncSummary, String> {
-        let summary = self.sync_source_internal(app, source_id, true)?;
-        let _ = self.prewarm_source_thumbnail_cache(source_id);
+        let summary = self.sync_source_internal(app, source_id, false, false)?;
+        let backend = self.clone();
+        let app_handle = app.clone();
+        let source_id = source_id.to_string();
+        let processed = summary.processed;
+        thread::spawn(move || {
+            let _ = backend.prewarm_source_thumbnail_cache(&source_id);
+            let _ = app_handle.emit(
+                "all-jobs-completed",
+                AllJobsCompletedPayload {
+                    media_source_id: source_id,
+                    processed,
+                },
+            );
+        });
         Ok(summary)
     }
 
@@ -488,7 +507,8 @@ impl super::LocalBackend {
         &self,
         app: &AppHandle<R>,
         source_id: &str,
-        emit_events: bool,
+        emit_item_events: bool,
+        include_analysis: bool,
     ) -> Result<SyncSummary, String> {
         let conn = self.open_connection()?;
         let source = self
@@ -553,7 +573,13 @@ impl super::LocalBackend {
             .install(|| {
                 candidates
                     .into_par_iter()
-                    .map(|candidate| Self::index_source_entry(candidate, &tag_extraction_config))
+                    .map(|candidate| {
+                        Self::index_source_entry(
+                            candidate,
+                            &tag_extraction_config,
+                            include_analysis,
+                        )
+                    })
                     .collect::<Result<Vec<_>, _>>()
             })?;
         let mut seen = HashSet::new();
@@ -592,7 +618,7 @@ impl super::LocalBackend {
                         self.apply_media_analysis(&conn, &existing_media.id, analysis)?;
                     }
                     summary.updated += 1;
-                    if emit_events {
+                    if emit_item_events {
                         let _ = app.emit(
                             "media-changed",
                             SourceEventPayload {
@@ -627,7 +653,7 @@ impl super::LocalBackend {
                     self.apply_media_analysis(&conn, &media_id, analysis)?;
                 }
                 summary.added += 1;
-                if emit_events {
+                if emit_item_events {
                     let _ = app.emit(
                         "media-added",
                         SourceEventPayload {
@@ -648,7 +674,7 @@ impl super::LocalBackend {
             conn.execute("DELETE FROM medias WHERE id = ?1", params![media.id])
                 .map_err(|error| format!("Deleting removed media failed: {error}"))?;
             summary.deleted += 1;
-            if emit_events {
+            if emit_item_events {
                 let _ = app.emit(
                     "media-deleted",
                     SourceEventPayload {
@@ -661,15 +687,6 @@ impl super::LocalBackend {
             }
         }
 
-        if emit_events {
-            let _ = app.emit(
-                "all-jobs-completed",
-                AllJobsCompletedPayload {
-                    media_source_id: source_id.to_string(),
-                    processed: summary.processed,
-                },
-            );
-        }
         Ok(summary)
     }
 

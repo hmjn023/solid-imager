@@ -60,10 +60,14 @@ export const Route = createFileRoute("/search")({
 });
 
 const QUERY_GC_TIME = 1000 * 60 * 5;
+const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 function SearchRoute() {
 	const queryClient = useQueryClient();
 	const [isRestored, setIsRestored] = createSignal(false);
+	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	useCurrentSearchPersistence("all");
 
@@ -120,16 +124,24 @@ function SearchRoute() {
 		};
 	});
 
+	const scheduleSearchResultsRefresh = () => {
+		const timer = refreshTimer();
+		if (timer) {
+			clearTimeout(timer);
+		}
+		setRefreshTimer(
+			setTimeout(() => {
+				void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+				setRefreshTimer(null);
+			}, SEARCH_RESULTS_REFRESH_DEBOUNCE_MS),
+		);
+	};
+
 	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
-		onMediaAdded: () => {
-			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
-		onMediaDeleted: () => {
-			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
-		onMediaChanged: () => {
-			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
+		onMediaAdded: scheduleSearchResultsRefresh,
+		onMediaDeleted: scheduleSearchResultsRefresh,
+		onMediaChanged: scheduleSearchResultsRefresh,
+		onAllJobsCompleted: scheduleSearchResultsRefresh,
 	});
 
 	const searchResults = createMemo(() => {
@@ -161,6 +173,10 @@ function SearchRoute() {
 
 	onCleanup(() => {
 		setSearchState("scrollY", window.scrollY);
+		const timer = refreshTimer();
+		if (timer) {
+			clearTimeout(timer);
+		}
 	});
 
 	const handleSearch = () => {
