@@ -10,6 +10,10 @@ import { loadServerMigrations } from "./migrations";
 const TAURI_PGLITE_DATA_DIR = "idb://solid-imager-tauri";
 
 export type TauriDb = SharedPgliteDb;
+export type TauriDbTransaction = Parameters<
+	Parameters<TauriDb["transaction"]>[0]
+>[0];
+export type TauriDbExecutor = TauriDb | TauriDbTransaction;
 
 let dbPromise: Promise<TauriDb> | null = null;
 
