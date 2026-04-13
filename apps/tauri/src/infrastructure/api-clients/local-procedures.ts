@@ -18,6 +18,7 @@ import {
 	newProjectSchema,
 	updateProjectSchema,
 } from "@solid-imager/core/domain/projects/schemas";
+import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import {
 	newTagSchema,
 	tagResponseSchema,
@@ -30,12 +31,14 @@ import { TauriConfigService } from "../local-api/services/config-service";
 import { TauriIpService } from "../local-api/services/ip-service";
 import { TauriPresetService } from "../local-api/services/preset-service";
 import { TauriProjectService } from "../local-api/services/project-service";
+import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 
 const authorUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
 	accountId: z.string().nullable().optional(),
 });
+const uuidSchema = z.string().uuid();
 
 const mutationSuccessSchema = z.object({ success: z.literal(true) });
 
@@ -45,6 +48,42 @@ const localProcedureHandlers = {
 		await TauriConfigService.updateConfig(
 			AppConfigSchema.partial().parse(input),
 		),
+	"sources.list": async () => await TauriSourceService.list(),
+	"sources.get": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		const source = await TauriSourceService.get(id);
+		if (!source) {
+			throw new Error(`Source not found: ${id}`);
+		}
+		return source;
+	},
+	"sources.create": async (input: unknown) =>
+		await TauriSourceService.create(mediaSourceInfoSchema.parse(input)),
+	"sources.update": async (input: unknown) => {
+		const { id, data } = z
+			.object({
+				id: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriSourceService.update(
+			id,
+			mediaSourceInfoSchema.partial().parse(data),
+		);
+	},
+	"sources.delete": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		await TauriSourceService.delete(id);
+		return mutationSuccessSchema.parse({ success: true });
+	},
+	"sources.sync": async (input: unknown) => {
+		const { ids } = z
+			.object({
+				ids: z.array(uuidSchema),
+			})
+			.parse(input);
+		return await TauriSourceService.sync(ids);
+	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
