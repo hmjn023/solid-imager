@@ -26,9 +26,12 @@ export async function applyPgMigrations(
 		sql`select id, hash, created_at from "drizzle"."__drizzle_migrations" order by created_at desc limit 1`,
 	);
 	const lastMigration = result.rows[0];
+	const sortedMigrations = [...migrations].sort(
+		(a, b) => a.folderMillis - b.folderMillis,
+	);
 
 	await db.transaction(async (tx) => {
-		for (const migration of migrations) {
+		for (const migration of sortedMigrations) {
 			if (
 				lastMigration &&
 				Number(lastMigration.created_at) >= migration.folderMillis
