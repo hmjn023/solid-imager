@@ -61,9 +61,6 @@ impl LocalBackend {
         input: Option<Value>,
     ) -> Result<Value, String> {
         match procedure {
-            "config.get" => Ok(serde_json::to_value(self.read_config()?)
-                .map_err(|error| format!("Serializing config failed: {error}"))?),
-            "config.update" => self.handle_config_update(input),
             "sources.list" => self.handle_sources_list(),
             "sources.get" => self.handle_sources_get(input),
             "sources.create" => self.handle_sources_create(app, input),
@@ -102,14 +99,6 @@ impl LocalBackend {
             "characters.listForMedia" => self.handle_characters_for_media(input),
             "characters.addToMedia" => self.handle_character_add_to_media(input),
             "characters.removeFromMedia" => self.handle_character_remove_from_media(input),
-            "authors.list" => self.handle_authors_list(),
-            "tags.list" => self.handle_tags_list(),
-            "presets.list" => self.handle_presets_list(),
-            "presets.get" => self.handle_presets_get(input),
-            "presets.getByName" => self.handle_presets_get_by_name(input),
-            "presets.create" => self.handle_presets_create(input),
-            "presets.update" => self.handle_presets_update(input),
-            "presets.delete" => self.handle_presets_delete(input),
             "ai.applyTags" => self.handle_ai_apply_tags(input),
             "ai.scanBatchTaggingTargets" => self.handle_ai_scan(input),
             "ai.startBatchTaggingWithIds" => self.handle_ai_start(app, input),

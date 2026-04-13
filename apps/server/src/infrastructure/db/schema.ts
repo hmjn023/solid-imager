@@ -1,3 +1,4 @@
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -890,6 +891,12 @@ export const presets = pgTable("presets", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+export const appConfig = pgTable("app_config", {
+	id: integer("id").primaryKey(),
+	value: jsonb("value").$type<AppConfig>().notNull(),
+	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
 // リレーション
 /**
  * Defines the relations for the media_sources table.
@@ -1494,6 +1501,15 @@ export type Preset = InferSelectModel<typeof presets>;
  * Type definition for inserting a new preset into the database.
  */
 export type NewPreset = InferInsertModel<typeof presets>;
+
+/**
+ * Type definition for selecting the singleton app config row.
+ */
+export type AppConfigRecord = InferSelectModel<typeof appConfig>;
+/**
+ * Type definition for inserting the singleton app config row.
+ */
+export type NewAppConfigRecord = InferInsertModel<typeof appConfig>;
 
 /**
  * Type definition for selecting a media relation from the database.
