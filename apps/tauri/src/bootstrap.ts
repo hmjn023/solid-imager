@@ -5,6 +5,10 @@ import {
 	type TauriApiClient,
 } from "./infrastructure/api/tauri-api-client";
 import {
+	initializeTauriDb,
+	type TauriDb,
+} from "./infrastructure/db/client";
+import {
 	createTauriCommandClient,
 	type TauriCommandClient,
 } from "./infrastructure/tauri/command-client";
@@ -16,9 +20,10 @@ export type TauriAppServices = {
 	fileSystem: IFileSystem;
 	imageProcessor: IImageProcessor;
 	apiClient: TauriApiClient;
+	db: TauriDb;
 };
 
-export function initializeTauriApp(): TauriAppServices {
+export async function initializeTauriApp(): Promise<TauriAppServices> {
 	if (typeof document === "undefined") {
 		throw new Error("initializeTauriApp must be called in the browser.");
 	}
@@ -29,11 +34,13 @@ export function initializeTauriApp(): TauriAppServices {
 	const fileSystem = new TauriFileSystem(commandClient);
 	const imageProcessor = new TauriImageProcessor(commandClient);
 	const apiClient = createTauriApiClient(commandClient);
+	const db = await initializeTauriDb();
 
 	return {
 		commandClient,
 		fileSystem,
 		imageProcessor,
 		apiClient,
+		db,
 	};
 }

@@ -11,8 +11,16 @@ if (!root) {
 	throw new Error("Tauri app root container was not found.");
 }
 
-const services = initializeTauriApp();
-setTauriAppServices(services);
-const router = createAppRouter(services);
+async function main() {
+	const services = await initializeTauriApp();
+	setTauriAppServices(services);
+	const router = createAppRouter(services);
 
-render(() => <RouterProvider router={router} />, root);
+	render(() => <RouterProvider router={router} />, root!);
+}
+
+void main().catch((error: unknown) => {
+	console.error("Failed to initialize Tauri app", error);
+	root.textContent =
+		error instanceof Error ? error.message : "Failed to initialize Tauri app.";
+});
