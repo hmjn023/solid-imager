@@ -1,9 +1,9 @@
+import { mediaDetailsSchema } from "@solid-imager/core/domain/media/schemas";
 import type {
 	MediaApiContract,
 	SourcesApiContract,
 	UploadMediaRequest,
 } from "@solid-imager/core/interfaces/media-manager-client";
-import { mediaDetailsSchema } from "@solid-imager/core/domain/media/schemas";
 import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
@@ -32,7 +32,9 @@ export const serverMediaApiContract: MediaApiContract = {
 			description: options?.description,
 			sourceUrl: options?.sourceUrl,
 			overwrite:
-				options?.overwrite !== undefined ? String(options.overwrite) : undefined,
+				options?.overwrite !== undefined
+					? String(options.overwrite)
+					: undefined,
 			autoIncrement:
 				options?.autoIncrement !== undefined
 					? String(options.autoIncrement)
@@ -51,7 +53,8 @@ export const serverMediaApiContract: MediaApiContract = {
 		orpc.media.copy({ mediaId, targetSourceId }),
 	moveMedia: (_sourceId, mediaId, targetSourceId) =>
 		orpc.media.move({ mediaId, targetSourceId }),
-	syncMediaItems: (sourceId, mediaIds) => orpc.media.sync({ sourceId, mediaIds }),
+	syncMediaItems: (sourceId, mediaIds) =>
+		orpc.media.sync({ sourceId, mediaIds }),
 	startDownloadJobs: (mediaSourceId, items) =>
 		orpc.downloads.start({
 			mediaSourceId,
@@ -77,7 +80,9 @@ export const serverSourcesApiContract: SourcesApiContract = {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
+			throw new Error(
+				`Failed to download dump: ${response.status} ${errorText}`,
+			);
 		}
 
 		return response.blob();
