@@ -2,7 +2,8 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * NOTE: Most operations use oRPC, but dump/import still use dedicated HTTP routes.
+ * NOTE: All operations use oRPC. dump (zip mode) uses a dedicated file route
+ * because oRPC's RPC transport cannot handle binary ReadableStream responses.
  */
 
 import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
@@ -78,18 +79,21 @@ export async function fetchSourceDump(
 	id: string,
 	mode: "json" | "zip" = "json",
 ): Promise<Blob> {
-	// Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
-	const url = `/api/sources/${id}/dump?mode=${mode}`;
-	const response = await fetch(url, {
-		method: "GET",
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
+	if (mode === "zip") {
+		// ZIP mode returns a binary ReadableStream — oRPC RPC transport cannot handle
+		// this, so use the dedicated file route instead.
+		const url = `/api/sources/${id}/dump?mode=zip`;
+		const response = await fetch(url, { method: "GET" });
+		if (!response.ok) {
+			const errorText = await response.text();
+			throw new Error(
+				`Failed to download dump: ${response.status} ${errorText}`,
+			);
+		}
+		return response.blob();
 	}
-
-	return response.blob();
+	const result = await orpc.sources.dump({ id, mode: "json" });
+	return new Blob([JSON.stringify(result)], { type: "application/json" });
 }
 
 export function restoreSource(id: string, data: any) {
@@ -103,20 +107,5 @@ export function restoreSource(id: string, data: any) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-	// Send raw file body to avoid FormData parsing issues in Vinxi/Node environment
-	const url = `/api/sources/${id}/import`;
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/zip",
-		},
-		body: file,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
-	}
-
-	return await response.json();
+	return orpc.sources.importZip({ id, file });
 }
