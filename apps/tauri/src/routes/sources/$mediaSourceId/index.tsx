@@ -261,7 +261,7 @@ function SourceMediaRoute() {
 	const mediaRows = createMemo(() => {
 		const results = mediaResults();
 		const columns = columnCount();
-		const rows: typeof results[] = [];
+		const rows: (typeof results)[] = [];
 		for (let index = 0; index < results.length; index += columns) {
 			rows.push(results.slice(index, index + columns));
 		}
@@ -920,23 +920,24 @@ function SourceMediaRoute() {
 									fallback={
 										<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 											<For each={mediaResults()}>
-											{(media) => (
-												<MediaGridItem
-													media={media}
-													onContextMenu={() =>
-														setContextMenuMediaId(media.id)
-													}
-													sourceRootPath={sourceRootPath()}
-												/>
-											)}
-										</For>
+												{(media) => (
+													<MediaGridItem
+														media={media}
+														onContextMenu={() =>
+															setContextMenuMediaId(media.id)
+														}
+														sourceRootPath={sourceRootPath()}
+													/>
+												)}
+											</For>
 										</div>
 									}
 									when={useVirtualGrid()}
 								>
 									<For each={mediaRowVirtualizer.getVirtualItems()}>
 										{(virtualRow) => {
-											const rowMedia = () => mediaRows()[virtualRow.index] || [];
+											const rowMedia = () =>
+												mediaRows()[virtualRow.index] || [];
 											return (
 												<div
 													class="absolute left-0 top-0 grid gap-4"
@@ -949,15 +950,15 @@ function SourceMediaRoute() {
 												>
 													<For each={rowMedia()}>
 														{(media) => (
-														<MediaGridItem
-															media={media}
-															onContextMenu={() =>
-																setContextMenuMediaId(media.id)
-															}
-															sourceRootPath={sourceRootPath()}
-														/>
-													)}
-												</For>
+															<MediaGridItem
+																media={media}
+																onContextMenu={() =>
+																	setContextMenuMediaId(media.id)
+																}
+																sourceRootPath={sourceRootPath()}
+															/>
+														)}
+													</For>
 												</div>
 											);
 										}}
