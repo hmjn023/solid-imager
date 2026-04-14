@@ -1,5 +1,7 @@
+import { authorSchema } from "@solid-imager/core/domain/authors/schemas";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
+	AddMediaRequest,
 	Media,
 	MediaDetails,
 	MediaGenerationInfo,
@@ -569,6 +571,31 @@ export type UpsertTauriMediaInput = {
 };
 
 export const TauriMediaRepository = {
+	async create(
+		input: AddMediaRequest,
+		tx?: TauriDbExecutor,
+	): Promise<Media> {
+		const rows = await getExecutor(tx)
+			.insert(medias)
+			.values({
+				mediaSourceId: input.mediaSourceId,
+				filePath: input.filePath,
+				fileName: input.fileName,
+				mediaType: input.mediaType,
+				width: input.width,
+				height: input.height,
+				fileSize: input.fileSize,
+				description: input.description,
+				createdAt: input.createdAt ?? new Date(),
+				modifiedAt: input.modifiedAt ?? new Date(),
+				indexedAt: new Date(),
+				status: "active",
+			})
+			.returning();
+
+		return toMedia(rows[0]);
+	},
+
 	async findById(id: string, tx?: TauriDbExecutor): Promise<Media | null> {
 		const rows = await getExecutor(tx)
 			.select()
@@ -734,6 +761,25 @@ export const TauriMediaRepository = {
 		return rows.map(toMediaUrl);
 	},
 
+	async getAuthors(
+		mediaId: string,
+		tx?: TauriDbExecutor,
+	) {
+		const rows = await getExecutor(tx)
+			.select({
+				id: authors.id,
+				name: authors.name,
+				accountId: authors.accountId,
+				createdAt: authors.createdAt,
+				updatedAt: authors.updatedAt,
+			})
+			.from(mediaAuthors)
+			.innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
+			.where(eq(mediaAuthors.mediaId, mediaId))
+			.orderBy(asc(authors.name));
+		return rows.map((row) => authorSchema.parse(row));
+	},
+
 	async getTags(mediaId: string, tx?: TauriDbExecutor): Promise<MediaTag[]> {
 		const rows = await getExecutor(tx)
 			.select({
@@ -766,6 +812,30 @@ export const TauriMediaRepository = {
 			.where(eq(mediaGenerationInfo.mediaId, mediaId))
 			.limit(1);
 		return rows[0] ? toMediaGenerationInfo(rows[0]) : null;
+	},
+
+	async upsertGenerationInfo(
+		mediaId: string,
+		prompt: string | null,
+		workflow: object | null,
+		tx?: TauriDbExecutor,
+	): Promise<void> {
+		await getExecutor(tx)
+			.insert(mediaGenerationInfo)
+			.values({
+				mediaId,
+				prompt,
+				workflow,
+				aiGenerated: Boolean(prompt || workflow),
+			})
+			.onConflictDoUpdate({
+				target: mediaGenerationInfo.mediaId,
+				set: {
+					prompt,
+					workflow,
+					aiGenerated: Boolean(prompt || workflow),
+				},
+			});
 	},
 
 	async addUrls(
