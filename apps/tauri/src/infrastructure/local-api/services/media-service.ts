@@ -40,10 +40,10 @@ type ProbeMediaResult = {
 	width: number;
 	height: number;
 	size: number;
-	created_at: string;
-	modified_at: string;
+	createdAt: string;
+	modifiedAt: string;
 	duration?: number | null;
-	mime_type?: string | null;
+	mimeType?: string | null;
 	codec?: string | null;
 };
 
@@ -566,8 +566,8 @@ export const TauriMediaService = {
 						height: probe.height,
 						fileSize: probe.size,
 						description: uploadRequest.description ?? null,
-						createdAt: new Date(probe.created_at),
-						modifiedAt: new Date(probe.modified_at),
+						createdAt: new Date(probe.createdAt),
+						modifiedAt: new Date(probe.modifiedAt),
 					},
 					tx,
 				);

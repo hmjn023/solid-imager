@@ -18,6 +18,7 @@ export default defineConfig({
 			"@": path.resolve(__dirname, "../../packages/core/src"),
 			"~": path.resolve(__dirname, "./src"),
 		},
+		dedupe: ["zod"],
 	},
 	plugins: [
 		tanstackRouter({

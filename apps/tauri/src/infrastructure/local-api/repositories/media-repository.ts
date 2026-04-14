@@ -863,4 +863,44 @@ export const TauriMediaRepository = {
 			.from(medias)
 			.where(eq(medias.mediaSourceId, sourceId));
 	},
+
+	async batchUpsert(
+		inputs: UpsertTauriMediaInput[],
+		tx?: TauriDbExecutor,
+	): Promise<Array<{ id: string; filePath: string }>> {
+		if (inputs.length === 0) return [];
+		const now = new Date();
+		return await getExecutor(tx)
+			.insert(medias)
+			.values(
+				inputs.map((input) => ({
+					mediaSourceId: input.mediaSourceId,
+					filePath: input.filePath,
+					fileName: input.fileName,
+					mediaType: input.mediaType,
+					width: input.width,
+					height: input.height,
+					fileSize: input.fileSize,
+					description: input.description,
+					createdAt: input.createdAt,
+					modifiedAt: input.modifiedAt,
+					indexedAt: now,
+					status: "active" as const,
+				})),
+			)
+			.onConflictDoUpdate({
+				target: [medias.mediaSourceId, medias.filePath],
+				set: {
+					fileName: sql`excluded.file_name`,
+					mediaType: sql`excluded.media_type`,
+					width: sql`excluded.width`,
+					height: sql`excluded.height`,
+					fileSize: sql`excluded.file_size`,
+					modifiedAt: sql`excluded.modified_at`,
+					indexedAt: sql`${now}`,
+					status: sql`excluded.status`,
+				},
+			})
+			.returning({ id: medias.id, filePath: medias.filePath });
+	},
 };

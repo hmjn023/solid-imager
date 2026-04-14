@@ -50,14 +50,20 @@ function SourcesRoute() {
 	};
 
 	const handleFormSubmit = async (sourceData: unknown) => {
-		const editing = editingSource();
-		if (editing?.id) {
-			await updateMediaSource(editing.id, sourceData as any);
-		} else {
-			await createMediaSource(sourceData as any);
+		try {
+			const editing = editingSource();
+			if (editing?.id) {
+				await updateMediaSource(editing.id, sourceData as any);
+			} else {
+				await createMediaSource(sourceData as any);
+			}
+			await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
+			setShowFormModal(false);
+		} catch (error) {
+			toast.error(
+				`Failed to save source: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
-		await queryClient.invalidateQueries({ queryKey: ["mediaSources"] });
-		setShowFormModal(false);
 	};
 
 	const handleDeleteSource = (source: SafeMediaSource | MediaSourceInfo) => {
