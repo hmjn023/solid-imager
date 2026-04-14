@@ -209,39 +209,6 @@ impl Default for AppConfig {
     }
 }
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchRequestInput {
-    pub source_id: Option<String>,
-    pub params: SearchParams,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SearchParams {
-    pub condition: Option<SearchNode>,
-    pub sort: Option<String>,
-    pub order: Option<String>,
-    pub limit: Option<usize>,
-    pub offset: Option<usize>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(tag = "type", rename_all = "lowercase")]
-pub enum SearchNode {
-    Criterion {
-        target: String,
-        operator: Option<String>,
-        value: Option<Value>,
-        negate: Option<bool>,
-    },
-    Group {
-        operator: String,
-        children: Vec<SearchNode>,
-        negate: Option<bool>,
-    },
-}
-
 #[derive(Debug, Clone)]
 pub struct MediaContext {
     pub summary: MediaSummary,
@@ -276,33 +243,6 @@ pub struct MediaSummary {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct UpdateMediaInput {
-    pub source_id: String,
-    pub media_id: String,
-    pub data: UpdateMediaData,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaUploadInput {
-    pub source_id: String,
-    pub bytes: Vec<u8>,
-    pub filename: Option<String>,
-    pub description: Option<String>,
-    pub source_url: Option<String>,
-    pub overwrite: Option<String>,
-    pub auto_increment: Option<String>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct UpdateMediaData {
-    pub description: Option<Option<String>>,
-    pub source_urls: Option<Vec<String>>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct SourceUpdateInput {
     pub id: String,
     pub data: Value,
@@ -311,20 +251,6 @@ pub struct SourceUpdateInput {
 #[derive(Debug, Deserialize)]
 pub struct IdInput {
     pub id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaIdInput {
-    pub source_id: String,
-    pub media_id: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MediaTransferInput {
-    pub media_id: String,
-    pub target_source_id: String,
 }
 
 #[derive(Debug, Deserialize)]
