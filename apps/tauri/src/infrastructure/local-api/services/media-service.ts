@@ -1,6 +1,4 @@
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
-import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
-import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import {
 	type MediaDetails,
 	type MediaSearchRequest,
@@ -8,17 +6,11 @@ import {
 	type UpdateMediaRequest,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
+import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import { and, eq, inArray } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import { TauriAuthorRepository } from "../repositories/author-repository";
-import { TauriCharacterRepository } from "../repositories/character-repository";
-import { TauriIpRepository } from "../repositories/ip-repository";
-import { TauriMediaRepository } from "../repositories/media-repository";
-import { TauriProjectRepository } from "../repositories/project-repository";
-import { TauriSourceRepository } from "../repositories/source-repository";
-import { TauriConfigService } from "./config-service";
 import {
 	authors,
 	characters,
@@ -31,6 +23,14 @@ import {
 	mediaUrls,
 	tags,
 } from "../../../../../server/src/infrastructure/db/schema";
+import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
+import { TauriAuthorRepository } from "../repositories/author-repository";
+import { TauriCharacterRepository } from "../repositories/character-repository";
+import { TauriIpRepository } from "../repositories/ip-repository";
+import { TauriMediaRepository } from "../repositories/media-repository";
+import { TauriProjectRepository } from "../repositories/project-repository";
+import { TauriSourceRepository } from "../repositories/source-repository";
+import { TauriConfigService } from "./config-service";
 
 const EXTRACTED_TAG_SOURCE = "comfyui_workflow";
 const LOCAL_TAG_SOURCE = "local";
@@ -78,7 +78,9 @@ function isSafeRelativeUploadPath(path: string) {
 
 	return path
 		.split(/[\\/]+/)
-		.every((segment) => segment.length === 0 || segment === "." || segment !== "..");
+		.every(
+			(segment) => segment.length === 0 || segment === "." || segment !== "..",
+		);
 }
 
 async function resolveUploadTargetPath(
@@ -118,7 +120,9 @@ async function resolveUploadTargetPath(
 	while (index <= MAX_FILENAME_COLLISION_ATTEMPTS) {
 		const candidateName = `${stem}-${index}${extension}`;
 		const candidateRelative =
-			parentDir === "/" ? candidateName : normalizeRelativePath(`${parentDir}/${candidateName}`);
+			parentDir === "/"
+				? candidateName
+				: normalizeRelativePath(`${parentDir}/${candidateName}`);
 		const candidateFullPath = joinLocalPath(rootPath, candidateRelative);
 		if (!(await getTauriAppServices().fileSystem.exists(candidateFullPath))) {
 			return {
@@ -182,9 +186,8 @@ async function persistExtractedMetadata(
 	fullPath: string,
 	tx: TauriDbExecutor,
 ) {
-	const extracted = await getTauriAppServices().imageProcessor.extractMetadata(
-		fullPath,
-	);
+	const extracted =
+		await getTauriAppServices().imageProcessor.extractMetadata(fullPath);
 
 	await tx
 		.delete(mediaTags)
@@ -199,12 +202,16 @@ async function persistExtractedMetadata(
 		.where(eq(mediaGenerationInfo.mediaId, mediaId));
 
 	const hasMetadata =
-		extracted.tags.length > 0 || extracted.prompt !== null || extracted.workflow !== null;
+		extracted.tags.length > 0 ||
+		extracted.prompt !== null ||
+		extracted.workflow !== null;
 	if (!hasMetadata) {
 		return;
 	}
 
-	const uniqueTagNames = Array.from(new Set(extracted.tags.map((tag) => tag.name)));
+	const uniqueTagNames = Array.from(
+		new Set(extracted.tags.map((tag) => tag.name)),
+	);
 	if (uniqueTagNames.length > 0) {
 		await tx
 			.insert(tags)
@@ -273,8 +280,8 @@ async function syncContextMetadata(
 	if (updates.authors !== undefined) {
 		await tx.delete(mediaAuthors).where(eq(mediaAuthors.mediaId, mediaId));
 		for (const author of updates.authors) {
-			const existingAuthor =
-				(author.accountId
+			const existingAuthor = (
+				author.accountId
 					? await tx
 							.select()
 							.from(authors)
@@ -284,7 +291,8 @@ async function syncContextMetadata(
 							.select()
 							.from(authors)
 							.where(eq(authors.name, author.name))
-							.limit(1))[0];
+							.limit(1)
+			)[0];
 			const authorId =
 				existingAuthor?.id ??
 				(
@@ -374,14 +382,19 @@ async function copyMediaRelations(
 	targetMediaId: string,
 	tx: TauriDbExecutor,
 ) {
-	const [sourceAuthors, sourceProjects, sourceCharacters, sourceIps, sourceUrls] =
-		await Promise.all([
-			TauriAuthorRepository.findByMediaId(sourceMediaId, tx),
-			TauriProjectRepository.findByMediaId(sourceMediaId),
-			TauriCharacterRepository.findByMediaId(sourceMediaId),
-			TauriIpRepository.findByMediaId(sourceMediaId),
-			TauriMediaRepository.getUrls(sourceMediaId, tx),
-		]);
+	const [
+		sourceAuthors,
+		sourceProjects,
+		sourceCharacters,
+		sourceIps,
+		sourceUrls,
+	] = await Promise.all([
+		TauriAuthorRepository.findByMediaId(sourceMediaId, tx),
+		TauriProjectRepository.findByMediaId(sourceMediaId),
+		TauriCharacterRepository.findByMediaId(sourceMediaId),
+		TauriIpRepository.findByMediaId(sourceMediaId),
+		TauriMediaRepository.getUrls(sourceMediaId, tx),
+	]);
 
 	await TauriAuthorRepository.addMediaBulk(
 		targetMediaId,
@@ -645,7 +658,10 @@ export const TauriMediaService = {
 				});
 			}
 
-			await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
+			await getTauriAppServices().fileSystem.copyFile(
+				sourcePath,
+				target.fullPath,
+			);
 			const probe = await probeMedia(target.fullPath);
 			const copied = await TauriMediaRepository.create(
 				{
@@ -699,7 +715,10 @@ export const TauriMediaService = {
 				});
 			}
 
-			await getTauriAppServices().fileSystem.rename(sourcePath, target.fullPath);
+			await getTauriAppServices().fileSystem.rename(
+				sourcePath,
+				target.fullPath,
+			);
 			const probe = await probeMedia(target.fullPath);
 			const moved = await TauriMediaRepository.create(
 				{

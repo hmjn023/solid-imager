@@ -159,7 +159,7 @@ export const TauriAuthorRepository = {
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError(
-				'MediaAuthor association',
+				"MediaAuthor association",
 				`mediaId: ${mediaId}, authorId: ${authorId}`,
 			);
 		}

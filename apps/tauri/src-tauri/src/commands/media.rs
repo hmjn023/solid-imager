@@ -1,6 +1,6 @@
 use super::utils::*;
-use crate::backend::metadata::extract_metadata_from_path;
-use crate::backend::types::ComfyUiTagExtractionConfig;
+use crate::media_config::ComfyUiTagExtractionConfig;
+use crate::media_metadata::extract_metadata_from_path;
 use image::codecs::jpeg::JpegEncoder;
 use image::ImageFormat;
 use std::fs::{self, File};
