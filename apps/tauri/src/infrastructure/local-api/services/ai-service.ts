@@ -7,7 +7,7 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { emit } from "@tauri-apps/api/event";
-import { and, asc, eq, getTableColumns, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import {
 	characterIps,
@@ -60,7 +60,7 @@ async function resolveLocalMediaFile(
 async function tagMediaFromServer(mediaId: string): Promise<TaggingResponse> {
 	const { media, fullPath } = await resolveLocalMediaFile(mediaId);
 	const bytes = await getTauriAppServices().fileSystem.readFile(fullPath);
-	const file = new File([Uint8Array.from(bytes).buffer], media.fileName);
+	const file = new File([bytes.buffer as ArrayBuffer], media.fileName);
 	return taggingResponseSchema.parse(await serverOrpc.ai.tag({ file }));
 }
 
@@ -96,7 +96,7 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 			const persistedTags = await tx
 				.select({ id: tags.id, name: tags.name })
 				.from(tags)
-				.where(sql`${tags.name} = ANY(${tagNames})`);
+				.where(inArray(tags.name, tagNames));
 			const tagIdByName = new Map(
 				persistedTags.map((item) => [item.name, item.id]),
 			);
@@ -140,7 +140,7 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 				? await tx
 						.select({ id: ips.id, name: ips.name })
 						.from(ips)
-						.where(sql`${ips.name} = ANY(${response.ips})`)
+						.where(inArray(ips.name, response.ips))
 				: [];
 		const ipIdByName = new Map(
 			persistedIps.map((item) => [item.name, item.id]),
@@ -177,7 +177,7 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 			const persistedCharacters = await tx
 				.select({ id: characters.id, name: characters.name })
 				.from(characters)
-				.where(sql`${characters.name} = ANY(${characterNames})`);
+				.where(inArray(characters.name, characterNames));
 			const characterIdByName = new Map(
 				persistedCharacters.map((item) => [item.name, item.id]),
 			);
