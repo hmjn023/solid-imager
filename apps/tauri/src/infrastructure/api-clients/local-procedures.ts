@@ -10,10 +10,13 @@ import {
 } from "@solid-imager/core/domain/ips/schemas";
 import {
 	createPresetRequestSchema,
+	mediaSearchRequestSchema,
 	newAuthorSchema,
 	presetSchema,
+	updateMediaRequestSchema,
 	updatePresetRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import {
 	newProjectSchema,
 	updateProjectSchema,
@@ -29,6 +32,7 @@ import { TauriAuthorService } from "../local-api/services/author-service";
 import { TauriCharacterService } from "../local-api/services/character-service";
 import { TauriConfigService } from "../local-api/services/config-service";
 import { TauriIpService } from "../local-api/services/ip-service";
+import { TauriMediaService } from "../local-api/services/media-service";
 import { TauriPresetService } from "../local-api/services/preset-service";
 import { TauriProjectService } from "../local-api/services/project-service";
 import { TauriSourceService } from "../local-api/services/source-service";
@@ -83,6 +87,95 @@ const localProcedureHandlers = {
 			})
 			.parse(input);
 		return await TauriSourceService.sync(ids);
+	},
+	"media.search": async (input: unknown) => {
+		const { sourceId, params } = z
+			.object({
+				sourceId: uuidSchema.nullish(),
+				params: z.unknown(),
+			})
+			.parse(input);
+		return await TauriMediaService.search(
+			sourceId,
+			mediaSearchRequestSchema.parse(params),
+		);
+	},
+	"media.getDetails": async (input: unknown) => {
+		const { sourceId, mediaId } = z
+			.object({
+				sourceId: uuidSchema,
+				mediaId: uuidSchema,
+			})
+			.parse(input);
+		return await TauriMediaService.getDetails(sourceId, mediaId);
+	},
+	"media.update": async (input: unknown) => {
+		const { sourceId, mediaId, data } = z
+			.object({
+				sourceId: uuidSchema,
+				mediaId: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriMediaService.update(
+			sourceId,
+			mediaId,
+			updateMediaRequestSchema.parse(data),
+		);
+	},
+	"media.upload": async (input: unknown) => {
+		const { sourceId, bytes, filename, description, sourceUrl, overwrite, autoIncrement } = z
+			.object({
+				sourceId: uuidSchema,
+				bytes: z.array(z.number().int().min(0).max(255)),
+				filename: z.string().optional(),
+				description: z.string().optional(),
+				sourceUrl: z.string().optional(),
+				overwrite: z.string().optional(),
+				autoIncrement: z.string().optional(),
+			})
+			.parse(input);
+		const parsedRequest = uploadMediaRequestSchema.parse({
+			filename,
+			description,
+			sourceUrl,
+			overwrite,
+			autoIncrement,
+		});
+		return await TauriMediaService.upload(sourceId, bytes, {
+			filename: parsedRequest.filename,
+			description: parsedRequest.description,
+			sourceUrl: parsedRequest.sourceUrl,
+			overwrite,
+			autoIncrement,
+		});
+	},
+	"media.delete": async (input: unknown) => {
+		const { sourceId, mediaId } = z
+			.object({
+				sourceId: uuidSchema,
+				mediaId: uuidSchema,
+			})
+			.parse(input);
+		return await TauriMediaService.delete(sourceId, mediaId);
+	},
+	"media.copy": async (input: unknown) => {
+		const { mediaId, targetSourceId } = z
+			.object({
+				mediaId: uuidSchema,
+				targetSourceId: uuidSchema,
+			})
+			.parse(input);
+		return await TauriMediaService.copy(mediaId, targetSourceId);
+	},
+	"media.move": async (input: unknown) => {
+		const { mediaId, targetSourceId } = z
+			.object({
+				mediaId: uuidSchema,
+				targetSourceId: uuidSchema,
+			})
+			.parse(input);
+		return await TauriMediaService.move(mediaId, targetSourceId);
 	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {
