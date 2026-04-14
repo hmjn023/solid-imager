@@ -25,7 +25,7 @@ import type { taggingResponseSchema } from "@solid-imager/core/domain/tagging/sc
 import { tagResponseSchema } from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
-import { invokeLocalProcedure, isLocalProcedure } from "./local-procedures";
+import type { TauriApiProcedure } from "../api/tauri-api-client";
 
 const mutationSuccessSchema = z.object({ success: z.boolean() });
 const syncSourcesResponseSchema = z.object({
@@ -75,31 +75,19 @@ const mediaListSchema = parseArray(mediaSchema);
 const presetListSchema = parseArray(presetSchema);
 
 async function invoke<TInput, TOutput>(
-	procedure: string,
+	procedure: TauriApiProcedure,
 	input: TInput,
 	schema: Parser<TOutput>,
 ): Promise<TOutput> {
-	if (isLocalProcedure(procedure)) {
-		return schema.parse(await invokeLocalProcedure(procedure, input));
-	}
-
 	const result = await getTauriAppServices().apiClient.call<TInput, unknown>(
-		procedure as `${string}.${string}`,
+		procedure,
 		input,
 	);
 	return schema.parse(result);
 }
 
-async function invokeVoid<TInput>(procedure: string, input: TInput) {
-	if (isLocalProcedure(procedure)) {
-		await invokeLocalProcedure(procedure, input);
-		return;
-	}
-
-	await getTauriAppServices().apiClient.call<TInput, unknown>(
-		procedure as `${string}.${string}`,
-		input,
-	);
+async function invokeVoid<TInput>(procedure: TauriApiProcedure, input: TInput) {
+	await getTauriAppServices().apiClient.call<TInput, unknown>(procedure, input);
 }
 
 export const orpc = {

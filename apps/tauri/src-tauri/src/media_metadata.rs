@@ -1,5 +1,5 @@
-use crate::backend::types::ComfyUiTagExtractionConfig;
 use crate::commands::utils::{ExtractMetadataResult, ExtractedTag};
+use crate::media_config::ComfyUiTagExtractionConfig;
 use serde_json::Value;
 use std::fs;
 use std::io::{Cursor, Read};
@@ -330,25 +330,6 @@ fn process_widget_value_tags(
             .collect(),
         Vec::new(),
     )
-}
-
-pub fn stringify_prompt_value(value: Option<&Value>) -> Option<String> {
-    match value {
-        Some(Value::String(text)) => Some(text.clone()),
-        Some(other) => Some(other.to_string()),
-        None => None,
-    }
-}
-
-pub fn workflow_to_json_text(value: Option<&Value>) -> Option<String> {
-    value.and_then(|workflow| match workflow {
-        Value::Null => None,
-        other => Some(other.to_string()),
-    })
-}
-
-pub fn has_extracted_metadata(metadata: &ExtractMetadataResult) -> bool {
-    !metadata.tags.is_empty() || metadata.prompt.is_some() || metadata.workflow.is_some()
 }
 
 #[cfg(test)]

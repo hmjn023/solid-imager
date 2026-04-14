@@ -1,7 +1,7 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import type { TauriCommandClient } from "../tauri/command-client";
+import { invokeLocalProcedure } from "../api-clients/local-procedures";
 
-export type TauriApiProcedure = `${string}.${string}`;
+export type TauriApiProcedure = Parameters<typeof invokeLocalProcedure>[0];
 
 type TauriApiCall = <TInput, TOutput>(
 	procedure: TauriApiProcedure,
@@ -17,23 +17,16 @@ export type TauriApiClient = {
 };
 
 class TauriApiInvoker {
-	constructor(private readonly commandClient: TauriCommandClient) {}
-
 	call<TInput, TOutput>(
 		procedure: TauriApiProcedure,
 		input?: TInput,
 	): Promise<TOutput> {
-		return this.commandClient.invoke<TOutput>("api_call", {
-			procedure,
-			input,
-		});
+		return invokeLocalProcedure(procedure, input) as Promise<TOutput>;
 	}
 }
 
-export function createTauriApiClient(
-	commandClient: TauriCommandClient,
-): TauriApiClient {
-	const invoker = new TauriApiInvoker(commandClient);
+export function createTauriApiClient(): TauriApiClient {
+	const invoker = new TauriApiInvoker();
 
 	return {
 		call: <TInput, TOutput>(procedure: TauriApiProcedure, input?: TInput) =>

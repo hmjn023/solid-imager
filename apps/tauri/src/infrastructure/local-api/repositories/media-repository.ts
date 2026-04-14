@@ -571,10 +571,7 @@ export type UpsertTauriMediaInput = {
 };
 
 export const TauriMediaRepository = {
-	async create(
-		input: AddMediaRequest,
-		tx?: TauriDbExecutor,
-	): Promise<Media> {
+	async create(input: AddMediaRequest, tx?: TauriDbExecutor): Promise<Media> {
 		const rows = await getExecutor(tx)
 			.insert(medias)
 			.values({
@@ -761,10 +758,7 @@ export const TauriMediaRepository = {
 		return rows.map(toMediaUrl);
 	},
 
-	async getAuthors(
-		mediaId: string,
-		tx?: TauriDbExecutor,
-	) {
+	async getAuthors(mediaId: string, tx?: TauriDbExecutor) {
 		const rows = await getExecutor(tx)
 			.select({
 				id: authors.id,

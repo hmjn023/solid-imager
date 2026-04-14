@@ -23,11 +23,16 @@ import {
 } from "@solid-imager/core/domain/projects/schemas";
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import {
+	batchTaggingRequestSchema,
+	taggingResponseSchema,
+} from "@solid-imager/core/domain/tagging/schemas";
+import {
 	newTagSchema,
 	tagResponseSchema,
 	updateTagSchema,
 } from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
+import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriAuthorService } from "../local-api/services/author-service";
 import { TauriCharacterService } from "../local-api/services/character-service";
 import { TauriConfigService } from "../local-api/services/config-service";
@@ -46,6 +51,12 @@ const authorUpdateSchema = z.object({
 const uuidSchema = z.string().uuid();
 
 const mutationSuccessSchema = z.object({ success: z.literal(true) });
+const batchTaggingWithIdsSchema = z.object({
+	force: z.boolean().optional(),
+	batchSize: z.number().optional(),
+	mediaSourceId: z.string().optional(),
+	mediaIds: z.array(uuidSchema),
+});
 
 const localProcedureHandlers = {
 	"config.get": async () => await TauriConfigService.getConfig(),
@@ -411,6 +422,26 @@ const localProcedureHandlers = {
 		const { id } = z.object({ id: z.number().int() }).parse(input);
 		await TauriPresetService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
+	},
+	"ai.applyTags": async (input: unknown) => {
+		const parsed = z
+			.object({
+				mediaId: uuidSchema,
+				response: z.unknown(),
+			})
+			.parse(input);
+		return await TauriAiService.applyTags({
+			mediaId: parsed.mediaId,
+			response: taggingResponseSchema.parse(parsed.response),
+		});
+	},
+	"ai.scanBatchTaggingTargets": async (input: unknown) =>
+		await TauriAiService.scanBatchTaggingTargets(
+			batchTaggingRequestSchema.parse(input ?? {}),
+		),
+	"ai.startBatchTaggingWithIds": async (input: unknown) => {
+		const parsed = batchTaggingWithIdsSchema.parse(input);
+		return await TauriAiService.startBatchTaggingWithIds(parsed);
 	},
 } as const;
 

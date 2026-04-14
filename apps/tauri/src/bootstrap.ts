@@ -30,7 +30,7 @@ export async function initializeTauriApp(): Promise<TauriAppServices> {
 	const commandClient = createTauriCommandClient();
 	const fileSystem = new TauriFileSystem(commandClient);
 	const imageProcessor = new TauriImageProcessor(commandClient);
-	const apiClient = createTauriApiClient(commandClient);
+	const apiClient = createTauriApiClient();
 	const db = await initializeTauriDb();
 
 	return {

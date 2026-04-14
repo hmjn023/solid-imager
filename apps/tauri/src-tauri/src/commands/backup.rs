@@ -51,8 +51,7 @@ fn normalize_relative_path(path: &Path) -> String {
 #[tauri::command]
 pub fn backup_create_zip(input: BackupCreateZipInput) -> Result<BinaryFilePayload, String> {
     let mut writer = ZipWriter::new(Cursor::new(Vec::<u8>::new()));
-    let file_options =
-        SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    let file_options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
 
     writer
         .start_file("dump.json", file_options)
