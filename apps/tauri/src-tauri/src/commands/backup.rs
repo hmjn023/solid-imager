@@ -68,8 +68,8 @@ pub fn backup_create_zip(input: BackupCreateZipInput) -> Result<BinaryFilePayloa
         }
 
         let full_path = root.join(Path::new(&file_path));
-        let bytes = match fs::read(&full_path) {
-            Ok(bytes) => bytes,
+        let mut file = match fs::File::open(&full_path) {
+            Ok(file) => file,
             Err(_) => continue,
         };
 
@@ -79,8 +79,7 @@ pub fn backup_create_zip(input: BackupCreateZipInput) -> Result<BinaryFilePayloa
                 file_options,
             )
             .map_err(|error| format!("Adding {file_path} to ZIP failed: {error}"))?;
-        writer
-            .write_all(&bytes)
+        std::io::copy(&mut file, &mut writer)
             .map_err(|error| format!("Writing {file_path} to ZIP failed: {error}"))?;
     }
 
