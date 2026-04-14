@@ -56,26 +56,6 @@ function validateRelativePath(filePath: string): void {
 	}
 }
 
-function normalizeRelativePath(filePath: string): string {
-	return filePath
-		.split(/[\\/]+/)
-		.filter((segment) => segment.length > 0 && segment !== ".")
-		.join("/");
-}
-
-function toRelativePath(rootPath: string, fullPath: string): string {
-	const normalizedRoot = rootPath.replace(/[\\/]+$/, "");
-	const rootWithSeparator = `${normalizedRoot}${normalizedRoot.includes("\\") ? "\\" : "/"}`;
-	if (fullPath.startsWith(rootWithSeparator)) {
-		return normalizeRelativePath(fullPath.slice(rootWithSeparator.length));
-	}
-	if (fullPath === normalizedRoot) {
-		return "";
-	}
-	return normalizeRelativePath(
-		fullPath.replace(normalizedRoot, "").replace(/^[\\/]+/, ""),
-	);
-}
 
 function toLocalSourcePath(
 	source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>,
@@ -339,61 +319,7 @@ async function mapMediaPathsToIds(
 	return new Map(rows.map((row) => [row.filePath, row.id]));
 }
 
-async function deleteRelationsInChunks(
-	tx: TauriDbExecutor,
-	mediaIds: string[],
-): Promise<void> {
-	const chunkSize = 1000;
-	for (let index = 0; index < mediaIds.length; index += chunkSize) {
-		const chunk = mediaIds.slice(index, index + chunkSize);
-		await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
-		await tx.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, chunk));
-		await tx.delete(mediaProjects).where(inArray(mediaProjects.mediaId, chunk));
-		await tx
-			.delete(mediaCharacters)
-			.where(inArray(mediaCharacters.mediaId, chunk));
-		await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
-		await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-		await tx
-			.delete(mediaGenerationInfo)
-			.where(inArray(mediaGenerationInfo.mediaId, chunk));
-	}
-}
 
-async function collectExistingRelativePaths(
-	rootPath: string,
-): Promise<Set<string>> {
-	const existingPaths = new Set<string>();
-	const queue = [rootPath];
-	const fileSystem = getTauriAppServices().fileSystem;
-
-	while (queue.length > 0) {
-		const currentPath = queue.pop();
-		if (!currentPath) {
-			continue;
-		}
-
-		for (const entry of await fileSystem.readdir(currentPath)) {
-			if (entry.startsWith(".")) {
-				continue;
-			}
-
-			const fullPath = joinLocalPath(currentPath, entry);
-			const stat = await fileSystem.stat(fullPath);
-			if (stat.isDirectory) {
-				queue.push(fullPath);
-				continue;
-			}
-
-			const relativePath = toRelativePath(rootPath, fullPath);
-			if (relativePath.length > 0) {
-				existingPaths.add(relativePath);
-			}
-		}
-	}
-
-	return existingPaths;
-}
 
 async function restoreRelations(
 	tx: TauriDbExecutor,
@@ -530,8 +456,16 @@ async function restoreRelations(
 	}
 
 	const mediaIds = Array.from(params.mediaPathToId.values());
-	if (mediaIds.length > 0) {
-		await deleteRelationsInChunks(tx, mediaIds);
+	const deleteChunkSize = 1000;
+	for (let index = 0; index < mediaIds.length; index += deleteChunkSize) {
+		const chunk = mediaIds.slice(index, index + deleteChunkSize);
+		await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
+		await tx.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, chunk));
+		await tx.delete(mediaProjects).where(inArray(mediaProjects.mediaId, chunk));
+		await tx.delete(mediaCharacters).where(inArray(mediaCharacters.mediaId, chunk));
+		await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
+		await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
+		await tx.delete(mediaGenerationInfo).where(inArray(mediaGenerationInfo.mediaId, chunk));
 	}
 
 	const chunkSize = 1000;
@@ -698,7 +632,7 @@ export const TauriSourceBackupService = {
 	): Promise<RestoreSourceResult> {
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
-		const existingRelativePaths = await collectExistingRelativePaths(rootPath);
+		const fileSystem = getTauriAppServices().fileSystem;
 		const validItems: MediaDumpItem[] = [];
 		const errors: string[] = [];
 		let skipped = 0;
@@ -725,9 +659,9 @@ export const TauriSourceBackupService = {
 				continue;
 			}
 
-			if (
-				!existingRelativePaths.has(normalizeRelativePath(validItem.filePath))
-			) {
+			try {
+				await fileSystem.stat(joinLocalPath(rootPath, validItem.filePath));
+			} catch {
 				skipped += 1;
 				continue;
 			}
@@ -743,24 +677,19 @@ export const TauriSourceBackupService = {
 			};
 		}
 
-		await getTauriAppServices().db.transaction(async (tx) => {
-			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await restoreMasterData(tx, validItems);
-			await restoreMediaRecords(tx, mediaSourceId, validItems);
-			const mediaPathToId = await mapMediaPathsToIds(
-				tx,
-				mediaSourceId,
-				validItems,
-			);
-			await restoreRelations(tx, {
-				items: validItems,
-				mediaPathToId,
-				tagMap,
-				authorMap,
-				projectMap,
-				ipMap,
-				charMap,
-			});
+		const db = getTauriAppServices().db;
+		const { tagMap, authorMap, projectMap, ipMap, charMap } =
+			await restoreMasterData(db, validItems);
+		await restoreMediaRecords(db, mediaSourceId, validItems);
+		const mediaPathToId = await mapMediaPathsToIds(db, mediaSourceId, validItems);
+		await restoreRelations(db, {
+			items: validItems,
+			mediaPathToId,
+			tagMap,
+			authorMap,
+			projectMap,
+			ipMap,
+			charMap,
 		});
 
 		return {
