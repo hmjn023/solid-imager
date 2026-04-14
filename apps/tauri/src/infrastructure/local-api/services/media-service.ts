@@ -18,6 +18,7 @@ import { TauriIpRepository } from "../repositories/ip-repository";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriProjectRepository } from "../repositories/project-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
+import { TauriConfigService } from "./config-service";
 import {
 	authors,
 	characters,
@@ -33,6 +34,7 @@ import {
 
 const EXTRACTED_TAG_SOURCE = "comfyui_workflow";
 const LOCAL_TAG_SOURCE = "local";
+const MAX_FILENAME_COLLISION_ATTEMPTS = 1000;
 
 type ProbeMediaResult = {
 	width: number;
@@ -54,6 +56,12 @@ type ResolvedUploadTarget = {
 	relativePath: string;
 	fullPath: string;
 	conflict?: UploadResponse["conflict"];
+};
+
+type SupportedExtensions = {
+	image: string[];
+	video: string[];
+	audio: string[];
 };
 
 function normalizeRelativePath(path: string) {
@@ -107,7 +115,7 @@ async function resolveUploadTargetPath(
 	);
 
 	let index = 1;
-	while (true) {
+	while (index <= MAX_FILENAME_COLLISION_ATTEMPTS) {
 		const candidateName = `${stem}-${index}${extension}`;
 		const candidateRelative =
 			parentDir === "/" ? candidateName : normalizeRelativePath(`${parentDir}/${candidateName}`);
@@ -124,14 +132,21 @@ async function resolveUploadTargetPath(
 		}
 		index += 1;
 	}
+
+	throw new Error(
+		`Could not resolve a non-conflicting filename after ${MAX_FILENAME_COLLISION_ATTEMPTS} attempts`,
+	);
 }
 
-function inferMediaType(fileName: string): "image" | "video" | "audio" {
+function inferMediaType(
+	fileName: string,
+	supportedExtensions: SupportedExtensions,
+): "image" | "video" | "audio" {
 	const extension = extname(fileName).toLowerCase();
-	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(extension)) {
+	if (supportedExtensions.video.includes(extension)) {
 		return "video";
 	}
-	if ([".mp3", ".wav", ".ogg", ".m4a"].includes(extension)) {
+	if (supportedExtensions.audio.includes(extension)) {
 		return "audio";
 	}
 	return "image";
@@ -497,6 +512,7 @@ export const TauriMediaService = {
 	): Promise<UploadResponse> {
 		const uploadRequest = uploadMediaRequestSchema.parse(options);
 		const source = await getLocalSource(sourceId);
+		const config = await TauriConfigService.getConfig();
 		const requestedPath = uploadRequest.filename?.trim();
 		if (!requestedPath) {
 			throw new Error("Filename is required");
@@ -529,7 +545,10 @@ export const TauriMediaService = {
 						mediaSourceId: source.id,
 						filePath: target.relativePath,
 						fileName: basename(target.relativePath),
-						mediaType: inferMediaType(target.relativePath),
+						mediaType: inferMediaType(
+							target.relativePath,
+							config.media.supportedExtensions,
+						),
 						width: probe.width,
 						height: probe.height,
 						fileSize: probe.size,
@@ -610,6 +629,7 @@ export const TauriMediaService = {
 
 			const source = await getLocalSource(sourceMedia.mediaSourceId, tx);
 			const targetSource = await getLocalSource(targetSourceId, tx);
+			const config = await TauriConfigService.getConfig();
 			const sourcePath = joinLocalPath(source.rootPath, sourceMedia.filePath);
 			const target = await resolveUploadTargetPath(
 				targetSource.rootPath,
@@ -632,7 +652,10 @@ export const TauriMediaService = {
 					mediaSourceId: targetSource.id,
 					filePath: target.relativePath,
 					fileName: basename(target.relativePath),
-					mediaType: sourceMedia.mediaType,
+					mediaType: inferMediaType(
+						target.relativePath,
+						config.media.supportedExtensions,
+					),
 					width: probe.width,
 					height: probe.height,
 					fileSize: probe.size,
@@ -660,6 +683,7 @@ export const TauriMediaService = {
 
 			const source = await getLocalSource(sourceMedia.mediaSourceId, tx);
 			const targetSource = await getLocalSource(targetSourceId, tx);
+			const config = await TauriConfigService.getConfig();
 			const sourcePath = joinLocalPath(source.rootPath, sourceMedia.filePath);
 			const target = await resolveUploadTargetPath(
 				targetSource.rootPath,
@@ -682,7 +706,10 @@ export const TauriMediaService = {
 					mediaSourceId: targetSource.id,
 					filePath: target.relativePath,
 					fileName: basename(target.relativePath),
-					mediaType: sourceMedia.mediaType,
+					mediaType: inferMediaType(
+						target.relativePath,
+						config.media.supportedExtensions,
+					),
 					width: probe.width,
 					height: probe.height,
 					fileSize: probe.size,

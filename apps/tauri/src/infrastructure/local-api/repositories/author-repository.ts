@@ -158,7 +158,10 @@ export const TauriAuthorRepository = {
 			.returning();
 
 		if (!rows[0]) {
-			throw new ResourceNotFoundError('MediaAuthor association');
+			throw new ResourceNotFoundError(
+				'MediaAuthor association',
+				`mediaId: ${mediaId}, authorId: ${authorId}`,
+			);
 		}
 	},
 };
