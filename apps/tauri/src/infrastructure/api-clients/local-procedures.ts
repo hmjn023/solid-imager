@@ -10,8 +10,10 @@ import {
 } from "@solid-imager/core/domain/ips/schemas";
 import {
 	createPresetRequestSchema,
+	mediaSearchRequestSchema,
 	newAuthorSchema,
 	presetSchema,
+	updateMediaRequestSchema,
 	updatePresetRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import {
@@ -29,6 +31,7 @@ import { TauriAuthorService } from "../local-api/services/author-service";
 import { TauriCharacterService } from "../local-api/services/character-service";
 import { TauriConfigService } from "../local-api/services/config-service";
 import { TauriIpService } from "../local-api/services/ip-service";
+import { TauriMediaService } from "../local-api/services/media-service";
 import { TauriPresetService } from "../local-api/services/preset-service";
 import { TauriProjectService } from "../local-api/services/project-service";
 import { TauriSourceService } from "../local-api/services/source-service";
@@ -83,6 +86,41 @@ const localProcedureHandlers = {
 			})
 			.parse(input);
 		return await TauriSourceService.sync(ids);
+	},
+	"media.search": async (input: unknown) => {
+		const { sourceId, params } = z
+			.object({
+				sourceId: uuidSchema.nullish(),
+				params: z.unknown(),
+			})
+			.parse(input);
+		return await TauriMediaService.search(
+			sourceId,
+			mediaSearchRequestSchema.parse(params),
+		);
+	},
+	"media.getDetails": async (input: unknown) => {
+		const { sourceId, mediaId } = z
+			.object({
+				sourceId: uuidSchema,
+				mediaId: uuidSchema,
+			})
+			.parse(input);
+		return await TauriMediaService.getDetails(sourceId, mediaId);
+	},
+	"media.update": async (input: unknown) => {
+		const { sourceId, mediaId, data } = z
+			.object({
+				sourceId: uuidSchema,
+				mediaId: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriMediaService.update(
+			sourceId,
+			mediaId,
+			updateMediaRequestSchema.parse(data),
+		);
 	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {
