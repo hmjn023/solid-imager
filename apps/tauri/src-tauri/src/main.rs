@@ -42,6 +42,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             api_call,
+            commands::backup::backup_create_zip,
+            commands::backup::backup_extract_zip,
             commands::fs::fs_exists,
             commands::fs::fs_read_file,
             commands::fs::fs_read_text_file,

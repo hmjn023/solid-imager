@@ -35,6 +35,7 @@ import { TauriIpService } from "../local-api/services/ip-service";
 import { TauriMediaService } from "../local-api/services/media-service";
 import { TauriPresetService } from "../local-api/services/preset-service";
 import { TauriProjectService } from "../local-api/services/project-service";
+import { TauriSourceBackupService } from "../local-api/services/source-backup-service";
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 
@@ -88,6 +89,33 @@ const localProcedureHandlers = {
 			.parse(input);
 		return await TauriSourceService.sync(ids);
 	},
+	"sources.dump": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		return await TauriSourceBackupService.createDump(id, "json");
+	},
+	"sources.dumpZip": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		return await TauriSourceBackupService.createDump(id, "zip");
+	},
+	"sources.restore": async (input: unknown) => {
+		const { id, data } = z
+			.object({
+				id: uuidSchema,
+				data: z.array(z.unknown()),
+			})
+			.parse(input);
+		await TauriSourceService.sync([id]);
+		return await TauriSourceBackupService.restoreSource(id, data);
+	},
+	"sources.importZip": async (input: unknown) => {
+		const { id, file } = z
+			.object({
+				id: uuidSchema,
+				file: z.instanceof(File),
+			})
+			.parse(input);
+		return await TauriSourceBackupService.importSourceZip(id, file);
+	},
 	"media.search": async (input: unknown) => {
 		const { sourceId, params } = z
 			.object({
@@ -124,7 +152,15 @@ const localProcedureHandlers = {
 		);
 	},
 	"media.upload": async (input: unknown) => {
-		const { sourceId, bytes, filename, description, sourceUrl, overwrite, autoIncrement } = z
+		const {
+			sourceId,
+			bytes,
+			filename,
+			description,
+			sourceUrl,
+			overwrite,
+			autoIncrement,
+		} = z
 			.object({
 				sourceId: uuidSchema,
 				bytes: z.array(z.number().int().min(0).max(255)),
