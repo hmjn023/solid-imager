@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-export const mediaSourceIdSchema = z.uuid({
+export const mediaSourceIdSchema = z.string().uuid({
 	version: "v4",
 	message: "Invalid source ID format",
 });
@@ -46,7 +46,7 @@ export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
 export const mediaSourceInfoSchema = z.object({
-	id: z.uuid({ version: "v4" }).optional(),
+	id: z.string().uuid({ version: "v4" }).optional(),
 	name: z.string(),
 	description: z.string().nullable(),
 	type: mediaSourceTypeEnumSchema,
