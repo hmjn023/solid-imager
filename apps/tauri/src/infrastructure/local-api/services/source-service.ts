@@ -166,7 +166,6 @@ function buildSingleFileIndexInput(
 	};
 }
 
-const PROBE_CONCURRENCY = 4;
 const INSERT_BATCH_SIZE = 500;
 
 type FileToIndex = {
@@ -192,9 +191,13 @@ async function probeAndCollect(
 		}
 	> = [];
 	const commandClient = getTauriAppServices().commandClient;
+	const concurrency = Math.max(
+		1,
+		(await TauriConfigService.getConfig()).jobs.concurrency,
+	);
 
-	for (let i = 0; i < files.length; i += PROBE_CONCURRENCY) {
-		const chunk = files.slice(i, i + PROBE_CONCURRENCY);
+	for (let i = 0; i < files.length; i += concurrency) {
+		const chunk = files.slice(i, i + concurrency);
 		const settled = await Promise.allSettled(
 			chunk.map(
 				async ({ fullPath, relativePath, normalizedRelPath, mediaType }) => {

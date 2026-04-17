@@ -14,7 +14,9 @@ type ThumbnailImageProps = {
 	fallback?: string;
 	height?: number | null;
 	loading?: "eager" | "lazy";
+	maxRetries?: number;
 	media: Media;
+	retryDelayMs?: number;
 	sourceRootPath?: string;
 	width?: number | null;
 };
@@ -128,6 +130,24 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 
 	const handleLoad = () => {
 		clearRetryTimer();
+		if (thumbnailUrl()) {
+			setOriginalUrl((currentUrl) => {
+				revokeObjectUrl(currentUrl);
+				return null;
+			});
+		}
+	};
+
+	const scheduleRetry = () => {
+		if (retryCount() >= (props.maxRetries ?? DEFAULT_MAX_RETRIES)) {
+			return;
+		}
+
+		clearRetryTimer();
+		retryTimer = setTimeout(() => {
+			setRetryCount((count) => count + 1);
+			setCacheKey(Date.now());
+		}, props.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS);
 	};
 
 	const handleError = () => {
@@ -169,31 +189,15 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 							resolveMimeType(props.media.fileName),
 						);
 					});
-					clearRetryTimer();
+					scheduleRetry();
 				} catch {
-					if (retryCount() >= DEFAULT_MAX_RETRIES) {
-						return;
-					}
-
-					clearRetryTimer();
-					retryTimer = setTimeout(() => {
-						setRetryCount((count) => count + 1);
-						setCacheKey(Date.now());
-					}, DEFAULT_RETRY_DELAY_MS);
+					scheduleRetry();
 				}
 			})();
 			return;
 		}
 
-		if (retryCount() >= DEFAULT_MAX_RETRIES) {
-			return;
-		}
-
-		clearRetryTimer();
-		retryTimer = setTimeout(() => {
-			setRetryCount((count) => count + 1);
-			setCacheKey(Date.now());
-		}, DEFAULT_RETRY_DELAY_MS);
+		scheduleRetry();
 	};
 
 	return (
