@@ -17,10 +17,15 @@ const appRoot = root;
 async function main() {
 	const services = await initializeTauriApp();
 	setTauriAppServices(services);
-	await TauriSourceService.startWatchingAllLocalSources();
 	const router = createAppRouter(services);
 
 	render(() => <RouterProvider router={router} />, appRoot);
+
+	void TauriSourceService.startWatchingAllLocalSources().catch(
+		(error: unknown) => {
+			console.error("Failed to start Tauri source watchers", error);
+		},
+	);
 }
 
 void main().catch((error: unknown) => {

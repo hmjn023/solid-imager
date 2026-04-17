@@ -38,6 +38,8 @@ const sourceWatchers = new Map<string, SourceUnwatch>();
 const pendingWatchPaths = new Set<string>();
 const WATCH_RETRY_DELAY_MS = 500;
 const WATCH_MAX_RETRIES = 5;
+const WATCH_START_RETRY_DELAY_MS = 5_000;
+const watchRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
 type WatchEvent = Parameters<Parameters<typeof watch>[1]>[0];
 
@@ -427,6 +429,12 @@ function shouldProcessWatchEvent(event: WatchEvent): boolean {
 }
 
 async function stopSourceWatcher(sourceId: string): Promise<void> {
+	const retryTimer = watchRetryTimers.get(sourceId);
+	if (retryTimer) {
+		clearTimeout(retryTimer);
+		watchRetryTimers.delete(sourceId);
+	}
+
 	const unwatch = sourceWatchers.get(sourceId);
 	if (!unwatch) {
 		return;
@@ -476,6 +484,14 @@ async function startSourceWatcherSafely(source: MediaSource): Promise<void> {
 			mediaSourceId: source.id,
 			error: error instanceof Error ? error.message : String(error),
 		});
+
+		if (!watchRetryTimers.has(source.id)) {
+			const retryTimer = setTimeout(() => {
+				watchRetryTimers.delete(source.id);
+				void startSourceWatcherSafely(source);
+			}, WATCH_START_RETRY_DELAY_MS);
+			watchRetryTimers.set(source.id, retryTimer);
+		}
 	}
 }
 
@@ -672,6 +688,13 @@ export const TauriSourceService = {
 			if (source.type !== "local") {
 				continue;
 			}
+			await startSourceWatcherSafely(source);
+		}
+
+		for (const source of sources) {
+			if (source.type !== "local") {
+				continue;
+			}
 			try {
 				await syncLocalSource(source);
 			} catch (error) {
@@ -681,7 +704,6 @@ export const TauriSourceService = {
 					error: error instanceof Error ? error.message : String(error),
 				});
 			}
-			await startSourceWatcherSafely(source);
 		}
 	},
 
