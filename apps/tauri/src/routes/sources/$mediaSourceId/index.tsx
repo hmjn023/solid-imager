@@ -161,6 +161,10 @@ function SourceMediaRoute() {
 		placeholderData: keepPreviousData,
 	}));
 
+	const refreshActiveMediaQuery = () => {
+		void mediaQuery.refetch();
+	};
+
 	useMediaSourceEvents(mediaSourceId, {
 		onMediaAdded: () => {
 			setAddedCount((prev) => prev + 1);
@@ -177,9 +181,7 @@ function SourceMediaRoute() {
 						toast.success(`${count} new media detected. Refreshing list...`);
 						setAddedCount(0);
 					}
-					void queryClient.invalidateQueries({
-						queryKey: ["media", mediaSourceId()],
-					});
+					refreshActiveMediaQuery();
 				}, DEBOUNCE_DELAY_MS),
 			);
 		},
@@ -202,9 +204,7 @@ function SourceMediaRoute() {
 			toast.success(
 				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
 			);
-			void queryClient.invalidateQueries({
-				queryKey: ["media", mediaSourceId()],
-			});
+			refreshActiveMediaQuery();
 		},
 		onWatcherError: (data) => {
 			toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
@@ -348,9 +348,7 @@ function SourceMediaRoute() {
 		}
 		setMediaRefreshTimer(
 			setTimeout(() => {
-				void queryClient.invalidateQueries({
-					queryKey: ["media", mediaSourceId()],
-				});
+				refreshActiveMediaQuery();
 				setMediaRefreshTimer(null);
 			}, MEDIA_REFRESH_DEBOUNCE_MS),
 		);
