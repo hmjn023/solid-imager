@@ -18,6 +18,7 @@ fn main() {
     configure_linux_webview_environment();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             commands::backup::backup_create_zip,
             commands::backup::backup_extract_zip,

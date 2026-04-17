@@ -4,9 +4,10 @@ import type {
 } from "@solid-imager/core/domain/repositories/source-repository";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { emit } from "@tauri-apps/api/event";
+import { watch } from "@tauri-apps/plugin-fs";
 import { getTauriAppServices } from "~/app-services";
-import { tauriJobQueue } from "../../jobs/tauri-job-queue";
 import type { ThumbnailJob } from "../../jobs/tauri-job-queue";
+import { tauriJobQueue } from "../../jobs/tauri-job-queue";
 import { basename, extname, joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
@@ -30,6 +31,11 @@ type SyncResult = {
 	deleted: number;
 	error?: string;
 };
+
+type SourceUnwatch = Awaited<ReturnType<typeof watch>>;
+
+const sourceWatchers = new Map<string, SourceUnwatch>();
+const pendingWatchPaths = new Set<string>();
 
 function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	if (source.type === "sftp") {
@@ -88,6 +94,13 @@ function normalizeRelativePath(path: string) {
 	return path.replace(/[\\/]+/g, "/");
 }
 
+function hasHiddenSegment(path: string) {
+	return path
+		.split("/")
+		.filter(Boolean)
+		.some((segment) => segment.startsWith("."));
+}
+
 async function scanDirectoryRecursive(rootPath: string): Promise<string[]> {
 	const fs = getTauriAppServices().fileSystem;
 	const entries = await fs.readdir(rootPath);
@@ -123,6 +136,35 @@ function toRelativePath(rootPath: string, fullPath: string) {
 	);
 }
 
+function buildSingleFileIndexInput(
+	source: MediaSource,
+	fullPath: string,
+	supportedExtensions: {
+		image: string[];
+		video: string[];
+		audio: string[];
+	},
+): FileToIndex | null {
+	const relativePath = toRelativePath(
+		(source.connectionInfo as { path: string }).path,
+		fullPath,
+	);
+	if (!relativePath || hasHiddenSegment(relativePath)) {
+		return null;
+	}
+
+	const mediaType = inferMediaType(relativePath, supportedExtensions);
+	if (!mediaType) {
+		return null;
+	}
+
+	return {
+		fullPath,
+		relativePath,
+		normalizedRelPath: normalizeRelativePath(relativePath),
+		mediaType,
+	};
+}
 
 const PROBE_CONCURRENCY = 4;
 const INSERT_BATCH_SIZE = 500;
@@ -137,32 +179,44 @@ type FileToIndex = {
 async function probeAndCollect(
 	sourceId: string,
 	files: FileToIndex[],
-): Promise<Array<import("../repositories/media-repository").UpsertTauriMediaInput & { normalizedRelPath: string }>> {
-	const results: Array<import("../repositories/media-repository").UpsertTauriMediaInput & { normalizedRelPath: string }> = [];
+): Promise<
+	Array<
+		import("../repositories/media-repository").UpsertTauriMediaInput & {
+			normalizedRelPath: string;
+		}
+	>
+> {
+	const results: Array<
+		import("../repositories/media-repository").UpsertTauriMediaInput & {
+			normalizedRelPath: string;
+		}
+	> = [];
 	const commandClient = getTauriAppServices().commandClient;
 
 	for (let i = 0; i < files.length; i += PROBE_CONCURRENCY) {
 		const chunk = files.slice(i, i + PROBE_CONCURRENCY);
 		const settled = await Promise.allSettled(
-			chunk.map(async ({ fullPath, relativePath, normalizedRelPath, mediaType }) => {
-				const probe = await commandClient.invoke<ProbeMediaResult>(
-					"probe_media",
-					{ mediaPath: fullPath },
-				);
-				return {
-					mediaSourceId: sourceId,
-					filePath: relativePath,
-					fileName: basename(fullPath),
-					mediaType,
-					width: probe.width,
-					height: probe.height,
-					fileSize: probe.size,
-					description: null as string | null,
-					createdAt: new Date(probe.createdAt),
-					modifiedAt: new Date(probe.modifiedAt),
-					normalizedRelPath,
-				};
-			}),
+			chunk.map(
+				async ({ fullPath, relativePath, normalizedRelPath, mediaType }) => {
+					const probe = await commandClient.invoke<ProbeMediaResult>(
+						"probe_media",
+						{ mediaPath: fullPath },
+					);
+					return {
+						mediaSourceId: sourceId,
+						filePath: relativePath,
+						fileName: basename(fullPath),
+						mediaType,
+						width: probe.width,
+						height: probe.height,
+						fileSize: probe.size,
+						description: null as string | null,
+						createdAt: new Date(probe.createdAt),
+						modifiedAt: new Date(probe.modifiedAt),
+						normalizedRelPath,
+					};
+				},
+			),
 		);
 
 		for (const result of settled) {
@@ -175,6 +229,162 @@ async function probeAndCollect(
 	}
 
 	return results;
+}
+
+async function upsertIndexedFile(
+	source: MediaSource,
+	file: FileToIndex,
+): Promise<{ mediaId: string; isNew: boolean } | null> {
+	const existing = await TauriMediaRepository.findByPath(
+		source.id,
+		file.normalizedRelPath,
+	);
+	const probed = await probeAndCollect(source.id, [file]);
+	if (probed.length === 0) {
+		return null;
+	}
+
+	const [{ normalizedRelPath, ...input }] = probed;
+	const [row] = await TauriMediaRepository.batchUpsert([input]);
+	if (!row) {
+		return null;
+	}
+
+	const payload = {
+		mediaSourceId: source.id,
+		mediaId: row.id,
+		filePath: normalizedRelPath,
+		timestamp: new Date().toISOString(),
+	};
+	if (existing) {
+		await emit("media-changed", payload);
+	} else {
+		await emit("media-added", payload);
+	}
+
+	tauriJobQueue.enqueue([
+		{
+			sourceId: source.id,
+			mediaId: row.id,
+			filePath: normalizedRelPath,
+			fullPath: file.fullPath,
+		},
+	]);
+
+	return { mediaId: row.id, isNew: !existing };
+}
+
+async function deleteIndexedFile(
+	source: MediaSource,
+	relativePath: string,
+): Promise<boolean> {
+	const normalizedRelPath = normalizeRelativePath(relativePath);
+	const existing = await TauriMediaRepository.findByPath(
+		source.id,
+		normalizedRelPath,
+	);
+	if (!existing) {
+		return false;
+	}
+
+	await TauriMediaRepository.delete(existing.id);
+	await emit("media-deleted", {
+		mediaSourceId: source.id,
+		mediaId: existing.id,
+		filePath: existing.filePath,
+		timestamp: new Date().toISOString(),
+	});
+	return true;
+}
+
+async function reconcileWatchedPath(
+	source: MediaSource,
+	fullPath: string,
+): Promise<void> {
+	const dedupeKey = `${source.id}:${normalizeRelativePath(fullPath)}`;
+	if (pendingWatchPaths.has(dedupeKey)) {
+		return;
+	}
+	pendingWatchPaths.add(dedupeKey);
+
+	try {
+		const config = await TauriConfigService.getConfig();
+		const fs = getTauriAppServices().fileSystem;
+		const exists = await fs.exists(fullPath);
+		if (exists) {
+			const file = buildSingleFileIndexInput(
+				source,
+				fullPath,
+				config.media.supportedExtensions,
+			);
+			if (!file) {
+				return;
+			}
+			await upsertIndexedFile(source, file);
+			return;
+		}
+
+		const relativePath = toRelativePath(
+			(source.connectionInfo as { path: string }).path,
+			fullPath,
+		);
+		if (!relativePath || hasHiddenSegment(relativePath)) {
+			return;
+		}
+		await deleteIndexedFile(source, relativePath);
+	} finally {
+		pendingWatchPaths.delete(dedupeKey);
+	}
+}
+
+async function stopSourceWatcher(sourceId: string): Promise<void> {
+	const unwatch = sourceWatchers.get(sourceId);
+	if (!unwatch) {
+		return;
+	}
+
+	sourceWatchers.delete(sourceId);
+	await unwatch();
+}
+
+async function startSourceWatcher(source: MediaSource): Promise<void> {
+	if (source.type !== "local") {
+		return;
+	}
+
+	const rootPath = (source.connectionInfo as { path: string }).path;
+	await stopSourceWatcher(source.id);
+	const unwatch = await watch(
+		rootPath,
+		(event) => {
+			for (const path of event.paths) {
+				void reconcileWatchedPath(source, path).catch(async (error) => {
+					console.error("[watcher] failed to reconcile path", error);
+					await emit("watcher-error", {
+						mediaSourceId: source.id,
+						error: error instanceof Error ? error.message : String(error),
+					});
+				});
+			}
+		},
+		{
+			recursive: true,
+			delayMs: 300,
+		},
+	);
+	sourceWatchers.set(source.id, unwatch);
+}
+
+async function startSourceWatcherSafely(source: MediaSource): Promise<void> {
+	try {
+		await startSourceWatcher(source);
+	} catch (error) {
+		console.error("[watcher] failed to start", source.id, error);
+		await emit("watcher-error", {
+			mediaSourceId: source.id,
+			error: error instanceof Error ? error.message : String(error),
+		});
+	}
 }
 
 async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
@@ -213,7 +423,12 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 		);
 		if (mediaType) {
 			const normalizedRelPath = normalizeRelativePath(relativePath);
-			filesToIndex.push({ fullPath, relativePath, normalizedRelPath, mediaType });
+			filesToIndex.push({
+				fullPath,
+				relativePath,
+				normalizedRelPath,
+				mediaType,
+			});
 			relPathToFullPath.set(normalizedRelPath, fullPath);
 		}
 	}
@@ -222,7 +437,9 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	// Probe files with limited concurrency and batch-insert, collecting returned IDs
 	const actualMediaPaths = new Set<string>();
 	let added = 0;
-	const batch: Array<import("../repositories/media-repository").UpsertTauriMediaInput> = [];
+	const batch: Array<
+		import("../repositories/media-repository").UpsertTauriMediaInput
+	> = [];
 	const batchNormPaths: string[] = [];
 	const allReturned: Array<{ id: string; normalizedRelPath: string }> = [];
 
@@ -285,6 +502,12 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	for (const [relativePath, mediaId] of dbPathMap.entries()) {
 		if (actualMediaPaths.has(relativePath)) continue;
 		await TauriMediaRepository.delete(mediaId);
+		await emit("media-deleted", {
+			mediaSourceId: source.id,
+			mediaId,
+			filePath: relativePath,
+			timestamp: new Date().toISOString(),
+		});
 		deleted += 1;
 	}
 
@@ -313,6 +536,7 @@ export const TauriSourceService = {
 		}
 		const source = await TauriSourceRepository.create(input);
 		await syncLocalSource(source);
+		await startSourceWatcherSafely(source);
 		return toSafeMediaSource(source);
 	},
 
@@ -320,6 +544,10 @@ export const TauriSourceService = {
 		id: string,
 		input: Partial<MediaSource>,
 	): Promise<SafeMediaSource> {
+		const previousSource = await TauriSourceRepository.findById(id);
+		if (!previousSource) {
+			throw new Error(`Source not found: ${id}`);
+		}
 		if (input.type && input.type !== "local") {
 			throw new Error("Tauri currently supports only local sources.");
 		}
@@ -334,11 +562,26 @@ export const TauriSourceService = {
 			throw new Error(`Source path does not exist: ${nextPath}`);
 		}
 		const source = await TauriSourceRepository.update(id, input);
+		await stopSourceWatcher(previousSource.id);
+		if (source.type === "local") {
+			await startSourceWatcherSafely(source);
+		}
 		return toSafeMediaSource(source);
 	},
 
 	async delete(id: string): Promise<void> {
+		await stopSourceWatcher(id);
 		await TauriSourceRepository.delete(id);
+	},
+
+	async startWatchingAllLocalSources(): Promise<void> {
+		const sources = await TauriSourceRepository.findAll();
+		for (const source of sources) {
+			if (source.type !== "local") {
+				continue;
+			}
+			await startSourceWatcherSafely(source);
+		}
 	},
 
 	async sync(ids: string[]) {
