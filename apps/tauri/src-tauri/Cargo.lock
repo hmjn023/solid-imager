@@ -772,15 +772,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "file-id"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"
-dependencies = [
- "windows-sys 0.60.2",
-]
-
-[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2076,26 +2067,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "notify-debouncer-full"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "375bd3a138be7bfeff3480e4a623df4cbfb55b79df617c055cd810ba466fa078"
-dependencies = [
- "file-id",
- "log",
- "notify",
- "notify-types",
- "walkdir",
-]
-
-[[package]]
 name = "notify-types"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42b8cfee0e339a0337359f3c88165702ac6e600dc01c0cc9579a92d62b08477a"
 dependencies = [
  "bitflags 2.11.0",
- "serde",
 ]
 
 [[package]]
@@ -2205,7 +2182,6 @@ checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.11.0",
  "block2",
- "libc",
  "objc2",
  "objc2-core-foundation",
 ]
@@ -3290,11 +3266,11 @@ dependencies = [
  "chrono",
  "image",
  "mime_guess",
+ "notify",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
- "tauri-plugin-fs",
  "zip",
 ]
 
@@ -3619,49 +3595,6 @@ dependencies = [
  "syn 2.0.117",
  "tauri-codegen",
  "tauri-utils",
-]
-
-[[package]]
-name = "tauri-plugin"
-version = "2.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ddde7d51c907b940fb573006cdda9a642d6a7c8153657e88f8a5c3c9290cd4aa"
-dependencies = [
- "anyhow",
- "glob",
- "plist",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "tauri-utils",
- "toml 0.9.12+spec-1.1.0",
- "walkdir",
-]
-
-[[package]]
-name = "tauri-plugin-fs"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36e1ec28b79f3d0683f4507e1615c36292c0ea6716668770d4396b9b39871ed8"
-dependencies = [
- "anyhow",
- "dunce",
- "glob",
- "log",
- "notify",
- "notify-debouncer-full",
- "objc2-foundation",
- "percent-encoding",
- "schemars 0.8.22",
- "serde",
- "serde_json",
- "serde_repr",
- "tauri",
- "tauri-plugin",
- "tauri-utils",
- "thiserror 2.0.18",
- "toml 0.9.12+spec-1.1.0",
- "url",
 ]
 
 [[package]]

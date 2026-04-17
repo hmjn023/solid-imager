@@ -5,11 +5,6 @@
 	"windows": ["main"],
 	"permissions": [
 		"core:default",
-		"fs:default",
-		{
-			"identifier": "fs:allow-watch",
-			"allow": [{ "path": "**" }]
-		},
 		"core:webview:allow-create-webview-window",
 		"core:webview:allow-webview-close"
 	]

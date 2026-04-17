@@ -1,6 +1,7 @@
 mod commands;
 mod media_config;
 mod media_metadata;
+mod watcher;
 
 #[cfg(target_os = "linux")]
 fn configure_linux_webview_environment() {
@@ -18,7 +19,7 @@ fn main() {
     configure_linux_webview_environment();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
+        .manage(watcher::WatcherRegistry::default())
         .invoke_handler(tauri::generate_handler![
             commands::backup::backup_create_zip,
             commands::backup::backup_extract_zip,
@@ -37,7 +38,9 @@ fn main() {
             commands::media::image_generate_thumbnail,
             commands::media::image_extract_metadata,
             commands::media::image_get_dimensions,
-            commands::media::probe_media
+            commands::media::probe_media,
+            watcher::source_watch_start,
+            watcher::source_watch_stop
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application")

@@ -12,8 +12,8 @@ tauri-build = { version = "2", features = [] }
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 image = { version = "0.25", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 mime_guess = "2"
+notify = "8"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tauri = { version = "2", features = ["protocol-asset"] }
-tauri-plugin-fs = { version = "2", features = ["watch"] }
 zip = { version = "2.2.0", default-features = false, features = ["deflate"] }

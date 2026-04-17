@@ -3,8 +3,7 @@ import type {
 	NewMediaSource,
 } from "@solid-imager/core/domain/repositories/source-repository";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import { emit } from "@tauri-apps/api/event";
-import { watch } from "@tauri-apps/plugin-fs";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import type { ThumbnailJob } from "../../jobs/tauri-job-queue";
 import { tauriJobQueue } from "../../jobs/tauri-job-queue";
@@ -32,16 +31,19 @@ type SyncResult = {
 	error?: string;
 };
 
-type SourceUnwatch = Awaited<ReturnType<typeof watch>>;
-
-const sourceWatchers = new Map<string, SourceUnwatch>();
+const sourceWatchers = new Map<string, true>();
 const pendingWatchPaths = new Set<string>();
 const WATCH_RETRY_DELAY_MS = 500;
 const WATCH_MAX_RETRIES = 5;
 const WATCH_START_RETRY_DELAY_MS = 5_000;
 const watchRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let sourceWatchListenerReady: Promise<void> | null = null;
 
-type WatchEvent = Parameters<Parameters<typeof watch>[1]>[0];
+type SourceWatchEventPayload = {
+	mediaSourceId: string;
+	paths: string[];
+	timestamp?: string;
+};
 
 function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	if (source.type === "sftp") {
@@ -102,7 +104,7 @@ function normalizeRelativePath(path: string) {
 
 function hasHiddenSegment(path: string) {
 	return path
-		.split("/")
+		.split(/[\\/]/)
 		.filter(Boolean)
 		.some((segment) => segment.startsWith("."));
 }
@@ -338,15 +340,11 @@ async function deleteIndexedDirectory(
 		return;
 	}
 
-	const allRecords = await TauriMediaRepository.findAllPathsBySourceId(source.id);
-	const prefix = `${normalizedRelPath}/`;
-	for (const record of allRecords) {
-		const candidatePath = normalizeRelativePath(record.filePath);
-		if (!(candidatePath === normalizedRelPath || candidatePath.startsWith(prefix))) {
-			continue;
-		}
-
-		await TauriMediaRepository.delete(record.id);
+	const deletedRecords = await TauriMediaRepository.deleteBySourceIdAndPathPrefix(
+		source.id,
+		normalizedRelPath,
+	);
+	for (const record of deletedRecords) {
 		await emit("media-deleted", {
 			mediaSourceId: source.id,
 			mediaId: record.id,
@@ -418,14 +416,68 @@ async function reconcileWatchedPath(
 	}
 }
 
-function shouldProcessWatchEvent(event: WatchEvent): boolean {
-	if (event.type === "any" || event.type === "other") {
-		return true;
+function parseSourceWatchEventPayload(
+	payload: unknown,
+): SourceWatchEventPayload | null {
+	if (typeof payload !== "object" || payload === null) {
+		return null;
 	}
-	if ("create" in event.type || "modify" in event.type || "remove" in event.type) {
-		return true;
+
+	const value = payload as Record<string, unknown>;
+	const mediaSourceId =
+		typeof value.mediaSourceId === "string" ? value.mediaSourceId : undefined;
+	const paths = Array.isArray(value.paths)
+		? value.paths.filter((path): path is string => typeof path === "string")
+		: [];
+
+	if (!mediaSourceId || paths.length === 0) {
+		return null;
 	}
-	return false;
+
+	return {
+		mediaSourceId,
+		paths,
+		timestamp: typeof value.timestamp === "string" ? value.timestamp : undefined,
+	};
+}
+
+async function ensureSourceWatchListener(): Promise<void> {
+	if (sourceWatchListenerReady) {
+		return sourceWatchListenerReady;
+	}
+
+	sourceWatchListenerReady = (async () => {
+		await listen("source-watch-event", (event) => {
+			const payload = parseSourceWatchEventPayload(event.payload);
+			if (!payload) {
+				return;
+			}
+
+			void (async () => {
+				const source = await TauriSourceRepository.findById(payload.mediaSourceId);
+				if (!source || source.type !== "local") {
+					return;
+				}
+
+				for (const path of payload.paths) {
+					await reconcileWatchedPath(source, path).catch(async (error) => {
+						console.error("[watcher] failed to reconcile path", error);
+						await emit("watcher-error", {
+							mediaSourceId: source.id,
+							error: error instanceof Error ? error.message : String(error),
+						});
+					});
+				}
+			})().catch(async (error) => {
+				console.error("[watcher] failed to process source watch event", error);
+			});
+		});
+	})().catch((error) => {
+		sourceWatchListenerReady = null;
+		throw error;
+	});
+
+	return sourceWatchListenerReady;
 }
 
 async function stopSourceWatcher(sourceId: string): Promise<void> {
@@ -435,13 +487,10 @@ async function stopSourceWatcher(sourceId: string): Promise<void> {
 		watchRetryTimers.delete(sourceId);
 	}
 
-	const unwatch = sourceWatchers.get(sourceId);
-	if (!unwatch) {
-		return;
-	}
-
 	sourceWatchers.delete(sourceId);
-	await unwatch();
+	await getTauriAppServices().commandClient.invoke("source_watch_stop", {
+		mediaSourceId: sourceId,
+	});
 }
 
 async function startSourceWatcher(source: MediaSource): Promise<void> {
@@ -451,32 +500,16 @@ async function startSourceWatcher(source: MediaSource): Promise<void> {
 
 	const rootPath = (source.connectionInfo as { path: string }).path;
 	await stopSourceWatcher(source.id);
-	const unwatch = await watch(
-		rootPath,
-		(event) => {
-			if (!shouldProcessWatchEvent(event)) {
-				return;
-			}
-			for (const path of event.paths) {
-				void reconcileWatchedPath(source, path).catch(async (error) => {
-					console.error("[watcher] failed to reconcile path", error);
-					await emit("watcher-error", {
-						mediaSourceId: source.id,
-						error: error instanceof Error ? error.message : String(error),
-					});
-				});
-			}
-		},
-		{
-			recursive: true,
-			delayMs: 300,
-		},
-	);
-	sourceWatchers.set(source.id, unwatch);
+	await getTauriAppServices().commandClient.invoke("source_watch_start", {
+		mediaSourceId: source.id,
+		watchPath: rootPath,
+	});
+	sourceWatchers.set(source.id, true);
 }
 
 async function startSourceWatcherSafely(source: MediaSource): Promise<void> {
 	try {
+		await ensureSourceWatchListener();
 		await startSourceWatcher(source);
 	} catch (error) {
 		console.error("[watcher] failed to start", source.id, error);
@@ -684,6 +717,7 @@ export const TauriSourceService = {
 
 	async startWatchingAllLocalSources(): Promise<void> {
 		const sources = await TauriSourceRepository.findAll();
+		await ensureSourceWatchListener();
 		for (const source of sources) {
 			if (source.type !== "local") {
 				continue;
