@@ -36,6 +36,10 @@ type SourceUnwatch = Awaited<ReturnType<typeof watch>>;
 
 const sourceWatchers = new Map<string, SourceUnwatch>();
 const pendingWatchPaths = new Set<string>();
+const WATCH_RETRY_DELAY_MS = 500;
+const WATCH_MAX_RETRIES = 5;
+
+type WatchEvent = Parameters<Parameters<typeof watch>[1]>[0];
 
 function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	if (source.type === "sftp") {
@@ -277,6 +281,26 @@ async function upsertIndexedFile(
 	return { mediaId: row.id, isNew: !existing };
 }
 
+async function upsertIndexedFileWithRetry(
+	source: MediaSource,
+	file: FileToIndex,
+): Promise<{ mediaId: string; isNew: boolean } | null> {
+	for (let attempt = 0; attempt < WATCH_MAX_RETRIES; attempt += 1) {
+		const result = await upsertIndexedFile(source, file);
+		if (result) {
+			return result;
+		}
+
+		if (attempt + 1 < WATCH_MAX_RETRIES) {
+			await new Promise((resolve) =>
+				setTimeout(resolve, WATCH_RETRY_DELAY_MS),
+			);
+		}
+	}
+
+	return null;
+}
+
 async function deleteIndexedFile(
 	source: MediaSource,
 	relativePath: string,
@@ -300,6 +324,36 @@ async function deleteIndexedFile(
 	return true;
 }
 
+async function deleteIndexedDirectory(
+	source: MediaSource,
+	relativePath: string,
+): Promise<void> {
+	const normalizedRelPath = normalizeRelativePath(relativePath).replace(
+		/[\\/]+$/,
+		"",
+	);
+	if (!normalizedRelPath) {
+		return;
+	}
+
+	const allRecords = await TauriMediaRepository.findAllPathsBySourceId(source.id);
+	const prefix = `${normalizedRelPath}/`;
+	for (const record of allRecords) {
+		const candidatePath = normalizeRelativePath(record.filePath);
+		if (!(candidatePath === normalizedRelPath || candidatePath.startsWith(prefix))) {
+			continue;
+		}
+
+		await TauriMediaRepository.delete(record.id);
+		await emit("media-deleted", {
+			mediaSourceId: source.id,
+			mediaId: record.id,
+			filePath: record.filePath,
+			timestamp: new Date().toISOString(),
+		});
+	}
+}
+
 async function reconcileWatchedPath(
 	source: MediaSource,
 	fullPath: string,
@@ -315,6 +369,23 @@ async function reconcileWatchedPath(
 		const fs = getTauriAppServices().fileSystem;
 		const exists = await fs.exists(fullPath);
 		if (exists) {
+			const stat = await fs.stat(fullPath);
+			if (stat.isDirectory) {
+				const nestedFiles = await scanDirectoryRecursive(fullPath);
+				for (const nestedPath of nestedFiles) {
+					const file = buildSingleFileIndexInput(
+						source,
+						nestedPath,
+						config.media.supportedExtensions,
+					);
+					if (!file) {
+						continue;
+					}
+					await upsertIndexedFileWithRetry(source, file);
+				}
+				return;
+			}
+
 			const file = buildSingleFileIndexInput(
 				source,
 				fullPath,
@@ -323,7 +394,7 @@ async function reconcileWatchedPath(
 			if (!file) {
 				return;
 			}
-			await upsertIndexedFile(source, file);
+			await upsertIndexedFileWithRetry(source, file);
 			return;
 		}
 
@@ -334,10 +405,25 @@ async function reconcileWatchedPath(
 		if (!relativePath || hasHiddenSegment(relativePath)) {
 			return;
 		}
-		await deleteIndexedFile(source, relativePath);
+		const existing = await TauriMediaRepository.findByPath(source.id, relativePath);
+		if (existing) {
+			await deleteIndexedFile(source, relativePath);
+			return;
+		}
+		await deleteIndexedDirectory(source, relativePath);
 	} finally {
 		pendingWatchPaths.delete(dedupeKey);
 	}
+}
+
+function shouldProcessWatchEvent(event: WatchEvent): boolean {
+	if (event.type === "any" || event.type === "other") {
+		return true;
+	}
+	if ("create" in event.type || "modify" in event.type || "remove" in event.type) {
+		return true;
+	}
+	return false;
 }
 
 async function stopSourceWatcher(sourceId: string): Promise<void> {
@@ -360,6 +446,9 @@ async function startSourceWatcher(source: MediaSource): Promise<void> {
 	const unwatch = await watch(
 		rootPath,
 		(event) => {
+			if (!shouldProcessWatchEvent(event)) {
+				return;
+			}
 			for (const path of event.paths) {
 				void reconcileWatchedPath(source, path).catch(async (error) => {
 					console.error("[watcher] failed to reconcile path", error);
@@ -582,6 +671,15 @@ export const TauriSourceService = {
 		for (const source of sources) {
 			if (source.type !== "local") {
 				continue;
+			}
+			try {
+				await syncLocalSource(source);
+			} catch (error) {
+				console.error("[watcher] failed to sync before start", source.id, error);
+				await emit("watcher-error", {
+					mediaSourceId: source.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
 			}
 			await startSourceWatcherSafely(source);
 		}
