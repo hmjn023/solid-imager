@@ -56,7 +56,6 @@ function validateRelativePath(filePath: string): void {
 	}
 }
 
-
 function toLocalSourcePath(
 	source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>,
 ) {
@@ -319,8 +318,6 @@ async function mapMediaPathsToIds(
 	return new Map(rows.map((row) => [row.filePath, row.id]));
 }
 
-
-
 async function restoreRelations(
 	tx: TauriDbExecutor,
 	params: {
@@ -462,10 +459,14 @@ async function restoreRelations(
 		await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
 		await tx.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, chunk));
 		await tx.delete(mediaProjects).where(inArray(mediaProjects.mediaId, chunk));
-		await tx.delete(mediaCharacters).where(inArray(mediaCharacters.mediaId, chunk));
+		await tx
+			.delete(mediaCharacters)
+			.where(inArray(mediaCharacters.mediaId, chunk));
 		await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
 		await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-		await tx.delete(mediaGenerationInfo).where(inArray(mediaGenerationInfo.mediaId, chunk));
+		await tx
+			.delete(mediaGenerationInfo)
+			.where(inArray(mediaGenerationInfo.mediaId, chunk));
 	}
 
 	const chunkSize = 1000;
@@ -681,7 +682,11 @@ export const TauriSourceBackupService = {
 		const { tagMap, authorMap, projectMap, ipMap, charMap } =
 			await restoreMasterData(db, validItems);
 		await restoreMediaRecords(db, mediaSourceId, validItems);
-		const mediaPathToId = await mapMediaPathsToIds(db, mediaSourceId, validItems);
+		const mediaPathToId = await mapMediaPathsToIds(
+			db,
+			mediaSourceId,
+			validItems,
+		);
 		await restoreRelations(db, {
 			items: validItems,
 			mediaPathToId,

@@ -3,6 +3,7 @@ import { render } from "solid-js/web";
 import "../../server/src/app.css";
 import { setTauriAppServices } from "./app-services";
 import { initializeTauriApp } from "./bootstrap";
+import { tauriJobQueue } from "./infrastructure/jobs/tauri-job-queue";
 import { TauriSourceService } from "./infrastructure/local-api/services/source-service";
 import { createAppRouter } from "./router";
 
@@ -17,6 +18,7 @@ const appRoot = root;
 async function main() {
 	const services = await initializeTauriApp();
 	setTauriAppServices(services);
+	await tauriJobQueue.initialize();
 	const router = createAppRouter(services);
 
 	render(() => <RouterProvider router={router} />, appRoot);

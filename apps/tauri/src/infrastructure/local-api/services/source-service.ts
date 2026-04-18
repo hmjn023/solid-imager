@@ -5,8 +5,8 @@ import type {
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
-import type { ThumbnailJob } from "../../jobs/tauri-job-queue";
 import { tauriJobQueue } from "../../jobs/tauri-job-queue";
+import type { ThumbnailJob } from "../../jobs/thumbnail-job";
 import { basename, extname, joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
@@ -273,7 +273,7 @@ async function upsertIndexedFile(
 		await emit("media-added", payload);
 	}
 
-	tauriJobQueue.enqueue([
+	await tauriJobQueue.enqueue([
 		{
 			sourceId: source.id,
 			mediaId: row.id,
@@ -296,9 +296,7 @@ async function upsertIndexedFileWithRetry(
 		}
 
 		if (attempt + 1 < WATCH_MAX_RETRIES) {
-			await new Promise((resolve) =>
-				setTimeout(resolve, WATCH_RETRY_DELAY_MS),
-			);
+			await new Promise((resolve) => setTimeout(resolve, WATCH_RETRY_DELAY_MS));
 		}
 	}
 
@@ -340,10 +338,11 @@ async function deleteIndexedDirectory(
 		return;
 	}
 
-	const deletedRecords = await TauriMediaRepository.deleteBySourceIdAndPathPrefix(
-		source.id,
-		normalizedRelPath,
-	);
+	const deletedRecords =
+		await TauriMediaRepository.deleteBySourceIdAndPathPrefix(
+			source.id,
+			normalizedRelPath,
+		);
 	for (const record of deletedRecords) {
 		await emit("media-deleted", {
 			mediaSourceId: source.id,
@@ -405,7 +404,10 @@ async function reconcileWatchedPath(
 		if (!relativePath || hasHiddenSegment(relativePath)) {
 			return;
 		}
-		const existing = await TauriMediaRepository.findByPath(source.id, relativePath);
+		const existing = await TauriMediaRepository.findByPath(
+			source.id,
+			relativePath,
+		);
 		if (existing) {
 			await deleteIndexedFile(source, relativePath);
 			return;
@@ -437,7 +439,8 @@ function parseSourceWatchEventPayload(
 	return {
 		mediaSourceId,
 		paths,
-		timestamp: typeof value.timestamp === "string" ? value.timestamp : undefined,
+		timestamp:
+			typeof value.timestamp === "string" ? value.timestamp : undefined,
 	};
 }
 
@@ -454,7 +457,9 @@ async function ensureSourceWatchListener(): Promise<void> {
 			}
 
 			void (async () => {
-				const source = await TauriSourceRepository.findById(payload.mediaSourceId);
+				const source = await TauriSourceRepository.findById(
+					payload.mediaSourceId,
+				);
 				if (!source || source.type !== "local") {
 					return;
 				}
@@ -634,7 +639,7 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	}
 
 	if (newMediaJobs.length > 0) {
-		tauriJobQueue.enqueue(newMediaJobs);
+		await tauriJobQueue.enqueue(newMediaJobs);
 		console.debug(`[sync] enqueued ${newMediaJobs.length} thumbnail jobs`);
 	}
 
@@ -732,7 +737,11 @@ export const TauriSourceService = {
 			try {
 				await syncLocalSource(source);
 			} catch (error) {
-				console.error("[watcher] failed to sync before start", source.id, error);
+				console.error(
+					"[watcher] failed to sync before start",
+					source.id,
+					error,
+				);
 				await emit("watcher-error", {
 					mediaSourceId: source.id,
 					error: error instanceof Error ? error.message : String(error),

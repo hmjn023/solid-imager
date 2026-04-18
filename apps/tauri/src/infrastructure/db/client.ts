@@ -1,15 +1,12 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
-import {
-	applyPgMigrations,
-	type SharedPgliteDb,
-} from "../../../../server/src/infrastructure/db/pglite-shared";
-import * as schema from "../../../../server/src/infrastructure/db/schema";
+import { applyPgMigrations } from "../../../../server/src/infrastructure/db/pglite-shared";
 import { loadServerMigrations } from "./migrations";
+import * as schema from "./schema";
 
 const TAURI_PGLITE_DATA_DIR = "idb://solid-imager-tauri";
 
-export type TauriDb = SharedPgliteDb;
+export type TauriDb = ReturnType<typeof drizzle<typeof schema>>;
 export type TauriDbTransaction = Parameters<
 	Parameters<TauriDb["transaction"]>[0]
 >[0];
