@@ -4,6 +4,8 @@
 
 `apps/tauri` は `apps/server` と無関係な独自機能を増やす場所ではない。デスクトップ固有事情がない限り、server 側の画面責務、操作モデル、API 形状、バックエンド挙動を踏襲する。
 
+ただし `apps/tauri` は将来的に Android 上での動作も目指す。Tauri 側の実装は desktop 専用アプリとして閉じず、可能な限り Rust native と WebView で完結する構成を優先する。
+
 ## UI Rules
 
 - 新規 route や大きな UI 変更では、先に `apps/server/src/routes` と対応 component を確認する。
@@ -20,6 +22,8 @@
 - server 側に既存実装がある場合は参照実装として扱い、tauri 側の命名、入力、出力、処理順、失敗時の扱いをできるだけ揃える。
 - 共通化できる処理は app ごとに二重実装しない。`packages/core` に寄せられる処理、server 側の既存ロジックを引き上げて使える処理を優先して使い回す。
 - Tauri 固有実装が必要でも、入力、出力、命名、失敗時の扱いは server 側と揃える。
+- Android 対応を見据え、Tauri 側では OS 依存の外部常駐サービスやローカルファイル直編集に寄りすぎず、Rust native と WebView の責務分離で完結できる構成を優先する。
+- 設定保存は `config.json` ではなく Tauri のローカル DB に保存する。これは desktop と mobile で同じ永続化経路を使い、バックアップ、マイグレーション、配布形態の差分を吸収しやすくするためである。
 
 ## Before Diverging
 

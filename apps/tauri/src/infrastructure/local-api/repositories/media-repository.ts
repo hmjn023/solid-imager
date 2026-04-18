@@ -864,6 +864,34 @@ export const TauriMediaRepository = {
 			.where(eq(medias.mediaSourceId, sourceId));
 	},
 
+	async deleteBySourceIdAndPathPrefix(
+		sourceId: string,
+		folderPath: string,
+		tx?: TauriDbExecutor,
+	): Promise<Array<{ id: string; filePath: string }>> {
+		const normalizedFolderPath = folderPath.replace(/[\\/]+$/, "");
+		if (!normalizedFolderPath) {
+			return [];
+		}
+
+		const prefixPattern = `${escapeLikePattern(normalizedFolderPath)}/`;
+		return await getExecutor(tx)
+			.delete(medias)
+			.where(
+				and(
+					eq(medias.mediaSourceId, sourceId),
+					or(
+						eq(medias.filePath, normalizedFolderPath),
+						like(medias.filePath, `${prefixPattern}%`),
+					),
+				),
+			)
+			.returning({
+				id: medias.id,
+				filePath: medias.filePath,
+			});
+	},
+
 	async batchUpsert(
 		inputs: UpsertTauriMediaInput[],
 		tx?: TauriDbExecutor,

@@ -1,4 +1,5 @@
 import { emit } from "@tauri-apps/api/event";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
 import { TauriConfigService } from "../local-api/services/config-service";
@@ -14,8 +15,6 @@ type SourceCounter = {
 	total: number;
 	done: number;
 };
-
-const CONCURRENCY = 4;
 
 async function resolveThumbnailBasePath(thumbnailDir: string): Promise<string> {
 	if (await isAbsolute(thumbnailDir)) return thumbnailDir;
@@ -35,6 +34,15 @@ class TauriJobQueue {
 	private queue: ThumbnailJob[] = [];
 	private running = 0;
 	private sourceCounters = new Map<string, SourceCounter>();
+	private concurrency = defaultAppConfig.jobs.concurrency;
+
+	constructor() {
+		void this.loadInitialConcurrency();
+		TauriConfigService.onChange((config) => {
+			this.concurrency = config.jobs.concurrency;
+			this.drain();
+		});
+	}
 
 	enqueue(jobs: ThumbnailJob[]): void {
 		for (const job of jobs) {
@@ -50,13 +58,26 @@ class TauriJobQueue {
 	}
 
 	private drain(): void {
-		while (this.running < CONCURRENCY && this.queue.length > 0) {
-			const job = this.queue.shift()!;
+		while (this.running < this.concurrency && this.queue.length > 0) {
+			const job = this.queue.shift();
+			if (!job) {
+				return;
+			}
 			this.running++;
 			void this.processJob(job).finally(() => {
 				this.running--;
 				this.drain();
 			});
+		}
+	}
+
+	private async loadInitialConcurrency(): Promise<void> {
+		try {
+			const config = await TauriConfigService.getConfig();
+			this.concurrency = config.jobs.concurrency;
+			this.drain();
+		} catch (error) {
+			console.error("[jobs] failed to load initial concurrency:", error);
 		}
 	}
 
