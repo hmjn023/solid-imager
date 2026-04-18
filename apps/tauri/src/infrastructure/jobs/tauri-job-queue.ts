@@ -1,15 +1,10 @@
-import { emit } from "@tauri-apps/api/event";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { emit } from "@tauri-apps/api/event";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
+import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";
 import { TauriConfigService } from "../local-api/services/config-service";
-
-export type ThumbnailJob = {
-	sourceId: string;
-	mediaId: string;
-	filePath: string;
-	fullPath: string;
-};
+import type { PersistedThumbnailJob, ThumbnailJob } from "./thumbnail-job";
 
 type SourceCounter = {
 	total: number;
@@ -31,30 +26,61 @@ function buildThumbnailPath(
 }
 
 class TauriJobQueue {
-	private queue: ThumbnailJob[] = [];
+	private queue: PersistedThumbnailJob[] = [];
 	private running = 0;
 	private sourceCounters = new Map<string, SourceCounter>();
 	private concurrency = defaultAppConfig.jobs.concurrency;
+	private initializationPromise: Promise<void> | null = null;
 
 	constructor() {
-		void this.loadInitialConcurrency();
 		TauriConfigService.onChange((config) => {
 			this.concurrency = config.jobs.concurrency;
 			this.drain();
 		});
 	}
 
-	enqueue(jobs: ThumbnailJob[]): void {
-		for (const job of jobs) {
-			const counter = this.sourceCounters.get(job.sourceId) ?? {
-				total: 0,
-				done: 0,
-			};
-			counter.total++;
-			this.sourceCounters.set(job.sourceId, counter);
-			this.queue.push(job);
+	async initialize(): Promise<void> {
+		if (!this.initializationPromise) {
+			this.initializationPromise = this.initializeInternal().catch((error) => {
+				this.initializationPromise = null;
+				throw error;
+			});
+		}
+		await this.initializationPromise;
+	}
+
+	async enqueue(jobs: ThumbnailJob[]): Promise<void> {
+		if (jobs.length === 0) {
+			return;
+		}
+
+		await this.initialize();
+		const persistedJobs = await TauriJobRepository.createMany(jobs);
+		for (const job of persistedJobs) {
+			this.enqueueInMemory(job);
 		}
 		this.drain();
+	}
+
+	private async initializeInternal(): Promise<void> {
+		const config = await TauriConfigService.getConfig();
+		this.concurrency = config.jobs.concurrency;
+		await TauriJobRepository.resetInProgressToPending();
+		const pendingJobs = await TauriJobRepository.findPending();
+		for (const job of pendingJobs) {
+			this.enqueueInMemory(job);
+		}
+		this.drain();
+	}
+
+	private enqueueInMemory(job: PersistedThumbnailJob): void {
+		const counter = this.sourceCounters.get(job.sourceId) ?? {
+			total: 0,
+			done: 0,
+		};
+		counter.total++;
+		this.sourceCounters.set(job.sourceId, counter);
+		this.queue.push(job);
 	}
 
 	private drain(): void {
@@ -71,23 +97,18 @@ class TauriJobQueue {
 		}
 	}
 
-	private async loadInitialConcurrency(): Promise<void> {
+	private async processJob(job: PersistedThumbnailJob): Promise<void> {
 		try {
-			const config = await TauriConfigService.getConfig();
-			this.concurrency = config.jobs.concurrency;
-			this.drain();
-		} catch (error) {
-			console.error("[jobs] failed to load initial concurrency:", error);
-		}
-	}
-
-	private async processJob(job: ThumbnailJob): Promise<void> {
-		try {
+			await TauriJobRepository.markAsInProgress(job.id);
 			const config = await TauriConfigService.getConfig();
 			const basePath = await resolveThumbnailBasePath(
 				config.storage.thumbnailDir,
 			);
-			const outputPath = buildThumbnailPath(basePath, job.sourceId, job.mediaId);
+			const outputPath = buildThumbnailPath(
+				basePath,
+				job.sourceId,
+				job.mediaId,
+			);
 			await getTauriAppServices().imageProcessor.generateThumbnail(
 				job.fullPath,
 				outputPath,
@@ -100,8 +121,20 @@ class TauriJobQueue {
 				filePath: job.filePath,
 				timestamp: new Date().toISOString(),
 			});
+			await TauriJobRepository.markAsCompleted(job.id);
 		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : "Unknown thumbnail job error";
 			console.error("[jobs] thumbnail generation failed:", job.mediaId, err);
+			try {
+				await TauriJobRepository.markAsFailed(job.id, message);
+			} catch (updateError) {
+				console.error(
+					"[jobs] failed to persist job failure:",
+					job.mediaId,
+					updateError,
+				);
+			}
 		} finally {
 			await this.markDone(job.sourceId);
 		}

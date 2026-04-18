@@ -7,7 +7,15 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { emit } from "@tauri-apps/api/event";
-import { and, asc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	getTableColumns,
+	inArray,
+	isNull,
+	sql,
+} from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import {
 	characterIps,
