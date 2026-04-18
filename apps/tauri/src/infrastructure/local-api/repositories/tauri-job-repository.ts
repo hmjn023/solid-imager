@@ -31,12 +31,12 @@ function isThumbnailJobPayload(value: unknown): value is ThumbnailJobPayload {
 	);
 }
 
-function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob {
-	if (!row.mediaSourceId) {
-		throw new Error(`Job ${row.id} is missing mediaSourceId.`);
-	}
-	if (!isThumbnailJobPayload(row.payload)) {
-		throw new Error(`Job ${row.id} has invalid thumbnail payload.`);
+function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
+	if (!row.mediaSourceId || !isThumbnailJobPayload(row.payload)) {
+		console.error(
+			`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`,
+		);
+		return null;
 	}
 
 	return {
@@ -78,7 +78,10 @@ export const TauriJobRepository = {
 		}));
 		const rows = await getDb().insert(jobs).values(values).returning();
 
-		return rows.map(toPersistedThumbnailJob);
+		return rows.flatMap((row) => {
+			const job = toPersistedThumbnailJob(row);
+			return job ? [job] : [];
+		});
 	},
 
 	async findPending(): Promise<PersistedThumbnailJob[]> {
@@ -88,7 +91,10 @@ export const TauriJobRepository = {
 			.where(and(eq(jobs.type, THUMBNAIL_JOB_TYPE), eq(jobs.status, "pending")))
 			.orderBy(asc(jobs.createdAt));
 
-		return rows.map(toPersistedThumbnailJob);
+		return rows.flatMap((row) => {
+			const job = toPersistedThumbnailJob(row);
+			return job ? [job] : [];
+		});
 	},
 
 	async resetInProgressToPending(): Promise<void> {
