@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { createRouter } from "@tanstack/solid-router";
+import { createHashHistory, createRouter } from "@tanstack/solid-router";
 import type { TauriAppServices } from "./bootstrap";
 import { routeTree } from "./routeTree.gen";
 
@@ -19,6 +19,7 @@ export function createAppRouter(services: TauriAppServices) {
 
 	return createRouter({
 		routeTree,
+		history: createHashHistory(),
 		context: {
 			queryClient,
 			services,

@@ -4,7 +4,11 @@ import { drizzle } from "drizzle-orm/pglite";
 import { loadServerMigrations } from "./migrations";
 import * as schema from "./schema";
 
-const TAURI_PGLITE_DATA_DIR = "idb://solid-imager-tauri";
+const TAURI_PGLITE_DATA_DIR = "memory://solid-imager-tauri";
+
+export type InitializeTauriDbOptions = {
+	onStatus?: (message: string) => void;
+};
 
 export type TauriDb = ReturnType<typeof drizzle<typeof schema>>;
 export type TauriDbTransaction = Parameters<
@@ -14,9 +18,9 @@ export type TauriDbExecutor = TauriDb | TauriDbTransaction;
 
 let dbPromise: Promise<TauriDb> | null = null;
 
-async function createTauriDb(): Promise<TauriDb> {
+async function createMigratedDb(dataDir: string): Promise<TauriDb> {
 	const client = await PGlite.create({
-		dataDir: TAURI_PGLITE_DATA_DIR,
+		dataDir,
 		relaxedDurability: true,
 	});
 	const db = drizzle(client, { schema });
@@ -27,9 +31,18 @@ async function createTauriDb(): Promise<TauriDb> {
 	return db;
 }
 
-export async function initializeTauriDb(): Promise<TauriDb> {
+async function createTauriDb(
+	options: InitializeTauriDbOptions = {},
+): Promise<TauriDb> {
+	options.onStatus?.("Opening an in-memory local database...");
+	return await createMigratedDb(TAURI_PGLITE_DATA_DIR);
+}
+
+export async function initializeTauriDb(
+	options: InitializeTauriDbOptions = {},
+): Promise<TauriDb> {
 	if (!dbPromise) {
-		dbPromise = createTauriDb();
+		dbPromise = createTauriDb(options);
 	}
 
 	return await dbPromise;

@@ -12,6 +12,7 @@ import {
 
 type SourceCardProps = {
 	mediaSource: SafeMediaSource | MediaSourceInfo;
+	href?: string;
 	onEdit?: (source: SafeMediaSource | MediaSourceInfo) => void;
 	onDelete?: (source: SafeMediaSource | MediaSourceInfo) => void;
 	onSync?: (source: SafeMediaSource | MediaSourceInfo) => void;
@@ -67,7 +68,7 @@ export function SourceCard(props: SourceCardProps) {
 	return (
 		<a
 			class="block text-current no-underline"
-			href={`/sources/${props.mediaSource.id}`}
+			href={props.href ?? `/sources/${props.mediaSource.id}`}
 		>
 			<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
 				<CardHeader>

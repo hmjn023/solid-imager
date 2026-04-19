@@ -8,6 +8,7 @@ import solidPlugin from "vite-plugin-solid";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
+	base: "./",
 	resolve: {
 		alias: {
 			"@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
@@ -15,7 +16,7 @@ export default defineConfig({
 			"@": path.resolve(__dirname, "../../packages/core/src"),
 			"~": path.resolve(__dirname, "./src"),
 		},
-		dedupe: ["zod"],
+		dedupe: ["zod", "solid-js", "solid-js/web"],
 	},
 	plugins: [
 		tanstackRouter({

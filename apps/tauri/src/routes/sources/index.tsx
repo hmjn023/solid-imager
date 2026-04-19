@@ -190,6 +190,7 @@ function SourcesRoute() {
 				<For each={mediaSources.data}>
 					{(source) => (
 						<SourceCard
+							href={source.id ? `#/sources/${source.id}` : "#/sources"}
 							mediaSource={source}
 							onDelete={handleDeleteSource}
 							onEdit={handleEditSource}
