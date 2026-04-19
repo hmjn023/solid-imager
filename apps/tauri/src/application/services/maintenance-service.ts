@@ -1,9 +1,10 @@
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
+import type { PersistedProcessMediaJob } from "~/infrastructure/jobs/process-media-job";
 import { tauriJobQueue } from "~/infrastructure/jobs/tauri-job-queue";
-import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriMediaRepository } from "~/infrastructure/local-api/repositories/media-repository";
 import { TauriSourceRepository } from "~/infrastructure/local-api/repositories/source-repository";
+import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriConfigService } from "~/infrastructure/local-api/services/config-service";
 
 type MediaIndex = { id: string; mediaSourceId: string; filePath: string };
@@ -25,7 +26,8 @@ export class MaintenanceService {
 
 	private async queueMissingMetadata() {
 		try {
-			const missing = await TauriMediaRepository.findIdsWithMissingGenerationInfo();
+			const missing =
+				await TauriMediaRepository.findIdsWithMissingGenerationInfo();
 			if (missing.length === 0) {
 				return;
 			}
@@ -33,9 +35,14 @@ export class MaintenanceService {
 			console.info(
 				`[maintenance] Found ${missing.length} media with missing metadata. Queueing jobs...`,
 			);
-			await this.dispatchJobs(missing, { steps: ["extractMetadata", "queueAutoTagging"] });
+			await this.dispatchJobs(missing, {
+				steps: ["extractMetadata", "queueAutoTagging"],
+			});
 		} catch (error) {
-			console.error("[maintenance] Failed to queue missing metadata jobs", error);
+			console.error(
+				"[maintenance] Failed to queue missing metadata jobs",
+				error,
+			);
 		}
 	}
 
@@ -46,10 +53,13 @@ export class MaintenanceService {
 			let hasMore = true;
 
 			while (hasMore) {
-				const batch = await TauriMediaRepository.findAllMediaIndices(undefined, {
-					limit: BATCH_SIZE,
-					offset,
-				});
+				const batch = await TauriMediaRepository.findAllMediaIndices(
+					undefined,
+					{
+						limit: BATCH_SIZE,
+						offset,
+					},
+				);
 
 				if (batch.length === 0) {
 					hasMore = false;
@@ -73,7 +83,10 @@ export class MaintenanceService {
 				}
 			}
 		} catch (error) {
-			console.error("[maintenance] Failed to queue missing thumbnail jobs", error);
+			console.error(
+				"[maintenance] Failed to queue missing thumbnail jobs",
+				error,
+			);
 		}
 	}
 
@@ -111,14 +124,14 @@ export class MaintenanceService {
 		const config = await TauriConfigService.getConfig();
 		const thumbnailDir = config.storage.thumbnailDir;
 		const fs = getTauriAppServices().fileSystem;
-		
+
 		let basePath = thumbnailDir;
 		if (!(await isAbsolute(thumbnailDir))) {
 			basePath = await join(await appDataDir(), thumbnailDir);
 		}
-		
+
 		const sourceCacheDir = await join(basePath, sourceId);
-		
+
 		try {
 			if (!(await fs.exists(sourceCacheDir))) {
 				return new Set<string>();
@@ -137,7 +150,9 @@ export class MaintenanceService {
 	private async dispatchJobs(
 		items: MediaIndex[],
 		options: {
-			steps: Array<"extractMetadata" | "generateThumbnail" | "queueAutoTagging">;
+			steps: Array<
+				"extractMetadata" | "generateThumbnail" | "queueAutoTagging"
+			>;
 		},
 	) {
 		const sourceIds = [...new Set(items.map((i) => i.mediaSourceId))];
@@ -156,6 +171,9 @@ export class MaintenanceService {
 		);
 
 		let queuedCount = 0;
+		const createdJobs: PersistedProcessMediaJob[] = [];
+		await tauriJobQueue.initialize();
+
 		for (const item of items) {
 			const sourcePath = sources.get(item.mediaSourceId);
 			if (!sourcePath) continue;
@@ -168,22 +186,20 @@ export class MaintenanceService {
 					steps: options.steps,
 				});
 				if (created) {
-					// Add to memory queue if newly created
-					// Note: tauriJobQueue.enqueue already calls createMany, so we might need a direct in-memory method
-					// But tauriJobQueue handles its own persistence. 
-					// For maintenance, it's safer to just let the queue pick it up if it's not already running.
-					// Actually, tauriJobQueue.initialize() will pick up all pending jobs from DB.
+					createdJobs.push(created);
 					queuedCount++;
 				}
 			} catch (err) {
-				console.error(`[maintenance] Failed to queue job for media ${item.id}`, err);
+				console.error(
+					`[maintenance] Failed to queue job for media ${item.id}`,
+					err,
+				);
 			}
 		}
 
 		if (queuedCount > 0) {
 			console.info(`[maintenance] Dispatched ${queuedCount} recovery jobs`);
-			// Trigger the queue to start processing if not already
-			void tauriJobQueue.initialize(); 
+			tauriJobQueue.enqueuePersisted(createdJobs);
 		}
 	}
 }

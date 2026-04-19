@@ -79,7 +79,11 @@ class TauriJobQueue {
 
 		await this.initialize();
 		const persistedJobs = await TauriJobRepository.createMany(jobs);
-		for (const job of persistedJobs) {
+		this.enqueuePersisted(persistedJobs);
+	}
+
+	enqueuePersisted(jobs: PersistedProcessMediaJob[]): void {
+		for (const job of jobs) {
 			this.enqueueInMemory(job);
 		}
 		this.drain();

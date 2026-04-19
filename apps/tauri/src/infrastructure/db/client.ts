@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { loadServerMigrations } from "./migrations";
 import * as schema from "./schema";
 
-const TAURI_PGLITE_DATA_DIR = "memory://solid-imager-tauri";
+const TAURI_PGLITE_DATA_DIR = "idb://solid-imager-tauri";
 
 export type InitializeTauriDbOptions = {
 	onStatus?: (message: string) => void;
@@ -34,7 +34,7 @@ async function createMigratedDb(dataDir: string): Promise<TauriDb> {
 async function createTauriDb(
 	options: InitializeTauriDbOptions = {},
 ): Promise<TauriDb> {
-	options.onStatus?.("Opening an in-memory local database...");
+	options.onStatus?.("Opening the local database...");
 	return await createMigratedDb(TAURI_PGLITE_DATA_DIR);
 }
 

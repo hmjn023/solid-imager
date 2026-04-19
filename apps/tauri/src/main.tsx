@@ -2,7 +2,10 @@ import { RouterProvider } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
 import "./index.css";
 import { setTauriAppServices } from "./app-services";
-import { initializeTauriApp } from "./bootstrap";
+import { initializeTauriApp, type TauriAppServices } from "./bootstrap";
+import { MaintenanceService } from "./application/services/maintenance-service";
+import { tauriJobQueue } from "./infrastructure/jobs/tauri-job-queue";
+import { TauriSourceService } from "./infrastructure/local-api/services/source-service";
 import { createAppRouter } from "./router";
 
 const root = document.getElementById("app");
@@ -81,10 +84,21 @@ function renderStartupError(error: unknown) {
 	appRoot.append(container);
 }
 
-function startBackgroundServices() {
-	console.warn(
-		"Tauri database-backed background services are disabled during startup.",
-	);
+function startBackgroundServices(services: TauriAppServices) {
+	if (!services.localDatabaseAvailable) {
+		console.warn(
+			"Tauri database-backed background services are disabled because the local database is unavailable.",
+		);
+		return;
+	}
+
+	void (async () => {
+		await tauriJobQueue.initialize();
+		await TauriSourceService.startWatchingAllLocalSources();
+		await new MaintenanceService().performStartupChecks();
+	})().catch((error: unknown) => {
+		console.error("Failed to start Tauri background services", error);
+	});
 }
 
 async function main() {
@@ -98,7 +112,7 @@ async function main() {
 
 	appRoot.replaceChildren();
 	render(() => <RouterProvider router={router} />, appRoot);
-	startBackgroundServices();
+	startBackgroundServices(services);
 }
 
 void main().catch((error: unknown) => {

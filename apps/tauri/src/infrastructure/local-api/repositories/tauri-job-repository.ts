@@ -157,7 +157,7 @@ export const TauriJobRepository = {
 		});
 
 		if (existing) {
-			return toPersistedProcessMediaJob(existing);
+			return null;
 		}
 
 		const [created] = await this.createMany([job]);

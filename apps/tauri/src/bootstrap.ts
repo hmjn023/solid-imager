@@ -4,7 +4,7 @@ import {
 	createTauriApiClient,
 	type TauriApiClient,
 } from "./infrastructure/api/tauri-api-client";
-import type { TauriDb } from "./infrastructure/db/client";
+import { initializeTauriDb, type TauriDb } from "./infrastructure/db/client";
 import {
 	createTauriCommandClient,
 	type TauriCommandClient,
@@ -25,19 +25,6 @@ export type InitializeTauriAppOptions = {
 	onStatus?: (message: string) => void;
 };
 
-function createUnavailableTauriDb(): TauriDb {
-	return new Proxy(
-		{},
-		{
-			get() {
-				throw new Error(
-					"Tauri local database is disabled during startup because PGlite freezes the Linux WebKit webview.",
-				);
-			},
-		},
-	) as TauriDb;
-}
-
 export async function initializeTauriApp(
 	options: InitializeTauriAppOptions = {},
 ): Promise<TauriAppServices> {
@@ -52,8 +39,9 @@ export async function initializeTauriApp(
 	const fileSystem = new TauriFileSystem(commandClient);
 	const imageProcessor = new TauriImageProcessor(commandClient);
 	const apiClient = createTauriApiClient();
-	options.onStatus?.("Skipping local database startup...");
-	const db = createUnavailableTauriDb();
+	const db = await initializeTauriDb({
+		onStatus: options.onStatus,
+	});
 
 	return {
 		commandClient,
@@ -61,6 +49,6 @@ export async function initializeTauriApp(
 		imageProcessor,
 		apiClient,
 		db,
-		localDatabaseAvailable: false,
+		localDatabaseAvailable: true,
 	};
 }
