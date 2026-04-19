@@ -29,7 +29,10 @@ export const DirectoryService = {
 	 * @param {string} directoryData.name - The name of the new directory.
 	 * @returns {any} Confirmation of directory creation.
 	 */
-	async createDirectory(mediaSourceId: string, directoryData: { path: string; name: string }) {
+	async createDirectory(
+		mediaSourceId: string,
+		directoryData: { path: string; name: string },
+	) {
 		const [source] = await MediaSourceService.fetchSourceById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");
@@ -47,7 +50,11 @@ export const DirectoryService = {
 	 * @param {boolean} [force] - If true, forces deletion even if the directory is not empty.
 	 * @returns {any} Confirmation of directory deletion.
 	 */
-	async deleteDirectory(mediaSourceId: string, directoryPath: string, _force?: boolean) {
+	async deleteDirectory(
+		mediaSourceId: string,
+		directoryPath: string,
+		_force?: boolean,
+	) {
 		const [source] = await MediaSourceService.fetchSourceById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");
@@ -89,7 +96,10 @@ export const DirectoryService = {
 	 * @param {string} directoriesPath - The path to the subdirectory to list.
 	 * @returns {Promise<any>} A promise that resolves with a list of media and directories.
 	 */
-	async listMediaInSubdirectory(mediaSourceId: string, directoriesPath: string) {
+	async listMediaInSubdirectory(
+		mediaSourceId: string,
+		directoriesPath: string,
+	) {
 		const [source] = await MediaSourceService.fetchSourceById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");

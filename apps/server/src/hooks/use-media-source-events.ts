@@ -34,7 +34,9 @@ type MediaSourceEventsOptions = {
 };
 
 type SafeParseSchema<T> = {
-	safeParse: (input: unknown) => { success: true; data: T } | { success: false; error: unknown };
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
 };
 
 export function useMediaSourceEvents(
@@ -48,7 +50,9 @@ export function useMediaSourceEvents(
 
 		const id = mediaSourceId();
 		const isEnabled =
-			typeof options.enabled === "function" ? options.enabled() : (options.enabled ?? true);
+			typeof options.enabled === "function"
+				? options.enabled()
+				: (options.enabled ?? true);
 
 		if (!(id && isEnabled)) {
 			return;
@@ -77,19 +81,44 @@ export function useMediaSourceEvents(
 		const handleEvent = (event: string, data: unknown) => {
 			switch (event) {
 				case "media-added":
-					validateAndDispatch(mediaAddedEventSchema, data, options.onMediaAdded, event);
+					validateAndDispatch(
+						mediaAddedEventSchema,
+						data,
+						options.onMediaAdded,
+						event,
+					);
 					break;
 				case "media-deleted":
-					validateAndDispatch(mediaDeletedEventSchema, data, options.onMediaDeleted, event);
+					validateAndDispatch(
+						mediaDeletedEventSchema,
+						data,
+						options.onMediaDeleted,
+						event,
+					);
 					break;
 				case "media-changed":
-					validateAndDispatch(mediaChangedEventSchema, data, options.onMediaChanged, event);
+					validateAndDispatch(
+						mediaChangedEventSchema,
+						data,
+						options.onMediaChanged,
+						event,
+					);
 					break;
 				case "media-copied":
-					validateAndDispatch(mediaCopiedEventSchema, data, options.onMediaCopied, event);
+					validateAndDispatch(
+						mediaCopiedEventSchema,
+						data,
+						options.onMediaCopied,
+						event,
+					);
 					break;
 				case "media-moved":
-					validateAndDispatch(mediaMovedEventSchema, data, options.onMediaMoved, event);
+					validateAndDispatch(
+						mediaMovedEventSchema,
+						data,
+						options.onMediaMoved,
+						event,
+					);
 					break;
 				case "thumbnail-generated":
 					validateAndDispatch(
@@ -100,10 +129,20 @@ export function useMediaSourceEvents(
 					);
 					break;
 				case "all-jobs-completed":
-					validateAndDispatch(allJobsCompletedEventSchema, data, options.onAllJobsCompleted, event);
+					validateAndDispatch(
+						allJobsCompletedEventSchema,
+						data,
+						options.onAllJobsCompleted,
+						event,
+					);
 					break;
 				case "watcher-error":
-					validateAndDispatch(watcherErrorEventSchema, data, options.onWatcherError, event);
+					validateAndDispatch(
+						watcherErrorEventSchema,
+						data,
+						options.onWatcherError,
+						event,
+					);
 					break;
 				case "connected":
 					break;

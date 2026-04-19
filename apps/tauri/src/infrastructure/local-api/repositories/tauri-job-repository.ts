@@ -1,7 +1,10 @@
 import { and, asc, eq, or } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { type Job, jobs, type NewJob } from "../../db/schema";
-import type { PersistedThumbnailJob, ThumbnailJob } from "../../jobs/thumbnail-job";
+import type {
+	PersistedThumbnailJob,
+	ThumbnailJob,
+} from "../../jobs/thumbnail-job";
 
 const THUMBNAIL_JOB_TYPE = "thumbnail_generation";
 const AUTO_TAGGING_JOB_TYPE = "auto_tagging";
@@ -21,7 +24,9 @@ export type PersistedAutoTaggingJob = {
 	updatedAt: Date;
 };
 
-function isAutoTaggingJobPayload(value: unknown): value is AutoTaggingJobPayload {
+function isAutoTaggingJobPayload(
+	value: unknown,
+): value is AutoTaggingJobPayload {
 	return (
 		typeof value === "object" &&
 		value !== null &&
@@ -73,7 +78,9 @@ function isThumbnailJobPayload(value: unknown): value is ThumbnailJobPayload {
 
 function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
 	if (!row.mediaSourceId || !isThumbnailJobPayload(row.payload)) {
-		console.error(`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`);
+		console.error(
+			`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`,
+		);
 		return null;
 	}
 
@@ -91,7 +98,9 @@ function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
 }
 
 export const TauriJobRepository = {
-	async createMany(thumbnailJobs: ThumbnailJob[]): Promise<PersistedThumbnailJob[]> {
+	async createMany(
+		thumbnailJobs: ThumbnailJob[],
+	): Promise<PersistedThumbnailJob[]> {
 		if (thumbnailJobs.length === 0) {
 			return [];
 		}
@@ -140,7 +149,9 @@ export const TauriJobRepository = {
 				status: "pending",
 				updatedAt: new Date(),
 			})
-			.where(and(eq(jobs.type, THUMBNAIL_JOB_TYPE), eq(jobs.status, "in_progress")));
+			.where(
+				and(eq(jobs.type, THUMBNAIL_JOB_TYPE), eq(jobs.status, "in_progress")),
+			);
 	},
 
 	async markAsInProgress(id: string): Promise<void> {
@@ -192,7 +203,12 @@ export const TauriJobRepository = {
 			);
 		const existing = activeRows.find((row) => {
 			const p = row.payload;
-			return typeof p === "object" && p !== null && "mediaId" in p && p.mediaId === mediaId;
+			return (
+				typeof p === "object" &&
+				p !== null &&
+				"mediaId" in p &&
+				p.mediaId === mediaId
+			);
 		});
 		if (existing) {
 			const job = toPersistedAutoTaggingJob(existing);
@@ -213,7 +229,8 @@ export const TauriJobRepository = {
 		};
 		const [row] = await db.insert(jobs).values(value).returning();
 		const job = toPersistedAutoTaggingJob(row);
-		if (!job) throw new Error(`Failed to create auto_tagging job for ${mediaId}`);
+		if (!job)
+			throw new Error(`Failed to create auto_tagging job for ${mediaId}`);
 		return job;
 	},
 
@@ -221,7 +238,9 @@ export const TauriJobRepository = {
 		const rows = await getDb()
 			.select()
 			.from(jobs)
-			.where(and(eq(jobs.type, AUTO_TAGGING_JOB_TYPE), eq(jobs.status, "pending")))
+			.where(
+				and(eq(jobs.type, AUTO_TAGGING_JOB_TYPE), eq(jobs.status, "pending")),
+			)
 			.orderBy(asc(jobs.createdAt));
 		return rows.flatMap((row) => {
 			const job = toPersistedAutoTaggingJob(row);
@@ -233,6 +252,11 @@ export const TauriJobRepository = {
 		await getDb()
 			.update(jobs)
 			.set({ status: "pending", updatedAt: new Date() })
-			.where(and(eq(jobs.type, AUTO_TAGGING_JOB_TYPE), eq(jobs.status, "in_progress")));
+			.where(
+				and(
+					eq(jobs.type, AUTO_TAGGING_JOB_TYPE),
+					eq(jobs.status, "in_progress"),
+				),
+			);
 	},
 };

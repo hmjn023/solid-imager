@@ -22,11 +22,17 @@ async function processAdditions(
 	filesToAdd: string[],
 	result: SyncResult,
 ): Promise<void> {
-	logger.info({ mediaSourceId, count: filesToAdd.length }, "Sync: Found new files to add");
+	logger.info(
+		{ mediaSourceId, count: filesToAdd.length },
+		"Sync: Found new files to add",
+	);
 	await Promise.all(
 		filesToAdd.map(async (fileToAdd) => {
 			try {
-				await MediaProcessingService.registerAndProcess(mediaSourceId, fileToAdd);
+				await MediaProcessingService.registerAndProcess(
+					mediaSourceId,
+					fileToAdd,
+				);
 				result.added++;
 			} catch (error) {
 				logger.error(
@@ -87,7 +93,10 @@ export const DirectorySyncService = {
 		try {
 			const source = await sourceRepo.findById(mediaSourceId);
 			if (!source || source.type !== "local") {
-				logger.info({ mediaSourceId }, "Skipping sync for non-local or missing source");
+				logger.info(
+					{ mediaSourceId },
+					"Skipping sync for non-local or missing source",
+				);
 				return result;
 			}
 
@@ -103,10 +112,14 @@ export const DirectorySyncService = {
 				return result;
 			}
 
-			logger.info({ mediaSourceId, basePath }, "Starting directory sync for source");
+			logger.info(
+				{ mediaSourceId, basePath },
+				"Starting directory sync for source",
+			);
 
 			// 1. Get existing paths from DB
-			const existingRecords = await MediaRepository.findAllPathsBySourceId(mediaSourceId);
+			const existingRecords =
+				await MediaRepository.findAllPathsBySourceId(mediaSourceId);
 			const dbPathMap = new Map<string, string>(); // relativePath -> id
 			for (const record of existingRecords) {
 				// Ensure path uses POSIX separators for uniform comparison
@@ -123,7 +136,8 @@ export const DirectorySyncService = {
 				caseSensitiveMatch: false,
 			});
 
-			const mediaExtensions = services.getConfigService().getConfig().media.supportedExtensions;
+			const mediaExtensions = services.getConfigService().getConfig()
+				.media.supportedExtensions;
 			const allowedExts = new Set(
 				Object.values(mediaExtensions)
 					.flat()
@@ -157,10 +171,16 @@ export const DirectorySyncService = {
 			// 5. Batch process deletions
 			await processDeletions(mediaSourceId, filesToDelete, result);
 
-			logger.info({ mediaSourceId, syncResult: result }, "Directory sync completed successfully");
+			logger.info(
+				{ mediaSourceId, syncResult: result },
+				"Directory sync completed successfully",
+			);
 			return result;
 		} catch (error) {
-			logger.error({ err: error, mediaSourceId }, "Error during directory sync");
+			logger.error(
+				{ err: error, mediaSourceId },
+				"Error during directory sync",
+			);
 			return result;
 		}
 	},

@@ -1,5 +1,8 @@
 import { os } from "@orpc/server";
-import { newTagSchema, updateTagSchema } from "@solid-imager/core/domain/tags/schemas";
+import {
+	newTagSchema,
+	updateTagSchema,
+} from "@solid-imager/core/domain/tags/schemas";
 import { z } from "zod";
 import { TagService } from "~/application/services/tag-service";
 
@@ -23,7 +26,9 @@ export const tagsRouter = {
 			return tag;
 		}),
 
-	create: os.input(newTagSchema).handler(async ({ input }) => await TagService.createTag(input)),
+	create: os
+		.input(newTagSchema)
+		.handler(async ({ input }) => await TagService.createTag(input)),
 
 	update: os
 		.input(

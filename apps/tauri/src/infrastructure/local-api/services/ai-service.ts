@@ -1,4 +1,7 @@
-import { type Media, mediaSchema } from "@solid-imager/core/domain/media/schemas";
+import {
+	type Media,
+	mediaSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import {
 	type TaggingResponse,
 	taggingResponseSchema,
@@ -14,7 +17,15 @@ import {
 	tags,
 } from "@solid-imager/db/schema";
 import { emit } from "@tauri-apps/api/event";
-import { and, asc, eq, getTableColumns, inArray, isNull, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	getTableColumns,
+	inArray,
+	isNull,
+	sql,
+} from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
@@ -32,7 +43,9 @@ type BatchTaggingWithIdsInput = BatchTaggingInput & {
 	mediaIds: string[];
 };
 
-async function resolveLocalMediaFile(mediaId: string): Promise<{ media: Media; fullPath: string }> {
+async function resolveLocalMediaFile(
+	mediaId: string,
+): Promise<{ media: Media; fullPath: string }> {
 	const media = await TauriMediaRepository.findById(mediaId);
 	if (!media) {
 		throw new Error(`Media not found: ${mediaId}`);
@@ -63,13 +76,22 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 	await getTauriAppServices().db.transaction(async (tx) => {
 		await tx
 			.delete(mediaTags)
-			.where(and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, AI_SOURCE)));
+			.where(
+				and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, AI_SOURCE)),
+			);
 		await tx
 			.delete(mediaCharacters)
-			.where(and(eq(mediaCharacters.mediaId, mediaId), eq(mediaCharacters.source, AI_SOURCE)));
+			.where(
+				and(
+					eq(mediaCharacters.mediaId, mediaId),
+					eq(mediaCharacters.source, AI_SOURCE),
+				),
+			);
 		await tx
 			.delete(mediaIps)
-			.where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.source, AI_SOURCE)));
+			.where(
+				and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.source, AI_SOURCE)),
+			);
 
 		const generalTags = Object.entries(response.general);
 		if (generalTags.length > 0) {
@@ -83,7 +105,9 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 				.select({ id: tags.id, name: tags.name })
 				.from(tags)
 				.where(inArray(tags.name, tagNames));
-			const tagIdByName = new Map(persistedTags.map((item) => [item.name, item.id]));
+			const tagIdByName = new Map(
+				persistedTags.map((item) => [item.name, item.id]),
+			);
 
 			const values = generalTags.flatMap(([name, confidence]) => {
 				const tagId = tagIdByName.get(name);
@@ -126,7 +150,9 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 						.from(ips)
 						.where(inArray(ips.name, response.ips))
 				: [];
-		const ipIdByName = new Map(persistedIps.map((item) => [item.name, item.id]));
+		const ipIdByName = new Map(
+			persistedIps.map((item) => [item.name, item.id]),
+		);
 
 		if (persistedIps.length > 0) {
 			await tx
@@ -160,7 +186,9 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 				.select({ id: characters.id, name: characters.name })
 				.from(characters)
 				.where(inArray(characters.name, characterNames));
-			const characterIdByName = new Map(persistedCharacters.map((item) => [item.name, item.id]));
+			const characterIdByName = new Map(
+				persistedCharacters.map((item) => [item.name, item.id]),
+			);
 
 			const characterIpValues = Object.entries(response.ips_mapping).flatMap(
 				([characterName, linkedIpNames]) => {
@@ -175,13 +203,18 @@ async function persistAiTags(mediaId: string, response: TaggingResponse) {
 				},
 			);
 			if (characterIpValues.length > 0) {
-				await tx.insert(characterIps).values(characterIpValues).onConflictDoNothing();
+				await tx
+					.insert(characterIps)
+					.values(characterIpValues)
+					.onConflictDoNothing();
 			}
 
 			const mediaCharacterValues = charactersWithConfidence.flatMap(
 				([characterName, confidence]) => {
 					const characterId = characterIdByName.get(characterName);
-					return characterId ? [{ mediaId, characterId, confidence, source: AI_SOURCE }] : [];
+					return characterId
+						? [{ mediaId, characterId, confidence, source: AI_SOURCE }]
+						: [];
 				},
 			);
 			if (mediaCharacterValues.length > 0) {
@@ -213,7 +246,10 @@ async function emitMediaChanged(mediaId: string) {
 	});
 }
 
-async function processBatchTaggingJob(jobId: string, input: BatchTaggingWithIdsInput) {
+async function processBatchTaggingJob(
+	jobId: string,
+	input: BatchTaggingWithIdsInput,
+) {
 	const total = input.mediaIds.length;
 	let processed = 0;
 
@@ -242,16 +278,27 @@ export const TauriAiService = {
 				...getTableColumns(medias),
 			})
 			.from(medias)
-			.leftJoin(mediaTags, and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, AI_SOURCE)))
+			.leftJoin(
+				mediaTags,
+				and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, AI_SOURCE)),
+			)
 			.leftJoin(
 				mediaCharacters,
-				and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, AI_SOURCE)),
+				and(
+					eq(mediaCharacters.mediaId, medias.id),
+					eq(mediaCharacters.source, AI_SOURCE),
+				),
 			)
-			.leftJoin(mediaIps, and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, AI_SOURCE)))
+			.leftJoin(
+				mediaIps,
+				and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, AI_SOURCE)),
+			)
 			.where(
 				and(
 					eq(medias.mediaType, "image"),
-					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
+					input.mediaSourceId
+						? eq(medias.mediaSourceId, input.mediaSourceId)
+						: undefined,
 					input.force
 						? undefined
 						: and(

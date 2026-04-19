@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import {
 	fetchSourceDump,
 	importSourceZip,
@@ -44,9 +51,12 @@ describe("Sources API Client Extensions", () => {
 
 		const result = await fetchSourceDump(id, "json");
 
-		expect(global.fetch).toHaveBeenCalledWith(`/api/sources/${id}/dump?mode=json`, {
-			method: "GET",
-		});
+		expect(global.fetch).toHaveBeenCalledWith(
+			`/api/sources/${id}/dump?mode=json`,
+			{
+				method: "GET",
+			},
+		);
 		expect(result).toBe(mockBlob);
 	});
 
@@ -61,9 +71,12 @@ describe("Sources API Client Extensions", () => {
 
 		const result = await fetchSourceDump(id, "zip");
 
-		expect(global.fetch).toHaveBeenCalledWith(`/api/sources/${id}/dump?mode=zip`, {
-			method: "GET",
-		});
+		expect(global.fetch).toHaveBeenCalledWith(
+			`/api/sources/${id}/dump?mode=zip`,
+			{
+				method: "GET",
+			},
+		);
 		expect(result).toBe(mockBlob);
 	});
 
@@ -96,7 +109,9 @@ describe("Sources API Client Extensions", () => {
 		const data = { items: [] };
 		const mockResponse = { processed: 10, skipped: 2 };
 
-		((orpc.sources as any).restore as any).mockResolvedValue(mockResponse as any);
+		((orpc.sources as any).restore as any).mockResolvedValue(
+			mockResponse as any,
+		);
 
 		const result = await restoreSource(id, data);
 

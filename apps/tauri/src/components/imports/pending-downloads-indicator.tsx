@@ -1,6 +1,12 @@
 import { toast } from "@solid-imager/ui/toast";
 import { listen } from "@tauri-apps/api/event";
-import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+	createResource,
+	createSignal,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 import { listPendingImports } from "~/infrastructure/api-clients/imports-api";
 import { ImportReviewModal } from "./import-review-modal";
 
@@ -44,7 +50,9 @@ export function PendingDownloadsIndicator() {
 			>
 				<span>Inbox</span>
 				<Show when={(pendingCount() ?? 0) > 0}>
-					<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">{pendingCount()}</span>
+					<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">
+						{pendingCount()}
+					</span>
 				</Show>
 			</button>
 			<ImportReviewModal

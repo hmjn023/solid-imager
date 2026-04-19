@@ -4,7 +4,9 @@ import type { DatabaseConfig } from "~/config/database";
 
 export type DbConnection = PGlite | Pool | PoolClient;
 
-export async function createConnection(config: DatabaseConfig): Promise<DbConnection> {
+export async function createConnection(
+	config: DatabaseConfig,
+): Promise<DbConnection> {
 	if (config.databaseType === "pglite") {
 		const pglite = new PGlite(config.pglite.path);
 		await pglite.waitReady;
@@ -32,7 +34,11 @@ export async function closeConnection(connection: DbConnection): Promise<void> {
 		await connection.close();
 	} else if (connection instanceof Pool) {
 		await connection.end();
-	} else if (typeof connection === "object" && connection !== null && "release" in connection) {
+	} else if (
+		typeof connection === "object" &&
+		connection !== null &&
+		"release" in connection
+	) {
 		(connection as PoolClient).release();
 	}
 }

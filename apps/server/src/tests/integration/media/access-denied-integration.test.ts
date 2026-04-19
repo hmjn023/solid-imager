@@ -30,7 +30,9 @@ describe("File System Access Denied Integration", () => {
 	it("should throw an error when registerExistingMedia encounters file system access denied", async () => {
 		// This assumes registerExistingMedia checks file existence/stats
 		const filePath = "/no-access/path/image.png";
-		await expect(MediaService.registerExistingMedia(testSourceId, filePath)).rejects.toThrow();
+		await expect(
+			MediaService.registerExistingMedia(testSourceId, filePath),
+		).rejects.toThrow();
 	});
 
 	it("should throw an error when deleteMedia encounters file system access denied", async () => {
@@ -38,6 +40,8 @@ describe("File System Access Denied Integration", () => {
 		// Note: deleteMedia might fail at DB level first if media not found.
 		// But if we want to test FS access denied, we might need to mock or ensure DB has entry but FS is denied.
 		// However, for integration test, maybe we just expect failure.
-		await expect(MediaService.deleteMedia(testSourceId, mediaId)).rejects.toThrow();
+		await expect(
+			MediaService.deleteMedia(testSourceId, mediaId),
+		).rejects.toThrow();
 	});
 });

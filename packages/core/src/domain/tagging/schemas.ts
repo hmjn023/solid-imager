@@ -19,7 +19,9 @@ export const ccipDifferenceResponseSchema = z.object({
 	difference: z.number(),
 });
 
-export type CcipDifferenceResponse = z.infer<typeof ccipDifferenceResponseSchema>;
+export type CcipDifferenceResponse = z.infer<
+	typeof ccipDifferenceResponseSchema
+>;
 
 // Request schemas for API
 export const tagImageRequestSchema = z.object({

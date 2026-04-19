@@ -3,7 +3,12 @@ import type { Transaction } from "@solid-imager/core/domain/interfaces/transacti
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import { and, eq } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { type Author, authors, mediaAuthors, type NewAuthor } from "~/infrastructure/db/schema";
+import {
+	type Author,
+	authors,
+	mediaAuthors,
+	type NewAuthor,
+} from "~/infrastructure/db/schema";
 
 export const AuthorRepository: IAuthorRepository = {
 	async findAll(): Promise<Author[]> {
@@ -11,13 +16,21 @@ export const AuthorRepository: IAuthorRepository = {
 	},
 
 	async findById(id: string): Promise<Author | null> {
-		const result = await db.select().from(authors).where(eq(authors.id, id)).limit(1);
+		const result = await db
+			.select()
+			.from(authors)
+			.where(eq(authors.id, id))
+			.limit(1);
 		return result[0] || null;
 	},
 
 	async findByName(name: string, tx?: Transaction): Promise<Author | null> {
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.select().from(authors).where(eq(authors.name, name)).limit(1);
+		const result = await client
+			.select()
+			.from(authors)
+			.where(eq(authors.name, name))
+			.limit(1);
 		return result[0] || null;
 	},
 
@@ -30,7 +43,11 @@ export const AuthorRepository: IAuthorRepository = {
 			? eq(authors.accountId, author.accountId)
 			: eq(authors.name, author.name);
 
-		const existing = await client.select().from(authors).where(condition).limit(1);
+		const existing = await client
+			.select()
+			.from(authors)
+			.where(condition)
+			.limit(1);
 
 		if (existing[0]) {
 			return existing[0];
@@ -40,9 +57,17 @@ export const AuthorRepository: IAuthorRepository = {
 		return result[0];
 	},
 
-	async update(id: string, updates: Partial<Author>, tx?: Transaction): Promise<Author> {
+	async update(
+		id: string,
+		updates: Partial<Author>,
+		tx?: Transaction,
+	): Promise<Author> {
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.update(authors).set(updates).where(eq(authors.id, id)).returning();
+		const result = await client
+			.update(authors)
+			.set(updates)
+			.where(eq(authors.id, id))
+			.returning();
 
 		if (!result[0]) {
 			throw new ResourceNotFoundError("Author", id);
@@ -71,7 +96,11 @@ export const AuthorRepository: IAuthorRepository = {
 		return result;
 	},
 
-	async addMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void> {
+	async addMedia(
+		mediaId: string,
+		authorId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		await client
 			.insert(mediaAuthors)
@@ -82,13 +111,26 @@ export const AuthorRepository: IAuthorRepository = {
 			.onConflictDoNothing();
 	},
 
-	async removeMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void> {
+	async removeMedia(
+		mediaId: string,
+		authorId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		await client
 			.delete(mediaAuthors)
-			.where(and(eq(mediaAuthors.mediaId, mediaId), eq(mediaAuthors.authorId, authorId)));
+			.where(
+				and(
+					eq(mediaAuthors.mediaId, mediaId),
+					eq(mediaAuthors.authorId, authorId),
+				),
+			);
 	},
-	async addMediaBulk(mediaId: string, authorIds: string[], tx?: Transaction): Promise<void> {
+	async addMediaBulk(
+		mediaId: string,
+		authorIds: string[],
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		if (authorIds.length === 0) {
 			return;

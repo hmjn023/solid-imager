@@ -8,13 +8,15 @@ import { IpService } from "~/application/services/ip-service";
 export const ipsRouter = {
 	list: os.handler(() => IpService.getAllIps()),
 
-	get: os.input(z.object({ id: z.string().uuid() })).handler(async ({ input }) => {
-		const ip = await IpService.getIpDetails(input.id);
-		if (!ip) {
-			throw new Error(`IP not found: ${input.id}`);
-		}
-		return ip;
-	}),
+	get: os
+		.input(z.object({ id: z.string().uuid() }))
+		.handler(async ({ input }) => {
+			const ip = await IpService.getIpDetails(input.id);
+			if (!ip) {
+				throw new Error(`IP not found: ${input.id}`);
+			}
+			return ip;
+		}),
 
 	create: os
 		.input(
@@ -68,5 +70,7 @@ export const ipsRouter = {
 				ipId: z.string().uuid(),
 			}),
 		)
-		.handler(({ input }) => IpService.removeIpFromMedia(input.mediaId, input.ipId)),
+		.handler(({ input }) =>
+			IpService.removeIpFromMedia(input.mediaId, input.ipId),
+		),
 };

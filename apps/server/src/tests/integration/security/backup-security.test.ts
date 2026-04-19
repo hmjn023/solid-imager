@@ -16,7 +16,10 @@ describe("BackupService Security", () => {
 				connectionInfo: {},
 			};
 
-			const result = await BackupService._filterValidItems(mockItems, mockMediaSource);
+			const result = await BackupService._filterValidItems(
+				mockItems,
+				mockMediaSource,
+			);
 
 			const ExpectedSkipped = 3;
 			const ExpectedValid = 1;
@@ -38,7 +41,10 @@ describe("BackupService Security", () => {
 				connectionInfo: {},
 			};
 
-			const result = await BackupService._filterValidItems(mockItems, mockMediaSource);
+			const result = await BackupService._filterValidItems(
+				mockItems,
+				mockMediaSource,
+			);
 
 			expect(result.skippedCount).toBe(1); // Should still validate path structure
 			expect(result.validItems.length).toBe(0);

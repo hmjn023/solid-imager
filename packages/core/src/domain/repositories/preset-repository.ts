@@ -1,4 +1,8 @@
-import type { CreatePresetRequest, Preset, UpdatePresetRequest } from "@/domain/media/schemas";
+import type {
+	CreatePresetRequest,
+	Preset,
+	UpdatePresetRequest,
+} from "@/domain/media/schemas";
 
 export type PresetRepository = {
 	list(): Promise<Preset[]>;

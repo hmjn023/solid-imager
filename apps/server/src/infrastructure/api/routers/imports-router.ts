@@ -23,7 +23,9 @@ async function classifyBulkAddItems(
 
 		// Check for local file existence (Restore)
 		if (item.filePath) {
-			const sourceId = await BackupService.findMediaSourceForFile(item.filePath);
+			const sourceId = await BackupService.findMediaSourceForFile(
+				item.filePath,
+			);
 			if (sourceId) {
 				const group = restoreGroups.get(sourceId) || [];
 				group.push(item);
@@ -65,7 +67,9 @@ export const bulkAddHandler = async ({
 		return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
 	}
 
-	const { BackupService } = await import("~/application/services/backup-service");
+	const { BackupService } = await import(
+		"~/application/services/backup-service"
+	);
 
 	const classification = await classifyBulkAddItems(items, BackupService);
 	const { restoreGroups, importItems } = classification;
@@ -119,7 +123,9 @@ export const importsRouter = {
 	 * Bulk add items from Xtracter.
 	 * Checks for duplicates and creates import_request jobs.
 	 */
-	bulkAdd: os.input(z.object({ items: z.array(downloadItemSchema) })).handler(bulkAddHandler),
+	bulkAdd: os
+		.input(z.object({ items: z.array(downloadItemSchema) }))
+		.handler(bulkAddHandler),
 
 	/**
 	 * List pending import requests.

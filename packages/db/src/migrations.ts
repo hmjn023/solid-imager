@@ -5,7 +5,10 @@ import type * as schema from "./schema";
 
 export type SharedPgliteDb = ReturnType<typeof drizzle<typeof schema>>;
 
-export async function applyPgMigrations(db: SharedPgliteDb, migrations: MigrationMeta[]) {
+export async function applyPgMigrations(
+	db: SharedPgliteDb,
+	migrations: MigrationMeta[],
+) {
 	await db.execute(sql`CREATE SCHEMA IF NOT EXISTS "drizzle"`);
 	await db.execute(sql`
 		CREATE TABLE IF NOT EXISTS "drizzle"."__drizzle_migrations" (
@@ -23,11 +26,16 @@ export async function applyPgMigrations(db: SharedPgliteDb, migrations: Migratio
 		sql`select id, hash, created_at from "drizzle"."__drizzle_migrations" order by created_at desc limit 1`,
 	);
 	const lastMigration = result.rows[0];
-	const sortedMigrations = [...migrations].sort((a, b) => a.folderMillis - b.folderMillis);
+	const sortedMigrations = [...migrations].sort(
+		(a, b) => a.folderMillis - b.folderMillis,
+	);
 
 	await db.transaction(async (tx) => {
 		for (const migration of sortedMigrations) {
-			if (lastMigration && Number(lastMigration.created_at) >= migration.folderMillis) {
+			if (
+				lastMigration &&
+				Number(lastMigration.created_at) >= migration.folderMillis
+			) {
 				continue;
 			}
 

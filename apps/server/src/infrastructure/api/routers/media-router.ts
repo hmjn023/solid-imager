@@ -21,7 +21,10 @@ export const mediaRouter = {
 				params: mediaSearchRequestSchema,
 			}),
 		)
-		.handler(async ({ input }) => await MediaService.searchMedia(input.sourceId, input.params)),
+		.handler(
+			async ({ input }) =>
+				await MediaService.searchMedia(input.sourceId, input.params),
+		),
 
 	/**
 	 * Get a specific media file
@@ -52,7 +55,8 @@ export const mediaRouter = {
 			}),
 		)
 		.handler(
-			async ({ input }) => await MediaService.getMediaDetails(input.sourceId, input.mediaId),
+			async ({ input }) =>
+				await MediaService.getMediaDetails(input.sourceId, input.mediaId),
 		),
 
 	/**
@@ -85,7 +89,10 @@ export const mediaRouter = {
 				mediaId: z.string().uuid(),
 			}),
 		)
-		.handler(async ({ input }) => await MediaService.getMediaTags(input.sourceId, input.mediaId)),
+		.handler(
+			async ({ input }) =>
+				await MediaService.getMediaTags(input.sourceId, input.mediaId),
+		),
 
 	/**
 	 * Update media metadata
@@ -100,7 +107,11 @@ export const mediaRouter = {
 		)
 		.handler(
 			async ({ input }) =>
-				await MediaService.updateMedia(input.sourceId, input.mediaId, input.data),
+				await MediaService.updateMedia(
+					input.sourceId,
+					input.mediaId,
+					input.data,
+				),
 		),
 
 	/**
@@ -159,7 +170,8 @@ export const mediaRouter = {
 			}),
 		)
 		.handler(
-			async ({ input }) => await MediaService.copyMedia(input.mediaId, input.targetSourceId),
+			async ({ input }) =>
+				await MediaService.copyMedia(input.mediaId, input.targetSourceId),
 		),
 
 	/**
@@ -173,7 +185,8 @@ export const mediaRouter = {
 			}),
 		)
 		.handler(
-			async ({ input }) => await MediaService.moveMedia(input.mediaId, input.targetSourceId),
+			async ({ input }) =>
+				await MediaService.moveMedia(input.mediaId, input.targetSourceId),
 		),
 
 	/**

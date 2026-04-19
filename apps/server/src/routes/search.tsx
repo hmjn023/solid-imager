@@ -19,7 +19,12 @@ export const Route = createFileRoute("/search")({
 	component: Search,
 });
 
-import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@solid-imager/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -33,12 +38,21 @@ import {
 	keepPreviousData,
 	useQueryClient,
 } from "@tanstack/solid-query";
-import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
+import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
 import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
 import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
@@ -46,7 +60,11 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "~/presentation/store/search-store";
 
 const buildSearchParams = (state: typeof searchState) => {
 	const condition = getSearchCondition();
@@ -63,7 +81,8 @@ const buildSearchParams = (state: typeof searchState) => {
  * This prevents mode toggles (simple/pro) with equivalent conditions
  * from producing different query keys due to SolidJS store proxy references.
  */
-const useStableConditionKey = () => createMemo(() => JSON.stringify(getSearchCondition() ?? null));
+const useStableConditionKey = () =>
+	createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
@@ -71,7 +90,7 @@ export default function Search() {
 	const queryClient = useQueryClient();
 
 	// Enable search persistence for global search
-	useCurrentSearchPersistence("all");
+	useCurrentSearchPersistence("all", PresetClient);
 
 	const [isRestored, setIsRestored] = createSignal(false);
 	const [isMounted, setIsMounted] = createSignal(false);
@@ -138,7 +157,10 @@ export default function Search() {
 				}),
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
-				const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
+				const loadedCount = allPages.reduce(
+					(sum, page) => sum + page.media.length,
+					0,
+				);
 				if (loadedCount < lastPage.total) {
 					return loadedCount;
 				}
@@ -163,13 +185,15 @@ export default function Search() {
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter((m) => {
-			if (seen.has(m.id)) {
-				return false;
-			}
-			seen.add(m.id);
-			return true;
-		});
+		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
+			(m) => {
+				if (seen.has(m.id)) {
+					return false;
+				}
+				seen.add(m.id);
+				return true;
+			},
+		);
 	});
 
 	const handleSearch = () => {
@@ -179,7 +203,9 @@ export default function Search() {
 	};
 
 	// Infinite scroll trigger
-	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement | undefined>(undefined);
+	const [loadMoreRef, setLoadMoreRef] = createSignal<
+		HTMLDivElement | undefined
+	>(undefined);
 
 	createEffect(() => {
 		const el = loadMoreRef();
@@ -309,17 +335,23 @@ export default function Search() {
 							</div>
 
 							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-								<For each={searchResults()}>{(media) => <MediaGridItem media={media} />}</For>
+								<For each={searchResults()}>
+									{(media) => <MediaGridItem media={media} />}
+								</For>
 							</div>
 
 							<div class="h-10 w-full" ref={setLoadMoreRef}>
 								<Show when={searchResultQuery.isFetchingNextPage}>
-									<div class="py-4 text-center text-gray-500">読み込み中...</div>
+									<div class="py-4 text-center text-gray-500">
+										読み込み中...
+									</div>
 								</Show>
 							</div>
 
 							<Show when={(searchResultQuery.data?.pages[0]?.total || 0) === 0}>
-								<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
+								<div class="py-12 text-center text-gray-500">
+									検索結果が見つかりませんでした
+								</div>
 							</Show>
 						</Show>
 					</Show>

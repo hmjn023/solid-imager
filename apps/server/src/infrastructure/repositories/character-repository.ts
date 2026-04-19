@@ -12,7 +12,11 @@ import type { Transaction } from "@solid-imager/core/domain/interfaces/transacti
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import { and, eq, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { characterIps, characters, mediaCharacters } from "~/infrastructure/db/schema";
+import {
+	characterIps,
+	characters,
+	mediaCharacters,
+} from "~/infrastructure/db/schema";
 
 export class DrizzleCharacterRepository implements CharacterRepository {
 	async findAll(): Promise<Character[]> {
@@ -56,7 +60,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				ips: result.ips.map((i) => i.ip),
 			};
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select character by ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to select character by ID: ${id}`,
+				error,
+			);
 		}
 	}
 
@@ -81,7 +88,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				ips: result.ips.map((i) => i.ip),
 			};
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select character by name: ${name}`, error);
+			throw new UnexpectedError(
+				`Failed to select character by name: ${name}`,
+				error,
+			);
 		}
 	}
 
@@ -117,13 +127,19 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError("Character with this name already exists");
+				throw new ResourceConflictError(
+					"Character with this name already exists",
+				);
 			}
 			throw new UnexpectedError("Failed to insert character", error);
 		}
 	}
 
-	async update(id: string, character: UpdateCharacter, tx?: Transaction): Promise<Character> {
+	async update(
+		id: string,
+		character: UpdateCharacter,
+		tx?: Transaction,
+	): Promise<Character> {
 		try {
 			const operation = async (client: TransactionClient) => {
 				const { ipIds, ...charData } = character;
@@ -137,13 +153,18 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				});
 				await this._updateCharacterIps(id, ipIds, character.source, client);
 
-				return (await this.findById(id, tx ?? (client as unknown as Transaction))) as Character;
+				return (await this.findById(
+					id,
+					tx ?? (client as unknown as Transaction),
+				)) as Character;
 			};
 
 			if (tx) {
 				return await operation(tx as unknown as TransactionClient);
 			}
-			return await db.transaction((innerTx) => operation(innerTx as unknown as TransactionClient));
+			return await db.transaction((innerTx) =>
+				operation(innerTx as unknown as TransactionClient),
+			);
 		} catch (error) {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
@@ -154,9 +175,14 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError("Character with this name already exists");
+				throw new ResourceConflictError(
+					"Character with this name already exists",
+				);
 			}
-			throw new UnexpectedError(`Failed to update character with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to update character with ID: ${id}`,
+				error,
+			);
 		}
 	}
 
@@ -217,7 +243,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.delete(characters).where(eq(characters.id, id)).returning();
+			const result = await client
+				.delete(characters)
+				.where(eq(characters.id, id))
+				.returning();
 
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Character", id);
@@ -226,7 +255,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to delete character with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to delete character with ID: ${id}`,
+				error,
+			);
 		}
 	}
 
@@ -254,14 +286,19 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				ips: r.character.ips.map((i) => i.ip),
 			}));
 		} catch (error) {
-			throw new UnexpectedError(`Failed to find characters for media: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to find characters for media: ${mediaId}`,
+				error,
+			);
 		}
 	}
 
 	async getMediaCharacters(
 		mediaId: string,
 		tx?: Transaction,
-	): Promise<(Character & { confidence: number | null; associationSource: string })[]> {
+	): Promise<
+		(Character & { confidence: number | null; associationSource: string })[]
+	> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const results = await client.query.mediaCharacters.findMany({
@@ -286,7 +323,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				associationSource: r.source,
 			}));
 		} catch (error) {
-			throw new UnexpectedError(`Failed to find media characters for media: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to find media characters for media: ${mediaId}`,
+				error,
+			);
 		}
 	}
 
@@ -336,13 +376,20 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		}
 	}
 
-	async removeFromMedia(mediaId: string, characterId: string, tx?: Transaction): Promise<void> {
+	async removeFromMedia(
+		mediaId: string,
+		characterId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			await client
 				.delete(mediaCharacters)
 				.where(
-					and(eq(mediaCharacters.mediaId, mediaId), eq(mediaCharacters.characterId, characterId)),
+					and(
+						eq(mediaCharacters.mediaId, mediaId),
+						eq(mediaCharacters.characterId, characterId),
+					),
 				);
 		} catch (error) {
 			throw new UnexpectedError(
@@ -392,7 +439,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 					},
 				});
 		} catch (error) {
-			throw new UnexpectedError(`Failed to bulk add characters to media ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to bulk add characters to media ${mediaId}`,
+				error,
+			);
 		}
 	}
 }

@@ -35,10 +35,15 @@ type MediaSourceEventsOptions = {
 };
 
 type SafeParseSchema<T> = {
-	safeParse: (input: unknown) => { success: true; data: T } | { success: false; error: unknown };
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
 };
 
-function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
+function parseEventPayload<T>(
+	schema: SafeParseSchema<T>,
+	payload: unknown,
+): T | null {
 	const result = schema.safeParse(payload);
 	return result.success ? result.data : null;
 }
@@ -50,7 +55,9 @@ export function useMediaSourceEvents(
 	createEffect(() => {
 		const id = mediaSourceId();
 		const isEnabled =
-			typeof options.enabled === "function" ? options.enabled() : (options.enabled ?? true);
+			typeof options.enabled === "function"
+				? options.enabled()
+				: (options.enabled ?? true);
 		if (!(id && isEnabled)) {
 			return;
 		}
@@ -63,19 +70,28 @@ export function useMediaSourceEvents(
 				}
 			}),
 			listen("media-deleted", (event) => {
-				const payload = parseEventPayload(mediaDeletedEventSchema, event.payload);
+				const payload = parseEventPayload(
+					mediaDeletedEventSchema,
+					event.payload,
+				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onMediaDeleted?.(payload);
 				}
 			}),
 			listen("media-changed", (event) => {
-				const payload = parseEventPayload(mediaChangedEventSchema, event.payload);
+				const payload = parseEventPayload(
+					mediaChangedEventSchema,
+					event.payload,
+				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onMediaChanged?.(payload);
 				}
 			}),
 			listen("media-copied", (event) => {
-				const payload = parseEventPayload(mediaCopiedEventSchema, event.payload);
+				const payload = parseEventPayload(
+					mediaCopiedEventSchema,
+					event.payload,
+				);
 				if (payload && (payload.sourceId === id || payload.targetId === id)) {
 					options.onMediaCopied?.(payload);
 				}
@@ -87,25 +103,37 @@ export function useMediaSourceEvents(
 				}
 			}),
 			listen("thumbnail-generated", (event) => {
-				const payload = parseEventPayload(thumbnailGeneratedEventSchema, event.payload);
+				const payload = parseEventPayload(
+					thumbnailGeneratedEventSchema,
+					event.payload,
+				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onThumbnailGenerated?.(payload);
 				}
 			}),
 			listen("job-progress", (event) => {
-				const payload = parseEventPayload(jobProgressEventSchema, event.payload);
+				const payload = parseEventPayload(
+					jobProgressEventSchema,
+					event.payload,
+				);
 				if (payload && payload.jobId === id) {
 					options.onJobProgress?.(payload);
 				}
 			}),
 			listen("all-jobs-completed", (event) => {
-				const payload = parseEventPayload(allJobsCompletedEventSchema, event.payload);
+				const payload = parseEventPayload(
+					allJobsCompletedEventSchema,
+					event.payload,
+				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onAllJobsCompleted?.(payload);
 				}
 			}),
 			listen("watcher-error", (event) => {
-				const payload = parseEventPayload(watcherErrorEventSchema, event.payload);
+				const payload = parseEventPayload(
+					watcherErrorEventSchema,
+					event.payload,
+				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onWatcherError?.(payload);
 				}

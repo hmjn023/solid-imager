@@ -14,7 +14,11 @@ export const BulkOperationService = {
 	 * @param {string[]} _mediaIds - An array of media IDs to be edited.
 	 * @param {unknown} _updates - An object containing the fields to update and their new values.
 	 */
-	bulkEditMedia(_mediaSourceId: string, _mediaIds: string[], _updates: unknown) {
+	bulkEditMedia(
+		_mediaSourceId: string,
+		_mediaIds: string[],
+		_updates: unknown,
+	) {
 		// TODO: Bulk edit multiple media
 		throw new Error("Not implemented");
 	},
@@ -36,7 +40,11 @@ export const BulkOperationService = {
 	 * @param {string} _destinationPath - The target path where the media items will be moved.
 	 */
 
-	bulkMoveMedia(_mediaSourceId: string, _mediaIds: string[], _destinationPath: string) {
+	bulkMoveMedia(
+		_mediaSourceId: string,
+		_mediaIds: string[],
+		_destinationPath: string,
+	) {
 		// TODO: Bulk move media to destination
 		throw new Error("Not implemented");
 	},

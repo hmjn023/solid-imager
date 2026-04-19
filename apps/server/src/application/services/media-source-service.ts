@@ -24,9 +24,12 @@ const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 // Initialize repository
 const sourceRepo = new DrizzleSourceRepository();
 
-const fetchSourcesServer = async (): Promise<MediaSource[]> => await sourceRepo.findAll();
+const fetchSourcesServer = async (): Promise<MediaSource[]> =>
+	await sourceRepo.findAll();
 
-const createSourceServer = async (sourceData: NewMediaSource): Promise<MediaSource[]> => {
+const createSourceServer = async (
+	sourceData: NewMediaSource,
+): Promise<MediaSource[]> => {
 	const result = await sourceRepo.create(sourceData);
 	return [result];
 };
@@ -50,7 +53,9 @@ const fetchSourceByIdServer = async (
 	}
 };
 
-const deleteSourceServer = async (mediaSourceId: string): Promise<MediaSource[]> => {
+const deleteSourceServer = async (
+	mediaSourceId: string,
+): Promise<MediaSource[]> => {
 	// The repository currently returns void for delete(), but the service expects MediaSource[].
 	// We fetch it first before deleting to satisfy the return type if needed.
 	const source = await sourceRepo.findById(mediaSourceId);
@@ -69,7 +74,10 @@ const testConnectionServer = async (mediaSourceId: string) => {
 	try {
 		const source = await sourceRepo.findById(mediaSourceId);
 		if (!source) {
-			throw new FetchError("指定されたメディアソースが見つかりません", HTTP_STATUS_NOT_FOUND);
+			throw new FetchError(
+				"指定されたメディアソースが見つかりません",
+				HTTP_STATUS_NOT_FOUND,
+			);
 		}
 		const toDbMediaSource = (s: MediaSource): DbMediaSource =>
 			({

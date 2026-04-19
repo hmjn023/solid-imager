@@ -39,7 +39,10 @@ import {
 	searchState,
 } from "~/presentation/store/search-store";
 
-export function PresetManager(props: { class?: string; onAction?: () => void }) {
+export function PresetManager(props: {
+	class?: string;
+	onAction?: () => void;
+}) {
 	const [data, { refetch }] = createResource(PresetClient.list);
 
 	// existing "current" preset should be hidden from UI
@@ -53,7 +56,9 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
 
 	const [newPresetName, setNewPresetName] = createSignal("");
-	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(null);
+	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
+		null,
+	);
 
 	// Sync activePresetId from store to local selection
 	createEffect(() => {
@@ -146,7 +151,10 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 	return (
 		<div class={cn("flex w-full flex-col gap-2", props.class)}>
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>プリセットの削除</AlertDialogTitle>
@@ -156,7 +164,10 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>キャンセル</AlertDialogCancel>
-						<AlertDialogAction class="bg-red-500 hover:bg-red-600" onClick={executeDelete}>
+						<AlertDialogAction
+							class="bg-red-500 hover:bg-red-600"
+							onClick={executeDelete}
+						>
 							削除する
 						</AlertDialogAction>
 					</AlertDialogFooter>
@@ -168,10 +179,15 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 					<Select
 						itemComponent={(itemProps) => {
 							const preset = presets()?.find(
-								(p: Preset) => String(p.id) === (itemProps.item as { rawValue: string }).rawValue,
+								(p: Preset) =>
+									String(p.id) ===
+									(itemProps.item as { rawValue: string }).rawValue,
 							);
 							return (
-								<SelectItem class="flex w-full justify-between gap-2" item={itemProps.item}>
+								<SelectItem
+									class="flex w-full justify-between gap-2"
+									item={itemProps.item}
+								>
 									<span>{preset?.name}</span>
 								</SelectItem>
 							);
@@ -185,10 +201,13 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 							<SelectValue<string>>
 								{(state) => {
 									const preset = presets()?.find(
-										(p: Preset) => String(p.id) === (state.selectedOption() as string),
+										(p: Preset) =>
+											String(p.id) === (state.selectedOption() as string),
 									);
 									return (
-										<span class="truncate">{preset ? preset.name : "プリセットを選択..."}</span>
+										<span class="truncate">
+											{preset ? preset.name : "プリセットを選択..."}
+										</span>
 									);
 								}}
 							</SelectValue>
@@ -243,7 +262,9 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>現在の検索条件を保存</DialogTitle>
-							<DialogDescription>現在の検索条件に名前を付けて保存します。</DialogDescription>
+							<DialogDescription>
+								現在の検索条件に名前を付けて保存します。
+							</DialogDescription>
 						</DialogHeader>
 						<div class="grid gap-4 py-4">
 							<div class="grid grid-cols-4 items-center gap-4">

@@ -5,7 +5,10 @@ describe("downloadItemSchema", () => {
 	it("should validate a valid download item", () => {
 		const validItem = {
 			targetUrl: "https://example.com/image.jpg",
-			sourceUrls: ["https://example.com/tweet", "https://example.com/image.jpg"],
+			sourceUrls: [
+				"https://example.com/tweet",
+				"https://example.com/image.jpg",
+			],
 			description: "Test description",
 			authors: [{ name: "Test Author", accountId: "@test" }],
 			tags: [{ name: "tag1", type: "positive" }],

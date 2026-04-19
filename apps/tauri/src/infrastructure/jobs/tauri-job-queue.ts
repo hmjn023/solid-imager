@@ -22,7 +22,11 @@ async function resolveThumbnailBasePath(thumbnailDir: string): Promise<string> {
 	return join(await appDataDir(), thumbnailDir);
 }
 
-function buildThumbnailPath(basePath: string, sourceId: string, mediaId: string): string {
+function buildThumbnailPath(
+	basePath: string,
+	sourceId: string,
+	mediaId: string,
+): string {
 	const sep = basePath.includes("\\") ? "\\" : "/";
 	return `${basePath.replace(/[\\/]+$/, "")}${sep}${sourceId}${sep}${mediaId}.webp`;
 }
@@ -119,7 +123,10 @@ class TauriJobQueue {
 
 			// Step 1: Metadata extraction
 			try {
-				const metadata = await getTauriAppServices().imageProcessor.extractMetadata(job.fullPath);
+				const metadata =
+					await getTauriAppServices().imageProcessor.extractMetadata(
+						job.fullPath,
+					);
 				await TauriMediaRepository.upsertGenerationInfo(
 					job.mediaId,
 					metadata.prompt !== null && typeof metadata.prompt === "object"
@@ -128,16 +135,30 @@ class TauriJobQueue {
 					metadata.workflow as object | null,
 				);
 				if (metadata.tags.length > 0) {
-					await TauriTagRepository.addTagsToMedia(job.mediaId, metadata.tags, "comfyui_workflow");
+					await TauriTagRepository.addTagsToMedia(
+						job.mediaId,
+						metadata.tags,
+						"comfyui_workflow",
+					);
 				}
 			} catch (err) {
-				console.warn("[jobs] metadata extraction failed, continuing:", job.mediaId, err);
+				console.warn(
+					"[jobs] metadata extraction failed, continuing:",
+					job.mediaId,
+					err,
+				);
 			}
 
 			// Step 2: Thumbnail generation
 			const config = await TauriConfigService.getConfig();
-			const basePath = await resolveThumbnailBasePath(config.storage.thumbnailDir);
-			const outputPath = buildThumbnailPath(basePath, job.sourceId, job.mediaId);
+			const basePath = await resolveThumbnailBasePath(
+				config.storage.thumbnailDir,
+			);
+			const outputPath = buildThumbnailPath(
+				basePath,
+				job.sourceId,
+				job.mediaId,
+			);
 			await getTauriAppServices().imageProcessor.generateThumbnail(
 				job.fullPath,
 				outputPath,
@@ -157,21 +178,33 @@ class TauriJobQueue {
 				try {
 					const media = await TauriMediaRepository.findById(job.mediaId);
 					if (media?.mediaType === "image") {
-						const aiJob = await TauriJobRepository.createAutoTaggingJob(job.mediaId, job.sourceId);
+						const aiJob = await TauriJobRepository.createAutoTaggingJob(
+							job.mediaId,
+							job.sourceId,
+						);
 						this.enqueueAiInMemory(aiJob);
 						this.drainAi();
 					}
 				} catch (err) {
-					console.error("[jobs] failed to queue auto_tagging:", job.mediaId, err);
+					console.error(
+						"[jobs] failed to queue auto_tagging:",
+						job.mediaId,
+						err,
+					);
 				}
 			}
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Unknown thumbnail job error";
+			const message =
+				err instanceof Error ? err.message : "Unknown thumbnail job error";
 			console.error("[jobs] thumbnail generation failed:", job.mediaId, err);
 			try {
 				await TauriJobRepository.markAsFailed(job.id, message);
 			} catch (updateError) {
-				console.error("[jobs] failed to persist job failure:", job.mediaId, updateError);
+				console.error(
+					"[jobs] failed to persist job failure:",
+					job.mediaId,
+					updateError,
+				);
 			}
 		} finally {
 			await this.markDone(job.sourceId);
@@ -200,12 +233,17 @@ class TauriJobQueue {
 			await TauriAiService.tagSingleMedia(job.mediaId);
 			await TauriJobRepository.markAsCompleted(job.id);
 		} catch (err) {
-			const message = err instanceof Error ? err.message : "Unknown AI job error";
+			const message =
+				err instanceof Error ? err.message : "Unknown AI job error";
 			console.error("[jobs] auto_tagging failed:", job.mediaId, err);
 			try {
 				await TauriJobRepository.markAsFailed(job.id, message);
 			} catch (updateError) {
-				console.error("[jobs] failed to persist AI job failure:", job.mediaId, updateError);
+				console.error(
+					"[jobs] failed to persist AI job failure:",
+					job.mediaId,
+					updateError,
+				);
 			}
 		}
 	}

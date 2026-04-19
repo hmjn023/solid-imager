@@ -55,7 +55,12 @@ function CheckIcon(props: { size?: number; class?: string }) {
 
 export function ClipboardCopy(props: ClipboardCopyProps) {
 	const [copied, setCopied] = createSignal(false);
-	const [local, others] = splitProps(props, ["text", "label", "class", "iconSize"]);
+	const [local, others] = splitProps(props, [
+		"text",
+		"label",
+		"class",
+		"iconSize",
+	]);
 
 	let timeoutId: number | undefined;
 
@@ -75,7 +80,9 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 
 		// Secure Context check (navigator.clipboard)
 		if (!navigator.clipboard) {
-			toast.error("Clipboard API not supported or not in a Secure Context (HTTPS/localhost).");
+			toast.error(
+				"Clipboard API not supported or not in a Secure Context (HTTPS/localhost).",
+			);
 			return;
 		}
 
@@ -110,7 +117,10 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 			{...others}
 		>
 			{copied() ? (
-				<CheckIcon class="text-green-600" size={local.iconSize || DEFAULT_ICON_SIZE} />
+				<CheckIcon
+					class="text-green-600"
+					size={local.iconSize || DEFAULT_ICON_SIZE}
+				/>
 			) : (
 				<CopyIcon
 					class="text-gray-500 hover:text-gray-700"

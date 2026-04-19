@@ -49,7 +49,9 @@ export function getRouter() {
 			defaultPreload: "intent",
 			defaultPreloadStaleTime: 0,
 			Wrap: (props) => (
-				<QueryClientProvider client={queryClient}>{props.children}</QueryClientProvider>
+				<QueryClientProvider client={queryClient}>
+					{props.children}
+				</QueryClientProvider>
 			),
 		});
 	} catch (error) {

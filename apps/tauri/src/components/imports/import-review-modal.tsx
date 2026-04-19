@@ -9,7 +9,13 @@ import {
 	AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
 import { toast } from "@solid-imager/ui/toast";
-import { createEffect, createResource, createSignal, For, Show } from "solid-js";
+import {
+	createEffect,
+	createResource,
+	createSignal,
+	For,
+	Show,
+} from "solid-js";
 import { Portal } from "solid-js/web";
 import {
 	cancelPendingImports,
@@ -28,7 +34,10 @@ function getPreviewUrl(url?: string) {
 	if (!url) return "";
 	try {
 		const urlObj = new URL(url);
-		if (urlObj.hostname === "pbs.twimg.com" && urlObj.searchParams.get("name") === "orig") {
+		if (
+			urlObj.hostname === "pbs.twimg.com" &&
+			urlObj.searchParams.get("name") === "orig"
+		) {
 			urlObj.searchParams.set("name", "small");
 			return urlObj.toString();
 		}
@@ -37,11 +46,14 @@ function getPreviewUrl(url?: string) {
 }
 
 export function ImportReviewModal(props: Props) {
-	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(new Set());
+	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
+		new Set(),
+	);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 
-	const [pendingJobs, { refetch: refetchJobs }] = createResource(listPendingImports);
+	const [pendingJobs, { refetch: refetchJobs }] =
+		createResource(listPendingImports);
 	const [sources] = createResource(fetchMediaSources);
 
 	createEffect(() => {
@@ -107,8 +119,14 @@ export function ImportReviewModal(props: Props) {
 				<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 					<div class="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg bg-gray-900 shadow-xl">
 						<div class="flex items-center justify-between border-gray-700 border-b p-4">
-							<h2 class="font-bold text-white text-xl">Review Pending Imports</h2>
-							<button class="text-gray-400 hover:text-white" onClick={props.onClose} type="button">
+							<h2 class="font-bold text-white text-xl">
+								Review Pending Imports
+							</h2>
+							<button
+								class="text-gray-400 hover:text-white"
+								onClick={props.onClose}
+								type="button"
+							>
 								✕
 							</button>
 						</div>
@@ -118,7 +136,9 @@ export function ImportReviewModal(props: Props) {
 									<span class="text-gray-300">Target Source:</span>
 									<select
 										class="rounded border border-gray-600 bg-gray-800 p-1 text-white"
-										onChange={(event) => setSelectedSourceId(event.currentTarget.value)}
+										onChange={(event) =>
+											setSelectedSourceId(event.currentTarget.value)
+										}
 										value={selectedSourceId()}
 									>
 										<For each={sources()}>
@@ -131,7 +151,8 @@ export function ImportReviewModal(props: Props) {
 									</select>
 								</div>
 								<div class="text-gray-400 text-sm">
-									Selected: {selectedJobIds().size} / {pendingJobs()?.length || 0}
+									Selected: {selectedJobIds().size} /{" "}
+									{pendingJobs()?.length || 0}
 								</div>
 							</div>
 							<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -173,7 +194,9 @@ export function ImportReviewModal(props: Props) {
 												</Show>
 											</div>
 											<div class="mt-2 truncate text-gray-400 text-xs">
-												{job.item.description || job.item.targetUrl || "No description"}
+												{job.item.description ||
+													job.item.targetUrl ||
+													"No description"}
 											</div>
 										</button>
 									)}
@@ -203,13 +226,17 @@ export function ImportReviewModal(props: Props) {
 								onClick={() => void handleProcess()}
 								type="button"
 							>
-								Import {selectedJobIds().size ? `(${selectedJobIds().size})` : ""}
+								Import{" "}
+								{selectedJobIds().size ? `(${selectedJobIds().size})` : ""}
 							</button>
 						</div>
 					</div>
 				</div>
 			</Portal>
-			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>

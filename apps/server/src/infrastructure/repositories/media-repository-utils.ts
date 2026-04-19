@@ -63,7 +63,10 @@ function buildWhereClause(
 	if (options.query) {
 		const escapedQuery = escapeLikeString(options.query);
 		conditions.push(
-			or(like(medias.fileName, `%${escapedQuery}%`), like(medias.description, `%${escapedQuery}%`)),
+			or(
+				like(medias.fileName, `%${escapedQuery}%`),
+				like(medias.description, `%${escapedQuery}%`),
+			),
 		);
 	}
 
@@ -178,7 +181,10 @@ export const searchMedia = async (
 ) => {
 	try {
 		const whereClause = buildWhereClause(mediaSourceId, searchOptions, client);
-		const orderByClause = buildOrderByClause(searchOptions.sort, searchOptions.order);
+		const orderByClause = buildOrderByClause(
+			searchOptions.sort,
+			searchOptions.order,
+		);
 
 		// Optimize: Combine count and data retrieval into a single query using window functions
 		const query = client
@@ -194,18 +200,22 @@ export const searchMedia = async (
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {
-			pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
+			pagedQuery = pagedQuery
+				.limit(searchOptions.limit)
+				.offset(searchOptions.offset || 0);
 		} else if (searchOptions.offset && searchOptions.offset > 0) {
 			pagedQuery = pagedQuery.offset(searchOptions.offset);
 		}
 
 		const results = await pagedQuery;
 
-		const mediaList = results.map((r: InferSelectModel<typeof medias> & { totalCount: number }) => {
-			// Extract original media columns by removing totalCount
-			const { totalCount, ...mediaData } = r;
-			return mediaData;
-		});
+		const mediaList = results.map(
+			(r: InferSelectModel<typeof medias> & { totalCount: number }) => {
+				// Extract original media columns by removing totalCount
+				const { totalCount, ...mediaData } = r;
+				return mediaData;
+			},
+		);
 
 		let total = results.length > 0 ? results[0].totalCount : 0;
 
@@ -213,13 +223,19 @@ export const searchMedia = async (
 		// We must run a count query to get the total.
 		// If offset is 0 and result is empty, total is definitely 0.
 		if (mediaList.length === 0 && (searchOptions.offset || 0) > 0) {
-			const countResult = await client.select({ total: count() }).from(medias).where(whereClause);
+			const countResult = await client
+				.select({ total: count() })
+				.from(medias)
+				.where(whereClause);
 			total = countResult[0]?.total ?? 0;
 		}
 
 		return { media: mediaList, total };
 	} catch (error) {
-		throw new UnexpectedError(`Failed to search media for source ID: ${mediaSourceId}`, error);
+		throw new UnexpectedError(
+			`Failed to search media for source ID: ${mediaSourceId}`,
+			error,
+		);
 	}
 };
 
@@ -289,10 +305,16 @@ export const globalSearchMedia = async (
 ) => {
 	try {
 		const whereClause = buildWhereClause(undefined, searchOptions, client);
-		const orderByClause = buildOrderByClause(searchOptions.sort, searchOptions.order);
+		const orderByClause = buildOrderByClause(
+			searchOptions.sort,
+			searchOptions.order,
+		);
 
 		// Execute Count Query
-		const [{ total }] = await client.select({ total: count() }).from(medias).where(whereClause);
+		const [{ total }] = await client
+			.select({ total: count() })
+			.from(medias)
+			.where(whereClause);
 
 		// Execute Main Query
 		const query = client
@@ -305,7 +327,9 @@ export const globalSearchMedia = async (
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {
-			pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
+			pagedQuery = pagedQuery
+				.limit(searchOptions.limit)
+				.offset(searchOptions.offset || 0);
 		} else if (searchOptions.offset && searchOptions.offset > 0) {
 			pagedQuery = pagedQuery.offset(searchOptions.offset);
 		}

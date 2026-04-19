@@ -70,7 +70,11 @@ export async function apiRequest<T>(
 				errorData = "Unknown error";
 			}
 
-			throw new ApiError(`API request failed: ${response.statusText}`, response.status, errorData);
+			throw new ApiError(
+				`API request failed: ${response.statusText}`,
+				response.status,
+				errorData,
+			);
 		}
 
 		const HttpStatusNoContent = 204;
@@ -84,7 +88,9 @@ export async function apiRequest<T>(
 		if (error instanceof ApiError) {
 			throw error;
 		}
-		throw new ApiError(`Network error: ${error instanceof Error ? error.message : String(error)}`);
+		throw new ApiError(
+			`Network error: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 }
 
@@ -94,7 +100,10 @@ export async function apiRequest<T>(
  * @param options - Fetch options
  * @returns The response as a Blob
  */
-export async function apiBlobRequest(path: string, options?: RequestInit): Promise<Blob> {
+export async function apiBlobRequest(
+	path: string,
+	options?: RequestInit,
+): Promise<Blob> {
 	const url = buildUrl(path);
 
 	try {
@@ -104,7 +113,10 @@ export async function apiBlobRequest(path: string, options?: RequestInit): Promi
 		});
 
 		if (!response.ok) {
-			throw new ApiError(`API request failed: ${response.statusText}`, response.status);
+			throw new ApiError(
+				`API request failed: ${response.statusText}`,
+				response.status,
+			);
 		}
 
 		return await response.blob();
@@ -112,6 +124,8 @@ export async function apiBlobRequest(path: string, options?: RequestInit): Promi
 		if (error instanceof ApiError) {
 			throw error;
 		}
-		throw new ApiError(`Network error: ${error instanceof Error ? error.message : String(error)}`);
+		throw new ApiError(
+			`Network error: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 }

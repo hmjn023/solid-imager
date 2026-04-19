@@ -7,7 +7,10 @@ const Card: Component<ComponentProps<"div">> = (props) => {
 	const [local, others] = splitProps(props, ["class"]);
 	return (
 		<div
-			class={cn("rounded-lg border bg-card text-card-foreground shadow-sm", local.class)}
+			class={cn(
+				"rounded-lg border bg-card text-card-foreground shadow-sm",
+				local.class,
+			)}
 			{...others}
 		/>
 	);
@@ -15,19 +18,29 @@ const Card: Component<ComponentProps<"div">> = (props) => {
 
 const CardHeader: Component<ComponentProps<"div">> = (props) => {
 	const [local, others] = splitProps(props, ["class"]);
-	return <div class={cn("flex flex-col space-y-1.5 p-6", local.class)} {...others} />;
+	return (
+		<div class={cn("flex flex-col space-y-1.5 p-6", local.class)} {...others} />
+	);
 };
 
 const CardTitle: Component<ComponentProps<"h3">> = (props) => {
 	const [local, others] = splitProps(props, ["class"]);
 	return (
-		<h3 class={cn("font-semibold text-lg leading-none tracking-tight", local.class)} {...others} />
+		<h3
+			class={cn(
+				"font-semibold text-lg leading-none tracking-tight",
+				local.class,
+			)}
+			{...others}
+		/>
 	);
 };
 
 const CardDescription: Component<ComponentProps<"p">> = (props) => {
 	const [local, others] = splitProps(props, ["class"]);
-	return <p class={cn("text-muted-foreground text-sm", local.class)} {...others} />;
+	return (
+		<p class={cn("text-muted-foreground text-sm", local.class)} {...others} />
+	);
 };
 
 const CardContent: Component<ComponentProps<"div">> = (props) => {
@@ -37,7 +50,16 @@ const CardContent: Component<ComponentProps<"div">> = (props) => {
 
 const CardFooter: Component<ComponentProps<"div">> = (props) => {
 	const [local, others] = splitProps(props, ["class"]);
-	return <div class={cn("flex items-center p-6 pt-0", local.class)} {...others} />;
+	return (
+		<div class={cn("flex items-center p-6 pt-0", local.class)} {...others} />
+	);
 };
 
-export { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle };
+export {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+};

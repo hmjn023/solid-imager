@@ -1,4 +1,8 @@
-import type { Preset, SearchCriterion, SearchGroup } from "@/domain/media/schemas";
+import type {
+	Preset,
+	SearchCriterion,
+	SearchGroup,
+} from "@/domain/media/schemas";
 import type { SearchState } from "./schema";
 
 /**
@@ -45,7 +49,9 @@ export const calculateNextModeState = (
  * Tries to map a SearchGroup back to simple search state.
  * Returns null if the condition cannot be represented in simple mode.
  */
-export const restoreFromSearchGroup = (group: SearchGroup): Partial<SearchState> | null => {
+export const restoreFromSearchGroup = (
+	group: SearchGroup,
+): Partial<SearchState> | null => {
 	// Simple mode is always a top-level AND group
 	if (group.operator !== "and") {
 		return null;
@@ -110,7 +116,9 @@ const applyCriterionToState = (
 /**
  * Constructs the SearchGroup based on current mode and filters.
  */
-export const getSearchConditionFromState = (state: SearchState): SearchGroup | undefined => {
+export const getSearchConditionFromState = (
+	state: SearchState,
+): SearchGroup | undefined => {
 	if (state.mode === "pro") {
 		return state.advancedCondition || undefined;
 	}
@@ -146,7 +154,10 @@ export const getSearchConditionFromState = (state: SearchState): SearchGroup | u
 	};
 };
 
-const addTagConditions = (conditions: SearchGroup["children"], state: SearchState) => {
+const addTagConditions = (
+	conditions: SearchGroup["children"],
+	state: SearchState,
+) => {
 	// Tags (Positive)
 	if (state.selectedTags.length > 0) {
 		for (const tag of state.selectedTags) {
@@ -188,7 +199,10 @@ const addFilterConditions = (
 	}
 };
 
-export const preparePresetState = (preset: Preset, currentState: SearchState) => {
+export const preparePresetState = (
+	preset: Preset,
+	currentState: SearchState,
+) => {
 	const simpleState = restoreFromSearchGroup(preset.value);
 	const sortState = {
 		sortBy: (preset.sort as SearchState["sortBy"]) || "date",

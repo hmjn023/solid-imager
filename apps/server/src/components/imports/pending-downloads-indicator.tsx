@@ -1,5 +1,11 @@
 import { toast } from "@solid-imager/ui/toast";
-import { createResource, createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+	createResource,
+	createSignal,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
 import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import ImportReviewModal from "./import-review-modal";
@@ -70,7 +76,9 @@ export default function PendingDownloadsIndicator() {
 			>
 				<span>Inbox</span>
 				<Show when={(pendingCount() ?? 0) > 0}>
-					<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">{pendingCount()}</span>
+					<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">
+						{pendingCount()}
+					</span>
 				</Show>
 			</button>
 

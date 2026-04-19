@@ -9,7 +9,9 @@ type MediaViewerProps = {
 export default function MediaViewer(props: MediaViewerProps) {
 	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
 
-	const mediaUrl = createMemo(() => `/api/sources/${params().mediaSourceId}/${params().mediaId}`);
+	const mediaUrl = createMemo(
+		() => `/api/sources/${params().mediaSourceId}/${params().mediaId}`,
+	);
 
 	return (
 		<div class="flex h-full w-full items-center justify-center bg-black/5">

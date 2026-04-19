@@ -81,7 +81,9 @@ function isSafeRelativeUploadPath(path: string) {
 
 	return path
 		.split(/[\\/]+/)
-		.every((segment) => segment.length === 0 || segment === "." || segment !== "..");
+		.every(
+			(segment) => segment.length === 0 || segment === "." || segment !== "..",
+		);
 }
 
 async function resolveUploadTargetPath(
@@ -96,7 +98,10 @@ async function resolveUploadTargetPath(
 
 	const normalizedRequested = normalizeRelativePath(requestedPath);
 	const requestedFullPath = joinLocalPath(rootPath, normalizedRequested);
-	if (overwrite || !(await getTauriAppServices().fileSystem.exists(requestedFullPath))) {
+	if (
+		overwrite ||
+		!(await getTauriAppServices().fileSystem.exists(requestedFullPath))
+	) {
 		return {
 			relativePath: normalizedRequested,
 			fullPath: requestedFullPath,
@@ -118,7 +123,9 @@ async function resolveUploadTargetPath(
 	while (index <= MAX_FILENAME_COLLISION_ATTEMPTS) {
 		const candidateName = `${stem}-${index}${extension}`;
 		const candidateRelative =
-			parentDir === "/" ? candidateName : normalizeRelativePath(`${parentDir}/${candidateName}`);
+			parentDir === "/"
+				? candidateName
+				: normalizeRelativePath(`${parentDir}/${candidateName}`);
 		const candidateFullPath = joinLocalPath(rootPath, candidateRelative);
 		if (!(await getTauriAppServices().fileSystem.exists(candidateFullPath))) {
 			return {
@@ -152,7 +159,10 @@ function inferMediaType(
 	return "image";
 }
 
-async function getLocalSource(sourceId: string, tx?: TauriDbExecutor): Promise<LocalSource> {
+async function getLocalSource(
+	sourceId: string,
+	tx?: TauriDbExecutor,
+): Promise<LocalSource> {
 	const source = await TauriSourceRepository.findById(sourceId, tx);
 	if (!source) {
 		throw new ResourceNotFoundError("Media Source", sourceId);
@@ -168,26 +178,45 @@ async function getLocalSource(sourceId: string, tx?: TauriDbExecutor): Promise<L
 }
 
 async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
-	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>("probe_media", {
-		mediaPath: fullPath,
-	});
+	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>(
+		"probe_media",
+		{
+			mediaPath: fullPath,
+		},
+	);
 }
 
-async function persistExtractedMetadata(mediaId: string, fullPath: string, tx: TauriDbExecutor) {
-	const extracted = await getTauriAppServices().imageProcessor.extractMetadata(fullPath);
+async function persistExtractedMetadata(
+	mediaId: string,
+	fullPath: string,
+	tx: TauriDbExecutor,
+) {
+	const extracted =
+		await getTauriAppServices().imageProcessor.extractMetadata(fullPath);
 
 	await tx
 		.delete(mediaTags)
-		.where(and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, EXTRACTED_TAG_SOURCE)));
-	await tx.delete(mediaGenerationInfo).where(eq(mediaGenerationInfo.mediaId, mediaId));
+		.where(
+			and(
+				eq(mediaTags.mediaId, mediaId),
+				eq(mediaTags.source, EXTRACTED_TAG_SOURCE),
+			),
+		);
+	await tx
+		.delete(mediaGenerationInfo)
+		.where(eq(mediaGenerationInfo.mediaId, mediaId));
 
 	const hasMetadata =
-		extracted.tags.length > 0 || extracted.prompt !== null || extracted.workflow !== null;
+		extracted.tags.length > 0 ||
+		extracted.prompt !== null ||
+		extracted.workflow !== null;
 	if (!hasMetadata) {
 		return;
 	}
 
-	const uniqueTagNames = Array.from(new Set(extracted.tags.map((tag) => tag.name)));
+	const uniqueTagNames = Array.from(
+		new Set(extracted.tags.map((tag) => tag.name)),
+	);
 	if (uniqueTagNames.length > 0) {
 		await tx
 			.insert(tags)
@@ -236,7 +265,9 @@ async function persistExtractedMetadata(mediaId: string, fullPath: string, tx: T
 			: extracted.prompt
 				? JSON.stringify(extracted.prompt)
 				: null,
-		extracted.workflow && typeof extracted.workflow === "object" ? extracted.workflow : null,
+		extracted.workflow && typeof extracted.workflow === "object"
+			? extracted.workflow
+			: null,
 		tx,
 	);
 }
@@ -256,8 +287,16 @@ async function syncContextMetadata(
 		for (const author of updates.authors) {
 			const existingAuthor = (
 				author.accountId
-					? await tx.select().from(authors).where(eq(authors.accountId, author.accountId)).limit(1)
-					: await tx.select().from(authors).where(eq(authors.name, author.name)).limit(1)
+					? await tx
+							.select()
+							.from(authors)
+							.where(eq(authors.accountId, author.accountId))
+							.limit(1)
+					: await tx
+							.select()
+							.from(authors)
+							.where(eq(authors.name, author.name))
+							.limit(1)
 			)[0];
 			const authorId =
 				existingAuthor?.id ??
@@ -277,10 +316,16 @@ async function syncContextMetadata(
 	}
 
 	if (updates.characters !== undefined) {
-		await tx.delete(mediaCharacters).where(eq(mediaCharacters.mediaId, mediaId));
+		await tx
+			.delete(mediaCharacters)
+			.where(eq(mediaCharacters.mediaId, mediaId));
 		for (const character of updates.characters) {
 			const existingCharacter = (
-				await tx.select().from(characters).where(eq(characters.name, character.name)).limit(1)
+				await tx
+					.select()
+					.from(characters)
+					.where(eq(characters.name, character.name))
+					.limit(1)
 			)[0];
 			const characterId =
 				existingCharacter?.id ??
@@ -309,7 +354,9 @@ async function syncContextMetadata(
 	if (updates.ips !== undefined) {
 		await tx.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
 		for (const ip of updates.ips) {
-			const existingIp = (await tx.select().from(ips).where(eq(ips.name, ip.name)).limit(1))[0];
+			const existingIp = (
+				await tx.select().from(ips).where(eq(ips.name, ip.name)).limit(1)
+			)[0];
 			const ipId =
 				existingIp?.id ??
 				(
@@ -323,7 +370,13 @@ async function syncContextMetadata(
 						.returning({ id: ips.id })
 				)[0]?.id;
 			if (ipId) {
-				await TauriIpRepository.addMedia(mediaId, ipId, ip.confidence ?? undefined, "manual", tx);
+				await TauriIpRepository.addMedia(
+					mediaId,
+					ipId,
+					ip.confidence ?? undefined,
+					"manual",
+					tx,
+				);
 			}
 		}
 	}
@@ -334,14 +387,19 @@ async function copyMediaRelations(
 	targetMediaId: string,
 	tx: TauriDbExecutor,
 ) {
-	const [sourceAuthors, sourceProjects, sourceCharacters, sourceIps, sourceUrls] =
-		await Promise.all([
-			TauriAuthorRepository.findByMediaId(sourceMediaId, tx),
-			TauriProjectRepository.findByMediaId(sourceMediaId),
-			TauriCharacterRepository.findByMediaId(sourceMediaId),
-			TauriIpRepository.findByMediaId(sourceMediaId),
-			TauriMediaRepository.getUrls(sourceMediaId, tx),
-		]);
+	const [
+		sourceAuthors,
+		sourceProjects,
+		sourceCharacters,
+		sourceIps,
+		sourceUrls,
+	] = await Promise.all([
+		TauriAuthorRepository.findByMediaId(sourceMediaId, tx),
+		TauriProjectRepository.findByMediaId(sourceMediaId),
+		TauriCharacterRepository.findByMediaId(sourceMediaId),
+		TauriIpRepository.findByMediaId(sourceMediaId),
+		TauriMediaRepository.getUrls(sourceMediaId, tx),
+	]);
 
 	await TauriAuthorRepository.addMediaBulk(
 		targetMediaId,
@@ -354,11 +412,23 @@ async function copyMediaRelations(
 	}
 
 	for (const character of sourceCharacters) {
-		await TauriCharacterRepository.addMedia(targetMediaId, character.id, undefined, "manual", tx);
+		await TauriCharacterRepository.addMedia(
+			targetMediaId,
+			character.id,
+			undefined,
+			"manual",
+			tx,
+		);
 	}
 
 	for (const ip of sourceIps) {
-		await TauriIpRepository.addMedia(targetMediaId, ip.id, undefined, "manual", tx);
+		await TauriIpRepository.addMedia(
+			targetMediaId,
+			ip.id,
+			undefined,
+			"manual",
+			tx,
+		);
 	}
 
 	if (sourceUrls.length > 0) {
@@ -385,7 +455,10 @@ async function copyMediaRelations(
 			.onConflictDoNothing();
 	}
 
-	const sourceGenerationInfo = await TauriMediaRepository.getGenerationInfo(sourceMediaId, tx);
+	const sourceGenerationInfo = await TauriMediaRepository.getGenerationInfo(
+		sourceMediaId,
+		tx,
+	);
 	if (sourceGenerationInfo) {
 		await tx.insert(mediaGenerationInfo).values({
 			mediaId: targetMediaId,
@@ -477,7 +550,10 @@ export const TauriMediaService = {
 			});
 		}
 
-		await getTauriAppServices().fileSystem.writeFile(target.fullPath, new Uint8Array(bytes));
+		await getTauriAppServices().fileSystem.writeFile(
+			target.fullPath,
+			new Uint8Array(bytes),
+		);
 
 		try {
 			const probe = await probeMedia(target.fullPath);
@@ -487,7 +563,10 @@ export const TauriMediaService = {
 						mediaSourceId: source.id,
 						filePath: target.relativePath,
 						fileName: basename(target.relativePath),
-						mediaType: inferMediaType(target.relativePath, config.media.supportedExtensions),
+						mediaType: inferMediaType(
+							target.relativePath,
+							config.media.supportedExtensions,
+						),
 						width: probe.width,
 						height: probe.height,
 						fileSize: probe.size,
@@ -499,7 +578,11 @@ export const TauriMediaService = {
 				);
 
 				if (uploadRequest.sourceUrl) {
-					await TauriMediaRepository.addUrls(created.id, [uploadRequest.sourceUrl], tx);
+					await TauriMediaRepository.addUrls(
+						created.id,
+						[uploadRequest.sourceUrl],
+						tx,
+					);
 				}
 
 				await persistExtractedMetadata(created.id, target.fullPath, tx);
@@ -553,7 +636,10 @@ export const TauriMediaService = {
 		return { success: true };
 	},
 
-	async copy(mediaId: string, targetSourceId: string): Promise<{ success: true }> {
+	async copy(
+		mediaId: string,
+		targetSourceId: string,
+	): Promise<{ success: true }> {
 		return await getTauriAppServices().db.transaction(async (tx) => {
 			const sourceMedia = await TauriMediaRepository.findById(mediaId, tx);
 			if (!sourceMedia) {
@@ -578,14 +664,20 @@ export const TauriMediaService = {
 				});
 			}
 
-			await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
+			await getTauriAppServices().fileSystem.copyFile(
+				sourcePath,
+				target.fullPath,
+			);
 			const probe = await probeMedia(target.fullPath);
 			const copied = await TauriMediaRepository.create(
 				{
 					mediaSourceId: targetSource.id,
 					filePath: target.relativePath,
 					fileName: basename(target.relativePath),
-					mediaType: inferMediaType(target.relativePath, config.media.supportedExtensions),
+					mediaType: inferMediaType(
+						target.relativePath,
+						config.media.supportedExtensions,
+					),
 					width: probe.width,
 					height: probe.height,
 					fileSize: probe.size,
@@ -601,7 +693,10 @@ export const TauriMediaService = {
 		});
 	},
 
-	async move(mediaId: string, targetSourceId: string): Promise<{ success: true }> {
+	async move(
+		mediaId: string,
+		targetSourceId: string,
+	): Promise<{ success: true }> {
 		return await getTauriAppServices().db.transaction(async (tx) => {
 			const sourceMedia = await TauriMediaRepository.findById(mediaId, tx);
 			if (!sourceMedia) {
@@ -626,14 +721,20 @@ export const TauriMediaService = {
 				});
 			}
 
-			await getTauriAppServices().fileSystem.rename(sourcePath, target.fullPath);
+			await getTauriAppServices().fileSystem.rename(
+				sourcePath,
+				target.fullPath,
+			);
 			const probe = await probeMedia(target.fullPath);
 			const moved = await TauriMediaRepository.create(
 				{
 					mediaSourceId: targetSource.id,
 					filePath: target.relativePath,
 					fileName: basename(target.relativePath),
-					mediaType: inferMediaType(target.relativePath, config.media.supportedExtensions),
+					mediaType: inferMediaType(
+						target.relativePath,
+						config.media.supportedExtensions,
+					),
 					width: probe.width,
 					height: probe.height,
 					fileSize: probe.size,

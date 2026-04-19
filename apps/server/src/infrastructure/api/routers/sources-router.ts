@@ -123,12 +123,14 @@ export const sourcesRouter = {
 				// ファイル監視の開始
 				import("~/infrastructure/jobs/file-watcher-service")
 					.then((module) => {
-						module.FileWatcherService.startMonitoring(createdSource.id).catch((error) => {
-							logger.error(
-								{ err: error, sourceId: createdSource.id },
-								"Failed to start file watcher",
-							);
-						});
+						module.FileWatcherService.startMonitoring(createdSource.id).catch(
+							(error) => {
+								logger.error(
+									{ err: error, sourceId: createdSource.id },
+									"Failed to start file watcher",
+								);
+							},
+						);
 					})
 					.catch((error) => {
 						logger.error(
@@ -156,7 +158,10 @@ export const sourcesRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const result = await MediaSourceService.updateSource(input.id, input.data);
+			const result = await MediaSourceService.updateSource(
+				input.id,
+				input.data,
+			);
 			return toSafeMediaSource(result[0]);
 		}),
 
@@ -183,11 +188,17 @@ export const sourcesRouter = {
 			import("~/infrastructure/jobs/file-watcher-service")
 				.then((module) => {
 					module.FileWatcherService.stopMonitoring(input.id).catch((error) => {
-						logger.error({ err: error, sourceId: input.id }, "Failed to stop file watcher");
+						logger.error(
+							{ err: error, sourceId: input.id },
+							"Failed to stop file watcher",
+						);
 					});
 				})
 				.catch((error) => {
-					logger.error({ err: error, sourceId: input.id }, "Failed to load file watcher service");
+					logger.error(
+						{ err: error, sourceId: input.id },
+						"Failed to load file watcher service",
+					);
 				});
 
 			return { success: true };
@@ -216,7 +227,10 @@ export const sourcesRouter = {
 					const result = await DirectorySyncService.syncMediaSource(id);
 					results.push({ id, success: true, ...result });
 				} catch (error) {
-					logger.error({ err: error, sourceId: id }, "Failed to sync media source");
+					logger.error(
+						{ err: error, sourceId: id },
+						"Failed to sync media source",
+					);
 					results.push({ id, success: false, error: String(error) });
 				}
 			}
@@ -268,7 +282,10 @@ export const sourcesRouter = {
 				data: z.array(z.any()),
 			}),
 		)
-		.handler(async ({ input }) => await BackupService.restoreSource(input.id, input.data)),
+		.handler(
+			async ({ input }) =>
+				await BackupService.restoreSource(input.id, input.data),
+		),
 
 	/**
 	 * Imports a media source from a Zip file
@@ -295,12 +312,18 @@ export const sourcesRouter = {
 			const { pipeline } = await import("node:stream/promises");
 			const { Readable } = await import("node:stream");
 
-			const tempFilePath = path.join(nodeOs.tmpdir(), `import-rpc-${randomUUID()}.zip`);
+			const tempFilePath = path.join(
+				nodeOs.tmpdir(),
+				`import-rpc-${randomUUID()}.zip`,
+			);
 
 			try {
 				// Stream the file to disk
 				const fileStream = input.file.stream();
-				await pipeline(Readable.fromWeb(fileStream as any), fs.createWriteStream(tempFilePath));
+				await pipeline(
+					Readable.fromWeb(fileStream as any),
+					fs.createWriteStream(tempFilePath),
+				);
 
 				return await BackupService.importSourceZip(input.id, tempFilePath);
 			} finally {
@@ -338,7 +361,8 @@ export const sourcesRouter = {
 			openapi: {
 				tags: ["Media Sources"],
 				summary: "Subscribe to media source events",
-				description: "Real-time Server-Sent Events stream for media source updates",
+				description:
+					"Real-time Server-Sent Events stream for media source updates",
 			},
 		})
 		.input(z.object({ id: z.string().uuid() }))

@@ -41,10 +41,14 @@ export function SortControls(props: SortControlsProps) {
 							return "サイズ";
 						};
 						return (
-							<SelectItem item={itemProps.item}>{getSortLabel(itemProps.item.rawValue)}</SelectItem>
+							<SelectItem item={itemProps.item}>
+								{getSortLabel(itemProps.item.rawValue)}
+							</SelectItem>
 						);
 					}}
-					onChange={(value) => props.onSortByChange((value as SortOption) || "date")}
+					onChange={(value) =>
+						props.onSortByChange((value as SortOption) || "date")
+					}
 					options={["date", "name", "size", "rating", "viewCount"]}
 					placeholder="項目"
 					value={props.sortBy}

@@ -108,7 +108,9 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError(`Tag with name '${tag.name}' already exists`);
+				throw new ResourceConflictError(
+					`Tag with name '${tag.name}' already exists`,
+				);
 			}
 			throw new UnexpectedError("Failed to insert tag", error);
 		}
@@ -117,7 +119,11 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 	async update(id: string, tag: UpdateTag, tx?: Transaction): Promise<Tag> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.update(tags).set(tag).where(eq(tags.id, id)).returning();
+			const result = await client
+				.update(tags)
+				.set(tag)
+				.where(eq(tags.id, id))
+				.returning();
 
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Tag", id);
@@ -133,7 +139,9 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError(`Tag with name '${tag.name}' already exists`);
+				throw new ResourceConflictError(
+					`Tag with name '${tag.name}' already exists`,
+				);
 			}
 			throw new UnexpectedError(`Failed to update tag with ID: ${id}`, error);
 		}
@@ -142,7 +150,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.delete(tags).where(eq(tags.id, id)).returning();
+			const result = await client
+				.delete(tags)
+				.where(eq(tags.id, id))
+				.returning();
 
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Tag", id);
@@ -178,7 +189,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
 			return result.map(mapToMediaTag);
 		} catch (error) {
-			throw new UnexpectedError(`Failed to retrieve tags for media ID: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to retrieve tags for media ID: ${mediaId}`,
+				error,
+			);
 		}
 	}
 
@@ -195,7 +209,9 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 		try {
 			// const _client = (tx as unknown as TransactionClient) || db;
 			const execute = async (t: Transaction) => {
-				const uniqueTagNames = Array.from(new Set(tagsToInsert.map((tag) => tag.name)));
+				const uniqueTagNames = Array.from(
+					new Set(tagsToInsert.map((tag) => tag.name)),
+				);
 				if (uniqueTagNames.length === 0) {
 					return;
 				}
@@ -207,12 +223,17 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 					.onConflictDoNothing();
 
 				// Fetch all tags (both existing and newly created)
-				const allTags = await client.select().from(tags).where(inArray(tags.name, uniqueTagNames));
+				const allTags = await client
+					.select()
+					.from(tags)
+					.where(inArray(tags.name, uniqueTagNames));
 
 				const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
 					const foundTag = allTags.find((tag) => tag.name === tagToInsert.name);
 					if (!foundTag) {
-						throw new Error(`Tag ${tagToInsert.name} not found after insertion`);
+						throw new Error(
+							`Tag ${tagToInsert.name} not found after insertion`,
+						);
 					}
 					return {
 						mediaId,
@@ -282,7 +303,10 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 			) {
 				throw new ResourceConflictError("One or more media tags already exist");
 			}
-			throw new UnexpectedError(`Failed to insert media tags for media ID: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to insert media tags for media ID: ${mediaId}`,
+				error,
+			);
 		}
 	}
 }

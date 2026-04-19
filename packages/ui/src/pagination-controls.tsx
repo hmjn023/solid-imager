@@ -23,7 +23,9 @@ export function PaginationControls(props: PaginationControlsProps) {
 			</span>
 			<Button
 				disabled={props.currentPage === props.totalPages}
-				onClick={() => props.onPageChange(Math.min(props.totalPages, props.currentPage + 1))}
+				onClick={() =>
+					props.onPageChange(Math.min(props.totalPages, props.currentPage + 1))
+				}
 				size="sm"
 				variant="outline"
 			>

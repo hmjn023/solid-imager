@@ -1,4 +1,7 @@
-import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { toast } from "@solid-imager/ui/toast";
 import { createFileRoute } from "@tanstack/solid-router";
 
@@ -39,9 +42,9 @@ const UUID_PREFIX_LENGTH = 4;
 export default function Sources() {
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-	const [editingSource, setEditingSource] = createSignal<SafeMediaSource | MediaSourceInfo | null>(
-		null,
-	);
+	const [editingSource, setEditingSource] = createSignal<
+		SafeMediaSource | MediaSourceInfo | null
+	>(null);
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
@@ -87,11 +90,16 @@ export default function Sources() {
 			setShowDeleteModal(false);
 			setDeletingSource(null);
 		} catch (error) {
-			logger.error({ err: error, mediaSourceId }, "Failed to delete media source");
+			logger.error(
+				{ err: error, mediaSourceId },
+				"Failed to delete media source",
+			);
 		}
 	};
 
-	const handleSyncSource = async (source: SafeMediaSource | MediaSourceInfo) => {
+	const handleSyncSource = async (
+		source: SafeMediaSource | MediaSourceInfo,
+	) => {
 		if (!source.id || isSyncing()) {
 			return;
 		}
@@ -101,7 +109,10 @@ export default function Sources() {
 			await syncMediaSources([source.id]);
 			toast.success(`Sync finished for ${source.name}`);
 		} catch (error) {
-			logger.error({ err: error, sourceId: source.id }, "Failed to sync media source");
+			logger.error(
+				{ err: error, sourceId: source.id },
+				"Failed to sync media source",
+			);
 			toast.error(`Failed to sync ${source.name}`);
 		} finally {
 			setIsSyncing(false);
@@ -146,7 +157,10 @@ export default function Sources() {
 
 			const startStreamForSource = async (id: string) => {
 				try {
-					const events = await orpc.sources.events({ id }, { signal: ac.signal });
+					const events = await orpc.sources.events(
+						{ id },
+						{ signal: ac.signal },
+					);
 
 					for await (const msg of events) {
 						if (ac.signal.aborted) {
@@ -241,7 +255,9 @@ export default function Sources() {
 
 			{mediaSources.isError && (
 				<div class="mt-8 text-center">
-					<p class="text-red-500">Error loading sources: {mediaSources.error?.message}</p>
+					<p class="text-red-500">
+						Error loading sources: {mediaSources.error?.message}
+					</p>
 				</div>
 			)}
 

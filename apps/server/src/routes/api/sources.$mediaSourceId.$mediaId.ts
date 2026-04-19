@@ -8,7 +8,10 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 			GET: async ({ params }) => {
 				bootstrap();
 				const { mediaSourceId, mediaId } = params;
-				const { buffer, contentType } = await MediaService.getMediaContent(mediaSourceId, mediaId);
+				const { buffer, contentType } = await MediaService.getMediaContent(
+					mediaSourceId,
+					mediaId,
+				);
 				return new Response(buffer as unknown as BodyInit, {
 					headers: { "Content-Type": contentType },
 				});

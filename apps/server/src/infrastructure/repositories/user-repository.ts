@@ -37,13 +37,19 @@ export class DrizzleUserRepository implements UserRepositoryDef {
 
 	async findByEmail(email: string): Promise<User | null> {
 		try {
-			const result = await db.select().from(users).where(eq(users.email, email));
+			const result = await db
+				.select()
+				.from(users)
+				.where(eq(users.email, email));
 			if (result.length === 0) {
 				return null;
 			}
 			return result[0] as unknown as User;
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select user by email: ${email}`, error);
+			throw new UnexpectedError(
+				`Failed to select user by email: ${email}`,
+				error,
+			);
 		}
 	}
 
@@ -66,7 +72,11 @@ export class DrizzleUserRepository implements UserRepositoryDef {
 
 	async update(id: string, user: UpdateUser): Promise<User> {
 		try {
-			const result = await db.update(users).set(user).where(eq(users.id, id)).returning();
+			const result = await db
+				.update(users)
+				.set(user)
+				.where(eq(users.id, id))
+				.returning();
 
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("User", id);

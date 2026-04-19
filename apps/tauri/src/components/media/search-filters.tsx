@@ -52,11 +52,14 @@ function FilterSection<T>(props: {
 			<div class="mb-2 flex flex-wrap gap-2">
 				<For each={props.selectedItems}>
 					{(id) => {
-						const item = props.items?.find((candidate) => props.getItemKey(candidate) === id) as
-							| T
-							| undefined;
+						const item = props.items?.find(
+							(candidate) => props.getItemKey(candidate) === id,
+						) as T | undefined;
 						return (
-							<Badge class="cursor-pointer" variant={props.badgeVariant || "default"}>
+							<Badge
+								class="cursor-pointer"
+								variant={props.badgeVariant || "default"}
+							>
 								{item ? props.getItemLabel(item) : id}
 								<button
 									class="ml-1 hover:text-red-500"
@@ -99,7 +102,9 @@ function FilterSection<T>(props: {
 }
 
 const getAuthorLabel = (author: Author) =>
-	author.accountId ? `${author.name}：(twitter)${author.accountId}` : author.name;
+	author.accountId
+		? `${author.name}：(twitter)${author.accountId}`
+		: author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const addTag = (tagName: string) => {
@@ -133,7 +138,9 @@ export function SearchFilters(props: SearchFiltersProps) {
 			<div class="space-y-2">
 				<Label>ファイル名検索</Label>
 				<Input
-					onInput={(event) => props.setState("searchQuery", event.currentTarget.value)}
+					onInput={(event) =>
+						props.setState("searchQuery", event.currentTarget.value)
+					}
 					placeholder="ファイル名を入力..."
 					type="text"
 					value={props.state.searchQuery}
@@ -155,7 +162,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(item) => {
 					if (!props.state.selectedIps.includes(item.name)) {
-						props.setState("selectedIps", [...props.state.selectedIps, item.name]);
+						props.setState("selectedIps", [
+							...props.state.selectedIps,
+							item.name,
+						]);
 					}
 				}}
 				placeholder="IPを検索..."
@@ -172,12 +182,17 @@ export function SearchFilters(props: SearchFiltersProps) {
 				onRemove={(name) =>
 					props.setState(
 						"selectedCharacters",
-						props.state.selectedCharacters.filter((itemName) => itemName !== name),
+						props.state.selectedCharacters.filter(
+							(itemName) => itemName !== name,
+						),
 					)
 				}
 				onSelect={(item) => {
 					if (!props.state.selectedCharacters.includes(item.name)) {
-						props.setState("selectedCharacters", [...props.state.selectedCharacters, item.name]);
+						props.setState("selectedCharacters", [
+							...props.state.selectedCharacters,
+							item.name,
+						]);
 					}
 				}}
 				placeholder="キャラクターを検索..."
@@ -222,7 +237,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(item) => {
 					if (!props.state.selectedAuthors.includes(item.name)) {
-						props.setState("selectedAuthors", [...props.state.selectedAuthors, item.name]);
+						props.setState("selectedAuthors", [
+							...props.state.selectedAuthors,
+							item.name,
+						]);
 					}
 				}}
 				placeholder="作者・IDを検索..."
@@ -239,12 +257,17 @@ export function SearchFilters(props: SearchFiltersProps) {
 				onRemove={(name) =>
 					props.setState(
 						"selectedProjects",
-						props.state.selectedProjects.filter((itemName) => itemName !== name),
+						props.state.selectedProjects.filter(
+							(itemName) => itemName !== name,
+						),
 					)
 				}
 				onSelect={(item) => {
 					if (!props.state.selectedProjects.includes(item.name)) {
-						props.setState("selectedProjects", [...props.state.selectedProjects, item.name]);
+						props.setState("selectedProjects", [
+							...props.state.selectedProjects,
+							item.name,
+						]);
 					}
 				}}
 				placeholder="プロジェクトを検索..."

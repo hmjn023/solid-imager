@@ -1,4 +1,7 @@
-import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -46,7 +49,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 				description: props.editingSource.description || "",
 				type: "local",
 				connectionInfo: {
-					path: (props.editingSource.connectionInfo as { path?: string }).path || "",
+					path:
+						(props.editingSource.connectionInfo as { path?: string }).path ||
+						"",
 				},
 			});
 		} else {
@@ -93,7 +98,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
 			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[500px]">
 				<DialogHeader>
-					<DialogTitle>{props.editingSource ? "Edit Source" : "Add New Source"}</DialogTitle>
+					<DialogTitle>
+						{props.editingSource ? "Edit Source" : "Add New Source"}
+					</DialogTitle>
 					<DialogDescription>
 						Tauri currently supports local filesystem sources only.
 					</DialogDescription>
@@ -104,7 +111,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<Label for="name">Name</Label>
 						<Input
 							id="name"
-							onInput={(event) => setFormData("name", event.currentTarget.value)}
+							onInput={(event) =>
+								setFormData("name", event.currentTarget.value)
+							}
 							placeholder="My Media Source"
 							value={formData.name}
 						/>
@@ -117,7 +126,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<Label for="description">Description (Optional)</Label>
 						<Input
 							id="description"
-							onInput={(event) => setFormData("description", event.currentTarget.value)}
+							onInput={(event) =>
+								setFormData("description", event.currentTarget.value)
+							}
 							placeholder="Photos from my camera"
 							value={formData.description}
 						/>
@@ -127,7 +138,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<Label for="path">Directory Path</Label>
 						<Input
 							id="path"
-							onInput={(event) => setFormData("connectionInfo", "path", event.currentTarget.value)}
+							onInput={(event) =>
+								setFormData("connectionInfo", "path", event.currentTarget.value)
+							}
 							placeholder="/mnt/data/photos"
 							value={formData.connectionInfo.path}
 						/>
@@ -137,10 +150,16 @@ export function SourceFormModal(props: SourceFormModalProps) {
 					</div>
 
 					<DialogFooter>
-						<Button onClick={() => props.onClose()} type="button" variant="outline">
+						<Button
+							onClick={() => props.onClose()}
+							type="button"
+							variant="outline"
+						>
 							Cancel
 						</Button>
-						<Button type="submit">{props.editingSource ? "Save Changes" : "Create Source"}</Button>
+						<Button type="submit">
+							{props.editingSource ? "Save Changes" : "Create Source"}
+						</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>

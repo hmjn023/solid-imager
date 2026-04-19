@@ -1,5 +1,11 @@
-import type { NewCategory, UpdateCategory } from "@solid-imager/core/domain/categories/schemas";
-import { ResourceNotFoundError, UnexpectedError } from "@solid-imager/core/domain/errors";
+import type {
+	NewCategory,
+	UpdateCategory,
+} from "@solid-imager/core/domain/categories/schemas";
+import {
+	ResourceNotFoundError,
+	UnexpectedError,
+} from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	Category,
@@ -22,13 +28,19 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 	async findById(id: string, tx?: Transaction): Promise<Category | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.select().from(categories).where(eq(categories.id, id));
+			const result = await client
+				.select()
+				.from(categories)
+				.where(eq(categories.id, id));
 			if (result.length === 0) {
 				return null;
 			}
 			return result[0] as unknown as Category;
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select category by ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to select category by ID: ${id}`,
+				error,
+			);
 		}
 	}
 
@@ -49,7 +61,11 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 		}
 	}
 
-	async update(id: string, category: UpdateCategory, tx?: Transaction): Promise<Category> {
+	async update(
+		id: string,
+		category: UpdateCategory,
+		tx?: Transaction,
+	): Promise<Category> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const result = await client
@@ -66,14 +82,20 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to update category with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to update category with ID: ${id}`,
+				error,
+			);
 		}
 	}
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.delete(categories).where(eq(categories.id, id)).returning();
+			const result = await client
+				.delete(categories)
+				.where(eq(categories.id, id))
+				.returning();
 
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Category", id);
@@ -82,7 +104,10 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to delete category with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to delete category with ID: ${id}`,
+				error,
+			);
 		}
 	}
 }

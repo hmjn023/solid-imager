@@ -1,4 +1,7 @@
-import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import {
+	ResourceConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import type {
 	CreatePresetRequest,
 	Preset,
@@ -26,7 +29,9 @@ export const TauriPresetService = {
 	async create(input: CreatePresetRequest): Promise<Preset> {
 		const existing = await TauriPresetRepository.getByName(input.name);
 		if (existing) {
-			throw new ResourceConflictError(`Preset with name "${input.name}" already exists`);
+			throw new ResourceConflictError(
+				`Preset with name "${input.name}" already exists`,
+			);
 		}
 		return await TauriPresetRepository.create(input);
 	},
@@ -40,7 +45,9 @@ export const TauriPresetService = {
 		if (input.name) {
 			const existing = await TauriPresetRepository.getByName(input.name);
 			if (existing && existing.id !== id) {
-				throw new ResourceConflictError(`Preset with name "${input.name}" already exists`);
+				throw new ResourceConflictError(
+					`Preset with name "${input.name}" already exists`,
+				);
 			}
 		}
 

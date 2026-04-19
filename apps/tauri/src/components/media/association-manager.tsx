@@ -43,7 +43,9 @@ export function AssociationManager(props: AssociationManagerProps) {
 		try {
 			await props.onRemove(id);
 		} catch (error) {
-			toast.error(`${props.title} の削除に失敗しました: ${(error as Error).message}`);
+			toast.error(
+				`${props.title} の削除に失敗しました: ${(error as Error).message}`,
+			);
 		} finally {
 			setIsMutating(false);
 		}
@@ -56,7 +58,9 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setOpen(false);
 			setSearch("");
 		} catch (error) {
-			toast.error(`${props.title} の追加に失敗しました: ${(error as Error).message}`);
+			toast.error(
+				`${props.title} の追加に失敗しました: ${(error as Error).message}`,
+			);
 		} finally {
 			setIsMutating(false);
 		}
@@ -74,7 +78,9 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setOpen(false);
 			setSearch("");
 		} catch (error) {
-			toast.error(`${props.title} の作成に失敗しました: ${(error as Error).message}`);
+			toast.error(
+				`${props.title} の作成に失敗しました: ${(error as Error).message}`,
+			);
 		} finally {
 			setIsMutating(false);
 		}
@@ -84,7 +90,12 @@ export function AssociationManager(props: AssociationManagerProps) {
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
 				<h2 class="font-semibold text-lg">{props.title}</h2>
-				<Button disabled={isMutating()} onClick={() => setOpen(true)} size="sm" variant="outline">
+				<Button
+					disabled={isMutating()}
+					onClick={() => setOpen(true)}
+					size="sm"
+					variant="outline"
+				>
 					Add
 				</Button>
 			</div>
@@ -173,7 +184,9 @@ export function AssociationManager(props: AssociationManagerProps) {
 									<div class="flex flex-col">
 										<span>{item.name}</span>
 										<Show when={item.description}>
-											<span class="text-muted-foreground text-xs">{item.description}</span>
+											<span class="text-muted-foreground text-xs">
+												{item.description}
+											</span>
 										</Show>
 									</div>
 								</CommandItem>

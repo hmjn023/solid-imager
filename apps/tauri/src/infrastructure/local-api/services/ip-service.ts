@@ -1,4 +1,8 @@
-import type { Ip, NewIp, UpdateIp } from "@solid-imager/core/domain/ips/schemas";
+import type {
+	Ip,
+	NewIp,
+	UpdateIp,
+} from "@solid-imager/core/domain/ips/schemas";
 import { TauriIpRepository } from "../repositories/ip-repository";
 
 export const TauriIpService = {

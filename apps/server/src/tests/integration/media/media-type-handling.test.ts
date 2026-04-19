@@ -1,6 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { taggingService } from "~/application/services/tagging-service";
@@ -21,9 +29,18 @@ vi.spyOn(ServerMediaStorage, "getFileMetadata").mockImplementation(
 		const ext = path.extname(filePath).toLowerCase();
 
 		if (
-			[".mp4", ".mp3", ".wav", ".jpg", ".m4a", ".ogg", ".webm", ".mov", ".mkv", ".avi"].includes(
-				ext,
-			)
+			[
+				".mp4",
+				".mp3",
+				".wav",
+				".jpg",
+				".m4a",
+				".ogg",
+				".webm",
+				".mov",
+				".mkv",
+				".avi",
+			].includes(ext)
 		) {
 			return Promise.resolve({
 				width: 100,
@@ -93,7 +110,9 @@ describe("Media Type Handling Integration", () => {
 	});
 
 	beforeEach(async () => {
-		tempSourceDir = await fs.mkdtemp(path.join(fixturesDir, "test-media-types-"));
+		tempSourceDir = await fs.mkdtemp(
+			path.join(fixturesDir, "test-media-types-"),
+		);
 
 		[mediaSource] = await db
 			.insert(schema.mediaSources)
@@ -174,7 +193,10 @@ describe("Media Type Handling Integration", () => {
 			})
 			.returning();
 
-		const result = await taggingService.getTagsForMedia(mediaSource.id, videoMedia.id);
+		const result = await taggingService.getTagsForMedia(
+			mediaSource.id,
+			videoMedia.id,
+		);
 
 		expect(result).toBeDefined();
 		expect(result.general).toEqual({});
@@ -219,13 +241,22 @@ describe("Media Type Handling Integration", () => {
 			throw new Error("Media setup failed");
 		}
 
-		const vidContent = await MediaService.getMediaContent(mediaSource.id, vid.id);
+		const vidContent = await MediaService.getMediaContent(
+			mediaSource.id,
+			vid.id,
+		);
 		expect(vidContent.contentType).toBe("video/mp4");
 
-		const audContent = await MediaService.getMediaContent(mediaSource.id, aud.id);
+		const audContent = await MediaService.getMediaContent(
+			mediaSource.id,
+			aud.id,
+		);
 		expect(audContent.contentType).toBe("audio/mpeg");
 
-		const imgContent = await MediaService.getMediaContent(mediaSource.id, img.id);
+		const imgContent = await MediaService.getMediaContent(
+			mediaSource.id,
+			img.id,
+		);
 		expect(imgContent.contentType).toBe("image/jpeg");
 	});
 });

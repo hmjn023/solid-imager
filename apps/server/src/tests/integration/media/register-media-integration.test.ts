@@ -7,7 +7,11 @@ import { MediaProcessingService } from "~/application/services/media-processing-
 import { MediaService } from "~/application/services/media-service";
 
 import { db } from "~/infrastructure/db/index";
-import { type MediaSource, mediaSources, medias } from "~/infrastructure/db/schema";
+import {
+	type MediaSource,
+	mediaSources,
+	medias,
+} from "~/infrastructure/db/schema";
 
 const TEST_TIMEOUT = 15_000;
 
@@ -19,7 +23,9 @@ describe("registerExistingMedia Integration", () => {
 
 	beforeEach(async () => {
 		// Create a temporary directory for the media source
-		tempSourceDir = await fs.mkdtemp(path.join(fixturesDir, "test-source-register-"));
+		tempSourceDir = await fs.mkdtemp(
+			path.join(fixturesDir, "test-source-register-"),
+		);
 
 		// Create a dummy image file
 		const imagePath = path.join(tempSourceDir, testImageName);

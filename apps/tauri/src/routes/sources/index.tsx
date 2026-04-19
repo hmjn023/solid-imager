@@ -1,19 +1,22 @@
-import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { listen } from "@tauri-apps/api/event";
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
-import { SourceCard } from "../../components/source-card";
-import { SourceDeleteModal } from "../../components/source-delete-modal";
-import { SourceFormModal } from "../../components/source-form-modal";
-import { mediaSourcesQueryOptions } from "../../infrastructure/api-clients/queries/sources-query";
+import { SourceCard } from "~/components/source-card";
+import { SourceDeleteModal } from "~/components/source-delete-modal";
+import { SourceFormModal } from "~/components/source-form-modal";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
 	deleteMediaSource,
 	syncMediaSources,
 	updateMediaSource,
-} from "../../infrastructure/api-clients/sources-api";
+} from "~/infrastructure/api-clients/sources-api";
 
 export const Route = createFileRoute("/sources/")({
 	loader: async ({ context }) => {
@@ -25,9 +28,9 @@ export const Route = createFileRoute("/sources/")({
 function SourcesRoute() {
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-	const [editingSource, setEditingSource] = createSignal<SafeMediaSource | MediaSourceInfo | null>(
-		null,
-	);
+	const [editingSource, setEditingSource] = createSignal<
+		SafeMediaSource | MediaSourceInfo | null
+	>(null);
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
@@ -75,7 +78,9 @@ function SourcesRoute() {
 		setDeletingSource(null);
 	};
 
-	const handleSyncSource = async (source: SafeMediaSource | MediaSourceInfo) => {
+	const handleSyncSource = async (
+		source: SafeMediaSource | MediaSourceInfo,
+	) => {
 		if (!source.id || isSyncing()) {
 			return;
 		}
@@ -99,7 +104,9 @@ function SourcesRoute() {
 		setIsSyncing(true);
 		toast.info("Starting sync for all sources...");
 		try {
-			const ids = sources.map((source) => source.id).filter(Boolean) as string[];
+			const ids = sources
+				.map((source) => source.id)
+				.filter(Boolean) as string[];
 			await syncMediaSources(ids);
 		} catch (error) {
 			toast.error(`Failed to sync all sources: ${(error as Error).message}`);
@@ -115,7 +122,9 @@ function SourcesRoute() {
 		}
 
 		const sourceIds = new Set(
-			sources.map((source) => source.id).filter((id): id is string => Boolean(id)),
+			sources
+				.map((source) => source.id)
+				.filter((id): id is string => Boolean(id)),
 		);
 		const unlistenPromises = [
 			listen("all-jobs-completed", (event) => {
@@ -198,7 +207,9 @@ function SourcesRoute() {
 
 			{mediaSources.isError && (
 				<div class="mt-8 text-center">
-					<p class="text-red-500">Error loading sources: {mediaSources.error?.message}</p>
+					<p class="text-red-500">
+						Error loading sources: {mediaSources.error?.message}
+					</p>
 				</div>
 			)}
 

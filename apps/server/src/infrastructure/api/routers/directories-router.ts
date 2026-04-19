@@ -12,7 +12,10 @@ export const directoriesRouter = {
 		)
 		.handler(
 			async ({ input }) =>
-				await DirectoryService.listMediaInSubdirectory(input.sourceId, input.path),
+				await DirectoryService.listMediaInSubdirectory(
+					input.sourceId,
+					input.path,
+				),
 		),
 
 	create: os
@@ -41,7 +44,11 @@ export const directoriesRouter = {
 		)
 		.handler(
 			async ({ input }) =>
-				await DirectoryService.deleteDirectory(input.sourceId, input.path, input.force),
+				await DirectoryService.deleteDirectory(
+					input.sourceId,
+					input.path,
+					input.force,
+				),
 		),
 
 	rename: os

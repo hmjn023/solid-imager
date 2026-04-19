@@ -62,7 +62,10 @@ export class ServerConfigService implements IConfigService {
 			} else {
 				logger.info("config.json not found, creating default");
 				// For init, we can write sync.
-				fs.writeFileSync(this.configPath, JSON.stringify(defaultAppConfig, null, 2));
+				fs.writeFileSync(
+					this.configPath,
+					JSON.stringify(defaultAppConfig, null, 2),
+				);
 				fileContent = defaultAppConfig;
 			}
 
@@ -80,7 +83,9 @@ export class ServerConfigService implements IConfigService {
 					{ errors: result.error.format() },
 					"Invalid configuration detected. Using fallback/defaults where possible.",
 				);
-				throw new Error(`Invalid configuration: ${JSON.stringify(result.error.format())}`);
+				throw new Error(
+					`Invalid configuration: ${JSON.stringify(result.error.format())}`,
+				);
 			}
 
 			logger.debug({ config: this.config }, "Configuration loaded");
@@ -99,7 +104,9 @@ export class ServerConfigService implements IConfigService {
 
 		const result = AppConfigSchema.safeParse(merged);
 		if (!result.success) {
-			throw new Error(`Invalid configuration update: ${JSON.stringify(result.error.format())}`);
+			throw new Error(
+				`Invalid configuration update: ${JSON.stringify(result.error.format())}`,
+			);
 		}
 
 		const validatedConfig = result.data;
@@ -146,12 +153,17 @@ export class ServerConfigService implements IConfigService {
 			let currentSchemaNode = defaultAppConfig as any;
 			let currentOverrideNode = overrides as any;
 			// CONFIG_AI_BASE_URL -> AIBASEURL
-			let remainingKey = envKey.substring(prefix.length).toUpperCase().replace(/_/g, "");
+			let remainingKey = envKey
+				.substring(prefix.length)
+				.toUpperCase()
+				.replace(/_/g, "");
 
 			while (remainingKey.length > 0) {
 				const keys = Object.keys(currentSchemaNode || {});
 				const sortedKeys = keys.sort((a, b) => b.length - a.length);
-				const matchingKey = sortedKeys.find((k) => remainingKey.startsWith(k.toUpperCase()));
+				const matchingKey = sortedKeys.find((k) =>
+					remainingKey.startsWith(k.toUpperCase()),
+				);
 
 				if (!matchingKey) {
 					break;

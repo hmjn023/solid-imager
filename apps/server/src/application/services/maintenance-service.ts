@@ -11,7 +11,11 @@ export class MaintenanceService {
 	private readonly jobRepo: IJobRepository;
 	private readonly sourceRepo: SourceRepository;
 
-	constructor(mediaRepo: IMediaRepository, jobRepo: IJobRepository, sourceRepo: SourceRepository) {
+	constructor(
+		mediaRepo: IMediaRepository,
+		jobRepo: IJobRepository,
+		sourceRepo: SourceRepository,
+	) {
 		this.mediaRepo = mediaRepo;
 		this.jobRepo = jobRepo;
 		this.sourceRepo = sourceRepo;
@@ -38,7 +42,10 @@ export class MaintenanceService {
 				return;
 			}
 
-			logger.info({ count: missing.length }, "Found media with missing metadata. Queueing jobs...");
+			logger.info(
+				{ count: missing.length },
+				"Found media with missing metadata. Queueing jobs...",
+			);
 			// If metadata is missing, we prioritize fetching it.
 			// We skip thumbnail generation here to avoid redundant work, assuming queueMissingThumbnails handles that.
 			await this.dispatchJobs(missing, { skipThumbnailGeneration: true });
@@ -107,7 +114,9 @@ export class MaintenanceService {
 		return missing;
 	}
 
-	private groupMediaBySource(batch: { id: string; mediaSourceId: string; filePath: string }[]) {
+	private groupMediaBySource(
+		batch: { id: string; mediaSourceId: string; filePath: string }[],
+	) {
 		const mediaBySource = new Map<string, typeof batch>();
 		for (const media of batch) {
 			if (!mediaBySource.has(media.mediaSourceId)) {
@@ -127,7 +136,10 @@ export class MaintenanceService {
 			if ((error as { code?: string }).code === "ENOENT") {
 				return new Set<string>();
 			}
-			logger.warn({ err: error, sourceId }, "Failed to read thumbnail directory");
+			logger.warn(
+				{ err: error, sourceId },
+				"Failed to read thumbnail directory",
+			);
 			return null;
 		}
 	}
@@ -185,13 +197,18 @@ export class MaintenanceService {
 							},
 						});
 					} catch (err) {
-						logger.error({ err, mediaId: item.id }, "Failed to queue media process job");
+						logger.error(
+							{ err, mediaId: item.id },
+							"Failed to queue media process job",
+						);
 						return false;
 					}
 				}),
 			);
 
-			queuedCount += results.filter((r) => r.status === "fulfilled" && r.value).length;
+			queuedCount += results.filter(
+				(r) => r.status === "fulfilled" && r.value,
+			).length;
 		}
 
 		if (queuedCount > 0) {

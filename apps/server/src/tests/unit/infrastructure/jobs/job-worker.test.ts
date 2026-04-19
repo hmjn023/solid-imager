@@ -1,5 +1,12 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
@@ -70,12 +77,14 @@ describe("JobWorker", () => {
 
 		// Mock findPending to return jobs
 		// When excluding AI types, return normal jobs
-		(jobRepo.findPending as any).mockImplementation((limit: number, options: any) => {
-			if (options?.excludeTypes) {
-				return Promise.resolve(normalJobs.slice(0, limit));
-			}
-			return Promise.resolve([]);
-		});
+		(jobRepo.findPending as any).mockImplementation(
+			(limit: number, options: any) => {
+				if (options?.excludeTypes) {
+					return Promise.resolve(normalJobs.slice(0, limit));
+				}
+				return Promise.resolve([]);
+			},
+		);
 
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
@@ -106,12 +115,14 @@ describe("JobWorker", () => {
 		);
 
 		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation((limit: number, options: any) => {
-			if (options?.includeTypes) {
-				return Promise.resolve(aiJobs.slice(0, limit));
-			}
-			return Promise.resolve([]);
-		});
+		(jobRepo.findPending as any).mockImplementation(
+			(limit: number, options: any) => {
+				if (options?.includeTypes) {
+					return Promise.resolve(aiJobs.slice(0, limit));
+				}
+				return Promise.resolve([]);
+			},
+		);
 
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
@@ -122,7 +133,9 @@ describe("JobWorker", () => {
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
 		expect(processor).toHaveBeenCalledTimes(1);
-		expect(processor).toHaveBeenCalledWith(expect.objectContaining({ id: "ai-job-0" }));
+		expect(processor).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "ai-job-0" }),
+		);
 	});
 
 	it("should run AI and normal jobs concurrently up to their respective limits", async () => {
@@ -148,17 +161,19 @@ describe("JobWorker", () => {
 		} as Job;
 
 		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation((limit: number, options: any) => {
-			if (options?.includeTypes) {
-				// AI request
-				return Promise.resolve([aiJob].slice(0, limit));
-			}
-			if (options?.excludeTypes) {
-				// Normal request
-				return Promise.resolve([normalJob1, normalJob2].slice(0, limit));
-			}
-			return Promise.resolve([]);
-		});
+		(jobRepo.findPending as any).mockImplementation(
+			(limit: number, options: any) => {
+				if (options?.includeTypes) {
+					// AI request
+					return Promise.resolve([aiJob].slice(0, limit));
+				}
+				if (options?.excludeTypes) {
+					// Normal request
+					return Promise.resolve([normalJob1, normalJob2].slice(0, limit));
+				}
+				return Promise.resolve([]);
+			},
+		);
 
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
