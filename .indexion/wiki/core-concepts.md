@@ -8,15 +8,15 @@
 
 システムの中心となるエンティティ。画像・動画などのファイルを表します。
 
-| フィールド | 説明 |
-|---|---|
-| `id` | UUID v4 |
-| `mediaSourceId` | 所属するメディアソース |
-| `path` | ストレージ内パス |
-| `hash` | ファイルハッシュ（重複検出） |
-| `metadata` | プロンプト、モデル名など |
-| `tags` | 関連タグ一覧 |
-| `characters` | 関連キャラクター一覧 |
+| フィールド      | 説明                         |
+| --------------- | ---------------------------- |
+| `id`            | UUID v4                      |
+| `mediaSourceId` | 所属するメディアソース       |
+| `path`          | ストレージ内パス             |
+| `hash`          | ファイルハッシュ（重複検出） |
+| `metadata`      | プロンプト、モデル名など     |
+| `tags`          | 関連タグ一覧                 |
+| `characters`    | 関連キャラクター一覧         |
 
 ### MediaSource（メディアソース）
 
@@ -25,6 +25,7 @@
 ### Tag / Character / IP / Author
 
 メディアに付与できるメタデータ分類：
+
 - **Tag**: 汎用タグ（スタイル、シチュエーションなど）
 - **Character**: キャラクター名
 - **IP**: 知的財産（作品シリーズ）
@@ -56,15 +57,15 @@ packages/core/src/domain/
 ```typescript
 // インターフェース（core）
 interface IMediaRepository {
-  findById(id: string): Promise<Media | null>;
-  list(query: MediaListQuery): Promise<MediaList>;
-  // ...
+	findById(id: string): Promise<Media | null>;
+	list(query: MediaListQuery): Promise<MediaList>;
+	// ...
 }
 
 // 実装（server/infrastructure）
 class DrizzleMediaRepository implements IMediaRepository {
-  // Drizzle ORMを使った具体実装
-  // ⚠️ `as unknown as DomainModel` 禁止 — 明示的マッパー必須
+	// Drizzle ORMを使った具体実装
+	// ⚠️ `as unknown as DomainModel` 禁止 — 明示的マッパー必須
 }
 ```
 
@@ -86,12 +87,13 @@ APIレスポンスは機密情報を含まない安全なDTOを経由する：
 return dbUser;
 
 // ✅ Safe DTOに変換
-return toSafeUserDTO(dbUser);  // パスワードハッシュなどを除外
+return toSafeUserDTO(dbUser); // パスワードハッシュなどを除外
 ```
 
 ## イベント / リアルタイム更新
 
 SSE（Server-Sent Events）を使ってクライアントへ変更を通知：
+
 - メディア追加・更新・削除
 - ジョブ状態変化
 - `apps/server/src/routes/api/events.ts` に実装

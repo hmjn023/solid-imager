@@ -15,8 +15,5 @@ export type IAiClient = {
 
 	extractCcipFeatureByPath(path: string): Promise<CcipFeatureResponse>;
 
-	calculateCcipDifference(
-		feature1: number[],
-		feature2: number[],
-	): Promise<CcipDifferenceResponse>;
+	calculateCcipDifference(feature1: number[], feature2: number[]): Promise<CcipDifferenceResponse>;
 };

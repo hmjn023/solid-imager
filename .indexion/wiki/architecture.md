@@ -61,6 +61,7 @@ PostgreSQL / PGlite
 **同期対象**: `sources` / `search` / `detail` / `manager` / `config` など主機能
 
 **parity除外（当面）**:
+
 - Tauriの `index` / `about` などシェルページ差分
 - TauriのリモートソースSFTP / S3
 - Tauri standalone AI実装（AI は server 委譲が正）
@@ -73,10 +74,10 @@ PostgreSQL / PGlite
 
 ## データベース
 
-| 環境 | DB |
-|---|---|
-| サーバー（本番/開発） | PostgreSQL（Docker） |
-| Tauriデスクトップ | PGlite（Wasm、Dockerなし） |
+| 環境                  | DB                         |
+| --------------------- | -------------------------- |
+| サーバー（本番/開発） | PostgreSQL（Docker）       |
+| Tauriデスクトップ     | PGlite（Wasm、Dockerなし） |
 
 - 全テーブルUUID (v4)
 - 中間テーブルは `media_{entity}` 命名規則
@@ -90,6 +91,7 @@ PostgreSQL / PGlite
 ## ストレージバックエンド
 
 `apps/server/src/infrastructure/storage/` に抽象化：
+
 - `local.ts`: ローカルファイルシステム
 - `sftp.ts`: SFTPサーバー
 - `s3.ts`: Amazon S3

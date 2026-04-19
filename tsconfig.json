@@ -1,20 +1,20 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "noEmit": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "baseUrl": ".",
-    "paths": {
-      "@solid-imager/core": ["./packages/core/src"],
-      "@solid-imager/core/*": ["./packages/core/src/*"],
-      "@solid-imager/db": ["./packages/db/src"],
-      "@solid-imager/db/*": ["./packages/db/src/*"]
-    }
-  },
-  "exclude": ["node_modules", "dist", ".vinxi", ".output"]
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"noEmit": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"baseUrl": ".",
+		"paths": {
+			"@solid-imager/core": ["./packages/core/src"],
+			"@solid-imager/core/*": ["./packages/core/src/*"],
+			"@solid-imager/db": ["./packages/db/src"],
+			"@solid-imager/db/*": ["./packages/db/src/*"]
+		}
+	},
+	"exclude": ["node_modules", "dist", ".vinxi", ".output"]
 }

@@ -1,8 +1,4 @@
-import type {
-	NewTag,
-	TagResponse,
-	UpdateTag,
-} from "@solid-imager/core/domain/tags/schemas";
+import type { NewTag, TagResponse, UpdateTag } from "@solid-imager/core/domain/tags/schemas";
 import { TauriTagRepository } from "../repositories/tag-repository";
 
 export const TauriTagService = {

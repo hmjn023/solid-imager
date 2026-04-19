@@ -15,24 +15,12 @@ export type IAuthorRepository = {
 	// But strictly speaking, findById(id) returns Author | null.
 	findByAccountId?: (accountId: string) => Promise<Author | null>;
 	create(author: NewAuthor, tx?: Transaction): Promise<Author>;
-	update(
-		id: string,
-		author: Partial<NewAuthor>,
-		tx?: Transaction,
-	): Promise<Author>;
+	update(id: string, author: Partial<NewAuthor>, tx?: Transaction): Promise<Author>;
 	delete(id: string, tx?: Transaction): Promise<void>;
 
 	// Associations
 	findByMediaId(mediaId: string, tx?: Transaction): Promise<Author[]>;
 	addMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void>;
-	addMediaBulk(
-		mediaId: string,
-		authorIds: string[],
-		tx?: Transaction,
-	): Promise<void>;
-	removeMedia(
-		mediaId: string,
-		authorId: string,
-		tx?: Transaction,
-	): Promise<void>;
+	addMediaBulk(mediaId: string, authorIds: string[], tx?: Transaction): Promise<void>;
+	removeMedia(mediaId: string, authorId: string, tx?: Transaction): Promise<void>;
 };

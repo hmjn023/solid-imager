@@ -162,9 +162,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 			<DialogContent class="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>メディアをアップロード</DialogTitle>
-					<DialogDescription>
-						アップロードするメディアの詳細を入力してください。
-					</DialogDescription>
+					<DialogDescription>アップロードするメディアの詳細を入力してください。</DialogDescription>
 				</DialogHeader>
 				<form
 					onSubmit={(e) => {
@@ -237,19 +235,13 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										)}
 									</form.Field>
 									<Show when={isFetchingUrl()}>
-										<div class="-translate-y-1/2 absolute top-1/2 right-2 text-sm">
-											Loading...
-										</div>
+										<div class="-translate-y-1/2 absolute top-1/2 right-2 text-sm">Loading...</div>
 									</Show>
 								</div>
 							</div>
 							<Show when={previewUrl()}>
 								<div class="col-span-4 mt-2 flex justify-center">
-									<img
-										alt="Fetched preview"
-										class="max-h-48"
-										src={previewUrl() || undefined}
-									/>
+									<img alt="Fetched preview" class="max-h-48" src={previewUrl() || undefined} />
 								</div>
 							</Show>
 						</div>
@@ -263,9 +255,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										checked={field().state.value}
 										class="col-span-3"
 										id="overwrite"
-										onChange={(e) =>
-											field().handleChange(e.currentTarget.checked)
-										}
+										onChange={(e) => field().handleChange(e.currentTarget.checked)}
 										type="checkbox"
 									/>
 								)}
@@ -281,18 +271,14 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										checked={field().state.value}
 										class="col-span-3"
 										id="autoIncrement"
-										onChange={(e) =>
-											field().handleChange(e.currentTarget.checked)
-										}
+										onChange={(e) => field().handleChange(e.currentTarget.checked)}
 										type="checkbox"
 									/>
 								)}
 							</form.Field>
 						</div>
 						<Show when={uploadError()}>
-							<p class="col-span-4 text-center text-red-500 text-sm">
-								{uploadError()}
-							</p>
+							<p class="col-span-4 text-center text-red-500 text-sm">{uploadError()}</p>
 						</Show>
 					</div>
 					<DialogFooter>
@@ -304,11 +290,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 						>
 							{(state) => (
 								<Button
-									disabled={
-										!state().canSubmit ||
-										state().isSubmitting ||
-										isFetchingUrl()
-									}
+									disabled={!state().canSubmit || state().isSubmitting || isFetchingUrl()}
 									type="submit"
 								>
 									{state().isSubmitting ? "アップロード中..." : "アップロード"}

@@ -34,30 +34,15 @@ export const TauriCharacterService = {
 
 	async addToMedia(mediaId: string, characterId: string): Promise<void> {
 		await getTauriAppServices().db.transaction(async (tx) => {
-			const character = await TauriCharacterRepository.findById(
-				characterId,
-				tx,
-			);
+			const character = await TauriCharacterRepository.findById(characterId, tx);
 			if (!character) {
 				throw new Error(`Character not found: ${characterId}`);
 			}
 
-			await TauriCharacterRepository.addMedia(
-				mediaId,
-				characterId,
-				undefined,
-				"manual",
-				tx,
-			);
+			await TauriCharacterRepository.addMedia(mediaId, characterId, undefined, "manual", tx);
 
 			for (const ip of character.ips) {
-				await TauriIpRepository.addMedia(
-					mediaId,
-					ip.id,
-					undefined,
-					"character_link",
-					tx,
-				);
+				await TauriIpRepository.addMedia(mediaId, ip.id, undefined, "character_link", tx);
 			}
 		});
 	},

@@ -1,39 +1,39 @@
 {
-  "name": "solid-imager-monorepo",
-  "private": true,
-  "type": "module",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "dev": "bun --filter @solid-imager/server dev",
-    "build": "bun --filter '*' build",
-    "dev:tauri": "bun --filter @solid-imager/tauri dev",
-    "build:tauri": "bun --filter @solid-imager/tauri build",
-    "start": "bun --filter @solid-imager/server start",
-    "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
-    "lint": "vp run lint",
-    "check": "vp run check",
-    "format": "vp run format",
-    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
-    "typecheck": "bun --filter '*' typecheck",
-    "prepare": "vp config"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "@tanstack/cli": "^0.62.5",
-    "typescript": "^5.9.3",
-    "vite-plus": "latest"
-  },
-  "trustedDependencies": [
-    "@tauri-apps/cli",
-    "youtube-dl-exec",
-    "ffmpeg-static"
-  ],
-  "packageManager": "npm@11.11.1",
-  "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
-  }
+	"name": "solid-imager-monorepo",
+	"private": true,
+	"workspaces": [
+		"apps/*",
+		"packages/*"
+	],
+	"type": "module",
+	"scripts": {
+		"dev": "bun --filter @solid-imager/server dev",
+		"build": "bun --filter '*' build",
+		"dev:tauri": "bun --filter @solid-imager/tauri dev",
+		"build:tauri": "bun --filter @solid-imager/tauri build",
+		"start": "bun --filter @solid-imager/server start",
+		"ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
+		"lint": "vp run lint",
+		"check": "vp run check",
+		"format": "vp run format",
+		"test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
+		"typecheck": "bun --filter '*' typecheck",
+		"prepare": "vp config"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.10",
+		"@tanstack/cli": "^0.62.5",
+		"typescript": "^5.9.3",
+		"vite-plus": "latest"
+	},
+	"overrides": {
+		"vite": "npm:@voidzero-dev/vite-plus-core@latest",
+		"vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+	},
+	"packageManager": "npm@11.11.1",
+	"trustedDependencies": [
+		"@tauri-apps/cli",
+		"youtube-dl-exec",
+		"ffmpeg-static"
+	]
 }

@@ -11,18 +11,12 @@ export const thumbnailsRouter = {
 	 */
 	generate: os
 		.input(z.object({ sourceId: z.string().uuid() }))
-		.handler(
-			async ({ input }) =>
-				await ThumbnailService.startThumbnailGeneration(input.sourceId),
-		),
+		.handler(async ({ input }) => await ThumbnailService.startThumbnailGeneration(input.sourceId)),
 
 	/**
 	 * Clears the thumbnail cache for a specific source
 	 */
 	clear: os
 		.input(z.object({ sourceId: z.string().uuid() }))
-		.handler(
-			async ({ input }) =>
-				await ThumbnailService.clearThumbnailCache(input.sourceId),
-		),
+		.handler(async ({ input }) => await ThumbnailService.clearThumbnailCache(input.sourceId)),
 };

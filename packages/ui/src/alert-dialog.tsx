@@ -16,9 +16,7 @@ import { cn } from "./utils/cn";
 const AlertDialog = AlertDialogPrimitiveRoot;
 const AlertDialogTrigger = AlertDialogPrimitiveTrigger;
 
-const AlertDialogPortal: Component<
-	ComponentProps<typeof AlertDialogPrimitivePortal>
-> = (props) => {
+const AlertDialogPortal: Component<ComponentProps<typeof AlertDialogPrimitivePortal>> = (props) => {
 	const [, rest] = splitProps(props, ["children"]);
 	return (
 		<AlertDialogPrimitivePortal {...rest}>
@@ -29,9 +27,9 @@ const AlertDialogPortal: Component<
 	);
 };
 
-const AlertDialogOverlay: Component<
-	ComponentProps<typeof AlertDialogPrimitiveOverlay>
-> = (props) => {
+const AlertDialogOverlay: Component<ComponentProps<typeof AlertDialogPrimitiveOverlay>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
 		<AlertDialogPrimitiveOverlay
@@ -44,9 +42,9 @@ const AlertDialogOverlay: Component<
 	);
 };
 
-const AlertDialogContent: Component<
-	ComponentProps<typeof AlertDialogPrimitiveContent>
-> = (props) => {
+const AlertDialogContent: Component<ComponentProps<typeof AlertDialogPrimitiveContent>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["class", "children"]);
 	return (
 		<AlertDialogPrimitivePortal>
@@ -67,13 +65,7 @@ const AlertDialogContent: Component<
 const AlertDialogHeader: Component<ComponentProps<"div">> = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
-		<div
-			class={cn(
-				"flex flex-col space-y-2 text-center sm:text-left",
-				props.class,
-			)}
-			{...rest}
-		/>
+		<div class={cn("flex flex-col space-y-2 text-center sm:text-left", props.class)} {...rest} />
 	);
 };
 
@@ -81,30 +73,20 @@ const AlertDialogFooter: Component<ComponentProps<"div">> = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
 		<div
-			class={cn(
-				"flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-				props.class,
-			)}
+			class={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", props.class)}
 			{...rest}
 		/>
 	);
 };
 
-const AlertDialogTitle: Component<
-	ComponentProps<typeof AlertDialogPrimitiveTitle>
-> = (props) => {
+const AlertDialogTitle: Component<ComponentProps<typeof AlertDialogPrimitiveTitle>> = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
-	return (
-		<AlertDialogPrimitiveTitle
-			class={cn("font-semibold text-lg", props.class)}
-			{...rest}
-		/>
-	);
+	return <AlertDialogPrimitiveTitle class={cn("font-semibold text-lg", props.class)} {...rest} />;
 };
 
-const AlertDialogDescription: Component<
-	ComponentProps<typeof AlertDialogPrimitiveDescription>
-> = (props) => {
+const AlertDialogDescription: Component<ComponentProps<typeof AlertDialogPrimitiveDescription>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
 		<AlertDialogPrimitiveDescription
@@ -114,29 +96,20 @@ const AlertDialogDescription: Component<
 	);
 };
 
-const AlertDialogAction: Component<
-	ComponentProps<typeof AlertDialogPrimitiveCloseButton>
-> = (props) => {
+const AlertDialogAction: Component<ComponentProps<typeof AlertDialogPrimitiveCloseButton>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["class"]);
-	return (
-		<AlertDialogPrimitiveCloseButton
-			class={cn(buttonVariants(), props.class)}
-			{...rest}
-		/>
-	);
+	return <AlertDialogPrimitiveCloseButton class={cn(buttonVariants(), props.class)} {...rest} />;
 };
 
-const AlertDialogCancel: Component<
-	ComponentProps<typeof AlertDialogPrimitiveCloseButton>
-> = (props) => {
+const AlertDialogCancel: Component<ComponentProps<typeof AlertDialogPrimitiveCloseButton>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
 		<AlertDialogPrimitiveCloseButton
-			class={cn(
-				buttonVariants({ variant: "outline" }),
-				"mt-2 sm:mt-0",
-				props.class,
-			)}
+			class={cn(buttonVariants({ variant: "outline" }), "mt-2 sm:mt-0", props.class)}
 			{...rest}
 		/>
 	);

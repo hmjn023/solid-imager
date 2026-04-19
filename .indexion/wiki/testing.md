@@ -4,11 +4,11 @@
 
 ## テスト種別と使い分け
 
-| 種別 | 設定ファイル | 対象ディレクトリ | DB |
-|---|---|---|---|
-| ユニット | `vitest.unit.config.ts` | `src/tests/unit/`, `src/tests/api/` | モック（vitestの`vi.mock`） |
-| 統合 | `vitest.integration.config.ts` | `src/tests/integration/` | PGlite（実DB、インメモリ） |
-| E2E | Playwright | `src/tests/e2e/` | 起動中のサーバー |
+| 種別     | 設定ファイル                   | 対象ディレクトリ                    | DB                          |
+| -------- | ------------------------------ | ----------------------------------- | --------------------------- |
+| ユニット | `vitest.unit.config.ts`        | `src/tests/unit/`, `src/tests/api/` | モック（vitestの`vi.mock`） |
+| 統合     | `vitest.integration.config.ts` | `src/tests/integration/`            | PGlite（実DB、インメモリ）  |
+| E2E      | Playwright                     | `src/tests/e2e/`                    | 起動中のサーバー            |
 
 ```bash
 bun --filter @solid-imager/server run test         # ユニット
@@ -28,10 +28,10 @@ import { describe, it, expect } from "vite-plus/test";
 import { MediaService } from "~/application/services/media-service";
 
 describe("MediaService", () => {
-  it("should search media", async () => {
-    const result = await MediaService.searchMedia("source-id", { limit: 10 });
-    expect(result.items).toHaveLength(1); // モックの固定値が返る
-  });
+	it("should search media", async () => {
+		const result = await MediaService.searchMedia("source-id", { limit: 10 });
+		expect(result.items).toHaveLength(1); // モックの固定値が返る
+	});
 });
 ```
 
@@ -58,16 +58,17 @@ describe("MediaRepository integration", () => {
 ```
 
 **重要な設定**:
+
 - `pool: "forks"` + `singleFork: true` — 統合テストは**シングルプロセスで順次実行**（DB共有のため並列化しない）
 - `DB_HOST: "pglite"` を環境変数に設定することでPGliteが選択される
 
 ## テストとDBモックのポリシー
 
-| ルール | 理由 |
-|---|---|
+| ルール                           | 理由                                                   |
+| -------------------------------- | ------------------------------------------------------ |
 | **統合テストでDBをモックしない** | モックとPostgreSQL互換の乖離でバグを見逃した経緯がある |
-| **ユニットテストはモックOK** | サービスロジックの単体検証が目的のため |
-| **PGliteをテストDBとして使用** | Dockerなしでpostgres互換のSQLが動くため |
+| **ユニットテストはモックOK**     | サービスロジックの単体検証が目的のため                 |
+| **PGliteをテストDBとして使用**   | Dockerなしでpostgres互換のSQLが動くため                |
 
 ## テスト構成（`src/tests/`）
 

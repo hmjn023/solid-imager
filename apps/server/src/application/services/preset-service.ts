@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	CreatePresetRequest,
 	Preset,
@@ -37,9 +34,7 @@ export const PresetService = {
 	async create(data: CreatePresetRequest): Promise<Preset> {
 		const existing = await repository.getByName(data.name);
 		if (existing) {
-			throw new ResourceConflictError(
-				`Preset with name "${data.name}" already exists`,
-			);
+			throw new ResourceConflictError(`Preset with name "${data.name}" already exists`);
 		}
 		return repository.create(data);
 	},
@@ -52,9 +47,7 @@ export const PresetService = {
 		if (data.name) {
 			const existing = await repository.getByName(data.name);
 			if (existing && existing.id !== id) {
-				throw new ResourceConflictError(
-					`Preset with name "${data.name}" already exists`,
-				);
+				throw new ResourceConflictError(`Preset with name "${data.name}" already exists`);
 			}
 		}
 

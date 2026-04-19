@@ -17,9 +17,7 @@ export type MediaType = z.infer<typeof mediaTypeSchema>;
  * Ensures all required fields for new media are present and correctly formatted.
  */
 export const addMediaRequestSchema = z.object({
-	mediaSourceId: z
-		.string()
-		.uuid({ version: "v4", message: "Invalid source ID format" }),
+	mediaSourceId: z.string().uuid({ version: "v4", message: "Invalid source ID format" }),
 	filePath: z.string().min(1, "File path is required"),
 	fileName: z.string().min(1, "File name is required"),
 	fileSize: z.number().int().positive("File size must be a positive integer"),
@@ -47,25 +45,13 @@ export type ImageMetadataComment = z.infer<typeof imageMetadataCommentSchema>;
 export const updateMediaRequestSchema = z.object({
 	filePath: z.string().min(1, "File path cannot be empty").optional(),
 	fileName: z.string().min(1, "File name cannot be empty").optional(),
-	fileSize: z
-		.number()
-		.int()
-		.positive("File size must be a positive integer")
-		.optional(),
+	fileSize: z.number().int().positive("File size must be a positive integer").optional(),
 	createdAt: z.coerce.date().optional(),
 	modifiedAt: z.coerce.date().optional(),
 	updatedAt: z.coerce.date().optional(), // Keeping updatedAt for BC if needed, but modifiedAt is primary
 	mediaType: mediaTypeSchema.optional(),
-	width: z
-		.number()
-		.int()
-		.positive("Width must be a positive integer")
-		.optional(),
-	height: z
-		.number()
-		.int()
-		.positive("Height must be a positive integer")
-		.optional(),
+	width: z.number().int().positive("Width must be a positive integer").optional(),
+	height: z.number().int().positive("Height must be a positive integer").optional(),
 	description: z.string().nullable().optional(),
 	sourceUrls: z.array(z.string().url("Invalid URL format")).optional(),
 	authors: z
@@ -119,9 +105,7 @@ export type SourceId = z.infer<typeof mediaSourceIdSchema>;
  * Zod schema for validating a directory path.
  * Ensures the path is a non-empty string.
  */
-export const directoryPathSchema = z
-	.string()
-	.min(1, "Directory path is required");
+export const directoryPathSchema = z.string().min(1, "Directory path is required");
 export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
 export const extractedDataSchema = z.object({
@@ -289,13 +273,7 @@ export const searchCriterionSchema = z.object({
 	target: filterTargetSchema,
 	operator: filterOperatorSchema.default("equals"),
 	value: z
-		.union([
-			z.string(),
-			z.number(),
-			z.boolean(),
-			z.array(z.string()),
-			z.array(z.number()),
-		])
+		.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.array(z.number())])
 		.nullable(),
 	negate: z.boolean().default(false).optional(), // NOT条件
 });
@@ -475,9 +453,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
 export const bulkDownloadRequestSchema = z.object({
-	mediaSourceId: z
-		.string()
-		.uuid({ version: "v4", message: "Invalid media source ID" }),
+	mediaSourceId: z.string().uuid({ version: "v4", message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
 });
 

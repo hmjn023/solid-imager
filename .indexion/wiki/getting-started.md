@@ -27,14 +27,14 @@ bun run dev
 
 ## 主要スクリプト
 
-| コマンド | 用途 |
-|---|---|
-| `bun run dev` | 開発サーバー起動（全アプリ） |
-| `bun run test` | ユニットテスト実行 |
-| `bun run test:e2e` | E2Eテスト（Playwright） |
-| `bun run lint` | Biomeリントチェック |
-| `bun run db:generate` | Drizzleマイグレーション生成 |
-| `bun run db:migrate` | マイグレーション適用 |
+| コマンド              | 用途                         |
+| --------------------- | ---------------------------- |
+| `bun run dev`         | 開発サーバー起動（全アプリ） |
+| `bun run test`        | ユニットテスト実行           |
+| `bun run test:e2e`    | E2Eテスト（Playwright）      |
+| `bun run lint`        | Biomeリントチェック          |
+| `bun run db:generate` | Drizzleマイグレーション生成  |
+| `bun run db:migrate`  | マイグレーション適用         |
 
 ## アプリ別起動
 
@@ -51,13 +51,13 @@ bun --filter @solid-imager/cli run build
 
 ## 設定ファイル
 
-| ファイル | 用途 |
-|---|---|
-| `apps/server/.env` | サーバー環境変数（DB接続、ストレージ設定） |
-| `apps/server/drizzle.config.ts` | DBマイグレーション設定 |
-| `biome.json` | Linter/Formatter設定 |
-| `vitest.workspace.ts` | テスト設定 |
-| `compose.yml` | Docker Compose（PostgreSQL） |
+| ファイル                        | 用途                                       |
+| ------------------------------- | ------------------------------------------ |
+| `apps/server/.env`              | サーバー環境変数（DB接続、ストレージ設定） |
+| `apps/server/drizzle.config.ts` | DBマイグレーション設定                     |
+| `biome.json`                    | Linter/Formatter設定                       |
+| `vitest.workspace.ts`           | テスト設定                                 |
+| `compose.yml`                   | Docker Compose（PostgreSQL）               |
 
 ## Tauriデスクトップアプリ（スタンドアロン）
 

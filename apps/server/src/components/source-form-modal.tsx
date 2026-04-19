@@ -1,7 +1,4 @@
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
+import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -117,9 +114,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				connectionInfo: {
 					...formData.connectionInfo,
 					// Ensure port is number for SFTP
-					port: formData.connectionInfo.port
-						? Number(formData.connectionInfo.port)
-						: undefined,
+					port: formData.connectionInfo.port ? Number(formData.connectionInfo.port) : undefined,
 				},
 			});
 		}
@@ -142,9 +137,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
 			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[500px]">
 				<DialogHeader>
-					<DialogTitle>
-						{props.editingSource ? "Edit Source" : "Add New Source"}
-					</DialogTitle>
+					<DialogTitle>{props.editingSource ? "Edit Source" : "Add New Source"}</DialogTitle>
 					<DialogDescription>
 						Configure the connection details for your media source.
 					</DialogDescription>
@@ -178,13 +171,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 						<Label>Type</Label>
 						<Select
 							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.label}
-								</SelectItem>
+								<SelectItem item={itemProps.item}>{itemProps.item.rawValue.label}</SelectItem>
 							)}
-							onChange={(v) =>
-								setFormData("type", v?.value as "local" | "sftp" | "s3")
-							}
+							onChange={(v) => setFormData("type", v?.value as "local" | "sftp" | "s3")}
 							options={[
 								{ value: "local", label: "Local Filesystem" },
 								{ value: "sftp", label: "SFTP" },
@@ -212,9 +201,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Label for="path">Directory Path</Label>
 								<Input
 									id="path"
-									onInput={(e) =>
-										setFormData("connectionInfo", "path", e.currentTarget.value)
-									}
+									onInput={(e) => setFormData("connectionInfo", "path", e.currentTarget.value)}
 									placeholder="/mnt/data/photos"
 									value={(formData.connectionInfo.path as string) || ""}
 								/>
@@ -230,13 +217,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									<Label for="host">Host</Label>
 									<Input
 										id="host"
-										onInput={(e) =>
-											setFormData(
-												"connectionInfo",
-												"host",
-												e.currentTarget.value,
-											)
-										}
+										onInput={(e) => setFormData("connectionInfo", "host", e.currentTarget.value)}
 										placeholder="192.168.1.10"
 										value={(formData.connectionInfo.host as string) || ""}
 									/>
@@ -248,13 +229,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									<Label for="port">Port</Label>
 									<Input
 										id="port"
-										onInput={(e) =>
-											setFormData(
-												"connectionInfo",
-												"port",
-												e.currentTarget.value,
-											)
-										}
+										onInput={(e) => setFormData("connectionInfo", "port", e.currentTarget.value)}
 										placeholder="22"
 										type="number"
 										value={formData.connectionInfo.port || DEFAULT_SFTP_PORT}
@@ -265,13 +240,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Label for="username">Username</Label>
 								<Input
 									id="username"
-									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"username",
-											e.currentTarget.value,
-										)
-									}
+									onInput={(e) => setFormData("connectionInfo", "username", e.currentTarget.value)}
 									placeholder="user"
 									value={(formData.connectionInfo.username as string) || ""}
 								/>
@@ -283,13 +252,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Label for="password">Password (Optional)</Label>
 								<Input
 									id="password"
-									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"password",
-											e.currentTarget.value,
-										)
-									}
+									onInput={(e) => setFormData("connectionInfo", "password", e.currentTarget.value)}
 									placeholder="********"
 									type="password"
 									value={(formData.connectionInfo.password as string) || ""}
@@ -300,11 +263,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Input
 									id="remotePath"
 									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"remotePath",
-											e.currentTarget.value,
-										)
+										setFormData("connectionInfo", "remotePath", e.currentTarget.value)
 									}
 									placeholder="/home/user/photos"
 									value={(formData.connectionInfo.remotePath as string) || ""}
@@ -321,13 +280,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									<Label for="bucket">Bucket</Label>
 									<Input
 										id="bucket"
-										onInput={(e) =>
-											setFormData(
-												"connectionInfo",
-												"bucket",
-												e.currentTarget.value,
-											)
-										}
+										onInput={(e) => setFormData("connectionInfo", "bucket", e.currentTarget.value)}
 										placeholder="my-bucket"
 										value={(formData.connectionInfo.bucket as string) || ""}
 									/>
@@ -339,13 +292,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									<Label for="region">Region</Label>
 									<Input
 										id="region"
-										onInput={(e) =>
-											setFormData(
-												"connectionInfo",
-												"region",
-												e.currentTarget.value,
-											)
-										}
+										onInput={(e) => setFormData("connectionInfo", "region", e.currentTarget.value)}
 										placeholder="us-east-1"
 										value={(formData.connectionInfo.region as string) || ""}
 									/>
@@ -359,11 +306,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Input
 									id="accessKeyId"
 									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"accessKeyId",
-											e.currentTarget.value,
-										)
+										setFormData("connectionInfo", "accessKeyId", e.currentTarget.value)
 									}
 									placeholder="AKIA..."
 									value={(formData.connectionInfo.accessKeyId as string) || ""}
@@ -377,17 +320,11 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Input
 									id="secretAccessKey"
 									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"secretAccessKey",
-											e.currentTarget.value,
-										)
+										setFormData("connectionInfo", "secretAccessKey", e.currentTarget.value)
 									}
 									placeholder="********"
 									type="password"
-									value={
-										(formData.connectionInfo.secretAccessKey as string) || ""
-									}
+									value={(formData.connectionInfo.secretAccessKey as string) || ""}
 								/>
 								<Show when={errors().secretAccessKey}>
 									<p class="text-red-500 text-sm">{errors().secretAccessKey}</p>
@@ -397,13 +334,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 								<Label for="prefix">Prefix (Optional)</Label>
 								<Input
 									id="prefix"
-									onInput={(e) =>
-										setFormData(
-											"connectionInfo",
-											"prefix",
-											e.currentTarget.value,
-										)
-									}
+									onInput={(e) => setFormData("connectionInfo", "prefix", e.currentTarget.value)}
 									placeholder="photos/"
 									value={(formData.connectionInfo.prefix as string) || ""}
 								/>
@@ -412,16 +343,10 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 					</div>
 
 					<DialogFooter>
-						<Button
-							onClick={() => props.onClose()}
-							type="button"
-							variant="outline"
-						>
+						<Button onClick={() => props.onClose()} type="button" variant="outline">
 							Cancel
 						</Button>
-						<Button type="submit">
-							{props.editingSource ? "Save Changes" : "Add Source"}
-						</Button>
+						<Button type="submit">{props.editingSource ? "Save Changes" : "Add Source"}</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>

@@ -62,13 +62,9 @@ describe("TaggingService", () => {
 
 		mockIpRepo = {
 			findByName: vi.fn((name: string) =>
-				Promise.resolve(
-					name === "ExistingIP" ? { id: "ip-1", name: "ExistingIP" } : null,
-				),
+				Promise.resolve(name === "ExistingIP" ? { id: "ip-1", name: "ExistingIP" } : null),
 			),
-			create: vi.fn((data: { name: string }) =>
-				Promise.resolve({ id: "ip-new", name: data.name }),
-			),
+			create: vi.fn((data: { name: string }) => Promise.resolve({ id: "ip-new", name: data.name })),
 			addMediaBulk: vi.fn(() => Promise.resolve()),
 			getMediaIps: vi.fn(() => Promise.resolve([])),
 		} as unknown as IIpRepository;
@@ -136,9 +132,7 @@ describe("TaggingService", () => {
 		// Verify character was linked to media
 		expect(mockCharacterRepo.addToMediaBulk).toHaveBeenCalledWith(
 			"media-1",
-			expect.arrayContaining([
-				expect.objectContaining({ id: "char-new", confidence: 0.95 }),
-			]),
+			expect.arrayContaining([expect.objectContaining({ id: "char-new", confidence: 0.95 })]),
 			"AI",
 		);
 	});

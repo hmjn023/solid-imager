@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
 	type NewTag,
 	newTagSchema,
@@ -19,19 +16,12 @@ function toTag(row: typeof tags.$inferSelect): TagResponse {
 
 export const TauriTagRepository = {
 	async findAll(): Promise<TagResponse[]> {
-		const rows = await getTauriAppServices()
-			.db.select()
-			.from(tags)
-			.orderBy(asc(tags.name));
+		const rows = await getTauriAppServices().db.select().from(tags).orderBy(asc(tags.name));
 		return rows.map(toTag);
 	},
 
 	async findById(id: string): Promise<TagResponse | null> {
-		const rows = await getTauriAppServices()
-			.db.select()
-			.from(tags)
-			.where(eq(tags.id, id))
-			.limit(1);
+		const rows = await getTauriAppServices().db.select().from(tags).where(eq(tags.id, id)).limit(1);
 		return rows[0] ? toTag(rows[0]) : null;
 	},
 
@@ -48,9 +38,7 @@ export const TauriTagRepository = {
 		const validated = newTagSchema.parse(input);
 		const existing = await this.findByName(validated.name);
 		if (existing) {
-			throw new ResourceConflictError(
-				`Tag with name '${validated.name}' already exists`,
-			);
+			throw new ResourceConflictError(`Tag with name '${validated.name}' already exists`);
 		}
 
 		const rows = await getTauriAppServices()
@@ -71,12 +59,8 @@ export const TauriTagRepository = {
 			.db.update(tags)
 			.set({
 				...(input.name !== undefined ? { name: input.name } : {}),
-				...(input.description !== undefined
-					? { description: input.description ?? null }
-					: {}),
-				...(input.attribute !== undefined
-					? { attribute: input.attribute ?? null }
-					: {}),
+				...(input.description !== undefined ? { description: input.description ?? null } : {}),
+				...(input.attribute !== undefined ? { attribute: input.attribute ?? null } : {}),
 				...(input.color !== undefined ? { color: input.color ?? null } : {}),
 				...(input.source !== undefined ? { source: input.source } : {}),
 				updatedAt: new Date(),
@@ -109,18 +93,13 @@ export const TauriTagRepository = {
 			.values(uniqueTagNames.map((name) => ({ name, source })))
 			.onConflictDoNothing();
 
-		const allTags = await db
-			.select()
-			.from(tags)
-			.where(inArray(tags.name, uniqueTagNames));
+		const allTags = await db.select().from(tags).where(inArray(tags.name, uniqueTagNames));
 
 		const tagMap = new Map(allTags.map((tag) => [tag.name, tag]));
 		const rows = tagsToInsert.flatMap((t) => {
 			const found = tagMap.get(t.name);
 			if (!found) {
-				console.warn(
-					`[tag-repository] Tag ${t.name} not found after insertion, skipping`,
-				);
+				console.warn(`[tag-repository] Tag ${t.name} not found after insertion, skipping`);
 				return [];
 			}
 			return [
@@ -156,10 +135,7 @@ export const TauriTagRepository = {
 	},
 
 	async delete(id: string): Promise<void> {
-		const rows = await getTauriAppServices()
-			.db.delete(tags)
-			.where(eq(tags.id, id))
-			.returning();
+		const rows = await getTauriAppServices().db.delete(tags).where(eq(tags.id, id)).returning();
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError("Tag", id);

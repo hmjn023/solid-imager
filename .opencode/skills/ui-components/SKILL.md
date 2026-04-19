@@ -23,8 +23,8 @@ description: solid-ui (shadcn/ui port) のコンポーネント管理。UIコン
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
-| solid-ui初期化 | `cd apps/server && bunx solidui-cli@latest init` |
-| コンポーネント追加 | `cd apps/server && bunx solidui-cli@latest add [component]` |
-| コンポーネント一覧確認 | solid-ui.com で利用可能なコンポーネントを確認 |
+| ユーザーの意図         | やること                                                    |
+| ---------------------- | ----------------------------------------------------------- |
+| solid-ui初期化         | `cd apps/server && bunx solidui-cli@latest init`            |
+| コンポーネント追加     | `cd apps/server && bunx solidui-cli@latest add [component]` |
+| コンポーネント一覧確認 | solid-ui.com で利用可能なコンポーネントを確認               |

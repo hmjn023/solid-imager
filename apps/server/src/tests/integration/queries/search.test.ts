@@ -71,10 +71,7 @@ describe("search queries Integration", () => {
 				height: 1,
 			},
 		];
-		const insertedMedia = await db
-			.insert(medias)
-			.values(mediaToInsert)
-			.returning();
+		const insertedMedia = await db.insert(medias).values(mediaToInsert).returning();
 
 		// Seed tags
 		const tagsToInsert: NewTag[] = [{ name: "fruit" }, { name: "dessert" }];

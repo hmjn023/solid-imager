@@ -7,15 +7,9 @@ const MIN_JOBS_POLL_INTERVAL = 100;
 const DEFAULT_AUTO_TAGGING = false;
 
 export const JobsConfigSchema = z.object({
-	concurrency: z
-		.number()
-		.min(MIN_JOBS_CONCURRENCY)
-		.default(DEFAULT_JOBS_CONCURRENCY),
+	concurrency: z.number().min(MIN_JOBS_CONCURRENCY).default(DEFAULT_JOBS_CONCURRENCY),
 	aiConcurrency: z.number().min(MIN_JOBS_CONCURRENCY).default(1),
-	pollIntervalMs: z
-		.number()
-		.min(MIN_JOBS_POLL_INTERVAL)
-		.default(DEFAULT_JOBS_POLL_INTERVAL),
+	pollIntervalMs: z.number().min(MIN_JOBS_POLL_INTERVAL).default(DEFAULT_JOBS_POLL_INTERVAL),
 	enableAutoTagging: z.boolean().default(DEFAULT_AUTO_TAGGING),
 });
 const defaultJobsConfig = JobsConfigSchema.parse({});
@@ -54,11 +48,7 @@ const MAX_THUMB_QUALITY = 100;
 
 export const StorageConfigSchema = z.object({
 	thumbnailDir: z.string().default(DEFAULT_THUMB_DIR),
-	thumbnailSize: z
-		.number()
-		.min(MIN_THUMB_SIZE)
-		.max(MAX_THUMB_SIZE)
-		.default(DEFAULT_THUMB_SIZE),
+	thumbnailSize: z.number().min(MIN_THUMB_SIZE).max(MAX_THUMB_SIZE).default(DEFAULT_THUMB_SIZE),
 	thumbnailQuality: z
 		.number()
 		.min(MIN_THUMB_QUALITY)
@@ -68,9 +58,7 @@ export const StorageConfigSchema = z.object({
 const defaultStorageConfig = StorageConfigSchema.parse({});
 
 export const ComfyUiTagExtractionSchema = z.object({
-	positiveNodeTypes: z
-		.array(z.string())
-		.default(["CLIPTextEncode", "CR Combine Prompt"]),
+	positiveNodeTypes: z.array(z.string()).default(["CLIPTextEncode", "CR Combine Prompt"]),
 	negativeKeywords: z.array(z.string()).default(["negative"]),
 	negativeTags: z.array(z.string()).default(["lowres"]),
 });
@@ -100,9 +88,7 @@ export const MediaConfigSchema = z.object({
 const defaultMediaConfig = MediaConfigSchema.parse({});
 
 export const LoggingConfigSchema = z.object({
-	level: z
-		.enum(["trace", "debug", "info", "warn", "error", "fatal"])
-		.default("info"),
+	level: z.enum(["trace", "debug", "info", "warn", "error", "fatal"]).default("info"),
 });
 const defaultLoggingConfig = LoggingConfigSchema.parse({});
 

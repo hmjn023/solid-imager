@@ -38,10 +38,7 @@ export const IpService = {
 	/**
 	 * Updates an existing Intellectual Property (IP).
 	 */
-	async updateIp(
-		ipId: string,
-		ipData: { name?: string; description?: string },
-	) {
+	async updateIp(ipId: string, ipData: { name?: string; description?: string }) {
 		return await IpRepository.update(ipId, ipData);
 	},
 

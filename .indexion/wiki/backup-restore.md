@@ -33,6 +33,7 @@ POST /api/sources/:mediaSourceId/import
 ```
 
 ZIPをアップロードすると `BackupService` がバックグラウンドで処理:
+
 1. `dump.json` をパース・バリデーション（`mediaDumpItemSchema`）
 2. タグ・キャラクター・IP・作者をマスターテーブルへ upsert（`source: "restored"` で記録）
 3. メディアレコードを挿入・関連データを復元
@@ -43,6 +44,7 @@ ZIPをアップロードすると `BackupService` がバックグラウンドで
 ### フィルタリング
 
 インポート時に `_filterValidItems()` で無効なエントリを除外:
+
 - `targetUrl` が空のもの
 - ファイルが存在しないもの（ローカルソースの場合）
 

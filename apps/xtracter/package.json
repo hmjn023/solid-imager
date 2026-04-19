@@ -1,29 +1,29 @@
 {
-  "name": "xtracter",
-  "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vp dev",
-    "build": "vp build",
-    "preview": "vp preview",
-    "typecheck": "bun x tsc --noEmit",
-    "lint": "biome lint ./src",
-    "format": "biome format --fix ./src",
-    "check": "biome check --fix --unsafe ./src"
-  },
-  "devDependencies": {
-    "@types/chrome": "^0.0.268",
-    "@types/node": "^20.11.24",
-    "solid-js": "^1.9.12",
-    "typescript": "^5.2.2",
-    "vite-plugin-solid": "^2.11.11",
-    "vite-plus": "latest"
-  },
-  "dependencies": {
-    "zod": "^4.3.5",
-    "@orpc/client": "^1.13.2",
-    "@orpc/server": "^1.13.2",
-    "@solid-imager/core": "workspace:*"
-  }
+	"name": "xtracter",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "vp dev",
+		"build": "vp build",
+		"preview": "vp preview",
+		"typecheck": "bun x tsc --noEmit",
+		"lint": "biome lint ./src",
+		"format": "biome format --fix ./src",
+		"check": "biome check --fix --unsafe ./src"
+	},
+	"dependencies": {
+		"@orpc/client": "^1.13.2",
+		"@orpc/server": "^1.13.2",
+		"@solid-imager/core": "workspace:*",
+		"zod": "^4.3.5"
+	},
+	"devDependencies": {
+		"@types/chrome": "^0.0.268",
+		"@types/node": "^20.11.24",
+		"solid-js": "^1.9.12",
+		"typescript": "^5.2.2",
+		"vite-plugin-solid": "^2.11.11",
+		"vite-plus": "latest"
+	}
 }

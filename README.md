@@ -46,23 +46,23 @@ bun run dev
 
 ## 主要スクリプト
 
-| コマンド | 用途 |
-|---|---|
-| `bun run dev` | 開発サーバー起動 |
-| `bun run test` | ユニットテスト |
-| `bun run test:e2e` | E2Eテスト |
-| `bun run lint` | リントチェック |
+| コマンド              | 用途                 |
+| --------------------- | -------------------- |
+| `bun run dev`         | 開発サーバー起動     |
+| `bun run test`        | ユニットテスト       |
+| `bun run test:e2e`    | E2Eテスト            |
+| `bun run lint`        | リントチェック       |
 | `bun run db:generate` | マイグレーション生成 |
 
 ## 設定ファイル
 
-| ファイル | 用途 |
-|---|---|
-| `drizzle.config.ts` | DB接続、マイグレーション |
-| `biome.json` | Linter/Formatter |
-| `vitest.config.ts` | ユニットテスト |
-| `playwright.config.ts` | E2Eテスト |
-| `compose.yml` | PostgreSQL (Docker) |
+| ファイル               | 用途                     |
+| ---------------------- | ------------------------ |
+| `drizzle.config.ts`    | DB接続、マイグレーション |
+| `biome.json`           | Linter/Formatter         |
+| `vitest.config.ts`     | ユニットテスト           |
+| `playwright.config.ts` | E2Eテスト                |
+| `compose.yml`          | PostgreSQL (Docker)      |
 
 ## 詳細
 

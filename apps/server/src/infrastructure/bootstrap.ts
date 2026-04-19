@@ -69,9 +69,7 @@ export function initServices() {
 	// Initialize PythonClient with config values
 	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
 	services.registerAiClient(pythonClient);
-	configService.onChange((newConfig) =>
-		pythonClient.updateConfig(newConfig.ai),
-	);
+	configService.onChange((newConfig) => pythonClient.updateConfig(newConfig.ai));
 
 	const jobWorker = new JobWorker(jobRepo, processJob);
 	// Initialize worker with current config and subscribe to changes

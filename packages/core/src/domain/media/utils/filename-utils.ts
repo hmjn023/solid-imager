@@ -11,13 +11,9 @@ export function sanitizeFilenamePart(part: string): string {
 	// Remove or replace characters that are invalid in filenames across OSes
 	// Also remove @ at the beginning of Twitter IDs for cleaner filenames
 	const trimmed = part.trim();
-	const cleaned = trimmed.startsWith("@")
-		? trimmed.slice(TWITTER_ID_PREFIX_LENGTH)
-		: trimmed;
+	const cleaned = trimmed.startsWith("@") ? trimmed.slice(TWITTER_ID_PREFIX_LENGTH) : trimmed;
 	// Remove dots and other path characters to prevent path traversal
-	return cleaned
-		.replace(FILENAME_SANITIZE_REGEX, "")
-		.replace(WHITESPACE_REGEX, "_");
+	return cleaned.replace(FILENAME_SANITIZE_REGEX, "").replace(WHITESPACE_REGEX, "_");
 }
 
 const TWITTER_STATUS_REGEX = /\/status\/(\d+)/;
@@ -30,10 +26,7 @@ export function extractIdFromUrl(url: string): string | null {
 	try {
 		const urlObj = new URL(url);
 		// Twitter/X: https://twitter.com/user/status/123456789
-		if (
-			urlObj.hostname.includes("twitter.com") ||
-			urlObj.hostname.includes("x.com")
-		) {
+		if (urlObj.hostname.includes("twitter.com") || urlObj.hostname.includes("x.com")) {
 			const match = urlObj.pathname.match(TWITTER_STATUS_REGEX);
 			return match ? match[1] : null;
 		}
@@ -52,10 +45,7 @@ export function extractIdFromUrl(url: string): string | null {
  * Generate a unified filename based on media metadata.
  * Format: {authorId}_{date}_{contentId}.{extension}
  */
-export function generateMediaFilename(
-	item: DownloadItem,
-	extension: string,
-): string {
+export function generateMediaFilename(item: DownloadItem, extension: string): string {
 	const authorId = getAuthorPart(item);
 	const dateStr = getDatePart(item);
 	const contentId = getContentIdPart(item);
@@ -139,9 +129,7 @@ function getFallbackBase(item: DownloadItem): string {
 			// Hash-like from URL
 			const HASH_LIKE_TRAILING_LENGTH = 12;
 			const NON_ALPHANUM_REGEX = /[^a-zA-Z0-9]/g;
-			return url.pathname
-				.replace(NON_ALPHANUM_REGEX, "_")
-				.slice(-HASH_LIKE_TRAILING_LENGTH);
+			return url.pathname.replace(NON_ALPHANUM_REGEX, "_").slice(-HASH_LIKE_TRAILING_LENGTH);
 		} catch (_e) {
 			return Date.now().toString();
 		}

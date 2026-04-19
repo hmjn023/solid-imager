@@ -11,8 +11,7 @@ const tagRepo: TagRepository = new DrizzleTagRepository();
 
 const getAllTagsServer = async (): Promise<Tag[]> => await tagRepo.findAll();
 
-const createTagServer = async (data: NewTag): Promise<Tag> =>
-	await tagRepo.create(data);
+const createTagServer = async (data: NewTag): Promise<Tag> => await tagRepo.create(data);
 
 const getTagByIdServer = async (id: string): Promise<Tag | undefined> => {
 	const result = await tagRepo.findById(id);

@@ -13,8 +13,7 @@ function toBooleanString(value: boolean | undefined) {
 
 export const tauriMediaApiContract: MediaApiContract = {
 	searchMedia: (sourceId, params) => orpc.media.search({ sourceId, params }),
-	fetchMediaDetails: (sourceId, mediaId) =>
-		orpc.media.getDetails({ sourceId, mediaId }),
+	fetchMediaDetails: (sourceId, mediaId) => orpc.media.getDetails({ sourceId, mediaId }),
 	async uploadMedia(sourceId, file, options?: UploadMediaRequest) {
 		const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
 		return orpc.media.upload({
@@ -34,15 +33,11 @@ export const tauriMediaApiContract: MediaApiContract = {
 			data: updates,
 		}),
 	deleteMedia: (sourceId, mediaId) => orpc.media.delete({ sourceId, mediaId }),
-	copyMedia: (_sourceId, mediaId, targetSourceId) =>
-		orpc.media.copy({ mediaId, targetSourceId }),
-	moveMedia: (_sourceId, mediaId, targetSourceId) =>
-		orpc.media.move({ mediaId, targetSourceId }),
+	copyMedia: (_sourceId, mediaId, targetSourceId) => orpc.media.copy({ mediaId, targetSourceId }),
+	moveMedia: (_sourceId, mediaId, targetSourceId) => orpc.media.move({ mediaId, targetSourceId }),
 	async syncMediaItems(sourceId, mediaIds) {
 		const syncResult = await orpc.sources.sync({ ids: [sourceId] });
-		const sourceResult = syncResult.results.find(
-			(item) => item.id === sourceId,
-		);
+		const sourceResult = syncResult.results.find((item) => item.id === sourceId);
 
 		const response: SyncMediaItemsResponse = {
 			results: mediaIds.map((id) => ({

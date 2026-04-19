@@ -35,8 +35,7 @@ export function processWidgetValueTags(
 	nodeTitle: string | undefined,
 	options?: TagExtractionOptions,
 ): { positiveTags: string[]; negativeTags: string[] } {
-	const negativeKeywords =
-		options?.negativeKeywords ?? DEFAULT_OPTIONS.negativeKeywords;
+	const negativeKeywords = options?.negativeKeywords ?? DEFAULT_OPTIONS.negativeKeywords;
 	const negativeTags = options?.negativeTags ?? DEFAULT_OPTIONS.negativeTags;
 
 	const newPositiveTags: string[] = [];
@@ -101,8 +100,11 @@ function processWorkflowNode({
 		}
 
 		for (const widgetValue of valuesToProcess) {
-			const { positiveTags: newPosTags, negativeTags: newNegTags } =
-				processWidgetValueTags(widgetValue, nodeTitle, options);
+			const { positiveTags: newPosTags, negativeTags: newNegTags } = processWidgetValueTags(
+				widgetValue,
+				nodeTitle,
+				options,
+			);
 			positiveTags.push(
 				...newPosTags.map((tag) => ({
 					name: tag,
@@ -119,12 +121,8 @@ function processWorkflowNode({
 	}
 }
 
-export function extractTagsFromWorkflow(
-	workflow: Workflow,
-	options?: TagExtractionOptions,
-) {
-	const positiveNodeTypes =
-		options?.positiveNodeTypes ?? DEFAULT_OPTIONS.positiveNodeTypes;
+export function extractTagsFromWorkflow(workflow: Workflow, options?: TagExtractionOptions) {
+	const positiveNodeTypes = options?.positiveNodeTypes ?? DEFAULT_OPTIONS.positiveNodeTypes;
 
 	const positiveTags: TagData[] = [];
 	const negativeTags: TagData[] = [];
@@ -132,11 +130,7 @@ export function extractTagsFromWorkflow(
 	let nodesToProcess: any[] = [];
 	if (workflow && Array.isArray(workflow.nodes)) {
 		nodesToProcess = workflow.nodes;
-	} else if (
-		workflow &&
-		typeof workflow === "object" &&
-		!Array.isArray(workflow)
-	) {
+	} else if (workflow && typeof workflow === "object" && !Array.isArray(workflow)) {
 		// API format (Record<string, Node>)
 		nodesToProcess = Object.values(workflow);
 	}

@@ -32,9 +32,7 @@ export const uploadMediaRequestSchema = z.object({
 	autoIncrement: z
 		.preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
 		.optional(),
-	overwrite: z
-		.preprocess((val) => String(val).toLowerCase() === "true", z.boolean())
-		.optional(),
+	overwrite: z.preprocess((val) => String(val).toLowerCase() === "true", z.boolean()).optional(),
 });
 export type UploadMediaRequest = z.infer<typeof uploadMediaRequestSchema>;
 

@@ -1,12 +1,7 @@
 import fs from "node:fs";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import * as orpcClient from "../orpc-client";
-import {
-	downloadHandler,
-	getHandler,
-	searchHandler,
-	viewHandler,
-} from "./media";
+import { downloadHandler, getHandler, searchHandler, viewHandler } from "./media";
 
 vi.mock("../orpc-client", () => ({
 	getClient: vi.fn(),
@@ -180,14 +175,9 @@ describe("media handlers", () => {
 				mediaId: "media-uuid",
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
-				new URL(
-					"/api/sources/source-1/media-uuid",
-					"http://test.local",
-				).toString(),
+				new URL("/api/sources/source-1/media-uuid", "http://test.local").toString(),
 			);
-			expect(fs.createWriteStream).toHaveBeenCalledWith(
-				expect.stringContaining("test.jpg"),
-			);
+			expect(fs.createWriteStream).toHaveBeenCalledWith(expect.stringContaining("test.jpg"));
 			expect(context.ok).toHaveBeenCalledWith(
 				expect.objectContaining({
 					message: expect.stringContaining("test.jpg"),
@@ -228,14 +218,9 @@ describe("media handlers", () => {
 				mediaId: "media-uuid",
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
-				new URL(
-					"/api/sources/source-1/media-uuid",
-					"http://test.local",
-				).toString(),
+				new URL("/api/sources/source-1/media-uuid", "http://test.local").toString(),
 			);
-			expect(fs.createWriteStream).toHaveBeenCalledWith(
-				expect.stringContaining("media-uuid.png"),
-			);
+			expect(fs.createWriteStream).toHaveBeenCalledWith(expect.stringContaining("media-uuid.png"));
 		});
 
 		it("should use output option as filename if provided", async () => {
@@ -274,14 +259,9 @@ describe("media handlers", () => {
 				mediaId: "media-uuid",
 			});
 			expect(mockFetch).toHaveBeenCalledWith(
-				new URL(
-					"/api/sources/source-1/media-uuid",
-					"http://test.local",
-				).toString(),
+				new URL("/api/sources/source-1/media-uuid", "http://test.local").toString(),
 			);
-			expect(fs.createWriteStream).toHaveBeenCalledWith(
-				expect.stringContaining("custom.png"),
-			);
+			expect(fs.createWriteStream).toHaveBeenCalledWith(expect.stringContaining("custom.png"));
 		});
 
 		it("should handle fetch errors", async () => {
@@ -372,9 +352,7 @@ describe("media handlers", () => {
 			};
 
 			// Mock process.stdout.write
-			const stdoutSpy = vi
-				.spyOn(process.stdout, "write")
-				.mockImplementation(() => true);
+			const stdoutSpy = vi.spyOn(process.stdout, "write").mockImplementation(() => true);
 
 			const mockGet = mockRpc.media.get as any;
 			await viewHandler(context);

@@ -6,54 +6,54 @@ Drizzle ORM で定義されたテーブル一覧と関係図。定義元: `apps/
 
 ### コアテーブル
 
-| テーブル | 説明 | 主キー |
-|---|---|---|
-| `media_sources` | ストレージバックエンド（local/sftp/s3） | UUID |
-| `media` | メディアファイル本体（パス・サイズ・種別） | UUID |
-| `tags` | タグマスター | UUID |
-| `authors` | 作者・アーティストマスター | UUID |
-| `characters` | キャラクターマスター | UUID |
-| `ips` | 知的財産（作品）マスター | UUID |
-| `categories` | カテゴリマスター（階層構造可） | UUID |
-| `projects` | プロジェクトマスター | UUID |
-| `users` | ユーザーアカウント | UUID |
-| `collections` | ユーザー作成コレクション | UUID |
-| `presets` | 検索フィルタープリセット | serial |
-| `jobs` | バックグラウンドジョブ | UUID |
-| `app_config` | アプリ設定（単一行） | integer |
+| テーブル        | 説明                                       | 主キー  |
+| --------------- | ------------------------------------------ | ------- |
+| `media_sources` | ストレージバックエンド（local/sftp/s3）    | UUID    |
+| `media`         | メディアファイル本体（パス・サイズ・種別） | UUID    |
+| `tags`          | タグマスター                               | UUID    |
+| `authors`       | 作者・アーティストマスター                 | UUID    |
+| `characters`    | キャラクターマスター                       | UUID    |
+| `ips`           | 知的財産（作品）マスター                   | UUID    |
+| `categories`    | カテゴリマスター（階層構造可）             | UUID    |
+| `projects`      | プロジェクトマスター                       | UUID    |
+| `users`         | ユーザーアカウント                         | UUID    |
+| `collections`   | ユーザー作成コレクション                   | UUID    |
+| `presets`       | 検索フィルタープリセット                   | serial  |
+| `jobs`          | バックグラウンドジョブ                     | UUID    |
+| `app_config`    | アプリ設定（単一行）                       | integer |
 
 ### メディア詳細テーブル（media との 1:1）
 
-| テーブル | 説明 |
-|---|---|
-| `media_details` | 評価・お気に入り・閲覧回数 |
+| テーブル                | 説明                                          |
+| ----------------------- | --------------------------------------------- |
+| `media_details`         | 評価・お気に入り・閲覧回数                    |
 | `media_generation_info` | AI生成情報（プロンプト・モデル・seed・CFG等） |
-| `media_technical_info` | 技術情報（ハッシュ・EXIF・動画コーデック等） |
-| `media_sync` | 同期・バックアップ状態 |
+| `media_technical_info`  | 技術情報（ハッシュ・EXIF・動画コーデック等）  |
+| `media_sync`            | 同期・バックアップ状態                        |
 
 ### 中間テーブル（N:M）
 
 命名規則: `media_{entity}` または `{entity1}_{entity2}`
 
-| テーブル | 関係 | 追加フィールド |
-|---|---|---|
-| `media_tags` | media ↔ tags | tagType (positive/negative), confidence, source |
-| `media_characters` | media ↔ characters | confidence, source |
-| `media_ips` | media ↔ ips | confidence, source |
-| `media_authors` | media ↔ authors | — |
-| `media_categories` | media ↔ categories | — |
-| `media_projects` | media ↔ projects | — |
-| `media_collections` | collections ↔ media | displayOrder |
-| `media_urls` | media ← urls (1:N) | url, createdAt |
-| `character_ips` | characters ↔ ips | source |
+| テーブル            | 関係                | 追加フィールド                                  |
+| ------------------- | ------------------- | ----------------------------------------------- |
+| `media_tags`        | media ↔ tags        | tagType (positive/negative), confidence, source |
+| `media_characters`  | media ↔ characters  | confidence, source                              |
+| `media_ips`         | media ↔ ips         | confidence, source                              |
+| `media_authors`     | media ↔ authors     | —                                               |
+| `media_categories`  | media ↔ categories  | —                                               |
+| `media_projects`    | media ↔ projects    | —                                               |
+| `media_collections` | collections ↔ media | displayOrder                                    |
+| `media_urls`        | media ← urls (1:N)  | url, createdAt                                  |
+| `character_ips`     | characters ↔ ips    | source                                          |
 
 ### 分析・関係テーブル
 
-| テーブル | 説明 |
-|---|---|
+| テーブル          | 説明                                                                              |
+| ----------------- | --------------------------------------------------------------------------------- |
 | `media_relations` | メディア間の関係（バリアント・マンガページ等）。relationType: variant/page/series |
-| `similar_media` | 知覚ハッシュによる類似メディアペア。algorithmフィールドあり |
-| `view_history` | 閲覧履歴（mediaId・viewedAt・ipAddress） |
+| `similar_media`   | 知覚ハッシュによる類似メディアペア。algorithmフィールドあり                       |
+| `view_history`    | 閲覧履歴（mediaId・viewedAt・ipAddress）                                          |
 
 ## ER図
 
@@ -112,15 +112,15 @@ erDiagram
 
 ## Enum一覧
 
-| Enum | 値 |
-|---|---|
-| `media_source_type` | `local`, `sftp`, `s3` |
-| `media_type` | `image`, `video`, `audio` |
-| `media_organization_status` | `active`, `archived`, `deleted` |
-| `media_sync_status` | `synced`, `pending`, `failed` |
-| `job_status` | `pending`, `in_progress`, `completed`, `failed` |
-| `media_relation_type` | `variant`, `version`, `page`, `derivative`, `edit`, `source` |
-| `tag_type` | `positive`, `negative` |
+| Enum                        | 値                                                           |
+| --------------------------- | ------------------------------------------------------------ |
+| `media_source_type`         | `local`, `sftp`, `s3`                                        |
+| `media_type`                | `image`, `video`, `audio`                                    |
+| `media_organization_status` | `active`, `archived`, `deleted`                              |
+| `media_sync_status`         | `synced`, `pending`, `failed`                                |
+| `job_status`                | `pending`, `in_progress`, `completed`, `failed`              |
+| `media_relation_type`       | `variant`, `version`, `page`, `derivative`, `edit`, `source` |
+| `tag_type`                  | `positive`, `negative`                                       |
 
 ## 設計上の重要な決まり
 

@@ -11,6 +11,7 @@
 ## コマンド一覧
 
 ### `imager-cli ping`
+
 サーバーへの疎通確認。接続先URLと現在の設定を返す。
 
 ```bash
@@ -19,22 +20,22 @@ imager-cli ping --remote http://localhost:3000
 
 ### `imager-cli media`
 
-| サブコマンド | 説明 |
-|---|---|
-| `media list` | メディア一覧取得（フィルタ/ページネーション対応） |
-| `media get <id>` | 指定メディアの詳細取得 |
-| `media download <id>` | ファイルをローカルへダウンロード |
-| `media update <id>` | メタデータ更新 |
-| `media delete <id>` | メディア削除 |
+| サブコマンド          | 説明                                              |
+| --------------------- | ------------------------------------------------- |
+| `media list`          | メディア一覧取得（フィルタ/ページネーション対応） |
+| `media get <id>`      | 指定メディアの詳細取得                            |
+| `media download <id>` | ファイルをローカルへダウンロード                  |
+| `media update <id>`   | メタデータ更新                                    |
+| `media delete <id>`   | メディア削除                                      |
 
 ダウンロード時はパストラバーサル防止チェックあり。エージェント（MCP）経由の場合はCWD内のみ許可。
 
 ### `imager-cli ai`
 
-| サブコマンド | 説明 |
-|---|---|
-| `ai tag <mediaId>` | 指定メディアにAI自動タグ付けを実行 |
-| `ai status` | AIサービス（Python FastAPI）の疎通確認 |
+| サブコマンド       | 説明                                   |
+| ------------------ | -------------------------------------- |
+| `ai tag <mediaId>` | 指定メディアにAI自動タグ付けを実行     |
+| `ai status`        | AIサービス（Python FastAPI）の疎通確認 |
 
 ### `imager-cli job`
 
@@ -43,17 +44,17 @@ imager-cli ping --remote http://localhost:3000
 
 ### `imager-cli db`
 
-| サブコマンド | 説明 |
-|---|---|
-| `db dump` | pg_dump でDBをダンプ |
+| サブコマンド | 説明                            |
+| ------------ | ------------------------------- |
+| `db dump`    | pg_dump でDBをダンプ            |
 | `db restore` | psql でダンプファイルをリストア |
 
 Docker経由（`--docker`フラグ）でコンテナ内のpostgresに直接アクセスも可能。
 
 ## グローバルオプション
 
-| オプション | デフォルト | 説明 |
-|---|---|---|
+| オプション | デフォルト              | 説明        |
+| ---------- | ----------------------- | ----------- |
 | `--remote` | `http://localhost:3000` | サーバーURL |
 
 ## ビルド

@@ -4,11 +4,11 @@
 
 ## 対応サイト
 
-| サイト | コンテンツスクリプト | 抽出内容 |
-|---|---|---|
-| Twitter / X | `content/twitter.ts` | 画像URL、作者アカウント、ソースURL |
-| Danbooru | `content/danbooru.ts` | 画像URL、タグ、キャラクター、IP |
-| その他 | `content/index.ts` | 汎用画像URL抽出 |
+| サイト      | コンテンツスクリプト  | 抽出内容                           |
+| ----------- | --------------------- | ---------------------------------- |
+| Twitter / X | `content/twitter.ts`  | 画像URL、作者アカウント、ソースURL |
+| Danbooru    | `content/danbooru.ts` | 画像URL、タグ、キャラクター、IP    |
+| その他      | `content/index.ts`    | 汎用画像URL抽出                    |
 
 ## アーキテクチャ
 
@@ -26,13 +26,13 @@ apps/server API          ← solid-imagerサーバー
 
 Zodで型定義された discriminated union メッセージ：
 
-| メッセージタイプ | 用途 |
-|---|---|
-| `DOWNLOAD` | 単一メディアをサーバーへ送信 |
-| `DOWNLOAD_BULK` | 複数メディアを一括送信 |
-| `POST_DOWNLOAD` | ダウンロード後にメタデータを登録 |
-| `GET_SOURCES` | 利用可能なメディアソース一覧取得 |
-| `GET_COOKIES` | 指定URLのCookieを取得（認証付きダウンロード用） |
+| メッセージタイプ | 用途                                            |
+| ---------------- | ----------------------------------------------- |
+| `DOWNLOAD`       | 単一メディアをサーバーへ送信                    |
+| `DOWNLOAD_BULK`  | 複数メディアを一括送信                          |
+| `POST_DOWNLOAD`  | ダウンロード後にメタデータを登録                |
+| `GET_SOURCES`    | 利用可能なメディアソース一覧取得                |
+| `GET_COOKIES`    | 指定URLのCookieを取得（認証付きダウンロード用） |
 
 ## `DownloadItem` スキーマ
 

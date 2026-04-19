@@ -1,12 +1,7 @@
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
-import {
-	createRootRouteWithContext,
-	HeadContent,
-	Outlet,
-	Scripts,
-} from "@tanstack/solid-router";
+import { createRootRouteWithContext, HeadContent, Outlet, Scripts } from "@tanstack/solid-router";
 import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";

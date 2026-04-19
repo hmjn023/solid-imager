@@ -8,10 +8,7 @@ import type {
 	UploadMediaRequest,
 	UploadResponse,
 } from "../domain/media/schemas";
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
-} from "../domain/sources/schemas";
+import type { MediaSourceInfo, SafeMediaSource } from "../domain/sources/schemas";
 
 export type {
 	UpdateMediaRequest,
@@ -63,10 +60,7 @@ export type MediaApiContract = {
 		sourceId: string | undefined | null,
 		params: MediaSearchRequest,
 	) => Promise<MediaSearchResponse>;
-	fetchMediaDetails: (
-		sourceId: string,
-		mediaId: string,
-	) => Promise<MediaDetails>;
+	fetchMediaDetails: (sourceId: string, mediaId: string) => Promise<MediaDetails>;
 	uploadMedia: (
 		sourceId: string,
 		file: File,
@@ -88,10 +82,7 @@ export type MediaApiContract = {
 		mediaId: string,
 		targetSourceId: string,
 	) => Promise<MutationSuccess>;
-	syncMediaItems: (
-		sourceId: string,
-		mediaIds: string[],
-	) => Promise<SyncMediaItemsResponse>;
+	syncMediaItems: (sourceId: string, mediaIds: string[]) => Promise<SyncMediaItemsResponse>;
 	startDownloadJobs: (
 		mediaSourceId: string,
 		items: DownloadItem[],
@@ -102,10 +93,7 @@ export type SourcesApiContract = {
 	fetchMediaSources: () => Promise<SafeMediaSource[]>;
 	fetchMediaSource: (id: string) => Promise<SafeMediaSource>;
 	createMediaSource: (data: MediaSourceInfo) => Promise<SafeMediaSource>;
-	updateMediaSource: (
-		id: string,
-		data: Partial<MediaSourceInfo>,
-	) => Promise<SafeMediaSource>;
+	updateMediaSource: (id: string, data: Partial<MediaSourceInfo>) => Promise<SafeMediaSource>;
 	deleteMediaSource: (id: string) => Promise<MutationSuccess>;
 	syncMediaSources: (ids: string[]) => Promise<SyncSourcesResponse>;
 	fetchSourceDump: (id: string, mode?: "json" | "zip") => Promise<Blob>;
@@ -138,11 +126,7 @@ export function createMediaApi(contract: MediaApiContract) {
 		uploadMedia(sourceId: string, file: File, options?: UploadMediaRequest) {
 			return contract.uploadMedia(sourceId, file, options);
 		},
-		updateMedia(
-			sourceId: string,
-			mediaId: string,
-			updates: UpdateMediaRequest,
-		) {
+		updateMedia(sourceId: string, mediaId: string, updates: UpdateMediaRequest) {
 			return contract.updateMedia(sourceId, mediaId, updates);
 		},
 		deleteMedia(sourceId: string, mediaId: string) {

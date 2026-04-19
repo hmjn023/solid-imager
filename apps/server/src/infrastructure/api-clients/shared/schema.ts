@@ -3,9 +3,7 @@ import { z } from "zod";
 /**
  * Standard API success response
  */
-export const apiSuccessResponseSchema = <T extends z.ZodTypeAny>(
-	dataSchema: T,
-) =>
+export const apiSuccessResponseSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 	z.object({
 		success: z.literal(true),
 		data: dataSchema.optional(),

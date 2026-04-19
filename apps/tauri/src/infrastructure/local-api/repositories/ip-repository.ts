@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
 	type Ip,
 	ipSchema,
@@ -19,19 +16,12 @@ function toIp(row: typeof ips.$inferSelect): Ip {
 
 export const TauriIpRepository = {
 	async findAll(): Promise<Ip[]> {
-		const rows = await getTauriAppServices()
-			.db.select()
-			.from(ips)
-			.orderBy(asc(ips.name));
+		const rows = await getTauriAppServices().db.select().from(ips).orderBy(asc(ips.name));
 		return rows.map(toIp);
 	},
 
 	async findById(id: string): Promise<Ip | null> {
-		const rows = await getTauriAppServices()
-			.db.select()
-			.from(ips)
-			.where(eq(ips.id, id))
-			.limit(1);
+		const rows = await getTauriAppServices().db.select().from(ips).where(eq(ips.id, id)).limit(1);
 		return rows[0] ? toIp(rows[0]) : null;
 	},
 
@@ -47,9 +37,7 @@ export const TauriIpRepository = {
 	async create(input: NewIp): Promise<Ip> {
 		const existing = await this.findByName(input.name);
 		if (existing) {
-			throw new ResourceConflictError(
-				`IP with name '${input.name}' already exists`,
-			);
+			throw new ResourceConflictError(`IP with name '${input.name}' already exists`);
 		}
 
 		const rows = await getTauriAppServices()
@@ -68,9 +56,7 @@ export const TauriIpRepository = {
 			.db.update(ips)
 			.set({
 				...(input.name !== undefined ? { name: input.name } : {}),
-				...(input.description !== undefined
-					? { description: input.description ?? "" }
-					: {}),
+				...(input.description !== undefined ? { description: input.description ?? "" } : {}),
 				...(input.source !== undefined ? { source: input.source } : {}),
 				updatedAt: new Date(),
 			})
@@ -85,10 +71,7 @@ export const TauriIpRepository = {
 	},
 
 	async delete(id: string): Promise<void> {
-		const rows = await getTauriAppServices()
-			.db.delete(ips)
-			.where(eq(ips.id, id))
-			.returning();
+		const rows = await getTauriAppServices().db.delete(ips).where(eq(ips.id, id)).returning();
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError("IP", id);

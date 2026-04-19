@@ -40,6 +40,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - `apps/server/src/application/services/directory-sync-service.ts`
 - `apps/server/src/application/services/media-processing-service.ts` — `registerAndProcess()`
 - Tauri 側は `apps/tauri/src/infrastructure/local-api/services/source-service.ts` の `syncSource*` が同じ責務を担う（FS は Rust コマンド、DB は PGlite）。
@@ -76,6 +77,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - スキーマ: `packages/core/src/domain/search/schema.ts`
 - モード変換: `packages/core/src/domain/search/logic.ts` (`calculateNextModeState`)
 - SQL 構築: `apps/server/src/infrastructure/repositories/media-repository-utils.ts` (`buildWhereClause`)
@@ -118,6 +120,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - サーバー: `apps/server/src/application/services/backup-service.ts`
 - Tauri: `apps/tauri/src/infrastructure/local-api/services/source-backup-service.ts` + `src-tauri/src/commands/backup.rs`
 - ZIP レイアウト・dump schema は [backup-restore.md](./backup-restore.md) 参照
@@ -166,6 +169,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - ワーカー: `apps/server/src/infrastructure/jobs/job-worker.ts`
 - ディスパッチ: `apps/server/src/application/services/job-dispatch-service.ts`
 - キュー API: `apps/server/src/infrastructure/jobs/job-queue.ts`
@@ -205,6 +209,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - エンドポイント: `apps/server/src/routes/api/events.ts`
 - マネージャ: `apps/server/src/infrastructure/jobs/sse-manager.ts`
 - HMR 耐性のため clients / watchers / emitter は `globalThis` に保持
@@ -241,6 +246,7 @@ sequenceDiagram
 ```
 
 **実装**
+
 - Rust: `apps/tauri/src-tauri/src/watcher.rs` (`source_watch_start` / `source_watch_stop` コマンド、`WatcherRegistry`)
 - JS 受信: `apps/tauri/src/infrastructure/local-api/services/source-service.ts`
 - フォワード対象イベント: `should_forward_event()` が Create/Modify/Remove の主要バリアントを通過させる

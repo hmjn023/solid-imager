@@ -1,12 +1,5 @@
 import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
@@ -83,10 +76,7 @@ describe("BackupService Integration", () => {
 			})
 			.returning();
 
-		const [tag] = await db
-			.insert(tags)
-			.values({ name: "Dump Tag" })
-			.returning();
+		const [tag] = await db.insert(tags).values({ name: "Dump Tag" }).returning();
 		await db.insert(mediaTags).values({
 			mediaId: media.id,
 			tagId: tag.id,
@@ -94,38 +84,23 @@ describe("BackupService Integration", () => {
 			confidence: confidenceTag,
 		});
 
-		const [project] = await db
-			.insert(projects)
-			.values({ name: "Dump Project" })
-			.returning();
+		const [project] = await db.insert(projects).values({ name: "Dump Project" }).returning();
 		const [ip] = await db.insert(ips).values({ name: "Dump IP" }).returning();
-		const [character] = await db
-			.insert(characters)
-			.values({ name: "Dump Character" })
-			.returning();
+		const [character] = await db.insert(characters).values({ name: "Dump Character" }).returning();
 		await db
 			.insert(characterIps)
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
-		const [author] = await db
-			.insert(authors)
-			.values({ name: "Dump Author" })
-			.returning();
+		const [author] = await db.insert(authors).values({ name: "Dump Author" }).returning();
 
-		await db
-			.insert(mediaProjects)
-			.values({ mediaId: media.id, projectId: project.id });
+		await db.insert(mediaProjects).values({ mediaId: media.id, projectId: project.id });
 		await db.insert(mediaIps).values({ mediaId: media.id, ipId: ip.id });
 		await db.insert(mediaCharacters).values({
 			mediaId: media.id,
 			characterId: character.id,
 			confidence: confidenceChar,
 		});
-		await db
-			.insert(mediaAuthors)
-			.values({ mediaId: media.id, authorId: author.id });
-		await db
-			.insert(mediaUrls)
-			.values({ mediaId: media.id, url: "https://example.com/source" });
+		await db.insert(mediaAuthors).values({ mediaId: media.id, authorId: author.id });
+		await db.insert(mediaUrls).values({ mediaId: media.id, url: "https://example.com/source" });
 
 		// 2. Execute Dump
 		const dumpResult = await BackupService.createDump(testSourceId, "json");
@@ -159,10 +134,7 @@ describe("BackupService Integration", () => {
 
 	it("should restore projects, characters, ips, authors, and sourceUrls from dump item", async () => {
 		// Update source type to s3 to bypass fs.access check
-		await db
-			.update(mediaSources)
-			.set({ type: "s3" })
-			.where(eq(mediaSources.id, testSourceId));
+		await db.update(mediaSources).set({ type: "s3" }).where(eq(mediaSources.id, testSourceId));
 
 		// 1. Prepare dump item
 		const dumpItem = {
@@ -176,9 +148,7 @@ describe("BackupService Integration", () => {
 			modifiedAt: new Date().toISOString(),
 			tags: [{ name: "Restore Tag", confidence: confidenceRestoreTag }],
 			projects: [{ name: "Restore Project" }],
-			characters: [
-				{ name: "Restore Character", confidence: confidenceRestoreChar },
-			],
+			characters: [{ name: "Restore Character", confidence: confidenceRestoreChar }],
 			ips: [{ name: "Restore IP" }],
 			authors: [{ name: "Restore Author", accountId: "test_account_123" }],
 			sourceUrls: ["https://example.com/restore"],
@@ -228,10 +198,7 @@ describe("BackupService Integration", () => {
 
 	it("should infer character-IP relationships from media when linkedIps is not provided", async () => {
 		// Update source type to s3 to bypass fs.access check
-		await db
-			.update(mediaSources)
-			.set({ type: "s3" })
-			.where(eq(mediaSources.id, testSourceId));
+		await db.update(mediaSources).set({ type: "s3" }).where(eq(mediaSources.id, testSourceId));
 
 		// 1. Prepare dump item with character but no linkedIps
 		const dumpItem = {
@@ -267,10 +234,7 @@ describe("BackupService Integration", () => {
 
 	it("should prioritize linkedIps over media IPs when both are present", async () => {
 		// Update source type to s3 to bypass fs.access check
-		await db
-			.update(mediaSources)
-			.set({ type: "s3" })
-			.where(eq(mediaSources.id, testSourceId));
+		await db.update(mediaSources).set({ type: "s3" }).where(eq(mediaSources.id, testSourceId));
 
 		// 1. Prepare dump item with both linkedIps and media IPs
 		const dumpItem = {

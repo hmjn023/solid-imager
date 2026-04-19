@@ -1,8 +1,12 @@
 [tasks.attach_db]
-run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
+run = "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
+
+[tasks.vp]
+run = "bun run vp"
 
 [env]
 _.file = '.env'
+PATH = "{{config_root}}/node_modules/.bin:{{env.PATH}}"
 
 [tools]
 bun = "latest"
@@ -10,3 +14,4 @@ bun = "latest"
 "npm:chrome-devtools-mcp" = "latest"
 "npm:ultracite" = "latest"
 "pipx:git+https://github.com/oraios/serena.git" = "latest"
+rust = "latest"

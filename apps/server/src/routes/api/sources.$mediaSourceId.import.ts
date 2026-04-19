@@ -15,26 +15,17 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 				const { Readable } = await import("node:stream");
 				const { pipeline } = await import("node:stream/promises");
 
-				const tempFilePath = path.join(
-					nodeOs.tmpdir(),
-					`import-route-${randomUUID()}.zip`,
-				);
+				const tempFilePath = path.join(nodeOs.tmpdir(), `import-route-${randomUUID()}.zip`);
 
 				try {
 					if (!request.body) {
 						return new Response("Missing request body", { status: 400 });
 					}
 
-					await pipeline(
-						Readable.fromWeb(request.body as any),
-						fs.createWriteStream(tempFilePath),
-					);
+					await pipeline(Readable.fromWeb(request.body as any), fs.createWriteStream(tempFilePath));
 
 					return Response.json(
-						await BackupService.importSourceZip(
-							params.mediaSourceId,
-							tempFilePath,
-						),
+						await BackupService.importSourceZip(params.mediaSourceId, tempFilePath),
 					);
 				} finally {
 					try {

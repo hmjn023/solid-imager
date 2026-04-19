@@ -1,9 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import {
-	type MediaDumpItem,
-	mediaDumpItemSchema,
-} from "@solid-imager/core/domain/media/schemas";
+import { type MediaDumpItem, mediaDumpItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import yauzl from "yauzl";
 import { db } from "~/infrastructure/db";
@@ -95,8 +92,10 @@ export const BackupService = {
 		}
 
 		// Cast items to MediaDumpItem[] essentially, but validation happens inside filter
-		const { validItems, skippedCount, errorMessages } =
-			await this._filterValidItems(items, mediaSource);
+		const { validItems, skippedCount, errorMessages } = await this._filterValidItems(
+			items,
+			mediaSource,
+		);
 
 		if (validItems.length === 0) {
 			return {
@@ -113,10 +112,7 @@ export const BackupService = {
 		// Media Handling
 		await this._restoreMediaRecords(mediaSourceId, validItems);
 
-		const mediaPathToId = await this._mapMediaPathsToIds(
-			mediaSourceId,
-			validItems,
-		);
+		const mediaPathToId = await this._mapMediaPathsToIds(mediaSourceId, validItems);
 
 		// Relations Handling
 		await this._restoreRelations({
@@ -274,35 +270,23 @@ export const BackupService = {
 		const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
 			source: "restored",
 		});
-		const authorMap = await this._ensureMasterDataWithExtras(
-			authors,
-			authors.name,
-			authorData,
-		);
-		const projectMap = await this._ensureMasterData(
-			projects,
-			projects.name,
-			projectNames,
-			{ description: "" },
-		);
+		const authorMap = await this._ensureMasterDataWithExtras(authors, authors.name, authorData);
+		const projectMap = await this._ensureMasterData(projects, projects.name, projectNames, {
+			description: "",
+		});
 		const ipMap = await this._ensureMasterData(ips, ips.name, ipNames, {
 			description: "",
 			source: "restored",
 		});
-		const charMap = await this._ensureMasterData(
-			characters,
-			characters.name,
-			charNames,
-			{ description: "", source: "restored" },
-		);
+		const charMap = await this._ensureMasterData(characters, characters.name, charNames, {
+			description: "",
+			source: "restored",
+		});
 
 		return { tagMap, authorMap, projectMap, ipMap, charMap };
 	},
 
-	async _restoreMediaRecords(
-		mediaSourceId: string,
-		validItems: MediaDumpItem[],
-	) {
+	async _restoreMediaRecords(mediaSourceId: string, validItems: MediaDumpItem[]) {
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
 			filePath: item.filePath ?? "",
@@ -342,10 +326,7 @@ export const BackupService = {
 		}
 	},
 
-	async _mapMediaPathsToIds(
-		mediaSourceId: string,
-		validItems: MediaDumpItem[],
-	) {
+	async _mapMediaPathsToIds(mediaSourceId: string, validItems: MediaDumpItem[]) {
 		// Parameter limit avoidance: Split validItems into chunks
 		const ChunkSize = 10_000;
 		const storedMedias: { id: string; filePath: string }[] = [];
@@ -353,19 +334,14 @@ export const BackupService = {
 		for (let i = 0; i < validItems.length; i += ChunkSize) {
 			const chunk = validItems.slice(i, i + ChunkSize);
 			// We need to filter out items with undefined filePath (though filtered before)
-			const filePaths = chunk
-				.map((item) => item.filePath)
-				.filter((p): p is string => !!p);
+			const filePaths = chunk.map((item) => item.filePath).filter((p): p is string => !!p);
 
 			if (filePaths.length === 0) {
 				continue;
 			}
 
 			const chunkResults = await db.query.medias.findMany({
-				where: and(
-					eq(medias.mediaSourceId, mediaSourceId),
-					inArray(medias.filePath, filePaths),
-				),
+				where: and(eq(medias.mediaSourceId, mediaSourceId), inArray(medias.filePath, filePaths)),
 				columns: { id: true, filePath: true },
 			});
 			storedMedias.push(...chunkResults);
@@ -419,9 +395,9 @@ export const BackupService = {
 						mediaTagsData.push({
 							mediaId,
 							tagId,
-							tagType: (t.type === "positive" || t.type === "negative"
-								? t.type
-								: "positive") as "positive" | "negative",
+							tagType: (t.type === "positive" || t.type === "negative" ? t.type : "positive") as
+								| "positive"
+								| "negative",
 							confidence: t.confidence ?? null,
 							source: t.source || "restored",
 						});
@@ -482,9 +458,7 @@ export const BackupService = {
 						// Determine which IPs to link to this character
 						// Priority: 1) linkedIps from JSON, 2) infer from media's IPs
 						const ipNamesToLink =
-							c.linkedIps &&
-							Array.isArray(c.linkedIps) &&
-							c.linkedIps.length > 0
+							c.linkedIps && Array.isArray(c.linkedIps) && c.linkedIps.length > 0
 								? c.linkedIps
 								: mediaIpNames;
 
@@ -532,20 +506,12 @@ export const BackupService = {
 		const mediaIds = Array.from(mediaPathToId.values());
 		if (mediaIds.length > 0) {
 			await db.delete(mediaTags).where(inArray(mediaTags.mediaId, mediaIds));
-			await db
-				.delete(mediaAuthors)
-				.where(inArray(mediaAuthors.mediaId, mediaIds));
-			await db
-				.delete(mediaProjects)
-				.where(inArray(mediaProjects.mediaId, mediaIds));
-			await db
-				.delete(mediaCharacters)
-				.where(inArray(mediaCharacters.mediaId, mediaIds));
+			await db.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, mediaIds));
+			await db.delete(mediaProjects).where(inArray(mediaProjects.mediaId, mediaIds));
+			await db.delete(mediaCharacters).where(inArray(mediaCharacters.mediaId, mediaIds));
 			await db.delete(mediaIps).where(inArray(mediaIps.mediaId, mediaIds));
 			await db.delete(mediaUrls).where(inArray(mediaUrls.mediaId, mediaIds));
-			await db
-				.delete(mediaGenerationInfo)
-				.where(inArray(mediaGenerationInfo.mediaId, mediaIds));
+			await db.delete(mediaGenerationInfo).where(inArray(mediaGenerationInfo.mediaId, mediaIds));
 		}
 
 		const insertChunked = async (table: any, data: any[]) => {
@@ -632,10 +598,7 @@ export const BackupService = {
 			.from(table)
 			.where(inArray(nameColumn, nameList));
 
-		const existingByName = new Map<
-			string,
-			{ id: string; accountId: string | null }
-		>();
+		const existingByName = new Map<string, { id: string; accountId: string | null }>();
 		for (const r of existingRecords) {
 			const existing = existingByName.get(r.name);
 			// Prioritize entry with an accountId, or just take the first one if none have it yet.
@@ -649,10 +612,7 @@ export const BackupService = {
 		for (const [name, data] of entries) {
 			const existing = existingByName.get(name);
 			if (existing && data.accountId && existing.accountId !== data.accountId) {
-				await db
-					.update(table)
-					.set({ accountId: data.accountId })
-					.where(eq(nameColumn, name));
+				await db.update(table).set({ accountId: data.accountId }).where(eq(nameColumn, name));
 			}
 		}
 
@@ -685,12 +645,7 @@ export const BackupService = {
 		}
 
 		// Return map of name -> id
-		return new Map(
-			Array.from(existingByName.entries()).map(([name, data]) => [
-				name,
-				data.id,
-			]),
-		);
+		return new Map(Array.from(existingByName.entries()).map(([name, data]) => [name, data.id]));
 	},
 
 	/**
@@ -712,66 +667,55 @@ export const BackupService = {
 			dumpData: any;
 		}> => {
 			return new Promise((resolve, reject) => {
-				yauzl.open(
-					zipFilePath,
-					{ lazyEntries: true, autoClose: false },
-					(err, openedZipfile) => {
-						if (err || !openedZipfile) {
-							return reject(err || new Error("Failed to open zip"));
+				yauzl.open(zipFilePath, { lazyEntries: true, autoClose: false }, (err, openedZipfile) => {
+					if (err || !openedZipfile) {
+						return reject(err || new Error("Failed to open zip"));
+					}
+
+					const rejectAndClose = (error: Error) => {
+						openedZipfile.close();
+						reject(error);
+					};
+
+					openedZipfile.on("error", rejectAndClose);
+
+					const entries = new Map<string, yauzl.Entry>();
+					let dumpData: any = null;
+					let dumpEntry: yauzl.Entry | null = null;
+
+					openedZipfile.readEntry();
+					openedZipfile.on("entry", (entry) => {
+						entries.set(entry.fileName, entry);
+						if (entry.fileName === "dump.json") {
+							dumpEntry = entry;
 						}
-
-						const rejectAndClose = (error: Error) => {
-							openedZipfile.close();
-							reject(error);
-						};
-
-						openedZipfile.on("error", rejectAndClose);
-
-						const entries = new Map<string, yauzl.Entry>();
-						let dumpData: any = null;
-						let dumpEntry: yauzl.Entry | null = null;
-
 						openedZipfile.readEntry();
-						openedZipfile.on("entry", (entry) => {
-							entries.set(entry.fileName, entry);
-							if (entry.fileName === "dump.json") {
-								dumpEntry = entry;
-							}
-							openedZipfile.readEntry();
-						});
+					});
 
-						openedZipfile.on("end", () => {
-							if (dumpEntry) {
-								openedZipfile.openReadStream(
-									dumpEntry,
-									(readErr, readStream) => {
-										if (readErr || !readStream) {
-											return rejectAndClose(
-												readErr || new Error("Failed to read dump.json"),
-											);
-										}
-										const chunks: Buffer[] = [];
-										readStream.on("data", (chunk) =>
-											chunks.push(Buffer.from(chunk)),
-										);
-										readStream.on("end", () => {
-											try {
-												const buffer = Buffer.concat(chunks);
-												dumpData = JSON.parse(buffer.toString("utf-8"));
-												resolve({ zipfile: openedZipfile, entries, dumpData });
-											} catch (e) {
-												rejectAndClose(e as Error);
-											}
-										});
-										readStream.on("error", rejectAndClose);
-									},
-								);
-							} else {
-								rejectAndClose(new Error("dump.json not found in ZIP"));
-							}
-						});
-					},
-				);
+					openedZipfile.on("end", () => {
+						if (dumpEntry) {
+							openedZipfile.openReadStream(dumpEntry, (readErr, readStream) => {
+								if (readErr || !readStream) {
+									return rejectAndClose(readErr || new Error("Failed to read dump.json"));
+								}
+								const chunks: Buffer[] = [];
+								readStream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+								readStream.on("end", () => {
+									try {
+										const buffer = Buffer.concat(chunks);
+										dumpData = JSON.parse(buffer.toString("utf-8"));
+										resolve({ zipfile: openedZipfile, entries, dumpData });
+									} catch (e) {
+										rejectAndClose(e as Error);
+									}
+								});
+								readStream.on("error", rejectAndClose);
+							});
+						} else {
+							rejectAndClose(new Error("dump.json not found in ZIP"));
+						}
+					});
+				});
 			});
 		};
 
@@ -808,16 +752,11 @@ export const BackupService = {
 						await new Promise<void>((resolve, reject) => {
 							zipfile.openReadStream(entry, (err, readStream) => {
 								if (err || !readStream) {
-									return reject(
-										err ||
-											new Error(`Failed to read stream for ${entry.fileName}`),
-									);
+									return reject(err || new Error(`Failed to read stream for ${entry.fileName}`));
 								}
 
 								const chunks: Buffer[] = [];
-								readStream.on("data", (chunk) =>
-									chunks.push(Buffer.from(chunk)),
-								);
+								readStream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
 								readStream.on("end", async () => {
 									try {
 										const content = Buffer.concat(chunks);

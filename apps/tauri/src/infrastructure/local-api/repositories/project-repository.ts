@@ -15,10 +15,7 @@ function toProject(row: typeof projects.$inferSelect): Project {
 
 export const TauriProjectRepository = {
 	async findAll(): Promise<Project[]> {
-		const rows = await getTauriAppServices()
-			.db.select()
-			.from(projects)
-			.orderBy(asc(projects.name));
+		const rows = await getTauriAppServices().db.select().from(projects).orderBy(asc(projects.name));
 		return rows.map(toProject);
 	},
 
@@ -56,12 +53,8 @@ export const TauriProjectRepository = {
 			.db.update(projects)
 			.set({
 				...(input.name !== undefined ? { name: input.name } : {}),
-				...(input.description !== undefined
-					? { description: input.description ?? "" }
-					: {}),
-				...(input.archivedAt !== undefined
-					? { archivedAt: input.archivedAt }
-					: {}),
+				...(input.description !== undefined ? { description: input.description ?? "" } : {}),
+				...(input.archivedAt !== undefined ? { archivedAt: input.archivedAt } : {}),
 				updatedAt: new Date(),
 			})
 			.where(eq(projects.id, id))
@@ -112,12 +105,7 @@ export const TauriProjectRepository = {
 	async removeMedia(mediaId: string, projectId: string): Promise<void> {
 		const rows = await getTauriAppServices()
 			.db.delete(mediaProjects)
-			.where(
-				and(
-					eq(mediaProjects.mediaId, mediaId),
-					eq(mediaProjects.projectId, projectId),
-				),
-			)
+			.where(and(eq(mediaProjects.mediaId, mediaId), eq(mediaProjects.projectId, projectId)))
 			.returning();
 
 		if (!rows[0]) {

@@ -1,10 +1,7 @@
 import type { Author } from "@solid-imager/core/domain/authors/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type {
-	SearchCriterion,
-	SearchGroup,
-} from "@solid-imager/core/domain/media/schemas";
+import type { SearchCriterion, SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
@@ -178,9 +175,7 @@ function GroupBuilder(props: {
 							value={props.group.operator}
 						>
 							<SelectTrigger class="w-20 sm:w-24">
-								<SelectValue<string>>
-									{(state) => state.selectedOption().toUpperCase()}
-								</SelectValue>
+								<SelectValue<string>>{(state) => state.selectedOption().toUpperCase()}</SelectValue>
 							</SelectTrigger>
 							<SelectContent />
 						</Select>
@@ -263,14 +258,7 @@ function GroupBuilder(props: {
 }
 
 // Constants for restricted operators
-const STRING_OPERATORS = [
-	"equals",
-	"contains",
-	"startsWith",
-	"endsWith",
-	"isEmpty",
-	"isNotEmpty",
-];
+const STRING_OPERATORS = ["equals", "contains", "startsWith", "endsWith", "isEmpty", "isNotEmpty"];
 const NUMERIC_OPERATORS = ["equals", "gt", "gte", "lt", "lte"];
 const RELATIONAL_OPERATORS = ["equals", "contains", "in", "notIn"]; // contains for partial match on name
 const BOOLEAN_OPERATORS = ["equals"];
@@ -286,9 +274,7 @@ function CriterionBuilder(props: {
 	tags?: TagResponse[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}: (twitter)${author.accountId}`
-			: author.name;
+		author.accountId ? `${author.name}: (twitter)${author.accountId}` : author.name;
 
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {
@@ -310,28 +296,10 @@ function CriterionBuilder(props: {
 
 	const getValidOperators = (target: string) => {
 		// Fast path checks using sets or direct includes
-		if (
-			[
-				"fileName",
-				"filePath",
-				"description",
-				"keyword",
-				"author",
-				"folder",
-			].includes(target)
-		) {
+		if (["fileName", "filePath", "description", "keyword", "author", "folder"].includes(target)) {
 			return STRING_OPERATORS;
 		}
-		if (
-			[
-				"rating",
-				"viewCount",
-				"fileSize",
-				"createdAt",
-				"width",
-				"height",
-			].includes(target)
-		) {
+		if (["rating", "viewCount", "fileSize", "createdAt", "width", "height"].includes(target)) {
 			return NUMERIC_OPERATORS;
 		}
 		if (["tag", "project", "ip", "character", "author"].includes(target)) {
@@ -347,9 +315,7 @@ function CriterionBuilder(props: {
 		<div class="flex flex-col gap-2 rounded-md bg-muted/20 p-2">
 			<Select
 				itemComponent={(itemProps) => (
-					<SelectItem item={itemProps.item}>
-						{TARGET_LABELS[itemProps.item.rawValue]}
-					</SelectItem>
+					<SelectItem item={itemProps.item}>{TARGET_LABELS[itemProps.item.rawValue]}</SelectItem>
 				)}
 				onChange={(val) => {
 					if (val && val !== props.criterion.target) {
@@ -370,18 +336,14 @@ function CriterionBuilder(props: {
 				value={props.criterion.target}
 			>
 				<SelectTrigger class="w-full">
-					<SelectValue<string>>
-						{(state) => TARGET_LABELS[state.selectedOption()]}
-					</SelectValue>
+					<SelectValue<string>>{(state) => TARGET_LABELS[state.selectedOption()]}</SelectValue>
 				</SelectTrigger>
 				<SelectContent />
 			</Select>
 
 			<Select
 				itemComponent={(itemProps) => (
-					<SelectItem item={itemProps.item}>
-						{OPERATOR_LABELS[itemProps.item.rawValue]}
-					</SelectItem>
+					<SelectItem item={itemProps.item}>{OPERATOR_LABELS[itemProps.item.rawValue]}</SelectItem>
 				)}
 				onChange={(val) => {
 					if (val && val !== props.criterion.operator) {
@@ -395,29 +357,21 @@ function CriterionBuilder(props: {
 				value={props.criterion.operator}
 			>
 				<SelectTrigger class="w-full">
-					<SelectValue<string>>
-						{(state) => OPERATOR_LABELS[state.selectedOption()]}
-					</SelectValue>
+					<SelectValue<string>>{(state) => OPERATOR_LABELS[state.selectedOption()]}</SelectValue>
 				</SelectTrigger>
 				<SelectContent />
 			</Select>
 
 			<Switch>
 				{/* Case 1: Autocomplete available for "equals" */}
-				<Match
-					when={props.criterion.operator === "equals" && autocompleteItems()}
-				>
+				<Match when={props.criterion.operator === "equals" && autocompleteItems()}>
 					<Combobox
 						itemComponent={(itemProps) => (
 							<ComboboxItem item={itemProps.item}>
-								<ComboboxItemLabel>
-									{itemProps.item.textValue}
-								</ComboboxItemLabel>
+								<ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
 							</ComboboxItem>
 						)}
-						onChange={(
-							val: { name: string; accountId?: string | null } | null,
-						) => {
+						onChange={(val: { name: string; accountId?: string | null } | null) => {
 							if (val) {
 								props.onChange({ ...props.criterion, value: val.name });
 							}
@@ -436,9 +390,7 @@ function CriterionBuilder(props: {
 						optionValue={(item: { name: string }) => item.name}
 						placeholder="検索..."
 						triggerMode="focus"
-						value={(autocompleteItems() || []).find(
-							(i) => i.name === props.criterion.value,
-						)}
+						value={(autocompleteItems() || []).find((i) => i.name === props.criterion.value)}
 					>
 						<ComboboxControl>
 							<ComboboxInput />
@@ -462,22 +414,14 @@ function CriterionBuilder(props: {
 								})
 							}
 							placeholder="値をカンマ区切りで入力 (例: val1, val2)"
-							value={
-								Array.isArray(props.criterion.value)
-									? props.criterion.value.join(", ")
-									: ""
-							}
+							value={Array.isArray(props.criterion.value) ? props.criterion.value.join(", ") : ""}
 						/>
-						<p class="text-muted-foreground text-xs">
-							カンマ区切りで複数の値を指定できます
-						</p>
+						<p class="text-muted-foreground text-xs">カンマ区切りで複数の値を指定できます</p>
 					</div>
 				</Match>
 
 				{/* Case 3: No input needed for emptiness checks */}
-				<Match
-					when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}
-				>
+				<Match when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}>
 					<div class="rounded-md border border-dashed p-2 text-center text-muted-foreground text-xs italic">
 						この条件に値は不要です
 					</div>
@@ -503,11 +447,7 @@ function CriterionBuilder(props: {
 				</Match>
 			</Switch>
 
-			<Button
-				class="w-full text-red-500"
-				onClick={props.onRemove}
-				variant="ghost"
-			>
+			<Button class="w-full text-red-500" onClick={props.onRemove} variant="ghost">
 				削除
 			</Button>
 		</div>

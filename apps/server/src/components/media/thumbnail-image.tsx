@@ -16,11 +16,7 @@ type ThumbnailImageProps = {
 	width?: number | null;
 };
 
-function getThumbnailUrl(
-	mediaSourceId: string,
-	mediaId: string,
-	cacheKey: number,
-): string {
+function getThumbnailUrl(mediaSourceId: string, mediaId: string, cacheKey: number): string {
 	return `/api/sources/${mediaSourceId}/${mediaId}/thumbnail?t=${cacheKey}`;
 }
 

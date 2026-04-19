@@ -1,22 +1,25 @@
 # Specification: コードレビュー結果の修正とアーキテクチャの改善
 
 ## 1. 概要
+
 最新のコードレビューで指摘された問題点を修正し、アプリケーションの堅牢性、保守性、およびパフォーマンスを向上させます。主にDIの徹底、N+1クエリの解消、不要ファイルの整理を行います。
 
 ## 2. 機能要件
+
 - **Dependency Injection (DI) の徹底**:
-    - `MediaServiceImpl` のコンストラクタですべての依存リポジトリを受け取るように変更。
-    - `_copyMediaMetadata` 内の動的 `import()` を廃止し、注入されたリポジトリを使用。
+  - `MediaServiceImpl` のコンストラクタですべての依存リポジトリを受け取るように変更。
+  - `_copyMediaMetadata` 内の動的 `import()` を廃止し、注入されたリポジトリを使用。
 - **テストアイソレーションの向上**:
-    - `MediaService` シングルトンをリセットする仕組み（`resetMediaService` 等）を導入し、テスト間の状態汚染を防ぐ。
+  - `MediaService` シングルトンをリセットする仕組み（`resetMediaService` 等）を導入し、テスト間の状態汚染を防ぐ。
 - **パフォーマンス最適化 (N+1問題)**:
-    - `BackupService.restoreSource` において、タグや著者の復元をバルク処理（一括挿入）で行うように改善。
+  - `BackupService.restoreSource` において、タグや著者の復元をバルク処理（一括挿入）で行うように改善。
 - **APIの整理**:
-    - `MediaService.uploadMedia` が `FormData` ではなく型付きのオプションオブジェクトを直接受け取るようにリファクタリング。
+  - `MediaService.uploadMedia` が `FormData` ではなく型付きのオプションオブジェクトを直接受け取るようにリファクタリング。
 - **環境のクリーンアップ**:
-    - ビルド成果物 `tsc_output.txt` を削除し、`.gitignore` に追加。
+  - ビルド成果物 `tsc_output.txt` を削除し、`.gitignore` に追加。
 
 ## 3. 受入れ基準
+
 - [ ] すべての統合テストがパスすること。
 - [ ] `MediaServiceImpl` がコンストラクタ注入のみを使用していること。
 - [ ] `BackupService` によるリストア処理におけるDBクエリ数が大幅に削減されていること。

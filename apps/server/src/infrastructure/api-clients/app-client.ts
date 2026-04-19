@@ -22,8 +22,7 @@ const syncSourcesResponseSchema = z.object({
 
 export const serverMediaApiContract: MediaApiContract = {
 	searchMedia: (sourceId, params) => orpc.media.search({ sourceId, params }),
-	fetchMediaDetails: (sourceId, mediaId) =>
-		orpc.media.getDetails({ sourceId, mediaId }),
+	fetchMediaDetails: (sourceId, mediaId) => orpc.media.getDetails({ sourceId, mediaId }),
 	uploadMedia: (sourceId, file, options?: UploadMediaRequest) =>
 		orpc.media.upload({
 			sourceId,
@@ -31,14 +30,9 @@ export const serverMediaApiContract: MediaApiContract = {
 			filename: options?.filename,
 			description: options?.description,
 			sourceUrl: options?.sourceUrl,
-			overwrite:
-				options?.overwrite !== undefined
-					? String(options.overwrite)
-					: undefined,
+			overwrite: options?.overwrite !== undefined ? String(options.overwrite) : undefined,
 			autoIncrement:
-				options?.autoIncrement !== undefined
-					? String(options.autoIncrement)
-					: undefined,
+				options?.autoIncrement !== undefined ? String(options.autoIncrement) : undefined,
 		}),
 	updateMedia: (sourceId, mediaId, updates) =>
 		orpc.media
@@ -49,12 +43,9 @@ export const serverMediaApiContract: MediaApiContract = {
 			})
 			.then((result) => mediaDetailsSchema.parse(result)),
 	deleteMedia: (sourceId, mediaId) => orpc.media.delete({ sourceId, mediaId }),
-	copyMedia: (_sourceId, mediaId, targetSourceId) =>
-		orpc.media.copy({ mediaId, targetSourceId }),
-	moveMedia: (_sourceId, mediaId, targetSourceId) =>
-		orpc.media.move({ mediaId, targetSourceId }),
-	syncMediaItems: (sourceId, mediaIds) =>
-		orpc.media.sync({ sourceId, mediaIds }),
+	copyMedia: (_sourceId, mediaId, targetSourceId) => orpc.media.copy({ mediaId, targetSourceId }),
+	moveMedia: (_sourceId, mediaId, targetSourceId) => orpc.media.move({ mediaId, targetSourceId }),
+	syncMediaItems: (sourceId, mediaIds) => orpc.media.sync({ sourceId, mediaIds }),
 	startDownloadJobs: (mediaSourceId, items) =>
 		orpc.downloads.start({
 			mediaSourceId,
@@ -69,9 +60,7 @@ export const serverSourcesApiContract: SourcesApiContract = {
 	updateMediaSource: (id, data) => orpc.sources.update({ id, data }),
 	deleteMediaSource: (id) => orpc.sources.delete({ id }),
 	syncMediaSources: (ids) =>
-		orpc.sources
-			.sync({ ids })
-			.then((result) => syncSourcesResponseSchema.parse(result)),
+		orpc.sources.sync({ ids }).then((result) => syncSourcesResponseSchema.parse(result)),
 	async fetchSourceDump(id, mode = "json") {
 		const url = `/api/sources/${id}/dump?mode=${mode}`;
 		const response = await fetch(url, {
@@ -80,9 +69,7 @@ export const serverSourcesApiContract: SourcesApiContract = {
 
 		if (!response.ok) {
 			const errorText = await response.text();
-			throw new Error(
-				`Failed to download dump: ${response.status} ${errorText}`,
-			);
+			throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
 		}
 
 		return response.blob();

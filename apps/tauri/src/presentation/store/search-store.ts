@@ -4,10 +4,7 @@ import {
 	getSearchConditionFromState,
 	preparePresetState,
 } from "@solid-imager/core/domain/search/logic";
-import {
-	defaultState,
-	type SearchState,
-} from "@solid-imager/core/domain/search/schema";
+import { defaultState, type SearchState } from "@solid-imager/core/domain/search/schema";
 import { createStore } from "solid-js/store";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
@@ -39,5 +36,4 @@ export const setSearchMode = (mode: "simple" | "pro") => {
 	setSearchState(nextState);
 };
 
-export const getSearchCondition = () =>
-	getSearchConditionFromState(searchState);
+export const getSearchCondition = () => getSearchConditionFromState(searchState);

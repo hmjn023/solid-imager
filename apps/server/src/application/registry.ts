@@ -1,8 +1,4 @@
-import type {
-	IConfigService,
-	IFileSystem,
-	IMediaStorage,
-} from "@solid-imager/core";
+import type { IConfigService, IFileSystem, IMediaStorage } from "@solid-imager/core";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";

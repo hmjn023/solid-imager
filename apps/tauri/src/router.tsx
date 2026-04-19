@@ -27,9 +27,7 @@ export function createAppRouter(services: TauriAppServices) {
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,
 		Wrap: (props) => (
-			<QueryClientProvider client={queryClient}>
-				{props.children}
-			</QueryClientProvider>
+			<QueryClientProvider client={queryClient}>{props.children}</QueryClientProvider>
 		),
 	});
 }

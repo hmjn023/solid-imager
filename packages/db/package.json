@@ -1,30 +1,29 @@
 {
-  "name": "@solid-imager/db",
-  "version": "0.0.0",
-  "type": "module",
-  "main": "src/index.ts",
-  "exports": {
-    ".": "./src/index.ts",
-    "./schema": "./src/schema.ts",
-    "./migrations": "./src/migrations.ts",
-    "./types": "./src/types.ts",
-    "./repositories/*": "./src/repositories/*.ts",
-    "./backup": "./src/backup.ts"
-  },
-  "scripts": {
-    "lint": "biome lint ./src",
-    "format": "biome format --fix ./src",
-    "check": "biome check --fix --unsafe ./src",
-    "typecheck": "sh -c 'tsc --noEmit'"
-  },
-  "dependencies": {
-    "@solid-imager/core": "workspace:*",
-    "drizzle-orm": "^0.44.7"
-  },
-  "devDependencies": {
-    "typescript": "^5.9.3",
-    "vite-plus": "latest",
-    "vite-tsconfig-paths": "^5.1.4"
-  }
+	"name": "@solid-imager/db",
+	"version": "0.0.0",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./schema": "./src/schema.ts",
+		"./migrations": "./src/migrations.ts",
+		"./types": "./src/types.ts",
+		"./repositories/*": "./src/repositories/*.ts",
+		"./backup": "./src/backup.ts"
+	},
+	"scripts": {
+		"lint": "biome lint ./src",
+		"format": "biome format --fix ./src",
+		"check": "biome check --fix --unsafe ./src",
+		"typecheck": "sh -c 'tsc --noEmit'"
+	},
+	"dependencies": {
+		"@solid-imager/core": "workspace:*",
+		"drizzle-orm": "^0.44.7"
+	},
+	"devDependencies": {
+		"typescript": "^5.9.3",
+		"vite-plus": "latest",
+		"vite-tsconfig-paths": "^5.1.4"
+	}
 }
-

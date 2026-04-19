@@ -61,6 +61,7 @@ type SearchCriterion = {
 ## モード切り替えロジック（`packages/core/src/domain/search/logic.ts`）
 
 `calculateNextModeState()` がSimple ↔ Pro間の条件変換を担う:
+
 - **Simple → Pro**: 現在のSimpleフィルターを `advancedCondition` に変換
 - **Pro → Simple**: `advancedCondition` をSimpleフィルターに逆変換。変換不可能な複雑な条件の場合はSimpleをリセット
 
@@ -68,24 +69,24 @@ type SearchCriterion = {
 
 `buildWhereClause()` がDrizzle ORMのSQL条件を動的構築:
 
-| フィルター | SQL |
-|---|---|
-| `searchQuery` | `LIKE '%query%'` on `fileName` or `description`（特殊文字エスケープ済み） |
+| フィルター        | SQL                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `searchQuery`     | `LIKE '%query%'` on `fileName` or `description`（特殊文字エスケープ済み）               |
 | `tags` (AND mode) | `EXISTS(SELECT mediaId FROM media_tags ... GROUP BY mediaId HAVING COUNT DISTINCT = N)` |
-| `tags` (OR mode) | `IN (SELECT mediaId FROM media_tags WHERE tagId IN (...))` |
-| `excludeTags` | `NOT IN (SELECT mediaId FROM media_tags WHERE ...)` |
-| `projects` | `EXISTS(SELECT mediaId FROM media_projects ...)` |
-| `ips` | `EXISTS(SELECT mediaId FROM media_ips ...)` |
-| `characters` | `EXISTS(SELECT mediaId FROM media_characters ...)` |
+| `tags` (OR mode)  | `IN (SELECT mediaId FROM media_tags WHERE tagId IN (...))`                              |
+| `excludeTags`     | `NOT IN (SELECT mediaId FROM media_tags WHERE ...)`                                     |
+| `projects`        | `EXISTS(SELECT mediaId FROM media_projects ...)`                                        |
+| `ips`             | `EXISTS(SELECT mediaId FROM media_ips ...)`                                             |
+| `characters`      | `EXISTS(SELECT mediaId FROM media_characters ...)`                                      |
 
 ## ソート
 
-| sortBy | 対応カラム |
-|---|---|
-| `date` | `media.createdAt` |
-| `name` | `media.fileName` |
-| `size` | `media.fileSize` |
-| `rating` | `media_details.rating` (JOIN) |
+| sortBy      | 対応カラム                       |
+| ----------- | -------------------------------- |
+| `date`      | `media.createdAt`                |
+| `name`      | `media.fileName`                 |
+| `size`      | `media.fileSize`                 |
+| `rating`    | `media_details.rating` (JOIN)    |
 | `viewCount` | `media_details.viewCount` (JOIN) |
 
 ## 検索の流れ

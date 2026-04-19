@@ -77,22 +77,22 @@ describe("getMedia Integration", () => {
 
 	it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {
 		const nonExistentMediaId = "a0000000-0000-4000-8000-000000000000";
-		await expect(
-			MediaService.getMedia(mediaSourceId, nonExistentMediaId),
-		).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
+		await expect(MediaService.getMedia(mediaSourceId, nonExistentMediaId)).rejects.toThrow(
+			MEDIA_NOT_FOUND_PATTERN,
+		);
 	});
 
 	it("should throw a ZodError for an invalid mediaId format", async () => {
 		const invalidMediaId = "invalid-uuid";
-		await expect(
-			MediaService.getMedia(mediaSourceId, invalidMediaId),
-		).rejects.toBeInstanceOf(ZodError);
+		await expect(MediaService.getMedia(mediaSourceId, invalidMediaId)).rejects.toBeInstanceOf(
+			ZodError,
+		);
 	});
 
 	it("should throw a ZodError for an invalid mediaSourceId format", async () => {
 		const invalidSourceId = "invalid-uuid";
-		await expect(
-			MediaService.getMedia(invalidSourceId, testMediaId),
-		).rejects.toBeInstanceOf(ZodError);
+		await expect(MediaService.getMedia(invalidSourceId, testMediaId)).rejects.toBeInstanceOf(
+			ZodError,
+		);
 	});
 });

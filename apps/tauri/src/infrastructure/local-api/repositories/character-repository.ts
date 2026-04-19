@@ -9,11 +9,7 @@ import {
 	ResourceNotFoundError,
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
-import {
-	characterIps,
-	characters,
-	mediaCharacters,
-} from "@solid-imager/db/schema";
+import { characterIps, characters, mediaCharacters } from "@solid-imager/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
@@ -110,9 +106,7 @@ export const TauriCharacterRepository = {
 	async create(input: NewCharacter): Promise<Character> {
 		const existing = await this.findByName(input.name);
 		if (existing) {
-			throw new ResourceConflictError(
-				`Character with name '${input.name}' already exists`,
-			);
+			throw new ResourceConflictError(`Character with name '${input.name}' already exists`);
 		}
 		const ipIds = input.ipIds ?? [];
 
@@ -168,9 +162,7 @@ export const TauriCharacterRepository = {
 				.update(characters)
 				.set({
 					...(input.name !== undefined ? { name: input.name } : {}),
-					...(input.description !== undefined
-						? { description: input.description ?? "" }
-						: {}),
+					...(input.description !== undefined ? { description: input.description ?? "" } : {}),
 					...(input.source !== undefined ? { source: input.source } : {}),
 					updatedAt: new Date(),
 				})
@@ -299,10 +291,7 @@ export const TauriCharacterRepository = {
 		const rows = await getTauriAppServices()
 			.db.delete(mediaCharacters)
 			.where(
-				and(
-					eq(mediaCharacters.mediaId, mediaId),
-					eq(mediaCharacters.characterId, characterId),
-				),
+				and(eq(mediaCharacters.mediaId, mediaId), eq(mediaCharacters.characterId, characterId)),
 			)
 			.returning();
 

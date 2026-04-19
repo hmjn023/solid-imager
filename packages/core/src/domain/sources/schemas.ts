@@ -67,25 +67,19 @@ export const createDirectoryRequestSchema = z.object({
 	name: z.string(),
 	recursive: z.boolean().optional(),
 });
-export type CreateDirectoryRequest = z.infer<
-	typeof createDirectoryRequestSchema
->;
+export type CreateDirectoryRequest = z.infer<typeof createDirectoryRequestSchema>;
 
 export const deleteDirectoryRequestSchema = z.object({
 	path: z.string(),
 	force: z.boolean().optional(),
 });
-export type DeleteDirectoryRequest = z.infer<
-	typeof deleteDirectoryRequestSchema
->;
+export type DeleteDirectoryRequest = z.infer<typeof deleteDirectoryRequestSchema>;
 
 export const updateDirectoryRequestSchema = z.object({
 	oldPath: z.string(),
 	newPath: z.string(),
 });
-export type UpdateDirectoryRequest = z.infer<
-	typeof updateDirectoryRequestSchema
->;
+export type UpdateDirectoryRequest = z.infer<typeof updateDirectoryRequestSchema>;
 
 export const cloneSourceRequestSchema = z.object({
 	newName: z.string(),

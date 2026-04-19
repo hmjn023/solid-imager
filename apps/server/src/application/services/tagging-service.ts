@@ -68,9 +68,9 @@ export class TaggingService {
 			const aiTags = existingTags.filter((t) => t.source === "AI");
 
 			if (aiTags.length > 0) {
-				const aiCharacters = (
-					await this.characterRepo.getMediaCharacters(mediaId)
-				).filter((c) => c.associationSource === "AI");
+				const aiCharacters = (await this.characterRepo.getMediaCharacters(mediaId)).filter(
+					(c) => c.associationSource === "AI",
+				);
 				const aiIps = (await this.ipRepo.getMediaIps(mediaId)).filter(
 					(i) => i.associationSource === "AI",
 				);
@@ -85,12 +85,10 @@ export class TaggingService {
 				};
 
 				for (const tag of aiTags) {
-					response.general[tag.name] =
-						tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+					response.general[tag.name] = tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
 				}
 				for (const char of aiCharacters) {
-					response.character[char.name] =
-						char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+					response.character[char.name] = char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
 				}
 
 				// ips_mapping: We need to know which IP a character belongs to.
@@ -138,10 +136,7 @@ export class TaggingService {
 			// Send file buffer when:
 			// - AI service is remote (can't access local paths)
 			// - Media source is not local
-			const { buffer } = await MediaService.getMediaContent(
-				mediaSourceId,
-				mediaId,
-			);
+			const { buffer } = await MediaService.getMediaContent(mediaSourceId, mediaId);
 			response = await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
 		}
 
@@ -158,13 +153,11 @@ export class TaggingService {
 		response: TaggingResponse,
 	): Promise<void> {
 		// 1. Tags
-		const tagsToInsert = Object.entries(response.general).map(
-			([name, confidence]) => ({
-				name,
-				type: "positive" as const,
-				confidence,
-			}),
-		);
+		const tagsToInsert = Object.entries(response.general).map(([name, confidence]) => ({
+			name,
+			type: "positive" as const,
+			confidence,
+		}));
 		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
 
 		// 2. IPs
@@ -201,9 +194,7 @@ export class TaggingService {
 		// ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
 		const charToIpIdsMap = new Map<string, string[]>(); // charName -> ipIds[]
 
-		for (const [charName, linkedIpNames] of Object.entries(
-			response.ips_mapping,
-		)) {
+		for (const [charName, linkedIpNames] of Object.entries(response.ips_mapping)) {
 			const ipIds: string[] = [];
 			for (const linkedIpName of linkedIpNames) {
 				const ipId = ipNameIdMap.get(linkedIpName);
@@ -310,21 +301,12 @@ export class TaggingService {
 			const fullPath = path.join(connectionInfo.path, media.filePath);
 			return await this.aiClient.extractCcipFeatureByPath(fullPath);
 		}
-		const { buffer } = await MediaService.getMediaContent(
-			mediaSourceId,
-			mediaId,
-		);
+		const { buffer } = await MediaService.getMediaContent(mediaSourceId, mediaId);
 		return await this.aiClient.extractCcipFeature(buffer.buffer as ArrayBuffer);
 	}
 
-	async getCcipDifference(
-		feature1: number[],
-		feature2: number[],
-	): Promise<number> {
-		const result = await this.aiClient.calculateCcipDifference(
-			feature1,
-			feature2,
-		);
+	async getCcipDifference(feature1: number[], feature2: number[]): Promise<number> {
+		const result = await this.aiClient.calculateCcipDifference(feature1, feature2);
 		return result.difference;
 	}
 
@@ -342,12 +324,7 @@ export class TaggingService {
 		try {
 			const url = new URL(baseUrl);
 			const host = url.hostname.toLowerCase();
-			return (
-				host === "localhost" ||
-				host === "127.0.0.1" ||
-				host === "::1" ||
-				host === "0.0.0.0"
-			);
+			return host === "localhost" || host === "127.0.0.1" || host === "::1" || host === "0.0.0.0";
 		} catch {
 			return true; // Fallback: assume local if URL parsing fails
 		}

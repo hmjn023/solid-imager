@@ -17,10 +17,7 @@ export type TauriApiClient = {
 };
 
 class TauriApiInvoker {
-	call<TInput, TOutput>(
-		procedure: TauriApiProcedure,
-		input?: TInput,
-	): Promise<TOutput> {
+	call<TInput, TOutput>(procedure: TauriApiProcedure, input?: TInput): Promise<TOutput> {
 		return invokeLocalProcedure(procedure, input) as Promise<TOutput>;
 	}
 }

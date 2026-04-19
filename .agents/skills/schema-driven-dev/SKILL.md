@@ -13,8 +13,8 @@ description: Schema-Driven Development (SDD) に基づく Zod スキーマの定
 ```typescript
 // ✅ Good: Zodスキーマを定義
 export const userDataSchema = z.object({
-  name: z.string(),
-  email: z.string().email(),
+	name: z.string(),
+	email: z.string().email(),
 });
 
 // ✅ Good: z.infer を使って型をエクスポート
@@ -22,14 +22,14 @@ export type UserData = z.infer<typeof userDataSchema>;
 
 // ❌ Bad: 手書きで型を再定義
 export type UserData = {
-  name: string;
-  email: string;
+	name: string;
+	email: string;
 };
 ```
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
+| ユーザーの意図           | やること                                                          |
+| ------------------------ | ----------------------------------------------------------------- |
 | 新しいドメインモデル定義 | `{entity}/schemas.ts` にZodスキーマを定義し、`z.infer` で型を導出 |
-| APIスキーマ定義 | `packages/core/src/domain/{entity}/schemas.ts` にスキーマを定義 |
+| APIスキーマ定義          | `packages/core/src/domain/{entity}/schemas.ts` にスキーマを定義   |

@@ -23,15 +23,12 @@ async function main() {
 
 	render(() => <RouterProvider router={router} />, appRoot);
 
-	void TauriSourceService.startWatchingAllLocalSources().catch(
-		(error: unknown) => {
-			console.error("Failed to start Tauri source watchers", error);
-		},
-	);
+	void TauriSourceService.startWatchingAllLocalSources().catch((error: unknown) => {
+		console.error("Failed to start Tauri source watchers", error);
+	});
 }
 
 void main().catch((error: unknown) => {
 	console.error("Failed to initialize Tauri app", error);
-	appRoot.textContent =
-		error instanceof Error ? error.message : "Failed to initialize Tauri app.";
+	appRoot.textContent = error instanceof Error ? error.message : "Failed to initialize Tauri app.";
 });

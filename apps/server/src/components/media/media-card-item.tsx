@@ -34,9 +34,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 	};
 
 	const dimensionsStr = () =>
-		props.media.width && props.media.height
-			? `${props.media.width}×${props.media.height}`
-			: "N/A";
+		props.media.width && props.media.height ? `${props.media.width}×${props.media.height}` : "N/A";
 
 	return (
 		<Card
@@ -81,10 +79,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				<h3 class="truncate font-semibold text-sm" title={props.media.fileName}>
 					{props.media.fileName}
 				</h3>
-				<p
-					class="truncate text-muted-foreground text-xs"
-					title={props.media.filePath}
-				>
+				<p class="truncate text-muted-foreground text-xs" title={props.media.filePath}>
 					{props.media.filePath}
 				</p>
 				<div class="flex justify-between pt-1 text-muted-foreground text-xs">

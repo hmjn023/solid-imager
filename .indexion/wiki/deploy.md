@@ -26,17 +26,17 @@ sudo -E docker compose --project-directory . up -d
 
 `apps/server/.env` に配置:
 
-| 変数 | デフォルト | 説明 |
-|---|---|---|
-| `DB_HOST` | `pglite` | DBホスト。`pglite` 指定でインメモリPGlite（テスト/Tauri用） |
-| `DB_PORT` | `5432` | PostgreSQLポート |
-| `DB_DATABASE` | `solid_imager` | DB名 |
-| `DB_USER` | — | DBユーザー名 |
-| `DB_PASSWORD` | — | DBパスワード |
-| `API_BASE_URL` | `http://localhost:3000` | サーバーベースURL |
-| `LOG_LEVEL` | — | ログレベル（`info`, `debug`, `error`等） |
-| `PGLITE_DATA_DIR` | — | PGliteデータの永続化ディレクトリ |
-| `NODE_ENV` | `development` | 実行環境 |
+| 変数              | デフォルト              | 説明                                                        |
+| ----------------- | ----------------------- | ----------------------------------------------------------- |
+| `DB_HOST`         | `pglite`                | DBホスト。`pglite` 指定でインメモリPGlite（テスト/Tauri用） |
+| `DB_PORT`         | `5432`                  | PostgreSQLポート                                            |
+| `DB_DATABASE`     | `solid_imager`          | DB名                                                        |
+| `DB_USER`         | —                       | DBユーザー名                                                |
+| `DB_PASSWORD`     | —                       | DBパスワード                                                |
+| `API_BASE_URL`    | `http://localhost:3000` | サーバーベースURL                                           |
+| `LOG_LEVEL`       | —                       | ログレベル（`info`, `debug`, `error`等）                    |
+| `PGLITE_DATA_DIR` | —                       | PGliteデータの永続化ディレクトリ                            |
+| `NODE_ENV`        | `development`           | 実行環境                                                    |
 
 `compose.yml` でも同じ変数（`DB_USER`, `DB_PASSWORD`, `DB_DATABASE`, `DB_PORT`）を参照するため、`.env` を共有できる。
 

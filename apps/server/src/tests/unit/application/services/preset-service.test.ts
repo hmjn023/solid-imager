@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	CreatePresetRequest,
 	Preset,
@@ -9,10 +6,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import {
-	PresetService,
-	setPresetRepository,
-} from "~/application/services/preset-service";
+import { PresetService, setPresetRepository } from "~/application/services/preset-service";
 
 const NON_EXISTENT_ID = 999;
 
@@ -67,9 +61,7 @@ describe("PresetService", () => {
 			value: mockPreset.value,
 		};
 
-		await expect(PresetService.create(input)).rejects.toThrow(
-			ResourceConflictError,
-		);
+		await expect(PresetService.create(input)).rejects.toThrow(ResourceConflictError);
 	});
 
 	it("should get a preset by id", async () => {
@@ -80,9 +72,7 @@ describe("PresetService", () => {
 
 	it("should throw ResourceNotFoundError if getting non-existent preset", async () => {
 		(mockRepo.get as any).mockResolvedValue(null);
-		await expect(PresetService.get(NON_EXISTENT_ID)).rejects.toThrow(
-			ResourceNotFoundError,
-		);
+		await expect(PresetService.get(NON_EXISTENT_ID)).rejects.toThrow(ResourceNotFoundError);
 	});
 
 	it("should update a preset", async () => {
@@ -102,9 +92,7 @@ describe("PresetService", () => {
 
 	it("should throw ResourceNotFoundError if deleting non-existent preset", async () => {
 		(mockRepo.delete as any).mockResolvedValue(false);
-		await expect(PresetService.delete(NON_EXISTENT_ID)).rejects.toThrow(
-			ResourceNotFoundError,
-		);
+		await expect(PresetService.delete(NON_EXISTENT_ID)).rejects.toThrow(ResourceNotFoundError);
 	});
 	it("should allow creating a preset with reserved name 'current-all'", async () => {
 		(mockRepo.getByName as any).mockResolvedValue(null);

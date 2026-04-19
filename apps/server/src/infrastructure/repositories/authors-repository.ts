@@ -12,12 +12,7 @@ export const AuthorsRepository = {
 		const result = await db
 			.select()
 			.from(authors)
-			.where(
-				or(
-					like(authors.name, `%${query}%`),
-					like(authors.accountId, `%${query}%`),
-				),
-			)
+			.where(or(like(authors.name, `%${query}%`), like(authors.accountId, `%${query}%`)))
 			.orderBy(desc(authors.name));
 		return result.map((row) => authorSchema.parse(row));
 	},

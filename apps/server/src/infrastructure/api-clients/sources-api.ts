@@ -74,10 +74,7 @@ export function syncMediaSources(ids: string[]) {
  * @param mode - The dump mode (json or zip)
  * @returns Blob containing the dump
  */
-export async function fetchSourceDump(
-	id: string,
-	mode: "json" | "zip" = "json",
-): Promise<Blob> {
+export async function fetchSourceDump(id: string, mode: "json" | "zip" = "json"): Promise<Blob> {
 	// Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
 	const url = `/api/sources/${id}/dump?mode=${mode}`;
 	const response = await fetch(url, {

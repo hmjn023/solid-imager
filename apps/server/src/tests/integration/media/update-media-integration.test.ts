@@ -1,12 +1,5 @@
 import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-} from "vite-plus/test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
@@ -92,11 +85,7 @@ describe("updateMedia Integration", () => {
 			fileSize: TEST_UPDATED_SIZE,
 		};
 
-		const updatedMedia = await MediaService.updateMedia(
-			testSourceId,
-			testMediaId,
-			updates,
-		);
+		const updatedMedia = await MediaService.updateMedia(testSourceId, testMediaId, updates);
 
 		expect(updatedMedia).toBeDefined();
 		expect(updatedMedia.id).toBe(testMediaId);
@@ -116,17 +105,17 @@ describe("updateMedia Integration", () => {
 	it("should throw an error if mediaId is not found for the given mediaSourceId", async () => {
 		const nonExistentId = "a0000000-0000-4000-8000-000000000000";
 		const updates = { fileName: "non_existent.png" };
-		await expect(
-			MediaService.updateMedia(testSourceId, nonExistentId, updates),
-		).rejects.toThrow(MEDIA_NOT_FOUND_PATTERN);
+		await expect(MediaService.updateMedia(testSourceId, nonExistentId, updates)).rejects.toThrow(
+			MEDIA_NOT_FOUND_PATTERN,
+		);
 	});
 
 	it("should throw a ZodError for an invalid mediaId format", async () => {
 		const invalidId = "invalid-uuid";
 		const updates = { fileName: "test.png" };
-		await expect(
-			MediaService.updateMedia(testSourceId, invalidId, updates),
-		).rejects.toBeInstanceOf(ZodError);
+		await expect(MediaService.updateMedia(testSourceId, invalidId, updates)).rejects.toBeInstanceOf(
+			ZodError,
+		);
 	});
 
 	it("should throw a ZodError for an invalid mediaSourceId format", async () => {
@@ -140,11 +129,7 @@ describe("updateMedia Integration", () => {
 	it("should throw a ZodError for invalid update data", async () => {
 		const invalidUpdates = { width: -100 }; // 無効なフィールド
 		await expect(
-			MediaService.updateMedia(
-				testSourceId,
-				testMediaId,
-				invalidUpdates as any,
-			),
+			MediaService.updateMedia(testSourceId, testMediaId, invalidUpdates as any),
 		).rejects.toBeInstanceOf(ZodError);
 	});
 });

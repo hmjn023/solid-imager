@@ -52,9 +52,7 @@ function toMediaUrl(row: typeof mediaUrls.$inferSelect): MediaUrl {
 	return mediaUrlSchema.parse(row);
 }
 
-function toMediaGenerationInfo(
-	row: typeof mediaGenerationInfo.$inferSelect,
-): MediaGenerationInfo {
+function toMediaGenerationInfo(row: typeof mediaGenerationInfo.$inferSelect): MediaGenerationInfo {
 	return mediaGenerationInfoSchema.parse({
 		...row,
 		aiGenerated: row.aiGenerated ?? false,
@@ -99,9 +97,7 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
 			source: item.source,
 			confidence: item.confidence,
 		})),
-		generationInfo: row.generationInfo
-			? toMediaGenerationInfo(row.generationInfo)
-			: null,
+		generationInfo: row.generationInfo ? toMediaGenerationInfo(row.generationInfo) : null,
 		authors: row.authors.map((item) => item.author),
 		urls: row.urls.map(toMediaUrl),
 		characters: row.characters.map((item) => ({
@@ -167,11 +163,7 @@ export const TauriMediaRepository = {
 	},
 
 	async findById(id: string, tx?: TauriDbExecutor): Promise<Media | null> {
-		const rows = await getExecutor(tx)
-			.select()
-			.from(medias)
-			.where(eq(medias.id, id))
-			.limit(1);
+		const rows = await getExecutor(tx).select().from(medias).where(eq(medias.id, id)).limit(1);
 		return rows[0] ? toMedia(rows[0]) : null;
 	},
 
@@ -183,17 +175,12 @@ export const TauriMediaRepository = {
 		const rows = await getExecutor(tx)
 			.select()
 			.from(medias)
-			.where(
-				and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath)),
-			)
+			.where(and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath)))
 			.limit(1);
 		return rows[0] ? toMedia(rows[0]) : null;
 	},
 
-	async upsert(
-		input: UpsertTauriMediaInput,
-		tx?: TauriDbExecutor,
-	): Promise<Media> {
+	async upsert(input: UpsertTauriMediaInput, tx?: TauriDbExecutor): Promise<Media> {
 		const rows = await getExecutor(tx)
 			.insert(medias)
 			.values({
@@ -229,24 +216,18 @@ export const TauriMediaRepository = {
 		return toMedia(rows[0]);
 	},
 
-	async update(
-		id: string,
-		updates: UpdateMediaRequest,
-		tx?: TauriDbExecutor,
-	): Promise<Media> {
+	async update(id: string, updates: UpdateMediaRequest, tx?: TauriDbExecutor): Promise<Media> {
 		const dbUpdates: Record<string, unknown> = {};
 		if (updates.filePath !== undefined) dbUpdates.filePath = updates.filePath;
 		if (updates.fileName !== undefined) dbUpdates.fileName = updates.fileName;
 		if (updates.fileSize !== undefined) dbUpdates.fileSize = updates.fileSize;
-		if (updates.mediaType !== undefined)
-			dbUpdates.mediaType = updates.mediaType;
+		if (updates.mediaType !== undefined) dbUpdates.mediaType = updates.mediaType;
 		if (updates.width !== undefined) dbUpdates.width = updates.width;
 		if (updates.height !== undefined) dbUpdates.height = updates.height;
 		if (updates.description !== undefined) {
 			dbUpdates.description = updates.description;
 		}
-		if (updates.createdAt !== undefined)
-			dbUpdates.createdAt = updates.createdAt;
+		if (updates.createdAt !== undefined) dbUpdates.createdAt = updates.createdAt;
 		dbUpdates.modifiedAt = updates.modifiedAt ?? new Date();
 
 		const rows = await getExecutor(tx)
@@ -263,10 +244,7 @@ export const TauriMediaRepository = {
 	},
 
 	async delete(id: string, tx?: TauriDbExecutor): Promise<void> {
-		const rows = await getExecutor(tx)
-			.delete(medias)
-			.where(eq(medias.id, id))
-			.returning();
+		const rows = await getExecutor(tx).delete(medias).where(eq(medias.id, id)).returning();
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError("Media", id);
@@ -288,10 +266,7 @@ export const TauriMediaRepository = {
 		return await executeSearch(params, undefined, tx);
 	},
 
-	async getDetails(
-		mediaId: string,
-		tx?: TauriDbExecutor,
-	): Promise<MediaDetails | null> {
+	async getDetails(mediaId: string, tx?: TauriDbExecutor): Promise<MediaDetails | null> {
 		const row = await getExecutor(tx).query.medias.findFirst({
 			where: eq(medias.id, mediaId),
 			with: {
@@ -405,11 +380,7 @@ export const TauriMediaRepository = {
 			});
 	},
 
-	async addUrls(
-		mediaId: string,
-		urls: string[],
-		tx?: TauriDbExecutor,
-	): Promise<MediaUrl[]> {
+	async addUrls(mediaId: string, urls: string[], tx?: TauriDbExecutor): Promise<MediaUrl[]> {
 		if (urls.length === 0) {
 			return [];
 		}
@@ -453,10 +424,7 @@ export const TauriMediaRepository = {
 			.where(
 				and(
 					eq(medias.mediaSourceId, sourceId),
-					or(
-						eq(medias.filePath, normalizedFolderPath),
-						like(medias.filePath, `${prefixPattern}%`),
-					),
+					or(eq(medias.filePath, normalizedFolderPath), like(medias.filePath, `${prefixPattern}%`)),
 				),
 			)
 			.returning({

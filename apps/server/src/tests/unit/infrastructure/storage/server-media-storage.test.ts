@@ -1,14 +1,7 @@
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // Mock definitions
@@ -28,9 +21,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 		// Mock sharp to return an object with metadata method
 		const mockSharpInstance = {
-			metadata: vi
-				.fn()
-				.mockResolvedValue({ width: ExpectedWidth, height: 600 }),
+			metadata: vi.fn().mockResolvedValue({ width: ExpectedWidth, height: 600 }),
 		};
 		// @ts-expect-error - Mocking default export function behavior
 		vi.mocked(sharp).mockReturnValue(mockSharpInstance);
@@ -69,11 +60,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 			} as any);
 
 			// Execute
-			const result = await ServerMediaStorage.copyFile(
-				sourcePath,
-				targetPath,
-				{},
-			);
+			const result = await ServerMediaStorage.copyFile(sourcePath, targetPath, {});
 
 			// Verify
 			expect(result).toBeDefined();
@@ -100,11 +87,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 			} as any);
 
 			// Execute
-			const result = await ServerMediaStorage.copyFile(
-				sourcePath,
-				targetPath,
-				{},
-			);
+			const result = await ServerMediaStorage.copyFile(sourcePath, targetPath, {});
 
 			// Verify
 			expect(result).toBeDefined();

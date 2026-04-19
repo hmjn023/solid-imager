@@ -1,29 +1,29 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "types": ["vite/client"],
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./src/*"],
-      "@/*": ["../../packages/core/src/*"],
-      "@solid-imager/core/*": ["../../packages/core/src/*"],
-      "@solid-imager/db": ["../../packages/db/src"],
-      "@solid-imager/db/*": ["../../packages/db/src/*"],
-      "@solid-imager/ui/*": ["../../packages/ui/src/*"]
-    }
-  },
-  "include": ["src"]
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"target": "ES2022",
+		"useDefineForClassFields": true,
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
+		"allowImportingTsExtensions": true,
+		"resolveJsonModule": true,
+		"isolatedModules": true,
+		"noEmit": true,
+		"strict": true,
+		"noUnusedLocals": true,
+		"noUnusedParameters": true,
+		"noFallthroughCasesInSwitch": true,
+		"types": ["vite/client"],
+		"baseUrl": ".",
+		"paths": {
+			"~/*": ["./src/*"],
+			"@/*": ["../../packages/core/src/*"],
+			"@solid-imager/core/*": ["../../packages/core/src/*"],
+			"@solid-imager/db": ["../../packages/db/src"],
+			"@solid-imager/db/*": ["../../packages/db/src/*"],
+			"@solid-imager/ui/*": ["../../packages/ui/src/*"]
+		}
+	},
+	"include": ["src"]
 }

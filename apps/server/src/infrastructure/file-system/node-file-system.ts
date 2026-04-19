@@ -45,10 +45,7 @@ export class NodeFileSystem implements IFileSystem {
 		await fs.unlink(path);
 	}
 
-	async rm(
-		path: string,
-		options?: { recursive?: boolean; force?: boolean },
-	): Promise<void> {
+	async rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void> {
 		await fs.rm(path, options);
 	}
 

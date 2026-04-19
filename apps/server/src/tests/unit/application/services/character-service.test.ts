@@ -1,16 +1,6 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { services } from "~/application/registry";
-import {
-	CharacterService,
-	CharacterServiceImpl,
-} from "~/application/services/character-service";
+import { CharacterService, CharacterServiceImpl } from "~/application/services/character-service";
 
 // Mock Repositories
 const mockCharacterRepo = {
@@ -62,10 +52,7 @@ describe("CharacterService", () => {
 
 			await CharacterService.addCharacterToMedia(mediaId, charId);
 
-			expect(mockCharacterRepo.findById).toHaveBeenCalledWith(
-				charId,
-				"mock-tx",
-			);
+			expect(mockCharacterRepo.findById).toHaveBeenCalledWith(charId, "mock-tx");
 			expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
 				mediaId,
 				charId,
@@ -85,9 +72,9 @@ describe("CharacterService", () => {
 		it("should throw error if character not found", async () => {
 			mockCharacterRepo.findById.mockResolvedValue(null);
 
-			await expect(
-				CharacterService.addCharacterToMedia(mediaId, charId),
-			).rejects.toThrow(`Character not found: ${charId}`);
+			await expect(CharacterService.addCharacterToMedia(mediaId, charId)).rejects.toThrow(
+				`Character not found: ${charId}`,
+			);
 		});
 	});
 });

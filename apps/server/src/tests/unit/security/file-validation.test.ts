@@ -10,9 +10,7 @@ const WEBP_SIGNATURE = Buffer.from("524946460000000057454250565038", "hex"); // 
 describe("validateFileSignature", () => {
 	it("should accept valid PNG", async () => {
 		const file = new File([PNG_SIGNATURE], "test.png", { type: "image/png" });
-		await expect(
-			validateFileSignature(file, "test.png"),
-		).resolves.toBeUndefined();
+		await expect(validateFileSignature(file, "test.png")).resolves.toBeUndefined();
 	});
 
 	it("should reject PNG with invalid signature", async () => {
@@ -36,8 +34,6 @@ describe("validateFileSignature", () => {
 		const file = new File([WEBP_SIGNATURE], "test.webp", {
 			type: "image/webp",
 		});
-		await expect(
-			validateFileSignature(file, "test.webp"),
-		).resolves.toBeUndefined();
+		await expect(validateFileSignature(file, "test.webp")).resolves.toBeUndefined();
 	});
 });

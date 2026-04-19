@@ -27,11 +27,13 @@ uvicorn main:app --reload --port 8000
 画像をタグ付けする。PixAIタガー（`dghs-imgutils`）を使用。
 
 **リクエスト** (multipart/form-data):
+
 - `file`: アップロードファイル（省略可）
 - `path`: サーバー上のファイルパス（省略可）
 - いずれか一方が必須
 
 **レスポンス**:
+
 ```json
 {
   "general": { "blue_eyes": 0.95, "long_hair": 0.87, ... },
@@ -53,6 +55,7 @@ uvicorn main:app --reload --port 8000
 **リクエスト**: `/tag` と同様（`file` または `path`）
 
 **レスポンス**:
+
 ```json
 { "feature": [0.12, -0.34, ...] }
 ```
@@ -62,11 +65,13 @@ uvicorn main:app --reload --port 8000
 2つのCCIP特徴量ベクトル間の差異（距離）を計算する。
 
 **リクエスト**:
+
 ```json
 { "feature1": [...], "feature2": [...] }
 ```
 
 **レスポンス**:
+
 ```json
 { "difference": 0.23 }
 ```
@@ -91,13 +96,13 @@ CLIからは `imager-cli ai tag <mediaId>` で個別実行も可能。
 
 ## 使用ライブラリ
 
-| ライブラリ | 用途 |
-|---|---|
+| ライブラリ      | 用途                            |
+| --------------- | ------------------------------- |
 | `dghs-imgutils` | PixAI画像タガー・CCIP特徴量抽出 |
-| `onnxruntime` | ONNXモデルの推論エンジン |
-| `Pillow` | 画像読み込み・前処理 |
-| `FastAPI` | HTTPサーバー |
-| `pydantic` | レスポンスモデルバリデーション |
+| `onnxruntime`   | ONNXモデルの推論エンジン        |
+| `Pillow`        | 画像読み込み・前処理            |
+| `FastAPI`       | HTTPサーバー                    |
+| `pydantic`      | レスポンスモデルバリデーション  |
 
 ## 設定
 

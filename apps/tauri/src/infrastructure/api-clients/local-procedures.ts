@@ -4,10 +4,7 @@ import {
 	updateCharacterSchema,
 } from "@solid-imager/core/domain/characters/schemas";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import {
-	newIpSchema,
-	updateIpSchema,
-} from "@solid-imager/core/domain/ips/schemas";
+import { newIpSchema, updateIpSchema } from "@solid-imager/core/domain/ips/schemas";
 import {
 	createPresetRequestSchema,
 	mediaSearchRequestSchema,
@@ -17,10 +14,7 @@ import {
 	updatePresetRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import {
-	newProjectSchema,
-	updateProjectSchema,
-} from "@solid-imager/core/domain/projects/schemas";
+import { newProjectSchema, updateProjectSchema } from "@solid-imager/core/domain/projects/schemas";
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import {
 	batchTaggingRequestSchema,
@@ -61,9 +55,7 @@ const batchTaggingWithIdsSchema = z.object({
 const localProcedureHandlers = {
 	"config.get": async () => await TauriConfigService.getConfig(),
 	"config.update": async (input: unknown) =>
-		await TauriConfigService.updateConfig(
-			AppConfigSchema.partial().parse(input),
-		),
+		await TauriConfigService.updateConfig(AppConfigSchema.partial().parse(input)),
 	"sources.list": async () => await TauriSourceService.list(),
 	"sources.get": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -82,10 +74,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriSourceService.update(
-			id,
-			mediaSourceInfoSchema.partial().parse(data),
-		);
+		return await TauriSourceService.update(id, mediaSourceInfoSchema.partial().parse(data));
 	},
 	"sources.delete": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -134,10 +123,7 @@ const localProcedureHandlers = {
 				params: z.unknown(),
 			})
 			.parse(input);
-		return await TauriMediaService.search(
-			sourceId,
-			mediaSearchRequestSchema.parse(params),
-		);
+		return await TauriMediaService.search(sourceId, mediaSearchRequestSchema.parse(params));
 	},
 	"media.getDetails": async (input: unknown) => {
 		const { sourceId, mediaId } = z
@@ -156,22 +142,10 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriMediaService.update(
-			sourceId,
-			mediaId,
-			updateMediaRequestSchema.parse(data),
-		);
+		return await TauriMediaService.update(sourceId, mediaId, updateMediaRequestSchema.parse(data));
 	},
 	"media.upload": async (input: unknown) => {
-		const {
-			sourceId,
-			bytes,
-			filename,
-			description,
-			sourceUrl,
-			overwrite,
-			autoIncrement,
-		} = z
+		const { sourceId, bytes, filename, description, sourceUrl, overwrite, autoIncrement } = z
 			.object({
 				sourceId: uuidSchema,
 				bytes: z.array(z.number().int().min(0).max(255)),
@@ -255,10 +229,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriProjectService.update(
-			id,
-			updateProjectSchema.parse(data),
-		);
+		return await TauriProjectService.update(id, updateProjectSchema.parse(data));
 	},
 	"projects.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -290,8 +261,7 @@ const localProcedureHandlers = {
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"ips.list": async () => await TauriIpService.list(),
-	"ips.create": async (input: unknown) =>
-		await TauriIpService.create(newIpSchema.parse(input)),
+	"ips.create": async (input: unknown) => await TauriIpService.create(newIpSchema.parse(input)),
 	"ips.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
@@ -340,10 +310,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriCharacterService.update(
-			id,
-			updateCharacterSchema.parse(data),
-		);
+		return await TauriCharacterService.update(id, updateCharacterSchema.parse(data));
 	},
 	"characters.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -379,8 +346,7 @@ const localProcedureHandlers = {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
 		return await TauriTagService.get(id);
 	},
-	"tags.create": async (input: unknown) =>
-		await TauriTagService.create(newTagSchema.parse(input)),
+	"tags.create": async (input: unknown) => await TauriTagService.create(newTagSchema.parse(input)),
 	"tags.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
@@ -413,10 +379,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriPresetService.update(
-			id,
-			updatePresetRequestSchema.parse(data),
-		);
+		return await TauriPresetService.update(id, updatePresetRequestSchema.parse(data));
 	},
 	"presets.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.number().int() }).parse(input);
@@ -436,9 +399,7 @@ const localProcedureHandlers = {
 		});
 	},
 	"ai.scanBatchTaggingTargets": async (input: unknown) =>
-		await TauriAiService.scanBatchTaggingTargets(
-			batchTaggingRequestSchema.parse(input ?? {}),
-		),
+		await TauriAiService.scanBatchTaggingTargets(batchTaggingRequestSchema.parse(input ?? {})),
 	"ai.startBatchTaggingWithIds": async (input: unknown) => {
 		const parsed = batchTaggingWithIdsSchema.parse(input);
 		return await TauriAiService.startBatchTaggingWithIds(parsed);

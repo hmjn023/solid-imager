@@ -55,10 +55,7 @@ async function ensureCacheDir(mediaSourceId: string) {
  * @param {string} mediaId - The ID of the media item.
  * @returns {string} The absolute path to the thumbnail file.
  */
-export function getThumbnailPath(
-	mediaSourceId: string,
-	mediaId: string,
-): string {
+export function getThumbnailPath(mediaSourceId: string, mediaId: string): string {
 	return path.join(getSourceCacheDir(mediaSourceId), `${mediaId}.webp`);
 }
 
@@ -92,10 +89,7 @@ export async function generateThumbnail(
  * @param {string} mediaId - The ID of the media item whose thumbnail is to be deleted.
  * @returns {Promise<void>} A promise that resolves when the thumbnail has been deleted or not found.
  */
-export async function deleteThumbnail(
-	mediaSourceId: string,
-	mediaId: string,
-): Promise<void> {
+export async function deleteThumbnail(mediaSourceId: string, mediaId: string): Promise<void> {
 	const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
 	try {
 		await fs.unlink(thumbnailPath);
@@ -131,9 +125,7 @@ export function processMediaJob(
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
  */
-export async function generateThumbnailsForSource(
-	mediaSourceId: string,
-): Promise<number> {
+export async function generateThumbnailsForSource(mediaSourceId: string): Promise<number> {
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
 	if (!mediaSource || mediaSource.type !== "local") {
 		throw new Error("Source not found or not a local source");

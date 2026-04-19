@@ -11,9 +11,7 @@ import PendingDownloadsIndicator from "./imports/pending-downloads-indicator";
 export default function Nav() {
 	const location = useLocation();
 	const active = (path: string) =>
-		path === location().pathname
-			? "border-sky-600"
-			: "border-transparent hover:border-sky-600";
+		path === location().pathname ? "border-sky-600" : "border-transparent hover:border-sky-600";
 
 	const [isVisible, setIsVisible] = createSignal(true);
 	const [lastScrollY, setLastScrollY] = createSignal(0);
@@ -35,10 +33,7 @@ export default function Nav() {
 		// Hide header if scrolling down and past a threshold
 		if (currentScrollY < lastScrollY() || currentScrollY < 10) {
 			setIsVisible(true);
-		} else if (
-			currentScrollY > lastScrollY() &&
-			currentScrollY > HideThreshold
-		) {
+		} else if (currentScrollY > lastScrollY() && currentScrollY > HideThreshold) {
 			setIsVisible(false);
 		}
 
@@ -84,11 +79,7 @@ export default function Nav() {
 							<Link to="/manager">Manager</Link>
 						</li>
 						<li class={`border-b-2 ${active("/docs")} mx-1.5 sm:mx-6`}>
-							<a
-								href="/docs/index.html"
-								rel="noopener noreferrer"
-								target="_blank"
-							>
+							<a href="/docs/index.html" rel="noopener noreferrer" target="_blank">
 								Docs
 							</a>
 						</li>

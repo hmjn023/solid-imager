@@ -5,8 +5,7 @@
 export const openApiTags = [
 	{
 		name: "Media Sources",
-		description:
-			"Operations for managing media sources (local directories, SFTP, S3, etc.)",
+		description: "Operations for managing media sources (local directories, SFTP, S3, etc.)",
 	},
 	{
 		name: "Media",
@@ -26,13 +25,11 @@ export const openApiTags = [
 	},
 	{
 		name: "Characters",
-		description:
-			"Operations for managing characters and character associations",
+		description: "Operations for managing characters and character associations",
 	},
 	{
 		name: "IPs",
-		description:
-			"Operations for managing intellectual properties (IPs) and their associations",
+		description: "Operations for managing intellectual properties (IPs) and their associations",
 	},
 	{
 		name: "Thumbnails",

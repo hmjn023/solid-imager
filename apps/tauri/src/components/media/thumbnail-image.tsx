@@ -39,9 +39,7 @@ function revokeObjectUrl(url: string | null) {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (
-		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
-	);
+	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
 }
 
 function createObjectUrl(bytes: Uint8Array, mimeType: string) {
@@ -55,9 +53,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	const [thumbnailUrl, setThumbnailUrl] = createSignal<string | null>(null);
 	const [cacheKey, setCacheKey] = createSignal(0);
 	const [retryCount, setRetryCount] = createSignal(0);
-	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(
-		null,
-	);
+	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(null);
 	const [originalUrl, setOriginalUrl] = createSignal<string | null>(null);
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -94,11 +90,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 
 		void (async () => {
 			try {
-				const resource = await getThumbnailResource(
-					media.mediaSourceId,
-					media.id,
-					nextCacheKey,
-				);
+				const resource = await getThumbnailResource(media.mediaSourceId, media.id, nextCacheKey);
 				if (!cancelled) {
 					setThumbnailFilePath(resource.filePath);
 					setThumbnailUrl(resource.url);
@@ -179,15 +171,10 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		if (rootPath && !originalUrl()) {
 			void (async () => {
 				try {
-					const bytes = await fileSystem.readFile(
-						joinLocalPath(rootPath, props.media.filePath),
-					);
+					const bytes = await fileSystem.readFile(joinLocalPath(rootPath, props.media.filePath));
 					setOriginalUrl((currentUrl) => {
 						revokeObjectUrl(currentUrl);
-						return createObjectUrl(
-							bytes,
-							resolveMimeType(props.media.fileName),
-						);
+						return createObjectUrl(bytes, resolveMimeType(props.media.fileName));
 					});
 					scheduleRetry();
 				} catch {
