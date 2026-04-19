@@ -1,15 +1,17 @@
 import {
 	type AllJobsCompletedEvent,
 	allJobsCompletedEventSchema,
+	type JobProgressEvent,
+	jobProgressEventSchema,
 	type MediaAddedEvent,
-	mediaAddedEventSchema,
 	type MediaChangedEvent,
-	mediaChangedEventSchema,
 	type MediaCopiedEvent,
-	mediaCopiedEventSchema,
 	type MediaDeletedEvent,
-	mediaDeletedEventSchema,
 	type MediaMovedEvent,
+	mediaAddedEventSchema,
+	mediaChangedEventSchema,
+	mediaCopiedEventSchema,
+	mediaDeletedEventSchema,
 	mediaMovedEventSchema,
 	type ThumbnailGeneratedEvent,
 	thumbnailGeneratedEventSchema,
@@ -27,14 +29,13 @@ type MediaSourceEventsOptions = {
 	onMediaCopied?: (data: MediaCopiedEvent) => void;
 	onMediaMoved?: (data: MediaMovedEvent) => void;
 	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
+	onJobProgress?: (data: JobProgressEvent) => void;
 	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
 	onWatcherError?: (data: WatcherErrorEvent) => void;
 };
 
 type SafeParseSchema<T> = {
-	safeParse: (
-		input: unknown,
-	) => { success: true; data: T } | { success: false; error: unknown };
+	safeParse: (input: unknown) => { success: true; data: T } | { success: false; error: unknown };
 };
 
 function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
@@ -49,9 +50,7 @@ export function useMediaSourceEvents(
 	createEffect(() => {
 		const id = mediaSourceId();
 		const isEnabled =
-			typeof options.enabled === "function"
-				? options.enabled()
-				: (options.enabled ?? true);
+			typeof options.enabled === "function" ? options.enabled() : (options.enabled ?? true);
 		if (!(id && isEnabled)) {
 			return;
 		}
@@ -77,36 +76,30 @@ export function useMediaSourceEvents(
 			}),
 			listen("media-copied", (event) => {
 				const payload = parseEventPayload(mediaCopiedEventSchema, event.payload);
-				if (
-					payload &&
-					(payload.sourceId === id || payload.targetId === id)
-				) {
+				if (payload && (payload.sourceId === id || payload.targetId === id)) {
 					options.onMediaCopied?.(payload);
 				}
 			}),
 			listen("media-moved", (event) => {
 				const payload = parseEventPayload(mediaMovedEventSchema, event.payload);
-				if (
-					payload &&
-					(payload.sourceId === id || payload.targetId === id)
-				) {
+				if (payload && (payload.sourceId === id || payload.targetId === id)) {
 					options.onMediaMoved?.(payload);
 				}
 			}),
 			listen("thumbnail-generated", (event) => {
-				const payload = parseEventPayload(
-					thumbnailGeneratedEventSchema,
-					event.payload,
-				);
+				const payload = parseEventPayload(thumbnailGeneratedEventSchema, event.payload);
 				if (payload && payload.mediaSourceId === id) {
 					options.onThumbnailGenerated?.(payload);
 				}
 			}),
+			listen("job-progress", (event) => {
+				const payload = parseEventPayload(jobProgressEventSchema, event.payload);
+				if (payload && payload.jobId === id) {
+					options.onJobProgress?.(payload);
+				}
+			}),
 			listen("all-jobs-completed", (event) => {
-				const payload = parseEventPayload(
-					allJobsCompletedEventSchema,
-					event.payload,
-				);
+				const payload = parseEventPayload(allJobsCompletedEventSchema, event.payload);
 				if (payload && payload.mediaSourceId === id) {
 					options.onAllJobsCompleted?.(payload);
 				}

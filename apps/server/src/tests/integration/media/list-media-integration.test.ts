@@ -97,26 +97,15 @@ describe("listMedia Integration", () => {
 	});
 
 	it("should return all media files within the specified directory for the given mediaSourceId", async () => {
-		const result = await MediaService.searchMediaInDirectory(
-			mediaSourceId,
-			directoryPath,
-			{},
-		);
+		const result = await MediaService.searchMediaInDirectory(mediaSourceId, directoryPath, {});
 		expect(result.length).toBe(2);
 		expect(result.every((m) => m.mediaSourceId === mediaSourceId)).toBe(true);
-		expect(result.map((m) => m.fileName).sort()).toEqual([
-			"image1.png",
-			"image2.png",
-		]);
+		expect(result.map((m) => m.fileName).sort()).toEqual(["image1.png", "image2.png"]);
 	});
 
 	it("should return an empty array if directoryPath contains no media files for the given mediaSourceId", async () => {
 		const emptyDirectoryPath = "/test/empty_path";
-		const result = await MediaService.searchMediaInDirectory(
-			mediaSourceId,
-			emptyDirectoryPath,
-			{},
-		);
+		const result = await MediaService.searchMediaInDirectory(mediaSourceId, emptyDirectoryPath, {});
 		expect(result.length).toBe(0);
 	});
 

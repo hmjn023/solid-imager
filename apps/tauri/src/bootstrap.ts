@@ -1,13 +1,7 @@
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { IFileSystem } from "@solid-imager/core/interfaces/file-system";
-import {
-	createTauriApiClient,
-	type TauriApiClient,
-} from "./infrastructure/api/tauri-api-client";
-import {
-	initializeTauriDb,
-	type TauriDb,
-} from "./infrastructure/db/client";
+import { createTauriApiClient, type TauriApiClient } from "./infrastructure/api/tauri-api-client";
+import { initializeTauriDb, type TauriDb } from "./infrastructure/db/client";
 import {
 	createTauriCommandClient,
 	type TauriCommandClient,
@@ -33,7 +27,7 @@ export async function initializeTauriApp(): Promise<TauriAppServices> {
 	const commandClient = createTauriCommandClient();
 	const fileSystem = new TauriFileSystem(commandClient);
 	const imageProcessor = new TauriImageProcessor(commandClient);
-	const apiClient = createTauriApiClient(commandClient);
+	const apiClient = createTauriApiClient();
 	const db = await initializeTauriDb();
 
 	return {

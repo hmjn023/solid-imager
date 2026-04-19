@@ -37,10 +37,7 @@ export const ProjectService = {
 	/**
 	 * Updates an existing project.
 	 */
-	async updateProject(
-		projectId: string,
-		projectData: { name?: string; description?: string },
-	) {
+	async updateProject(projectId: string, projectData: { name?: string; description?: string }) {
 		return await ProjectRepository.update(projectId, projectData);
 	},
 

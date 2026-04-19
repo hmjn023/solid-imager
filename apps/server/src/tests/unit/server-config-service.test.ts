@@ -1,14 +1,7 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { ServerConfigService } from "~/application/services/server-config-service";
 
 vi.mock("node:fs");
@@ -67,12 +60,8 @@ describe("ConfigService", () => {
 
 		expect(service.getConfig().downloads).toEqual(defaultAppConfig.downloads);
 		expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
-		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
-			"config.json",
-		);
-		expect(
-			JSON.parse(String(vi.mocked(fs.writeFileSync).mock.calls[0]?.[1])),
-		).toEqual({
+		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain("config.json");
+		expect(JSON.parse(String(vi.mocked(fs.writeFileSync).mock.calls[0]?.[1]))).toEqual({
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
 		});
@@ -90,16 +79,11 @@ describe("ConfigService", () => {
 	it("should handle nested env overrides", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
 		// media.tagExtraction.comfyui.positiveNodeTypes
-		vi.stubEnv(
-			"CONFIG_MEDIA_TAGEXTRACTION_COMFYUI_POSITIVENODETYPES",
-			'["TestNode"]',
-		);
+		vi.stubEnv("CONFIG_MEDIA_TAGEXTRACTION_COMFYUI_POSITIVENODETYPES", '["TestNode"]');
 
 		service.load();
 
-		expect(
-			service.getConfig().media.tagExtraction.comfyui.positiveNodeTypes,
-		).toEqual(["TestNode"]);
+		expect(service.getConfig().media.tagExtraction.comfyui.positiveNodeTypes).toEqual(["TestNode"]);
 	});
 
 	it("should ignore invalid env keys", () => {

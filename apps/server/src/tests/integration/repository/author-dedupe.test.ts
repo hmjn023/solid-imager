@@ -39,10 +39,7 @@ describe("AuthorRepository Deduplication", () => {
 		expect(author2.id).toBe(author1.id);
 
 		// 4. Verify DB count is 1
-		const count = await db
-			.select()
-			.from(authors)
-			.where(eq(authors.name, "Duplicate Tester"));
+		const count = await db.select().from(authors).where(eq(authors.name, "Duplicate Tester"));
 		expect(count).toHaveLength(1);
 	});
 });

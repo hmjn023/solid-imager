@@ -19,9 +19,7 @@ type TabsListProps = TabsListPropsPrimitive & {
 	class?: string | undefined;
 };
 
-const TabsList = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, TabsListProps>,
-) => {
+const TabsList = <T extends ValidComponent = "div">(props: PolymorphicProps<T, TabsListProps>) => {
 	const [local, others] = splitProps(props as TabsListProps, ["class"]);
 	return (
 		<TabsListPrimitive

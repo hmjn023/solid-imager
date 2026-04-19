@@ -1,8 +1,5 @@
 import type { ExtractedData } from "@/domain/media/schemas";
-import {
-	extractTagsFromWorkflow,
-	type TagExtractionOptions,
-} from "@/domain/tags/extractor";
+import { extractTagsFromWorkflow, type TagExtractionOptions } from "@/domain/tags/extractor";
 import { type Workflow, workflowSchema } from "@/domain/tags/schemas";
 
 function parseWorkflowAndExtractTags(
@@ -47,20 +44,14 @@ function processCommentChunk(
 				// Check if it's an API format workflow (dictionary of nodes with class_type)
 				// We only check the first few values to avoid iterating over a massive JSON object
 				const MAX_NODES_TO_CHECK = 5;
-				const valuesToCheck = Object.values(parsedJson).slice(
-					0,
-					MAX_NODES_TO_CHECK,
-				);
+				const valuesToCheck = Object.values(parsedJson).slice(0, MAX_NODES_TO_CHECK);
 				const isApiFormat = valuesToCheck.some(
 					(v: any) => typeof v === "object" && v !== null && "class_type" in v,
 				);
 
 				if (hasNodes || isApiFormat) {
 					// This looks like a ComfyUI workflow embedded in a prompt
-					const { parsed: workflow, tags } = parseWorkflowAndExtractTags(
-						chunk.text,
-						options,
-					);
+					const { parsed: workflow, tags } = parseWorkflowAndExtractTags(chunk.text, options);
 
 					return { prompt: chunk.text, workflow, tags };
 				}

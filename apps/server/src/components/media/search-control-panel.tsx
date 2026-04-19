@@ -18,11 +18,7 @@ import { PresetManager } from "~/components/media/preset-manager";
 import { ProSearchDialog } from "~/components/media/pro-search-dialog";
 import { SearchFilters } from "~/components/media/search-filters";
 import { SortControls } from "~/components/media/sort-controls";
-import {
-	searchState,
-	setSearchMode,
-	setSearchState,
-} from "~/presentation/store/search-store";
+import { searchState, setSearchMode, setSearchState } from "~/presentation/store/search-store";
 
 export type SearchControlPanelProps = {
 	context: "source" | "global";
@@ -52,24 +48,18 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					<Label>メディアソース</Label>
 					<Select
 						itemComponent={(itemProps) => (
-							<SelectItem item={itemProps.item}>
-								{itemProps.item.rawValue.name}
-							</SelectItem>
+							<SelectItem item={itemProps.item}>{itemProps.item.rawValue.name}</SelectItem>
 						)}
 						onChange={(value) => {
 							const selected = value as { id: string } | undefined;
 							props.onSelectSource?.(selected?.id ?? "");
 						}}
-						options={[
-							{ id: "", name: "すべてのソース" },
-							...(props.sources || []),
-						]}
+						options={[{ id: "", name: "すべてのソース" }, ...(props.sources || [])]}
 						optionValue="id"
 						placeholder="ソースを選択"
-						value={[
-							{ id: "", name: "すべてのソース" },
-							...(props.sources || []),
-						].find((s) => s.id === props.selectedSource)}
+						value={[{ id: "", name: "すべてのソース" }, ...(props.sources || [])].find(
+							(s) => s.id === props.selectedSource,
+						)}
 					>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>

@@ -1,7 +1,4 @@
-import type {
-	Author,
-	NewAuthor,
-} from "@solid-imager/core/domain/media/schemas";
+import type { Author, NewAuthor } from "@solid-imager/core/domain/media/schemas";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 
 export const AuthorService = {

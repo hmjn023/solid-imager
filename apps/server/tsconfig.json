@@ -1,21 +1,23 @@
 {
-  "extends": "../../tsconfig.json",
-  "compilerOptions": {
-    "jsx": "preserve",
-    "jsxImportSource": "solid-js",
-    "allowJs": true,
-    "noEmit": true,
-    "types": ["vitest/globals"],
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
-    "paths": {
-      "~/*": ["./src/*"],
-      "@solid-imager/ui/*": ["../../packages/ui/src/*"],
-      "@/*": ["../../packages/core/src/*"]
-    }
-  },
-  "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", ".vinxi", ".output", "dist", "scripts"]
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"jsx": "preserve",
+		"jsxImportSource": "solid-js",
+		"allowJs": true,
+		"noEmit": true,
+		"types": ["vitest/globals"],
+		"isolatedModules": true,
+		"skipLibCheck": true,
+		"moduleResolution": "bundler",
+		"baseUrl": ".",
+		"paths": {
+			"~/*": ["./src/*"],
+			"@solid-imager/db": ["../../packages/db/src"],
+			"@solid-imager/db/*": ["../../packages/db/src/*"],
+			"@solid-imager/ui/*": ["../../packages/ui/src/*"],
+			"@/*": ["../../packages/core/src/*"]
+		}
+	},
+	"include": ["src", "src/**/*.ts", "src/**/*.tsx"],
+	"exclude": ["node_modules", ".vinxi", ".output", "dist", "scripts"]
 }

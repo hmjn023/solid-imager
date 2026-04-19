@@ -10,14 +10,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
 	resolve: {
 		alias: {
-			"@solid-imager/core": path.resolve(
-				__dirname,
-				"../../packages/core/src",
-			),
+			"@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
 			"@solid-imager/ui": path.resolve(__dirname, "../../packages/ui/src"),
 			"@": path.resolve(__dirname, "../../packages/core/src"),
 			"~": path.resolve(__dirname, "./src"),
 		},
+		dedupe: ["zod"],
 	},
 	plugins: [
 		tanstackRouter({

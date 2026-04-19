@@ -16,9 +16,7 @@ vi.mock("node:fs/promises", () => ({
 }));
 
 vi.mock("fast-glob", () => ({
-	default: vi
-		.fn()
-		.mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
+	default: vi.fn().mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
 }));
 
 vi.mock("~/infrastructure/repositories/media-repository", () => ({
@@ -89,9 +87,8 @@ describe("DirectorySyncService", () => {
 		it("should process additions and deletions correctly", async () => {
 			const mediaSourceId = "source-1";
 
-			const { DirectorySyncService } = await import(
-				"~/application/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/application/services/directory-sync-service");
 
 			// Execute
 			const result = await DirectorySyncService.syncMediaSource(mediaSourceId);
@@ -101,9 +98,7 @@ describe("DirectorySyncService", () => {
 			expect(result.deleted).toBe(1);
 
 			// Verify addition
-			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(
-				1,
-			);
+			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(1);
 			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
 				mediaSourceId,
 				"new_file.mp3",

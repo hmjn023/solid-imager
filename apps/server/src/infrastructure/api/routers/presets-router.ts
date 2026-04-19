@@ -46,17 +46,13 @@ export const presetsRouter = {
 				data: updatePresetRequestSchema,
 			}),
 		)
-		.handler(
-			async ({ input }) => await PresetService.update(input.id, input.data),
-		),
+		.handler(async ({ input }) => await PresetService.update(input.id, input.data)),
 
 	/**
 	 * Delete a preset
 	 */
-	delete: os
-		.input(z.object({ id: z.number().int() }))
-		.handler(async ({ input }) => {
-			await PresetService.delete(input.id);
-			return { success: true };
-		}),
+	delete: os.input(z.object({ id: z.number().int() })).handler(async ({ input }) => {
+		await PresetService.delete(input.id);
+		return { success: true };
+	}),
 };

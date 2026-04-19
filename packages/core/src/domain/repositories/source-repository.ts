@@ -14,10 +14,6 @@ export type SourceRepository = {
 	findAll(): Promise<MediaSource[]>;
 	findById(id: string, tx?: Transaction): Promise<MediaSource | null>;
 	create(source: NewMediaSource, tx?: Transaction): Promise<MediaSource>;
-	update(
-		id: string,
-		source: Partial<MediaSource>,
-		tx?: Transaction,
-	): Promise<MediaSource>;
+	update(id: string, source: Partial<MediaSource>, tx?: Transaction): Promise<MediaSource>;
 	delete(id: string, tx?: Transaction): Promise<void>;
 };

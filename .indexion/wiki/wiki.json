@@ -1,0 +1,201 @@
+{
+	"title": "Wiki",
+	"pages": [
+		{
+			"id": "overview",
+			"title": "Overview",
+			"file": "overview.md",
+			"sources": ["README.md", "AGENTS.md", "package.json"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "getting-started",
+			"title": "Getting Started",
+			"file": "getting-started.md",
+			"sources": ["README.md", "package.json", "compose.yml"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "architecture",
+			"title": "Architecture",
+			"file": "architecture.md",
+			"sources": ["AGENTS.md", "apps/server/src/application", "apps/server/src/infrastructure"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "core-concepts",
+			"title": "Core Concepts",
+			"file": "core-concepts.md",
+			"sources": ["packages/core/src/domain", "packages/core/src/interfaces"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "apps-cli",
+			"title": "apps/cli",
+			"file": "apps-cli.md",
+			"sources": ["apps/cli/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "apps-xtracter",
+			"title": "apps/xtracter",
+			"file": "apps-xtracter.md",
+			"sources": ["apps/xtracter/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "packages-core",
+			"title": "packages/core",
+			"file": "packages-core.md",
+			"sources": ["packages/core/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "packages-ui",
+			"title": "packages/ui",
+			"file": "packages-ui.md",
+			"sources": ["packages/ui/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "apps-server",
+			"title": "apps/server",
+			"file": "apps-server.md",
+			"sources": ["apps/server/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "apps-tauri",
+			"title": "apps/tauri",
+			"file": "apps-tauri.md",
+			"sources": ["apps/tauri/src", "apps/tauri/src-tauri"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "server-tauri-parity",
+			"title": "server / tauri 実装対応マップ",
+			"file": "server-tauri-parity.md",
+			"sources": ["apps/server/src", "apps/tauri/src"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "db-schema",
+			"title": "DBスキーマ",
+			"file": "db-schema.md",
+			"sources": ["apps/server/src/infrastructure/db/schema.ts", "apps/server/drizzle"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "ai-service",
+			"title": "AIサービス連携",
+			"file": "ai-service.md",
+			"sources": ["src-python/main.py", "apps/server/src/infrastructure/api-clients"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "testing",
+			"title": "テスト戦略",
+			"file": "testing.md",
+			"sources": [
+				"apps/server/src/tests",
+				"apps/server/vitest.unit.config.ts",
+				"apps/server/vitest.integration.config.ts"
+			],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "orpc-flow",
+			"title": "oRPC API 開発フロー",
+			"file": "orpc-flow.md",
+			"sources": ["apps/server/src/infrastructure/api/routers", "packages/core/src/domain"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "safe-dto",
+			"title": "Safe DTO パターン",
+			"file": "safe-dto.md",
+			"sources": [
+				"apps/server/src/infrastructure/api/routers/sources-router.ts",
+				"packages/core/src/domain/sources/schemas.ts"
+			],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "repository-rules",
+			"title": "リポジトリ層ルール",
+			"file": "repository-rules.md",
+			"sources": [
+				"apps/server/src/infrastructure/repositories",
+				"apps/tauri/src/infrastructure/local-api/repositories"
+			],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "search-design",
+			"title": "検索機能の設計",
+			"file": "search-design.md",
+			"sources": [
+				"packages/core/src/domain/search",
+				"apps/server/src/infrastructure/repositories/media-repository-utils.ts"
+			],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "backup-restore",
+			"title": "バックアップ / リストア",
+			"file": "backup-restore.md",
+			"sources": [
+				"apps/server/src/application/services/backup-service.ts",
+				"apps/server/src/routes/api"
+			],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		},
+		{
+			"id": "deploy",
+			"title": "デプロイ / 本番運用",
+			"file": "deploy.md",
+			"sources": ["compose.yml", "apps/server/.env.example"],
+			"children": [],
+			"provenance": "synthesized",
+			"last_actor": "agent:claude"
+		}
+	]
+}

@@ -56,10 +56,7 @@ describe("addMedia Integration", () => {
 		expect(result.filePath).toBe(newMediaData.filePath);
 
 		// メディアがデータベースに存在することを確認します。
-		const mediaInDb = await db
-			.select()
-			.from(medias)
-			.where(eq(medias.id, result.id));
+		const mediaInDb = await db.select().from(medias).where(eq(medias.id, result.id));
 		expect(mediaInDb.length).toBe(1);
 		expect(mediaInDb[0].fileName).toBe(newMediaData.fileName);
 	});
@@ -89,8 +86,6 @@ describe("addMedia Integration", () => {
 
 		await MediaRepository.create(newMediaData); // 最初のメディアを追加します。
 		// 同じmediaSourceIdとfilePathで再度追加を試みます。
-		await expect(MediaRepository.create(newMediaData)).rejects.toThrow(
-			"Failed to insert media",
-		);
+		await expect(MediaRepository.create(newMediaData)).rejects.toThrow("Failed to insert media");
 	});
 });

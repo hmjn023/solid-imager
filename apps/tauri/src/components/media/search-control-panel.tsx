@@ -14,11 +14,7 @@ import {
 	SelectValue,
 } from "@solid-imager/ui/select";
 import { Show } from "solid-js";
-import {
-	searchState,
-	setSearchMode,
-	setSearchState,
-} from "../../presentation/store/search-store";
+import { searchState, setSearchMode, setSearchState } from "../../presentation/store/search-store";
 import { PresetManager } from "./preset-manager";
 import { ProSearchDialog } from "./pro-search-dialog";
 import { SearchFilters } from "./search-filters";
@@ -49,24 +45,18 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					<Label>メディアソース</Label>
 					<Select
 						itemComponent={(itemProps) => (
-							<SelectItem item={itemProps.item}>
-								{itemProps.item.rawValue.name}
-							</SelectItem>
+							<SelectItem item={itemProps.item}>{itemProps.item.rawValue.name}</SelectItem>
 						)}
 						onChange={(value) => {
 							const selected = value as { id: string } | undefined;
 							props.onSelectSource?.(selected?.id ?? "");
 						}}
-						options={[
-							{ id: "", name: "すべてのソース" },
-							...(props.sources || []),
-						]}
+						options={[{ id: "", name: "すべてのソース" }, ...(props.sources || [])]}
 						optionValue="id"
 						placeholder="ソースを選択"
-						value={[
-							{ id: "", name: "すべてのソース" },
-							...(props.sources || []),
-						].find((source) => source.id === props.selectedSource)}
+						value={[{ id: "", name: "すべてのソース" }, ...(props.sources || [])].find(
+							(source) => source.id === props.selectedSource,
+						)}
 					>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>

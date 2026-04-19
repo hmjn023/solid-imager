@@ -1,7 +1,4 @@
-import {
-	Root as ButtonPrimitiveRoot,
-	type ButtonRootProps,
-} from "@kobalte/core/button";
+import { Root as ButtonPrimitiveRoot, type ButtonRootProps } from "@kobalte/core/button";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import type { VariantProps } from "class-variance-authority";
 import { cva } from "class-variance-authority";
@@ -20,12 +17,9 @@ const buttonVariants = cva(
 		variants: {
 			variant: {
 				default: "bg-primary text-primary-foreground hover:bg-primary/90",
-				destructive:
-					"bg-destructive text-destructive-foreground hover:bg-destructive/90",
-				outline:
-					"border border-input hover:bg-accent hover:text-accent-foreground",
-				secondary:
-					"bg-secondary text-secondary-foreground hover:bg-secondary/80",
+				destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+				outline: "border border-input hover:bg-accent hover:text-accent-foreground",
+				secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
 				ghost: "hover:bg-accent hover:text-accent-foreground",
 				link: "text-primary underline-offset-4 hover:underline",
 			},
@@ -65,17 +59,10 @@ type ButtonProps<T extends ValidComponent = "button"> = ButtonRootProps<T> &
 const Button = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ButtonProps<T>>,
 ) => {
-	const [local, others] = splitProps(props as ButtonProps, [
-		"variant",
-		"size",
-		"class",
-	]);
+	const [local, others] = splitProps(props as ButtonProps, ["variant", "size", "class"]);
 	return (
 		<ButtonPrimitiveRoot
-			class={cn(
-				buttonVariants({ variant: local.variant, size: local.size }),
-				local.class,
-			)}
+			class={cn(buttonVariants({ variant: local.variant, size: local.size }), local.class)}
 			{...others}
 		/>
 	);

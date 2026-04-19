@@ -1,30 +1,30 @@
 ---
 name: solid-start-ssr
-description: SolidStart と TanStack Query を用いた SSR/CSR 競合回避とハイドレーションのベストプラクティス. フロントエンドの TSX/JSX ファイル（'apps/server/src/routes/'）でデータフェッチを行う際、または 'onMount' や 'isServer' を使ったブラウザ専用 API の制御を行う際に使用してください。
+description: TanStack Start と TanStack Query を用いた SSR/CSR 競合回避とハイドレーションのベストプラクティス. フロントエンドの TSX/JSX ファイル（'apps/server/src/routes/'）でデータフェッチを行う際、または 'onMount' や 'isServer' を使ったブラウザ専用 API の制御を行う際に使用してください。
 ---
 
-# SolidStart & TanStack Query SSR/CSR ベストプラクティス
+# TanStack Start & TanStack Query SSR/CSR ベストプラクティス
 
-SolidStartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
+TanStack StartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
 
 ## Working Rules
 
 ### 1. データフェッチはSSRをブロックしない
 
-`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、SolidStartのサスペンスが未解決のままとなり、無限ロードが発生します。
+`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、TanStack Startのサスペンスが未解決のままとなり、無限ロードが発生します。
 
 ```tsx
 // ❌ Bad Pattern: SSRをブロックすると無限ロードの原因になる
 const query = createQuery(() => ({
-  queryKey: ["items"],
-  queryFn: fetchItems,
-  enabled: !isServer, // 避けるべき
+	queryKey: ["items"],
+	queryFn: fetchItems,
+	enabled: !isServer, // 避けるべき
 }));
 
 // ✅ Good Pattern: サーバーでも実行させ、ハイドレーションをスムーズにする
 const query = createQuery(() => ({
-  queryKey: ["items"],
-  queryFn: fetchItems,
+	queryKey: ["items"],
+	queryFn: fetchItems,
 }));
 ```
 
@@ -35,19 +35,19 @@ const query = createQuery(() => ({
 ```tsx
 // ✅ Good Pattern: createEffect内でのガード
 createEffect(() => {
-  if (isServer) return;
-  
-  if (searchState.scrollY > 0) {
-    window.scrollTo(0, searchState.scrollY);
-  }
+	if (isServer) return;
+
+	if (searchState.scrollY > 0) {
+		window.scrollTo(0, searchState.scrollY);
+	}
 });
 
 // ✅ Good Pattern: PortalなどのDOM依存コンポーネント
 <Show when={!isServer}>
-  <Portal mount={document.getElementById("nav-actions")!}>
-    <MyClientOnlyComponent />
-  </Portal>
-</Show>
+	<Portal mount={document.getElementById("nav-actions")!}>
+		<MyClientOnlyComponent />
+	</Portal>
+</Show>;
 ```
 
 ### 3. 非同期データを用いたフォームの初期化
@@ -66,7 +66,7 @@ function ConfigForm(props: { data: AppConfig }) {
 
 export default function ConfigPage() {
   const configQuery = createQuery(...);
-  
+
   return (
     <Show when={configQuery.data}>
       {(data) => <ConfigForm data={data()} />}
@@ -81,16 +81,14 @@ export default function ConfigPage() {
 
 ```tsx
 // ✅ Good Pattern
-<Input 
-  value={(field().state.value as string) ?? ""} 
-/>
+<Input value={(field().state.value as string) ?? ""} />
 ```
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
-| データフェッチの問題 | `enabled` オプションに `!isServer` を含めていないか確認 |
-| ブラウザAPI使用時のエラー | `isServer` ガードを追加 |
-| フォーム初期化の問題 | `Show` でデータ取得後にマウント |
-| 入力フィールドの警告 | `?? ""` でフォールバック |
+| ユーザーの意図            | やること                                                |
+| ------------------------- | ------------------------------------------------------- |
+| データフェッチの問題      | `enabled` オプションに `!isServer` を含めていないか確認 |
+| ブラウザAPI使用時のエラー | `isServer` ガードを追加                                 |
+| フォーム初期化の問題      | `Show` でデータ取得後にマウント                         |
+| 入力フィールドの警告      | `?? ""` でフォールバック                                |

@@ -17,9 +17,7 @@ import { cn } from "./utils/cn";
 const Dialog = DialogPrimitiveRoot;
 const DialogTrigger = DialogPrimitiveTrigger;
 
-const DialogPortal: Component<ComponentProps<typeof DialogPrimitivePortal>> = (
-	props,
-) => {
+const DialogPortal: Component<ComponentProps<typeof DialogPrimitivePortal>> = (props) => {
 	const [, rest] = splitProps(props, ["children"]);
 	return (
 		<DialogPrimitivePortal {...rest}>
@@ -59,10 +57,7 @@ type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
 const DialogContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, DialogContentProps<T>>,
 ) => {
-	const [, rest] = splitProps(props as DialogContentProps, [
-		"class",
-		"children",
-	]);
+	const [, rest] = splitProps(props as DialogContentProps, ["class", "children"]);
 	return (
 		<DialogPortal>
 			<DialogOverlay />
@@ -99,13 +94,7 @@ const DialogContent = <T extends ValidComponent = "div">(
 const DialogHeader: Component<ComponentProps<"div">> = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
-		<div
-			class={cn(
-				"flex flex-col space-y-1.5 text-center sm:text-left",
-				props.class,
-			)}
-			{...rest}
-		/>
+		<div class={cn("flex flex-col space-y-1.5 text-center sm:text-left", props.class)} {...rest} />
 	);
 };
 
@@ -113,10 +102,7 @@ const DialogFooter: Component<ComponentProps<"div">> = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
 		<div
-			class={cn(
-				"flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
-				props.class,
-			)}
+			class={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", props.class)}
 			{...rest}
 		/>
 	);
@@ -134,10 +120,7 @@ const DialogTitle = <T extends ValidComponent = "h2">(
 	const [, rest] = splitProps(props as DialogTitleProps, ["class"]);
 	return (
 		<DialogPrimitiveTitle
-			class={cn(
-				"font-semibold text-lg leading-none tracking-tight",
-				props.class,
-			)}
+			class={cn("font-semibold text-lg leading-none tracking-tight", props.class)}
 			{...rest}
 		/>
 	);

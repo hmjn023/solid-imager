@@ -14,10 +14,7 @@ export function createIp(data: { name: string; description?: string }) {
 	return orpc.ips.create(data);
 }
 
-export function updateIp(
-	id: string,
-	data: { name?: string; description?: string },
-) {
+export function updateIp(id: string, data: { name?: string; description?: string }) {
 	return orpc.ips.update({ id, data });
 }
 
@@ -33,10 +30,6 @@ export function addIpToMedia(_sourceId: string, mediaId: string, ipId: string) {
 	return orpc.ips.addToMedia({ mediaId, ipId });
 }
 
-export function removeIpFromMedia(
-	_sourceId: string,
-	mediaId: string,
-	ipId: string,
-) {
+export function removeIpFromMedia(_sourceId: string, mediaId: string, ipId: string) {
 	return orpc.ips.removeFromMedia({ mediaId, ipId });
 }

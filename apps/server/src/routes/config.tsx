@@ -16,18 +16,8 @@ export const Route = createFileRoute("/config")({
 
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
-import {
-	Switch,
-	SwitchControl,
-	SwitchLabel,
-	SwitchThumb,
-} from "@solid-imager/ui/switch";
-import {
-	Tabs,
-	TabsContent,
-	TabsList,
-	TabsTrigger,
-} from "@solid-imager/ui/tabs";
+import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "@solid-imager/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@solid-imager/ui/tabs";
 import { Textarea } from "@solid-imager/ui/textarea";
 import { toast } from "@solid-imager/ui/toast";
 import { createForm } from "@tanstack/solid-form";
@@ -61,10 +51,7 @@ function ConfigForm(props: { data: AppConfig }) {
 		<>
 			<div class="mb-6 flex items-center justify-between">
 				<h1 class="font-bold text-3xl">Settings</h1>
-				<Button
-					disabled={form.state.isSubmitting}
-					onClick={() => form.handleSubmit()}
-				>
+				<Button disabled={form.state.isSubmitting} onClick={() => form.handleSubmit()}>
 					{form.state.isSubmitting ? "Saving..." : "Save Changes"}
 				</Button>
 			</div>
@@ -94,18 +81,14 @@ function ConfigForm(props: { data: AppConfig }) {
 											onInput={(e) => {
 												const val = e.target.value;
 												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
+													(val === "" ? undefined : Number(val)) as unknown as number,
 												);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
+											<div class="text-red-500 text-sm">{field().state.meta.errors[0]}</div>
 										</Show>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent downloads/processings.
@@ -124,18 +107,14 @@ function ConfigForm(props: { data: AppConfig }) {
 											onInput={(e) => {
 												const val = e.target.value;
 												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
+													(val === "" ? undefined : Number(val)) as unknown as number,
 												);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
+											<div class="text-red-500 text-sm">{field().state.meta.errors[0]}</div>
 										</Show>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent AI tagging jobs.
@@ -154,18 +133,14 @@ function ConfigForm(props: { data: AppConfig }) {
 											onInput={(e) => {
 												const val = e.target.value;
 												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
+													(val === "" ? undefined : Number(val)) as unknown as number,
 												);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
+											<div class="text-red-500 text-sm">{field().state.meta.errors[0]}</div>
 										</Show>
 									</div>
 								)}
@@ -199,9 +174,7 @@ function ConfigForm(props: { data: AppConfig }) {
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
-											onInput={(e) =>
-												field().handleChange(e.target.value as any)
-											}
+											onInput={(e) => field().handleChange(e.target.value as any)}
 											value={(field().state.value as string) ?? ""}
 										/>
 									</div>
@@ -217,9 +190,7 @@ function ConfigForm(props: { data: AppConfig }) {
 											onInput={(e) => {
 												const val = e.target.value;
 												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
+													(val === "" ? undefined : Number(val)) as unknown as number,
 												);
 											}}
 											type="number"
@@ -263,18 +234,14 @@ function ConfigForm(props: { data: AppConfig }) {
 											onInput={(e) => {
 												const val = e.target.value;
 												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
+													(val === "" ? undefined : Number(val)) as unknown as number,
 												);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
+											<div class="text-red-500 text-sm">{field().state.meta.errors[0]}</div>
 										</Show>
 									</div>
 								)}
@@ -292,9 +259,7 @@ function ConfigForm(props: { data: AppConfig }) {
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
-											onInput={(e) =>
-												field().handleChange(e.target.value as any)
-											}
+											onInput={(e) => field().handleChange(e.target.value as any)}
 											value={(field().state.value as string) ?? ""}
 										/>
 									</div>
@@ -312,9 +277,7 @@ function ConfigForm(props: { data: AppConfig }) {
 												onInput={(e) => {
 													const val = e.target.value;
 													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+														(val === "" ? undefined : Number(val)) as unknown as number,
 													);
 												}}
 												type="number"
@@ -326,18 +289,14 @@ function ConfigForm(props: { data: AppConfig }) {
 								<form.Field name="storage.thumbnailQuality">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>
-												Thumbnail Quality (1-100)
-											</Label>
+											<Label for={field().name}>Thumbnail Quality (1-100)</Label>
 											<Input
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
 													const val = e.target.value;
 													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+														(val === "" ? undefined : Number(val)) as unknown as number,
 													);
 												}}
 												type="number"
@@ -371,15 +330,9 @@ function ConfigForm(props: { data: AppConfig }) {
 													field().handleChange(list);
 												}}
 												placeholder=".jpg, .png"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 											/>
-											<div class="text-muted-foreground text-xs">
-												Comma separated
-											</div>
+											<div class="text-muted-foreground text-xs">Comma separated</div>
 										</div>
 									)}
 								</form.Field>
@@ -399,11 +352,7 @@ function ConfigForm(props: { data: AppConfig }) {
 													field().handleChange(list);
 												}}
 												placeholder=".mp4, .webm"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
@@ -424,20 +373,14 @@ function ConfigForm(props: { data: AppConfig }) {
 													field().handleChange(list);
 												}}
 												placeholder=".mp3, .wav"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
 								</form.Field>
 							</div>
 
-							<h3 class="mt-6 mb-2 font-semibold text-lg">
-								Tag Extraction (ComfyUI)
-							</h3>
+							<h3 class="mt-6 mb-2 font-semibold text-lg">Tag Extraction (ComfyUI)</h3>
 							<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
 								{(field) => (
 									<div class="space-y-2">
@@ -453,11 +396,7 @@ function ConfigForm(props: { data: AppConfig }) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
-											}
+											value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 										/>
 									</div>
 								)}
@@ -478,11 +417,7 @@ function ConfigForm(props: { data: AppConfig }) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
-											}
+											value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 										/>
 									</div>
 								)}
@@ -503,11 +438,7 @@ function ConfigForm(props: { data: AppConfig }) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
-											}
+											value={(field().state.value as string[] | undefined)?.join(", ") ?? ""}
 										/>
 									</div>
 								)}
@@ -525,9 +456,7 @@ function ConfigForm(props: { data: AppConfig }) {
 										<select
 											class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 											id={field().name}
-											onInput={(e) =>
-												field().handleChange(e.target.value as any)
-											}
+											onInput={(e) => field().handleChange(e.target.value as any)}
 											value={(field().state.value as string) ?? ""}
 										>
 											<option value="trace">Trace</option>
@@ -561,9 +490,7 @@ export default function ConfigPage() {
 				<div class="py-10 text-red-500">Error loading settings.</div>
 			</Show>
 
-			<Show when={configQuery.data}>
-				{(data) => <ConfigForm data={data()} />}
-			</Show>
+			<Show when={configQuery.data}>{(data) => <ConfigForm data={data()} />}</Show>
 		</div>
 	);
 }

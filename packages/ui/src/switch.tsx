@@ -28,10 +28,7 @@ type SwitchControlProps = SwitchControlPropsPrimitive & {
 const SwitchControl = <T extends ValidComponent = "input">(
 	props: PolymorphicProps<T, SwitchControlProps>,
 ) => {
-	const [local, others] = splitProps(props as SwitchControlProps, [
-		"class",
-		"children",
-	]);
+	const [local, others] = splitProps(props as SwitchControlProps, ["class", "children"]);
 	return (
 		<>
 			<SwitchInput
@@ -91,11 +88,4 @@ const SwitchLabel = <T extends ValidComponent = "label">(
 	);
 };
 
-export {
-	Switch,
-	SwitchControl,
-	SwitchDescription,
-	SwitchErrorMessage,
-	SwitchLabel,
-	SwitchThumb,
-};
+export { Switch, SwitchControl, SwitchDescription, SwitchErrorMessage, SwitchLabel, SwitchThumb };

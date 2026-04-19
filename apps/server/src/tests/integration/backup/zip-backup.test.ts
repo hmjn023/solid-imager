@@ -4,14 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
@@ -105,10 +98,7 @@ describe("BackupService ZIP Integration", () => {
 		});
 
 		// Add Author
-		const [author] = await db
-			.insert(authors)
-			.values({ name: "Zip Author" })
-			.returning();
+		const [author] = await db.insert(authors).values({ name: "Zip Author" }).returning();
 		await db.insert(mediaAuthors).values({
 			mediaId: media.id,
 			authorId: author.id,
@@ -116,10 +106,7 @@ describe("BackupService ZIP Integration", () => {
 
 		// Add Character
 		const CHARACTER_CONFIDENCE = 0.8;
-		const [character] = await db
-			.insert(characters)
-			.values({ name: "Zip Character" })
-			.returning();
+		const [character] = await db.insert(characters).values({ name: "Zip Character" }).returning();
 		await db.insert(mediaCharacters).values({
 			mediaId: media.id,
 			characterId: character.id,
@@ -136,10 +123,7 @@ describe("BackupService ZIP Integration", () => {
 		});
 
 		// Add Project
-		const [project] = await db
-			.insert(projects)
-			.values({ name: "Zip Project" })
-			.returning();
+		const [project] = await db.insert(projects).values({ name: "Zip Project" }).returning();
 		await db.insert(mediaProjects).values({
 			mediaId: media.id,
 			projectId: project.id,
@@ -153,10 +137,7 @@ describe("BackupService ZIP Integration", () => {
 		await pipeline(zipStream, writeStream);
 
 		// 3. Restore to Source 2
-		const importResult = await BackupService.importSourceZip(
-			sourceId2,
-			zipFilePath,
-		);
+		const importResult = await BackupService.importSourceZip(sourceId2, zipFilePath);
 
 		expect(importResult.success).toBe(true);
 		expect(importResult.importedCount).toBe(1);

@@ -16,20 +16,12 @@ export class DrizzlePresetRepository implements PresetRepository {
 	}
 
 	async get(id: number): Promise<Preset | null> {
-		const results = await db
-			.select()
-			.from(presets)
-			.where(eq(presets.id, id))
-			.limit(1);
+		const results = await db.select().from(presets).where(eq(presets.id, id)).limit(1);
 		return results.length > 0 ? this.mapToEntity(results[0]) : null;
 	}
 
 	async getByName(name: string): Promise<Preset | null> {
-		const results = await db
-			.select()
-			.from(presets)
-			.where(eq(presets.name, name))
-			.limit(1);
+		const results = await db.select().from(presets).where(eq(presets.name, name)).limit(1);
 		return results.length > 0 ? this.mapToEntity(results[0]) : null;
 	}
 
@@ -63,10 +55,7 @@ export class DrizzlePresetRepository implements PresetRepository {
 	}
 
 	async delete(id: number): Promise<boolean> {
-		const results = await db
-			.delete(presets)
-			.where(eq(presets.id, id))
-			.returning();
+		const results = await db.delete(presets).where(eq(presets.id, id)).returning();
 		return results.length > 0;
 	}
 

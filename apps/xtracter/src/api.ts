@@ -7,22 +7,12 @@ const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
 export class APIError extends Error {
-	readonly code:
-		| "NETWORK_ERROR"
-		| "TIMEOUT"
-		| "CORS_ERROR"
-		| "SERVER_ERROR"
-		| "UNKNOWN";
+	readonly code: "NETWORK_ERROR" | "TIMEOUT" | "CORS_ERROR" | "SERVER_ERROR" | "UNKNOWN";
 	readonly originalError?: unknown;
 
 	constructor(
 		message: string,
-		code:
-			| "NETWORK_ERROR"
-			| "TIMEOUT"
-			| "CORS_ERROR"
-			| "SERVER_ERROR"
-			| "UNKNOWN",
+		code: "NETWORK_ERROR" | "TIMEOUT" | "CORS_ERROR" | "SERVER_ERROR" | "UNKNOWN",
 		originalError?: unknown,
 	) {
 		super(message);
@@ -57,31 +47,17 @@ export const getClient = async () => {
 function handleFetchError(error: unknown, url: string): APIError {
 	if (error instanceof Error) {
 		if (error.name === "AbortError") {
-			return new APIError(
-				`Request timeout after ${REQUEST_TIMEOUT_MS}ms`,
-				"TIMEOUT",
-				error,
-			);
+			return new APIError(`Request timeout after ${REQUEST_TIMEOUT_MS}ms`, "TIMEOUT", error);
 		}
-		if (
-			error.message.includes("CORS") ||
-			error.message.includes("cross-origin")
-		) {
+		if (error.message.includes("CORS") || error.message.includes("cross-origin")) {
 			return new APIError(
 				"CORS error - server may not allow requests from this origin",
 				"CORS_ERROR",
 				error,
 			);
 		}
-		if (
-			error.message.includes("Failed to fetch") ||
-			error.message.includes("NetworkError")
-		) {
-			return new APIError(
-				`Network error - cannot connect to ${url}`,
-				"NETWORK_ERROR",
-				error,
-			);
+		if (error.message.includes("Failed to fetch") || error.message.includes("NetworkError")) {
+			return new APIError(`Network error - cannot connect to ${url}`, "NETWORK_ERROR", error);
 		}
 	}
 

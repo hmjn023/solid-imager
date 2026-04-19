@@ -1,12 +1,7 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
-import {
-	dirname,
-	extname,
-	joinLocalPath,
-	splitStemAndExt,
-} from "../path-utils";
+import { dirname, extname, joinLocalPath, splitStemAndExt } from "../path-utils";
 import { fetchMediaSource, syncMediaSources } from "./sources-api";
 
 type PendingImportJob = {
@@ -37,10 +32,7 @@ function writeQueue(queue: PendingImportJob[]) {
 	localStorage.setItem(IMPORT_QUEUE_KEY, JSON.stringify(queue));
 }
 
-async function emitImportEvent(
-	event: string,
-	payload: Record<string, unknown>,
-) {
+async function emitImportEvent(event: string, payload: Record<string, unknown>) {
 	await emit(event, payload);
 }
 
@@ -51,10 +43,7 @@ function resolveDownloadTarget(item: DownloadItem) {
 	return item.sourceUrls?.[0];
 }
 
-function createPendingJob(
-	item: DownloadItem,
-	targetSourceId?: string,
-): PendingImportJob {
+function createPendingJob(item: DownloadItem, targetSourceId?: string): PendingImportJob {
 	return {
 		id: crypto.randomUUID(),
 		item,
@@ -63,10 +52,7 @@ function createPendingJob(
 	};
 }
 
-async function downloadItemToSource(
-	targetSourceId: string,
-	item: DownloadItem,
-) {
+async function downloadItemToSource(targetSourceId: string, item: DownloadItem) {
 	const downloadTarget = resolveDownloadTarget(item);
 	if (!downloadTarget) {
 		throw new Error("targetUrl or sourceUrls[0] is required");
@@ -120,8 +106,7 @@ async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
 	const { stem, extension } = splitStemAndExt(fileName);
 	let index = 0;
 	while (true) {
-		const candidateName =
-			index === 0 ? `${stem}${extension}` : `${stem}-${index}${extension}`;
+		const candidateName = index === 0 ? `${stem}${extension}` : `${stem}-${index}${extension}`;
 		const candidatePath = joinLocalPath(rootPath, candidateName);
 		if (!(await fs.exists(candidatePath))) {
 			return candidatePath;
@@ -130,10 +115,7 @@ async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
 	}
 }
 
-export async function processImportItemsToSource(
-	targetSourceId: string,
-	items: DownloadItem[],
-) {
+export async function processImportItemsToSource(targetSourceId: string, items: DownloadItem[]) {
 	for (const item of items) {
 		await downloadItemToSource(targetSourceId, item);
 	}
@@ -141,10 +123,7 @@ export async function processImportItemsToSource(
 	return { success: true, processedCount: items.length };
 }
 
-export async function bulkAddImportItems(
-	items: DownloadItem[],
-	targetSourceId?: string,
-) {
+export async function bulkAddImportItems(items: DownloadItem[], targetSourceId?: string) {
 	const queue = [...readQueue(), ...items.map((item) => createPendingJob(item, targetSourceId))];
 	writeQueue(queue);
 	await emitImportEvent("import-request:created", { count: items.length });
@@ -155,10 +134,7 @@ export async function listPendingImports() {
 	return readQueue();
 }
 
-export async function processPendingImports(
-	jobIds: string[],
-	targetSourceId?: string,
-) {
+export async function processPendingImports(jobIds: string[], targetSourceId?: string) {
 	const queue = readQueue();
 	const selectedJobs = queue.filter((job) => jobIds.includes(job.id));
 	const itemsByTargetSource = new Map<string, DownloadItem[]>();

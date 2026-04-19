@@ -9,13 +9,7 @@ import {
 	AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
 import { toast } from "@solid-imager/ui/toast";
-import {
-	createEffect,
-	createResource,
-	createSignal,
-	For,
-	Show,
-} from "solid-js";
+import { createEffect, createResource, createSignal, For, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
@@ -29,10 +23,7 @@ function getPreviewUrl(url?: string): string {
 	if (!url) return "";
 	try {
 		const urlObj = new URL(url);
-		if (
-			urlObj.hostname === "pbs.twimg.com" &&
-			urlObj.searchParams.get("name") === "orig"
-		) {
+		if (urlObj.hostname === "pbs.twimg.com" && urlObj.searchParams.get("name") === "orig") {
 			urlObj.searchParams.set("name", "small");
 			return urlObj.toString();
 		}
@@ -43,9 +34,7 @@ function getPreviewUrl(url?: string): string {
 }
 
 export default function ImportReviewModal(props: Props) {
-	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
-		new Set(),
-	);
+	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(new Set());
 	const [selectedSourceId, setSelectedSourceId] = createSignal<string>("");
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 
@@ -85,8 +74,7 @@ export default function ImportReviewModal(props: Props) {
 		const s = sources();
 		if (s && s.length > 0 && !selectedSourceId()) {
 			// Prefer 'Local' source if possible or just first
-			const defaultSource =
-				s.find((src) => src.name.toLowerCase() === "default") || s[0];
+			const defaultSource = s.find((src) => src.name.toLowerCase() === "default") || s[0];
 			setSelectedSourceId(defaultSource?.id || "");
 		}
 	});
@@ -148,14 +136,8 @@ export default function ImportReviewModal(props: Props) {
 				<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 					<div class="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg bg-gray-900 shadow-xl">
 						<div class="flex items-center justify-between border-gray-700 border-b p-4">
-							<h2 class="font-bold text-white text-xl">
-								Review Pending Imports
-							</h2>
-							<button
-								class="text-gray-400 hover:text-white"
-								onClick={props.onClose}
-								type="button"
-							>
+							<h2 class="font-bold text-white text-xl">Review Pending Imports</h2>
+							<button class="text-gray-400 hover:text-white" onClick={props.onClose} type="button">
 								✕
 							</button>
 						</div>
@@ -179,8 +161,7 @@ export default function ImportReviewModal(props: Props) {
 									</select>
 								</div>
 								<div class="text-gray-400 text-sm">
-									Selected: {selectedJobIds().size} /{" "}
-									{pendingJobs()?.length || 0}
+									Selected: {selectedJobIds().size} / {pendingJobs()?.length || 0}
 								</div>
 							</div>
 
@@ -223,9 +204,7 @@ export default function ImportReviewModal(props: Props) {
 												</Show>
 											</div>
 											<div class="mt-2 truncate text-gray-400 text-xs">
-												{job.item.description ||
-													job.item.targetUrl ||
-													"No description"}
+												{job.item.description || job.item.targetUrl || "No description"}
 											</div>
 											<div class="text-[10px] text-gray-500">
 												AUTH: {job.item.authors?.[0]?.name || "?"}
@@ -259,24 +238,20 @@ export default function ImportReviewModal(props: Props) {
 								onClick={handleProcess}
 								type="button"
 							>
-								Import{" "}
-								{selectedJobIds().size > 0 ? `(${selectedJobIds().size})` : ""}
+								Import {selectedJobIds().size > 0 ? `(${selectedJobIds().size})` : ""}
 							</button>
 						</div>
 					</div>
 				</div>
 			</Portal>
 
-			<AlertDialog
-				onOpenChange={setIsDeleteDialogOpen}
-				open={isDeleteDialogOpen()}
-			>
+			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will remove {selectedJobIds().size} import requests. This
-							action cannot be undone.
+							This will remove {selectedJobIds().size} import requests. This action cannot be
+							undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

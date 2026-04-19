@@ -1,23 +1,7 @@
-mod backend;
 mod commands;
-
-use backend::LocalBackend;
-use serde_json::Value;
-use tauri::{Manager, State};
-
-pub struct AppState {
-    pub backend: LocalBackend,
-}
-
-#[tauri::command]
-fn api_call(
-    app: tauri::AppHandle,
-    state: State<'_, AppState>,
-    procedure: String,
-    input: Option<Value>,
-) -> Result<Value, String> {
-    state.backend.handle_call(&app, &procedure, input)
-}
+mod media_config;
+mod media_metadata;
+mod watcher;
 
 #[cfg(target_os = "linux")]
 fn configure_linux_webview_environment() {
@@ -35,13 +19,10 @@ fn main() {
     configure_linux_webview_environment();
 
     tauri::Builder::default()
-        .setup(|app| {
-            let backend = LocalBackend::new(app.handle())?;
-            app.manage(AppState { backend });
-            Ok(())
-        })
+        .manage(watcher::WatcherRegistry::default())
         .invoke_handler(tauri::generate_handler![
-            api_call,
+            commands::backup::backup_create_zip,
+            commands::backup::backup_extract_zip,
             commands::fs::fs_exists,
             commands::fs::fs_read_file,
             commands::fs::fs_read_text_file,
@@ -57,7 +38,9 @@ fn main() {
             commands::media::image_generate_thumbnail,
             commands::media::image_extract_metadata,
             commands::media::image_get_dimensions,
-            commands::media::probe_media
+            commands::media::probe_media,
+            watcher::source_watch_start,
+            watcher::source_watch_stop
         ])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application")

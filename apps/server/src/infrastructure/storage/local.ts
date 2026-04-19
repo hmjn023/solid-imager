@@ -49,8 +49,7 @@ export class LocalDriver implements MediaSourceDriver {
 			await fs.access(this.basePath, fs.constants.W_OK);
 			return { success: true, message: "接続に成功しました。" };
 		} catch (error) {
-			const message =
-				error instanceof Error ? error.message : "不明なエラーが発生しました。";
+			const message = error instanceof Error ? error.message : "不明なエラーが発生しました。";
 			return {
 				success: false,
 				message: `接続に失敗しました: ${message}`,

@@ -59,9 +59,7 @@ describe("addMedia Contract", () => {
 			// Missing fileName, size, etc.
 		};
 
-		expect(() => addMediaRequestSchema.parse(invalidMediaData)).toThrow(
-			ZodError,
-		);
+		expect(() => addMediaRequestSchema.parse(invalidMediaData)).toThrow(ZodError);
 	});
 
 	it("should throw an error if media with same mediaSourceId and filePath already exists", () => {

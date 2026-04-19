@@ -54,9 +54,7 @@ export function useCurrentSearchPersistence(
 					);
 
 					if (matchingPreset) {
-						logger.info(
-							`[AutoSave] Found matching preset: ${matchingPreset.name}`,
-						);
+						logger.info(`[AutoSave] Found matching preset: ${matchingPreset.name}`);
 						loadPreset({
 							...matchingPreset,
 							mode: current.mode,
@@ -77,9 +75,7 @@ export function useCurrentSearchPersistence(
 					});
 				}
 			} catch (e) {
-				logger.error(
-					`[AutoSave] Failed to load current state (${presetName}): ${String(e)}`,
-				);
+				logger.error(`[AutoSave] Failed to load current state (${presetName}): ${String(e)}`);
 			} finally {
 				setIsInitialLoad(false);
 			}
@@ -155,9 +151,7 @@ export function useCurrentSearchPersistence(
 				});
 			}
 		} catch (e) {
-			logger.warn(
-				`[AutoSave] Failed to save state (${presetName}): ${String(e)}`,
-			);
+			logger.warn(`[AutoSave] Failed to save state (${presetName}): ${String(e)}`);
 		}
 	};
 }

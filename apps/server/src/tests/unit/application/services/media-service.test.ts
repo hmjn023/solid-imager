@@ -8,14 +8,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import {
-	beforeEach,
-	describe,
-	expect,
-	it,
-	type Mock,
-	vi,
-} from "vite-plus/test";
+import { beforeEach, describe, expect, it, type Mock, vi } from "vite-plus/test";
 import { MediaServiceImpl } from "~/application/services/media-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 
@@ -224,9 +217,9 @@ describe("MediaService Unit Tests", () => {
 			const sourceId = "123e4567-e89b-42d3-a456-426614174888";
 			(mockMediaRepository.getDetails as Mock).mockResolvedValue(null);
 
-			await expect(
-				mediaService.getMediaDetails(sourceId, mediaId),
-			).rejects.toThrow(MEDIA_NOT_FOUND_REGEX);
+			await expect(mediaService.getMediaDetails(sourceId, mediaId)).rejects.toThrow(
+				MEDIA_NOT_FOUND_REGEX,
+			);
 		});
 	});
 
@@ -265,12 +258,8 @@ describe("MediaService Unit Tests", () => {
 				mediaType: "image",
 			};
 
-			(mockSourceRepository.findById as Mock).mockResolvedValue(
-				mockSource as any,
-			);
-			(mockStorageService.saveFile as Mock).mockResolvedValue(
-				mockFileInfo as any,
-			);
+			(mockSourceRepository.findById as Mock).mockResolvedValue(mockSource as any);
+			(mockStorageService.saveFile as Mock).mockResolvedValue(mockFileInfo as any);
 			(mockMediaRepository.upsert as Mock).mockResolvedValue(mockMedia as any);
 
 			const result = await mediaService.uploadMedia(sourceId, file, options);

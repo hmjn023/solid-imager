@@ -39,14 +39,11 @@ export async function processJob(job: DbJob) {
 	}
 
 	if (job.type === "processMedia") {
-		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/application/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);
 	} else if (job.type === "downloadImage") {
-		const { processDownloadJob } = await import(
-			"~/infrastructure/jobs/download-jobs"
-		);
+		const { processDownloadJob } = await import("~/infrastructure/jobs/download-jobs");
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);

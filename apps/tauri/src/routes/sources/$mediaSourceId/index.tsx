@@ -1,18 +1,8 @@
-import type {
-	DownloadItem,
-	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import {
-	getScrollPosition,
-	setScrollPosition,
-} from "@solid-imager/core/domain/sources/store";
+import type { DownloadItem, MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
+import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
+import { getScrollPosition, setScrollPosition } from "@solid-imager/core/domain/sources/store";
 import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -29,6 +19,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { Progress } from "@solid-imager/ui/progress";
 import { toast } from "@solid-imager/ui/toast";
 import {
 	createInfiniteQuery,
@@ -38,15 +29,7 @@ import {
 } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { createWindowVirtualizer } from "@tanstack/solid-virtual";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { z } from "zod";
 import { MediaGridItem } from "../../../components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "../../../components/media/move-copy-media-dialog";
@@ -74,10 +57,7 @@ import {
 	importSourceZip,
 	restoreSource,
 } from "../../../infrastructure/api-clients/sources-api";
-import {
-	getSearchCondition,
-	searchState,
-} from "../../../presentation/store/search-store";
+import { getSearchCondition, searchState } from "../../../presentation/store/search-store";
 
 const MEDIA_ITEMS_PER_PAGE = 100;
 const DEBOUNCE_DELAY_MS = 1000;
@@ -115,9 +95,7 @@ function SourceMediaRoute() {
 	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 	const sources = createQuery(() => mediaSourcesQueryOptions());
 
-	const source = createMemo(() =>
-		sources.data?.find((item) => item.id === mediaSourceId()),
-	);
+	const source = createMemo(() => sources.data?.find((item) => item.id === mediaSourceId()));
 	const sourceRootPath = createMemo(() => {
 		const current = source();
 		if (current?.type !== "local") {
@@ -127,9 +105,7 @@ function SourceMediaRoute() {
 		return connectionInfo.path;
 	});
 
-	const searchConditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
+	const searchConditionKey = createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
 	const mediaQuery = createInfiniteQuery<MediaSearchResponse>(() => ({
 		queryKey: [
@@ -149,10 +125,7 @@ function SourceMediaRoute() {
 			}),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
-			const loadedCount = allPages.reduce(
-				(sum, page) => sum + page.media.length,
-				0,
-			);
+			const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
 			if (loadedCount < lastPage.total) {
 				return loadedCount;
 			}
@@ -160,6 +133,10 @@ function SourceMediaRoute() {
 		},
 		placeholderData: keepPreviousData,
 	}));
+
+	const refreshActiveMediaQuery = () => {
+		void mediaQuery.refetch();
+	};
 
 	useMediaSourceEvents(mediaSourceId, {
 		onMediaAdded: () => {
@@ -177,9 +154,7 @@ function SourceMediaRoute() {
 						toast.success(`${count} new media detected. Refreshing list...`);
 						setAddedCount(0);
 					}
-					void queryClient.invalidateQueries({
-						queryKey: ["media", mediaSourceId()],
-					});
+					refreshActiveMediaQuery();
 				}, DEBOUNCE_DELAY_MS),
 			);
 		},
@@ -198,13 +173,13 @@ function SourceMediaRoute() {
 		onThumbnailGenerated: () => {
 			scheduleMediaRefresh();
 		},
+		onJobProgress: (data) => {
+			setJobProgress(data);
+		},
 		onAllJobsCompleted: (data) => {
-			toast.success(
-				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
-			);
-			void queryClient.invalidateQueries({
-				queryKey: ["media", mediaSourceId()],
-			});
+			setJobProgress(null);
+			toast.success(`All jobs completed! Processed: ${data.processed ?? "N/A"}`);
+			refreshActiveMediaQuery();
 		},
 		onWatcherError: (data) => {
 			toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
@@ -213,21 +188,17 @@ function SourceMediaRoute() {
 
 	const mediaResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (mediaQuery.data?.pages.flatMap((page) => page.media) || []).filter(
-			(media) => {
-				if (seen.has(media.id)) {
-					return false;
-				}
-				seen.add(media.id);
-				return true;
-			},
-		);
+		return (mediaQuery.data?.pages.flatMap((page) => page.media) || []).filter((media) => {
+			if (seen.has(media.id)) {
+				return false;
+			}
+			seen.add(media.id);
+			return true;
+		});
 	});
 	const [windowWidth, setWindowWidth] = createSignal(0);
 	const [mediaGridWidth, setMediaGridWidth] = createSignal(0);
-	const [loadMoreRef, setLoadMoreRef] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
+	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement | undefined>(undefined);
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
@@ -261,7 +232,7 @@ function SourceMediaRoute() {
 	const mediaRows = createMemo(() => {
 		const results = mediaResults();
 		const columns = columnCount();
-		const rows: typeof results[] = [];
+		const rows: (typeof results)[] = [];
 		for (let index = 0; index < results.length; index += columns) {
 			rows.push(results.slice(index, index + columns));
 		}
@@ -300,23 +271,18 @@ function SourceMediaRoute() {
 	const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
 	const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
-	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
-		null,
-	);
+	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(null);
 	const [moveCopyDialogOpen, setMoveCopyDialogOpen] = createSignal(false);
 	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
-	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
-		null,
-	);
-	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
-		string | null
-	>(null);
+	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(null);
+	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<string | null>(null);
 	const [isSyncingMedia, setIsSyncingMedia] = createSignal(false);
 	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
 	const [addedCount, setAddedCount] = createSignal(0);
-	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
-		typeof setTimeout
-	> | null>(null);
+	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(null);
+	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
 	const [mediaRefreshTimer, setMediaRefreshTimer] = createSignal<ReturnType<
 		typeof setTimeout
 	> | null>(null);
@@ -348,9 +314,7 @@ function SourceMediaRoute() {
 		}
 		setMediaRefreshTimer(
 			setTimeout(() => {
-				void queryClient.invalidateQueries({
-					queryKey: ["media", mediaSourceId()],
-				});
+				refreshActiveMediaQuery();
 				setMediaRefreshTimer(null);
 			}, MEDIA_REFRESH_DEBOUNCE_MS),
 		);
@@ -411,17 +375,13 @@ function SourceMediaRoute() {
 							return null;
 						}
 						const postId =
-							metadata && typeof metadata.postId === "string"
-								? metadata.postId
-								: undefined;
+							metadata && typeof metadata.postId === "string" ? metadata.postId : undefined;
 						const tweetUrl =
 							image.source === "twitter" && postId
 								? `https://twitter.com/i/web/status/${postId}`
 								: undefined;
 						const author =
-							metadata && typeof metadata.author === "string"
-								? metadata.author
-								: undefined;
+							metadata && typeof metadata.author === "string" ? metadata.author : undefined;
 						const timestamp =
 							metadata && typeof metadata.timestamp === "string"
 								? metadata.timestamp
@@ -539,10 +499,7 @@ function SourceMediaRoute() {
 		event.stopPropagation();
 	};
 
-	const handleImagePasteItem = (
-		item: DataTransferItem,
-		event: ClipboardEvent,
-	): boolean => {
+	const handleImagePasteItem = (item: DataTransferItem, event: ClipboardEvent): boolean => {
 		if (!item.type.startsWith("image/")) {
 			return false;
 		}
@@ -645,9 +602,7 @@ function SourceMediaRoute() {
 		const action = moveCopyMode() === "copy" ? copyMedia : moveMedia;
 		try {
 			await action(mediaSourceId(), id, targetSourceId);
-			toast.success(
-				`Media ${moveCopyMode() === "copy" ? "copied" : "moved"} successfully`,
-			);
+			toast.success(`Media ${moveCopyMode() === "copy" ? "copied" : "moved"} successfully`);
 			await invalidateMediaQueries();
 			if (targetSourceId !== mediaSourceId()) {
 				await queryClient.invalidateQueries({
@@ -655,9 +610,7 @@ function SourceMediaRoute() {
 				});
 			}
 		} catch (error) {
-			toast.error(
-				`Failed to ${moveCopyMode()} media: ${(error as Error).message}`,
-			);
+			toast.error(`Failed to ${moveCopyMode()} media: ${(error as Error).message}`);
 		} finally {
 			setMediaIdToMoveCopy(null);
 		}
@@ -668,9 +621,7 @@ function SourceMediaRoute() {
 		if (!allPages || isSyncingMedia()) {
 			return;
 		}
-		const mediaIds = allPages
-			.flatMap((page) => page.media)
-			.map((media) => media.id);
+		const mediaIds = allPages.flatMap((page) => page.media).map((media) => media.id);
 		if (!mediaIds.length) {
 			return;
 		}
@@ -819,16 +770,10 @@ function SourceMediaRoute() {
 	);
 
 	return (
-		<main
-			class="container mx-auto p-4"
-			onDragOver={handleDragOver}
-			onDrop={handleDrop}
-		>
+		<main class="container mx-auto p-4" onDragOver={handleDragOver} onDrop={handleDrop}>
 			<div class="mb-8 flex items-center justify-between">
 				<div>
-					<h1 class="mb-2 font-bold text-3xl">
-						{source()?.name ?? "Media Source"}
-					</h1>
+					<h1 class="mb-2 font-bold text-3xl">{source()?.name ?? "Media Source"}</h1>
 					<p class="text-gray-600">{source()?.description}</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
@@ -885,6 +830,22 @@ function SourceMediaRoute() {
 				type="file"
 			/>
 
+			<Show when={jobProgress()}>
+				{(progress) => (
+					<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">
+						<div class="mb-2 flex items-center justify-between text-sm">
+							<span class="text-muted-foreground">
+								サムネイル生成中 {progress().processed} / {progress().total}
+							</span>
+							<span class="text-muted-foreground text-xs">
+								{Math.round((progress().processed / progress().total) * 100)}%
+							</span>
+						</div>
+						<Progress value={(progress().processed / progress().total) * 100} />
+					</div>
+				)}
+			</Show>
+
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
 				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
 					<CardHeader>
@@ -895,9 +856,7 @@ function SourceMediaRoute() {
 
 				<div class="min-h-0 space-y-4">
 					<div class="mb-4 flex items-center justify-between">
-						<p class="text-gray-600 text-sm">
-							{mediaQuery.data?.pages[0]?.total ?? 0} 件の結果
-						</p>
+						<p class="text-gray-600 text-sm">{mediaQuery.data?.pages[0]?.total ?? 0} 件の結果</p>
 					</div>
 
 					<ContextMenu>
@@ -911,25 +870,21 @@ function SourceMediaRoute() {
 									});
 								}}
 								style={{
-									height: useVirtualGrid()
-										? `${mediaRowVirtualizer.getTotalSize()}px`
-										: undefined,
+									height: useVirtualGrid() ? `${mediaRowVirtualizer.getTotalSize()}px` : undefined,
 								}}
 							>
 								<Show
 									fallback={
 										<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 											<For each={mediaResults()}>
-											{(media) => (
-												<MediaGridItem
-													media={media}
-													onContextMenu={() =>
-														setContextMenuMediaId(media.id)
-													}
-													sourceRootPath={sourceRootPath()}
-												/>
-											)}
-										</For>
+												{(media) => (
+													<MediaGridItem
+														media={media}
+														onContextMenu={() => setContextMenuMediaId(media.id)}
+														sourceRootPath={sourceRootPath()}
+													/>
+												)}
+											</For>
 										</div>
 									}
 									when={useVirtualGrid()}
@@ -949,15 +904,13 @@ function SourceMediaRoute() {
 												>
 													<For each={rowMedia()}>
 														{(media) => (
-														<MediaGridItem
-															media={media}
-															onContextMenu={() =>
-																setContextMenuMediaId(media.id)
-															}
-															sourceRootPath={sourceRootPath()}
-														/>
-													)}
-												</For>
+															<MediaGridItem
+																media={media}
+																onContextMenu={() => setContextMenuMediaId(media.id)}
+																sourceRootPath={sourceRootPath()}
+															/>
+														)}
+													</For>
 												</div>
 											);
 										}}
@@ -967,9 +920,7 @@ function SourceMediaRoute() {
 						</ContextMenuTrigger>
 						<ContextMenuContent>
 							<Show
-								fallback={
-									<ContextMenuItem disabled>No media selected</ContextMenuItem>
-								}
+								fallback={<ContextMenuItem disabled>No media selected</ContextMenuItem>}
 								when={contextMenuMediaId()}
 							>
 								<ContextMenuItem
@@ -1019,9 +970,7 @@ function SourceMediaRoute() {
 					</ContextMenu>
 
 					<Show when={mediaResults().length === 0 && !mediaQuery.isLoading}>
-						<div class="py-12 text-center text-gray-500">
-							検索結果が見つかりませんでした
-						</div>
+						<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
 					</Show>
 
 					<div
@@ -1050,15 +999,11 @@ function SourceMediaRoute() {
 					<DialogHeader>
 						<DialogTitle>Delete Media</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this media? This action cannot be
-							undone.
+							Are you sure you want to delete this media? This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							onClick={() => setDeleteDialogOpen(false)}
-							variant="outline"
-						>
+						<Button onClick={() => setDeleteDialogOpen(false)} variant="outline">
 							Cancel
 						</Button>
 						<Button onClick={confirmDelete} variant="destructive">

@@ -22,20 +22,13 @@ const sourceRepo = new DrizzleSourceRepository();
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
 const VIDEO_EXTENSIONS = [".mp4", ".webm", ".mov"];
 const AUDIO_EXTENSIONS = [".mp3", ".wav"];
-const ALL_MEDIA_EXTENSIONS = [
-	...IMAGE_EXTENSIONS,
-	...VIDEO_EXTENSIONS,
-	...AUDIO_EXTENSIONS,
-];
+const ALL_MEDIA_EXTENSIONS = [...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS, ...AUDIO_EXTENSIONS];
 
 /**
  * Handles file addition events from the file system watcher.
  * Uses MediaProcessingService for unified registration and job queuing.
  */
-async function handleFileAdded(
-	mediaSourceId: string,
-	relativePath: string,
-): Promise<void> {
+async function handleFileAdded(mediaSourceId: string, relativePath: string): Promise<void> {
 	try {
 		// Check if file is a supported media type
 		const ext = path.extname(relativePath).toLowerCase();
@@ -44,10 +37,7 @@ async function handleFileAdded(
 		}
 
 		// Check if media already exists (to avoid duplicates from rapid events)
-		const existing = await MediaRepository.findByPath(
-			mediaSourceId,
-			relativePath,
-		);
+		const existing = await MediaRepository.findByPath(mediaSourceId, relativePath);
 		if (existing) {
 			return;
 		}
@@ -59,10 +49,7 @@ async function handleFileAdded(
 			// No context metadata for file watcher - metadata is extracted by the job
 		);
 	} catch (error) {
-		logger.error(
-			{ err: error, mediaSourceId, relativePath },
-			"Failed to handle file added",
-		);
+		logger.error({ err: error, mediaSourceId, relativePath }, "Failed to handle file added");
 	}
 }
 
@@ -70,10 +57,7 @@ async function handleFileAdded(
  * Handles file deletion events from the file system watcher.
  * Removes the media from the database and deletes the thumbnail.
  */
-async function handleFileDeleted(
-	mediaSourceId: string,
-	relativePath: string,
-): Promise<void> {
+async function handleFileDeleted(mediaSourceId: string, relativePath: string): Promise<void> {
 	try {
 		// Find media by path
 		const media = await MediaRepository.findByPath(mediaSourceId, relativePath);
@@ -94,10 +78,7 @@ async function handleFileDeleted(
 			timestamp: new Date().toISOString(),
 		});
 	} catch (error) {
-		logger.error(
-			{ err: error, mediaSourceId, relativePath },
-			"Failed to handle file deleted",
-		);
+		logger.error({ err: error, mediaSourceId, relativePath }, "Failed to handle file deleted");
 	}
 }
 
@@ -105,10 +86,7 @@ async function handleFileDeleted(
  * Handles file change events from the file system watcher.
  * Updates the media metadata and queues reprocessing.
  */
-async function handleFileChanged(
-	mediaSourceId: string,
-	relativePath: string,
-): Promise<void> {
+async function handleFileChanged(mediaSourceId: string, relativePath: string): Promise<void> {
 	try {
 		const source = await sourceRepo.findById(mediaSourceId);
 		if (!source || source.type !== "local") {
@@ -151,10 +129,7 @@ async function handleFileChanged(
 			filePath: media.filePath,
 		});
 	} catch (error) {
-		logger.error(
-			{ err: error, mediaSourceId, relativePath },
-			"Failed to handle file changed",
-		);
+		logger.error({ err: error, mediaSourceId, relativePath }, "Failed to handle file changed");
 	}
 }
 
@@ -178,10 +153,7 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 		try {
 			await DirectorySyncService.syncMediaSource(mediaSourceId);
 		} catch (err) {
-			logger.error(
-				{ err, mediaSourceId },
-				"Failed to sync media source before monitoring",
-			);
+			logger.error({ err, mediaSourceId }, "Failed to sync media source before monitoring");
 		}
 
 		SseManager.startFileSystemMonitoring(mediaSourceId, basePath, {

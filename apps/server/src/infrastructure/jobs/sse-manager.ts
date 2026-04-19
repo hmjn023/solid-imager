@@ -45,9 +45,7 @@ if (!globalAny.__SSE_CLEANUP_REGISTERED__) {
 		// console.log("[SseManager] Cleaning up watchers...");
 		const watchers = globalAny.__SSE_WATCHERS_MAP__ as Map<string, FileWatcher>;
 		if (watchers) {
-			const closePromises = Array.from(watchers.values()).map((fw) =>
-				fw.watcher.close(),
-			);
+			const closePromises = Array.from(watchers.values()).map((fw) => fw.watcher.close());
 			await Promise.all(closePromises);
 			watchers.clear();
 		}
@@ -78,10 +76,7 @@ export const SseManager = {
 	 * @param {ReadableStreamDefaultController} controller - The stream controller for the client.
 	 * @returns {string} The unique ID of the added client.
 	 */
-	addClient(
-		mediaSourceId: string,
-		controller: ReadableStreamDefaultController,
-	): string {
+	addClient(mediaSourceId: string, controller: ReadableStreamDefaultController): string {
 		const clientId = crypto.randomUUID();
 		const client: SseClient = { controller, id: clientId };
 
@@ -299,12 +294,7 @@ export const SseManager = {
 	 * @param {string} mediaId - The ID of the moved media.
 	 * @param {object} media - The moved media item (in new location).
 	 */
-	notifyMediaMoved(
-		sourceId: string,
-		targetId: string,
-		mediaId: string,
-		media: unknown,
-	): void {
+	notifyMediaMoved(sourceId: string, targetId: string, mediaId: string, media: unknown): void {
 		// Notify source about deletion
 		this.sendEvent(sourceId, "media-moved", {
 			type: "source",

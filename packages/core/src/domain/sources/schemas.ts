@@ -5,7 +5,7 @@
 
 import { z } from "zod";
 
-export const mediaSourceIdSchema = z.uuid({
+export const mediaSourceIdSchema = z.string().uuid({
 	version: "v4",
 	message: "Invalid source ID format",
 });
@@ -46,7 +46,7 @@ export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
 export const mediaSourceInfoSchema = z.object({
-	id: z.uuid({ version: "v4" }).optional(),
+	id: z.string().uuid({ version: "v4" }).optional(),
 	name: z.string(),
 	description: z.string().nullable(),
 	type: mediaSourceTypeEnumSchema,
@@ -67,25 +67,19 @@ export const createDirectoryRequestSchema = z.object({
 	name: z.string(),
 	recursive: z.boolean().optional(),
 });
-export type CreateDirectoryRequest = z.infer<
-	typeof createDirectoryRequestSchema
->;
+export type CreateDirectoryRequest = z.infer<typeof createDirectoryRequestSchema>;
 
 export const deleteDirectoryRequestSchema = z.object({
 	path: z.string(),
 	force: z.boolean().optional(),
 });
-export type DeleteDirectoryRequest = z.infer<
-	typeof deleteDirectoryRequestSchema
->;
+export type DeleteDirectoryRequest = z.infer<typeof deleteDirectoryRequestSchema>;
 
 export const updateDirectoryRequestSchema = z.object({
 	oldPath: z.string(),
 	newPath: z.string(),
 });
-export type UpdateDirectoryRequest = z.infer<
-	typeof updateDirectoryRequestSchema
->;
+export type UpdateDirectoryRequest = z.infer<typeof updateDirectoryRequestSchema>;
 
 export const cloneSourceRequestSchema = z.object({
 	newName: z.string(),

@@ -15,13 +15,13 @@ issue着手 → Investigate → Plan → Implement → Review → Submit → Don
            コメント投稿  コメント投稿 コメント投稿  ステータス移動  PR作成
 ```
 
-| フェーズ | 行動 | 出力 |
-|---------|------|------|
-| **1. Investigate** | issue本文 + 既存コメント + コードベース読み取り | Investigation Note |
-| **2. Plan** | 調査結果から実装計画を策定 | Plan Note |
-| **3. Implement** | コード変更を実施 | Implementation Note |
-| **4. Review** | lint/check/test 実行、セルフチェック | Review Checklist |
-| **5. Submit** | PR作成 & Issue関連付け | Pull Request |
+| フェーズ           | 行動                                            | 出力                |
+| ------------------ | ----------------------------------------------- | ------------------- |
+| **1. Investigate** | issue本文 + 既存コメント + コードベース読み取り | Investigation Note  |
+| **2. Plan**        | 調査結果から実装計画を策定                      | Plan Note           |
+| **3. Implement**   | コード変更を実施                                | Implementation Note |
+| **4. Review**      | lint/check/test 実行、セルフチェック            | Review Checklist    |
+| **5. Submit**      | PR作成 & Issue関連付け                          | Pull Request        |
 
 ## 原則
 
@@ -96,12 +96,12 @@ gh pr create --title "fix: <SUMMARY> (#<NUMBER>)" \
 - **Project ID**: `PVT_kwHOBJLKfM4BSrJK`
 - **Status Field ID**: `PVTSSF_lAHOBJLKfM4BSrJKzhAI42Q`
 
-| ステータス | Option ID |
-|-----------|-----------|
-| **Todo** | `76512601` |
+| ステータス      | Option ID  |
+| --------------- | ---------- |
+| **Todo**        | `76512601` |
 | **In Progress** | `abd28694` |
-| **In Review** | `f250fa0e` |
-| **Done** | `d32cf67d` |
+| **In Review**   | `f250fa0e` |
+| **Done**        | `d32cf67d` |
 
 ## お役立ちコマンド
 

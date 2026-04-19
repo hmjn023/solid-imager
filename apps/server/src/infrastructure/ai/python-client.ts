@@ -77,9 +77,7 @@ export class PythonClient implements IAiClient {
 		return taggingResponseSchema.parse(data);
 	}
 
-	async extractCcipFeature(
-		imageBuffer: ArrayBuffer,
-	): Promise<CcipFeatureResponse> {
+	async extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
 		const formData = new FormData();
 		formData.append("file", new Blob([imageBuffer]), "image.jpg");
 
@@ -108,9 +106,7 @@ export class PythonClient implements IAiClient {
 		});
 
 		if (!response.ok) {
-			throw new Error(
-				`Failed to extract CCIP feature by path: ${response.statusText}`,
-			);
+			throw new Error(`Failed to extract CCIP feature by path: ${response.statusText}`);
 		}
 
 		const data = await response.json();
@@ -131,9 +127,7 @@ export class PythonClient implements IAiClient {
 		});
 
 		if (!response.ok) {
-			throw new Error(
-				`Failed to calculate CCIP difference: ${response.statusText}`,
-			);
+			throw new Error(`Failed to calculate CCIP difference: ${response.statusText}`);
 		}
 
 		const data = await response.json();

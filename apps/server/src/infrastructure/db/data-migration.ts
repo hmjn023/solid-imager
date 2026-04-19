@@ -1,11 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import {
-	type MediaSource,
-	mediaSources,
-	medias,
-	type NewMedia,
-} from "~/infrastructure/db/schema";
+import { type MediaSource, mediaSources, medias, type NewMedia } from "~/infrastructure/db/schema";
 import { NotFoundError, UnknownDbError } from "./errors";
 
 /**
@@ -72,20 +67,14 @@ export const selectMediaSourceData = async (mediaSourceId: string) => {
  * @returns {Promise<void>} A promise that resolves when the upsert operation is complete.
  * @throws {UnknownDbError} If a database error occurs during the upsert process.
  */
-export const upsertMediaSourceData = async (
-	_mediaSourceId: string,
-	importData: ImportData,
-) => {
+export const upsertMediaSourceData = async (_mediaSourceId: string, importData: ImportData) => {
 	try {
 		return await db.transaction(async (tx) => {
 			// Upsert mediaSource
-			await tx
-				.insert(mediaSources)
-				.values(importData.mediaSource)
-				.onConflictDoUpdate({
-					target: mediaSources.id,
-					set: importData.mediaSource,
-				});
+			await tx.insert(mediaSources).values(importData.mediaSource).onConflictDoUpdate({
+				target: mediaSources.id,
+				set: importData.mediaSource,
+			});
 
 			// Upsert medias
 			if (importData.medias && importData.medias.length > 0) {
@@ -121,10 +110,7 @@ export const reconcileMediaSource = async (
 		return await db.transaction(async (tx) => {
 			// Handle added files
 			if (fileSystemChanges.added && fileSystemChanges.added.length > 0) {
-				await tx
-					.insert(medias)
-					.values(fileSystemChanges.added)
-					.onConflictDoNothing();
+				await tx.insert(medias).values(fileSystemChanges.added).onConflictDoNothing();
 			}
 
 			// Handle deleted files
@@ -154,10 +140,7 @@ export const reconcileMediaSource = async (
  * @returns {Promise<void>} A promise that resolves when the media data has been cloned.
  * @throws {UnknownDbError} If a database error occurs during the cloning process.
  */
-export const cloneMediaData = async (
-	originalSourceId: string,
-	newSourceId: string,
-) => {
+export const cloneMediaData = async (originalSourceId: string, newSourceId: string) => {
 	try {
 		return await db.transaction(async (tx) => {
 			const allMedia = await tx

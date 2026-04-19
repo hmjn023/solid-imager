@@ -2,11 +2,11 @@ import path from "node:path";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
-  test: {
-    alias: {
-      "~": path.resolve(__dirname, "./src"),
-    },
-    environment: "node",
-    globals: true,
-  },
+	test: {
+		alias: {
+			"~": path.resolve(__dirname, "./src"),
+		},
+		environment: "node",
+		globals: true,
+	},
 });

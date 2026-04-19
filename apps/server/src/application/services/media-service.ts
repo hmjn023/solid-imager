@@ -66,10 +66,7 @@ const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
 
-export async function validateFileSignature(
-	file: File,
-	filename: string,
-): Promise<void> {
+export async function validateFileSignature(file: File, filename: string): Promise<void> {
 	const ext = path.extname(filename).toLowerCase().replace(".", "");
 	const buffer = await file.slice(0, FILE_HEADER_BYTES).arrayBuffer();
 	const bytes = new Uint8Array(buffer);
@@ -86,9 +83,7 @@ export async function validateFileSignature(
 	// Extra check for WEBP: RIFF....WEBP
 	if (
 		ext === "webp" &&
-		!bytes
-			.subarray(WEBP_OFFSET, WEBP_END)
-			.every((b, i) => b === WEBP_SUBTYPE[i])
+		!bytes.subarray(WEBP_OFFSET, WEBP_END).every((b, i) => b === WEBP_SUBTYPE[i])
 	) {
 		throw new Error("Invalid WEBP signature (missing WEBP)");
 	}
@@ -144,10 +139,7 @@ export class MediaServiceImpl {
 		const searchRequest = mediaSearchRequestSchema.parse(params);
 		if (mediaSourceId) {
 			const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-			return await this.mediaRepository.search(
-				validatedSourceId,
-				searchRequest,
-			);
+			return await this.mediaRepository.search(validatedSourceId, searchRequest);
 		}
 		return await this.mediaRepository.globalSearch(searchRequest);
 	}
@@ -161,11 +153,7 @@ export class MediaServiceImpl {
 		params: { query?: string; tags?: string[] },
 	) {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return await this.mediaRepository.searchInDirectory(
-			validatedSourceId,
-			directoryPath,
-			params,
-		);
+		return await this.mediaRepository.searchInDirectory(validatedSourceId, directoryPath, params);
 	}
 
 	/**
@@ -184,9 +172,7 @@ export class MediaServiceImpl {
 		}
 
 		if (mediaSource.type !== "local") {
-			throw new Error(
-				"Only local media sources are supported for uploads in Phase 1.",
-			);
+			throw new Error("Only local media sources are supported for uploads in Phase 1.");
 		}
 
 		const connectionInfo = mediaSource.connectionInfo as { path: string };
@@ -236,9 +222,7 @@ export class MediaServiceImpl {
 
 		// Register URL if present (legacy support for sourceUrl in upload)
 		if (uploadRequest.sourceUrl) {
-			await this.mediaRepository.addUrls(insertedMedia.id, [
-				uploadRequest.sourceUrl,
-			]);
+			await this.mediaRepository.addUrls(insertedMedia.id, [uploadRequest.sourceUrl]);
 		}
 
 		// 4. Trigger processMedia Job (unified processing)
@@ -263,15 +247,11 @@ export class MediaServiceImpl {
 	/**
 	 * Retrieves media details including tags and generation info.
 	 */
-	async getMediaDetails(
-		mediaSourceId: string,
-		mediaId: string,
-	): Promise<MediaDetails> {
+	async getMediaDetails(mediaSourceId: string, mediaId: string): Promise<MediaDetails> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-		const mediaDetails =
-			await this.mediaRepository.getDetails(validatedMediaId);
+		const mediaDetails = await this.mediaRepository.getDetails(validatedMediaId);
 		if (!mediaDetails) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -283,10 +263,7 @@ export class MediaServiceImpl {
 
 		// If generation info is not found, try to extract it (Lazy Extraction)
 		if (!finalGenerationInfo) {
-			finalGenerationInfo = await this.extractAndUpdateMetadata(
-				mediaDetails,
-				validatedSourceId,
-			);
+			finalGenerationInfo = await this.extractAndUpdateMetadata(mediaDetails, validatedSourceId);
 		}
 
 		return {
@@ -334,10 +311,7 @@ export class MediaServiceImpl {
 			throw new Error("Only local media sources is supported.");
 		}
 		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const buffer = await this.storageService.getFile(
-			connectionInfo.path,
-			media.filePath,
-		);
+		const buffer = await this.storageService.getFile(connectionInfo.path, media.filePath);
 
 		const contentType = getContentTypeFromExtension(media.fileName);
 
@@ -355,10 +329,7 @@ export class MediaServiceImpl {
 		for (const file of files) {
 			try {
 				const relativePath = path.relative(directoryPath, file);
-				const existing = await this.mediaRepository.findByPath(
-					validatedSourceId,
-					relativePath,
-				);
+				const existing = await this.mediaRepository.findByPath(validatedSourceId, relativePath);
 
 				if (!existing) {
 					try {
@@ -435,12 +406,7 @@ export class MediaServiceImpl {
 	/**
 	 * Updates a media item.
 	 */
-	async updateMedia(
-		mediaSourceId: string,
-		mediaId: string,
-		updates: unknown,
-		tx?: Transaction,
-	) {
+	async updateMedia(mediaSourceId: string, mediaId: string, updates: unknown, tx?: Transaction) {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 		const parsedUpdates = updateMediaRequestSchema.parse(updates);
@@ -522,8 +488,7 @@ export class MediaServiceImpl {
 			throw new ResourceNotFoundError("Media not found in source");
 		}
 
-		const generationInfo =
-			await this.mediaRepository.getGenerationInfo(validatedMediaId);
+		const generationInfo = await this.mediaRepository.getGenerationInfo(validatedMediaId);
 		return generationInfo
 			? {
 					...generationInfo,
@@ -548,22 +513,13 @@ export class MediaServiceImpl {
 		const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
 
 		// 1. Get Source Media and Source Info
-		const sourceMedia = await this.mediaRepository.findById(
-			validatedSourceMediaId,
-			tx,
-		);
+		const sourceMedia = await this.mediaRepository.findById(validatedSourceMediaId, tx);
 		if (!sourceMedia) {
 			throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
 		}
 
-		const sourceSource = await this.sourceRepository.findById(
-			sourceMedia.mediaSourceId,
-			tx,
-		);
-		const targetSource = await this.sourceRepository.findById(
-			validatedTargetSourceId,
-			tx,
-		);
+		const sourceSource = await this.sourceRepository.findById(sourceMedia.mediaSourceId, tx);
+		const targetSource = await this.sourceRepository.findById(validatedTargetSourceId, tx);
 
 		if (!(sourceSource && targetSource)) {
 			throw new Error("Source or target media source not found.");
@@ -576,20 +532,13 @@ export class MediaServiceImpl {
 
 		const sourceConnection = sourceSource.connectionInfo as { path: string };
 		const targetConnection = targetSource.connectionInfo as { path: string };
-		const fullSourcePath = path.join(
-			sourceConnection.path,
-			sourceMedia.filePath,
-		);
+		const fullSourcePath = path.join(sourceConnection.path, sourceMedia.filePath);
 
 		// 3. Perform Physical Copy
-		const fileInfo = await this.storageService.copyFile(
-			fullSourcePath,
-			targetConnection.path,
-			{
-				filename: sourceMedia.fileName,
-				autoIncrement: true,
-			},
-		);
+		const fileInfo = await this.storageService.copyFile(fullSourcePath, targetConnection.path, {
+			filename: sourceMedia.fileName,
+			autoIncrement: true,
+		});
 
 		// 4. Create New Media Entry in DB
 		const newMedia: AddMediaRequest = {
@@ -614,17 +563,16 @@ export class MediaServiceImpl {
 		// 5. Prepare Deferred Actions (Jobs + Notifications)
 		const sourcePath = targetConnection.path;
 		// Construct DB Job DTO (DeferredJob)
-		const deferredJob: import("~/application/services/job-dispatch-service").DeferredJob =
-			{
+		const deferredJob: import("~/application/services/job-dispatch-service").DeferredJob = {
+			mediaId: newMediaEntry.id,
+			sourcePath,
+			type: "processMedia",
+			payload: {
 				mediaId: newMediaEntry.id,
 				sourcePath,
 				type: "processMedia",
-				payload: {
-					mediaId: newMediaEntry.id,
-					sourcePath,
-					type: "processMedia",
-				},
-			};
+			},
+		};
 
 		const deferredActions: DeferredActions = {
 			jobs: [
@@ -676,11 +624,7 @@ export class MediaServiceImpl {
 			sourcePath,
 		});
 
-		SseManager.notifyMediaCopied(
-			sourceMediaId,
-			validatedTargetSourceId,
-			newMediaEntry,
-		);
+		SseManager.notifyMediaCopied(sourceMediaId, validatedTargetSourceId, newMediaEntry);
 
 		return {
 			success: true,
@@ -711,16 +655,9 @@ export class MediaServiceImpl {
 
 			// 2. Delete Original if Copy Successful
 			if (copyResult.success) {
-				const sourceMedia = await this.mediaRepository.findById(
-					sourceMediaId,
-					t,
-				);
+				const sourceMedia = await this.mediaRepository.findById(sourceMediaId, t);
 				if (sourceMedia) {
-					const deleteResult = await this.deleteMedia(
-						sourceMedia.mediaSourceId,
-						sourceMediaId,
-						t,
-					);
+					const deleteResult = await this.deleteMedia(sourceMedia.mediaSourceId, sourceMediaId, t);
 					if (deleteResult) {
 						accumulatedDeferred.jobs.push(...deleteResult.jobs);
 						// We omit individual media-deleted event for move context
@@ -798,17 +735,11 @@ export class MediaServiceImpl {
 
 		// 3. Delete file from filesystem
 		if (media.mediaSourceId) {
-			const mediaSource = await this.sourceRepository.findById(
-				media.mediaSourceId,
-				tx,
-			);
+			const mediaSource = await this.sourceRepository.findById(media.mediaSourceId, tx);
 			if (mediaSource && mediaSource.type === "local") {
 				const connectionInfo = mediaSource.connectionInfo as { path: string };
 				try {
-					await this.storageService.deleteFile(
-						connectionInfo.path,
-						media.filePath,
-					);
+					await this.storageService.deleteFile(connectionInfo.path, media.filePath);
 				} catch (_e) {
 					// Log error
 				}
@@ -833,11 +764,7 @@ export class MediaServiceImpl {
 		}
 
 		// Notify via SSE immediately
-		SseManager.sendEvent(
-			sseEvent.mediaSourceId,
-			sseEvent.event,
-			sseEvent.payload,
-		);
+		SseManager.sendEvent(sseEvent.mediaSourceId, sseEvent.event, sseEvent.payload);
 	}
 
 	/**
@@ -852,10 +779,7 @@ export class MediaServiceImpl {
 		tx: Transaction,
 	): Promise<void> {
 		// 1. Authors
-		const sourceAuthors = await this.mediaRepository.getAuthors(
-			sourceMediaId,
-			tx,
-		);
+		const sourceAuthors = await this.mediaRepository.getAuthors(sourceMediaId, tx);
 		if (sourceAuthors.length > 0) {
 			// Optimization: We assume sourceAuthors are already valid entities in our DB,
 			// so we can link them directly without re-checking/creating them.
@@ -867,10 +791,7 @@ export class MediaServiceImpl {
 		}
 
 		// 2. Projects
-		const sourceProjects = await this.projectRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
+		const sourceProjects = await this.projectRepository.findByMediaId(sourceMediaId, tx);
 		if (sourceProjects.length > 0) {
 			await this.projectRepository.addMediaBulk(
 				newMediaId,
@@ -880,10 +801,7 @@ export class MediaServiceImpl {
 		}
 
 		// 3. Characters
-		const sourceCharacters = await this.characterRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
+		const sourceCharacters = await this.characterRepository.findByMediaId(sourceMediaId, tx);
 		if (sourceCharacters.length > 0) {
 			await this.characterRepository.addToMediaBulk(
 				newMediaId,
@@ -952,11 +870,7 @@ export class MediaServiceImpl {
 
 			// Store tags
 			if (metadata.tags.length > 0) {
-				await this.tagRepository.addTagsToMedia(
-					media.id,
-					metadata.tags,
-					"comfyui_workflow",
-				);
+				await this.tagRepository.addTagsToMedia(media.id, metadata.tags, "comfyui_workflow");
 			}
 
 			return await this.mediaRepository.getGenerationInfo(media.id);

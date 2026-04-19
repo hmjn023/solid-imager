@@ -52,16 +52,11 @@ export default function AiTaggingModal(props: AiTaggingModalProps) {
 	};
 
 	return (
-		<Dialog
-			onOpenChange={(open) => !open && props.onClose()}
-			open={props.isOpen}
-		>
+		<Dialog onOpenChange={(open) => !open && props.onClose()} open={props.isOpen}>
 			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>AI Tagging Results</DialogTitle>
-					<DialogDescription>
-						Tags extracted from the image using the AI service.
-					</DialogDescription>
+					<DialogDescription>Tags extracted from the image using the AI service.</DialogDescription>
 				</DialogHeader>
 
 				<div class="py-4">
@@ -73,9 +68,7 @@ export default function AiTaggingModal(props: AiTaggingModalProps) {
 					</Show>
 
 					<Show when={error()}>
-						<div class="rounded-md bg-red-50 p-4 text-red-600">
-							Error: {error()}
-						</div>
+						<div class="rounded-md bg-red-50 p-4 text-red-600">Error: {error()}</div>
 					</Show>
 
 					<Show when={result()}>
@@ -85,11 +78,7 @@ export default function AiTaggingModal(props: AiTaggingModalProps) {
 								<div>
 									<h3 class="mb-2 font-semibold text-lg">Characters</h3>
 									<Show
-										fallback={
-											<p class="text-gray-500 text-sm">
-												No characters detected.
-											</p>
-										}
+										fallback={<p class="text-gray-500 text-sm">No characters detected.</p>}
 										when={Object.keys(res().character).length > 0}
 									>
 										<div class="flex flex-wrap gap-2">
@@ -111,15 +100,11 @@ export default function AiTaggingModal(props: AiTaggingModalProps) {
 								<div>
 									<h3 class="mb-2 font-semibold text-lg">IPs (Series)</h3>
 									<Show
-										fallback={
-											<p class="text-gray-500 text-sm">No IPs detected.</p>
-										}
+										fallback={<p class="text-gray-500 text-sm">No IPs detected.</p>}
 										when={res().ips.length > 0}
 									>
 										<div class="flex flex-wrap gap-2">
-											<For each={res().ips}>
-												{(ip) => <Badge variant="secondary">{ip}</Badge>}
-											</For>
+											<For each={res().ips}>{(ip) => <Badge variant="secondary">{ip}</Badge>}</For>
 										</div>
 									</Show>
 								</div>

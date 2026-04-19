@@ -31,18 +31,8 @@ export const Route = createFileRoute("/manager")({
 	component: ManagerPage,
 });
 
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
-import {
-	Checkbox,
-	CheckboxControl,
-	CheckboxLabel,
-} from "@solid-imager/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@solid-imager/ui/card";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "@solid-imager/ui/checkbox";
 import {
 	Combobox,
 	ComboboxContent,
@@ -81,11 +71,7 @@ import {
 	deleteCharacter,
 	updateCharacter,
 } from "~/infrastructure/api-clients/characters-api";
-import {
-	createIp,
-	deleteIp,
-	updateIp,
-} from "~/infrastructure/api-clients/ips-api";
+import { createIp, deleteIp, updateIp } from "~/infrastructure/api-clients/ips-api";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createProject,
@@ -113,15 +99,11 @@ export default function ManagerPage() {
 	}>({ name: "", description: "" });
 
 	// Tagging State
-	const [selectedSourceId, setSelectedSourceId] = createSignal<
-		string | undefined
-	>(undefined);
+	const [selectedSourceId, setSelectedSourceId] = createSignal<string | undefined>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
 	const [scannedMedia, setScannedMedia] = createSignal<Media[]>([]);
-	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
-		new Set(),
-	);
+	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(new Set());
 	const [jobProgress, setJobProgress] = createSignal<{
 		processed: number;
 		total: number;
@@ -204,11 +186,10 @@ export default function ManagerPage() {
 
 	const openEditDialog = (item: Entity) => {
 		setEditingItem(item);
-		const initialData: { name: string; description: string; ipIds?: string[] } =
-			{
-				name: item.name,
-				description: item.description || "",
-			};
+		const initialData: { name: string; description: string; ipIds?: string[] } = {
+			name: item.name,
+			description: item.description || "",
+		};
 
 		if (activeTab() === "characters") {
 			const char = item as Character;
@@ -296,9 +277,7 @@ export default function ManagerPage() {
 				const data = JSON.parse(event.data);
 				if (data.jobId === jobId) {
 					setJobProgress(data);
-					setTaggingStatus(
-						`Processing: ${data.processed} / ${data.total} tagged.`,
-					);
+					setTaggingStatus(`Processing: ${data.processed} / ${data.total} tagged.`);
 				}
 			} catch (_e) {
 				// ignore
@@ -454,9 +433,7 @@ export default function ManagerPage() {
 								<Label>Target Media Source (Optional)</Label>
 								<Select
 									itemComponent={(props) => (
-										<SelectItem item={props.item}>
-											{props.item.rawValue.name}
-										</SelectItem>
+										<SelectItem item={props.item}>{props.item.rawValue.name}</SelectItem>
 									)}
 									onChange={(val) => setSelectedSourceId(val?.id)}
 									options={Array.isArray(sources.data) ? sources.data : []}
@@ -475,9 +452,7 @@ export default function ManagerPage() {
 										<SelectValue<unknown>>
 											{(state) => {
 												const option = state.selectedOption();
-												return option &&
-													typeof option === "object" &&
-													"name" in option
+												return option && typeof option === "object" && "name" in option
 													? (option as { name: string }).name
 													: "All Sources";
 											}}
@@ -485,9 +460,7 @@ export default function ManagerPage() {
 									</SelectTrigger>
 									<SelectContent />
 								</Select>
-								<p class="text-muted-foreground text-xs">
-									Leave empty to process all sources.
-								</p>
+								<p class="text-muted-foreground text-xs">Leave empty to process all sources.</p>
 							</div>
 
 							<div class="flex items-center space-x-2">
@@ -502,31 +475,23 @@ export default function ManagerPage() {
 								</Checkbox>
 							</div>
 							<p class="text-muted-foreground text-xs">
-								If checked, existing AI tags will be ignored and images will be
-								re-analyzed.
+								If checked, existing AI tags will be ignored and images will be re-analyzed.
 							</p>
 
 							<div class="flex items-center gap-x-2 pt-2">
 								<Button onClick={handleScan}>Scan for Targets</Button>
-								<Button
-									disabled={scannedMedia().length === 0}
-									onClick={handleStartBatchTagging}
-								>
+								<Button disabled={scannedMedia().length === 0} onClick={handleStartBatchTagging}>
 									Start Batch Tagging ({selectedMedia().size})
 								</Button>
 							</div>
 
 							<Show when={taggingStatus()}>
-								<div class="mt-4 rounded bg-gray-100 p-2 text-sm">
-									{taggingStatus()}
-								</div>
+								<div class="mt-4 rounded bg-gray-100 p-2 text-sm">{taggingStatus()}</div>
 							</Show>
 							<Show when={jobProgress()}>
 								{(progress) => (
 									<div class="mt-4">
-										<Progress
-											value={(progress().processed / progress().total) * 100}
-										/>
+										<Progress value={(progress().processed / progress().total) * 100} />
 									</div>
 								)}
 							</Show>
@@ -535,9 +500,7 @@ export default function ManagerPage() {
 					<Show when={scannedMedia().length > 0}>
 						<div class="mt-4">
 							<div class="mb-2 flex items-center justify-between">
-								<h3 class="font-bold text-lg">
-									Scanned Media ({scannedMedia().length})
-								</h3>
+								<h3 class="font-bold text-lg">Scanned Media ({scannedMedia().length})</h3>
 								<div class="flex items-center gap-2">
 									<PaginationControls
 										currentPage={currentPage()}
@@ -545,9 +508,7 @@ export default function ManagerPage() {
 										totalPages={totalPages()}
 									/>
 									<Button onClick={toggleSelectAll} size="sm" variant="outline">
-										{selectedMedia().size === scannedMedia().length
-											? "Deselect All"
-											: "Select All"}
+										{selectedMedia().size === scannedMedia().length ? "Deselect All" : "Select All"}
 									</Button>
 								</div>
 							</div>
@@ -594,18 +555,13 @@ export default function ManagerPage() {
 										}
 									>
 										<CardDescription>
-											IPs:{" "}
-											{(item as Character).ips.map((ip) => ip.name).join(", ")}
+											IPs: {(item as Character).ips.map((ip) => ip.name).join(", ")}
 										</CardDescription>
 									</Show>
 								</CardHeader>
 								<CardContent>
 									<div class="flex justify-end space-x-2">
-										<Button
-											onClick={() => openEditDialog(item)}
-											size="sm"
-											variant="outline"
-										>
+										<Button onClick={() => openEditDialog(item)} size="sm" variant="outline">
 											Edit
 										</Button>
 										<Button
@@ -631,9 +587,7 @@ export default function ManagerPage() {
 					<DialogHeader>
 						<DialogTitle>
 							{editingItem() ? "Edit" : "Create"}{" "}
-							{activeTab() === "tagging"
-								? "TAGGING"
-								: activeTab().slice(0, -1).toUpperCase()}
+							{activeTab() === "tagging" ? "TAGGING" : activeTab().slice(0, -1).toUpperCase()}
 						</DialogTitle>
 						<DialogDescription>
 							{editingItem()
@@ -646,9 +600,7 @@ export default function ManagerPage() {
 							<Label class="text-right">Name</Label>
 							<Input
 								class="col-span-3"
-								onInput={(e) =>
-									setFormData({ ...formData(), name: e.currentTarget.value })
-								}
+								onInput={(e) => setFormData({ ...formData(), name: e.currentTarget.value })}
 								value={formData().name}
 							/>
 						</div>
@@ -672,9 +624,7 @@ export default function ManagerPage() {
 									<Combobox<Ip>
 										itemComponent={(props) => (
 											<ComboboxItem item={props.item}>
-												<ComboboxItemLabel>
-													{(props.item.rawValue as Ip).name}
-												</ComboboxItemLabel>
+												<ComboboxItemLabel>{(props.item.rawValue as Ip).name}</ComboboxItemLabel>
 												<ComboboxItemIndicator />
 											</ComboboxItem>
 										)}
@@ -704,17 +654,12 @@ export default function ManagerPage() {
 						</Show>
 					</div>
 					<DialogFooter>
-						<Button onClick={editingItem() ? handleUpdate : handleCreate}>
-							Save
-						</Button>
+						<Button onClick={editingItem() ? handleUpdate : handleCreate}>Save</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog
-				onOpenChange={setIsDeleteDialogOpen}
-				open={isDeleteDialogOpen()}
-			>
+			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>

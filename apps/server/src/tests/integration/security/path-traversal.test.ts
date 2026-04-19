@@ -26,10 +26,7 @@ describe("ServerMediaStorage Security", () => {
 		await fs.writeFile(path.join(TARGET_DIR, "valid.png"), validPngBuffer);
 
 		// Also create a text file for non-image tests if any
-		await fs.writeFile(
-			path.join(TEST_DIR, "secret.txt"),
-			"This should not be accessed",
-		);
+		await fs.writeFile(path.join(TEST_DIR, "secret.txt"), "This should not be accessed");
 	});
 
 	afterAll(async () => {
@@ -38,16 +35,16 @@ describe("ServerMediaStorage Security", () => {
 
 	test("getFile should block traversal to parent directory", async () => {
 		const traversalPath = "../secret.txt";
-		await expect(
-			ServerMediaStorage.getFile(TARGET_DIR, traversalPath),
-		).rejects.toThrow("Invalid path");
+		await expect(ServerMediaStorage.getFile(TARGET_DIR, traversalPath)).rejects.toThrow(
+			"Invalid path",
+		);
 	});
 
 	test("deleteFile should block traversal", async () => {
 		const traversalPath = "../secret.txt";
-		await expect(
-			ServerMediaStorage.deleteFile(TARGET_DIR, traversalPath),
-		).rejects.toThrow("Invalid path");
+		await expect(ServerMediaStorage.deleteFile(TARGET_DIR, traversalPath)).rejects.toThrow(
+			"Invalid path",
+		);
 		const exists = await fs
 			.access(path.join(TEST_DIR, "secret.txt"))
 			.then(() => true)

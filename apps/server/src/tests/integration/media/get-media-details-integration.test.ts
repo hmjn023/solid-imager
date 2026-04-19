@@ -1,15 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 // This import is hoisted, so we need to be careful
-import {
-	afterEach,
-	beforeAll,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
@@ -80,9 +72,7 @@ describe("getMediaDetails", () => {
 
 	beforeEach(async () => {
 		// Create a temporary directory for the media source
-		const tempSourceDir = await fs.mkdtemp(
-			path.join(fixturesDir, "test-source-"),
-		);
+		const tempSourceDir = await fs.mkdtemp(path.join(fixturesDir, "test-source-"));
 		await fs.copyFile(
 			path.join(fixturesDir, testImageName),
 			path.join(tempSourceDir, testImageName),
@@ -117,10 +107,7 @@ describe("getMediaDetails", () => {
 			mediaId: media.id,
 			prompt: JSON.stringify({ prompt: "test prompt" }),
 		});
-		const [tag] = await db
-			.insert(schema.tags)
-			.values({ name: "positive prompt" })
-			.returning();
+		const [tag] = await db.insert(schema.tags).values({ name: "positive prompt" }).returning();
 		await db.insert(schema.mediaTags).values({
 			mediaId: media.id,
 			tagId: tag.id,
@@ -145,10 +132,7 @@ describe("getMediaDetails", () => {
 	});
 
 	it("should return full media details including tags and generation info", async () => {
-		const details = await MediaService.getMediaDetails(
-			mediaSource.id,
-			media.id,
-		);
+		const details = await MediaService.getMediaDetails(mediaSource.id, media.id);
 
 		// Verify the details object is correct
 		expect(details).toBeDefined();

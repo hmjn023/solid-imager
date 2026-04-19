@@ -5,10 +5,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type {
-	AddMediaRequest,
-	DownloadItem,
-} from "@solid-imager/core/domain/media/schemas";
+import type { AddMediaRequest, DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import ffmpegPath from "ffmpeg-static";
@@ -48,18 +45,13 @@ type YtDlpOutput = {
 
 type Cookie = any;
 
-async function createNetscapeCookieFile(
-	cookies: Cookie[],
-): Promise<string | null> {
+async function createNetscapeCookieFile(cookies: Cookie[]): Promise<string | null> {
 	if (!Array.isArray(cookies) || cookies.length === 0) {
 		return null;
 	}
 
 	const randomSuffix = Math.random().toString(36).slice(2);
-	const cookieFilePath = path.join(
-		os.tmpdir(),
-		`cookies-${Date.now()}-${randomSuffix}.txt`,
-	);
+	const cookieFilePath = path.join(os.tmpdir(), `cookies-${Date.now()}-${randomSuffix}.txt`);
 
 	try {
 		const lines = ["# Netscape HTTP Cookie File"];
@@ -69,15 +61,11 @@ async function createNetscapeCookieFile(
 			const flag = domain.startsWith(".") ? "TRUE" : "FALSE";
 			const cookiePath = cookie.path;
 			const secure = cookie.secure ? "TRUE" : "FALSE";
-			const expiration = cookie.expirationDate
-				? Math.floor(cookie.expirationDate)
-				: 0;
+			const expiration = cookie.expirationDate ? Math.floor(cookie.expirationDate) : 0;
 			const name = cookie.name;
 			const value = cookie.value;
 
-			lines.push(
-				`${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${name}\t${value}`,
-			);
+			lines.push(`${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${name}\t${value}`);
 		}
 
 		await fs.writeFile(cookieFilePath, lines.join("\n"));
@@ -149,9 +137,7 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
 	let outputs: YtDlpOutput[] = [];
 
 	if (typeof result === "string") {
-		const lines = (result as string)
-			.split("\n")
-			.filter((line) => line.trim().length > 0);
+		const lines = (result as string).split("\n").filter((line) => line.trim().length > 0);
 		outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
 			try {
 				acc.push(JSON.parse(line));
@@ -165,10 +151,7 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
 	} else if (typeof result === "object" && result !== null) {
 		outputs = [result as unknown as YtDlpOutput];
 	} else {
-		logger.warn(
-			{ resultType: typeof result, result },
-			"Unexpected yt-dlp output type",
-		);
+		logger.warn({ resultType: typeof result, result }, "Unexpected yt-dlp output type");
 		throw new Error(`Unexpected yt-dlp output type: ${typeof result}`);
 	}
 	return outputs;
@@ -232,11 +215,7 @@ function resolveCreatedAt(
 
 // Update helper to determine media type from extension
 
-async function handleYtDlpDownload(
-	item: DownloadItem,
-	mediaSourceId: string,
-	basePath: string,
-) {
+async function handleYtDlpDownload(item: DownloadItem, mediaSourceId: string, basePath: string) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
 	}
@@ -247,17 +226,9 @@ async function handleYtDlpDownload(
 	try {
 		await waitForDownloadRateLimit();
 
-		const results = await downloadWithYtDlp(
-			item.targetUrl,
-			basePath,
-			item.cookies,
-			item.userAgent,
-		);
+		const results = await downloadWithYtDlp(item.targetUrl, basePath, item.cookies, item.userAgent);
 
-		logger.info(
-			{ count: results.length },
-			"[DownloadJob] yt-dlp download completed",
-		);
+		logger.info({ count: results.length }, "[DownloadJob] yt-dlp download completed");
 
 		for (let i = 0; i < results.length; i++) {
 			await _processSingleYtDlpResult({
@@ -303,11 +274,7 @@ async function _processSingleYtDlpResult(params: {
 	}
 
 	const dir = path.dirname(filePath);
-	const targetPath = await _resolveFinalPathWithAvoidance(
-		dir,
-		unifiedName,
-		filePath,
-	);
+	const targetPath = await _resolveFinalPathWithAvoidance(dir, unifiedName, filePath);
 
 	try {
 		await fs.rename(filePath, targetPath);
@@ -317,10 +284,7 @@ async function _processSingleYtDlpResult(params: {
 			"[DownloadJob] Renamed yt-dlp output to unified name",
 		);
 	} catch (e) {
-		logger.warn(
-			{ err: e, filePath, targetPath },
-			"[DownloadJob] Failed to rename yt-dlp output",
-		);
+		logger.warn({ err: e, filePath, targetPath }, "[DownloadJob] Failed to rename yt-dlp output");
 	}
 
 	// Calculate relative path
@@ -329,10 +293,7 @@ async function _processSingleYtDlpResult(params: {
 	// Determine media type
 	const mediaType = getMediaTypeFromExtension(filePath);
 
-	logger.info(
-		{ relativePath, mediaType },
-		"[DownloadJob] Processing file from yt-dlp",
-	);
+	logger.info({ relativePath, mediaType }, "[DownloadJob] Processing file from yt-dlp");
 
 	// Get file metadata
 	const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
@@ -348,9 +309,7 @@ async function _processSingleYtDlpResult(params: {
 		fileSize: fileMeta.size,
 		createdAt: resolveCreatedAt(item, metadata, fileMeta),
 		modifiedAt: fileMeta.modifiedAt,
-		sourceUrls: Array.from(
-			new Set([item.targetUrl ?? "", ...(item.sourceUrls ?? [])]),
-		),
+		sourceUrls: Array.from(new Set([item.targetUrl ?? "", ...(item.sourceUrls ?? [])])),
 	};
 
 	await registerMedia(newMedia, mediaSourceId, item, basePath);
@@ -424,10 +383,7 @@ async function handleDirectImageDownload(
 		throw new Error("Missing targetUrl for direct download");
 	}
 
-	logger.info(
-		{ url: item.targetUrl },
-		"[DownloadJob] Using direct image download method",
-	);
+	logger.info({ url: item.targetUrl }, "[DownloadJob] Using direct image download method");
 
 	// Generate unified filename
 	const urlPath = new URL(item.targetUrl).pathname;
@@ -452,9 +408,7 @@ async function handleDirectImageDownload(
 				},
 				"[DownloadJob] Fetch failed",
 			);
-			throw new Error(
-				`Failed to download image: ${response.status} ${response.statusText}`,
-			);
+			throw new Error(`Failed to download image: ${response.status} ${response.statusText}`);
 		}
 
 		const arrayBuffer = await response.arrayBuffer();
@@ -485,19 +439,10 @@ async function handleDirectImageDownload(
 					{ tweetUrl },
 					"[DownloadJob] Attempting to fetch metadata from source URL for timestamp",
 				);
-				const meta = await fetchMetadataWithYtDlp(
-					tweetUrl,
-					item.cookies,
-					item.userAgent,
-				);
+				const meta = await fetchMetadataWithYtDlp(tweetUrl, item.cookies, item.userAgent);
 				if (meta?.upload_date) {
-					createdAt = new Date(
-						meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"),
-					);
-					logger.info(
-						{ createdAt },
-						"[DownloadJob] Resolved createdAt from source URL",
-					);
+					createdAt = new Date(meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+					logger.info({ createdAt }, "[DownloadJob] Resolved createdAt from source URL");
 				}
 			}
 		}
@@ -522,22 +467,14 @@ async function handleDirectImageDownload(
 			fileSize: fileInfo.size,
 			createdAt,
 			modifiedAt: fileInfo.modifiedAt,
-			sourceUrls: Array.from(
-				new Set([item.targetUrl, ...(item.sourceUrls ?? [])]),
-			),
+			sourceUrls: Array.from(new Set([item.targetUrl, ...(item.sourceUrls ?? [])])),
 		};
 
 		await registerMedia(newMedia, mediaSourceId, item, basePath);
 
-		logger.info(
-			{ url: item.targetUrl },
-			"[DownloadJob] Download completed successfully",
-		);
+		logger.info({ url: item.targetUrl }, "[DownloadJob] Download completed successfully");
 	} catch (error) {
-		logger.error(
-			{ err: error, url: item.targetUrl },
-			"[DownloadJob] Download failed",
-		);
+		logger.error({ err: error, url: item.targetUrl }, "[DownloadJob] Download failed");
 
 		// Notify frontend via SSE
 		SseManager.sendEvent(mediaSourceId, "download-error", {
@@ -610,10 +547,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	// Use regex to detect Twitter URLs which might need yt-dlp if target is the tweet link
 	const isTwitterPost = item.targetUrl.match(TWITTER_URL_REGEX);
 
-	logger.info(
-		{ isTwitterPost: !!isTwitterPost },
-		"[DownloadJob] URL pattern check",
-	);
+	logger.info({ isTwitterPost: !!isTwitterPost }, "[DownloadJob] URL pattern check");
 
 	try {
 		if (isTwitterPost) {
@@ -623,10 +557,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			await handleDirectImageDownload(item, mediaSourceId, basePath);
 		}
 	} catch (error) {
-		logger.error(
-			{ err: error, url: item.targetUrl },
-			"[DownloadJob] Job execution failed",
-		);
+		logger.error({ err: error, url: item.targetUrl }, "[DownloadJob] Job execution failed");
 		// Notify frontend via SSE
 		SseManager.sendEvent(mediaSourceId, "download-error", {
 			url: item.targetUrl,
@@ -646,9 +577,8 @@ async function updateExistingMediaWithMetadata(
 	newMedia: AddMediaRequest,
 	item: DownloadItem,
 ): Promise<void> {
-	const { MediaProcessingService } = await import(
-		"~/application/services/media-processing-service"
-	);
+	const { MediaProcessingService } =
+		await import("~/application/services/media-processing-service");
 
 	await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
 		description: newMedia.description ?? undefined,
@@ -665,10 +595,7 @@ async function updateExistingMediaWithMetadata(
 	});
 
 	SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
-	logger.info(
-		{ mediaId },
-		"[DownloadJob] Existing media updated with download metadata",
-	);
+	logger.info({ mediaId }, "[DownloadJob] Existing media updated with download metadata");
 }
 
 async function registerMedia(
@@ -679,9 +606,8 @@ async function registerMedia(
 ) {
 	try {
 		// Use MediaProcessingService for unified registration and processing
-		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/application/services/media-processing-service");
 
 		const insertedMedia = await MediaProcessingService.registerAndProcess(
 			mediaSourceId,
@@ -708,17 +634,9 @@ async function registerMedia(
 		);
 	} catch (error) {
 		// Handle race condition with FileWatcherService
-		const existing = await MediaRepository.findByPath(
-			mediaSourceId,
-			newMedia.filePath,
-		);
+		const existing = await MediaRepository.findByPath(mediaSourceId, newMedia.filePath);
 		if (existing) {
-			await updateExistingMediaWithMetadata(
-				existing.id,
-				mediaSourceId,
-				newMedia,
-				item,
-			);
+			await updateExistingMediaWithMetadata(existing.id, mediaSourceId, newMedia, item);
 		} else {
 			throw error;
 		}

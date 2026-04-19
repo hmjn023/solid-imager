@@ -3,13 +3,7 @@ import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
-import {
-	type Job,
-	mediaCharacters,
-	mediaIps,
-	medias,
-	mediaTags,
-} from "~/infrastructure/db/schema";
+import { type Job, mediaCharacters, mediaIps, medias, mediaTags } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 
@@ -112,31 +106,19 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 						db
 							.select()
 							.from(mediaTags)
-							.where(
-								and(
-									eq(mediaTags.mediaId, medias.id),
-									eq(mediaTags.source, "AI"),
-								),
-							),
+							.where(and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI"))),
 					),
 					notExists(
 						db
 							.select()
 							.from(mediaCharacters)
-							.where(
-								and(
-									eq(mediaCharacters.mediaId, medias.id),
-									eq(mediaCharacters.source, "AI"),
-								),
-							),
+							.where(and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, "AI"))),
 					),
 					notExists(
 						db
 							.select()
 							.from(mediaIps)
-							.where(
-								and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
-							),
+							.where(and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI"))),
 					),
 				),
 	);
@@ -183,14 +165,8 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		offset += batchSize;
 
 		// Log progress
-		logger.info(
-			{ jobId: job.id, processedCount },
-			"Bulk tagging dispatch progress",
-		);
+		logger.info({ jobId: job.id, processedCount }, "Bulk tagging dispatch progress");
 	}
 
-	logger.info(
-		{ jobId: job.id, processedCount },
-		"Bulk tagging dispatch completed",
-	);
+	logger.info({ jobId: job.id, processedCount }, "Bulk tagging dispatch completed");
 }

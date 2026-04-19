@@ -53,10 +53,7 @@ const CodeBlock = (props: { content: string }) => (
 	</pre>
 );
 
-const _CollapsibleSection = (props: {
-	title: string;
-	content: string | object;
-}) => {
+const _CollapsibleSection = (props: { title: string; content: string | object }) => {
 	const isJson = typeof props.content === "object" && props.content !== null;
 	const formattedContent = isJson
 		? JSON.stringify(props.content, null, 2)
@@ -81,9 +78,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 
 	// Description editing state
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
-	const [descriptionValue, setDescriptionValue] = createSignal(
-		props.media.description || "",
-	);
+	const [descriptionValue, setDescriptionValue] = createSignal(props.media.description || "");
 
 	const handleSaveDescription = async () => {
 		try {
@@ -103,21 +98,16 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 		setIsEditingDescription(false);
 	};
 
-	const positiveTags = createMemo(() =>
-		tags().filter((tag) => tag.type === "positive"),
-	);
+	const positiveTags = createMemo(() => tags().filter((tag) => tag.type === "positive"));
 
-	const negativeTags = createMemo(() =>
-		tags().filter((tag) => tag.type === "negative"),
-	);
+	const negativeTags = createMemo(() => tags().filter((tag) => tag.type === "negative"));
 
 	const genInfo = createMemo(() => props.media.generationInfo);
 
 	// Queries for associations
 	const projects = createQuery(() => ({
 		queryKey: ["projectsForMedia", props.media.id],
-		queryFn: () =>
-			fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
+		queryFn: () => fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
 	}));
 	const allProjects = createQuery(() => ({
 		queryKey: ["allProjects"],
@@ -133,22 +123,14 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	}));
 
 	const handleAddProject = async (projectId: string) => {
-		await addProjectToMedia(
-			props.media.mediaSourceId,
-			props.media.id,
-			projectId,
-		);
+		await addProjectToMedia(props.media.mediaSourceId, props.media.id, projectId);
 		queryClient.invalidateQueries({
 			queryKey: ["projectsForMedia", props.media.id],
 		});
 	};
 
 	const handleRemoveProject = async (projectId: string) => {
-		await removeProjectFromMedia(
-			props.media.mediaSourceId,
-			props.media.id,
-			projectId,
-		);
+		await removeProjectFromMedia(props.media.mediaSourceId, props.media.id, projectId);
 		queryClient.invalidateQueries({
 			queryKey: ["projectsForMedia", props.media.id],
 		});
@@ -189,11 +171,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	});
 
 	const handleAddCharacter = async (characterId: string) => {
-		await addCharacterToMedia(
-			props.media.mediaSourceId,
-			props.media.id,
-			characterId,
-		);
+		await addCharacterToMedia(props.media.mediaSourceId, props.media.id, characterId);
 		props.onUpdate?.();
 
 		// Auto-assign IPs if the character belongs to any
@@ -209,11 +187,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	const handleRemoveCharacter = async (characterId: string) => {
-		await removeCharacterFromMedia(
-			props.media.mediaSourceId,
-			props.media.id,
-			characterId,
-		);
+		await removeCharacterFromMedia(props.media.mediaSourceId, props.media.id, characterId);
 		props.onUpdate?.();
 	};
 
@@ -353,9 +327,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 									<div class="flex items-center gap-2">
 										<span class="font-medium">{author.name}</span>
 										<Show when={author.accountId}>
-											<span class="text-gray-500 text-xs">
-												({author.accountId})
-											</span>
+											<span class="text-gray-500 text-xs">({author.accountId})</span>
 										</Show>
 									</div>
 								</li>
@@ -405,20 +377,14 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
-									badgeClass =
-										"bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+									badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
 								} else if (tag.source === "comfyui_workflow") {
-									badgeClass =
-										"bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+									badgeClass = "bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
 								}
 								return (
 									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
 										{tag.name}
-										<ClipboardCopy
-											class="ml-1.5 p-0.5"
-											iconSize={12}
-											text={tag.name}
-										/>
+										<ClipboardCopy class="ml-1.5 p-0.5" iconSize={12} text={tag.name} />
 									</Badge>
 								);
 							}}
@@ -435,24 +401,15 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
-									badgeClass =
-										"bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
+									badgeClass = "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
 										"bg-green-50 text-green-800 hover:bg-green-100 border-green-200 border";
 								}
 								return (
-									<Badge
-										class={badgeClass}
-										title={`Source: ${tag.source}`}
-										variant="destructive"
-									>
+									<Badge class={badgeClass} title={`Source: ${tag.source}`} variant="destructive">
 										{tag.name}
-										<ClipboardCopy
-											class="ml-1.5 p-0.5"
-											iconSize={12}
-											text={tag.name}
-										/>
+										<ClipboardCopy class="ml-1.5 p-0.5" iconSize={12} text={tag.name} />
 									</Badge>
 								);
 							}}
@@ -483,9 +440,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 							<Show when={genInfo()?.negativePrompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
-										<span class="font-medium text-gray-600">
-											Negative Prompt:
-										</span>
+										<span class="font-medium text-gray-600">Negative Prompt:</span>
 										<ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
 									</div>
 									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
@@ -498,11 +453,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">Workflow:</span>
 										<ClipboardCopy
-											text={
-												genInfo()?.workflow
-													? JSON.stringify(genInfo()?.workflow)
-													: ""
-											}
+											text={genInfo()?.workflow ? JSON.stringify(genInfo()?.workflow) : ""}
 										/>
 									</div>
 									<pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">

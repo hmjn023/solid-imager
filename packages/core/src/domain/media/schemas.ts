@@ -17,7 +17,7 @@ export type MediaType = z.infer<typeof mediaTypeSchema>;
  * Ensures all required fields for new media are present and correctly formatted.
  */
 export const addMediaRequestSchema = z.object({
-	mediaSourceId: z.uuid({ version: "v4", message: "Invalid source ID format" }),
+	mediaSourceId: z.string().uuid({ version: "v4", message: "Invalid source ID format" }),
 	filePath: z.string().min(1, "File path is required"),
 	fileName: z.string().min(1, "File name is required"),
 	fileSize: z.number().int().positive("File size must be a positive integer"),
@@ -45,25 +45,13 @@ export type ImageMetadataComment = z.infer<typeof imageMetadataCommentSchema>;
 export const updateMediaRequestSchema = z.object({
 	filePath: z.string().min(1, "File path cannot be empty").optional(),
 	fileName: z.string().min(1, "File name cannot be empty").optional(),
-	fileSize: z
-		.number()
-		.int()
-		.positive("File size must be a positive integer")
-		.optional(),
+	fileSize: z.number().int().positive("File size must be a positive integer").optional(),
 	createdAt: z.coerce.date().optional(),
 	modifiedAt: z.coerce.date().optional(),
 	updatedAt: z.coerce.date().optional(), // Keeping updatedAt for BC if needed, but modifiedAt is primary
 	mediaType: mediaTypeSchema.optional(),
-	width: z
-		.number()
-		.int()
-		.positive("Width must be a positive integer")
-		.optional(),
-	height: z
-		.number()
-		.int()
-		.positive("Height must be a positive integer")
-		.optional(),
+	width: z.number().int().positive("Width must be a positive integer").optional(),
+	height: z.number().int().positive("Height must be a positive integer").optional(),
 	description: z.string().nullable().optional(),
 	sourceUrls: z.array(z.string().url("Invalid URL format")).optional(),
 	authors: z
@@ -97,7 +85,7 @@ export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
  * Zod schema for validating a media ID.
  * Ensures the ID is a valid UUID format.
  */
-export const mediaIdSchema = z.uuid({
+export const mediaIdSchema = z.string().uuid({
 	version: "v4",
 	message: "Invalid media ID format",
 });
@@ -107,7 +95,7 @@ export type MediaId = z.infer<typeof mediaIdSchema>;
  * Zod schema for validating a source ID.
  * Ensures the ID is a valid UUID format.
  */
-export const mediaSourceIdSchema = z.uuid({
+export const mediaSourceIdSchema = z.string().uuid({
 	version: "v4",
 	message: "Invalid source ID format",
 });
@@ -117,9 +105,7 @@ export type SourceId = z.infer<typeof mediaSourceIdSchema>;
  * Zod schema for validating a directory path.
  * Ensures the path is a non-empty string.
  */
-export const directoryPathSchema = z
-	.string()
-	.min(1, "Directory path is required");
+export const directoryPathSchema = z.string().min(1, "Directory path is required");
 export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
 export const extractedDataSchema = z.object({
@@ -137,8 +123,8 @@ export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
 export const mediaSchema = z.object({
-	id: z.uuid({ version: "v4" }),
-	mediaSourceId: z.uuid({ version: "v4" }),
+	id: z.string().uuid({ version: "v4" }),
+	mediaSourceId: z.string().uuid({ version: "v4" }),
 	filePath: z.string(),
 	fileName: z.string(),
 	mediaType: mediaTypeSchema,
@@ -155,7 +141,7 @@ export const mediaSchema = z.object({
 export type Media = z.infer<typeof mediaSchema>;
 
 export const authorSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.string().uuid({ version: "v4" }),
 	name: z.string(),
 	accountId: z.string().nullable(),
 	createdAt: z.coerce.date(),
@@ -172,8 +158,8 @@ export const newAuthorSchema = z.object({
 export type NewAuthor = z.infer<typeof newAuthorSchema>;
 
 export const mediaUrlSchema = z.object({
-	id: z.uuid({ version: "v4" }),
-	mediaId: z.uuid({ version: "v4" }),
+	id: z.string().uuid({ version: "v4" }),
+	mediaId: z.string().uuid({ version: "v4" }),
 	url: z.string().url(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
@@ -223,7 +209,7 @@ export const ipSchema = z.object({
 export type MediaIp = z.infer<typeof ipSchema>;
 
 export const mediaGenerationInfoSchema = z.object({
-	mediaId: z.uuid({ version: "v4" }),
+	mediaId: z.string().uuid({ version: "v4" }),
 	metadata: z.any().nullable(),
 	prompt: z.string().nullable(),
 	negativePrompt: z.string().nullable(),
@@ -287,13 +273,7 @@ export const searchCriterionSchema = z.object({
 	target: filterTargetSchema,
 	operator: filterOperatorSchema.default("equals"),
 	value: z
-		.union([
-			z.string(),
-			z.number(),
-			z.boolean(),
-			z.array(z.string()),
-			z.array(z.number()),
-		])
+		.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.array(z.number())])
 		.nullable(),
 	negate: z.boolean().default(false).optional(), // NOT条件
 });
@@ -473,7 +453,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
 export const bulkDownloadRequestSchema = z.object({
-	mediaSourceId: z.uuid({ version: "v4", message: "Invalid media source ID" }),
+	mediaSourceId: z.string().uuid({ version: "v4", message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
 });
 
@@ -497,7 +477,7 @@ export {
 } from "./upload-schemas";
 
 export const copyMediaRequestSchema = z.object({
-	targetSourceId: z.uuid({
+	targetSourceId: z.string().uuid({
 		version: "v4",
 		message: "Invalid target source ID",
 	}),

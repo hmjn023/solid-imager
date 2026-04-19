@@ -1,9 +1,6 @@
 import { describe, expect, it, vi } from "vite-plus/test";
 import type { DatabaseConfig } from "~/config/database";
-import {
-	closeConnection,
-	createConnection,
-} from "~/infrastructure/db/connection";
+import { closeConnection, createConnection } from "~/infrastructure/db/connection";
 
 // Mock PGlite and postgres
 
@@ -96,9 +93,7 @@ describe("createConnection", () => {
 			pglite: {},
 		};
 
-		await expect(createConnection(config)).rejects.toThrow(
-			"Unsupported database type.",
-		);
+		await expect(createConnection(config)).rejects.toThrow("Unsupported database type.");
 	});
 });
 

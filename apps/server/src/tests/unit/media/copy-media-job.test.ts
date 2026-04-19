@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -184,9 +177,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerConfigService(mockConfigService as any);
 
 		// Instantiate and Register MediaProcessingService
-		const { MediaProcessingServiceImpl } = await import(
-			"~/application/services/media-processing-service"
-		);
+		const { MediaProcessingServiceImpl } =
+			await import("~/application/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl(
 			mockSourceRepository as any,
 			MediaRepository, // This is the class/static mock wrapper? Let's check imports. It's imported as class/object.
@@ -255,9 +247,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 
 		// But failing to see MediaProcessingService being used?
 		// MediaService.copyMedia calls jobRepo.create.
-		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/application/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);
 
 		// 5. Assert generateThumbnail was called

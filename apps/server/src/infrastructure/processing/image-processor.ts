@@ -89,10 +89,7 @@ export class LocalImageProcessor implements IImageProcessor {
 					.webp({ quality })
 					.toFile(outputPath);
 
-				logger.info(
-					{ outputPath },
-					"[ImageProcessor] Video thumbnail generated",
-				);
+				logger.info({ outputPath }, "[ImageProcessor] Video thumbnail generated");
 			} catch (error) {
 				logger.error(
 					{ err: error, mediaPath },
@@ -142,19 +139,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			const ext = path.extname(mediaPath).toLowerCase();
 
 			// Skip metadata extraction for videos and audio for now
-			if (
-				[
-					".mp4",
-					".webm",
-					".mov",
-					".mkv",
-					".avi",
-					".mp3",
-					".wav",
-					".ogg",
-					".m4a",
-				].includes(ext)
-			) {
+			if ([".mp4", ".webm", ".mov", ".mkv", ".avi", ".mp3", ".wav", ".ogg", ".m4a"].includes(ext)) {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
@@ -189,8 +174,8 @@ export class LocalImageProcessor implements IImageProcessor {
 				negativeTags: string[];
 			};
 			try {
-				const tagExtractionConfig = services.getConfigService().getConfig()
-					.media.tagExtraction.comfyui;
+				const tagExtractionConfig = services.getConfigService().getConfig().media
+					.tagExtraction.comfyui;
 				tagExtractionOptions = {
 					positiveNodeTypes: tagExtractionConfig.positiveNodeTypes,
 					negativeKeywords: tagExtractionConfig.negativeKeywords,
@@ -205,16 +190,10 @@ export class LocalImageProcessor implements IImageProcessor {
 				};
 			}
 
-			const { tags, prompt, workflow } = extractDataFromComments(
-				comments,
-				tagExtractionOptions,
-			);
+			const { tags, prompt, workflow } = extractDataFromComments(comments, tagExtractionOptions);
 			return { tags, prompt, workflow };
 		} catch (error) {
-			logger.error(
-				{ err: error, mediaPath },
-				"[ImageProcessor] Failed to extract metadata",
-			);
+			logger.error({ err: error, mediaPath }, "[ImageProcessor] Failed to extract metadata");
 			return { tags: [], prompt: null, workflow: null };
 		}
 	}
@@ -224,9 +203,7 @@ export class LocalImageProcessor implements IImageProcessor {
 	 * @param {string} mediaPath - The path to the source image file.
 	 * @returns {Promise<{ width: number; height: number }>} A promise that resolves with an object containing the width and height.
 	 */
-	async getDimensions(
-		mediaPath: string,
-	): Promise<{ width: number; height: number }> {
+	async getDimensions(mediaPath: string): Promise<{ width: number; height: number }> {
 		const path = await import("node:path");
 		const ext = path.extname(mediaPath).toLowerCase();
 
@@ -239,9 +216,7 @@ export class LocalImageProcessor implements IImageProcessor {
 						reject(err);
 						return;
 					}
-					const videoStream = probeData.streams.find(
-						(s) => s.codec_type === "video",
-					);
+					const videoStream = probeData.streams.find((s) => s.codec_type === "video");
 					if (videoStream?.width && videoStream.height) {
 						resolve({ width: videoStream.width, height: videoStream.height });
 					} else {
@@ -275,11 +250,7 @@ export const VideoProcessor = {
 	 * @param {string} _time - The timestamp in the video to capture the thumbnail (e.g., "00:00:01").
 	 * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
 	 */
-	async generateThumbnail(
-		videoPath: string,
-		outputPath: string,
-		_time: string,
-	): Promise<void> {
+	async generateThumbnail(videoPath: string, outputPath: string, _time: string): Promise<void> {
 		// Delegate to ImageProcessor which handles videos correctly now
 		// Note: ImageProcessor uses a fixed "10%" timestamp currently, ignoring _time.
 		// If precision is needed, ImageProcessor needs update.

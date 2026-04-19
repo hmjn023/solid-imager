@@ -1,15 +1,7 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
-import {
-	getScrollPosition,
-	setScrollPosition,
-} from "@solid-imager/core/domain/sources/store";
+import { getScrollPosition, setScrollPosition } from "@solid-imager/core/domain/sources/store";
 import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -52,15 +44,7 @@ import {
 	keepPreviousData,
 	useQueryClient,
 } from "@tanstack/solid-query";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
@@ -89,10 +73,7 @@ import {
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { logger } from "~/infrastructure/logger";
-import {
-	getSearchCondition,
-	searchState,
-} from "~/presentation/store/search-store";
+import { getSearchCondition, searchState } from "~/presentation/store/search-store";
 
 const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
@@ -117,9 +98,7 @@ export default function MediaListPage() {
 	// Optimize query key to only include relevant search parameters.
 	// Serialize condition as JSON string to stabilize the key across mode toggles
 	// (simple/pro produce structurally-equivalent but referentially-different objects).
-	const searchConditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
+	const searchConditionKey = createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
 	const searchParams = createMemo(() => ({
 		condition: getSearchCondition(),
@@ -148,10 +127,7 @@ export default function MediaListPage() {
 		},
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
-			const loadedCount = allPages.reduce(
-				(sum, page) => sum + page.media.length,
-				0,
-			);
+			const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
 			if (loadedCount < lastPage.total) {
 				return loadedCount;
 			}
@@ -246,21 +222,15 @@ export default function MediaListPage() {
 	const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
 	const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
 	const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
-	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
-		null,
-	);
+	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(null);
 
 	// Copy/Move Dialog State
 	const [moveCopyDialogOpen, setMoveCopyDialogOpen] = createSignal(false);
 	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
-	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
-		null,
-	);
+	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(null);
 
 	// Singleton Context Menu State
-	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
-		string | null
-	>(null);
+	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<string | null>(null);
 
 	let fileInputRef: HTMLInputElement | undefined;
 
@@ -352,9 +322,7 @@ export default function MediaListPage() {
 			}
 
 			if (items.length === 0) {
-				throw new Error(
-					"JSONファイルにはダウンロードするアイテムが含まれていません。",
-				);
+				throw new Error("JSONファイルにはダウンロードするアイテムが含まれていません。");
 			}
 
 			// Send to downloads API
@@ -386,10 +354,7 @@ export default function MediaListPage() {
 			document.body.removeChild(a);
 			toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
 		} catch (error) {
-			logger.error(
-				{ err: error, mediaSourceId: id, mode },
-				"Failed to download dump",
-			);
+			logger.error({ err: error, mediaSourceId: id, mode }, "Failed to download dump");
 			toast.error("Failed to download dump");
 		}
 	};
@@ -415,10 +380,9 @@ export default function MediaListPage() {
 			) {
 				toast.loading("Importing ZIP dump...", { id: "restore-toast" });
 				const result = await importSourceZip(id, file);
-				toast.success(
-					`Import complete: ${result.importedCount} items imported.`,
-					{ id: "restore-toast" },
-				);
+				toast.success(`Import complete: ${result.importedCount} items imported.`, {
+					id: "restore-toast",
+				});
 				queryClient.invalidateQueries({
 					queryKey: ["media", id],
 				});
@@ -483,10 +447,7 @@ export default function MediaListPage() {
 		e.stopPropagation();
 	};
 
-	const handleImagePasteItem = (
-		item: DataTransferItem,
-		e: ClipboardEvent,
-	): boolean => {
+	const handleImagePasteItem = (item: DataTransferItem, e: ClipboardEvent): boolean => {
 		if (item.type.indexOf("image") !== -1) {
 			const blob = item.getAsFile();
 
@@ -602,10 +563,7 @@ export default function MediaListPage() {
 				});
 			}
 		} catch (e) {
-			logger.error(
-				{ err: e, mediaId: id, targetSourceId, mode },
-				`Failed to ${mode} media`,
-			);
+			logger.error({ err: e, mediaId: id, targetSourceId, mode }, `Failed to ${mode} media`);
 			toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
 		} finally {
 			setMediaIdToMoveCopy(null);
@@ -655,9 +613,9 @@ export default function MediaListPage() {
 	};
 
 	const [addedCount, setAddedCount] = createSignal(0);
-	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
-		typeof setTimeout
-	> | null>(null);
+	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<typeof setTimeout> | null>(
+		null,
+	);
 
 	onCleanup(() => {
 		const timer = debounceTimer();
@@ -716,9 +674,7 @@ export default function MediaListPage() {
 			});
 		},
 		onAllJobsCompleted: (data) => {
-			toast.success(
-				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
-			);
+			toast.success(`All jobs completed! Processed: ${data.processed ?? "N/A"}`);
 			queryClient.invalidateQueries({
 				queryKey: ["media", mediaSourceId()],
 			});
@@ -908,9 +864,7 @@ export default function MediaListPage() {
 				<div class="flex flex-col gap-4">
 					<Show when={mediaQuery.isPending && !mediaQuery.data}>
 						<div class="flex h-64 items-center justify-center">
-							<div class="animate-pulse text-lg text-muted-foreground">
-								Loading media...
-							</div>
+							<div class="animate-pulse text-lg text-muted-foreground">Loading media...</div>
 						</div>
 					</Show>
 
@@ -967,19 +921,14 @@ export default function MediaListPage() {
 						</ContextMenuTrigger>
 						<ContextMenuContent>
 							<Show
-								fallback={
-									<ContextMenuItem disabled>No media selected</ContextMenuItem>
-								}
+								fallback={<ContextMenuItem disabled>No media selected</ContextMenuItem>}
 								when={contextMenuMediaId()}
 							>
 								<ContextMenuItem
 									onSelect={() => {
 										const id = contextMenuMediaId();
 										if (id) {
-											window.open(
-												`/sources/${mediaSourceId()}/${id}`,
-												"_blank",
-											);
+											window.open(`/sources/${mediaSourceId()}/${id}`, "_blank");
 										}
 									}}
 								>
@@ -1091,15 +1040,11 @@ export default function MediaListPage() {
 					<DialogHeader>
 						<DialogTitle>Delete Media</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this media? This action cannot be
-							undone.
+							Are you sure you want to delete this media? This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							onClick={() => setDeleteDialogOpen(false)}
-							variant="outline"
-						>
+						<Button onClick={() => setDeleteDialogOpen(false)} variant="outline">
 							Cancel
 						</Button>
 						<Button onClick={_confirmDelete} variant="destructive">
