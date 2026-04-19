@@ -22,7 +22,7 @@ import {
 	mediaTags,
 	mediaUrls,
 	tags,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
 import { TauriAuthorRepository } from "../repositories/author-repository";
 import { TauriCharacterRepository } from "../repositories/character-repository";

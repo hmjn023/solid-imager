@@ -14,7 +14,7 @@ import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	ips,
 	mediaIps,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 
 function toIp(row: typeof ips.$inferSelect): Ip {
 	return ipSchema.parse(row);

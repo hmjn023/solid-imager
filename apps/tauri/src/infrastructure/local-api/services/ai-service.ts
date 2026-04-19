@@ -26,7 +26,7 @@ import {
 	medias,
 	mediaTags,
 	tags,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";

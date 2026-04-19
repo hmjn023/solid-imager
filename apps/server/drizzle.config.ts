@@ -11,7 +11,7 @@ let config: Config;
 if (DB_HOST === "pglite") {
   // PGlite用の設定
   config = {
-    schema: "./src/infrastructure/db/schema.ts",
+    schema: "../../packages/db/src/schema.ts",
     out: "./drizzle",
     dialect: "postgresql", // PGlite is compatible with PostgreSQL dialect
     dbCredentials: {
@@ -30,7 +30,7 @@ if (DB_HOST === "pglite") {
 
   const databaseUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}`;
   config = {
-    schema: "./src/infrastructure/db/schema.ts",
+    schema: "../../packages/db/src/schema.ts",
     out: "./drizzle",
     dialect: "postgresql",
     dbCredentials: {

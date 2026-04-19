@@ -21,6 +21,7 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-fs": "^2.4.2",
     "@solid-imager/core": "workspace:*",
+    "@solid-imager/db": "workspace:*",
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "1.167.12",
     "@tanstack/solid-query": "5.96.2",

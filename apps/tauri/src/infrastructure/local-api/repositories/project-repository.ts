@@ -10,7 +10,7 @@ import { getTauriAppServices } from "~/app-services";
 import {
 	mediaProjects,
 	projects,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 
 function toProject(row: typeof projects.$inferSelect): Project {
 	return projectSchema.parse(row);

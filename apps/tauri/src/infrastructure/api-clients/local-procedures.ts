@@ -119,13 +119,13 @@ const localProcedureHandlers = {
 		return await TauriSourceBackupService.restoreSource(id, data);
 	},
 	"sources.importZip": async (input: unknown) => {
-		const { id, file } = z
+		const { id, bytes } = z
 			.object({
 				id: uuidSchema,
-				file: z.instanceof(File),
+				bytes: z.array(z.number().int().min(0).max(255)),
 			})
 			.parse(input);
-		return await TauriSourceBackupService.importSourceZip(id, file);
+		return await TauriSourceBackupService.importSourceZip(id, bytes);
 	},
 	"media.search": async (input: unknown) => {
 		const { sourceId, params } = z

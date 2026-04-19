@@ -7,7 +7,7 @@ import type {
 import { presetSchema } from "@solid-imager/core/domain/media/schemas";
 import { eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import { presets } from "../../../../../server/src/infrastructure/db/schema";
+import { presets } from "@solid-imager/db/schema";
 
 const validSorts = new Set(["date", "name", "size", "rating", "viewCount"]);
 const validOrders = new Set(["asc", "desc"]);

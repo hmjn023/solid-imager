@@ -16,7 +16,7 @@ import {
 	characterIps,
 	characters,
 	mediaCharacters,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 
 function toCharacter(
 	row: typeof characters.$inferSelect & {

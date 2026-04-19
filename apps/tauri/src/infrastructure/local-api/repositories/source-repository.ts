@@ -6,7 +6,7 @@ import type {
 import { asc, eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import { mediaSources } from "../../../../../server/src/infrastructure/db/schema";
+import { mediaSources } from "@solid-imager/db/schema";
 
 function getExecutor(tx?: TauriDbExecutor) {
 	return tx ?? getTauriAppServices().db;

@@ -36,6 +36,7 @@
     "@orpc/tanstack-query": "^1.13.13",
     "@orpc/zod": "^1.13.13",
     "@solid-imager/core": "workspace:*",
+    "@solid-imager/db": "workspace:*",
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "latest",
     "@tanstack/solid-form": "latest",

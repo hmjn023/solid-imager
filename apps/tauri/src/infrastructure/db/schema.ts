@@ -1,1 +1,1 @@
-export * from "../../../../server/src/infrastructure/db/schema";
+export * from "@solid-imager/db/schema";

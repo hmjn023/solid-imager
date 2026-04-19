@@ -21,7 +21,7 @@ import {
 	mediaUrls,
 	projects,
 	tags,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 import { TauriSourceRepository } from "../repositories/source-repository";
 import { TauriSourceService } from "./source-service";
 
@@ -678,23 +678,24 @@ export const TauriSourceBackupService = {
 			};
 		}
 
-		const db = getTauriAppServices().db;
-		const { tagMap, authorMap, projectMap, ipMap, charMap } =
-			await restoreMasterData(db, validItems);
-		await restoreMediaRecords(db, mediaSourceId, validItems);
-		const mediaPathToId = await mapMediaPathsToIds(
-			db,
-			mediaSourceId,
-			validItems,
-		);
-		await restoreRelations(db, {
-			items: validItems,
-			mediaPathToId,
-			tagMap,
-			authorMap,
-			projectMap,
-			ipMap,
-			charMap,
+		await getTauriAppServices().db.transaction(async (tx) => {
+			const { tagMap, authorMap, projectMap, ipMap, charMap } =
+				await restoreMasterData(tx, validItems);
+			await restoreMediaRecords(tx, mediaSourceId, validItems);
+			const mediaPathToId = await mapMediaPathsToIds(
+				tx,
+				mediaSourceId,
+				validItems,
+			);
+			await restoreRelations(tx, {
+				items: validItems,
+				mediaPathToId,
+				tagMap,
+				authorMap,
+				projectMap,
+				ipMap,
+				charMap,
+			});
 		});
 
 		return {
@@ -706,11 +707,10 @@ export const TauriSourceBackupService = {
 
 	async importSourceZip(
 		mediaSourceId: string,
-		file: File,
+		bytes: number[],
 	): Promise<ImportSourceZipResult> {
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
-		const bytes = new Uint8Array(await file.arrayBuffer());
 		const dumpData = await getTauriAppServices().commandClient.invoke<
 			unknown[]
 		>("backup_extract_zip", {

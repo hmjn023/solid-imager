@@ -44,6 +44,7 @@
         "@orpc/tanstack-query": "^1.13.13",
         "@orpc/zod": "^1.13.13",
         "@solid-imager/core": "workspace:*",
+        "@solid-imager/db": "workspace:*",
         "@solid-imager/ui": "workspace:*",
         "@tanstack/router-plugin": "latest",
         "@tanstack/solid-form": "latest",
@@ -109,6 +110,7 @@
       "dependencies": {
         "@electric-sql/pglite": "^0.3.16",
         "@solid-imager/core": "workspace:*",
+        "@solid-imager/db": "workspace:*",
         "@solid-imager/ui": "workspace:*",
         "@tanstack/router-plugin": "1.167.12",
         "@tanstack/solid-query": "5.96.2",
@@ -162,6 +164,19 @@
       "peerDependencies": {
         "solid-js": "^1.9.12",
         "zod": "^4.3.5",
+      },
+    },
+    "packages/db": {
+      "name": "@solid-imager/db",
+      "version": "0.0.0",
+      "dependencies": {
+        "@solid-imager/core": "workspace:*",
+        "drizzle-orm": "^0.44.7",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+        "vite-plus": "latest",
+        "vite-tsconfig-paths": "^5.1.4",
       },
     },
     "packages/ui": {
@@ -675,6 +690,8 @@
     "@solid-imager/cli": ["@solid-imager/cli@workspace:apps/cli"],
 
     "@solid-imager/core": ["@solid-imager/core@workspace:packages/core"],
+
+    "@solid-imager/db": ["@solid-imager/db@workspace:packages/db"],
 
     "@solid-imager/server": ["@solid-imager/server@workspace:apps/server"],
 

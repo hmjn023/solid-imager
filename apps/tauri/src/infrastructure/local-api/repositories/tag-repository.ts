@@ -14,7 +14,7 @@ import { getTauriAppServices } from "~/app-services";
 import {
 	mediaTags,
 	tags,
-} from "../../../../../server/src/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
 
 function toTag(row: typeof tags.$inferSelect): TagResponse {
 	return tagResponseSchema.parse(row);
