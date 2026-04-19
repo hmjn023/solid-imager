@@ -117,16 +117,24 @@ export const TauriTagRepository = {
 			.from(tags)
 			.where(inArray(tags.name, uniqueTagNames));
 
-		const rows = tagsToInsert.map((t) => {
-			const found = allTags.find((tag) => tag.name === t.name);
-			if (!found) throw new Error(`Tag ${t.name} not found after insertion`);
-			return {
-				mediaId,
-				tagId: found.id,
-				tagType: t.type,
-				confidence: t.confidence ?? null,
-				source,
-			};
+		const tagMap = new Map(allTags.map((tag) => [tag.name, tag]));
+		const rows = tagsToInsert.flatMap((t) => {
+			const found = tagMap.get(t.name);
+			if (!found) {
+				console.warn(
+					`[tag-repository] Tag ${t.name} not found after insertion, skipping`,
+				);
+				return [];
+			}
+			return [
+				{
+					mediaId,
+					tagId: found.id,
+					tagType: t.type,
+					confidence: t.confidence ?? null,
+					source,
+				},
+			];
 		});
 
 		if (rows.length === 0) return;
