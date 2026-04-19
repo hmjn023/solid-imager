@@ -9,7 +9,7 @@ export const mediaSourceIdSchema = z.uuid({
 	version: "v4",
 	message: "Invalid source ID format",
 });
-export type MedioaSourceId = z.infer<typeof mediaSourceIdSchema>;
+export type MediaSourceId = z.infer<typeof mediaSourceIdSchema>;
 
 export const localConnectionSchema = z.object({
 	path: z.string().min(1, "Path is required"),
