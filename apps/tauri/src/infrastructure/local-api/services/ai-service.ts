@@ -334,4 +334,10 @@ export const TauriAiService = {
 		await emitMediaChanged(input.mediaId);
 		return { success: true as const };
 	},
+
+	async tagSingleMedia(mediaId: string): Promise<void> {
+		const response = await tagMediaFromServer(mediaId);
+		await persistAiTags(mediaId, response);
+		await emitMediaChanged(mediaId);
+	},
 };

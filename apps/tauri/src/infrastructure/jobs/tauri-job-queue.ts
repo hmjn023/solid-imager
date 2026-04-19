@@ -4,7 +4,11 @@ import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
 import { TauriMediaRepository } from "../local-api/repositories/media-repository";
 import { TauriTagRepository } from "../local-api/repositories/tag-repository";
-import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";
+import {
+	type PersistedAutoTaggingJob,
+	TauriJobRepository,
+} from "../local-api/repositories/tauri-job-repository";
+import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriConfigService } from "../local-api/services/config-service";
 import type { PersistedThumbnailJob, ThumbnailJob } from "./thumbnail-job";
 
@@ -32,12 +36,17 @@ class TauriJobQueue {
 	private running = 0;
 	private sourceCounters = new Map<string, SourceCounter>();
 	private concurrency = defaultAppConfig.jobs.concurrency;
+	private aiQueue: PersistedAutoTaggingJob[] = [];
+	private aiRunning = 0;
+	private aiConcurrency = defaultAppConfig.jobs.aiConcurrency;
 	private initializationPromise: Promise<void> | null = null;
 
 	constructor() {
 		TauriConfigService.onChange((config) => {
 			this.concurrency = config.jobs.concurrency;
+			this.aiConcurrency = config.jobs.aiConcurrency;
 			this.drain();
+			this.drainAi();
 		});
 	}
 
@@ -67,12 +76,19 @@ class TauriJobQueue {
 	private async initializeInternal(): Promise<void> {
 		const config = await TauriConfigService.getConfig();
 		this.concurrency = config.jobs.concurrency;
+		this.aiConcurrency = config.jobs.aiConcurrency;
 		await TauriJobRepository.resetInProgressToPending();
+		await TauriJobRepository.resetInProgressAutoTaggingToPending();
 		const pendingJobs = await TauriJobRepository.findPending();
 		for (const job of pendingJobs) {
 			this.enqueueInMemory(job);
 		}
+		const pendingAiJobs = await TauriJobRepository.findPendingAutoTagging();
+		for (const job of pendingAiJobs) {
+			this.enqueueAiInMemory(job);
+		}
 		this.drain();
+		this.drainAi();
 	}
 
 	private enqueueInMemory(job: PersistedThumbnailJob): void {
@@ -154,6 +170,19 @@ class TauriJobQueue {
 				timestamp: new Date().toISOString(),
 			});
 			await TauriJobRepository.markAsCompleted(job.id);
+
+			// Step 3: Queue auto_tagging if enabled and media is an image
+			if (config.jobs.enableAutoTagging) {
+				const media = await TauriMediaRepository.findById(job.mediaId);
+				if (media?.mediaType === "image") {
+					const aiJob = await TauriJobRepository.createAutoTaggingJob(
+						job.mediaId,
+						job.sourceId,
+					);
+					this.enqueueAiInMemory(aiJob);
+					this.drainAi();
+				}
+			}
 		} catch (err) {
 			const message =
 				err instanceof Error ? err.message : "Unknown thumbnail job error";
@@ -169,6 +198,43 @@ class TauriJobQueue {
 			}
 		} finally {
 			await this.markDone(job.sourceId);
+		}
+	}
+
+	private enqueueAiInMemory(job: PersistedAutoTaggingJob): void {
+		this.aiQueue.push(job);
+	}
+
+	private drainAi(): void {
+		while (this.aiRunning < this.aiConcurrency && this.aiQueue.length > 0) {
+			const job = this.aiQueue.shift();
+			if (!job) return;
+			this.aiRunning++;
+			void this.processAiJob(job).finally(() => {
+				this.aiRunning--;
+				this.drainAi();
+			});
+		}
+	}
+
+	private async processAiJob(job: PersistedAutoTaggingJob): Promise<void> {
+		try {
+			await TauriJobRepository.markAsInProgress(job.id);
+			await TauriAiService.tagSingleMedia(job.mediaId);
+			await TauriJobRepository.markAsCompleted(job.id);
+		} catch (err) {
+			const message =
+				err instanceof Error ? err.message : "Unknown AI job error";
+			console.error("[jobs] auto_tagging failed:", job.mediaId, err);
+			try {
+				await TauriJobRepository.markAsFailed(job.id, message);
+			} catch (updateError) {
+				console.error(
+					"[jobs] failed to persist AI job failure:",
+					job.mediaId,
+					updateError,
+				);
+			}
 		}
 	}
 
