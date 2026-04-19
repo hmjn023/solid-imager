@@ -897,14 +897,14 @@ function SourceMediaRoute() {
 					<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">
 						<div class="mb-2 flex items-center justify-between text-sm">
 							<span class="text-muted-foreground">
-								サムネイル生成中 {progress().processed} / {progress().total}
+								サムネイル生成中 {progress.processed} / {progress.total}
 							</span>
 							<span class="text-muted-foreground text-xs">
-								{Math.round((progress().processed / progress().total) * 100)}%
+								{Math.round((progress.processed / progress.total) * 100)}%
 							</span>
 						</div>
 						<Progress
-							value={(progress().processed / progress().total) * 100}
+							value={(progress.processed / progress.total) * 100}
 						/>
 					</div>
 				)}
