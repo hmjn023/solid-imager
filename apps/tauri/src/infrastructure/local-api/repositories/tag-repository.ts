@@ -9,9 +9,12 @@ import {
 	tagResponseSchema,
 	type UpdateTag,
 } from "@solid-imager/core/domain/tags/schemas";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import { tags } from "../../../../../server/src/infrastructure/db/schema";
+import {
+	mediaTags,
+	tags,
+} from "../../../../../server/src/infrastructure/db/schema";
 
 function toTag(row: typeof tags.$inferSelect): TagResponse {
 	return tagResponseSchema.parse(row);
@@ -89,6 +92,70 @@ export const TauriTagRepository = {
 		}
 
 		return toTag(rows[0]);
+	},
+
+	async addTagsToMedia(
+		mediaId: string,
+		tagsToInsert: {
+			name: string;
+			type: "positive" | "negative";
+			confidence?: number;
+		}[],
+		source = "manual",
+	): Promise<void> {
+		const db = getTauriAppServices().db;
+		const uniqueTagNames = [...new Set(tagsToInsert.map((t) => t.name))];
+		if (uniqueTagNames.length === 0) return;
+
+		await db
+			.insert(tags)
+			.values(uniqueTagNames.map((name) => ({ name, source })))
+			.onConflictDoNothing();
+
+		const allTags = await db
+			.select()
+			.from(tags)
+			.where(inArray(tags.name, uniqueTagNames));
+
+		const tagMap = new Map(allTags.map((tag) => [tag.name, tag]));
+		const rows = tagsToInsert.flatMap((t) => {
+			const found = tagMap.get(t.name);
+			if (!found) {
+				console.warn(
+					`[tag-repository] Tag ${t.name} not found after insertion, skipping`,
+				);
+				return [];
+			}
+			return [
+				{
+					mediaId,
+					tagId: found.id,
+					tagType: t.type,
+					confidence: t.confidence ?? null,
+					source,
+				},
+			];
+		});
+
+		if (rows.length === 0) return;
+
+		let sourceSet = sql`excluded.source`;
+		let confSet = sql`excluded.confidence`;
+		if (source === "AI") {
+			sourceSet = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
+			confSet = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
+		} else if (source === "manual") {
+			sourceSet = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.source ELSE media_tags.source END`;
+			confSet = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_tags.confidence END`;
+		}
+
+		await db
+			.insert(mediaTags)
+			.values(rows)
+			.onConflictDoUpdate({
+				target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
+				set: { source: sourceSet, confidence: confSet },
+			});
 	},
 
 	async delete(id: string): Promise<void> {
