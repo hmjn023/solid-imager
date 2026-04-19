@@ -103,7 +103,7 @@ class TauriJobQueue {
 		try {
 			await TauriJobRepository.markAsInProgress(job.id);
 
-			// Step 1: metadata extraction (mirrors server executeProcessMediaJob)
+			// Step 1: Metadata extraction
 			try {
 				const metadata =
 					await getTauriAppServices().imageProcessor.extractMetadata(
@@ -111,7 +111,7 @@ class TauriJobQueue {
 					);
 				await TauriMediaRepository.upsertGenerationInfo(
 					job.mediaId,
-					typeof metadata.prompt === "object" && metadata.prompt !== null
+					metadata.prompt !== null && typeof metadata.prompt === "object"
 						? JSON.stringify(metadata.prompt)
 						: (metadata.prompt as string | null),
 					metadata.workflow as object | null,
@@ -123,15 +123,15 @@ class TauriJobQueue {
 						"comfyui_workflow",
 					);
 				}
-			} catch (metaErr) {
+			} catch (err) {
 				console.warn(
 					"[jobs] metadata extraction failed, continuing:",
 					job.mediaId,
-					metaErr,
+					err,
 				);
 			}
 
-			// Step 2: thumbnail generation
+			// Step 2: Thumbnail generation
 			const config = await TauriConfigService.getConfig();
 			const basePath = await resolveThumbnailBasePath(
 				config.storage.thumbnailDir,

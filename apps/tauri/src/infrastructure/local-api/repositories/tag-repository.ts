@@ -11,7 +11,6 @@ import {
 } from "@solid-imager/core/domain/tags/schemas";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	mediaTags,
 	tags,
@@ -95,17 +94,6 @@ export const TauriTagRepository = {
 		return toTag(rows[0]);
 	},
 
-	async delete(id: string): Promise<void> {
-		const rows = await getTauriAppServices()
-			.db.delete(tags)
-			.where(eq(tags.id, id))
-			.returning();
-
-		if (!rows[0]) {
-			throw new ResourceNotFoundError("Tag", id);
-		}
-	},
-
 	async addTagsToMedia(
 		mediaId: string,
 		tagsToInsert: {
@@ -114,67 +102,70 @@ export const TauriTagRepository = {
 			confidence?: number;
 		}[],
 		source = "manual",
-		tx?: TauriDbExecutor,
 	): Promise<void> {
-		const uniqueTagNames = Array.from(
-			new Set(tagsToInsert.map((tag) => tag.name)),
-		);
+		const db = getTauriAppServices().db;
+		const uniqueTagNames = [...new Set(tagsToInsert.map((t) => t.name))];
 		if (uniqueTagNames.length === 0) return;
 
-		const run = async (client: TauriDbExecutor) => {
-			await client
-				.insert(tags)
-				.values(uniqueTagNames.map((name) => ({ name, source })))
-				.onConflictDoNothing();
+		await db
+			.insert(tags)
+			.values(uniqueTagNames.map((name) => ({ name, source })))
+			.onConflictDoNothing();
 
-			const allTags = await client
-				.select()
-				.from(tags)
-				.where(inArray(tags.name, uniqueTagNames));
+		const allTags = await db
+			.select()
+			.from(tags)
+			.where(inArray(tags.name, uniqueTagNames));
 
-			const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
-				const foundTag = allTags.find((t) => t.name === tagToInsert.name);
-				if (!foundTag) {
-					throw new Error(`Tag ${tagToInsert.name} not found after insertion`);
-				}
-				return {
-					mediaId,
-					tagId: foundTag.id,
-					tagType: tagToInsert.type,
-					confidence: tagToInsert.confidence ?? null,
-					source,
-				};
-			});
-
-			if (mediaTagsToInsert.length === 0) return;
-
-			let sourceUpdateSql = sql`excluded.source`;
-			let confidenceUpdateSql = sql`excluded.confidence`;
-
-			if (source === "AI") {
-				sourceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
-				confidenceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
-			} else if (source === "manual") {
-				sourceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.source ELSE media_tags.source END`;
-				confidenceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_tags.confidence END`;
+		const tagMap = new Map(allTags.map((tag) => [tag.name, tag]));
+		const rows = tagsToInsert.flatMap((t) => {
+			const found = tagMap.get(t.name);
+			if (!found) {
+				console.warn(
+					`[tag-repository] Tag ${t.name} not found after insertion, skipping`,
+				);
+				return [];
 			}
+			return [
+				{
+					mediaId,
+					tagId: found.id,
+					tagType: t.type,
+					confidence: t.confidence ?? null,
+					source,
+				},
+			];
+		});
 
-			await client
-				.insert(mediaTags)
-				.values(mediaTagsToInsert)
-				.onConflictDoUpdate({
-					target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
-					set: {
-						confidence: confidenceUpdateSql,
-						source: sourceUpdateSql,
-					},
-				});
-		};
+		if (rows.length === 0) return;
 
-		if (tx) {
-			await run(tx);
-		} else {
-			await getTauriAppServices().db.transaction(run);
+		let sourceSet = sql`excluded.source`;
+		let confSet = sql`excluded.confidence`;
+		if (source === "AI") {
+			sourceSet = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
+			confSet = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
+		} else if (source === "manual") {
+			sourceSet = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.source ELSE media_tags.source END`;
+			confSet = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_tags.confidence END`;
+		}
+
+		await db
+			.insert(mediaTags)
+			.values(rows)
+			.onConflictDoUpdate({
+				target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
+				set: { source: sourceSet, confidence: confSet },
+			});
+	},
+
+	async delete(id: string): Promise<void> {
+		const rows = await getTauriAppServices()
+			.db.delete(tags)
+			.where(eq(tags.id, id))
+			.returning();
+
+		if (!rows[0]) {
+			throw new ResourceNotFoundError("Tag", id);
 		}
 	},
 };
