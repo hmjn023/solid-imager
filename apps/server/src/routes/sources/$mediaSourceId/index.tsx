@@ -46,6 +46,7 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	component: MediaListPage,
 });
 
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import {
 	createInfiniteQuery,
 	createQuery,
@@ -64,7 +65,6 @@ import {
 import { isServer, Portal } from "solid-js/web";
 import { z } from "zod";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
@@ -865,6 +865,7 @@ export default function MediaListPage() {
 										authors: allAuthors.data,
 									}}
 									onSearch={handleSearch}
+									presetClient={PresetClient}
 								/>
 							</div>
 						</DialogContent>
@@ -902,6 +903,7 @@ export default function MediaListPage() {
 								authors: allAuthors.data,
 							}}
 							onSearch={handleSearch}
+							presetClient={PresetClient}
 							usePopover={false}
 						/>
 					</CardContent>

@@ -1,5 +1,6 @@
-import { Badge } from "@solid-imager/ui/badge";
-import { Button } from "@solid-imager/ui/button";
+import { createMemo, createSignal, For, Show } from "solid-js";
+import { Badge } from "./badge";
+import { Button } from "./button";
 import {
 	CommandDialog,
 	CommandEmpty,
@@ -7,9 +8,8 @@ import {
 	CommandInput,
 	CommandItem,
 	CommandList,
-} from "@solid-imager/ui/command";
-import { toast } from "@solid-imager/ui/toast";
-import { createMemo, createSignal, For, Show } from "solid-js";
+} from "./command";
+import { toast } from "./toast";
 
 type Item = {
 	id: string;

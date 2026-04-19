@@ -52,7 +52,7 @@ import {
 import { z } from "zod";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { SearchControlPanel } from "~/components/media/search-control-panel";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -823,6 +823,7 @@ function SourceMediaRoute() {
 				authors: allAuthors.data,
 			}}
 			onSearch={handleSearch}
+			presetClient={PresetClient}
 		/>
 	);
 

@@ -7,8 +7,9 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { Button } from "@solid-imager/ui/button";
-import { Card, CardContent } from "@solid-imager/ui/card";
+import { createMemo, Index, Match, Show, Switch } from "solid-js";
+import { Button } from "./button";
+import { Card, CardContent } from "./card";
 import {
 	Combobox,
 	ComboboxContent,
@@ -16,17 +17,16 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
-} from "@solid-imager/ui/combobox";
-import { Input } from "@solid-imager/ui/input";
+} from "./combobox";
+import { Input } from "./input";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@solid-imager/ui/select";
-import { cn } from "@solid-imager/ui/utils/cn";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
+} from "./select";
+import { cn } from "./utils/cn";
 
 const TARGET_LABELS: Record<string, string> = {
 	fileName: "ファイル名",

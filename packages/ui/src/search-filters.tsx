@@ -2,9 +2,12 @@ import type { Author } from "@solid-imager/core/domain/authors/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { Badge } from "@solid-imager/ui/badge";
-import { Button } from "@solid-imager/ui/button";
+import { createSignal, For } from "solid-js";
+import type { SetStoreFunction } from "solid-js/store";
+import { Badge } from "./badge";
+import { Button } from "./button";
 import {
 	Combobox,
 	ComboboxContent,
@@ -12,29 +15,14 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
-} from "@solid-imager/ui/combobox";
-import { Input } from "@solid-imager/ui/input";
-import { Label } from "@solid-imager/ui/label";
-import { cn } from "@solid-imager/ui/utils/cn";
-import { createSignal, For } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
-
-export type SearchFilterState = {
-	searchQuery: string;
-	selectedTags: string[];
-	excludeTags: string[];
-	tagMode: "and" | "or";
-	selectedProjects: string[];
-	selectedIps: string[];
-	selectedCharacters: string[];
-	selectedAuthors: string[];
-	sortBy: "date" | "name" | "size" | "rating" | "viewCount";
-	sortOrder: "asc" | "desc";
-};
+} from "./combobox";
+import { Input } from "./input";
+import { Label } from "./label";
+import { cn } from "./utils/cn";
 
 type SearchFiltersProps = {
-	state: SearchFilterState;
-	setState: SetStoreFunction<SearchFilterState>;
+	state: SearchState;
+	setState: SetStoreFunction<SearchState>;
 	tags: TagResponse[] | undefined;
 	projects: Project[] | undefined;
 	ips: Ip[] | undefined;
@@ -45,7 +33,6 @@ type SearchFiltersProps = {
 	usePopover?: boolean;
 };
 
-// Generic Filter Section Component
 function FilterSection<T>(props: {
 	label: string;
 	items: T[] | undefined;
@@ -96,7 +83,6 @@ function FilterSection<T>(props: {
 				onChange={(val) => {
 					if (val) {
 						props.onSelect(val);
-						// setValue(null); // Keep the selection visible
 					}
 				}}
 				optionLabel={props.getItemLabel}
@@ -150,7 +136,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 
 	return (
 		<div class={cn("space-y-4", props.className)}>
-			{/* Filename Search */}
 			<div class="space-y-2">
 				<Label>ファイル名検索</Label>
 				<Input
@@ -161,7 +146,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				/>
 			</div>
 
-			{/* IP Filter */}
 			<FilterSection
 				badgeVariant="secondary"
 				getItemDescription={(ip) => ip.description}
@@ -187,7 +171,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				selectedItems={props.state.selectedIps}
 			/>
 
-			{/* Character Filter */}
 			<FilterSection
 				badgeVariant="secondary"
 				getItemDescription={(char) => char.description}
@@ -213,7 +196,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				selectedItems={props.state.selectedCharacters}
 			/>
 
-			{/* Tag Selection */}
 			<FilterSection
 				badgeVariant="default"
 				getItemKey={(tag) => tag.name}
@@ -226,7 +208,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				selectedItems={props.state.selectedTags}
 			/>
 
-			{/* Exclude Tags */}
 			<FilterSection
 				badgeVariant="destructive"
 				getItemKey={(tag) => tag.name}
@@ -239,7 +220,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				selectedItems={props.state.excludeTags}
 			/>
 
-			{/* Author Filter */}
 			<FilterSection
 				badgeVariant="secondary"
 				getItemKey={(author) => author.name}
@@ -264,7 +244,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				selectedItems={props.state.selectedAuthors}
 			/>
 
-			{/* Project Filter */}
 			<FilterSection
 				badgeVariant="secondary"
 				getItemDescription={(project) => project.description}

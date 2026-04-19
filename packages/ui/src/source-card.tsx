@@ -8,7 +8,7 @@ import {
 	CardDescription,
 	CardHeader,
 	CardTitle,
-} from "@solid-imager/ui/card";
+} from "./card";
 
 type SourceCardProps = {
 	mediaSource: SafeMediaSource | MediaSourceInfo;

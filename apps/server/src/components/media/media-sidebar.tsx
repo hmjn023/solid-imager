@@ -1,4 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import { AssociationManager } from "@solid-imager/ui/association-manager";
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
@@ -6,7 +7,6 @@ import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import AiTaggingModal from "~/components/media/ai-tagging-modal";
-import AssociationManager from "~/components/media/association-manager";
 import {
 	addCharacterToMedia,
 	createCharacter,

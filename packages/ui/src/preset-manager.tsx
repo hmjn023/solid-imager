@@ -1,4 +1,8 @@
-import type { Preset } from "@solid-imager/core/domain/media/schemas";
+import type {
+	Preset,
+	SearchGroup,
+} from "@solid-imager/core/domain/media/schemas";
+import { createEffect, createResource, createSignal, Show } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -8,8 +12,8 @@ import {
 	AlertDialogFooter,
 	AlertDialogHeader,
 	AlertDialogTitle,
-} from "@solid-imager/ui/alert-dialog";
-import { Button } from "@solid-imager/ui/button";
+} from "./alert-dialog";
+import { Button } from "./button";
 import {
 	Dialog,
 	DialogContent,
@@ -18,49 +22,54 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@solid-imager/ui/dialog";
-import { Input } from "@solid-imager/ui/input";
-import { Label } from "@solid-imager/ui/label";
+} from "./dialog";
+import { Input } from "./input";
+import { Label } from "./label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@solid-imager/ui/select";
-import { toast } from "@solid-imager/ui/toast";
-import { cn } from "@solid-imager/ui/utils/cn";
-import { createEffect, createResource, createSignal, Show } from "solid-js";
-import { PresetClient } from "~/infrastructure/api/clients/preset-client";
+} from "./select";
 import {
 	clearPresetFilters,
 	getSearchCondition,
 	loadPreset,
 	searchState,
-} from "~/presentation/store/search-store";
+} from "./stores/search-store";
+import { toast } from "./toast";
+import { cn } from "./utils/cn";
+
+export interface PresetManagerClient {
+	list(): Promise<Preset[]>;
+	create(data: {
+		name: string;
+		value: SearchGroup;
+		sort?: "name" | "date" | "rating" | "viewCount" | "size";
+		order?: "asc" | "desc";
+		mode?: "simple" | "pro";
+	}): Promise<unknown>;
+	delete(id: number): Promise<unknown>;
+}
 
 export function PresetManager(props: {
+	presetClient: PresetManagerClient;
 	class?: string;
 	onAction?: () => void;
 }) {
-	const [data, { refetch }] = createResource(PresetClient.list);
+	const [data, { refetch }] = createResource(props.presetClient.list);
 
-	// existing "current" preset should be hidden from UI
-	// Hide any internal presets starting with "current" (e.g. current, current-all, and current-{sourceId})
 	const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
-
-	// For Delete Confirmation
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
-
 	const [newPresetName, setNewPresetName] = createSignal("");
 	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
 		null,
 	);
 
-	// Sync activePresetId from store to local selection
 	createEffect(() => {
 		const active = searchState.activePresetId;
 		if (active) {
@@ -70,22 +79,20 @@ export function PresetManager(props: {
 		}
 	});
 
-	const handleSave = async (e: Event) => {
-		e.preventDefault();
+	const handleSave = async (event: Event) => {
+		event.preventDefault();
 		if (!newPresetName()) {
 			return;
 		}
 
-		// Use current search state to build the preset value
 		const condition = getSearchCondition();
-
 		if (!condition) {
 			toast.error("検索条件がありません");
 			return;
 		}
 
 		try {
-			await PresetClient.create({
+			await props.presetClient.create({
 				name: newPresetName(),
 				value: condition,
 				sort: searchState.sortBy,
@@ -94,10 +101,10 @@ export function PresetManager(props: {
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
-			refetch(); // This is equivalent to loadPresets() in this context
+			refetch();
 			toast.success("プリセットを保存しました");
 			props.onAction?.();
-		} catch (_e) {
+		} catch {
 			toast.error("プリセットの保存に失敗しました");
 		}
 	};
@@ -114,15 +121,12 @@ export function PresetManager(props: {
 		}
 
 		try {
-			await PresetClient.delete(id);
-
-			// If deleted preset was selected, clear selection
+			await props.presetClient.delete(id);
 			if (selectedPresetId() === String(id)) {
 				setSelectedPresetId(null);
 			}
-
 			refetch();
-		} catch (_e) {
+		} catch {
 			toast.error("プリセットの削除に失敗しました");
 		} finally {
 			setIsDeleteDialogOpen(false);
@@ -150,7 +154,6 @@ export function PresetManager(props: {
 
 	return (
 		<div class={cn("flex w-full flex-col gap-2", props.class)}>
-			{/* Delete Confirmation Dialog */}
 			<AlertDialog
 				onOpenChange={setIsDeleteDialogOpen}
 				open={isDeleteDialogOpen()}
@@ -216,7 +219,6 @@ export function PresetManager(props: {
 					</Select>
 				</div>
 
-				{/* Clear Selection Button */}
 				<Show when={selectedPresetId()}>
 					<Button
 						class="h-10 w-10 shrink-0"
@@ -271,7 +273,9 @@ export function PresetManager(props: {
 								<Label class="text-right">名前</Label>
 								<Input
 									class="col-span-3"
-									onInput={(e) => setNewPresetName(e.currentTarget.value)}
+									onInput={(event) =>
+										setNewPresetName(event.currentTarget.value)
+									}
 									value={newPresetName()}
 								/>
 							</div>
@@ -282,7 +286,6 @@ export function PresetManager(props: {
 					</DialogContent>
 				</Dialog>
 
-				{/* Delete Button (Only shows when selected) */}
 				<Show when={selectedPresetId()}>
 					<Button
 						class="hover:border-red-200 hover:bg-red-50"

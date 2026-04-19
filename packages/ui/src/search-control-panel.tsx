@@ -4,27 +4,30 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { Button } from "@solid-imager/ui/button";
-import { Label } from "@solid-imager/ui/label";
+import { Show } from "solid-js";
+import { Button } from "./button";
+import { Label } from "./label";
+import { PresetManager, type PresetManagerClient } from "./preset-manager";
+import { ProSearchDialog } from "./pro-search-dialog";
+import { SearchFilters } from "./search-filters";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@solid-imager/ui/select";
-import { Show } from "solid-js";
+} from "./select";
+import { SortControls } from "./sort-controls";
 import {
 	searchState,
 	setSearchMode,
 	setSearchState,
-} from "~/presentation/store/search-store";
-import { PresetManager } from "./preset-manager";
-import { ProSearchDialog } from "./pro-search-dialog";
-import { SearchFilters } from "./search-filters";
-import { SortControls } from "./sort-controls";
+} from "./stores/search-store";
+
+export type { PresetManagerClient };
 
 export type SearchControlPanelProps = {
+	presetClient: PresetManagerClient;
 	context: "source" | "global";
 	onSearch: () => void;
 	filterData: {
@@ -124,7 +127,10 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			<div class={searchState.mode === "pro" ? "block" : "hidden"}>
 				<div class="space-y-4">
-					<PresetManager class="w-full flex-col items-stretch" />
+					<PresetManager
+						class="w-full flex-col items-stretch"
+						presetClient={props.presetClient}
+					/>
 					<ProSearchDialog
 						authors={props.filterData.authors}
 						characters={props.filterData.characters}

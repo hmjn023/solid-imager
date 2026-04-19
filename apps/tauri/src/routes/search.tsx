@@ -29,7 +29,7 @@ import {
 	Show,
 } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { SearchControlPanel } from "~/components/media/search-control-panel";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -225,6 +225,7 @@ function SearchRoute() {
 			}}
 			onSearch={handleSearch}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
+			presetClient={PresetClient}
 			selectedSource={searchState.selectedSource}
 			sources={sources.data}
 		/>

@@ -4,7 +4,8 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { Button } from "@solid-imager/ui/button";
+import { createSignal } from "solid-js";
+import { Button } from "./button";
 import {
 	Dialog,
 	DialogContent,
@@ -12,8 +13,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@solid-imager/ui/dialog";
-import { createSignal } from "solid-js";
+} from "./dialog";
 import { ProSearchBuilder } from "./pro-search-builder";
 
 type Props = {

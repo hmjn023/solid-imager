@@ -29,7 +29,7 @@ import {
 } from "~/infrastructure/api-clients/projects-api";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 import { AiTaggingModal } from "./ai-tagging-modal";
-import { AssociationManager } from "./association-manager";
+import { AssociationManager } from "@solid-imager/ui/association-manager";
 
 type MediaSidebarProps = {
 	media: MediaDetails;

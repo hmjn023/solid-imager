@@ -32,6 +32,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import {
 	createInfiniteQuery,
 	createQuery,
@@ -49,7 +50,6 @@ import {
 } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { SearchControlPanel } from "~/components/media/search-control-panel";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -273,6 +273,7 @@ export default function Search() {
 									}}
 									onSearch={handleSearch}
 									onSelectSource={(id) => setSearchState("selectedSource", id)}
+									presetClient={PresetClient}
 									selectedSource={searchState.selectedSource}
 									sources={sources.data}
 								/>
@@ -307,6 +308,7 @@ export default function Search() {
 							}}
 							onSearch={handleSearch}
 							onSelectSource={(id) => setSearchState("selectedSource", id)}
+							presetClient={PresetClient}
 							selectedSource={searchState.selectedSource}
 							sources={sources.data}
 							usePopover={false}

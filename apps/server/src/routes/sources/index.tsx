@@ -16,10 +16,10 @@ export const Route = createFileRoute("/sources/")({
 	component: Sources,
 });
 
+import { SourceCard } from "@solid-imager/ui/source-card";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createEffect, createSignal, For, onCleanup, onMount } from "solid-js";
 import { isServer } from "solid-js/web";
-import SourceCard from "~/components/source-card";
 import SourceDeleteModal from "~/components/source-delete-modal";
 import SourceFormModal from "~/components/source-form-modal";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";

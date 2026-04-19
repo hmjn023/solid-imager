@@ -1,23 +1,23 @@
-import { Label } from "@solid-imager/ui/label";
+import { Label } from "./label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@solid-imager/ui/select";
+} from "./select";
 
-export type TauriSortOption = "date" | "name" | "size" | "rating" | "viewCount";
+export type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
 
 type SortControlsProps = {
-	sortBy: TauriSortOption;
+	sortBy: SortOption;
 	sortOrder: "asc" | "desc";
-	onSortByChange: (value: TauriSortOption) => void;
+	onSortByChange: (value: SortOption) => void;
 	onSortOrderChange: (value: "asc" | "desc") => void;
 	className?: string;
 };
 
-function getSortLabel(value: TauriSortOption) {
+function getSortLabel(value: SortOption) {
 	if (value === "date") {
 		return "作成日";
 	}
@@ -42,11 +42,11 @@ export function SortControls(props: SortControlsProps) {
 					<Select
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
-								{getSortLabel(itemProps.item.rawValue as TauriSortOption)}
+								{getSortLabel(itemProps.item.rawValue as SortOption)}
 							</SelectItem>
 						)}
 						onChange={(value) =>
-							props.onSortByChange((value as TauriSortOption) || "date")
+							props.onSortByChange((value as SortOption) || "date")
 						}
 						options={["date", "name", "size", "rating", "viewCount"]}
 						placeholder="項目"
@@ -55,9 +55,7 @@ export function SortControls(props: SortControlsProps) {
 						<SelectTrigger>
 							<SelectValue<string>>
 								{(state) =>
-									getSortLabel(
-										(state.selectedOption() as TauriSortOption) || "date",
-									)
+									getSortLabel((state.selectedOption() as SortOption) || "date")
 								}
 							</SelectValue>
 						</SelectTrigger>
