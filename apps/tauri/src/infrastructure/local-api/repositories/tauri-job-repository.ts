@@ -2,11 +2,12 @@ import { and, asc, eq, or } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { type Job, jobs, type NewJob } from "../../db/schema";
 import type {
-	PersistedThumbnailJob,
-	ThumbnailJob,
-} from "../../jobs/thumbnail-job";
+	MediaProcessingStep,
+	PersistedProcessMediaJob,
+	ProcessMediaJob,
+} from "../../jobs/process-media-job";
 
-const THUMBNAIL_JOB_TYPE = "thumbnail_generation";
+const PROCESS_MEDIA_JOB_TYPE = "processMedia";
 const AUTO_TAGGING_JOB_TYPE = "auto_tagging";
 
 type AutoTaggingJobPayload = {
@@ -53,31 +54,31 @@ function toPersistedAutoTaggingJob(row: Job): PersistedAutoTaggingJob | null {
 	};
 }
 
-type ThumbnailJobPayload = {
+type ProcessMediaJobPayload = {
 	mediaId: string;
-	filePath: string;
-	fullPath: string;
+	sourcePath: string;
+	steps?: MediaProcessingStep[];
 };
 
 function getDb() {
 	return getTauriAppServices().db;
 }
 
-function isThumbnailJobPayload(value: unknown): value is ThumbnailJobPayload {
+function isProcessMediaJobPayload(
+	value: unknown,
+): value is ProcessMediaJobPayload {
 	return (
 		typeof value === "object" &&
 		value !== null &&
 		"mediaId" in value &&
 		typeof value.mediaId === "string" &&
-		"filePath" in value &&
-		typeof value.filePath === "string" &&
-		"fullPath" in value &&
-		typeof value.fullPath === "string"
+		"sourcePath" in value &&
+		typeof value.sourcePath === "string"
 	);
 }
 
-function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
-	if (!row.mediaSourceId || !isThumbnailJobPayload(row.payload)) {
+function toPersistedProcessMediaJob(row: Job): PersistedProcessMediaJob | null {
+	if (!row.mediaSourceId || !isProcessMediaJobPayload(row.payload)) {
 		console.error(
 			`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`,
 		);
@@ -88,8 +89,8 @@ function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
 		id: row.id,
 		sourceId: row.mediaSourceId,
 		mediaId: row.payload.mediaId,
-		filePath: row.payload.filePath,
-		fullPath: row.payload.fullPath,
+		sourcePath: row.payload.sourcePath,
+		steps: row.payload.steps,
 		status: row.status,
 		error: row.error,
 		createdAt: row.createdAt,
@@ -99,22 +100,22 @@ function toPersistedThumbnailJob(row: Job): PersistedThumbnailJob | null {
 
 export const TauriJobRepository = {
 	async createMany(
-		thumbnailJobs: ThumbnailJob[],
-	): Promise<PersistedThumbnailJob[]> {
-		if (thumbnailJobs.length === 0) {
+		processMediaJobs: ProcessMediaJob[],
+	): Promise<PersistedProcessMediaJob[]> {
+		if (processMediaJobs.length === 0) {
 			return [];
 		}
 
 		const now = new Date();
-		const values: NewJob[] = thumbnailJobs.map((job) => ({
+		const values: NewJob[] = processMediaJobs.map((job) => ({
 			id: crypto.randomUUID(),
-			type: THUMBNAIL_JOB_TYPE,
+			type: PROCESS_MEDIA_JOB_TYPE,
 			mediaSourceId: job.sourceId,
 			status: "pending",
 			payload: {
 				mediaId: job.mediaId,
-				filePath: job.filePath,
-				fullPath: job.fullPath,
+				sourcePath: job.sourcePath,
+				steps: job.steps,
 			},
 			result: null,
 			error: null,
@@ -124,20 +125,56 @@ export const TauriJobRepository = {
 		const rows = await getDb().insert(jobs).values(values).returning();
 
 		return rows.flatMap((row) => {
-			const job = toPersistedThumbnailJob(row);
+			const job = toPersistedProcessMediaJob(row);
 			return job ? [job] : [];
 		});
 	},
 
-	async findPending(): Promise<PersistedThumbnailJob[]> {
+	async createIfUnique(
+		job: ProcessMediaJob,
+	): Promise<PersistedProcessMediaJob | null> {
+		const db = getDb();
+		// Check for existing pending or in-progress jobs with the same mediaId
+		// Since we don't have a JSON index in SQLite/PGlite yet, we query active jobs and filter in JS
+		const activeRows = await db
+			.select()
+			.from(jobs)
+			.where(
+				and(
+					eq(jobs.type, PROCESS_MEDIA_JOB_TYPE),
+					or(eq(jobs.status, "pending"), eq(jobs.status, "in_progress")),
+				),
+			);
+
+		const existing = activeRows.find((row) => {
+			const p = row.payload;
+			return (
+				typeof p === "object" &&
+				p !== null &&
+				"mediaId" in p &&
+				p.mediaId === job.mediaId
+			);
+		});
+
+		if (existing) {
+			return toPersistedProcessMediaJob(existing);
+		}
+
+		const [created] = await this.createMany([job]);
+		return created || null;
+	},
+
+	async findPending(): Promise<PersistedProcessMediaJob[]> {
 		const rows = await getDb()
 			.select()
 			.from(jobs)
-			.where(and(eq(jobs.type, THUMBNAIL_JOB_TYPE), eq(jobs.status, "pending")))
+			.where(
+				and(eq(jobs.type, PROCESS_MEDIA_JOB_TYPE), eq(jobs.status, "pending")),
+			)
 			.orderBy(asc(jobs.createdAt));
 
 		return rows.flatMap((row) => {
-			const job = toPersistedThumbnailJob(row);
+			const job = toPersistedProcessMediaJob(row);
 			return job ? [job] : [];
 		});
 	},
@@ -150,7 +187,10 @@ export const TauriJobRepository = {
 				updatedAt: new Date(),
 			})
 			.where(
-				and(eq(jobs.type, THUMBNAIL_JOB_TYPE), eq(jobs.status, "in_progress")),
+				and(
+					eq(jobs.type, PROCESS_MEDIA_JOB_TYPE),
+					eq(jobs.status, "in_progress"),
+				),
 			);
 	},
 

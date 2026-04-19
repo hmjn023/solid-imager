@@ -2,12 +2,12 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { SourceCard } from "@solid-imager/ui/source-card";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { listen } from "@tauri-apps/api/event";
 import { createEffect, createSignal, For, onCleanup } from "solid-js";
-import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "~/components/source-delete-modal";
 import { SourceFormModal } from "~/components/source-form-modal";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";

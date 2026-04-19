@@ -437,6 +437,50 @@ export const TauriMediaRepository = {
 			.where(eq(medias.mediaSourceId, sourceId));
 	},
 
+	async findAllMediaIndices(
+		sourceId?: string,
+		options?: { limit?: number; offset?: number },
+		tx?: TauriDbExecutor,
+	): Promise<Array<{ id: string; mediaSourceId: string; filePath: string }>> {
+		const conditions = sourceId ? [eq(medias.mediaSourceId, sourceId)] : [];
+		let query = getExecutor(tx)
+			.select({
+				id: medias.id,
+				mediaSourceId: medias.mediaSourceId,
+				filePath: medias.filePath,
+			})
+			.from(medias)
+			.where(and(...conditions))
+			.$dynamic();
+
+		if (options?.limit) {
+			query = query.limit(options.limit);
+		}
+		if (options?.offset) {
+			query = query.offset(options.offset);
+		}
+
+		return await query;
+	},
+
+	async findIdsWithMissingGenerationInfo(
+		tx?: TauriDbExecutor,
+	): Promise<Array<{ id: string; mediaSourceId: string; filePath: string }>> {
+		// PostgreSQL/SQLite compatible LEFT JOIN query to find media without generation info
+		return await getExecutor(tx)
+			.select({
+				id: medias.id,
+				mediaSourceId: medias.mediaSourceId,
+				filePath: medias.filePath,
+			})
+			.from(medias)
+			.leftJoin(
+				mediaGenerationInfo,
+				eq(medias.id, mediaGenerationInfo.mediaId),
+			)
+			.where(sql`${mediaGenerationInfo.mediaId} IS NULL`);
+	},
+
 	async deleteBySourceIdAndPathPrefix(
 		sourceId: string,
 		folderPath: string,

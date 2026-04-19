@@ -10,7 +10,11 @@ import {
 } from "../local-api/repositories/tauri-job-repository";
 import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriConfigService } from "../local-api/services/config-service";
-import type { PersistedThumbnailJob, ThumbnailJob } from "./thumbnail-job";
+import type {
+	MediaProcessingStep,
+	PersistedProcessMediaJob,
+	ProcessMediaJob,
+} from "./process-media-job";
 
 type SourceCounter = {
 	total: number;
@@ -31,8 +35,16 @@ function buildThumbnailPath(
 	return `${basePath.replace(/[\\/]+$/, "")}${sep}${sourceId}${sep}${mediaId}.webp`;
 }
 
+function hasMediaProcessingStep(
+	steps: MediaProcessingStep[] | undefined,
+	step: MediaProcessingStep,
+): boolean {
+	if (!steps || steps.length === 0) return true;
+	return steps.includes(step);
+}
+
 class TauriJobQueue {
-	private queue: PersistedThumbnailJob[] = [];
+	private queue: PersistedProcessMediaJob[] = [];
 	private running = 0;
 	private sourceCounters = new Map<string, SourceCounter>();
 	private concurrency = defaultAppConfig.jobs.concurrency;
@@ -60,7 +72,7 @@ class TauriJobQueue {
 		await this.initializationPromise;
 	}
 
-	async enqueue(jobs: ThumbnailJob[]): Promise<void> {
+	async enqueue(jobs: ProcessMediaJob[]): Promise<void> {
 		if (jobs.length === 0) {
 			return;
 		}
@@ -93,7 +105,7 @@ class TauriJobQueue {
 		}
 	}
 
-	private enqueueInMemory(job: PersistedThumbnailJob): void {
+	private enqueueInMemory(job: PersistedProcessMediaJob): void {
 		const counter = this.sourceCounters.get(job.sourceId) ?? {
 			total: 0,
 			done: 0,
@@ -117,67 +129,91 @@ class TauriJobQueue {
 		}
 	}
 
-	private async processJob(job: PersistedThumbnailJob): Promise<void> {
+	private async processJob(job: PersistedProcessMediaJob): Promise<void> {
 		try {
 			await TauriJobRepository.markAsInProgress(job.id);
 
+			const media = await TauriMediaRepository.findById(job.mediaId);
+			if (!media) {
+				console.warn("[jobs] media not found, skipping:", job.mediaId);
+				await TauriJobRepository.markAsCompleted(job.id);
+				return;
+			}
+
+			const fullPath = await join(job.sourcePath, media.filePath);
+
 			// Step 1: Metadata extraction
-			try {
-				const metadata =
-					await getTauriAppServices().imageProcessor.extractMetadata(
-						job.fullPath,
-					);
-				await TauriMediaRepository.upsertGenerationInfo(
-					job.mediaId,
-					metadata.prompt !== null && typeof metadata.prompt === "object"
-						? JSON.stringify(metadata.prompt)
-						: (metadata.prompt as string | null),
-					metadata.workflow as object | null,
-				);
-				if (metadata.tags.length > 0) {
-					await TauriTagRepository.addTagsToMedia(
+			if (hasMediaProcessingStep(job.steps, "extractMetadata")) {
+				try {
+					const metadata =
+						await getTauriAppServices().imageProcessor.extractMetadata(
+							fullPath,
+						);
+					await TauriMediaRepository.upsertGenerationInfo(
 						job.mediaId,
-						metadata.tags,
-						"comfyui_workflow",
+						metadata.prompt !== null && typeof metadata.prompt === "object"
+							? JSON.stringify(metadata.prompt)
+							: (metadata.prompt as string | null),
+						metadata.workflow as object | null,
+					);
+					if (metadata.tags.length > 0) {
+						await TauriTagRepository.addTagsToMedia(
+							job.mediaId,
+							metadata.tags,
+							"comfyui_workflow",
+						);
+					}
+				} catch (err) {
+					console.warn(
+						"[jobs] metadata extraction failed, continuing:",
+						job.mediaId,
+						err,
 					);
 				}
-			} catch (err) {
-				console.warn(
-					"[jobs] metadata extraction failed, continuing:",
-					job.mediaId,
-					err,
-				);
 			}
 
 			// Step 2: Thumbnail generation
 			const config = await TauriConfigService.getConfig();
-			const basePath = await resolveThumbnailBasePath(
-				config.storage.thumbnailDir,
-			);
-			const outputPath = buildThumbnailPath(
-				basePath,
-				job.sourceId,
-				job.mediaId,
-			);
-			await getTauriAppServices().imageProcessor.generateThumbnail(
-				job.fullPath,
-				outputPath,
-				config.storage.thumbnailSize,
-				config.storage.thumbnailQuality,
-			);
-			await emit("thumbnail-generated", {
-				mediaSourceId: job.sourceId,
-				mediaId: job.mediaId,
-				filePath: job.filePath,
-				timestamp: new Date().toISOString(),
-			});
+			if (hasMediaProcessingStep(job.steps, "generateThumbnail")) {
+				try {
+					const basePath = await resolveThumbnailBasePath(
+						config.storage.thumbnailDir,
+					);
+					const outputPath = buildThumbnailPath(
+						basePath,
+						job.sourceId,
+						job.mediaId,
+					);
+					await getTauriAppServices().imageProcessor.generateThumbnail(
+						fullPath,
+						outputPath,
+						config.storage.thumbnailSize,
+						config.storage.thumbnailQuality,
+					);
+					await emit("thumbnail-generated", {
+						mediaSourceId: job.sourceId,
+						mediaId: job.mediaId,
+						filePath: media.filePath,
+						timestamp: new Date().toISOString(),
+					});
+				} catch (err) {
+					console.error(
+						"[jobs] thumbnail generation failed:",
+						job.mediaId,
+						err,
+					);
+				}
+			}
+
 			await TauriJobRepository.markAsCompleted(job.id);
 
 			// Step 3: Queue auto_tagging if enabled and media is an image
-			if (config.jobs.enableAutoTagging) {
+			if (
+				config.jobs.enableAutoTagging &&
+				hasMediaProcessingStep(job.steps, "queueAutoTagging")
+			) {
 				try {
-					const media = await TauriMediaRepository.findById(job.mediaId);
-					if (media?.mediaType === "image") {
+					if (media.mediaType === "image") {
 						const aiJob = await TauriJobRepository.createAutoTaggingJob(
 							job.mediaId,
 							job.sourceId,
@@ -195,8 +231,8 @@ class TauriJobQueue {
 			}
 		} catch (err) {
 			const message =
-				err instanceof Error ? err.message : "Unknown thumbnail job error";
-			console.error("[jobs] thumbnail generation failed:", job.mediaId, err);
+				err instanceof Error ? err.message : "Unknown processMedia job error";
+			console.error("[jobs] media processing failed:", job.mediaId, err);
 			try {
 				await TauriJobRepository.markAsFailed(job.id, message);
 			} catch (updateError) {

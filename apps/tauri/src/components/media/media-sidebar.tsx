@@ -1,4 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import { AssociationManager } from "@solid-imager/ui/association-manager";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
@@ -29,7 +30,6 @@ import {
 } from "~/infrastructure/api-clients/projects-api";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 import { AiTaggingModal } from "./ai-tagging-modal";
-import { AssociationManager } from "@solid-imager/ui/association-manager";
 
 type MediaSidebarProps = {
 	media: MediaDetails;

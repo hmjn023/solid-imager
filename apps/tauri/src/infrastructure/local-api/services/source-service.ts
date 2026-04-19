@@ -5,8 +5,8 @@ import type {
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { emit, listen } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
+import type { ProcessMediaJob } from "../../jobs/process-media-job";
 import { tauriJobQueue } from "../../jobs/tauri-job-queue";
-import type { ThumbnailJob } from "../../jobs/thumbnail-job";
 import { basename, extname, joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
@@ -279,8 +279,7 @@ async function upsertIndexedFile(
 		{
 			sourceId: source.id,
 			mediaId: row.id,
-			filePath: normalizedRelPath,
-			fullPath: file.fullPath,
+			sourcePath: (source.connectionInfo as { path: string }).path,
 		},
 	]);
 
@@ -618,8 +617,8 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	}
 	await flushBatch();
 
-	// Emit events and enqueue thumbnail jobs for newly added files
-	const newMediaJobs: ThumbnailJob[] = [];
+	// Emit events and enqueue media processing jobs for newly added files
+	const newMediaJobs: ProcessMediaJob[] = [];
 	const now = new Date().toISOString();
 	for (const { id, normalizedRelPath } of allReturned) {
 		if (!dbPathMap.has(normalizedRelPath)) {
@@ -629,21 +628,19 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 				filePath: normalizedRelPath,
 				timestamp: now,
 			});
-			const fullPath = relPathToFullPath.get(normalizedRelPath);
-			if (fullPath) {
-				newMediaJobs.push({
-					sourceId: source.id,
-					mediaId: id,
-					filePath: normalizedRelPath,
-					fullPath,
-				});
-			}
+			newMediaJobs.push({
+				sourceId: source.id,
+				mediaId: id,
+				sourcePath: rootPath,
+			});
 		}
 	}
 
 	if (newMediaJobs.length > 0) {
 		await tauriJobQueue.enqueue(newMediaJobs);
-		console.debug(`[sync] enqueued ${newMediaJobs.length} thumbnail jobs`);
+		console.debug(
+			`[sync] enqueued ${newMediaJobs.length} media processing jobs`,
+		);
 	}
 
 	// Delete removed files

@@ -31,6 +31,7 @@ import {
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { Progress } from "@solid-imager/ui/progress";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { toast } from "@solid-imager/ui/toast";
 import {
 	createInfiniteQuery,
@@ -52,7 +53,6 @@ import {
 import { z } from "zod";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
