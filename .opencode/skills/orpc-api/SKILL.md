@@ -363,13 +363,12 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
   server: {
     handlers: {
       GET: async ({ params }) => {
-        const filePath = await MediaService.getMediaPath(params.mediaSourceId, params.mediaId);
-        const buffer = await fs.readFile(filePath);
+        const { buffer, contentType } = await MediaService.getMediaContent(
+          params.mediaSourceId,
+          params.mediaId,
+        );
         return new Response(buffer, {
-          headers: {
-            "Content-Type": media.mimeType,
-            "Content-Length": String(buffer.length),
-          },
+          headers: { "Content-Type": contentType },
         });
       },
     },
