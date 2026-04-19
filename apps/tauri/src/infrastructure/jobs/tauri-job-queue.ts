@@ -144,6 +144,17 @@ class TauriJobQueue {
 		const counter = this.sourceCounters.get(sourceId);
 		if (!counter) return;
 		counter.done++;
+
+		try {
+			await emit("job-progress", {
+				jobId: sourceId,
+				processed: counter.done,
+				total: counter.total,
+			});
+		} catch (err) {
+			console.error("[jobs] failed to emit job-progress:", err);
+		}
+
 		if (counter.done >= counter.total) {
 			this.sourceCounters.delete(sourceId);
 			try {

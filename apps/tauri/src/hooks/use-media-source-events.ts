@@ -1,6 +1,8 @@
 import {
 	type AllJobsCompletedEvent,
 	allJobsCompletedEventSchema,
+	type JobProgressEvent,
+	jobProgressEventSchema,
 	type MediaAddedEvent,
 	type MediaChangedEvent,
 	type MediaCopiedEvent,
@@ -27,6 +29,7 @@ type MediaSourceEventsOptions = {
 	onMediaCopied?: (data: MediaCopiedEvent) => void;
 	onMediaMoved?: (data: MediaMovedEvent) => void;
 	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
+	onJobProgress?: (data: JobProgressEvent) => void;
 	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
 	onWatcherError?: (data: WatcherErrorEvent) => void;
 };
@@ -106,6 +109,15 @@ export function useMediaSourceEvents(
 				);
 				if (payload && payload.mediaSourceId === id) {
 					options.onThumbnailGenerated?.(payload);
+				}
+			}),
+			listen("job-progress", (event) => {
+				const payload = parseEventPayload(
+					jobProgressEventSchema,
+					event.payload,
+				);
+				if (payload && payload.jobId === id) {
+					options.onJobProgress?.(payload);
 				}
 			}),
 			listen("all-jobs-completed", (event) => {

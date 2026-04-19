@@ -2,6 +2,7 @@ import type {
 	DownloadItem,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
+import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
 	getScrollPosition,
 	setScrollPosition,
@@ -29,6 +30,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { Progress } from "@solid-imager/ui/progress";
 import { toast } from "@solid-imager/ui/toast";
 import {
 	createInfiniteQuery,
@@ -200,7 +202,11 @@ function SourceMediaRoute() {
 		onThumbnailGenerated: () => {
 			scheduleMediaRefresh();
 		},
+		onJobProgress: (data) => {
+			setJobProgress(data);
+		},
 		onAllJobsCompleted: (data) => {
+			setJobProgress(null);
 			toast.success(
 				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
 			);
@@ -314,6 +320,9 @@ function SourceMediaRoute() {
 	const [isSyncingMedia, setIsSyncingMedia] = createSignal(false);
 	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
 	const [addedCount, setAddedCount] = createSignal(0);
+	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
+		null,
+	);
 	const [debounceTimer, setDebounceTimer] = createSignal<ReturnType<
 		typeof setTimeout
 	> | null>(null);
@@ -882,6 +891,24 @@ function SourceMediaRoute() {
 				}}
 				type="file"
 			/>
+
+			<Show when={jobProgress()}>
+				{(progress) => (
+					<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">
+						<div class="mb-2 flex items-center justify-between text-sm">
+							<span class="text-muted-foreground">
+								サムネイル生成中 {progress.processed} / {progress.total}
+							</span>
+							<span class="text-muted-foreground text-xs">
+								{Math.round((progress.processed / progress.total) * 100)}%
+							</span>
+						</div>
+						<Progress
+							value={(progress.processed / progress.total) * 100}
+						/>
+					</div>
+				)}
+			</Show>
 
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
 				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
