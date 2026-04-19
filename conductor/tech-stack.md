@@ -5,17 +5,17 @@
 - **Runtime**: Bun (Server & Tooling)
 
 ## Frontend (Web & Desktop Client)
-- **Framework**: SolidStart (SolidJS)
-- **Routing**: TanStack Router (Planned/Transitioning)
+- **Framework**: TanStack Start (SolidJS)
+- **Routing**: TanStack Router (file-based)
 - **State Management**: TanStack Query
 - **Form Management**: TanStack Form
 - **UI Components**: Kobalte (Headless), Tailwind CSS
-- **Desktop Shell**: Tauri v2 (Planned for Client)
+- **Desktop Shell**: Tauri v2
 
 ## Backend (Server)
-- **API Framework**: ElysiaJS
-- **RPC Framework**: oRPC (Type-safe contract)
-- **SSR**: SolidStart (Server-Side Rendering)
+- **Server**: Nitro
+- **RPC Framework**: oRPC (Type-safe contract, Fetch handler)
+- **SSR**: TanStack Start (Server-Side Rendering)
 
 ## Database & ORM
 - **ORM**: Drizzle ORM
@@ -34,4 +34,4 @@
 
 ## Architecture Style
 - **Pattern**: Clean Architecture / Hexagonal Architecture
-- **Structure**: Monorepo (Current: apps/server, packages/core, Planned: apps/client)
+- **Structure**: Monorepo (apps/server, apps/tauri, apps/cli, apps/xtracter, packages/core, packages/ui)
