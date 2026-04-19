@@ -314,28 +314,32 @@ export class ValidationError extends Error {
 }
 ```
 
-グローバルエラーハンドラー (`apps/server/src/infrastructure/api/app.ts`):
+oRPC ハンドラー内でカスタムエラーをスローすると、oRPC が HTTP ステータスへマップします。TanStack Router の server handler でも `Response` を直接返すことでエラーレスポンスを制御できます:
 ```typescript
-export const app = new Elysia()
-  .onError(({ code, error, request }) => {
-    if (error instanceof ResourceNotFoundError) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (error instanceof ValidationError) {
-      return new Response(JSON.stringify({ errors: error.errors }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    logger.error({ err: error, code, path: request.url }, "Unhandled Error");
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  });
+// apps/server/src/routes/api/example.ts
+export const Route = createFileRoute("/api/example")({
+  server: {
+    handlers: {
+      GET: async ({ request }) => {
+        try {
+          const result = await someService();
+          return Response.json(result);
+        } catch (e) {
+          if (e instanceof ResourceNotFoundError) {
+            return new Response(JSON.stringify({ error: e.message }), {
+              status: 404,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          return new Response(JSON.stringify({ error: String(e) }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      },
+    },
+  },
+});
 ```
 
 ### バイナリコンテンツの扱い
@@ -353,16 +357,23 @@ export const mediaRouter = {
     }),
 };
 
-// ✅ 正しい実装 - REST エンドポイント (Elysia)
-app.get("/api/sources/:sourceId/:mediaId", async ({ params }) => {
-  const filePath = await MediaService.getMediaPath(params.sourceId, params.mediaId);
-  const buffer = await fs.readFile(filePath);
-  return new Response(buffer, {
-    headers: {
-      "Content-Type": media.mimeType,
-      "Content-Length": String(buffer.length),
+// ✅ 正しい実装 - REST エンドポイント (TanStack Router server handler)
+// apps/server/src/routes/api/sources.$mediaSourceId.$mediaId.ts
+export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const filePath = await MediaService.getMediaPath(params.mediaSourceId, params.mediaId);
+        const buffer = await fs.readFile(filePath);
+        return new Response(buffer, {
+          headers: {
+            "Content-Type": media.mimeType,
+            "Content-Length": String(buffer.length),
+          },
+        });
+      },
     },
-  });
+  },
 });
 ```
 

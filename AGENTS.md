@@ -13,7 +13,7 @@
 
 ### プロジェクト構成
 
-- **`apps/server`**: `@solid-imager/server` (SolidStart + oRPC)
+- **`apps/server`**: `@solid-imager/server` (TanStack Start + oRPC)
 - **`apps/cli`**: `@solid-imager/cli` (Bun compileによるシングルバイナリ)
 - **`packages/core`**: `@solid-imager/core` (ドメインモデル、Zodスキーマ、リポジトリIF)
 - **`packages/ui`**: `@solid-imager/ui` (Shared UI Components)
@@ -63,7 +63,7 @@
 |---|---|---|
 | `solid-imager` | プロジェクト概要、セットアップ、コーディング規約 | 常時 |
 | `orpc-api` | oRPC APIエンドポイント開発ワークフロー | API実装・変更時 |
-| `solid-start-ssr` | SolidStart + TanStack Query SSR/CSRベストプラクティス | フロントエンド実装時 |
+| `solid-start-ssr` | TanStack Start + TanStack Query SSR/CSRベストプラクティス | フロントエンド実装時 |
 | `database-schema` | DBスキーマ変更・マイグレーション手順 | DBスキーマ変更時 |
 | `ai-service` | Python AIサービス連携 | AI機能実装時 |
 | `browser-extension` | xtracterブラウザ拡張機能開発 | 拡張機能変更時 |

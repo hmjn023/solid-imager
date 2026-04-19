@@ -1,17 +1,17 @@
 ---
 name: solid-start-ssr
-description: SolidStart と TanStack Query を用いた SSR/CSR 競合回避とハイドレーションのベストプラクティス. フロントエンドの TSX/JSX ファイル（'apps/server/src/routes/'）でデータフェッチを行う際、または 'onMount' や 'isServer' を使ったブラウザ専用 API の制御を行う際に使用してください。
+description: TanStack Start と TanStack Query を用いた SSR/CSR 競合回避とハイドレーションのベストプラクティス. フロントエンドの TSX/JSX ファイル（'apps/server/src/routes/'）でデータフェッチを行う際、または 'onMount' や 'isServer' を使ったブラウザ専用 API の制御を行う際に使用してください。
 ---
 
-# SolidStart & TanStack Query SSR/CSR ベストプラクティス
+# TanStack Start & TanStack Query SSR/CSR ベストプラクティス
 
-SolidStartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
+TanStack StartとTanStack Queryを組み合わせる際は、SSR（サーバー側）でのデータフェッチを活かしつつ、クライアント（ブラウザ）専用のAPIやDOM操作を正しく分離することが不可欠です。
 
 ## Working Rules
 
 ### 1. データフェッチはSSRをブロックしない
 
-`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、SolidStartのサスペンスが未解決のままとなり、無限ロードが発生します。
+`createQuery` の `enabled` オプションに `!isServer` や `mounted()` を含めないでください。SSR時にデータが取得されない（`undefined` を返す）と、TanStack Startのサスペンスが未解決のままとなり、無限ロードが発生します。
 
 ```tsx
 // ❌ Bad Pattern: SSRをブロックすると無限ロードの原因になる
