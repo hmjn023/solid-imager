@@ -14,7 +14,10 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	},
 	loader: async ({ context, params }) => {
 		await context.queryClient.ensureQueryData(
-			mediaDetailsQueryOptions(params.mediaSourceId as UUID, params.mediaId as UUID),
+			mediaDetailsQueryOptions(
+				params.mediaSourceId as UUID,
+				params.mediaId as UUID,
+			),
 		);
 	},
 	component: Media,
@@ -26,7 +29,9 @@ function Media() {
 	const mediaSourceId = params().mediaSourceId as UUID;
 	const mediaId = params().mediaId as UUID;
 
-	const mediaDetails = createQuery(() => mediaDetailsQueryOptions(mediaSourceId, mediaId));
+	const mediaDetails = createQuery(() =>
+		mediaDetailsQueryOptions(mediaSourceId, mediaId),
+	);
 
 	const handleUpdate = async () => {
 		await queryClient.invalidateQueries({

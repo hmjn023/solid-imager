@@ -19,7 +19,8 @@
 		"./domain/media/utils/*": "./src/domain/media/utils/*.ts",
 		"./domain/shared/*": "./src/domain/shared/*.ts",
 		"./domain/config/*": "./src/domain/config/*.ts",
-		"./interfaces/*": "./src/interfaces/*.ts"
+		"./interfaces/*": "./src/interfaces/*.ts",
+		"./utils/deep-equal": "./src/utils/deep-equal.ts"
 	},
 	"scripts": {
 		"check": "biome check --fix --unsafe ./src",

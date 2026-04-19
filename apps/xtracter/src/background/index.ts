@@ -105,7 +105,8 @@ async function postDownloads(items: TweetMetadata[]) {
 			type: "basic",
 			iconUrl: "icon.png",
 			title: "xtracter Error",
-			message: "No media source configured. Please set one in the extension popup.",
+			message:
+				"No media source configured. Please set one in the extension popup.",
 		});
 		return;
 	}
@@ -149,11 +150,15 @@ function isDownloadMessage(msg: ExtendedMessage): msg is DownloadMessage {
 	return msg.type === "DOWNLOAD";
 }
 
-function isDownloadBulkMessage(msg: ExtendedMessage): msg is DownloadBulkMessage {
+function isDownloadBulkMessage(
+	msg: ExtendedMessage,
+): msg is DownloadBulkMessage {
 	return msg.type === "DOWNLOAD_BULK";
 }
 
-function isPostDownloadMessage(msg: ExtendedMessage): msg is PostDownloadMessage {
+function isPostDownloadMessage(
+	msg: ExtendedMessage,
+): msg is PostDownloadMessage {
 	return msg.type === "POST_DOWNLOAD";
 }
 
@@ -161,105 +166,120 @@ function isPostBulkMessage(msg: ExtendedMessage): msg is PostBulkMessage {
 	return msg.type === "POST_BULK";
 }
 
-function isGetCookiesMessage(msg: ExtendedMessage): msg is { type: "GET_COOKIES"; url: string } {
+function isGetCookiesMessage(
+	msg: ExtendedMessage,
+): msg is { type: "GET_COOKIES"; url: string } {
 	return msg.type === "GET_COOKIES";
 }
 
-chrome.runtime.onMessage.addListener((message: ExtendedMessage, _sender, sendResponse) => {
-	// Handle Popup Requests
-	if (message.type === "GET_SOURCES") {
-		getMediaSources().then((sources) => sendResponse(sources));
-		return true; // Async response
-	}
-
-	if (isGetCookiesMessage(message)) {
-		const url = message.url;
-		if (!url) {
-			sendResponse([]);
-			return;
+chrome.runtime.onMessage.addListener(
+	(message: ExtendedMessage, _sender, sendResponse) => {
+		// Handle Popup Requests
+		if (message.type === "GET_SOURCES") {
+			getMediaSources().then((sources) => sendResponse(sources));
+			return true; // Async response
 		}
-		chrome.cookies.getAll({ url }, (cookies) => {
-			sendResponse(cookies);
-		});
-		return true;
-	}
 
-	if (message.type === "DOWNLOAD_JSON_FROM_POPUP") {
-		chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-			const activeTab = tabs[0];
-			if (activeTab?.id) {
-				chrome.tabs.sendMessage(activeTab.id, { type: "GET_METADATA" }, (response) => {
-					if (chrome.runtime.lastError) {
-						return;
-					}
-
-					if (response && Array.isArray(response)) {
-						// Reuse the bulk download logic
-						const now = new Date();
-						const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, DATE_STRING_LENGTH);
-						const filename = `xtracter/xtracter-${dateStr}.json`;
-						const jsonString = JSON.stringify(response, null, 2);
-						const dataUrl =
-							"data:application/json;base64," + btoa(unescape(encodeURIComponent(jsonString)));
-						chrome.downloads.download(
-							{
-								url: dataUrl,
-								filename,
-							},
-							() => {
-								if (chrome.runtime.lastError) {
-									console.error("Download failed:", chrome.runtime.lastError.message);
-								}
-							},
-						);
-					}
-				});
+		if (isGetCookiesMessage(message)) {
+			const url = message.url;
+			if (!url) {
+				sendResponse([]);
+				return;
 			}
-		});
+			chrome.cookies.getAll({ url }, (cookies) => {
+				sendResponse(cookies);
+			});
+			return true;
+		}
+
+		if (message.type === "DOWNLOAD_JSON_FROM_POPUP") {
+			chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+				const activeTab = tabs[0];
+				if (activeTab?.id) {
+					chrome.tabs.sendMessage(
+						activeTab.id,
+						{ type: "GET_METADATA" },
+						(response) => {
+							if (chrome.runtime.lastError) {
+								return;
+							}
+
+							if (response && Array.isArray(response)) {
+								// Reuse the bulk download logic
+								const now = new Date();
+								const dateStr = now
+									.toISOString()
+									.replace(/[:.]/g, "-")
+									.slice(0, DATE_STRING_LENGTH);
+								const filename = `xtracter/xtracter-${dateStr}.json`;
+								const jsonString = JSON.stringify(response, null, 2);
+								const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
+								chrome.downloads.download(
+									{
+										url: dataUrl,
+										filename,
+									},
+									() => {
+										if (chrome.runtime.lastError) {
+											console.error(
+												"Download failed:",
+												chrome.runtime.lastError.message,
+											);
+										}
+									},
+								);
+							}
+						},
+					);
+				}
+			});
+			return true;
+		}
+
+		// Handle Content Script Requests
+		if (isDownloadMessage(message)) {
+			const { targetUrl } = message.data;
+			const extension = getExtensionFromUrl(targetUrl);
+			// Cast to any to handle string vs Date for createdAt field between core and ext schemas
+			const filename = generateMediaFilename(message.data as any, extension);
+
+			chrome.downloads.download(
+				{
+					url: targetUrl,
+					filename: `xtracter/${filename}`,
+				},
+				() => {
+					if (chrome.runtime.lastError) {
+						console.error("Download failed:", chrome.runtime.lastError.message);
+					}
+				},
+			);
+		} else if (isDownloadBulkMessage(message)) {
+			const now = new Date();
+			const dateStr = now
+				.toISOString()
+				.replace(/[:.]/g, "-")
+				.slice(0, DATE_STRING_LENGTH);
+			const filename = `xtracter/xtracter-${dateStr}.json`;
+			const jsonString = JSON.stringify(message.data, null, 2);
+			const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
+			chrome.downloads.download(
+				{
+					url: dataUrl,
+					filename,
+				},
+				() => {
+					if (chrome.runtime.lastError) {
+						console.error("Download failed:", chrome.runtime.lastError.message);
+					}
+				},
+			);
+		} else if (isPostDownloadMessage(message)) {
+			postDownloads([message.data]);
+		} else if (isPostBulkMessage(message)) {
+			postDownloads(message.data);
+		}
+
 		return true;
-	}
-
-	// Handle Content Script Requests
-	if (isDownloadMessage(message)) {
-		const { targetUrl } = message.data;
-		const extension = getExtensionFromUrl(targetUrl);
-		// Cast to any to handle string vs Date for createdAt field between core and ext schemas
-		const filename = generateMediaFilename(message.data as any, extension);
-
-		chrome.downloads.download(
-			{
-				url: targetUrl,
-				filename: `xtracter/${filename}`,
-			},
-			() => {
-				if (chrome.runtime.lastError) {
-					console.error("Download failed:", chrome.runtime.lastError.message);
-				}
-			},
-		);
-	} else if (isDownloadBulkMessage(message)) {
-		const now = new Date();
-		const dateStr = now.toISOString().replace(/[:.]/g, "-").slice(0, DATE_STRING_LENGTH);
-		const filename = `xtracter/xtracter-${dateStr}.json`;
-		const jsonString = JSON.stringify(message.data, null, 2);
-		const dataUrl =
-			"data:application/json;base64," + btoa(unescape(encodeURIComponent(jsonString)));
-		chrome.downloads.download(
-			{
-				url: dataUrl,
-				filename,
-			},
-			() => {
-				if (chrome.runtime.lastError) {
-					console.error("Download failed:", chrome.runtime.lastError.message);
-				}
-			},
-		);
-	} else if (isPostDownloadMessage(message)) {
-		postDownloads([message.data]);
-	} else if (isPostBulkMessage(message)) {
-		postDownloads(message.data);
-	}
-
-	return true;
-});
+	},
+);

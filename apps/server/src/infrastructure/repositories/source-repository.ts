@@ -40,14 +40,20 @@ export class DrizzleSourceRepository implements SourceRepository {
 	async findById(id: string, tx?: Transaction): Promise<MediaSource | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.select().from(mediaSources).where(eq(mediaSources.id, id));
+			const result = await client
+				.select()
+				.from(mediaSources)
+				.where(eq(mediaSources.id, id));
 
 			if (result.length === 0) {
 				return null;
 			}
 			return mapToMediaSource(result[0]);
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select media source by ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to select media source by ID: ${id}`,
+				error,
+			);
 		}
 	}
 
@@ -67,13 +73,19 @@ export class DrizzleSourceRepository implements SourceRepository {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError("Media source with this name or ID already exists");
+				throw new ResourceConflictError(
+					"Media source with this name or ID already exists",
+				);
 			}
 			throw new UnexpectedError("Failed to insert media source", error);
 		}
 	}
 
-	async update(id: string, source: Partial<MediaSource>, tx?: Transaction): Promise<MediaSource> {
+	async update(
+		id: string,
+		source: Partial<MediaSource>,
+		tx?: Transaction,
+	): Promise<MediaSource> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const result = await client
@@ -96,16 +108,24 @@ export class DrizzleSourceRepository implements SourceRepository {
 				"code" in error &&
 				(error as { code: string }).code === "23505"
 			) {
-				throw new ResourceConflictError("Media source with this name or ID already exists");
+				throw new ResourceConflictError(
+					"Media source with this name or ID already exists",
+				);
 			}
-			throw new UnexpectedError(`Failed to update media source with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to update media source with ID: ${id}`,
+				error,
+			);
 		}
 	}
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.delete(mediaSources).where(eq(mediaSources.id, id)).returning();
+			const result = await client
+				.delete(mediaSources)
+				.where(eq(mediaSources.id, id))
+				.returning();
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Media source", id);
 			}
@@ -113,7 +133,10 @@ export class DrizzleSourceRepository implements SourceRepository {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to delete media source with ID: ${id}`, error);
+			throw new UnexpectedError(
+				`Failed to delete media source with ID: ${id}`,
+				error,
+			);
 		}
 	}
 }

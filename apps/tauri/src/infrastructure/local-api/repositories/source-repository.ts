@@ -26,11 +26,17 @@ function toMediaSource(row: typeof mediaSources.$inferSelect): MediaSource {
 
 export const TauriSourceRepository = {
 	async findAll(tx?: TauriDbExecutor): Promise<MediaSource[]> {
-		const rows = await getExecutor(tx).select().from(mediaSources).orderBy(asc(mediaSources.name));
+		const rows = await getExecutor(tx)
+			.select()
+			.from(mediaSources)
+			.orderBy(asc(mediaSources.name));
 		return rows.map(toMediaSource);
 	},
 
-	async findById(id: string, tx?: TauriDbExecutor): Promise<MediaSource | null> {
+	async findById(
+		id: string,
+		tx?: TauriDbExecutor,
+	): Promise<MediaSource | null> {
 		const rows = await getExecutor(tx)
 			.select()
 			.from(mediaSources)
@@ -39,7 +45,10 @@ export const TauriSourceRepository = {
 		return rows[0] ? toMediaSource(rows[0]) : null;
 	},
 
-	async create(input: NewMediaSource, tx?: TauriDbExecutor): Promise<MediaSource> {
+	async create(
+		input: NewMediaSource,
+		tx?: TauriDbExecutor,
+	): Promise<MediaSource> {
 		const rows = await getExecutor(tx)
 			.insert(mediaSources)
 			.values({
@@ -61,9 +70,13 @@ export const TauriSourceRepository = {
 			.update(mediaSources)
 			.set({
 				...(input.name !== undefined ? { name: input.name } : {}),
-				...(input.description !== undefined ? { description: input.description } : {}),
+				...(input.description !== undefined
+					? { description: input.description }
+					: {}),
 				...(input.type !== undefined ? { type: input.type } : {}),
-				...(input.connectionInfo !== undefined ? { connectionInfo: input.connectionInfo } : {}),
+				...(input.connectionInfo !== undefined
+					? { connectionInfo: input.connectionInfo }
+					: {}),
 				updatedAt: new Date(),
 			})
 			.where(eq(mediaSources.id, id))

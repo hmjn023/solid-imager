@@ -12,15 +12,19 @@ import { CategoryService } from "~/application/services/category-service";
 export const categoriesRouter = {
 	list: os.handler(() => CategoryService.getAllCategories()),
 
-	get: os.input(z.object({ id: z.string().uuid() })).handler(async ({ input }) => {
-		const category = await CategoryService.getCategoryDetails(input.id);
-		if (!category) {
-			throw new Error(`Category not found: ${input.id}`);
-		}
-		return category;
-	}),
+	get: os
+		.input(z.object({ id: z.string().uuid() }))
+		.handler(async ({ input }) => {
+			const category = await CategoryService.getCategoryDetails(input.id);
+			if (!category) {
+				throw new Error(`Category not found: ${input.id}`);
+			}
+			return category;
+		}),
 
-	create: os.input(newCategorySchema).handler(({ input }) => CategoryService.createCategory(input)),
+	create: os
+		.input(newCategorySchema)
+		.handler(({ input }) => CategoryService.createCategory(input)),
 
 	update: os
 		.input(
@@ -30,7 +34,10 @@ export const categoriesRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const updated = await CategoryService.updateCategory(input.id, input.data);
+			const updated = await CategoryService.updateCategory(
+				input.id,
+				input.data,
+			);
 			if (!updated) {
 				throw new Error(`Category not found: ${input.id}`);
 			}

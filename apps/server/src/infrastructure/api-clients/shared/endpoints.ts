@@ -15,16 +15,21 @@ export const API_ENDPOINTS = {
 	mediaList: (sourceId: string) => `/api/sources/${sourceId}`,
 	mediaDetails: (sourceId: string, mediaId: string) =>
 		`/api/sources/${sourceId}/${mediaId}/details`,
-	mediaUpdate: (sourceId: string, mediaId: string) => `/api/sources/${sourceId}/${mediaId}`,
+	mediaUpdate: (sourceId: string, mediaId: string) =>
+		`/api/sources/${sourceId}/${mediaId}`,
 	mediaThumbnail: (sourceId: string, mediaId: string) =>
 		`/api/sources/${sourceId}/${mediaId}/thumbnail`,
 	mediaUpload: (sourceId: string) => `/api/sources/${sourceId}/upload`,
-	mediaCopy: (sourceId: string, mediaId: string) => `/api/sources/${sourceId}/${mediaId}/copy`,
-	mediaMove: (sourceId: string, mediaId: string) => `/api/sources/${sourceId}/${mediaId}/move`,
+	mediaCopy: (sourceId: string, mediaId: string) =>
+		`/api/sources/${sourceId}/${mediaId}/copy`,
+	mediaMove: (sourceId: string, mediaId: string) =>
+		`/api/sources/${sourceId}/${mediaId}/move`,
 
 	// Thumbnails
-	thumbnailGenerate: (sourceId: string) => `/api/sources/${sourceId}/thumbnails/generate`,
-	thumbnailClear: (sourceId: string) => `/api/sources/${sourceId}/thumbnails/clear`,
+	thumbnailGenerate: (sourceId: string) =>
+		`/api/sources/${sourceId}/thumbnails/generate`,
+	thumbnailClear: (sourceId: string) =>
+		`/api/sources/${sourceId}/thumbnails/clear`,
 
 	// Tags
 	tags: "/api/tags",
@@ -43,7 +48,8 @@ export const API_ENDPOINTS = {
 
 	// IPs
 	ips: "/api/ips",
-	mediaIps: (sourceId: string, mediaId: string) => `/api/sources/${sourceId}/${mediaId}/ips`,
+	mediaIps: (sourceId: string, mediaId: string) =>
+		`/api/sources/${sourceId}/${mediaId}/ips`,
 
 	// Characters
 	characters: "/api/characters",

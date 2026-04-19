@@ -27,13 +27,19 @@ export const ProjectRepository: IProjectRepository = {
 
 	async findById(id: string, tx?: Transaction): Promise<Project | null> {
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.select().from(projects).where(eq(projects.id, id));
+		const result = await client
+			.select()
+			.from(projects)
+			.where(eq(projects.id, id));
 		return result[0] ? mapToDomain(result[0]) : null;
 	},
 
 	async findByName(name: string, tx?: Transaction): Promise<Project | null> {
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.select().from(projects).where(eq(projects.name, name));
+		const result = await client
+			.select()
+			.from(projects)
+			.where(eq(projects.name, name));
 		return result[0] ? mapToDomain(result[0]) : null;
 	},
 
@@ -43,7 +49,11 @@ export const ProjectRepository: IProjectRepository = {
 		return mapToDomain(result[0]);
 	},
 
-	async update(id: string, project: UpdateProject, tx?: Transaction): Promise<Project> {
+	async update(
+		id: string,
+		project: UpdateProject,
+		tx?: Transaction,
+	): Promise<Project> {
 		const client = (tx as unknown as TransactionClient) || db;
 		const { archivedAt, ...rest } = project;
 		const updateData: Partial<typeof projects.$inferInsert> = {
@@ -70,7 +80,10 @@ export const ProjectRepository: IProjectRepository = {
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.delete(projects).where(eq(projects.id, id)).returning();
+		const result = await client
+			.delete(projects)
+			.where(eq(projects.id, id))
+			.returning();
 
 		if (result.length === 0) {
 			throw new ResourceNotFoundError("Project", id);
@@ -99,23 +112,43 @@ export const ProjectRepository: IProjectRepository = {
 		}));
 	},
 
-	async addMedia(mediaId: string, projectId: string, tx?: Transaction): Promise<void> {
+	async addMedia(
+		mediaId: string,
+		projectId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
-		await client.insert(mediaProjects).values({ mediaId, projectId }).returning();
+		await client
+			.insert(mediaProjects)
+			.values({ mediaId, projectId })
+			.returning();
 	},
 
-	async removeMedia(mediaId: string, projectId: string, tx?: Transaction): Promise<void> {
+	async removeMedia(
+		mediaId: string,
+		projectId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		const result = await client
 			.delete(mediaProjects)
-			.where(and(eq(mediaProjects.mediaId, mediaId), eq(mediaProjects.projectId, projectId)))
+			.where(
+				and(
+					eq(mediaProjects.mediaId, mediaId),
+					eq(mediaProjects.projectId, projectId),
+				),
+			)
 			.returning();
 
 		if (result.length === 0) {
 			throw new ResourceNotFoundError("MediaProject association");
 		}
 	},
-	async addMediaBulk(mediaId: string, projectIds: string[], tx?: Transaction): Promise<void> {
+	async addMediaBulk(
+		mediaId: string,
+		projectIds: string[],
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		if (projectIds.length === 0) {
 			return;

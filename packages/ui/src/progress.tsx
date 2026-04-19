@@ -10,11 +10,16 @@ import { splitProps } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-const ProgressRoot: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (props) => {
+const ProgressRoot: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (
+	props,
+) => {
 	const [, rest] = splitProps(props, ["children", "class"]);
 	return (
 		<ProgressPrimitiveRoot
-			class={cn("relative h-4 w-full overflow-hidden rounded-full bg-secondary", props.class)}
+			class={cn(
+				"relative h-4 w-full overflow-hidden rounded-full bg-secondary",
+				props.class,
+			)}
 			{...rest}
 		>
 			{props.children}
@@ -22,15 +27,17 @@ const ProgressRoot: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (p
 	);
 };
 
-const ProgressLabel: Component<ComponentProps<typeof ProgressPrimitiveLabel>> = (props) => (
-	<ProgressPrimitiveLabel {...props} />
-);
+const ProgressLabel: Component<
+	ComponentProps<typeof ProgressPrimitiveLabel>
+> = (props) => <ProgressPrimitiveLabel {...props} />;
 
-const ProgressValueLabel: Component<ComponentProps<typeof ProgressPrimitiveValueLabel>> = (
+const ProgressValueLabel: Component<
+	ComponentProps<typeof ProgressPrimitiveValueLabel>
+> = (props) => <ProgressPrimitiveValueLabel {...props} />;
+
+const Progress: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (
 	props,
-) => <ProgressPrimitiveValueLabel {...props} />;
-
-const Progress: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (props) => (
+) => (
 	<ProgressRoot {...props}>
 		<ProgressPrimitiveTrack class="h-full w-full flex-1 bg-secondary transition-all">
 			<ProgressPrimitiveFill class="h-full w-full flex-1 bg-primary transition-all duration-500 ease-in-out data-[progress=complete]:bg-primary" />

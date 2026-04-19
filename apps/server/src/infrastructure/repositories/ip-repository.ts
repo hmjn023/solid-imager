@@ -4,7 +4,11 @@ import {
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { Ip, NewIp, UpdateIp } from "@solid-imager/core/domain/ips/schemas";
+import type {
+	Ip,
+	NewIp,
+	UpdateIp,
+} from "@solid-imager/core/domain/ips/schemas";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import { and, eq, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
@@ -42,7 +46,10 @@ export const IpRepository: IIpRepository = {
 		}
 		const { inArray } = await import("drizzle-orm");
 		const client = (tx as unknown as TransactionClient) || db;
-		const result = await client.select().from(ips).where(inArray(ips.name, names));
+		const result = await client
+			.select()
+			.from(ips)
+			.where(inArray(ips.name, names));
 		return result.map(mapToDomain);
 	},
 
@@ -116,7 +123,9 @@ export const IpRepository: IIpRepository = {
 	async getMediaIps(
 		mediaId: string,
 		tx?: Transaction,
-	): Promise<(Ip & { confidence: number | null; associationSource: string })[]> {
+	): Promise<
+		(Ip & { confidence: number | null; associationSource: string })[]
+	> {
 		const client = (tx as unknown as TransactionClient) || db;
 		const result = await client
 			.select({
@@ -177,7 +186,11 @@ export const IpRepository: IIpRepository = {
 			});
 	},
 
-	async removeMedia(mediaId: string, ipId: string, tx?: Transaction): Promise<void> {
+	async removeMedia(
+		mediaId: string,
+		ipId: string,
+		tx?: Transaction,
+	): Promise<void> {
 		const client = (tx as unknown as TransactionClient) || db;
 		const result = await client
 			.delete(mediaIps)

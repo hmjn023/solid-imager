@@ -31,23 +31,29 @@ import {
 import { toast } from "@solid-imager/ui/toast";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
-import { PresetClient } from "../../infrastructure/api/clients/preset-client";
+import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
 	clearPresetFilters,
 	getSearchCondition,
 	loadPreset,
 	searchState,
-} from "../../presentation/store/search-store";
+} from "~/presentation/store/search-store";
 
-export function PresetManager(props: { class?: string; onAction?: () => void }) {
+export function PresetManager(props: {
+	class?: string;
+	onAction?: () => void;
+}) {
 	const [data, { refetch }] = createResource(PresetClient.list);
-	const presets = () => data()?.filter((preset) => !preset.name.startsWith("current"));
+	const presets = () =>
+		data()?.filter((preset) => !preset.name.startsWith("current"));
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [presetToDelete, setPresetToDelete] = createSignal<number | null>(null);
 	const [newPresetName, setNewPresetName] = createSignal("");
-	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(null);
+	const [selectedPresetId, setSelectedPresetId] = createSignal<string | null>(
+		null,
+	);
 
 	createEffect(() => {
 		const active = searchState.activePresetId;
@@ -117,7 +123,9 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 		if (!id) {
 			return;
 		}
-		const preset = presets()?.find((candidate: Preset) => candidate.id === Number(id));
+		const preset = presets()?.find(
+			(candidate: Preset) => candidate.id === Number(id),
+		);
 		if (preset) {
 			loadPreset(preset);
 			props.onAction?.();
@@ -132,7 +140,10 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 
 	return (
 		<div class={cn("flex w-full flex-col gap-2", props.class)}>
-			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>プリセットの削除</AlertDialogTitle>
@@ -142,7 +153,10 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 					</AlertDialogHeader>
 					<AlertDialogFooter>
 						<AlertDialogCancel>キャンセル</AlertDialogCancel>
-						<AlertDialogAction class="bg-red-500 hover:bg-red-600" onClick={executeDelete}>
+						<AlertDialogAction
+							class="bg-red-500 hover:bg-red-600"
+							onClick={executeDelete}
+						>
 							削除する
 						</AlertDialogAction>
 					</AlertDialogFooter>
@@ -155,16 +169,22 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 						itemComponent={(itemProps) => {
 							const preset = presets()?.find(
 								(candidate: Preset) =>
-									String(candidate.id) === (itemProps.item as { rawValue: string }).rawValue,
+									String(candidate.id) ===
+									(itemProps.item as { rawValue: string }).rawValue,
 							);
 							return (
-								<SelectItem class="flex w-full justify-between gap-2" item={itemProps.item}>
+								<SelectItem
+									class="flex w-full justify-between gap-2"
+									item={itemProps.item}
+								>
 									<span>{preset?.name}</span>
 								</SelectItem>
 							);
 						}}
 						onChange={setSelectedPresetId}
-						options={presets()?.map((preset: Preset) => String(preset.id)) || []}
+						options={
+							presets()?.map((preset: Preset) => String(preset.id)) || []
+						}
 						placeholder="プリセットを選択..."
 						value={selectedPresetId()}
 					>
@@ -173,10 +193,13 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 								{(state) => {
 									const preset = presets()?.find(
 										(candidate: Preset) =>
-											String(candidate.id) === (state.selectedOption() as string),
+											String(candidate.id) ===
+											(state.selectedOption() as string),
 									);
 									return (
-										<span class="truncate">{preset ? preset.name : "プリセットを選択..."}</span>
+										<span class="truncate">
+											{preset ? preset.name : "プリセットを選択..."}
+										</span>
 									);
 								}}
 							</SelectValue>
@@ -230,14 +253,18 @@ export function PresetManager(props: { class?: string; onAction?: () => void }) 
 					<DialogContent>
 						<DialogHeader>
 							<DialogTitle>現在の検索条件を保存</DialogTitle>
-							<DialogDescription>現在の検索条件に名前を付けて保存します。</DialogDescription>
+							<DialogDescription>
+								現在の検索条件に名前を付けて保存します。
+							</DialogDescription>
 						</DialogHeader>
 						<div class="grid gap-4 py-4">
 							<div class="grid grid-cols-4 items-center gap-4">
 								<Label class="text-right">名前</Label>
 								<Input
 									class="col-span-3"
-									onInput={(event) => setNewPresetName(event.currentTarget.value)}
+									onInput={(event) =>
+										setNewPresetName(event.currentTarget.value)
+									}
 									value={newPresetName()}
 								/>
 							</div>

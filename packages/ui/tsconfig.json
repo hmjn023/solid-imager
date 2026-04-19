@@ -10,7 +10,9 @@
 		"baseUrl": ".",
 		"paths": {
 			"~/*": ["./src/*"],
-			"@/*": ["../core/src/*"]
+			"@/*": ["../core/src/*"],
+			"@solid-imager/core": ["../core/src/index.ts"],
+			"@solid-imager/core/*": ["../core/src/*"]
 		}
 	},
 	"include": ["src/**/*"]

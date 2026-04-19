@@ -18,7 +18,10 @@ export function createCategory(data: { name: string; description?: string }) {
 	return orpc.categories.create(data);
 }
 
-export function updateCategory(id: string, data: { name?: string; description?: string }) {
+export function updateCategory(
+	id: string,
+	data: { name?: string; description?: string },
+) {
 	return orpc.categories.update({ id, data });
 }
 

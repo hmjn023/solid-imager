@@ -8,11 +8,15 @@ export const Route = createFileRoute("/api/events")({
 			GET: async ({ request }) => {
 				bootstrap();
 				const url = new URL(request.url);
-				const channels = url.searchParams.get("channels")?.split(",") ?? ["global-jobs"];
+				const channels = url.searchParams.get("channels")?.split(",") ?? [
+					"global-jobs",
+				];
 
 				const stream = new ReadableStream({
 					start(controller) {
-						const clientIds = channels.map((channel) => SseManager.addClient(channel, controller));
+						const clientIds = channels.map((channel) =>
+							SseManager.addClient(channel, controller),
+						);
 
 						request.signal.addEventListener("abort", () => {
 							clientIds.forEach((clientId, i) => {

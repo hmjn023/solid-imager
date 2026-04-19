@@ -1,5 +1,14 @@
-import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@solid-imager/ui/card";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardHeader,
+	CardTitle,
+} from "@solid-imager/ui/card";
 
 /**
  * Props for the SourceCard component.
@@ -68,16 +77,22 @@ export default function SourceCard(props: SourceCardProps) {
 	};
 
 	return (
-		<a class="block text-current no-underline" href={`/sources/${props.mediaSource.id}`}>
+		<a
+			class="block text-current no-underline"
+			href={`/sources/${props.mediaSource.id}`}
+		>
 			<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
 				<CardHeader>
-					<CardTitle data-testid="source-name">{props.mediaSource.name}</CardTitle>
+					<CardTitle data-testid="source-name">
+						{props.mediaSource.name}
+					</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<CardDescription>{props.mediaSource.description}</CardDescription>
 					<div class="mt-4 space-y-2 text-sm">
 						<p>
-							<span class="font-semibold">Type:</span> {getTypeLabel(props.mediaSource.type)}
+							<span class="font-semibold">Type:</span>{" "}
+							{getTypeLabel(props.mediaSource.type)}
 						</p>
 						<p class="truncate" title={getConnectionDetails(props.mediaSource)}>
 							{getConnectionDetails(props.mediaSource)}

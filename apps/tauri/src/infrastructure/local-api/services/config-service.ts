@@ -1,4 +1,7 @@
-import { type AppConfig, AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
+import {
+	type AppConfig,
+	AppConfigSchema,
+} from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigRepository } from "../repositories/app-config-repository";
 
 type ConfigListener = (config: AppConfig) => void;
@@ -30,7 +33,10 @@ function deepMerge<T>(base: T, patch: Partial<T>): T {
 			typeof value === "object" &&
 			!Array.isArray(current) &&
 			!Array.isArray(value)
-				? deepMerge(current as Record<string, unknown>, value as Record<string, unknown>)
+				? deepMerge(
+						current as Record<string, unknown>,
+						value as Record<string, unknown>,
+					)
 				: value;
 	}
 	return result as T;

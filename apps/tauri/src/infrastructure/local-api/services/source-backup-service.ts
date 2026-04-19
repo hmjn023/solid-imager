@@ -1,4 +1,7 @@
-import { type MediaDumpItem, mediaDumpItemSchema } from "@solid-imager/core/domain/media/schemas";
+import {
+	type MediaDumpItem,
+	mediaDumpItemSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import {
 	authors,
 	characterIps,
@@ -53,7 +56,9 @@ function validateRelativePath(filePath: string): void {
 	}
 }
 
-function toLocalSourcePath(source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>) {
+function toLocalSourcePath(
+	source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>,
+) {
 	if (!source) {
 		throw new Error("Media source not found");
 	}
@@ -66,7 +71,11 @@ function toLocalSourcePath(source: Awaited<ReturnType<typeof TauriSourceReposito
 async function ensureMasterData(
 	tx: TauriDbExecutor,
 	table: typeof tags | typeof projects | typeof ips | typeof characters,
-	nameColumn: typeof tags.name | typeof projects.name | typeof ips.name | typeof characters.name,
+	nameColumn:
+		| typeof tags.name
+		| typeof projects.name
+		| typeof ips.name
+		| typeof characters.name,
 	names: Set<string>,
 	defaults: Record<string, string | null>,
 ): Promise<Map<string, string>> {
@@ -110,7 +119,10 @@ async function ensureAuthors(
 		.from(authors)
 		.where(inArray(authors.name, names));
 
-	const existingByName = new Map<string, { id: string; accountId: string | null }>();
+	const existingByName = new Map<
+		string,
+		{ id: string; accountId: string | null }
+	>();
 	for (const row of existing) {
 		const current = existingByName.get(row.name);
 		if (!current || (!current.accountId && row.accountId)) {
@@ -123,12 +135,16 @@ async function ensureAuthors(
 
 	const authorUpdates = entries.filter(([name, data]) => {
 		const current = existingByName.get(name);
-		return Boolean(current && data.accountId && current.accountId !== data.accountId);
+		return Boolean(
+			current && data.accountId && current.accountId !== data.accountId,
+		);
 	});
 
 	if (authorUpdates.length > 0) {
 		const accountIdCase = sql.join(
-			authorUpdates.map(([name, data]) => sql`when ${name} then ${data.accountId ?? null}`),
+			authorUpdates.map(
+				([name, data]) => sql`when ${name} then ${data.accountId ?? null}`,
+			),
 			sql.raw(" "),
 		);
 		await tx
@@ -165,7 +181,9 @@ async function ensureAuthors(
 		}
 	}
 
-	return new Map(Array.from(existingByName.entries()).map(([name, row]) => [name, row.id]));
+	return new Map(
+		Array.from(existingByName.entries()).map(([name, row]) => [name, row.id]),
+	);
 }
 
 async function restoreMasterData(tx: TauriDbExecutor, items: MediaDumpItem[]) {
@@ -319,7 +337,9 @@ async function restoreRelations(
 	const characterIpsData: Array<typeof characterIps.$inferInsert> = [];
 	const mediaIpsData: Array<typeof mediaIps.$inferInsert> = [];
 	const mediaUrlsData: Array<typeof mediaUrls.$inferInsert> = [];
-	const mediaGenerationInfoData: Array<typeof mediaGenerationInfo.$inferInsert> = [];
+	const mediaGenerationInfoData: Array<
+		typeof mediaGenerationInfo.$inferInsert
+	> = [];
 	const seenMediaIps = new Set<string>();
 
 	for (const item of params.items) {
@@ -345,21 +365,27 @@ async function restoreRelations(
 		}
 
 		for (const author of item.authors ?? []) {
-			const authorId = author.name ? params.authorMap.get(author.name) : undefined;
+			const authorId = author.name
+				? params.authorMap.get(author.name)
+				: undefined;
 			if (authorId) {
 				mediaAuthorsData.push({ mediaId, authorId });
 			}
 		}
 
 		for (const project of item.projects ?? []) {
-			const projectId = project.name ? params.projectMap.get(project.name) : undefined;
+			const projectId = project.name
+				? params.projectMap.get(project.name)
+				: undefined;
 			if (projectId) {
 				mediaProjectsData.push({ mediaId, projectId });
 			}
 		}
 
 		for (const character of item.characters ?? []) {
-			const characterId = character.name ? params.charMap.get(character.name) : undefined;
+			const characterId = character.name
+				? params.charMap.get(character.name)
+				: undefined;
 			if (!characterId) {
 				continue;
 			}
@@ -433,10 +459,14 @@ async function restoreRelations(
 		await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
 		await tx.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, chunk));
 		await tx.delete(mediaProjects).where(inArray(mediaProjects.mediaId, chunk));
-		await tx.delete(mediaCharacters).where(inArray(mediaCharacters.mediaId, chunk));
+		await tx
+			.delete(mediaCharacters)
+			.where(inArray(mediaCharacters.mediaId, chunk));
 		await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
 		await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-		await tx.delete(mediaGenerationInfo).where(inArray(mediaGenerationInfo.mediaId, chunk));
+		await tx
+			.delete(mediaGenerationInfo)
+			.where(inArray(mediaGenerationInfo.mediaId, chunk));
 	}
 
 	const chunkSize = 1000;
@@ -483,7 +513,11 @@ async function restoreRelations(
 			.values(mediaUrlsData.slice(index, index + chunkSize))
 			.onConflictDoNothing();
 	}
-	for (let index = 0; index < mediaGenerationInfoData.length; index += chunkSize) {
+	for (
+		let index = 0;
+		index < mediaGenerationInfoData.length;
+		index += chunkSize
+	) {
 		await tx
 			.insert(mediaGenerationInfo)
 			.values(mediaGenerationInfoData.slice(index, index + chunkSize))
@@ -593,7 +627,10 @@ export const TauriSourceBackupService = {
 		);
 	},
 
-	async restoreSource(mediaSourceId: string, items: unknown[]): Promise<RestoreSourceResult> {
+	async restoreSource(
+		mediaSourceId: string,
+		items: unknown[],
+	): Promise<RestoreSourceResult> {
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
 		const fileSystem = getTauriAppServices().fileSystem;
@@ -642,12 +679,14 @@ export const TauriSourceBackupService = {
 		}
 
 		await getTauriAppServices().db.transaction(async (tx) => {
-			const { tagMap, authorMap, projectMap, ipMap, charMap } = await restoreMasterData(
+			const { tagMap, authorMap, projectMap, ipMap, charMap } =
+				await restoreMasterData(tx, validItems);
+			await restoreMediaRecords(tx, mediaSourceId, validItems);
+			const mediaPathToId = await mapMediaPathsToIds(
 				tx,
+				mediaSourceId,
 				validItems,
 			);
-			await restoreMediaRecords(tx, mediaSourceId, validItems);
-			const mediaPathToId = await mapMediaPathsToIds(tx, mediaSourceId, validItems);
 			await restoreRelations(tx, {
 				items: validItems,
 				mediaPathToId,
@@ -666,16 +705,18 @@ export const TauriSourceBackupService = {
 		};
 	},
 
-	async importSourceZip(mediaSourceId: string, bytes: number[]): Promise<ImportSourceZipResult> {
+	async importSourceZip(
+		mediaSourceId: string,
+		bytes: number[],
+	): Promise<ImportSourceZipResult> {
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
-		const dumpData = await getTauriAppServices().commandClient.invoke<unknown[]>(
-			"backup_extract_zip",
-			{
-				rootPath,
-				bytes,
-			},
-		);
+		const dumpData = await getTauriAppServices().commandClient.invoke<
+			unknown[]
+		>("backup_extract_zip", {
+			rootPath,
+			bytes,
+		});
 
 		await TauriSourceService.sync([mediaSourceId]);
 		const restoreResult = await this.restoreSource(mediaSourceId, dumpData);

@@ -62,4 +62,10 @@ const CheckboxLabel = CheckboxLabelPrimitive;
 const CheckboxDescription = CheckboxDescriptionPrimitive;
 const CheckboxErrorMessage = CheckboxErrorMessagePrimitive;
 
-export { Checkbox, CheckboxControl, CheckboxDescription, CheckboxErrorMessage, CheckboxLabel };
+export {
+	Checkbox,
+	CheckboxControl,
+	CheckboxDescription,
+	CheckboxErrorMessage,
+	CheckboxLabel,
+};

@@ -10,7 +10,12 @@ import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
-import { mediaCharacters, mediaIps, medias, mediaTags } from "~/infrastructure/db/schema";
+import {
+	mediaCharacters,
+	mediaIps,
+	medias,
+	mediaTags,
+} from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {
@@ -41,7 +46,12 @@ export const aiRouter = {
 		}),
 
 	ccipFeature: os
-		.input(z.union([z.object({ file: z.instanceof(File) }), ccipFeatureRequestSchema]))
+		.input(
+			z.union([
+				z.object({ file: z.instanceof(File) }),
+				ccipFeatureRequestSchema,
+			]),
+		)
 		.handler(async ({ input }) => {
 			if ("file" in input) {
 				const buffer = await input.file.arrayBuffer();
@@ -53,56 +63,73 @@ export const aiRouter = {
 				throw new Error("mediaSourceId and mediaId are required");
 			}
 
-			return await taggingService.getCcipFeatureForMedia(mediaSourceId, mediaId);
+			return await taggingService.getCcipFeatureForMedia(
+				mediaSourceId,
+				mediaId,
+			);
 		}),
 
 	ccipDifference: os
 		.input(ccipDifferenceRequestSchema)
 		.handler(
-			async ({ input }) => await taggingService.getCcipDifference(input.feature1, input.feature2),
+			async ({ input }) =>
+				await taggingService.getCcipDifference(input.feature1, input.feature2),
 		),
 
-	scanBatchTaggingTargets: os.input(batchTaggingRequestSchema).handler(async ({ input }) => {
-		const { mediaSourceId, force } = input;
+	scanBatchTaggingTargets: os
+		.input(batchTaggingRequestSchema)
+		.handler(async ({ input }) => {
+			const { mediaSourceId, force } = input;
 
-		const results = await db
-			.select({
-				...getTableColumns(medias),
-			})
-			.from(medias)
-			.leftJoin(mediaTags, and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI")))
-			.leftJoin(
-				mediaCharacters,
-				and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, "AI")),
-			)
-			.leftJoin(mediaIps, and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")))
-			.where(
-				and(
-					eq(medias.mediaType, "image"),
-					mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-					force
-						? undefined
-						: and(
-								isNull(mediaTags.mediaId),
-								isNull(mediaCharacters.mediaId),
-								isNull(mediaIps.mediaId),
-							),
-				),
-			)
-			.orderBy(asc(medias.id));
+			const results = await db
+				.select({
+					...getTableColumns(medias),
+				})
+				.from(medias)
+				.leftJoin(
+					mediaTags,
+					and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI")),
+				)
+				.leftJoin(
+					mediaCharacters,
+					and(
+						eq(mediaCharacters.mediaId, medias.id),
+						eq(mediaCharacters.source, "AI"),
+					),
+				)
+				.leftJoin(
+					mediaIps,
+					and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
+				)
+				.where(
+					and(
+						eq(medias.mediaType, "image"),
+						mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
+						force
+							? undefined
+							: and(
+									isNull(mediaTags.mediaId),
+									isNull(mediaCharacters.mediaId),
+									isNull(mediaIps.mediaId),
+								),
+					),
+				)
+				.orderBy(asc(medias.id));
 
-		return results;
-	}),
+			return results;
+		}),
 
-	batchTagging: os.input(batchTaggingRequestSchema).handler(async ({ input }) => {
-		const jobRepo = services.getJobRepository();
-		await jobRepo.create({
-			type: "bulk_tagging_dispatch",
-			mediaSourceId: input.mediaSourceId, // Optional but good for tracking if provided
-			payload: input,
-		});
-		return { success: true, message: "Batch tagging started" };
-	}),
+	batchTagging: os
+		.input(batchTaggingRequestSchema)
+		.handler(async ({ input }) => {
+			const jobRepo = services.getJobRepository();
+			await jobRepo.create({
+				type: "bulk_tagging_dispatch",
+				mediaSourceId: input.mediaSourceId, // Optional but good for tracking if provided
+				payload: input,
+			});
+			return { success: true, message: "Batch tagging started" };
+		}),
 
 	startBatchTaggingWithIds: os
 		.input(
@@ -131,7 +158,10 @@ export const aiRouter = {
 			const foundIds = new Set(mediaItems.map((m) => m.id));
 			const notFoundIds = mediaIds.filter((id) => !foundIds.has(id));
 			if (notFoundIds.length > 0) {
-				logger.warn({ notFoundIds }, "Some media IDs were not found for batch tagging");
+				logger.warn(
+					{ notFoundIds },
+					"Some media IDs were not found for batch tagging",
+				);
 			}
 
 			await Promise.all(

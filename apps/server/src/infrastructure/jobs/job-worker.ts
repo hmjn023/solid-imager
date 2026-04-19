@@ -120,7 +120,8 @@ export class JobWorker {
 			await this.processor(job);
 			await this.jobRepo.markAsCompleted(job.id, { success: true });
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			logger.error({ err: error, jobId: job.id }, "Job failed");
 			await this.jobRepo.markAsFailed(job.id, errorMessage);
 		} finally {

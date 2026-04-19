@@ -25,7 +25,9 @@ const getInitialState = (): SourcesState => {
 	}
 };
 
-export const [sourcesState, setSourcesState] = createStore<SourcesState>(getInitialState());
+export const [sourcesState, setSourcesState] = createStore<SourcesState>(
+	getInitialState(),
+);
 
 // Helper to persist to sessionStorage
 const persistToStorage = () => {

@@ -5,7 +5,9 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 import * as schema from "./schema";
 
-export type NodePostgresDb = ReturnType<typeof drizzleNodePostgres<typeof schema>>;
+export type NodePostgresDb = ReturnType<
+	typeof drizzleNodePostgres<typeof schema>
+>;
 export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
 export type DbInstance = NodePostgresDb | PgLiteDb;
 
@@ -31,13 +33,18 @@ function initializeDb() {
 	}
 
 	const dbHost = process.env.DB_HOST;
-	const isTestEnv = process.env.NODE_ENV === "test" || process.env.VITEST === "true";
+	const isTestEnv =
+		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-	console.log(`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`);
+	console.log(
+		`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`,
+	);
 
 	// テスト環境では必ずPGliteを使用
 	if (isTestEnv || dbHost === "pglite") {
-		const pglitePath = process.env.PGLITE_DATA_DIR || path.join(process.cwd(), ".data", "pglite");
+		const pglitePath =
+			process.env.PGLITE_DATA_DIR ||
+			path.join(process.cwd(), ".data", "pglite");
 		console.log(
 			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(pglitePath)})`,
 		);

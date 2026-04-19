@@ -55,18 +55,24 @@ export function createAsyncButtonContainer(
 		e.stopPropagation();
 	});
 
-	const dlBtn = createButton(type === "VIDEO" ? "DL VIDEO" : "DL", "#000", () => {
-		handleAsyncAction("DOWNLOAD").catch(() => {
-			/* ignore */
-		});
-	});
+	const dlBtn = createButton(
+		type === "VIDEO" ? "DL VIDEO" : "DL",
+		"#000",
+		() => {
+			handleAsyncAction("DOWNLOAD").catch(() => {
+				/* ignore */
+			});
+		},
+	);
 	const postBtn = createButton("POST", "#0056b3", () => {
 		handleAsyncAction("POST_DOWNLOAD").catch(() => {
 			/* ignore */
 		});
 	});
 
-	const handleAsyncAction = async (actionType: "DOWNLOAD" | "POST_DOWNLOAD") => {
+	const handleAsyncAction = async (
+		actionType: "DOWNLOAD" | "POST_DOWNLOAD",
+	) => {
 		try {
 			// Show loading state
 			dlBtn.innerText = "⏳";
@@ -102,7 +108,11 @@ export function createAsyncButtonContainer(
 	return container;
 }
 
-function createButton(text: string, bgColor: string, onClick: () => void): HTMLButtonElement {
+function createButton(
+	text: string,
+	bgColor: string,
+	onClick: () => void,
+): HTMLButtonElement {
 	const button = document.createElement("button");
 	button.innerText = text;
 	button.style.backgroundColor = bgColor;
@@ -143,12 +153,15 @@ function handleAction(
 			: metadata.targetUrl;
 
 	if (mediaType === "VIDEO") {
-		chrome.runtime.sendMessage({ type: "GET_COOKIES", url: tweetUrl }, (cookies) => {
-			if (cookies) {
-				metadata.cookies = cookies;
-			}
-			chrome.runtime.sendMessage({ type, data: metadata });
-		});
+		chrome.runtime.sendMessage(
+			{ type: "GET_COOKIES", url: tweetUrl },
+			(cookies) => {
+				if (cookies) {
+					metadata.cookies = cookies;
+				}
+				chrome.runtime.sendMessage({ type, data: metadata });
+			},
+		);
 	} else {
 		chrome.runtime.sendMessage({ type, data: metadata });
 	}

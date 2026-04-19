@@ -25,7 +25,10 @@ export const SftpDriver = {
 	 * @param {string} _remotePath - The remote path to the file.
 	 * @returns {Promise<Buffer>} A promise that resolves with the file content as a Buffer.
 	 */
-	readFile(_connectionInfo: SftpConnection, _remotePath: string): Promise<Buffer> {
+	readFile(
+		_connectionInfo: SftpConnection,
+		_remotePath: string,
+	): Promise<Buffer> {
 		// TODO: Read file from SFTP server
 		throw new Error("Not implemented");
 	},
@@ -37,7 +40,11 @@ export const SftpDriver = {
 	 * @param {Buffer} _content - The content to write to the file.
 	 * @returns {Promise<void>} A promise that resolves when the file has been written.
 	 */
-	writeFile(_connectionInfo: SftpConnection, _remotePath: string, _content: Buffer): Promise<void> {
+	writeFile(
+		_connectionInfo: SftpConnection,
+		_remotePath: string,
+		_content: Buffer,
+	): Promise<void> {
 		// TODO: Write file to SFTP server
 		throw new Error("Not implemented");
 	},
@@ -48,7 +55,10 @@ export const SftpDriver = {
 	 * @param {string} _remotePath - The remote path to the file to delete.
 	 * @returns {Promise<void>} A promise that resolves when the file has been deleted.
 	 */
-	deleteFile(_connectionInfo: SftpConnection, _remotePath: string): Promise<void> {
+	deleteFile(
+		_connectionInfo: SftpConnection,
+		_remotePath: string,
+	): Promise<void> {
 		// TODO: Delete file from SFTP server
 		throw new Error("Not implemented");
 	},
@@ -59,7 +69,10 @@ export const SftpDriver = {
 	 * @param {string} _remotePath - The remote path to the directory to list.
 	 * @returns {Promise<string[]>} A promise that resolves with an array of file and directory names.
 	 */
-	listDirectory(_connectionInfo: SftpConnection, _remotePath: string): Promise<string[]> {
+	listDirectory(
+		_connectionInfo: SftpConnection,
+		_remotePath: string,
+	): Promise<string[]> {
 		// TODO: List SFTP directory contents
 		throw new Error("Not implemented");
 	},

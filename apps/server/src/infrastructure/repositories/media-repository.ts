@@ -1,4 +1,7 @@
-import { ResourceNotFoundError, UnexpectedError } from "@solid-imager/core/domain/errors";
+import {
+	ResourceNotFoundError,
+	UnexpectedError,
+} from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	AddMediaRequest,
@@ -130,7 +133,10 @@ export const MediaRepository: IMediaRepository = {
 	async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.select().from(medias).where(eq(medias.id, mediaId));
+			const result = await client
+				.select()
+				.from(medias)
+				.where(eq(medias.id, mediaId));
 			if (result.length === 0) {
 				return null;
 			}
@@ -146,19 +152,31 @@ export const MediaRepository: IMediaRepository = {
 	/**
 	 * Retrieves a specific media item by Source ID and File Path.
 	 */
-	async findByPath(sourceId: string, filePath: string, tx?: Transaction): Promise<Media | null> {
+	async findByPath(
+		sourceId: string,
+		filePath: string,
+		tx?: Transaction,
+	): Promise<Media | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const result = await client
 				.select()
 				.from(medias)
-				.where(and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath)));
+				.where(
+					and(
+						eq(medias.mediaSourceId, sourceId),
+						eq(medias.filePath, filePath),
+					),
+				);
 			if (result.length === 0) {
 				return null;
 			}
 			return mapToMedia(result[0]);
 		} catch (error) {
-			throw new UnexpectedError("Failed to select media by source ID and file path", error);
+			throw new UnexpectedError(
+				"Failed to select media by source ID and file path",
+				error,
+			);
 		}
 	},
 
@@ -219,7 +237,11 @@ export const MediaRepository: IMediaRepository = {
 	/**
 	 * Updates an existing media entry.
 	 */
-	async update(mediaId: string, updates: UpdateMediaRequest, tx?: Transaction): Promise<Media> {
+	async update(
+		mediaId: string,
+		updates: UpdateMediaRequest,
+		tx?: Transaction,
+	): Promise<Media> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const dbUpdates: Partial<NewMedia> = {};
@@ -265,7 +287,10 @@ export const MediaRepository: IMediaRepository = {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to update media with ID: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to update media with ID: ${mediaId}`,
+				error,
+			);
 		}
 	},
 
@@ -275,7 +300,10 @@ export const MediaRepository: IMediaRepository = {
 	async delete(mediaId: string, tx?: Transaction): Promise<void> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const result = await client.delete(medias).where(eq(medias.id, mediaId)).returning();
+			const result = await client
+				.delete(medias)
+				.where(eq(medias.id, mediaId))
+				.returning();
 			if (result.length === 0) {
 				throw new ResourceNotFoundError("Media", mediaId);
 			}
@@ -283,7 +311,10 @@ export const MediaRepository: IMediaRepository = {
 			if (error instanceof ResourceNotFoundError) {
 				throw error;
 			}
-			throw new UnexpectedError(`Failed to delete media with ID: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to delete media with ID: ${mediaId}`,
+				error,
+			);
 		}
 	},
 
@@ -301,7 +332,10 @@ export const MediaRepository: IMediaRepository = {
 		return executeSearch(params, mediaSourceId, tx);
 	},
 
-	globalSearch(params: MediaSearchRequest, tx?: Transaction): Promise<MediaSearchResponse> {
+	globalSearch(
+		params: MediaSearchRequest,
+		tx?: Transaction,
+	): Promise<MediaSearchResponse> {
 		return executeSearch(params, undefined, tx);
 	},
 
@@ -309,7 +343,10 @@ export const MediaRepository: IMediaRepository = {
 	 * Optimized: Fetch media and all relations in a single query using Drizzle's relational query builder.
 	 * This avoids N+1 query issues (or N+4 in this case) when fetching details.
 	 */
-	async getDetails(mediaId: string, tx?: Transaction): Promise<MediaDetails | null> {
+	async getDetails(
+		mediaId: string,
+		tx?: Transaction,
+	): Promise<MediaDetails | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const result = await client.query.medias.findFirst({
@@ -346,7 +383,10 @@ export const MediaRepository: IMediaRepository = {
 
 			return mapToMediaDetails(result);
 		} catch (error) {
-			throw new UnexpectedError(`Failed to get media details for mediaId: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to get media details for mediaId: ${mediaId}`,
+				error,
+			);
 		}
 	},
 
@@ -354,7 +394,10 @@ export const MediaRepository: IMediaRepository = {
 		return await TagRepository.findByMediaId(mediaId, tx);
 	},
 
-	async getGenerationInfo(mediaId: string, tx?: Transaction): Promise<MediaGenerationInfo | null> {
+	async getGenerationInfo(
+		mediaId: string,
+		tx?: Transaction,
+	): Promise<MediaGenerationInfo | null> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
 			const result = await client
@@ -388,14 +431,24 @@ export const MediaRepository: IMediaRepository = {
 	async getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
-			const results = await client.select().from(mediaUrls).where(eq(mediaUrls.mediaId, mediaId));
+			const results = await client
+				.select()
+				.from(mediaUrls)
+				.where(eq(mediaUrls.mediaId, mediaId));
 			return results.map(mapToMediaUrl);
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select media URLs for mediaId: ${mediaId}`, error);
+			throw new UnexpectedError(
+				`Failed to select media URLs for mediaId: ${mediaId}`,
+				error,
+			);
 		}
 	},
 
-	async addUrls(mediaId: string, urls: string[], tx?: Transaction): Promise<MediaUrl[]> {
+	async addUrls(
+		mediaId: string,
+		urls: string[],
+		tx?: Transaction,
+	): Promise<MediaUrl[]> {
 		if (urls.length === 0) {
 			return [];
 		}
@@ -476,7 +529,10 @@ export const MediaRepository: IMediaRepository = {
 			const results = await query;
 			return results.map(mapToMedia);
 		} catch (error) {
-			throw new UnexpectedError(`Failed to select medias by source ID: ${mediaSourceId}`, error);
+			throw new UnexpectedError(
+				`Failed to select medias by source ID: ${mediaSourceId}`,
+				error,
+			);
 		}
 	},
 
@@ -489,7 +545,12 @@ export const MediaRepository: IMediaRepository = {
 		const client = (tx as unknown as TransactionClient) || db;
 		// searchMediaInDirectory internally uses searchMediaQuery structure so it returns formatted results,
 		// hopefully compatible with Media. But let's check media-repository-utils.ts for that.
-		const results = await searchMediaInDirectory(mediaSourceId, directoryPath, params, client);
+		const results = await searchMediaInDirectory(
+			mediaSourceId,
+			directoryPath,
+			params,
+			client,
+		);
 		// If searchMediaInDirectory returns Drizzle type or 'any', we might need to map implicitly or explicity.
 		// Assuming it returns something schema-compliant for now, but strictly we should check.
 		return results.map(mapToMedia);
@@ -523,7 +584,9 @@ export const MediaRepository: IMediaRepository = {
 			})
 			.from(medias)
 			.leftJoin(mediaGenerationInfo, eq(medias.id, mediaGenerationInfo.mediaId))
-			.where(and(eq(medias.status, "active"), isNull(mediaGenerationInfo.mediaId)));
+			.where(
+				and(eq(medias.status, "active"), isNull(mediaGenerationInfo.mediaId)),
+			);
 	},
 
 	async findAllMediaIndices(
@@ -562,7 +625,10 @@ export const MediaRepository: IMediaRepository = {
 				.from(medias)
 				.where(eq(medias.mediaSourceId, mediaSourceId));
 		} catch (error) {
-			logger.error({ error, mediaSourceId }, "Database error in findAllPathsBySourceId");
+			logger.error(
+				{ error, mediaSourceId },
+				"Database error in findAllPathsBySourceId",
+			);
 			throw new UnexpectedError(
 				`Failed to select media paths by source ID: ${mediaSourceId}`,
 				error,

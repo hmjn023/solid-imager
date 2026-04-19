@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 
 // Mock Repositories
@@ -113,7 +120,10 @@ describe("MediaProcessingService", () => {
 				authors: [{ name: "Author Name", accountId: "acc-123" }],
 			});
 
-			expect(mockAuthorRepo.findByName).toHaveBeenCalledWith("Author Name", undefined);
+			expect(mockAuthorRepo.findByName).toHaveBeenCalledWith(
+				"Author Name",
+				undefined,
+			);
 			expect(mockAuthorRepo.create).toHaveBeenCalledWith(
 				{
 					name: "Author Name",
@@ -121,7 +131,11 @@ describe("MediaProcessingService", () => {
 				},
 				undefined,
 			);
-			expect(mockAuthorRepo.addMedia).toHaveBeenCalledWith(mediaId, "author-id", undefined);
+			expect(mockAuthorRepo.addMedia).toHaveBeenCalledWith(
+				mediaId,
+				"author-id",
+				undefined,
+			);
 		});
 
 		it("should register characters and auto-assign their IPs if provided", async () => {

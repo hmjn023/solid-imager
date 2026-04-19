@@ -7,7 +7,9 @@ import * as schema from "./schema";
 const TAURI_PGLITE_DATA_DIR = "idb://solid-imager-tauri";
 
 export type TauriDb = ReturnType<typeof drizzle<typeof schema>>;
-export type TauriDbTransaction = Parameters<Parameters<TauriDb["transaction"]>[0]>[0];
+export type TauriDbTransaction = Parameters<
+	Parameters<TauriDb["transaction"]>[0]
+>[0];
 export type TauriDbExecutor = TauriDb | TauriDbTransaction;
 
 let dbPromise: Promise<TauriDb> | null = null;

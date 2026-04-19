@@ -1,7 +1,10 @@
 import type { Author } from "@solid-imager/core/domain/authors/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { SearchCriterion, SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type {
+	SearchCriterion,
+	SearchGroup,
+} from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Button } from "@solid-imager/ui/button";
@@ -58,7 +61,14 @@ const OPERATOR_LABELS: Record<string, string> = {
 	isNotEmpty: "が空でない",
 };
 
-const STRING_OPERATORS = ["equals", "contains", "startsWith", "endsWith", "isEmpty", "isNotEmpty"];
+const STRING_OPERATORS = [
+	"equals",
+	"contains",
+	"startsWith",
+	"endsWith",
+	"isEmpty",
+	"isNotEmpty",
+];
 const NUMERIC_OPERATORS = ["equals", "gt", "gte", "lt", "lte"];
 const RELATIONAL_OPERATORS = ["equals", "contains", "in", "notIn"];
 const BOOLEAN_OPERATORS = ["equals"];
@@ -105,13 +115,26 @@ export function ProSearchBuilder(props: Props) {
 }
 
 function getValidOperators(target: string) {
-	if (["fileName", "filePath", "description", "keyword", "folder"].includes(target)) {
+	if (
+		["fileName", "filePath", "description", "keyword", "folder"].includes(
+			target,
+		)
+	) {
 		return STRING_OPERATORS;
 	}
 	if (["tag", "project", "ip", "character", "author"].includes(target)) {
 		return RELATIONAL_OPERATORS;
 	}
-	if (["rating", "viewCount", "fileSize", "createdAt", "width", "height"].includes(target)) {
+	if (
+		[
+			"rating",
+			"viewCount",
+			"fileSize",
+			"createdAt",
+			"width",
+			"height",
+		].includes(target)
+	) {
 		return NUMERIC_OPERATORS;
 	}
 	if (["aiGenerated", "favorite", "isArchived"].includes(target)) {
@@ -165,7 +188,10 @@ function GroupBuilder(props: {
 
 	return (
 		<Card
-			class={cn("border-l-2", props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500")}
+			class={cn(
+				"border-l-2",
+				props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500",
+			)}
 		>
 			<CardContent class="space-y-4 p-2 sm:p-4">
 				<div class="flex flex-col gap-2">
@@ -188,7 +214,9 @@ function GroupBuilder(props: {
 							value={props.group.operator}
 						>
 							<SelectTrigger class="w-20 sm:w-24">
-								<SelectValue<string>>{(state) => state.selectedOption().toUpperCase()}</SelectValue>
+								<SelectValue<string>>
+									{(state) => state.selectedOption().toUpperCase()}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent />
 						</Select>
@@ -281,7 +309,9 @@ function CriterionBuilder(props: {
 	authors?: Author[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId ? `${author.name}：(twitter)${author.accountId}` : author.name;
+		author.accountId
+			? `${author.name}：(twitter)${author.accountId}`
+			: author.name;
 
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {
@@ -301,9 +331,14 @@ function CriterionBuilder(props: {
 	});
 
 	const isNumericTarget = createMemo(() =>
-		["rating", "viewCount", "fileSize", "createdAt", "width", "height"].includes(
-			props.criterion.target,
-		),
+		[
+			"rating",
+			"viewCount",
+			"fileSize",
+			"createdAt",
+			"width",
+			"height",
+		].includes(props.criterion.target),
 	);
 	const isBooleanTarget = createMemo(() =>
 		["aiGenerated", "favorite", "isArchived"].includes(props.criterion.target),
@@ -313,7 +348,9 @@ function CriterionBuilder(props: {
 		<div class="flex flex-col gap-2 rounded-md bg-muted/20 p-2">
 			<Select
 				itemComponent={(itemProps) => (
-					<SelectItem item={itemProps.item}>{TARGET_LABELS[itemProps.item.rawValue]}</SelectItem>
+					<SelectItem item={itemProps.item}>
+						{TARGET_LABELS[itemProps.item.rawValue]}
+					</SelectItem>
 				)}
 				onChange={(value) => {
 					if (!value || value === props.criterion.target) {
@@ -324,21 +361,27 @@ function CriterionBuilder(props: {
 						...props.criterion,
 						target: value as SearchCriterion["target"],
 						operator: (operators[0] || "equals") as SearchCriterion["operator"],
-						value: ["aiGenerated", "favorite", "isArchived"].includes(value) ? true : "",
+						value: ["aiGenerated", "favorite", "isArchived"].includes(value)
+							? true
+							: "",
 					});
 				}}
 				options={Object.keys(TARGET_LABELS)}
 				value={props.criterion.target}
 			>
 				<SelectTrigger class="w-full">
-					<SelectValue<string>>{(state) => TARGET_LABELS[state.selectedOption()]}</SelectValue>
+					<SelectValue<string>>
+						{(state) => TARGET_LABELS[state.selectedOption()]}
+					</SelectValue>
 				</SelectTrigger>
 				<SelectContent />
 			</Select>
 
 			<Select
 				itemComponent={(itemProps) => (
-					<SelectItem item={itemProps.item}>{OPERATOR_LABELS[itemProps.item.rawValue]}</SelectItem>
+					<SelectItem item={itemProps.item}>
+						{OPERATOR_LABELS[itemProps.item.rawValue]}
+					</SelectItem>
 				)}
 				onChange={(value) => {
 					if (value) {
@@ -352,7 +395,9 @@ function CriterionBuilder(props: {
 				value={props.criterion.operator}
 			>
 				<SelectTrigger class="w-full">
-					<SelectValue<string>>{(state) => OPERATOR_LABELS[state.selectedOption()]}</SelectValue>
+					<SelectValue<string>>
+						{(state) => OPERATOR_LABELS[state.selectedOption()]}
+					</SelectValue>
 				</SelectTrigger>
 				<SelectContent />
 			</Select>
@@ -368,7 +413,9 @@ function CriterionBuilder(props: {
 					<Combobox<RelationOption>
 						itemComponent={(itemProps) => (
 							<ComboboxItem item={itemProps.item}>
-								<ComboboxItemLabel>{itemProps.item.textValue}</ComboboxItemLabel>
+								<ComboboxItemLabel>
+									{itemProps.item.textValue}
+								</ComboboxItemLabel>
 							</ComboboxItem>
 						)}
 						onChange={(value) => {
@@ -386,7 +433,9 @@ function CriterionBuilder(props: {
 						optionValue={(item) => item.name}
 						placeholder="検索..."
 						triggerMode="focus"
-						value={(autocompleteItems() || []).find((item) => item.name === props.criterion.value)}
+						value={(autocompleteItems() || []).find(
+							(item) => item.name === props.criterion.value,
+						)}
 					>
 						<ComboboxControl>
 							<ComboboxInput />
@@ -412,7 +461,9 @@ function CriterionBuilder(props: {
 						value={String(Boolean(props.criterion.value))}
 					>
 						<SelectTrigger class="w-full">
-							<SelectValue<string>>{(state) => state.selectedOption()}</SelectValue>
+							<SelectValue<string>>
+								{(state) => state.selectedOption()}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />
 					</Select>
@@ -432,13 +483,21 @@ function CriterionBuilder(props: {
 								})
 							}
 							placeholder="値をカンマ区切りで入力"
-							value={Array.isArray(props.criterion.value) ? props.criterion.value.join(", ") : ""}
+							value={
+								Array.isArray(props.criterion.value)
+									? props.criterion.value.join(", ")
+									: ""
+							}
 						/>
-						<p class="text-muted-foreground text-xs">カンマ区切りで複数の値を指定できます</p>
+						<p class="text-muted-foreground text-xs">
+							カンマ区切りで複数の値を指定できます
+						</p>
 					</div>
 				</Match>
 
-				<Match when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}>
+				<Match
+					when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}
+				>
 					<div class="rounded-md border border-dashed p-2 text-center text-muted-foreground text-xs italic">
 						この条件に値は不要です
 					</div>
@@ -466,7 +525,11 @@ function CriterionBuilder(props: {
 				</Match>
 			</Switch>
 
-			<Button class="w-full text-red-500" onClick={props.onRemove} variant="ghost">
+			<Button
+				class="w-full text-red-500"
+				onClick={props.onRemove}
+				variant="ghost"
+			>
 				削除
 			</Button>
 		</div>

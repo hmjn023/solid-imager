@@ -42,7 +42,9 @@ export const thumbnailGeneratedEventSchema = z.object({
 	filePath: z.string().optional(),
 	timestamp: z.string().optional(),
 });
-export type ThumbnailGeneratedEvent = z.infer<typeof thumbnailGeneratedEventSchema>;
+export type ThumbnailGeneratedEvent = z.infer<
+	typeof thumbnailGeneratedEventSchema
+>;
 
 export const allJobsCompletedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),

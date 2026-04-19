@@ -8,7 +8,10 @@ import path from "node:path";
 
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { Media, MediaMetadataContext } from "@solid-imager/core/domain/media/schemas";
+import type {
+	Media,
+	MediaMetadataContext,
+} from "@solid-imager/core/domain/media/schemas";
 // Repository Interfaces
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -78,7 +81,9 @@ export class MediaProcessingServiceImpl {
 	): Promise<Media> {
 		const source = await this.sourceRepo.findById(mediaSourceId);
 		if (!source || source.type !== "local") {
-			throw new Error(`Source not found or not a local source: ${mediaSourceId}`);
+			throw new Error(
+				`Source not found or not a local source: ${mediaSourceId}`,
+			);
 		}
 
 		const basePath = (source.connectionInfo as { path: string }).path;
@@ -177,10 +182,17 @@ export class MediaProcessingServiceImpl {
 				);
 
 				if (metadata.tags.length > 0) {
-					await this.tagRepo.addTagsToMedia(media.id, metadata.tags, "comfyui_workflow");
+					await this.tagRepo.addTagsToMedia(
+						media.id,
+						metadata.tags,
+						"comfyui_workflow",
+					);
 				}
 			} catch (e) {
-				logger.warn({ err: e, mediaId }, "Metadata extraction failed, continuing...");
+				logger.warn(
+					{ err: e, mediaId },
+					"Metadata extraction failed, continuing...",
+				);
 			}
 		}
 
@@ -292,9 +304,17 @@ export class MediaProcessingServiceImpl {
 	): Promise<void> {
 		for (const charData of characters) {
 			try {
-				await this._registerSingleCharacter(mediaId, charData, currentIpNames, tx);
+				await this._registerSingleCharacter(
+					mediaId,
+					charData,
+					currentIpNames,
+					tx,
+				);
 			} catch (e) {
-				logger.warn({ err: e, character: charData }, "Failed to register character");
+				logger.warn(
+					{ err: e, character: charData },
+					"Failed to register character",
+				);
 			}
 		}
 	}
@@ -305,12 +325,16 @@ export class MediaProcessingServiceImpl {
 		currentIpNames?: string[],
 		tx?: Transaction,
 	): Promise<void> {
-		let character: Character | null = await this.characterService.findByName(charData.name);
+		let character: Character | null = await this.characterService.findByName(
+			charData.name,
+		);
 
 		// Determine which IPs to link to this character
 		// Priority: 1) linkedIps from metadata, 2) infer from media's current IPs
 		const ipNamesToLink =
-			charData.linkedIps && charData.linkedIps.length > 0 ? charData.linkedIps : currentIpNames;
+			charData.linkedIps && charData.linkedIps.length > 0
+				? charData.linkedIps
+				: currentIpNames;
 
 		const ipIdsToLink = await this._resolveIpIds(ipNamesToLink, tx);
 
@@ -340,7 +364,10 @@ export class MediaProcessingServiceImpl {
 		await this.characterService.linkCharacterIps(mediaId, character, tx);
 	}
 
-	private async _resolveIpIds(currentIpNames?: string[], tx?: Transaction): Promise<string[]> {
+	private async _resolveIpIds(
+		currentIpNames?: string[],
+		tx?: Transaction,
+	): Promise<string[]> {
 		if (!currentIpNames?.length) {
 			return [];
 		}
@@ -370,7 +397,10 @@ export class MediaProcessingServiceImpl {
 		tx?: Transaction,
 	): Promise<void> {
 		// Normalize names and remove duplicates to avoid redundant creation attempts
-		const normalizedIpsMap = new Map<string, NonNullable<MediaMetadataContext["ips"]>[number]>();
+		const normalizedIpsMap = new Map<
+			string,
+			NonNullable<MediaMetadataContext["ips"]>[number]
+		>();
 		for (const ip of ipsData) {
 			const normalizedName = ip.name.trim();
 			if (!normalizedIpsMap.has(normalizedName)) {
@@ -422,7 +452,10 @@ export class MediaProcessingServiceImpl {
 				}
 				await this.projectRepo.addMedia(mediaId, created.id, tx);
 			} catch (e) {
-				logger.warn({ err: e, project: projData }, "Failed to register project");
+				logger.warn(
+					{ err: e, project: projData },
+					"Failed to register project",
+				);
 			}
 		}
 	}
@@ -480,6 +513,8 @@ export const MediaProcessingService = {
 		context: Partial<MediaMetadataContext>,
 	) => {
 		const { services } = await import("~/application/registry");
-		return services.getMediaProcessingService().addContextMetadataToExistingMedia(mediaId, context);
+		return services
+			.getMediaProcessingService()
+			.addContextMetadataToExistingMedia(mediaId, context);
 	},
 };

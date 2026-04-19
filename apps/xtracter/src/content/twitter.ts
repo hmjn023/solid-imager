@@ -6,7 +6,10 @@ const AUTHOR_ID_REGEX = /@\w+/;
 
 export function processTwitterMedia(
 	processedMetadata: Map<string, TweetMetadata>,
-	createButtonContainer: (metadata: TweetMetadata, type: "IMAGE" | "VIDEO") => HTMLDivElement,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
 	processImages(processedMetadata, createButtonContainer);
 	processVideos(processedMetadata, createButtonContainer);
@@ -14,7 +17,10 @@ export function processTwitterMedia(
 
 function processImages(
 	processedMetadata: Map<string, TweetMetadata>,
-	createButtonContainer: (metadata: TweetMetadata, type: "IMAGE" | "VIDEO") => HTMLDivElement,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
 	const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
 	for (const img of images) {
@@ -48,9 +54,14 @@ function processImages(
 
 function processVideos(
 	processedMetadata: Map<string, TweetMetadata>,
-	createButtonContainer: (metadata: TweetMetadata, type: "IMAGE" | "VIDEO") => HTMLDivElement,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 ) {
-	const videoComponents = document.querySelectorAll('div[data-testid="videoComponent"]');
+	const videoComponents = document.querySelectorAll(
+		'div[data-testid="videoComponent"]',
+	);
 	for (const videoComponent of videoComponents) {
 		const container = videoComponent.parentElement;
 		if (!container || container.classList.contains(PROCESSED_VIDEO_CLASS)) {
@@ -61,7 +72,11 @@ function processVideos(
 		}
 
 		const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
-		const metadata = extractMetadata(tweetArticle, container as HTMLElement, "VIDEO");
+		const metadata = extractMetadata(
+			tweetArticle,
+			container as HTMLElement,
+			"VIDEO",
+		);
 
 		// Store metadata for bulk export
 		if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
@@ -90,7 +105,8 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
 	}
 
 	const layer =
-		element.closest('[data-testid="layers"]') || document.querySelector('[data-testid="layers"]');
+		element.closest('[data-testid="layers"]') ||
+		document.querySelector('[data-testid="layers"]');
 	if (layer) {
 		const article = layer.querySelector("article");
 		if (article) {
@@ -117,7 +133,10 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 	const STATUS_PART_INDEX = 1;
 	const TWEET_ID_PART_INDEX = 2;
 
-	if (pathParts.length >= MIN_PATH_PARTS_FOR_STATUS && pathParts[STATUS_PART_INDEX] === "status") {
+	if (
+		pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
+		pathParts[STATUS_PART_INDEX] === "status"
+	) {
 		authorId = `@${pathParts[0]}`;
 		tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
 	}
@@ -197,7 +216,9 @@ function determineTargetUrl(
 
 function extractFromArticle(article: HTMLElement) {
 	const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
-	const tweetText = tweetTextNode ? (tweetTextNode as HTMLElement).innerText : "";
+	const tweetText = tweetTextNode
+		? (tweetTextNode as HTMLElement).innerText
+		: "";
 
 	const timeNode = article.querySelector("time");
 	const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";

@@ -27,8 +27,14 @@ describe("CharacterRepository Multi-IP Support", () => {
 
 	it("should create a character linked to multiple IPs", async () => {
 		// 1. Create IPs
-		const [ip1] = await db.insert(ips).values({ name: "Fate/Zero" }).returning();
-		const [ip2] = await db.insert(ips).values({ name: "Fate/stay night" }).returning();
+		const [ip1] = await db
+			.insert(ips)
+			.values({ name: "Fate/Zero" })
+			.returning();
+		const [ip2] = await db
+			.insert(ips)
+			.values({ name: "Fate/stay night" })
+			.returning();
 
 		// 2. Create Character
 		const char = await repo.create({
@@ -39,10 +45,15 @@ describe("CharacterRepository Multi-IP Support", () => {
 		// 3. Verify
 		expect(char.name).toBe("Saber");
 		expect(char.ips).toHaveLength(2);
-		expect(char.ips.map((i) => i.name).sort()).toEqual(["Fate/Zero", "Fate/stay night"].sort());
+		expect(char.ips.map((i) => i.name).sort()).toEqual(
+			["Fate/Zero", "Fate/stay night"].sort(),
+		);
 
 		// Verify DB directly
-		const links = await db.select().from(characterIps).where(eq(characterIps.characterId, char.id));
+		const links = await db
+			.select()
+			.from(characterIps)
+			.where(eq(characterIps.characterId, char.id));
 		expect(links).toHaveLength(2);
 	});
 
@@ -67,10 +78,15 @@ describe("CharacterRepository Multi-IP Support", () => {
 
 		// 4. Verify
 		expect(updatedChar.ips).toHaveLength(2);
-		expect(updatedChar.ips.map((i) => i.id).sort()).toEqual([ip2.id, ip3.id].sort());
+		expect(updatedChar.ips.map((i) => i.id).sort()).toEqual(
+			[ip2.id, ip3.id].sort(),
+		);
 
 		// Verify IP1 link is gone
-		const links = await db.select().from(characterIps).where(eq(characterIps.characterId, char.id));
+		const links = await db
+			.select()
+			.from(characterIps)
+			.where(eq(characterIps.characterId, char.id));
 		expect(links).toHaveLength(2);
 		const linkIds = links.map((l) => l.ipId);
 		expect(linkIds).not.toContain(ip1.id);
@@ -90,7 +106,10 @@ describe("CharacterRepository Multi-IP Support", () => {
 		});
 
 		expect(updatedChar.ips).toHaveLength(0);
-		const links = await db.select().from(characterIps).where(eq(characterIps.characterId, char.id));
+		const links = await db
+			.select()
+			.from(characterIps)
+			.where(eq(characterIps.characterId, char.id));
 		expect(links).toHaveLength(0);
 	});
 });

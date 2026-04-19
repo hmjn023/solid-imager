@@ -5,7 +5,9 @@ import path from "node:path";
  * @param fileName The name of the file
  * @returns 'video' | 'audio' | 'image'
  */
-export function getMediaTypeFromExtension(fileName: string): "video" | "audio" | "image" {
+export function getMediaTypeFromExtension(
+	fileName: string,
+): "video" | "audio" | "image" {
 	const ext = path.extname(fileName).toLowerCase();
 	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
 		return "video";

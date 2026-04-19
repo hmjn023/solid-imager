@@ -9,7 +9,11 @@ function appendCacheKey(url: string, cacheKey: number) {
 	return `${url}${separator}t=${cacheKey}`;
 }
 
-function joinThumbnailPath(basePath: string, mediaSourceId: string, mediaId: string) {
+function joinThumbnailPath(
+	basePath: string,
+	mediaSourceId: string,
+	mediaId: string,
+) {
 	const separator = basePath.includes("\\") ? "\\" : "/";
 	const normalizedBase = basePath.replace(/[\\/]+$/, "");
 	return `${normalizedBase}${separator}${mediaSourceId}${separator}${mediaId}.webp`;

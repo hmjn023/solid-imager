@@ -10,7 +10,10 @@ export function joinLocalPath(rootPath: string, relativePath: string) {
 
 export function dirname(path: string) {
 	const normalized = path.replace(/[\\/]+$/, "");
-	const lastSeparator = Math.max(normalized.lastIndexOf("/"), normalized.lastIndexOf("\\"));
+	const lastSeparator = Math.max(
+		normalized.lastIndexOf("/"),
+		normalized.lastIndexOf("\\"),
+	);
 	if (lastSeparator <= 0) {
 		return normalized.includes("\\") ? "\\" : "/";
 	}

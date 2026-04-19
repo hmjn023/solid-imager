@@ -1,9 +1,19 @@
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@solid-imager/ui/card";
 import { createFileRoute, Link } from "@tanstack/solid-router";
 import { For } from "solid-js";
-import { mockCharacters, mockMedia, mockProjects, mockSources } from "../mocks/demo-data";
+import {
+	mockCharacters,
+	mockMedia,
+	mockProjects,
+	mockSources,
+} from "~/mocks/demo-data";
 
 const dashboardLinks = [
 	{
@@ -14,19 +24,22 @@ const dashboardLinks = [
 	},
 	{
 		title: "Sources",
-		description: "Browse source cards, open dialogs, and verify route transitions.",
+		description:
+			"Browse source cards, open dialogs, and verify route transitions.",
 		to: "/sources",
 		count: `${mockSources.length} sources`,
 	},
 	{
 		title: "Manager",
-		description: "Switch tabs, edit entities, and simulate batch tagging progress.",
+		description:
+			"Switch tabs, edit entities, and simulate batch tagging progress.",
 		to: "/manager",
 		count: `${mockProjects.length + mockCharacters.length} entities`,
 	},
 	{
 		title: "Settings",
-		description: "Edit configuration tabs and save changes through the local backend.",
+		description:
+			"Edit configuration tabs and save changes through the local backend.",
 		to: "/config",
 		count: "5 sections",
 	},
@@ -47,12 +60,14 @@ function HomeRoute() {
 					</div>
 					<div class="grid gap-3">
 						<h1 class="max-w-3xl font-semibold text-4xl tracking-tight">
-							Standalone routes are now interactive enough for navigation checks.
+							Standalone routes are now interactive enough for navigation
+							checks.
 						</h1>
 						<p class="max-w-2xl text-lg text-muted-foreground">
-							This dashboard mirrors the major `apps/server` pages inside the Tauri route tree. Use
-							it to verify page transitions, dialogs, filters, and core local workflows while server
-							parity is being closed.
+							This dashboard mirrors the major `apps/server` pages inside the
+							Tauri route tree. Use it to verify page transitions, dialogs,
+							filters, and core local workflows while server parity is being
+							closed.
 						</p>
 					</div>
 					<div class="flex flex-wrap gap-3">

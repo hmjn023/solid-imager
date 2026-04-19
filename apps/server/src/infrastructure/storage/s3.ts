@@ -37,7 +37,11 @@ export const S3Driver = {
 	 * @param {Buffer} _content - The content of the object to upload.
 	 * @returns {Promise<void>} A promise that resolves when the object has been uploaded.
 	 */
-	putObject(_connectionInfo: S3Connection, _key: string, _content: Buffer): Promise<void> {
+	putObject(
+		_connectionInfo: S3Connection,
+		_key: string,
+		_content: Buffer,
+	): Promise<void> {
 		// TODO: Put object to S3
 		throw new Error("Not implemented");
 	},
@@ -59,7 +63,10 @@ export const S3Driver = {
 	 * @param {string} _prefix - The prefix to filter the objects by.
 	 * @returns {Promise<string[]>} A promise that resolves with an array of object keys.
 	 */
-	listObjects(_connectionInfo: S3Connection, _prefix: string): Promise<string[]> {
+	listObjects(
+		_connectionInfo: S3Connection,
+		_prefix: string,
+	): Promise<string[]> {
 		// TODO: List S3 objects with prefix
 		throw new Error("Not implemented");
 	},

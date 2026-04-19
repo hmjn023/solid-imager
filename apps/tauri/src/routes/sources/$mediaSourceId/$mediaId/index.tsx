@@ -2,11 +2,11 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { Match, Switch } from "solid-js";
-import { MediaSidebar } from "../../../../components/media/media-sidebar";
-import { MediaViewer } from "../../../../components/media/media-viewer";
-import { useMediaSourceEvents } from "../../../../hooks/use-media-source-events";
-import { orpc } from "../../../../infrastructure/api-clients/orpc-client";
-import { mediaDetailsQueryOptions } from "../../../../infrastructure/api-clients/queries/media-query";
+import { MediaSidebar } from "~/components/media/media-sidebar";
+import { MediaViewer } from "~/components/media/media-viewer";
+import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {
@@ -29,7 +29,9 @@ function MediaDetailRoute() {
 	const mediaSourceId = () => params().mediaSourceId;
 	const mediaId = () => params().mediaId;
 
-	const mediaDetails = createQuery(() => mediaDetailsQueryOptions(mediaSourceId(), mediaId()));
+	const mediaDetails = createQuery(() =>
+		mediaDetailsQueryOptions(mediaSourceId(), mediaId()),
+	);
 	const mediaSource = createQuery(() => ({
 		queryKey: ["mediaSource", mediaSourceId()],
 		queryFn: () => orpc.sources.get({ id: mediaSourceId() }),
@@ -65,7 +67,10 @@ function MediaDetailRoute() {
 			void queryClient.invalidateQueries({
 				queryKey: ["media", mediaSourceId()],
 			});
-			if (data.mediaId === mediaId() || data.filePath === mediaDetails.data?.filePath) {
+			if (
+				data.mediaId === mediaId() ||
+				data.filePath === mediaDetails.data?.filePath
+			) {
 				void handleUpdate();
 			}
 		},
@@ -73,7 +78,10 @@ function MediaDetailRoute() {
 			void queryClient.invalidateQueries({
 				queryKey: ["media", mediaSourceId()],
 			});
-			if (data.mediaId === mediaId() || data.filePath === mediaDetails.data?.filePath) {
+			if (
+				data.mediaId === mediaId() ||
+				data.filePath === mediaDetails.data?.filePath
+			) {
 				void handleUpdate();
 			}
 		},
@@ -94,7 +102,10 @@ function MediaDetailRoute() {
 					{(details) => (
 						<div class="flex h-[calc(100vh-80px)] flex-col gap-4 lg:flex-row">
 							<div class="flex-grow">
-								<MediaViewer media={details()} sourceRootPath={sourceRootPath()} />
+								<MediaViewer
+									media={details()}
+									sourceRootPath={sourceRootPath()}
+								/>
 							</div>
 							<div class="w-full shrink-0 lg:w-96">
 								<MediaSidebar

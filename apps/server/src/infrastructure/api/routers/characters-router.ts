@@ -12,13 +12,15 @@ import { CharacterService } from "~/application/services/character-service";
 export const charactersRouter = {
 	list: os.handler(() => CharacterService.getAllCharacters()),
 
-	get: os.input(z.object({ id: z.string().uuid() })).handler(async ({ input }) => {
-		const character = await CharacterService.getCharacterDetails(input.id);
-		if (!character) {
-			throw new Error(`Character not found: ${input.id}`);
-		}
-		return character;
-	}),
+	get: os
+		.input(z.object({ id: z.string().uuid() }))
+		.handler(async ({ input }) => {
+			const character = await CharacterService.getCharacterDetails(input.id);
+			if (!character) {
+				throw new Error(`Character not found: ${input.id}`);
+			}
+			return character;
+		}),
 
 	create: os
 		.input(newCharacterSchema)
@@ -32,7 +34,10 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const updated = await CharacterService.updateCharacter(input.id, input.data);
+			const updated = await CharacterService.updateCharacter(
+				input.id,
+				input.data,
+			);
 			if (!updated) {
 				throw new Error(`Character not found: ${input.id}`);
 			}
@@ -46,7 +51,9 @@ export const charactersRouter = {
 	// Media association
 	listForMedia: os
 		.input(z.object({ mediaId: z.string().uuid() }))
-		.handler(({ input }) => CharacterService.getCharactersForMedia(input.mediaId)),
+		.handler(({ input }) =>
+			CharacterService.getCharactersForMedia(input.mediaId),
+		),
 
 	addToMedia: os
 		.input(
@@ -56,7 +63,10 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			await CharacterService.addCharacterToMedia(input.mediaId, input.characterId);
+			await CharacterService.addCharacterToMedia(
+				input.mediaId,
+				input.characterId,
+			);
 			return { success: true };
 		}),
 
@@ -68,7 +78,10 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			await CharacterService.removeCharacterFromMedia(input.mediaId, input.characterId);
+			await CharacterService.removeCharacterFromMedia(
+				input.mediaId,
+				input.characterId,
+			);
 			return { success: true };
 		}),
 };

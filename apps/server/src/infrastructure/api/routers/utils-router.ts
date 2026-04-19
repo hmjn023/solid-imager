@@ -9,11 +9,13 @@ export const utilsRouter = {
 	/**
 	 * Fetches content from an external URL (Proxy)
 	 */
-	fetchUrl: os.input(z.object({ url: z.string().url() })).handler(async ({ input }) => {
-		const response = await fetch(input.url);
-		if (!response.ok) {
-			throw new Error(`Failed to fetch URL: ${response.statusText}`);
-		}
-		return await response.blob();
-	}),
+	fetchUrl: os
+		.input(z.object({ url: z.string().url() }))
+		.handler(async ({ input }) => {
+			const response = await fetch(input.url);
+			if (!response.ok) {
+				throw new Error(`Failed to fetch URL: ${response.statusText}`);
+			}
+			return await response.blob();
+		}),
 };

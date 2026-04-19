@@ -58,7 +58,10 @@ export const TauriPresetRepository = {
 	},
 
 	async create(input: CreatePresetRequest): Promise<Preset> {
-		const rows = await getTauriAppServices().db.insert(presets).values(input).returning();
+		const rows = await getTauriAppServices()
+			.db.insert(presets)
+			.values(input)
+			.returning();
 		return toPreset(rows[0]);
 	},
 

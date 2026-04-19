@@ -1,5 +1,12 @@
 import { eq } from "drizzle-orm";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 import { services } from "~/application/registry";
 import { CharacterServiceImpl } from "~/application/services/character-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
@@ -188,17 +195,27 @@ describe("MediaService - Copy Media Integration", () => {
 			.returning();
 
 		// Create Metadata Entities
-		const [project] = await db.insert(projects).values({ name: "Test Project" }).returning();
+		const [project] = await db
+			.insert(projects)
+			.values({ name: "Test Project" })
+			.returning();
 		const [ip] = await db.insert(ips).values({ name: "Test IP" }).returning();
-		const [character] = await db.insert(characters).values({ name: "Test Character" }).returning();
+		const [character] = await db
+			.insert(characters)
+			.values({ name: "Test Character" })
+			.returning();
 		await db
 			.insert(characterIps)
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
 
 		// Link Metadata to Source Media
-		await db.insert(mediaProjects).values({ mediaId: sourceMedia.id, projectId: project.id });
+		await db
+			.insert(mediaProjects)
+			.values({ mediaId: sourceMedia.id, projectId: project.id });
 		await db.insert(mediaIps).values({ mediaId: sourceMedia.id, ipId: ip.id });
-		await db.insert(mediaCharacters).values({ mediaId: sourceMedia.id, characterId: character.id });
+		await db
+			.insert(mediaCharacters)
+			.values({ mediaId: sourceMedia.id, characterId: character.id });
 
 		// 2. Execute Copy
 		const result = await MediaService.copyMedia(sourceMedia.id, targetSourceId);
@@ -217,7 +234,10 @@ describe("MediaService - Copy Media Integration", () => {
 		expect(linkedProjects[0].projectId).toBe(project.id);
 
 		// Check IPs
-		const linkedIps = await db.select().from(mediaIps).where(eq(mediaIps.mediaId, newMediaId));
+		const linkedIps = await db
+			.select()
+			.from(mediaIps)
+			.where(eq(mediaIps.mediaId, newMediaId));
 		expect(linkedIps).toHaveLength(1);
 		expect(linkedIps[0].ipId).toBe(ip.id);
 
@@ -247,17 +267,27 @@ describe("MediaService - Copy Media Integration", () => {
 			.returning();
 
 		// Create Metadata Entities
-		const [project] = await db.insert(projects).values({ name: "Move Project" }).returning();
+		const [project] = await db
+			.insert(projects)
+			.values({ name: "Move Project" })
+			.returning();
 		const [ip] = await db.insert(ips).values({ name: "Move IP" }).returning();
-		const [character] = await db.insert(characters).values({ name: "Move Character" }).returning();
+		const [character] = await db
+			.insert(characters)
+			.values({ name: "Move Character" })
+			.returning();
 		await db
 			.insert(characterIps)
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
 
 		// Link Metadata to Source Media
-		await db.insert(mediaProjects).values({ mediaId: sourceMedia.id, projectId: project.id });
+		await db
+			.insert(mediaProjects)
+			.values({ mediaId: sourceMedia.id, projectId: project.id });
 		await db.insert(mediaIps).values({ mediaId: sourceMedia.id, ipId: ip.id });
-		await db.insert(mediaCharacters).values({ mediaId: sourceMedia.id, characterId: character.id });
+		await db
+			.insert(mediaCharacters)
+			.values({ mediaId: sourceMedia.id, characterId: character.id });
 
 		// 2. Execute Move
 		const result = await MediaService.moveMedia(sourceMedia.id, targetSourceId);
@@ -276,7 +306,10 @@ describe("MediaService - Copy Media Integration", () => {
 		expect(linkedProjects[0].projectId).toBe(project.id);
 
 		// Check IPs
-		const linkedIps = await db.select().from(mediaIps).where(eq(mediaIps.mediaId, newMediaId));
+		const linkedIps = await db
+			.select()
+			.from(mediaIps)
+			.where(eq(mediaIps.mediaId, newMediaId));
 		expect(linkedIps).toHaveLength(1);
 		expect(linkedIps[0].ipId).toBe(ip.id);
 

@@ -8,7 +8,7 @@ import {
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import { serverOrpc } from "../../infrastructure/api-clients/server-orpc-client";
+import { serverOrpc } from "~/infrastructure/api-clients/server-orpc-client";
 
 type AiTaggingModalProps = {
 	isOpen: boolean;
@@ -42,14 +42,21 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			const data = await serverOrpc.ai.tag({ file });
 			setResult(data);
 		} catch (fetchError) {
-			setError(fetchError instanceof Error ? fetchError.message : "Unknown error occurred");
+			setError(
+				fetchError instanceof Error
+					? fetchError.message
+					: "Unknown error occurred",
+			);
 		} finally {
 			setIsLoading(false);
 		}
 	};
 
 	return (
-		<Dialog onOpenChange={(open) => !open && props.onClose()} open={props.isOpen}>
+		<Dialog
+			onOpenChange={(open) => !open && props.onClose()}
+			open={props.isOpen}
+		>
 			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>AI Tagging Results</DialogTitle>
@@ -67,7 +74,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 					</Show>
 
 					<Show when={error()}>
-						<div class="rounded-md bg-red-50 p-4 text-red-600">Error: {error()}</div>
+						<div class="rounded-md bg-red-50 p-4 text-red-600">
+							Error: {error()}
+						</div>
 					</Show>
 
 					<Show when={result()}>
@@ -76,7 +85,11 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 								<div>
 									<h3 class="mb-2 font-semibold text-lg">Characters</h3>
 									<Show
-										fallback={<p class="text-gray-500 text-sm">No characters detected.</p>}
+										fallback={
+											<p class="text-gray-500 text-sm">
+												No characters detected.
+											</p>
+										}
 										when={Object.keys(response().character).length > 0}
 									>
 										<div class="flex flex-wrap gap-2">
@@ -97,7 +110,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 								<div>
 									<h3 class="mb-2 font-semibold text-lg">IPs (Series)</h3>
 									<Show
-										fallback={<p class="text-gray-500 text-sm">No IPs detected.</p>}
+										fallback={
+											<p class="text-gray-500 text-sm">No IPs detected.</p>
+										}
 										when={response().ips.length > 0}
 									>
 										<div class="flex flex-wrap gap-2">

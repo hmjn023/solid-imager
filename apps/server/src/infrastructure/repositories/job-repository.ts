@@ -26,7 +26,11 @@ export class JobRepository implements IJobRepository {
 		if (mediaId) {
 			// Attempt atomic insert using onConflictDoNothing.
 			// The unique index "jobs_type_media_id_pending_unique_idx" handles the constraint.
-			const [created] = await db.insert(jobs).values(job).onConflictDoNothing().returning();
+			const [created] = await db
+				.insert(jobs)
+				.values(job)
+				.onConflictDoNothing()
+				.returning();
 
 			return created ?? null;
 		}
@@ -44,10 +48,15 @@ export class JobRepository implements IJobRepository {
 		options?: { excludeTypes?: string[]; includeTypes?: string[] },
 	): Promise<Job[]> {
 		if (options?.excludeTypes?.length && options?.includeTypes?.length) {
-			throw new Error("Cannot use excludeTypes and includeTypes simultaneously.");
+			throw new Error(
+				"Cannot use excludeTypes and includeTypes simultaneously.",
+			);
 		}
 
-		const conditions = [eq(jobs.status, "pending"), ne(jobs.type, "import_request")];
+		const conditions = [
+			eq(jobs.status, "pending"),
+			ne(jobs.type, "import_request"),
+		];
 
 		if (options?.excludeTypes?.length) {
 			conditions.push(notInArray(jobs.type, options.excludeTypes));

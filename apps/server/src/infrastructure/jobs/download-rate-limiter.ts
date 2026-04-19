@@ -9,7 +9,9 @@ let config: DownloadRateLimitConfig = {
 let lastRequestTime = 0;
 let pendingChain: Promise<void> = Promise.resolve();
 
-export function updateDownloadRateLimitConfig(newConfig: DownloadRateLimitConfig): void {
+export function updateDownloadRateLimitConfig(
+	newConfig: DownloadRateLimitConfig,
+): void {
 	config = newConfig;
 }
 

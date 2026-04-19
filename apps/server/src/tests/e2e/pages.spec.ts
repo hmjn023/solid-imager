@@ -14,7 +14,9 @@ test.describe("SSR Crashing Check - E2E", () => {
 		});
 	}
 
-	test("should load dynamic route /sources/123 without crashing", async ({ page }) => {
+	test("should load dynamic route /sources/123 without crashing", async ({
+		page,
+	}) => {
 		const response = await page.goto("/sources/123");
 		// Ensure the response does not indicate a server crash (500)
 		expect(response?.status()).toBeLessThan(HTTP_INTERNAL_SERVER_ERROR);

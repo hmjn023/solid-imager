@@ -78,7 +78,9 @@ vi.mock("node:fs/promises", () => ({
 	},
 }));
 vi.mock("node:child_process", () => ({
-	execFile: vi.fn((_cmd, _args, _opts, cb) => cb(null, { stdout: "", stderr: "" })),
+	execFile: vi.fn((_cmd, _args, _opts, cb) =>
+		cb(null, { stdout: "", stderr: "" }),
+	),
 }));
 
 // Mock fetch
@@ -175,8 +177,9 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should process a direct image download via MediaProcessingService", async () => {
-		const { MediaProcessingService } =
-			await import("~/application/services/media-processing-service");
+		const { MediaProcessingService } = await import(
+			"~/application/services/media-processing-service"
+		);
 
 		const item = {
 			targetUrl: "https://example.com/image.jpg",
@@ -194,7 +197,10 @@ describe("processDownloadJob", () => {
 
 		await processDownloadJob(job);
 
-		expect(fetchMock).toHaveBeenCalledWith("https://example.com/image.jpg", expect.any(Object));
+		expect(fetchMock).toHaveBeenCalledWith(
+			"https://example.com/image.jpg",
+			expect.any(Object),
+		);
 
 		// Verify MediaProcessingService.registerAndProcess was called with correct context
 		expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
@@ -212,8 +218,9 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should use description if provided", async () => {
-		const { MediaProcessingService } =
-			await import("~/application/services/media-processing-service");
+		const { MediaProcessingService } = await import(
+			"~/application/services/media-processing-service"
+		);
 
 		const item = {
 			targetUrl: "https://example.com/image.png",
@@ -238,8 +245,9 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should update existing media metadata if file already exists", async () => {
-		const { MediaProcessingService } =
-			await import("~/application/services/media-processing-service");
+		const { MediaProcessingService } = await import(
+			"~/application/services/media-processing-service"
+		);
 
 		// Simulate file existing -> registerAndProcess throws -> catch block searches media -> updates
 		const error = new Error("File already exists");
@@ -265,7 +273,9 @@ describe("processDownloadJob", () => {
 		await processDownloadJob(job);
 
 		expect(MediaRepository.findByPath).toHaveBeenCalled();
-		expect(MediaProcessingService.addContextMetadataToExistingMedia).toHaveBeenCalledWith(
+		expect(
+			MediaProcessingService.addContextMetadataToExistingMedia,
+		).toHaveBeenCalledWith(
 			"existing-media-id",
 			expect.objectContaining({
 				description: "Updated Description",

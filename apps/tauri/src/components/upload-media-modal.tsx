@@ -37,9 +37,13 @@ async function fetchFileFromUrl(url: string) {
 		throw new Error(`Failed to fetch URL: ${response.status}`);
 	}
 	const blob = await response.blob();
-	return new File([blob], url.substring(url.lastIndexOf("/") + 1) || "fetched-image", {
-		type: blob.type,
-	});
+	return new File(
+		[blob],
+		url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
+		{
+			type: blob.type,
+		},
+	);
 }
 
 export function UploadMediaModal(props: UploadMediaModalProps) {
@@ -148,7 +152,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 			<DialogContent class="sm:max-w-[425px]">
 				<DialogHeader>
 					<DialogTitle>メディアをアップロード</DialogTitle>
-					<DialogDescription>アップロードするメディアの詳細を入力してください。</DialogDescription>
+					<DialogDescription>
+						アップロードするメディアの詳細を入力してください。
+					</DialogDescription>
 				</DialogHeader>
 				<form
 					onSubmit={(event) => {
@@ -167,7 +173,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 									<div class="col-span-3">
 										<Input
 											id="filename"
-											onInput={(event) => field().handleChange(event.currentTarget.value)}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value)
+											}
 											value={field().state.value}
 										/>
 									</div>
@@ -183,7 +191,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 									<Input
 										class="col-span-3"
 										id="description"
-										onInput={(event) => field().handleChange(event.currentTarget.value)}
+										onInput={(event) =>
+											field().handleChange(event.currentTarget.value)
+										}
 										value={field().state.value}
 									/>
 								)}
@@ -199,7 +209,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 										<Input
 											disabled={isFetchingUrl()}
 											id="sourceUrl"
-											onInput={(event) => field().handleChange(event.currentTarget.value)}
+											onInput={(event) =>
+												field().handleChange(event.currentTarget.value)
+											}
 											value={field().state.value}
 										/>
 									)}
@@ -207,7 +219,11 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 							</div>
 							<Show when={previewUrl()}>
 								<div class="col-span-4 mt-2 flex justify-center">
-									<img alt="Fetched preview" class="max-h-48" src={previewUrl() || undefined} />
+									<img
+										alt="Fetched preview"
+										class="max-h-48"
+										src={previewUrl() || undefined}
+									/>
 								</div>
 							</Show>
 						</div>
@@ -221,7 +237,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 										checked={field().state.value}
 										class="col-span-3 h-4 w-4"
 										id="overwrite"
-										onChange={(event) => field().handleChange(event.currentTarget.checked)}
+										onChange={(event) =>
+											field().handleChange(event.currentTarget.checked)
+										}
 										type="checkbox"
 									/>
 								)}
@@ -237,7 +255,9 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 										checked={field().state.value}
 										class="col-span-3 h-4 w-4"
 										id="autoIncrement"
-										onChange={(event) => field().handleChange(event.currentTarget.checked)}
+										onChange={(event) =>
+											field().handleChange(event.currentTarget.checked)
+										}
 										type="checkbox"
 									/>
 								)}

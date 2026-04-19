@@ -1,6 +1,10 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { IMediaStorage, MediaMetadata, MediaStorageResult } from "@solid-imager/core";
+import type {
+	IMediaStorage,
+	MediaMetadata,
+	MediaStorageResult,
+} from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import sharp from "sharp";
 import type { z } from "zod";
@@ -13,7 +17,10 @@ const resolveSafePath = (basePath: string, targetPath: string): string => {
 	const resolvedPath = path.resolve(basePath, targetPath);
 	const absoluteBase = path.resolve(basePath);
 
-	if (resolvedPath !== absoluteBase && !resolvedPath.startsWith(absoluteBase + path.sep)) {
+	if (
+		resolvedPath !== absoluteBase &&
+		!resolvedPath.startsWith(absoluteBase + path.sep)
+	) {
 		throw new Error(`Invalid path: ${targetPath}`);
 	}
 	return resolvedPath;
@@ -155,30 +162,42 @@ export const ServerMediaStorage: IMediaStorage = {
 			const { getFfmpeg } = await import("~/infrastructure/utils/ffmpeg");
 			const ffmpeg = getFfmpeg();
 
-			return new Promise<MediaMetadata & { duration?: number }>((resolve, reject) => {
-				ffmpeg.ffprobe(fullPath, (err, videoData) => {
-					if (err) {
-						reject(new Error(`Could not extract video metadata for ${fullPath}: ${err.message}`));
-						return;
-					}
+			return new Promise<MediaMetadata & { duration?: number }>(
+				(resolve, reject) => {
+					ffmpeg.ffprobe(fullPath, (err, videoData) => {
+						if (err) {
+							reject(
+								new Error(
+									`Could not extract video metadata for ${fullPath}: ${err.message}`,
+								),
+							);
+							return;
+						}
 
-					// Find video stream
-					const videoStream = videoData.streams.find((s) => s.codec_type === "video");
-					if (!(videoStream?.width && videoStream?.height)) {
-						reject(new Error(`No video stream found or missing dimensions for ${fullPath}`));
-						return;
-					}
+						// Find video stream
+						const videoStream = videoData.streams.find(
+							(s) => s.codec_type === "video",
+						);
+						if (!(videoStream?.width && videoStream?.height)) {
+							reject(
+								new Error(
+									`No video stream found or missing dimensions for ${fullPath}`,
+								),
+							);
+							return;
+						}
 
-					resolve({
-						width: videoStream.width,
-						height: videoStream.height,
-						size: stats.size,
-						createdAt: stats.birthtime,
-						modifiedAt: stats.mtime,
-						duration: videoData.format.duration,
+						resolve({
+							width: videoStream.width,
+							height: videoStream.height,
+							size: stats.size,
+							createdAt: stats.birthtime,
+							modifiedAt: stats.mtime,
+							duration: videoData.format.duration,
+						});
 					});
-				});
-			});
+				},
+			);
 		}
 
 		// Audio formats
@@ -254,7 +273,10 @@ export const ServerMediaStorage: IMediaStorage = {
 			conflict = {
 				existingFile: path.relative(
 					targetBasePath,
-					resolveSafePath(targetBasePath, uploadRequest.filename || sourceFileName),
+					resolveSafePath(
+						targetBasePath,
+						uploadRequest.filename || sourceFileName,
+					),
 				),
 				suggestedName: targetFileName,
 			};

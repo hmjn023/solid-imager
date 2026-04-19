@@ -66,9 +66,14 @@ function FilterSection<T>(props: {
 			<div class="mb-2 flex flex-wrap gap-2">
 				<For each={props.selectedItems}>
 					{(id) => {
-						const item = props.items?.find((i) => props.getItemKey(i) === id) as T;
+						const item = props.items?.find(
+							(i) => props.getItemKey(i) === id,
+						) as T;
 						return (
-							<Badge class="cursor-pointer" variant={props.badgeVariant || "default"}>
+							<Badge
+								class="cursor-pointer"
+								variant={props.badgeVariant || "default"}
+							>
 								{item ? props.getItemLabel(item) : id}
 								<button
 									class="ml-1 hover:text-red-500"
@@ -112,7 +117,9 @@ function FilterSection<T>(props: {
 }
 
 const getAuthorLabel = (author: Author) =>
-	author.accountId ? `${author.name}：(twitter)${author.accountId}` : author.name;
+	author.accountId
+		? `${author.name}：(twitter)${author.accountId}`
+		: author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const addTag = (tagName: string) => {
@@ -170,7 +177,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(ip) => {
 					if (!props.state.selectedIps.includes(ip.name)) {
-						props.setState("selectedIps", [...props.state.selectedIps, ip.name]);
+						props.setState("selectedIps", [
+							...props.state.selectedIps,
+							ip.name,
+						]);
 					}
 				}}
 				placeholder="IPを検索..."
@@ -193,7 +203,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(char) => {
 					if (!props.state.selectedCharacters.includes(char.name)) {
-						props.setState("selectedCharacters", [...props.state.selectedCharacters, char.name]);
+						props.setState("selectedCharacters", [
+							...props.state.selectedCharacters,
+							char.name,
+						]);
 					}
 				}}
 				placeholder="キャラクターを検索..."
@@ -241,7 +254,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(author) => {
 					if (!props.state.selectedAuthors.includes(author.name)) {
-						props.setState("selectedAuthors", [...props.state.selectedAuthors, author.name]);
+						props.setState("selectedAuthors", [
+							...props.state.selectedAuthors,
+							author.name,
+						]);
 					}
 				}}
 				placeholder="作者・IDを検索..."
@@ -264,7 +280,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}
 				onSelect={(project) => {
 					if (!props.state.selectedProjects.includes(project.name)) {
-						props.setState("selectedProjects", [...props.state.selectedProjects, project.name]);
+						props.setState("selectedProjects", [
+							...props.state.selectedProjects,
+							project.name,
+						]);
 					}
 				}}
 				placeholder="プロジェクトを検索..."

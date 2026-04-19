@@ -12,7 +12,10 @@ export type IFileSystem = {
 		isDirectory: boolean;
 	}>;
 	unlink(path: string): Promise<void>;
-	rm(path: string, options?: { recursive?: boolean; force?: boolean }): Promise<void>;
+	rm(
+		path: string,
+		options?: { recursive?: boolean; force?: boolean },
+	): Promise<void>;
 	copyFile(src: string, dest: string): Promise<void>;
 	rename(oldPath: string, newPath: string): Promise<void>;
 	mkdtemp(prefix: string): Promise<string>;

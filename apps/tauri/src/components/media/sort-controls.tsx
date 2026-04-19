@@ -45,14 +45,20 @@ export function SortControls(props: SortControlsProps) {
 								{getSortLabel(itemProps.item.rawValue as TauriSortOption)}
 							</SelectItem>
 						)}
-						onChange={(value) => props.onSortByChange((value as TauriSortOption) || "date")}
+						onChange={(value) =>
+							props.onSortByChange((value as TauriSortOption) || "date")
+						}
 						options={["date", "name", "size", "rating", "viewCount"]}
 						placeholder="項目"
 						value={props.sortBy}
 					>
 						<SelectTrigger>
 							<SelectValue<string>>
-								{(state) => getSortLabel((state.selectedOption() as TauriSortOption) || "date")}
+								{(state) =>
+									getSortLabel(
+										(state.selectedOption() as TauriSortOption) || "date",
+									)
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />
@@ -70,7 +76,9 @@ export function SortControls(props: SortControlsProps) {
 					>
 						<SelectTrigger>
 							<SelectValue<string>>
-								{(state) => (state.selectedOption() === "asc" ? "昇順" : "降順")}
+								{(state) =>
+									state.selectedOption() === "asc" ? "昇順" : "降順"
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />

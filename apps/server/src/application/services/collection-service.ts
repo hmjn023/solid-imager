@@ -23,7 +23,11 @@ export const CollectionService = {
 	/**
 	 * Creates a new collection.
 	 */
-	async createCollection(collectionData: { userId: string; name: string; description?: string }) {
+	async createCollection(collectionData: {
+		userId: string;
+		name: string;
+		description?: string;
+	}) {
 		return await CollectionRepository.create({
 			userId: collectionData.userId,
 			name: collectionData.name,
@@ -62,7 +66,11 @@ export const CollectionService = {
 	/**
 	 * Adds a media item to a specific collection.
 	 */
-	async addMediaToCollection(collectionId: string, mediaId: string, displayOrder?: number) {
+	async addMediaToCollection(
+		collectionId: string,
+		mediaId: string,
+		displayOrder?: number,
+	) {
 		const item: NewCollectionItem = {
 			mediaId,
 			displayOrder,

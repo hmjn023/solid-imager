@@ -1,5 +1,8 @@
 import { services } from "~/application/registry";
-import { generateThumbnailsForSource, getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
+import {
+	generateThumbnailsForSource,
+	getSourceCacheDir,
+} from "~/infrastructure/jobs/thumbnails";
 
 /**
  * Provides services for managing thumbnail generation and retrieval.
@@ -12,7 +15,11 @@ export const ThumbnailService = {
 	 * @param {number} [size] - The desired size of the thumbnail.
 	 * @returns {string} The URL of the thumbnail.
 	 */
-	getMediaThumbnailUrl(mediaSourceId: string, mediaId: string, size?: number): string {
+	getMediaThumbnailUrl(
+		mediaSourceId: string,
+		mediaId: string,
+		size?: number,
+	): string {
 		let url = `/api/sources/${mediaSourceId}/${mediaId}/thumbnail`;
 		if (size) {
 			url += `?size=${size}`;
