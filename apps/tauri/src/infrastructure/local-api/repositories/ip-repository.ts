@@ -8,13 +8,10 @@ import {
 	type NewIp,
 	type UpdateIp,
 } from "@solid-imager/core/domain/ips/schemas";
+import { ips, mediaIps } from "@solid-imager/db/schema";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import {
-	ips,
-	mediaIps,
-} from "@solid-imager/db/schema";
 
 function toIp(row: typeof ips.$inferSelect): Ip {
 	return ipSchema.parse(row);

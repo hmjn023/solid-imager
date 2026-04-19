@@ -3,9 +3,9 @@ import {
 	AppConfigSchema,
 	defaultAppConfig,
 } from "@solid-imager/core/domain/config/config-schema";
+import { appConfig } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import { appConfig } from "@solid-imager/db/schema";
 
 const APP_CONFIG_ID = 1;
 

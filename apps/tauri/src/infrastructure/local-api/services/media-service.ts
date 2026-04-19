@@ -6,11 +6,11 @@ import {
 	type UpdateMediaRequest,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
+import type {
+	UploadMediaRequest,
+	UploadResponse,
+} from "@solid-imager/core/domain/media/upload-schemas";
 import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import { and, eq, inArray } from "drizzle-orm";
-import { getTauriAppServices } from "~/app-services";
-import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	authors,
 	characters,
@@ -23,6 +23,9 @@ import {
 	mediaUrls,
 	tags,
 } from "@solid-imager/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
 import { TauriAuthorRepository } from "../repositories/author-repository";
 import { TauriCharacterRepository } from "../repositories/character-repository";
@@ -519,8 +522,8 @@ export const TauriMediaService = {
 			filename?: string;
 			description?: string;
 			sourceUrl?: string;
-			overwrite?: string;
-			autoIncrement?: string;
+			overwrite?: UploadMediaRequest["overwrite"];
+			autoIncrement?: UploadMediaRequest["autoIncrement"];
 		},
 	): Promise<UploadResponse> {
 		const uploadRequest = uploadMediaRequestSchema.parse(options);
@@ -622,11 +625,12 @@ export const TauriMediaService = {
 		const media = await getVerifiedDetails(sourceId, mediaId);
 		const fullPath = joinLocalPath(source.rootPath, media.filePath);
 
+		await getTauriAppServices().fileSystem.rm(fullPath, { force: true });
+
 		await getTauriAppServices().db.transaction(async (tx) => {
 			await TauriMediaRepository.delete(mediaId, tx);
 		});
 
-		await getTauriAppServices().fileSystem.rm(fullPath, { force: true });
 		return { success: true };
 	},
 

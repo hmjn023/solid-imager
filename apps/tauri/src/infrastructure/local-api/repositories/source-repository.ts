@@ -3,10 +3,10 @@ import type {
 	MediaSource,
 	NewMediaSource,
 } from "@solid-imager/core/domain/repositories/source-repository";
+import { mediaSources } from "@solid-imager/db/schema";
 import { asc, eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import { mediaSources } from "@solid-imager/db/schema";
 
 function getExecutor(tx?: TauriDbExecutor) {
 	return tx ?? getTauriAppServices().db;

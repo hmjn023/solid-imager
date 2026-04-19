@@ -6,6 +6,16 @@ import {
 	type TaggingResponse,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
+import {
+	characterIps,
+	characters,
+	ips,
+	mediaCharacters,
+	mediaIps,
+	medias,
+	mediaTags,
+	tags,
+} from "@solid-imager/db/schema";
 import { emit } from "@tauri-apps/api/event";
 import {
 	and,
@@ -17,16 +27,6 @@ import {
 	sql,
 } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import {
-	characterIps,
-	characters,
-	ips,
-	mediaCharacters,
-	mediaIps,
-	medias,
-	mediaTags,
-	tags,
-} from "@solid-imager/db/schema";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
@@ -310,7 +310,12 @@ export const TauriAiService = {
 			)
 			.orderBy(asc(medias.id));
 
-		return rows.map((row) => mediaSchema.parse(row));
+		const uniqueRows = new Map<string, (typeof rows)[number]>();
+		for (const row of rows) {
+			uniqueRows.set(row.id, row);
+		}
+
+		return Array.from(uniqueRows.values()).map((row) => mediaSchema.parse(row));
 	},
 
 	async startBatchTaggingWithIds(input: BatchTaggingWithIdsInput) {

@@ -37,9 +37,7 @@ function isAutoTaggingJobPayload(
 	);
 }
 
-function toPersistedAutoTaggingJob(
-	row: Job,
-): PersistedAutoTaggingJob | null {
+function toPersistedAutoTaggingJob(row: Job): PersistedAutoTaggingJob | null {
 	if (!isAutoTaggingJobPayload(row.payload)) {
 		console.error(`[jobs] Auto-tagging job ${row.id} has invalid payload.`);
 		return null;
@@ -205,7 +203,12 @@ export const TauriJobRepository = {
 			);
 		const existing = activeRows.find((row) => {
 			const p = row.payload;
-			return typeof p === "object" && p !== null && "mediaId" in p && p.mediaId === mediaId;
+			return (
+				typeof p === "object" &&
+				p !== null &&
+				"mediaId" in p &&
+				p.mediaId === mediaId
+			);
 		});
 		if (existing) {
 			const job = toPersistedAutoTaggingJob(existing);
@@ -226,7 +229,8 @@ export const TauriJobRepository = {
 		};
 		const [row] = await db.insert(jobs).values(value).returning();
 		const job = toPersistedAutoTaggingJob(row);
-		if (!job) throw new Error(`Failed to create auto_tagging job for ${mediaId}`);
+		if (!job)
+			throw new Error(`Failed to create auto_tagging job for ${mediaId}`);
 		return job;
 	},
 
@@ -235,10 +239,7 @@ export const TauriJobRepository = {
 			.select()
 			.from(jobs)
 			.where(
-				and(
-					eq(jobs.type, AUTO_TAGGING_JOB_TYPE),
-					eq(jobs.status, "pending"),
-				),
+				and(eq(jobs.type, AUTO_TAGGING_JOB_TYPE), eq(jobs.status, "pending")),
 			)
 			.orderBy(asc(jobs.createdAt));
 		return rows.flatMap((row) => {

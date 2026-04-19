@@ -19,9 +19,6 @@ import {
 	tagSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { executeMediaSearch } from "@solid-imager/db/repositories/media-search";
-import { and, asc, eq, like, or, sql } from "drizzle-orm";
-import { getTauriAppServices } from "~/app-services";
-import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	authors,
 	type characters,
@@ -35,6 +32,9 @@ import {
 	mediaUrls,
 	tags,
 } from "@solid-imager/db/schema";
+import { and, asc, eq, like, or, sql } from "drizzle-orm";
+import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
 
 function getExecutor(tx?: TauriDbExecutor) {
 	return tx ?? getTauriAppServices().db;

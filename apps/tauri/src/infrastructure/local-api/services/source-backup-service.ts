@@ -2,10 +2,6 @@ import {
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import { getTauriAppServices } from "~/app-services";
-import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import { joinLocalPath } from "~/infrastructure/path-utils";
 import {
 	authors,
 	characterIps,
@@ -22,6 +18,10 @@ import {
 	projects,
 	tags,
 } from "@solid-imager/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
+import { joinLocalPath } from "~/infrastructure/path-utils";
 import { TauriSourceRepository } from "../repositories/source-repository";
 import { TauriSourceService } from "./source-service";
 

@@ -4,13 +4,10 @@ import type {
 	Author,
 	NewAuthor,
 } from "@solid-imager/core/domain/media/schemas";
+import { authors, mediaAuthors } from "@solid-imager/db/schema";
 import { and, asc, eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import {
-	authors,
-	mediaAuthors,
-} from "@solid-imager/db/schema";
 
 function getExecutor(tx?: TauriDbExecutor) {
 	return tx ?? getTauriAppServices().db;

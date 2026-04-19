@@ -178,8 +178,8 @@ const localProcedureHandlers = {
 				filename: z.string().optional(),
 				description: z.string().optional(),
 				sourceUrl: z.string().optional(),
-				overwrite: z.string().optional(),
-				autoIncrement: z.string().optional(),
+				overwrite: z.unknown().optional(),
+				autoIncrement: z.unknown().optional(),
 			})
 			.parse(input);
 		const parsedRequest = uploadMediaRequestSchema.parse({
@@ -193,8 +193,8 @@ const localProcedureHandlers = {
 			filename: parsedRequest.filename,
 			description: parsedRequest.description,
 			sourceUrl: parsedRequest.sourceUrl,
-			overwrite,
-			autoIncrement,
+			overwrite: parsedRequest.overwrite,
+			autoIncrement: parsedRequest.autoIncrement,
 		});
 	},
 	"media.delete": async (input: unknown) => {

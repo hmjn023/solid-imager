@@ -9,14 +9,14 @@ import {
 	ResourceNotFoundError,
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
-import { and, eq, sql } from "drizzle-orm";
-import { getTauriAppServices } from "~/app-services";
-import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import {
 	characterIps,
 	characters,
 	mediaCharacters,
 } from "@solid-imager/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { getTauriAppServices } from "~/app-services";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
 
 function toCharacter(
 	row: typeof characters.$inferSelect & {

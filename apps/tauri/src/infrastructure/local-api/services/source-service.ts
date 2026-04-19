@@ -581,7 +581,9 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	console.debug(`[sync] mediaFiles=${filesToIndex.length}`);
 
 	// Probe files with limited concurrency and batch-insert, collecting returned IDs
-	const actualMediaPaths = new Set<string>();
+	const actualMediaPaths = new Set(
+		filesToIndex.map((file) => file.normalizedRelPath),
+	);
 	let added = 0;
 	const batch: Array<
 		import("../repositories/media-repository").UpsertTauriMediaInput
@@ -605,7 +607,6 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 	const probed = await probeAndCollect(source.id, filesToIndex);
 
 	for (const { normalizedRelPath, ...input } of probed) {
-		actualMediaPaths.add(normalizedRelPath);
 		if (!dbPathMap.has(normalizedRelPath)) added++;
 		batch.push(input);
 		batchNormPaths.push(normalizedRelPath);

@@ -1,6 +1,6 @@
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle } from "drizzle-orm/pglite";
 import { applyPgMigrations } from "@solid-imager/db/migrations";
+import { drizzle } from "drizzle-orm/pglite";
 import { loadServerMigrations } from "./migrations";
 import * as schema from "./schema";
 

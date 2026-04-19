@@ -9,12 +9,9 @@ import {
 	tagResponseSchema,
 	type UpdateTag,
 } from "@solid-imager/core/domain/tags/schemas";
+import { mediaTags, tags } from "@solid-imager/db/schema";
 import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import {
-	mediaTags,
-	tags,
-} from "@solid-imager/db/schema";
 
 function toTag(row: typeof tags.$inferSelect): TagResponse {
 	return tagResponseSchema.parse(row);

@@ -26,7 +26,6 @@ import {
 	or,
 	sql,
 } from "drizzle-orm";
-import type { DrizzleExecutor } from "../types";
 import {
 	authors,
 	characters,
@@ -42,6 +41,7 @@ import {
 	projects,
 	tags,
 } from "../schema";
+import type { DrizzleExecutor } from "../types";
 
 type CriterionValue = SearchCriterion["value"];
 
@@ -486,4 +486,3 @@ export async function executeMediaSearch({
 		total: Number(countRows[0]?.count ?? 0),
 	});
 }
-

@@ -5,12 +5,9 @@ import {
 	projectSchema,
 	type UpdateProject,
 } from "@solid-imager/core/domain/projects/schemas";
+import { mediaProjects, projects } from "@solid-imager/db/schema";
 import { and, asc, eq } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import {
-	mediaProjects,
-	projects,
-} from "@solid-imager/db/schema";
 
 function toProject(row: typeof projects.$inferSelect): Project {
 	return projectSchema.parse(row);
