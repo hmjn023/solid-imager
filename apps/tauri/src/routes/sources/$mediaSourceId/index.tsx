@@ -903,9 +903,7 @@ function SourceMediaRoute() {
 								{Math.round((progress.processed / progress.total) * 100)}%
 							</span>
 						</div>
-						<Progress
-							value={(progress.processed / progress.total) * 100}
-						/>
+						<Progress value={(progress.processed / progress.total) * 100} />
 					</div>
 				)}
 			</Show>
