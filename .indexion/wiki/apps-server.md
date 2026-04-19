@@ -19,7 +19,7 @@
 apps/server/src/
 ├── application/
 │   ├── registry.ts          # DIコンテナ（サービス登録）
-│   ├── services/            # アプリケーションサービス（27個）
+│   ├── services/            # アプリケーションサービス（17個）
 │   └── utils/
 ├── infrastructure/
 │   ├── api/
