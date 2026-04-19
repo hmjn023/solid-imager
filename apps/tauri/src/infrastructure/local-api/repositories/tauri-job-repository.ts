@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, or } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { type Job, jobs, type NewJob } from "../../db/schema";
 import type {
@@ -193,6 +193,25 @@ export const TauriJobRepository = {
 		mediaId: string,
 		mediaSourceId: string,
 	): Promise<PersistedAutoTaggingJob> {
+		const db = getDb();
+		const activeRows = await db
+			.select()
+			.from(jobs)
+			.where(
+				and(
+					eq(jobs.type, AUTO_TAGGING_JOB_TYPE),
+					or(eq(jobs.status, "pending"), eq(jobs.status, "in_progress")),
+				),
+			);
+		const existing = activeRows.find((row) => {
+			const p = row.payload;
+			return typeof p === "object" && p !== null && "mediaId" in p && p.mediaId === mediaId;
+		});
+		if (existing) {
+			const job = toPersistedAutoTaggingJob(existing);
+			if (job) return job;
+		}
+
 		const now = new Date();
 		const value: NewJob = {
 			id: crypto.randomUUID(),
@@ -205,7 +224,7 @@ export const TauriJobRepository = {
 			createdAt: now,
 			updatedAt: now,
 		};
-		const [row] = await getDb().insert(jobs).values(value).returning();
+		const [row] = await db.insert(jobs).values(value).returning();
 		const job = toPersistedAutoTaggingJob(row);
 		if (!job) throw new Error(`Failed to create auto_tagging job for ${mediaId}`);
 		return job;

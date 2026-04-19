@@ -83,12 +83,14 @@ class TauriJobQueue {
 		for (const job of pendingJobs) {
 			this.enqueueInMemory(job);
 		}
-		const pendingAiJobs = await TauriJobRepository.findPendingAutoTagging();
-		for (const job of pendingAiJobs) {
-			this.enqueueAiInMemory(job);
-		}
 		this.drain();
-		this.drainAi();
+		if (config.jobs.enableAutoTagging) {
+			const pendingAiJobs = await TauriJobRepository.findPendingAutoTagging();
+			for (const job of pendingAiJobs) {
+				this.enqueueAiInMemory(job);
+			}
+			this.drainAi();
+		}
 	}
 
 	private enqueueInMemory(job: PersistedThumbnailJob): void {
@@ -173,14 +175,22 @@ class TauriJobQueue {
 
 			// Step 3: Queue auto_tagging if enabled and media is an image
 			if (config.jobs.enableAutoTagging) {
-				const media = await TauriMediaRepository.findById(job.mediaId);
-				if (media?.mediaType === "image") {
-					const aiJob = await TauriJobRepository.createAutoTaggingJob(
+				try {
+					const media = await TauriMediaRepository.findById(job.mediaId);
+					if (media?.mediaType === "image") {
+						const aiJob = await TauriJobRepository.createAutoTaggingJob(
+							job.mediaId,
+							job.sourceId,
+						);
+						this.enqueueAiInMemory(aiJob);
+						this.drainAi();
+					}
+				} catch (err) {
+					console.error(
+						"[jobs] failed to queue auto_tagging:",
 						job.mediaId,
-						job.sourceId,
+						err,
 					);
-					this.enqueueAiInMemory(aiJob);
-					this.drainAi();
 				}
 			}
 		} catch (err) {
