@@ -111,7 +111,7 @@ class TauriJobQueue {
 					);
 				await TauriMediaRepository.upsertGenerationInfo(
 					job.mediaId,
-					typeof metadata.prompt === "object"
+					metadata.prompt !== null && typeof metadata.prompt === "object"
 						? JSON.stringify(metadata.prompt)
 						: (metadata.prompt as string | null),
 					metadata.workflow as object | null,
