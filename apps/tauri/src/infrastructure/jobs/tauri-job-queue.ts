@@ -2,6 +2,8 @@ import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema
 import { emit } from "@tauri-apps/api/event";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
+import { TauriMediaRepository } from "../local-api/repositories/media-repository";
+import { TauriTagRepository } from "../local-api/repositories/tag-repository";
 import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";
 import { TauriConfigService } from "../local-api/services/config-service";
 import type { PersistedThumbnailJob, ThumbnailJob } from "./thumbnail-job";
@@ -100,6 +102,36 @@ class TauriJobQueue {
 	private async processJob(job: PersistedThumbnailJob): Promise<void> {
 		try {
 			await TauriJobRepository.markAsInProgress(job.id);
+
+			// Step 1: metadata extraction (mirrors server executeProcessMediaJob)
+			try {
+				const metadata =
+					await getTauriAppServices().imageProcessor.extractMetadata(
+						job.fullPath,
+					);
+				await TauriMediaRepository.upsertGenerationInfo(
+					job.mediaId,
+					typeof metadata.prompt === "object" && metadata.prompt !== null
+						? JSON.stringify(metadata.prompt)
+						: (metadata.prompt as string | null),
+					metadata.workflow as object | null,
+				);
+				if (metadata.tags.length > 0) {
+					await TauriTagRepository.addTagsToMedia(
+						job.mediaId,
+						metadata.tags,
+						"comfyui_workflow",
+					);
+				}
+			} catch (metaErr) {
+				console.warn(
+					"[jobs] metadata extraction failed, continuing:",
+					job.mediaId,
+					metaErr,
+				);
+			}
+
+			// Step 2: thumbnail generation
 			const config = await TauriConfigService.getConfig();
 			const basePath = await resolveThumbnailBasePath(
 				config.storage.thumbnailDir,

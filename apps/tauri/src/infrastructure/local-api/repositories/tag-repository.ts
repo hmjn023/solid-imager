@@ -9,9 +9,13 @@ import {
 	tagResponseSchema,
 	type UpdateTag,
 } from "@solid-imager/core/domain/tags/schemas";
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
-import { tags } from "../../../../../server/src/infrastructure/db/schema";
+import type { TauriDbExecutor } from "~/infrastructure/db/client";
+import {
+	mediaTags,
+	tags,
+} from "../../../../../server/src/infrastructure/db/schema";
 
 function toTag(row: typeof tags.$inferSelect): TagResponse {
 	return tagResponseSchema.parse(row);
@@ -99,6 +103,78 @@ export const TauriTagRepository = {
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError("Tag", id);
+		}
+	},
+
+	async addTagsToMedia(
+		mediaId: string,
+		tagsToInsert: {
+			name: string;
+			type: "positive" | "negative";
+			confidence?: number;
+		}[],
+		source = "manual",
+		tx?: TauriDbExecutor,
+	): Promise<void> {
+		const uniqueTagNames = Array.from(
+			new Set(tagsToInsert.map((tag) => tag.name)),
+		);
+		if (uniqueTagNames.length === 0) return;
+
+		const run = async (client: TauriDbExecutor) => {
+			await client
+				.insert(tags)
+				.values(uniqueTagNames.map((name) => ({ name, source })))
+				.onConflictDoNothing();
+
+			const allTags = await client
+				.select()
+				.from(tags)
+				.where(inArray(tags.name, uniqueTagNames));
+
+			const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
+				const foundTag = allTags.find((t) => t.name === tagToInsert.name);
+				if (!foundTag) {
+					throw new Error(`Tag ${tagToInsert.name} not found after insertion`);
+				}
+				return {
+					mediaId,
+					tagId: foundTag.id,
+					tagType: tagToInsert.type,
+					confidence: tagToInsert.confidence ?? null,
+					source,
+				};
+			});
+
+			if (mediaTagsToInsert.length === 0) return;
+
+			let sourceUpdateSql = sql`excluded.source`;
+			let confidenceUpdateSql = sql`excluded.confidence`;
+
+			if (source === "AI") {
+				sourceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
+				confidenceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
+			} else if (source === "manual") {
+				sourceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.source ELSE media_tags.source END`;
+				confidenceUpdateSql = sql`CASE WHEN media_tags.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_tags.confidence END`;
+			}
+
+			await client
+				.insert(mediaTags)
+				.values(mediaTagsToInsert)
+				.onConflictDoUpdate({
+					target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
+					set: {
+						confidence: confidenceUpdateSql,
+						source: sourceUpdateSql,
+					},
+				});
+		};
+
+		if (tx) {
+			await run(tx);
+		} else {
+			await getTauriAppServices().db.transaction(run);
 		}
 	},
 };
