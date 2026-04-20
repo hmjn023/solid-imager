@@ -3,17 +3,17 @@ use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_exists(path: String) -> bool {
     Path::new(&path).exists()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_read_file(path: String) -> Result<Vec<u8>, String> {
     fs::read(&path).map_err(|error| with_path_context("Reading file", &path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_read_text_file(path: String, encoding: Option<String>) -> Result<String, String> {
     let encoding = encoding.unwrap_or_else(|| "utf-8".to_string());
     if encoding != "utf-8" {
@@ -23,13 +23,13 @@ pub fn fs_read_text_file(path: String, encoding: Option<String>) -> Result<Strin
     fs::read_to_string(&path).map_err(|error| with_path_context("Reading text file", &path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_write_file(path: String, data: WriteFileData) -> Result<(), String> {
     fs::write(&path, data.into_bytes())
         .map_err(|error| with_path_context("Writing file", &path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_mkdir(path: String, options: Option<MkdirOptions>) -> Result<(), String> {
     let recursive = options.and_then(|value| value.recursive).unwrap_or(false);
 
@@ -41,7 +41,7 @@ pub fn fs_mkdir(path: String, options: Option<MkdirOptions>) -> Result<(), Strin
     }
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_readdir(path: String) -> Result<Vec<String>, String> {
     let entries = fs::read_dir(&path)
         .map_err(|error| with_path_context("Reading directory", &path, error))?;
@@ -56,7 +56,7 @@ pub fn fs_readdir(path: String) -> Result<Vec<String>, String> {
     Ok(names)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_stat(path: String) -> Result<TauriFileStat, String> {
     let metadata = fs::metadata(&path)
         .map_err(|error| with_path_context("Reading file metadata", &path, error))?;
@@ -69,12 +69,12 @@ pub fn fs_stat(path: String) -> Result<TauriFileStat, String> {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_unlink(path: String) -> Result<(), String> {
     fs::remove_file(&path).map_err(|error| with_path_context("Removing file", &path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_rm(path: String, options: Option<RmOptions>) -> Result<(), String> {
     let recursive = options
         .as_ref()
@@ -107,20 +107,20 @@ pub fn fs_rm(path: String, options: Option<RmOptions>) -> Result<(), String> {
     result.map_err(|error| with_path_context("Removing path", &path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_copy_file(src: String, dest: String) -> Result<(), String> {
     fs::copy(&src, &dest)
         .map(|_| ())
         .map_err(|error| with_path_context("Copying file", &src, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_rename(old_path: String, new_path: String) -> Result<(), String> {
     fs::rename(&old_path, &new_path)
         .map_err(|error| with_path_context("Renaming path", &old_path, error))
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn fs_mkdtemp(prefix: String) -> Result<String, String> {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

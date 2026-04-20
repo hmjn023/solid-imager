@@ -7,12 +7,12 @@ use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::Path;
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn image_get_dimensions(media_path: String) -> Result<MediaDimensions, String> {
     Ok(inspect_image_header(&media_path)?.dimensions)
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
     let metadata = fs::metadata(&media_path)
         .map_err(|error| with_path_context("Reading file metadata", &media_path, error))?;
@@ -42,12 +42,12 @@ pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn image_extract_metadata(media_path: String) -> Result<ExtractMetadataResult, String> {
     extract_metadata_from_path(&media_path, &ComfyUiTagExtractionConfig::default())
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn image_generate_thumbnail(
     media_path: String,
     output_path: String,

@@ -10,6 +10,10 @@ import type {
 const PROCESS_MEDIA_JOB_TYPE = "processMedia";
 const AUTO_TAGGING_JOB_TYPE = "auto_tagging";
 
+// PGlite (SQLite) caps bound parameters around 32k. The `jobs` insert binds
+// 9 columns per row, so stay well below that to leave headroom.
+const JOB_INSERT_CHUNK_SIZE = 500;
+
 type AutoTaggingJobPayload = {
 	mediaId: string;
 	mediaSourceId: string;
@@ -122,7 +126,13 @@ export const TauriJobRepository = {
 			createdAt: now,
 			updatedAt: now,
 		}));
-		const rows = await getDb().insert(jobs).values(values).returning();
+		const db = getDb();
+		const rows: Job[] = [];
+		for (let i = 0; i < values.length; i += JOB_INSERT_CHUNK_SIZE) {
+			const chunk = values.slice(i, i + JOB_INSERT_CHUNK_SIZE);
+			const inserted = await db.insert(jobs).values(chunk).returning();
+			rows.push(...inserted);
+		}
 
 		return rows.flatMap((row) => {
 			const job = toPersistedProcessMediaJob(row);

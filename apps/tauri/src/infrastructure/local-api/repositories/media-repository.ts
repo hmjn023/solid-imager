@@ -474,10 +474,7 @@ export const TauriMediaRepository = {
 				filePath: medias.filePath,
 			})
 			.from(medias)
-			.leftJoin(
-				mediaGenerationInfo,
-				eq(medias.id, mediaGenerationInfo.mediaId),
-			)
+			.leftJoin(mediaGenerationInfo, eq(medias.id, mediaGenerationInfo.mediaId))
 			.where(sql`${mediaGenerationInfo.mediaId} IS NULL`);
 	},
 

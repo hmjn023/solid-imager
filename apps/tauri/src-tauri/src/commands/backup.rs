@@ -48,7 +48,7 @@ fn normalize_relative_path(path: &Path) -> String {
         .join("/")
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn backup_create_zip(input: BackupCreateZipInput) -> Result<BinaryFilePayload, String> {
     let mut writer = ZipWriter::new(Cursor::new(Vec::<u8>::new()));
     let file_options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
@@ -93,7 +93,7 @@ pub fn backup_create_zip(input: BackupCreateZipInput) -> Result<BinaryFilePayloa
     })
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn backup_extract_zip(input: BackupExtractZipInput) -> Result<Value, String> {
     let cursor = Cursor::new(input.bytes);
     let mut archive =
