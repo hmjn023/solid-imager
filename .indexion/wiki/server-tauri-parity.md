@@ -37,7 +37,7 @@
 
 ## Components（対応度: ~90%）
 
-### 対応���り
+### 対応あり
 
 | ファイル名                                  | 差異のポイント                                                                                    |
 | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -163,7 +163,7 @@
 | 優先度 | 領域                             | 必要な作業                                            | 状態       |
 | ------ | -------------------------------- | ----------------------------------------------------- | ---------- |
 | 高     | Hooks                            | `deepEqual` をcoreに移すだけで即共通化可能            | ✅ 完了    |
-| 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           |            |
+| 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           | ✅ 完了    |
 | 中     | Services                         | メソッド命名を `list/get/create/update/delete` に統一 |            |
 | 中     | Repositories                     | DBクライアント取得をfactory化                         |            |
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
@@ -172,7 +172,7 @@
 ## 前回からの主な変更点（2026-04-21更新）
 
 - **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
+- **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
 - **Services**: Tauri側に `apps/tauri/src/infrastructure/local-api/services/` が存在し、11サービス（author, tag, character, ip, project, media, preset, source, config, ai, source-backup）が実装されていることを確認（旧文档では不明確だった）
 - **Jobs**: `process-media-job.ts`（tauri）を追加。media-processing-job.ts（server）と対になる
-- **Components**: `search-filters`, `preset-manager`, `association-manager`, `pro-search-builder` は `packages/ui` 配下で共有されていることを確認
 - 対応度の推定値を微調整（Services ~35%: 7/29 → 11/42 equivalent）
