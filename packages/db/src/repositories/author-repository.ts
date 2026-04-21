@@ -1,11 +1,14 @@
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import {
+	ResourceConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import type {
 	Author,
 	NewAuthor,
 } from "@solid-imager/core/domain/media/schemas";
 import { authorSchema } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { authors, mediaAuthors } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -14,6 +17,19 @@ type DbAuthor = typeof authors.$inferSelect;
 export type AuthorRepositoryExecutorProvider = (
 	tx?: unknown,
 ) => DrizzleExecutor;
+
+type CreateAuthorRepositoryOptions = {
+	orderByName?: boolean;
+};
+
+function isUniqueViolation(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "23505"
+	);
+}
 
 function mapToAuthor(row: DbAuthor): Author {
 	return authorSchema.parse({
@@ -27,10 +43,14 @@ function mapToAuthor(row: DbAuthor): Author {
 
 export function createAuthorRepository(
 	getExecutor: AuthorRepositoryExecutorProvider,
+	options: CreateAuthorRepositoryOptions = {},
 ): IAuthorRepository {
 	return {
 		async findAll(): Promise<Author[]> {
-			const rows = await getExecutor().select().from(authors);
+			const query = getExecutor().select().from(authors);
+			const rows = await (options.orderByName
+				? query.orderBy(asc(authors.name))
+				: query);
 			return rows.map((row) => mapToAuthor(row));
 		},
 
@@ -92,23 +112,32 @@ export function createAuthorRepository(
 			input: Partial<NewAuthor>,
 			tx?: unknown,
 		): Promise<Author> {
-			const rows = await getExecutor(tx)
-				.update(authors)
-				.set({
-					...(input.name !== undefined ? { name: input.name } : {}),
-					...(input.accountId !== undefined
-						? { accountId: input.accountId }
-						: {}),
-					updatedAt: new Date(),
-				})
-				.where(eq(authors.id, id))
-				.returning();
+			try {
+				const rows = await getExecutor(tx)
+					.update(authors)
+					.set({
+						...(input.name !== undefined ? { name: input.name } : {}),
+						...(input.accountId !== undefined
+							? { accountId: input.accountId }
+							: {}),
+						updatedAt: new Date(),
+					})
+					.where(eq(authors.id, id))
+					.returning();
 
-			if (!rows[0]) {
-				throw new ResourceNotFoundError("Author", id);
+				if (!rows[0]) {
+					throw new ResourceNotFoundError("Author", id);
+				}
+
+				return mapToAuthor(rows[0]);
+			} catch (error) {
+				if (isUniqueViolation(error)) {
+					throw new ResourceConflictError(
+						`Author with name "${input.name}" already exists`,
+					);
+				}
+				throw error;
 			}
-
-			return mapToAuthor(rows[0]);
 		},
 
 		async delete(id: string, tx?: unknown): Promise<void> {

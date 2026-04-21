@@ -256,8 +256,13 @@ export function createTagRepository(
 			try {
 				const execute = async (innerTx?: unknown): Promise<void> => {
 					const client = getExecutor(innerTx);
+					const dedupedInputs = Array.from(
+						new Map(
+							tagsToInsert.map((tag) => [`${tag.name}:${tag.type}`, tag]),
+						).values(),
+					);
 					const uniqueTagNames = Array.from(
-						new Set(tagsToInsert.map((tag) => tag.name)),
+						new Set(dedupedInputs.map((tag) => tag.name)),
 					);
 					if (uniqueTagNames.length === 0) {
 						return;
@@ -274,20 +279,23 @@ export function createTagRepository(
 						.where(inArray(tags.name, uniqueTagNames));
 
 					const tagMap = new Map(allTags.map((tag) => [tag.name, tag]));
-					const rows = tagsToInsert.map((tagToInsert) => {
+					const rows = dedupedInputs.flatMap((tagToInsert) => {
 						const foundTag = tagMap.get(tagToInsert.name);
 						if (!foundTag) {
-							throw new Error(
-								`Tag ${tagToInsert.name} not found after insertion`,
+							console.error(
+								`Tag "${tagToInsert.name}" not found after insertion; skipping`,
 							);
+							return [];
 						}
-						return {
-							mediaId,
-							tagId: foundTag.id,
-							tagType: tagToInsert.type,
-							confidence: tagToInsert.confidence ?? null,
-							source,
-						};
+						return [
+							{
+								mediaId,
+								tagId: foundTag.id,
+								tagType: tagToInsert.type,
+								confidence: tagToInsert.confidence ?? null,
+								source,
+							},
+						];
 					});
 
 					if (rows.length === 0) {

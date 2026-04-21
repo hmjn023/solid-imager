@@ -6,4 +6,6 @@ function getExecutor(tx?: unknown): DrizzleExecutor {
 	return (tx ?? getTauriAppServices().db) as DrizzleExecutor;
 }
 
-export const TauriAuthorRepository = createAuthorRepository(getExecutor);
+export const TauriAuthorRepository = createAuthorRepository(getExecutor, {
+	orderByName: true,
+});
