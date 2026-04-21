@@ -66,10 +66,10 @@ export class CharacterServiceImpl {
 		return await this.service.addCharacterToMedia(mediaId, characterId);
 	}
 
-	async linkCharacterIps(
+	linkCharacterIps(
 		...args: Parameters<SharedCharacterServiceImpl["linkCharacterIps"]>
 	): ReturnType<SharedCharacterServiceImpl["linkCharacterIps"]> {
-		return await this.service.linkCharacterIps(...args);
+		return this.service.linkCharacterIps(...args);
 	}
 
 	async removeCharacterFromMedia(

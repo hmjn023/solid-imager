@@ -1,10 +1,8 @@
 import { createTagService } from "@solid-imager/application/services/tag-service";
 import type {
-	NewTag,
 	Tag,
 	TagRepository,
 } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
 import { DrizzleTagRepository } from "~/infrastructure/repositories/tag-repository";
 
 // Initialize repository
@@ -23,10 +21,8 @@ const deleteTag = async (id: string): Promise<{ success: true }> => {
 
 export const TagService = {
 	getAllTags: tagService.getAllTags,
-	createTag: async (data: NewTag): Promise<Tag> =>
-		await tagService.createTag(data),
+	createTag: tagService.createTag,
 	getTagById,
-	updateTag: async (id: string, data: UpdateTag): Promise<Tag> =>
-		await tagService.updateTag(id, data),
+	updateTag: tagService.updateTag,
 	deleteTag,
 };

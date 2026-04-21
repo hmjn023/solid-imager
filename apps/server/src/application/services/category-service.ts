@@ -1,8 +1,5 @@
 import { createCategoryService } from "@solid-imager/application/services/category-service";
-import type {
-	NewCategory,
-	UpdateCategory,
-} from "@solid-imager/core/domain/categories/schemas";
+import type { UpdateCategory } from "@solid-imager/core/domain/categories/schemas";
 import type {
 	Category,
 	CategoryRepository,
@@ -32,8 +29,7 @@ const deleteCategoryServer = async (id: string): Promise<{ success: true }> => {
 
 export const CategoryService = {
 	getAllCategories: categoryService.getAllCategories,
-	createCategory: async (data: NewCategory): Promise<Category> =>
-		await categoryService.createCategory(data),
+	createCategory: categoryService.createCategory,
 	getCategoryDetails: getCategoryByIdServer,
 	updateCategory: updateCategoryServer,
 	deleteCategory: deleteCategoryServer,
