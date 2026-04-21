@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-21（Repositories共通化を反映）
+最終更新: 2026-04-22（PR #267 レビュー対応を反映）
 
 ## Routes（対応度: 90%）
 
@@ -79,7 +79,7 @@
 
 | リポジトリ                | 共通実装                                                 | server側 wrapper                                    | tauri側 wrapper                              |
 | ------------------------- | -------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------- |
-| `author-repository.ts`    | `packages/db/src/repositories/author-repository.ts`      | `AuthorRepository`（object）                        | `TauriAuthorRepository`                      |
+| `author-repository.ts`    | `packages/db/src/repositories/author-repository.ts`      | `AuthorRepository`（object）。`authors-router` 側で降順ソート | `TauriAuthorRepository`（`orderByName` option付き、昇順） |
 | `character-repository.ts` | `packages/db/src/repositories/character-repository.ts`   | 既存クラス / object を維持し factory に委譲         | 同上                                         |
 | `ip-repository.ts`        | `packages/db/src/repositories/ip-repository.ts`          | 同上                                                 | 同上                                         |
 | `preset-repository.ts`    | `packages/db/src/repositories/preset-repository.ts`      | 同上                                                 | 同上                                         |
@@ -89,6 +89,8 @@
 | `media-search` (util)     | `packages/db/src/repositories/media-search.ts`           | 旧 `media-repository-utils.ts` 相当の検索ロジック   | 同上                                         |
 
 > 旧 `authors-repository.ts`（server側の重複実装）は削除済み。`author-repository.ts` に一本化。
+>
+> Factory の共通オプション: `orderByName`（`findAll` を `asc(name)` でソート）は author / character / ip / preset / project / source / tag で利用可。Tauri wrapper 側で有効化して旧実装の挙動を維持している。
 
 ### 未共通化（対応あり）
 
@@ -204,8 +206,9 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
 
-## 前回からの主な変更点（2026-04-21更新）
+## 前回からの主な変更点（2026-04-22更新）
 
+- **Repositories（PR #267 レビュー対応）**: author factory に `orderByName` オプションを追加し Tauri wrapper で有効化（旧 `asc(name)` ソートを復元）。update に `isUniqueViolation → ResourceConflictError` を追加し他 repo と整合。tag `addTagsToMedia` で (name, type) のデデュープと、挿入後 lookup 失敗時の log+skip（flatMap）に変更
 - **Repositories**: `packages/db` を追加し、author / character / ip / preset / project / source / tag の 7 repository と media-search ユーティリティを factory 形式で共通化。server / tauri は `createXRepository(getExecutor)` を呼ぶだけの薄い wrapper に縮退。重複していた server 側 `authors-repository.ts` は削除
 - **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
 - **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
