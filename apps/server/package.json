@@ -35,6 +35,7 @@
 		"@orpc/solid-query": "^1.13.13",
 		"@orpc/tanstack-query": "^1.13.13",
 		"@orpc/zod": "^1.13.13",
+		"@solid-imager/application": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"@solid-imager/db": "workspace:*",
 		"@solid-imager/ui": "workspace:*",

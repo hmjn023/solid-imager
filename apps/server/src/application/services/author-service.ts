@@ -1,27 +1,19 @@
-import type {
-	Author,
-	NewAuthor,
-} from "@solid-imager/core/domain/media/schemas";
+import { createAuthorService } from "@solid-imager/application/services/author-service";
+import type { Author } from "@solid-imager/core/domain/media/schemas";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 
+const authorService = createAuthorService(AuthorRepository);
+
 export const AuthorService = {
-	async getAllAuthors(): Promise<Author[]> {
-		return await AuthorRepository.findAll();
+	getAllAuthors: authorService.getAllAuthors,
+
+	getAuthor: authorService.getAuthor,
+
+	createAuthor: authorService.createAuthor,
+
+	async updateAuthor(id: string, input: Partial<Author>): Promise<Author> {
+		return authorService.updateAuthor(id, input);
 	},
 
-	async getAuthor(id: string): Promise<Author | null> {
-		return await AuthorRepository.findById(id);
-	},
-
-	async createAuthor(authorData: NewAuthor): Promise<Author> {
-		return await AuthorRepository.create(authorData);
-	},
-
-	async updateAuthor(id: string, updates: Partial<Author>): Promise<Author> {
-		return await AuthorRepository.update(id, updates);
-	},
-
-	async deleteAuthor(id: string): Promise<void> {
-		await AuthorRepository.delete(id);
-	},
+	deleteAuthor: authorService.deleteAuthor,
 };

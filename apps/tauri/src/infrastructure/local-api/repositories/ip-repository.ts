@@ -9,7 +9,7 @@ import {
 	type UpdateIp,
 } from "@solid-imager/core/domain/ips/schemas";
 import { ips, mediaIps } from "@solid-imager/db/schema";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
 
@@ -42,6 +42,18 @@ export const TauriIpRepository = {
 			.where(eq(ips.name, name))
 			.limit(1);
 		return rows[0] ? toIp(rows[0]) : null;
+	},
+
+	async findByNames(names: string[]): Promise<Ip[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const rows = await getTauriAppServices()
+			.db.select()
+			.from(ips)
+			.where(inArray(ips.name, names))
+			.orderBy(asc(ips.name));
+		return rows.map(toIp);
 	},
 
 	async create(input: NewIp): Promise<Ip> {
@@ -112,6 +124,34 @@ export const TauriIpRepository = {
 		return rows.map(toIp);
 	},
 
+	async getMediaIps(
+		mediaId: string,
+	): Promise<
+		(Ip & { confidence: number | null; associationSource: string })[]
+	> {
+		const rows = await getTauriAppServices()
+			.db.select({
+				id: ips.id,
+				name: ips.name,
+				description: ips.description,
+				source: ips.source,
+				createdAt: ips.createdAt,
+				updatedAt: ips.updatedAt,
+				confidence: mediaIps.confidence,
+				associationSource: mediaIps.source,
+			})
+			.from(ips)
+			.innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
+			.where(eq(mediaIps.mediaId, mediaId))
+			.orderBy(asc(ips.name));
+
+		return rows.map((row) => ({
+			...toIp(row),
+			confidence: row.confidence,
+			associationSource: row.associationSource,
+		}));
+	},
+
 	async addMedia(
 		mediaId: string,
 		ipId: string,
@@ -156,6 +196,17 @@ export const TauriIpRepository = {
 
 		if (!rows[0]) {
 			throw new ResourceNotFoundError("MediaIP association");
+		}
+	},
+
+	async addMediaBulk(
+		mediaId: string,
+		ipsData: { id: string; confidence?: number }[],
+		source = "manual",
+		tx?: TauriDbExecutor,
+	): Promise<void> {
+		for (const ip of ipsData) {
+			await this.addMedia(mediaId, ip.id, ip.confidence, source, tx);
 		}
 	},
 };

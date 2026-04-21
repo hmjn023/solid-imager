@@ -18,6 +18,7 @@
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.3.16",
+		"@solid-imager/application": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"@solid-imager/db": "workspace:*",
 		"@solid-imager/ui": "workspace:*",

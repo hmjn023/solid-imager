@@ -1,7 +1,5 @@
-import type {
-	NewCategory,
-	UpdateCategory,
-} from "@solid-imager/core/domain/categories/schemas";
+import { createCategoryService } from "@solid-imager/application/services/category-service";
+import type { UpdateCategory } from "@solid-imager/core/domain/categories/schemas";
 import type {
 	Category,
 	CategoryRepository,
@@ -10,33 +8,28 @@ import { DrizzleCategoryRepository } from "~/infrastructure/repositories/categor
 
 // Initialize repository
 const categoryRepo: CategoryRepository = new DrizzleCategoryRepository();
-
-const getAllCategoriesServer = async (): Promise<Category[]> =>
-	await categoryRepo.findAll();
-
-const createCategoryServer = async (data: NewCategory): Promise<Category> =>
-	await categoryRepo.create(data);
+const categoryService = createCategoryService(categoryRepo);
 
 const getCategoryByIdServer = async (
 	id: string,
 ): Promise<Category | undefined> => {
-	const result = await categoryRepo.findById(id);
+	const result = await categoryService.getCategoryDetails(id);
 	return result ?? undefined;
 };
 
 const updateCategoryServer = async (
 	id: string,
 	data: UpdateCategory,
-): Promise<Category> => await categoryRepo.update(id, data);
+): Promise<Category> => await categoryService.updateCategory(id, data);
 
 const deleteCategoryServer = async (id: string): Promise<{ success: true }> => {
-	await categoryRepo.delete(id);
+	await categoryService.deleteCategory(id);
 	return { success: true };
 };
 
 export const CategoryService = {
-	getAllCategories: getAllCategoriesServer,
-	createCategory: createCategoryServer,
+	getAllCategories: categoryService.getAllCategories,
+	createCategory: categoryService.createCategory,
 	getCategoryDetails: getCategoryByIdServer,
 	updateCategory: updateCategoryServer,
 	deleteCategory: deleteCategoryServer,

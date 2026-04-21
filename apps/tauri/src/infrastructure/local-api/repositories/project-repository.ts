@@ -124,4 +124,10 @@ export const TauriProjectRepository = {
 			throw new ResourceNotFoundError("MediaProject association");
 		}
 	},
+
+	async addMediaBulk(mediaId: string, projectIds: string[]): Promise<void> {
+		for (const projectId of projectIds) {
+			await this.addMedia(mediaId, projectId);
+		}
+	},
 };

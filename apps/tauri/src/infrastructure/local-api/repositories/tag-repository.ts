@@ -2,6 +2,7 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 } from "@solid-imager/core/domain/errors";
+import type { MediaTag } from "@solid-imager/core/domain/media/schemas";
 import {
 	type NewTag,
 	newTagSchema,
@@ -42,6 +43,40 @@ export const TauriTagRepository = {
 			.where(eq(tags.name, name))
 			.limit(1);
 		return rows[0] ? toTag(rows[0]) : null;
+	},
+
+	async findByMediaId(mediaId: string): Promise<MediaTag[]> {
+		const rows = await getTauriAppServices()
+			.db.select({
+				id: tags.id,
+				name: tags.name,
+				description: tags.description,
+				attribute: tags.attribute,
+				color: tags.color,
+				source: mediaTags.source,
+				authorId: tags.authorId,
+				createdAt: tags.createdAt,
+				updatedAt: tags.updatedAt,
+				type: mediaTags.tagType,
+				confidence: mediaTags.confidence,
+			})
+			.from(mediaTags)
+			.innerJoin(tags, eq(mediaTags.tagId, tags.id))
+			.where(eq(mediaTags.mediaId, mediaId));
+
+		return rows.map((row) => ({
+			id: row.id,
+			name: row.name,
+			description: row.description,
+			attribute: row.attribute,
+			color: row.color,
+			source: row.source,
+			authorId: row.authorId,
+			createdAt: row.createdAt,
+			updatedAt: row.updatedAt,
+			type: row.type,
+			confidence: row.confidence,
+		}));
 	},
 
 	async create(input: NewTag): Promise<TagResponse> {

@@ -2,6 +2,7 @@ import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { deepMerge } from "@solid-imager/application/utils/config-merge";
 import type { IConfigService } from "@solid-imager/core";
 import {
 	type AppConfig,
@@ -52,7 +53,10 @@ export class ServerConfigService implements IConfigService {
 					// unknown フィールドを保持しつつ新しいスキーマデフォルトをマージ。
 					// safeParse はスキーマ外フィールドを除去するため、直接比較すると
 					// ユーザーが手動追加したフィールドが原因で常に不一致となる。
-					const merged = this.deepMerge(fileContent, parsedFromFile.data);
+					const merged = deepMerge(
+						fileContent as Record<string, unknown>,
+						parsedFromFile.data,
+					);
 					if (!isDeepStrictEqual(merged, fileContent)) {
 						fs.writeFileSync(this.configPath, JSON.stringify(merged, null, 2));
 						logger.info("config.json migrated with new default fields");
@@ -71,7 +75,10 @@ export class ServerConfigService implements IConfigService {
 
 			// Apply Env Overrides
 			const envOverrides = this.getEnvOverrides();
-			const mergedConfig = this.deepMerge(fileContent, envOverrides);
+			const mergedConfig = deepMerge(
+				fileContent as Record<string, unknown>,
+				envOverrides,
+			);
 
 			// Validate and Fix
 			const result = AppConfigSchema.safeParse(mergedConfig);
@@ -100,7 +107,7 @@ export class ServerConfigService implements IConfigService {
 	}
 
 	async updateConfig(newConfig: Partial<AppConfig>): Promise<void> {
-		const merged = this.deepMerge(this.config, newConfig);
+		const merged = deepMerge(this.config, newConfig);
 
 		const result = AppConfigSchema.safeParse(merged);
 		if (!result.success) {
@@ -187,32 +194,5 @@ export class ServerConfigService implements IConfigService {
 			}
 		}
 		return overrides;
-	}
-
-	private deepMerge(target: any, source: any): any {
-		if (
-			typeof target !== "object" ||
-			target === null ||
-			typeof source !== "object" ||
-			source === null
-		) {
-			return source;
-		}
-
-		if (Array.isArray(source)) {
-			return source;
-		}
-
-		const output = { ...target };
-		for (const key of Object.keys(source)) {
-			if (Object.hasOwn(source, key)) {
-				if (Object.hasOwn(target, key)) {
-					output[key] = this.deepMerge(target[key], source[key]);
-				} else {
-					output[key] = source[key];
-				}
-			}
-		}
-		return output;
 	}
 }

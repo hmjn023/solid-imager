@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { createPresetService } from "@solid-imager/application/services/preset-service";
 import type {
 	CreatePresetRequest,
 	Preset,
@@ -11,64 +8,36 @@ import type { PresetRepository } from "@solid-imager/core/domain/repositories/pr
 import { DrizzlePresetRepository } from "~/infrastructure/repositories/preset-repository";
 
 let repository: PresetRepository = new DrizzlePresetRepository();
+let service = createPresetService(repository);
 
 // For testing IDI (dependency injection)
 export const setPresetRepository = (repo: PresetRepository) => {
 	repository = repo;
+	service = createPresetService(repository);
 };
 
 export const PresetService = {
 	async list(): Promise<Preset[]> {
-		return await repository.list();
+		return await service.list();
 	},
 
 	async get(id: number): Promise<Preset> {
-		const preset = await repository.get(id);
-		if (!preset) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
-		return preset;
+		return await service.get(id);
 	},
 
 	async getByName(name: string): Promise<Preset | null> {
-		return await repository.getByName(name);
+		return await service.getByName(name);
 	},
 
 	async create(data: CreatePresetRequest): Promise<Preset> {
-		const existing = await repository.getByName(data.name);
-		if (existing) {
-			throw new ResourceConflictError(
-				`Preset with name "${data.name}" already exists`,
-			);
-		}
-		return repository.create(data);
+		return await service.create(data);
 	},
 
 	async update(id: number, data: UpdatePresetRequest): Promise<Preset> {
-		// Check existence
-		await PresetService.get(id);
-
-		// Check name conflict if updating name
-		if (data.name) {
-			const existing = await repository.getByName(data.name);
-			if (existing && existing.id !== id) {
-				throw new ResourceConflictError(
-					`Preset with name "${data.name}" already exists`,
-				);
-			}
-		}
-
-		const updated = await repository.update(id, data);
-		if (!updated) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
-		return updated;
+		return await service.update(id, data);
 	},
 
 	async delete(id: number): Promise<void> {
-		const success = await repository.delete(id);
-		if (!success) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
+		await service.delete(id);
 	},
 };

@@ -1,23 +1,26 @@
+import { createUserService } from "@solid-imager/application/services/user-service";
 import type {
 	NewUser,
 	UpdateUser,
 } from "@solid-imager/core/domain/users/schemas";
 import { UserRepository } from "~/infrastructure/repositories/user-repository";
 
+const userService = createUserService(UserRepository);
+
 export const UserService = {
-	getAllUsers: async () => await UserRepository.findAll(),
+	getAllUsers: async () => await userService.getAllUsers(),
 
 	createUser: async (userData: NewUser) =>
-		await UserRepository.create(userData),
+		await userService.createUser(userData),
 
 	getUserDetails: async (userId: string) =>
-		await UserRepository.findById(userId),
+		await userService.getUserDetails(userId),
 
 	updateUser: async (userId: string, userData: UpdateUser) =>
-		await UserRepository.update(userId, userData),
+		await userService.updateUser(userId, userData),
 
 	deleteUser: async (userId: string) => {
-		await UserRepository.delete(userId);
+		await userService.deleteUser(userId);
 		return { success: true };
 	},
 };
