@@ -99,7 +99,7 @@
 | `app-config-repository.ts`  | tauriのみ                                |
 | `tauri-job-repository.ts`   | tauriのみ                                |
 
-## Services（対応度: ~55%）
+## Services（対応度: ~70%）
 
 `packages/application` を追加し、repository 依存だけで成立する application service と、platform 非依存の utility / job payload 定義を共通化した。
 共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`）へ揃える。server / tauri 側は既存の外部 API 名を維持しつつ、内部で `@solid-imager/application/services/*` の factory を利用する。
@@ -173,7 +173,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `user-service.ts`             | serverのみ  | なし                                |
 | `workflow-service.ts`         | serverのみ  | なし                                |
 
-## Jobs（対応度: ~30%）
+## Jobs（対応度: ~35%）
 
 | ファイル     | server                                         | tauri                                          |
 | ------------ | ---------------------------------------------- | ---------------------------------------------- |
@@ -191,7 +191,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | ------ | -------------------------------- | ----------------------------------------------------- | ---------- |
 | 高     | Hooks                            | `deepEqual` をcoreに移すだけで即共通化可能            | ✅ 完了    |
 | 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           | ✅ 完了    |
-| 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 一部完了 |
+| 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 主要CRUD・source/config/job/stub共通化済み |
 | 中     | Repositories                     | DBクライアント取得をfactory化                         |            |
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
@@ -200,6 +200,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 
 - **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
 - **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
-- **Services**: Tauri側に `apps/tauri/src/infrastructure/local-api/services/` が存在し、11サービス（author, tag, character, ip, project, media, preset, source, config, ai, source-backup）が実装されていることを確認（旧文档では不明確だった）
-- **Jobs**: `process-media-job.ts`（tauri）を追加。media-processing-job.ts（server）と対になる
-- 対応度の推定値を微調整（Services ~35%: 7/29 → 11/42 equivalent）
+- **Services**: `packages/application` を追加し、主要CRUD系（author, tag, character, ip, project, preset, category, collection, user）と search / source / config / TODO stub service を共通化。server / tauri wrapper は既存API名を維持
+- **Services対応度**: Tauri local-api の 11 services のうち、8 services（author, tag, character, ip, project, preset, source, config）が `packages/application` を利用。残りの media / ai / source-backup は platform 固有処理が多いため未共通化
+- **Jobs**: media-processing job の step 定義・payload helper を `packages/application` に移動。server / tauri の実行基盤は引き続き別実装
+- 対応度の推定値を更新（Services ~55% → ~70%、Jobs ~30% → ~35%）
