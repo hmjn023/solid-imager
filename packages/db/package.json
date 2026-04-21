@@ -8,6 +8,13 @@
 		"./schema": "./src/schema.ts",
 		"./migrations": "./src/migrations.ts",
 		"./types": "./src/types.ts",
+		"./repositories/author-repository": "./src/repositories/author-repository.ts",
+		"./repositories/character-repository": "./src/repositories/character-repository.ts",
+		"./repositories/ip-repository": "./src/repositories/ip-repository.ts",
+		"./repositories/preset-repository": "./src/repositories/preset-repository.ts",
+		"./repositories/project-repository": "./src/repositories/project-repository.ts",
+		"./repositories/source-repository": "./src/repositories/source-repository.ts",
+		"./repositories/tag-repository": "./src/repositories/tag-repository.ts",
 		"./repositories/*": "./src/repositories/*.ts",
 		"./backup": "./src/backup.ts"
 	},
