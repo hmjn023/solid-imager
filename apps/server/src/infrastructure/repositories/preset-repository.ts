@@ -1,84 +1,24 @@
-import type {
-	CreatePresetRequest,
-	Preset,
-	SearchGroup,
-	UpdatePresetRequest,
-} from "@solid-imager/core/domain/media/schemas";
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
-import { eq, type InferSelectModel } from "drizzle-orm";
+import { createPresetRepository } from "@solid-imager/db/repositories/preset-repository";
+import type { DrizzleExecutor } from "@solid-imager/db/types";
 import { db } from "~/infrastructure/db";
-import { presets } from "~/infrastructure/db/schema";
 
 export class DrizzlePresetRepository implements PresetRepository {
-	async list(): Promise<Preset[]> {
-		const results = await db.select().from(presets).orderBy(presets.id);
-		return results.map((row) => this.mapToEntity(row));
-	}
+	private readonly repository = createPresetRepository(
+		() => db as DrizzleExecutor,
+	);
 
-	async get(id: number): Promise<Preset | null> {
-		const results = await db
-			.select()
-			.from(presets)
-			.where(eq(presets.id, id))
-			.limit(1);
-		return results.length > 0 ? this.mapToEntity(results[0]) : null;
-	}
+	list: PresetRepository["list"] = () => this.repository.list();
 
-	async getByName(name: string): Promise<Preset | null> {
-		const results = await db
-			.select()
-			.from(presets)
-			.where(eq(presets.name, name))
-			.limit(1);
-		return results.length > 0 ? this.mapToEntity(results[0]) : null;
-	}
+	get: PresetRepository["get"] = (id) => this.repository.get(id);
 
-	async create(data: CreatePresetRequest): Promise<Preset> {
-		const results = await db
-			.insert(presets)
-			.values({
-				name: data.name,
-				value: data.value,
-				sort: data.sort,
-				order: data.order,
-				mode: data.mode,
-			})
-			.returning();
-		return this.mapToEntity(results[0]);
-	}
+	getByName: PresetRepository["getByName"] = (name) =>
+		this.repository.getByName(name);
 
-	async update(id: number, data: UpdatePresetRequest): Promise<Preset | null> {
-		const results = await db
-			.update(presets)
-			.set({
-				...(data.name !== undefined ? { name: data.name } : {}),
-				...(data.value !== undefined ? { value: data.value } : {}),
-				...(data.sort !== undefined ? { sort: data.sort } : {}),
-				...(data.order !== undefined ? { order: data.order } : {}),
-				...(data.mode !== undefined ? { mode: data.mode } : {}),
-			})
-			.where(eq(presets.id, id))
-			.returning();
-		return results.length > 0 ? this.mapToEntity(results[0]) : null;
-	}
+	create: PresetRepository["create"] = (data) => this.repository.create(data);
 
-	async delete(id: number): Promise<boolean> {
-		const results = await db
-			.delete(presets)
-			.where(eq(presets.id, id))
-			.returning();
-		return results.length > 0;
-	}
+	update: PresetRepository["update"] = (id, data) =>
+		this.repository.update(id, data);
 
-	private mapToEntity(row: InferSelectModel<typeof presets>): Preset {
-		return {
-			id: row.id,
-			name: row.name,
-			value: row.value as SearchGroup,
-			sort: row.sort as Preset["sort"],
-			order: row.order as Preset["order"],
-			mode: row.mode as Preset["mode"],
-			createdAt: row.createdAt,
-		};
-	}
+	delete: PresetRepository["delete"] = (id) => this.repository.delete(id);
 }

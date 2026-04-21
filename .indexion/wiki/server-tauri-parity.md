@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-21
+最終更新: 2026-04-21（Repositories共通化を反映）
 
 ## Routes（対応度: 90%）
 
@@ -71,31 +71,39 @@
 | `components/simple-modal.tsx` | serverのみ  |
 | `components/counter.tsx`      | serverのみ  |
 
-## Repositories（対応度: 65%）
+## Repositories（対応度: ~85%）
 
-### 対応あり（8リポジトリ）
+`packages/db` を追加し、Drizzle ベースの repository 実装を factory (`createXRepository(getExecutor)`) として共通化した。server / tauri はそれぞれ executor provider（`db` グローバル or `getTauriAppServices().db`）を注入する薄い wrapper のみを保持する。`mapToX` も `packages/db` 側に集約。
 
-| リポジトリ                | 構造の差異                                                              | DBクライアント取得                                                       |
-| ------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `media-repository.ts`     | server: クラス (`DrizzleMediaRepository`) ↔ tauri: オブジェクトリテラル | server: グローバル `db` ↔ tauri: DIコンテナ (`getTauriAppServices().db`) |
-| `source-repository.ts`    | 同上                                                                    | 同上                                                                     |
-| `tag-repository.ts`       | 同上                                                                    | 同上                                                                     |
-| `character-repository.ts` | 同上                                                                    | 同上                                                                     |
-| `ip-repository.ts`        | 同上                                                                    | 同上                                                                     |
-| `author-repository.ts`    | 同上                                                                    | 同上                                                                     |
-| `preset-repository.ts`    | 同上                                                                    | 同上                                                                     |
-| `project-repository.ts`   | 同上                                                                    | 同上                                                                     |
+### 完全共通化済み（factory本体は `@solid-imager/db/repositories/*`）
+
+| リポジトリ                | 共通実装                                                 | server側 wrapper                                    | tauri側 wrapper                              |
+| ------------------------- | -------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------- |
+| `author-repository.ts`    | `packages/db/src/repositories/author-repository.ts`      | `AuthorRepository`（object）                        | `TauriAuthorRepository`                      |
+| `character-repository.ts` | `packages/db/src/repositories/character-repository.ts`   | 既存クラス / object を維持し factory に委譲         | 同上                                         |
+| `ip-repository.ts`        | `packages/db/src/repositories/ip-repository.ts`          | 同上                                                 | 同上                                         |
+| `preset-repository.ts`    | `packages/db/src/repositories/preset-repository.ts`      | 同上                                                 | 同上                                         |
+| `project-repository.ts`   | `packages/db/src/repositories/project-repository.ts`     | 同上                                                 | 同上                                         |
+| `source-repository.ts`    | `packages/db/src/repositories/source-repository.ts`      | `DrizzleSourceRepository`（factory 委譲クラス）     | `TauriSourceRepository`（`orderByName` option付き） |
+| `tag-repository.ts`       | `packages/db/src/repositories/tag-repository.ts`         | 同上                                                 | 同上                                         |
+| `media-search` (util)     | `packages/db/src/repositories/media-search.ts`           | 旧 `media-repository-utils.ts` 相当の検索ロジック   | 同上                                         |
+
+> 旧 `authors-repository.ts`（server側の重複実装）は削除済み。`author-repository.ts` に一本化。
+
+### 未共通化（対応あり）
+
+| リポジトリ            | 備考                                                                          |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `media-repository.ts` | server: `DrizzleMediaRepository`（class）↔ tauri: object リテラル。共通化未着手（検索・メディアCRUD・関連テーブル操作が多く、factory化余地あり） |
 
 ### 片側のみ
 
 | リポジトリ                  | 存在するapp                              |
 | --------------------------- | ---------------------------------------- |
-| `authors-repository.ts`     | serverのみ（`author-repository.ts`と重複の可能性あり、要確認） |
 | `category-repository.ts`    | serverのみ                               |
 | `collection-repository.ts`  | serverのみ                               |
 | `job-repository.ts`         | serverのみ                               |
 | `user-repository.ts`        | serverのみ                               |
-| `media-repository-utils.ts` | serverのみ（検索ロジックユーティリティ） |
 | `app-config-repository.ts`  | tauriのみ                                |
 | `tauri-job-repository.ts`   | tauriのみ                                |
 
@@ -192,15 +200,16 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | 高     | Hooks                            | `deepEqual` をcoreに移すだけで即共通化可能            | ✅ 完了    |
 | 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           | ✅ 完了    |
 | 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 主要CRUD・source/config/job/stub共通化済み |
-| 中     | Repositories                     | DBクライアント取得をfactory化                         |            |
+| 中     | Repositories                     | `packages/db` に factory 集約、server/tauri は executor 注入の wrapper のみ | ✅ media以外完了 |
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
 
 ## 前回からの主な変更点（2026-04-21更新）
 
+- **Repositories**: `packages/db` を追加し、author / character / ip / preset / project / source / tag の 7 repository と media-search ユーティリティを factory 形式で共通化。server / tauri は `createXRepository(getExecutor)` を呼ぶだけの薄い wrapper に縮退。重複していた server 側 `authors-repository.ts` は削除
 - **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
 - **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
 - **Services**: `packages/application` を追加し、主要CRUD系（author, tag, character, ip, project, preset, category, collection, user）と search / source / config / TODO stub service を共通化。server / tauri wrapper は既存API名を維持
 - **Services対応度**: Tauri local-api の 11 services のうち、8 services（author, tag, character, ip, project, preset, source, config）が `packages/application` を利用。残りの media / ai / source-backup は platform 固有処理が多いため未共通化
 - **Jobs**: media-processing job の step 定義・payload helper を `packages/application` に移動。server / tauri の実行基盤は引き続き別実装
-- 対応度の推定値を更新（Services ~55% → ~70%、Jobs ~30% → ~35%）
+- 対応度の推定値を更新（Repositories 65% → ~85%、Services ~55% → ~70%、Jobs ~30% → ~35%）
