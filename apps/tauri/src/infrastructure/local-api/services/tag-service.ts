@@ -1,3 +1,4 @@
+import { createTagService } from "@solid-imager/application/services/tag-service";
 import type {
 	NewTag,
 	TagResponse,
@@ -5,24 +6,26 @@ import type {
 } from "@solid-imager/core/domain/tags/schemas";
 import { TauriTagRepository } from "../repositories/tag-repository";
 
+const tagService = createTagService(TauriTagRepository);
+
 export const TauriTagService = {
 	async list(): Promise<TagResponse[]> {
-		return await TauriTagRepository.findAll();
+		return await tagService.getAllTags();
 	},
 
 	async get(id: string): Promise<TagResponse | null> {
-		return await TauriTagRepository.findById(id);
+		return await tagService.getTagById(id);
 	},
 
 	async create(input: NewTag): Promise<TagResponse> {
-		return await TauriTagRepository.create(input);
+		return await tagService.createTag(input);
 	},
 
 	async update(id: string, input: UpdateTag): Promise<TagResponse> {
-		return await TauriTagRepository.update(id, input);
+		return await tagService.updateTag(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await TauriTagRepository.delete(id);
+		await tagService.deleteTag(id);
 	},
 };

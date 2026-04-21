@@ -1,3 +1,7 @@
+import {
+	createSourceService,
+	FetchError,
+} from "@solid-imager/application/services/source-service";
 import type {
 	MediaSource,
 	NewMediaSource,
@@ -5,27 +9,33 @@ import type {
 import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
-/**
- * Custom error class for fetch operations.
- */
-export class FetchError {
-	readonly _tag = "FetchError";
-	readonly message: string;
-	readonly status?: number;
-	constructor(message: string, status?: number) {
-		this.message = message;
-		this.status = status;
-	}
-}
-
-const HTTP_STATUS_NOT_FOUND = 404;
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 
 // Initialize repository
 const sourceRepo = new DrizzleSourceRepository();
+const sourceService = createSourceService({
+	repository: sourceRepo,
+	connectionTester: {
+		async testConnection(source: MediaSource) {
+			const { getDriver } = await import("~/infrastructure/storage/factory");
+			const toDbMediaSource = (s: MediaSource): DbMediaSource =>
+				({
+					id: s.id,
+					name: s.name,
+					description: s.description || null,
+					type: s.type,
+					connectionInfo: s.connectionInfo,
+					createdAt: s.createdAt,
+					updatedAt: s.updatedAt,
+				}) as DbMediaSource;
+			const driver = getDriver(toDbMediaSource(source));
+			return await driver.testConnection();
+		},
+	},
+});
 
 const fetchSourcesServer = async (): Promise<MediaSource[]> =>
-	await sourceRepo.findAll();
+	await sourceService.list();
 
 const createSourceServer = async (
 	sourceData: NewMediaSource,
@@ -46,7 +56,7 @@ const fetchSourceByIdServer = async (
 	mediaSourceId: string,
 ): Promise<(MediaSource | undefined)[]> => {
 	try {
-		const result = await sourceRepo.findById(mediaSourceId);
+		const result = await sourceService.get(mediaSourceId);
 		return result ? [result] : [];
 	} catch (_error) {
 		return [];
@@ -63,41 +73,9 @@ const deleteSourceServer = async (
 	return source ? [source] : [];
 };
 
-/**
- * Tests the connection to a specified media source.
- * @param {string} mediaSourceId - The ID of the media source to test.
- * @returns {Promise<any>} A promise that resolves with the connection test result.
- */
 const testConnectionServer = async (mediaSourceId: string) => {
-	const { getDriver } = await import("~/infrastructure/storage/factory");
-
 	try {
-		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source) {
-			throw new FetchError(
-				"指定されたメディアソースが見つかりません",
-				HTTP_STATUS_NOT_FOUND,
-			);
-		}
-		const toDbMediaSource = (s: MediaSource): DbMediaSource =>
-			({
-				id: s.id,
-				name: s.name,
-				description: s.description || null,
-				type: s.type,
-				connectionInfo: s.connectionInfo,
-				createdAt: s.createdAt,
-				updatedAt: s.updatedAt,
-			}) as DbMediaSource;
-		const driver = getDriver(toDbMediaSource(source));
-		const connectionTest = await driver.testConnection();
-		if (!connectionTest.success) {
-			throw new FetchError(
-				`接続に失敗しました: ${connectionTest.message ?? "不明なエラー"}`,
-				HTTP_STATUS_INTERNAL_SERVER_ERROR,
-			);
-		}
-		return connectionTest;
+		return await sourceService.testConnection(mediaSourceId);
 	} catch (error: unknown) {
 		if (error instanceof FetchError) {
 			throw error;
@@ -110,26 +88,6 @@ const testConnectionServer = async (mediaSourceId: string) => {
 	}
 };
 
-const getStatusServer = async (mediaSourceId: string) => {
-	try {
-		const test = await testConnectionServer(mediaSourceId);
-		return {
-			mediaSourceId,
-			status: test.success ? "active" : "error",
-			message: test.message,
-			lastChecked: new Date(),
-		};
-	} catch (error: unknown) {
-		const errorMessage = error instanceof Error ? error.message : String(error);
-		return {
-			mediaSourceId,
-			status: "error",
-			message: errorMessage,
-			lastChecked: new Date(),
-		};
-	}
-};
-
 export const MediaSourceService = {
 	fetchSources: fetchSourcesServer,
 	createSource: createSourceServer,
@@ -137,5 +95,6 @@ export const MediaSourceService = {
 	fetchSourceById: fetchSourceByIdServer,
 	deleteSource: deleteSourceServer,
 	testConnection: testConnectionServer,
-	getStatus: getStatusServer,
+	getStatus: async (mediaSourceId: string) =>
+		await sourceService.getStatus(mediaSourceId),
 };

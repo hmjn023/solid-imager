@@ -3,6 +3,7 @@
  * Feature 14: コレクション管理機能
  */
 
+import { createCollectionService } from "@solid-imager/application/services/collection-service";
 import type { NewCollectionItem } from "@solid-imager/core/domain/collections/schemas";
 /**
  * Provides services for managing media collections.
@@ -12,12 +13,14 @@ import { CollectionRepository } from "~/infrastructure/repositories/collection-r
 /**
  * Provides services for managing media collections.
  */
+const collectionService = createCollectionService(CollectionRepository);
+
 export const CollectionService = {
 	/**
 	 * Retrieves all collections.
 	 */
 	async getAllCollections() {
-		return await CollectionRepository.findAll();
+		return await collectionService.getAllCollections();
 	},
 
 	/**
@@ -28,7 +31,7 @@ export const CollectionService = {
 		name: string;
 		description?: string;
 	}) {
-		return await CollectionRepository.create({
+		return await collectionService.createCollection({
 			userId: collectionData.userId,
 			name: collectionData.name,
 			description: collectionData.description,
@@ -39,7 +42,7 @@ export const CollectionService = {
 	 * Retrieves details of a specific collection by its ID.
 	 */
 	async getCollectionDetails(collectionId: string) {
-		return await CollectionRepository.findById(collectionId);
+		return await collectionService.getCollectionDetails(collectionId);
 	},
 
 	/**
@@ -53,14 +56,17 @@ export const CollectionService = {
 			description?: string;
 		},
 	) {
-		return await CollectionRepository.update(collectionId, collectionData);
+		return await collectionService.updateCollection(
+			collectionId,
+			collectionData,
+		);
 	},
 
 	/**
 	 * Deletes a collection by its ID.
 	 */
 	async deleteCollection(collectionId: string) {
-		return await CollectionRepository.delete(collectionId);
+		return await collectionService.deleteCollection(collectionId);
 	},
 
 	/**
@@ -75,13 +81,16 @@ export const CollectionService = {
 			mediaId,
 			displayOrder,
 		};
-		return await CollectionRepository.addItem(collectionId, item);
+		return await collectionService.addMediaToCollection(collectionId, item);
 	},
 
 	/**
 	 * Removes a media item from a specific collection.
 	 */
 	async removeMediaFromCollection(collectionId: string, mediaId: string) {
-		return await CollectionRepository.removeItem(collectionId, mediaId);
+		return await collectionService.removeMediaFromCollection(
+			collectionId,
+			mediaId,
+		);
 	},
 };

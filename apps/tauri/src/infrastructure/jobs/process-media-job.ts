@@ -1,19 +1,11 @@
+import type { ProcessMediaJob } from "@solid-imager/application/services/media-processing-job";
 import type { Job } from "../db/schema";
 
-export const MEDIA_PROCESSING_STEPS = [
-	"extractMetadata",
-	"generateThumbnail",
-	"queueAutoTagging",
-] as const;
-
-export type MediaProcessingStep = (typeof MEDIA_PROCESSING_STEPS)[number];
-
-export type ProcessMediaJob = {
-	sourceId: string;
-	mediaId: string;
-	sourcePath: string;
-	steps?: MediaProcessingStep[];
-};
+export type {
+	MediaProcessingStep,
+	ProcessMediaJob,
+} from "@solid-imager/application/services/media-processing-job";
+export { MEDIA_PROCESSING_STEPS } from "@solid-imager/application/services/media-processing-job";
 
 export type PersistedProcessMediaJob = ProcessMediaJob & {
 	id: string;

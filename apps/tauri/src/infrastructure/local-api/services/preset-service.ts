@@ -1,7 +1,4 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+import { createPresetService } from "@solid-imager/application/services/preset-service";
 import type {
 	CreatePresetRequest,
 	Preset,
@@ -9,59 +6,30 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { TauriPresetRepository } from "../repositories/preset-repository";
 
+const presetService = createPresetService(TauriPresetRepository);
+
 export const TauriPresetService = {
 	async list(): Promise<Preset[]> {
-		return await TauriPresetRepository.list();
+		return await presetService.list();
 	},
 
 	async get(id: number): Promise<Preset> {
-		const preset = await TauriPresetRepository.get(id);
-		if (!preset) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
-		return preset;
+		return await presetService.get(id);
 	},
 
 	async getByName(name: string): Promise<Preset | null> {
-		return await TauriPresetRepository.getByName(name);
+		return await presetService.getByName(name);
 	},
 
 	async create(input: CreatePresetRequest): Promise<Preset> {
-		const existing = await TauriPresetRepository.getByName(input.name);
-		if (existing) {
-			throw new ResourceConflictError(
-				`Preset with name "${input.name}" already exists`,
-			);
-		}
-		return await TauriPresetRepository.create(input);
+		return await presetService.create(input);
 	},
 
 	async update(id: number, input: UpdatePresetRequest): Promise<Preset> {
-		const current = await TauriPresetRepository.get(id);
-		if (!current) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
-
-		if (input.name) {
-			const existing = await TauriPresetRepository.getByName(input.name);
-			if (existing && existing.id !== id) {
-				throw new ResourceConflictError(
-					`Preset with name "${input.name}" already exists`,
-				);
-			}
-		}
-
-		const updated = await TauriPresetRepository.update(id, input);
-		if (!updated) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
-		return updated;
+		return await presetService.update(id, input);
 	},
 
 	async delete(id: number): Promise<void> {
-		const deleted = await TauriPresetRepository.delete(id);
-		if (!deleted) {
-			throw new ResourceNotFoundError("Preset", String(id));
-		}
+		await presetService.delete(id);
 	},
 };

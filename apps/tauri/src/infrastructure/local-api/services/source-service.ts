@@ -1,3 +1,4 @@
+import { toSafeMediaSource } from "@solid-imager/application/services/source-service";
 import type {
 	MediaSource,
 	NewMediaSource,
@@ -44,44 +45,6 @@ type SourceWatchEventPayload = {
 	paths: string[];
 	timestamp?: string;
 };
-
-function toSafeMediaSource(source: MediaSource): SafeMediaSource {
-	if (source.type === "sftp") {
-		const info = source.connectionInfo as {
-			host: string;
-			port: number;
-			username: string;
-			remotePath: string;
-		};
-		return {
-			...source,
-			connectionInfo: {
-				host: info.host,
-				port: info.port,
-				username: info.username,
-				remotePath: info.remotePath,
-			},
-		};
-	}
-
-	if (source.type === "s3") {
-		const info = source.connectionInfo as {
-			bucket: string;
-			region: string;
-			prefix?: string;
-		};
-		return {
-			...source,
-			connectionInfo: {
-				bucket: info.bucket,
-				region: info.region,
-				prefix: info.prefix,
-			},
-		};
-	}
-
-	return source as SafeMediaSource;
-}
 
 function inferMediaType(
 	filePath: string,

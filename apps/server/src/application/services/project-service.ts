@@ -1,9 +1,12 @@
+import { createProjectService } from "@solid-imager/application/services/project-service";
 import type { NewProject } from "@solid-imager/core/domain/projects/schemas";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 
 /**
  * ProjectService - プロジェクト管理機能
  */
+
+const projectService = createProjectService(ProjectRepository);
 
 /**
  * Provides services for managing projects.
@@ -13,7 +16,7 @@ export const ProjectService = {
 	 * Retrieves all projects.
 	 */
 	async getAllProjects() {
-		return await ProjectRepository.findAll();
+		return await projectService.getAllProjects();
 	},
 
 	/**
@@ -24,14 +27,14 @@ export const ProjectService = {
 			name: projectData.name,
 			description: projectData.description,
 		};
-		return await ProjectRepository.create(newProject);
+		return await projectService.createProject(newProject);
 	},
 
 	/**
 	 * Retrieves details of a specific project by its ID.
 	 */
 	async getProjectDetails(projectId: string) {
-		return await ProjectRepository.findById(projectId);
+		return await projectService.getProjectDetails(projectId);
 	},
 
 	/**
@@ -41,34 +44,34 @@ export const ProjectService = {
 		projectId: string,
 		projectData: { name?: string; description?: string },
 	) {
-		return await ProjectRepository.update(projectId, projectData);
+		return await projectService.updateProject(projectId, projectData);
 	},
 
 	/**
 	 * Deletes a project by its ID.
 	 */
 	async deleteProject(projectId: string) {
-		return await ProjectRepository.delete(projectId);
+		return await projectService.deleteProject(projectId);
 	},
 
 	/**
 	 * Retrieves projects associated with a specific media.
 	 */
 	async getProjectsForMedia(mediaId: string) {
-		return await ProjectRepository.findByMediaId(mediaId);
+		return await projectService.getProjectsForMedia(mediaId);
 	},
 
 	/**
 	 * Adds a project to a media.
 	 */
 	async addProjectToMedia(mediaId: string, projectId: string) {
-		return await ProjectRepository.addMedia(mediaId, projectId);
+		return await projectService.addProjectToMedia(mediaId, projectId);
 	},
 
 	/**
 	 * Removes a project from a media.
 	 */
 	async removeProjectFromMedia(mediaId: string, projectId: string) {
-		return await ProjectRepository.removeMedia(mediaId, projectId);
+		return await projectService.removeProjectFromMedia(mediaId, projectId);
 	},
 };

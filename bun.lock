@@ -43,6 +43,7 @@
         "@orpc/solid-query": "^1.13.13",
         "@orpc/tanstack-query": "^1.13.13",
         "@orpc/zod": "^1.13.13",
+        "@solid-imager/application": "workspace:*",
         "@solid-imager/core": "workspace:*",
         "@solid-imager/db": "workspace:*",
         "@solid-imager/ui": "workspace:*",
@@ -109,6 +110,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@electric-sql/pglite": "^0.3.16",
+        "@solid-imager/application": "workspace:*",
         "@solid-imager/core": "workspace:*",
         "@solid-imager/db": "workspace:*",
         "@solid-imager/ui": "workspace:*",
@@ -149,6 +151,19 @@
         "typescript": "^5.2.2",
         "vite-plugin-solid": "^2.11.11",
         "vite-plus": "latest",
+      },
+    },
+    "packages/application": {
+      "name": "@solid-imager/application",
+      "version": "0.0.0",
+      "dependencies": {
+        "@solid-imager/core": "workspace:*",
+      },
+      "devDependencies": {
+        "typescript": "^5.9.3",
+        "vite-plus": "latest",
+        "vite-tsconfig-paths": "^5.1.4",
+        "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
       },
     },
     "packages/core": {
@@ -686,6 +701,8 @@
     "@solid-devtools/logger": ["@solid-devtools/logger@0.9.11", "", { "dependencies": { "@nothing-but/utils": "~0.17.0", "@solid-devtools/debugger": "^0.28.1", "@solid-devtools/shared": "^0.20.0", "@solid-primitives/utils": "^6.3.1" }, "peerDependencies": { "solid-js": "^1.9.0" } }, "sha512-THbiY1iQlieL6vdgJc4FIsLe7V8a57hod/Thm8zdKrTkWL88UPZjkBBfM+mVNGusd4OCnAN20tIFBhNnuT1Dew=="],
 
     "@solid-devtools/shared": ["@solid-devtools/shared@0.20.0", "", { "dependencies": { "@nothing-but/utils": "~0.17.0", "@solid-primitives/event-listener": "^2.4.1", "@solid-primitives/media": "^2.3.1", "@solid-primitives/refs": "^1.1.1", "@solid-primitives/rootless": "^1.5.1", "@solid-primitives/scheduled": "^1.5.1", "@solid-primitives/static-store": "^0.1.1", "@solid-primitives/styles": "^0.1.1", "@solid-primitives/utils": "^6.3.1" }, "peerDependencies": { "solid-js": "^1.9.0" } }, "sha512-o5TACmUOQsxpzpOKCjbQqGk8wL8PMi+frXG9WNu4Lh3PQVUB6hs95Kl/S8xc++zwcMguUKZJn8h5URUiMOca6Q=="],
+
+    "@solid-imager/application": ["@solid-imager/application@workspace:packages/application"],
 
     "@solid-imager/cli": ["@solid-imager/cli@workspace:apps/cli"],
 
