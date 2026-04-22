@@ -7,13 +7,24 @@ import {
 	vi,
 } from "vite-plus/test";
 import { services } from "~/application/registry";
-import { MediaService } from "~/application/services/media-service";
+import {
+	MediaService,
+	resetMediaService,
+} from "~/application/services/media-service";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
 let _capturedProcessor: ((job: any) => Promise<void>) | null = null;
+let mockTagRepo: any;
+let mockAuthorRepo: any;
+let mockProjectRepo: any;
+let mockCharRepo: any;
+let mockIpRepo: any;
+let mockSourceRepository: any;
+let mockJobRepo: any;
+let mockConfigService: any;
 
 // Mock Job Manager
 // Mock JobManager (Removed)
@@ -74,6 +85,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 	const targetSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12950";
 
 	beforeEach(async () => {
+		resetMediaService();
 		// Reset Captures
 		capturedJobs = [];
 		_capturedProcessor = null;
@@ -81,26 +93,26 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// Reset registry and register services
 		services.reset();
 		// Define Mocks
-		const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
-		const mockAuthorRepo = {
+		mockTagRepo = { addTagsToMedia: vi.fn() } as any;
+		mockAuthorRepo = {
 			addMediaBulk: vi.fn(),
 			create: vi.fn(),
 			addMedia: vi.fn(),
 		} as any;
-		const mockProjectRepo = {
+		mockProjectRepo = {
 			findByMediaId: vi.fn().mockResolvedValue([]),
 			addMediaBulk: vi.fn(),
 		} as any;
-		const mockCharRepo = {
+		mockCharRepo = {
 			findByMediaId: vi.fn().mockResolvedValue([]),
 			addToMediaBulk: vi.fn(),
 		} as any;
-		const mockIpRepo = {
+		mockIpRepo = {
 			findByMediaId: vi.fn().mockResolvedValue([]),
 			addMediaBulk: vi.fn(),
 		} as any;
 
-		const mockSourceRepository = {
+		mockSourceRepository = {
 			findById: vi.fn((id) => {
 				if (id === sourceSourceId) {
 					return {
@@ -122,7 +134,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 			}),
 		};
 
-		const mockJobRepo = {
+		mockJobRepo = {
 			create: vi.fn((job) => {
 				capturedJobs.push(job);
 				return Promise.resolve({ ...job, id: "job-id" });
@@ -145,7 +157,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerAiClient(mockAiClient as any);
 
 		// Mock ConfigService
-		const mockConfigService = {
+		mockConfigService = {
 			getConfig: vi.fn().mockReturnValue({
 				jobs: {
 					concurrency: 3,
@@ -184,25 +196,12 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerConfigService(mockConfigService as any);
 
 		// Instantiate and Register MediaProcessingService
-		const { MediaProcessingServiceImpl } = await import(
-			"~/application/services/media-processing-service"
-		);
-		const mediaProcessingService = new MediaProcessingServiceImpl(
-			mockSourceRepository as any,
-			MediaRepository, // This is the class/static mock wrapper? Let's check imports. It's imported as class/object.
-			mockTagRepo,
-			mockAuthorRepo,
-			mockCharRepo,
-			mockIpRepo,
-			mockProjectRepo,
-			mockJobRepo as any,
-			mockConfigService as any,
-		);
-		services.registerMediaProcessingService(mediaProcessingService);
+		services.registerMediaRepository(MediaRepository);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		resetMediaService();
 	});
 
 	it("should trigger generateThumbnail by using processMedia job type", async () => {
@@ -233,6 +232,22 @@ describe("Reproduction: Copy Media Job Type", () => {
 			upsertGenerationInfo: vi.fn(),
 		};
 		services.registerMediaRepository(mockMediaRepository as any);
+
+		const { MediaProcessingServiceImpl } = await import(
+			"~/application/services/media-processing-service"
+		);
+		const mediaProcessingService = new MediaProcessingServiceImpl(
+			mockSourceRepository as any,
+			mockMediaRepository as any,
+			mockTagRepo,
+			mockAuthorRepo,
+			mockCharRepo,
+			mockIpRepo,
+			mockProjectRepo,
+			mockJobRepo as any,
+			mockConfigService as any,
+		);
+		services.registerMediaProcessingService(mediaProcessingService);
 
 		// 2. Execute Copy
 		const result = await MediaService.copyMedia(sourceMedia.id, targetSourceId);

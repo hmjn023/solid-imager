@@ -137,6 +137,7 @@
 | `media-processing-job`  | `packages/application/src/services/media-processing-job.ts` | server / tauri の step 定義を共有 |
 | `config-service`        | `packages/application/src/services/config-service.ts`, `utils/config-merge.ts` | Tauri は共通 service、server は config merge utility を使用 |
 | `source-service`        | `packages/application/src/services/source-service.ts` | Safe DTO 変換と status/testConnection orchestration を共有。watcher/sync はTauri側に残す |
+| `backup-service`        | `packages/db/src/backup.ts` | dump/restore の DB ロジックを共有。zip / fs / command client は app 固有のまま |
 | TODO stub services      | `packages/application/src/services/stub-services.ts` | analytics / bulk-operation / data-migration / filter-preset / integration / workflow |
 
 ### 対応あり（Tauri: 11 services）
@@ -183,6 +184,23 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `thumbnail-service.ts`        | serverのみ  | なし                                |
 | `user-service.ts`             | serverのみ  | なし                                |
 | `workflow-service.ts`         | serverのみ  | なし                                |
+
+### backup の引数差分メモ
+
+今回の共通化スコープでは、backup の公開引数はまだ揃えない。
+
+- `createDump`
+  - server: `createDump(mediaSourceId: string, mode?: "json" | "zip")`
+  - tauri: `createDump(mediaSourceId: string, mode?: "json" | "zip")`
+  - 戻り値は異なる。server は stream/Blob 系、tauri は `MediaDumpItem[] | BinaryFilePayload`
+- `restoreSource`
+  - server: `restoreSource(mediaSourceId: string, items: any[])`
+  - tauri: `restoreSource(mediaSourceId: string, items: unknown[])`
+  - 現状は配列を直接渡す前提。将来 `{ media: [] }` のような包み方をそろえるなら別タスクにする
+- `importSourceZip`
+  - server: `importSourceZip(mediaSourceId: string, zipFilePath: string)`
+  - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
+  - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
 ## Jobs（対応度: ~35%）
 
