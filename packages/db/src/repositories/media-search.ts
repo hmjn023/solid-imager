@@ -1,3 +1,4 @@
+import { UnexpectedError } from "@solid-imager/core/domain/errors";
 import type {
 	Media,
 	MediaSearchRequest,
@@ -52,6 +53,17 @@ export type ExecuteMediaSearchOptions = {
 	mapMedia: (row: typeof medias.$inferSelect) => Media;
 	defaultLimit?: number;
 	defaultOffset?: number;
+};
+
+export type ExecuteMediaSearchInDirectoryOptions = {
+	client: DrizzleExecutor;
+	mediaSourceId: string;
+	directoryPath: string;
+	params: {
+		query?: string;
+		tags?: string[];
+	};
+	mapMedia: (row: typeof medias.$inferSelect) => Media;
 };
 
 function escapeLikePattern(value: string): string {
@@ -485,4 +497,54 @@ export async function executeMediaSearch({
 		media: rows.map((row) => mapMedia(row.media)),
 		total: Number(countRows[0]?.count ?? 0),
 	});
+}
+
+export async function executeMediaSearchInDirectory({
+	client,
+	mediaSourceId,
+	directoryPath,
+	params,
+	mapMedia,
+}: ExecuteMediaSearchInDirectoryOptions): Promise<Media[]> {
+	try {
+		const normalizedPath = directoryPath.replace(/[\\/]+$/, "");
+		const prefixPattern = `${escapeLikePattern(normalizedPath)}/`;
+		const conditions: (SQL | undefined)[] = [
+			eq(medias.mediaSourceId, mediaSourceId),
+			or(
+				eq(medias.filePath, normalizedPath),
+				like(medias.filePath, `${prefixPattern}%`),
+			),
+		];
+
+		if (params.query) {
+			const escapedQuery = escapeLikePattern(params.query);
+			conditions.push(
+				or(
+					like(medias.fileName, `%${escapedQuery}%`),
+					like(medias.description, `%${escapedQuery}%`),
+				),
+			);
+		}
+
+		if (params.tags && params.tags.length > 0) {
+			const mediaIdsWithTags = client
+				.select({ mediaId: mediaTags.mediaId })
+				.from(mediaTags)
+				.innerJoin(tags, eq(mediaTags.tagId, tags.id))
+				.where(inArray(tags.name, params.tags));
+			conditions.push(inArray(medias.id, mediaIdsWithTags));
+		}
+
+		const rows = await client
+			.select()
+			.from(medias)
+			.where(and(...conditions));
+		return rows.map((row) => mapMedia(row));
+	} catch (error) {
+		throw new UnexpectedError(
+			`Failed to search media in directory ${directoryPath} for source ID: ${mediaSourceId}`,
+			error,
+		);
+	}
 }
