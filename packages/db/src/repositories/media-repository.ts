@@ -711,7 +711,7 @@ export function createMediaRepository(
 						},
 					})
 					.returning();
-				return rows.map((row: { id: string; filePath: string }) => ({
+				return rows.map((row) => ({
 					id: row.id,
 					filePath: row.filePath,
 				}));
@@ -744,7 +744,7 @@ export function createMediaRepository(
 						),
 					)
 					.returning();
-				return rows.map((row: { id: string; filePath: string }) => ({
+				return rows.map((row) => ({
 					id: row.id,
 					filePath: row.filePath,
 				}));

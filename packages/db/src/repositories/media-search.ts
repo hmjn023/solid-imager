@@ -507,9 +507,14 @@ export async function executeMediaSearchInDirectory({
 	mapMedia,
 }: ExecuteMediaSearchInDirectoryOptions): Promise<Media[]> {
 	try {
+		const normalizedPath = directoryPath.replace(/[\\/]+$/, "");
+		const prefixPattern = `${escapeLikePattern(normalizedPath)}/`;
 		const conditions: (SQL | undefined)[] = [
 			eq(medias.mediaSourceId, mediaSourceId),
-			like(medias.filePath, `${escapeLikePattern(directoryPath)}%`),
+			or(
+				eq(medias.filePath, normalizedPath),
+				like(medias.filePath, `${prefixPattern}%`),
+			),
 		];
 
 		if (params.query) {
