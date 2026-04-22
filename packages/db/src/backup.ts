@@ -521,17 +521,6 @@ async function restoreRelations(
 					ipId,
 					source: "restored",
 				});
-
-				const mediaIpKey = `${mediaId}:${ipId}`;
-				if (!seenMediaIps.has(mediaIpKey)) {
-					mediaIpsData.push({
-						mediaId,
-						ipId,
-						confidence: character.confidence ?? null,
-						source: "character_link",
-					});
-					seenMediaIps.add(mediaIpKey);
-				}
 			}
 		}
 
