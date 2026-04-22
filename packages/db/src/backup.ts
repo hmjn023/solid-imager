@@ -71,6 +71,10 @@ type SimpleMasterDataNameColumn =
 	| typeof ips.name
 	| typeof characters.name;
 
+const MASTER_DATA_CHUNK_SIZE = 1000;
+const AUTHOR_UPDATE_CHUNK_SIZE = 500;
+const MEDIA_QUERY_CHUNK_SIZE = 1000;
+
 function isMediaSourcePath(pathValue: string): boolean {
 	return /^(?:[A-Za-z]:[\\/]|\/)/.test(pathValue);
 }
@@ -93,10 +97,14 @@ export function validateRelativePath(filePath: string): void {
 async function loadMediaDumpItems(
 	getExecutor: BackupExecutorProvider,
 	mediaSourceId: string,
+	offset = 0,
+	limit = MEDIA_QUERY_CHUNK_SIZE,
 ) {
 	return await getExecutor().query.medias.findMany({
 		where: eq(medias.mediaSourceId, mediaSourceId),
 		orderBy: (table, { asc }) => [asc(table.id)],
+		limit,
+		offset,
 		with: {
 			generationInfo: true,
 			urls: true,
@@ -109,6 +117,30 @@ async function loadMediaDumpItems(
 			projects: { with: { project: true } },
 		},
 	});
+}
+
+async function* iterateMediaDumpItems(
+	getExecutor: BackupExecutorProvider,
+	mediaSourceId: string,
+): AsyncGenerator<MediaDumpItem, void, void> {
+	let offset = 0;
+
+	while (true) {
+		const batch = await loadMediaDumpItems(getExecutor, mediaSourceId, offset);
+		if (batch.length === 0) {
+			break;
+		}
+
+		for (const item of transformMediaList(batch)) {
+			yield item;
+		}
+
+		if (batch.length < MEDIA_QUERY_CHUNK_SIZE) {
+			break;
+		}
+
+		offset += MEDIA_QUERY_CHUNK_SIZE;
+	}
 }
 
 function transformMediaList(mediaList: MediaDumpQueryRow[]): MediaDumpItem[] {
@@ -179,20 +211,28 @@ async function ensureMasterData(
 		return new Map();
 	}
 
-	await executor
-		.insert(table)
-		.values(nameList.map((name) => ({ name, ...defaults })))
-		.onConflictDoNothing();
+	const result = new Map<string, string>();
+	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
+		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
+		await executor
+			.insert(table)
+			.values(chunk.map((name) => ({ name, ...defaults })))
+			.onConflictDoNothing();
 
-	const rows = await executor
-		.select({
-			id: table.id,
-			name: nameColumn,
-		})
-		.from(table)
-		.where(inArray(nameColumn, nameList));
+		const rows = await executor
+			.select({
+				id: table.id,
+				name: nameColumn,
+			})
+			.from(table)
+			.where(inArray(nameColumn, chunk));
 
-	return new Map(rows.map((row) => [row.name, row.id]));
+		for (const row of rows) {
+			result.set(row.name, row.id);
+		}
+	}
+
+	return result;
 }
 
 async function ensureAuthors(
@@ -205,26 +245,29 @@ async function ensureAuthors(
 
 	const entries = Array.from(authorData.entries());
 	const nameList = entries.map(([name]) => name);
-	const existingRecords = await executor
-		.select({
-			id: authors.id,
-			name: authors.name,
-			accountId: authors.accountId,
-		})
-		.from(authors)
-		.where(inArray(authors.name, nameList));
-
 	const existingByName = new Map<
 		string,
 		{ id: string; accountId: string | null }
 	>();
-	for (const row of existingRecords) {
-		const current = existingByName.get(row.name);
-		if (!current || (!current.accountId && row.accountId)) {
-			existingByName.set(row.name, {
-				id: row.id,
-				accountId: row.accountId,
-			});
+	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
+		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
+		const existingRecords = await executor
+			.select({
+				id: authors.id,
+				name: authors.name,
+				accountId: authors.accountId,
+			})
+			.from(authors)
+			.where(inArray(authors.name, chunk));
+
+		for (const row of existingRecords) {
+			const current = existingByName.get(row.name);
+			if (!current || (!current.accountId && row.accountId)) {
+				existingByName.set(row.name, {
+					id: row.id,
+					accountId: row.accountId,
+				});
+			}
 		}
 	}
 
@@ -236,38 +279,39 @@ async function ensureAuthors(
 	});
 
 	if (updates.length > 0) {
-		const accountIdCase = sql.join(
-			updates.map(([name, data]) => sql`when ${name} then ${data.accountId ?? null}`),
-			sql.raw(" "),
-		);
-		await executor
-			.update(authors)
-			.set({
-				accountId: sql`case ${authors.name} ${accountIdCase} else ${authors.accountId} end`,
-				updatedAt: new Date(),
-			})
-			.where(
-				inArray(
-					authors.name,
-					updates.map(([name]) => name),
-				),
+		for (let index = 0; index < updates.length; index += AUTHOR_UPDATE_CHUNK_SIZE) {
+			const chunk = updates.slice(index, index + AUTHOR_UPDATE_CHUNK_SIZE);
+			const accountIdCase = sql.join(
+				chunk.map(([name, data]) => sql`when ${name} then ${data.accountId ?? null}`),
+				sql.raw(" "),
 			);
+			await executor
+				.update(authors)
+				.set({
+					accountId: sql`case ${authors.name} ${accountIdCase} else ${authors.accountId} end`,
+					updatedAt: new Date(),
+				})
+				.where(inArray(authors.name, chunk.map(([name]) => name)));
+		}
 	}
 
 	const missing = entries.filter(([name]) => !existingByName.has(name));
 	if (missing.length > 0) {
-		const created = await executor
-			.insert(authors)
-			.values(
-				missing.map(([name, data]) => ({
-					name,
-					accountId: data.accountId ?? null,
-				})),
-			)
-			.returning();
+		for (let index = 0; index < missing.length; index += MASTER_DATA_CHUNK_SIZE) {
+			const chunk = missing.slice(index, index + MASTER_DATA_CHUNK_SIZE);
+			const created = await executor
+				.insert(authors)
+				.values(
+					chunk.map(([name, data]) => ({
+						name,
+						accountId: data.accountId ?? null,
+					})),
+				)
+				.returning();
 
-		for (const row of created) {
-			existingByName.set(row.name, { id: row.id, accountId: null });
+			for (const row of created) {
+				existingByName.set(row.name, { id: row.id, accountId: null });
+			}
 		}
 	}
 
@@ -392,8 +436,7 @@ async function mapMediaPathsToIds(
 	items: MediaDumpItem[],
 ): Promise<Map<string, string>> {
 	const filePaths = items
-		.map((item) => item.filePath)
-		.filter((filePath): filePath is string => Boolean(filePath));
+		.flatMap((item) => (item.filePath ? [item.filePath] : []));
 	if (filePaths.length === 0) {
 		return new Map();
 	}
@@ -486,7 +529,7 @@ async function restoreRelations(
 		}
 
 		const mediaIpNames =
-			item.ips?.map((ip) => ip.name).filter((name): name is string => Boolean(name)) ?? [];
+			item.ips?.flatMap((ip) => (ip.name ? [ip.name] : [])) ?? [];
 
 		for (const character of item.characters ?? []) {
 			const characterId = character.name
@@ -720,8 +763,11 @@ export function createBackupService(deps: BackupServiceDeps) {
 			throw new Error("Media source not found");
 		}
 
-		const mediaList = await loadMediaDumpItems(deps.getExecutor, mediaSourceId);
-		return transformMediaList(mediaList);
+		const mediaList: MediaDumpItem[] = [];
+		for await (const media of iterateMediaDumpItems(deps.getExecutor, mediaSourceId)) {
+			mediaList.push(media);
+		}
+		return mediaList;
 	}
 
 	async function restoreSource(
@@ -798,6 +844,8 @@ export function createBackupService(deps: BackupServiceDeps) {
 	return {
 		findMediaSourceForFile,
 		createDumpItems,
+		iterateDumpItems: (mediaSourceId: string) =>
+			iterateMediaDumpItems(deps.getExecutor, mediaSourceId),
 		restoreSource,
 		filterValidItems: (items: unknown[], mediaSource: BackupSource) =>
 			filterValidItems(items, mediaSource, deps.pathExists, deps.resolvePath),

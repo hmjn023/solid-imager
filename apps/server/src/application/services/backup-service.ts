@@ -147,7 +147,6 @@ async function createZipDump(
 		throw new Error("Media Source not found");
 	}
 
-	const items = await backupService.createDumpItems(mediaSourceId);
 	const driver = getDriver(source);
 	const archiver = (await import("archiver")).default;
 	const { PassThrough, Readable } = await import("node:stream");
@@ -185,7 +184,7 @@ async function createZipDump(
 			jsonStream.write("[\n");
 
 			let isFirst = true;
-			for (const item of items) {
+			for await (const item of backupService.iterateDumpItems(mediaSourceId)) {
 				if (!isFirst) {
 					jsonStream.write(",\n");
 				}
@@ -193,6 +192,12 @@ async function createZipDump(
 				isFirst = false;
 
 				if (!item.filePath) {
+					continue;
+				}
+
+				try {
+					backupService.validateRelativePath(item.filePath);
+				} catch {
 					continue;
 				}
 
@@ -282,6 +287,11 @@ export const BackupService = {
 				}
 				const filePath = (item as { filePath?: string }).filePath;
 				if (!filePath) {
+					continue;
+				}
+				try {
+					backupService.validateRelativePath(filePath);
+				} catch {
 					continue;
 				}
 
