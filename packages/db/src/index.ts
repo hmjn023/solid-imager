@@ -1,4 +1,5 @@
 export * from "./migrations";
+export * from "./backup";
 export * from "./repositories/author-repository";
 export * from "./repositories/character-repository";
 export * from "./repositories/ip-repository";
