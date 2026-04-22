@@ -1,4 +1,14 @@
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import {
+	createMediaService,
+	type MediaPathAdapter,
+} from "@solid-imager/application/services/media-service";
+import type {
+	IMediaStorage,
+	MediaMetadata,
+	MediaSourceFile,
+	MediaStorageResult,
+} from "@solid-imager/core/interfaces/media-storage";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	type MediaDetails,
 	type MediaSearchRequest,
@@ -11,6 +21,7 @@ import type {
 	UploadResponse,
 } from "@solid-imager/core/domain/media/upload-schemas";
 import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import {
 	authors,
 	characters,
@@ -26,14 +37,19 @@ import {
 import { and, eq, inArray } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
+import {
+	basename,
+	dirname,
+	extname,
+	joinLocalPath,
+} from "../../path-utils";
 import { TauriAuthorRepository } from "../repositories/author-repository";
 import { TauriCharacterRepository } from "../repositories/character-repository";
 import { TauriIpRepository } from "../repositories/ip-repository";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriProjectRepository } from "../repositories/project-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
-import { TauriConfigService } from "./config-service";
+import { TauriTagRepository } from "../repositories/tag-repository";
 
 const EXTRACTED_TAG_SOURCE = "comfyui_workflow";
 const LOCAL_TAG_SOURCE = "local";
@@ -50,21 +66,10 @@ type ProbeMediaResult = {
 	codec?: string | null;
 };
 
-type LocalSource = {
-	id: string;
-	rootPath: string;
-};
-
 type ResolvedUploadTarget = {
 	relativePath: string;
 	fullPath: string;
 	conflict?: UploadResponse["conflict"];
-};
-
-type SupportedExtensions = {
-	image: string[];
-	video: string[];
-	audio: string[];
 };
 
 function normalizeRelativePath(path: string) {
@@ -78,7 +83,6 @@ function isSafeRelativeUploadPath(path: string) {
 	if (/^(?:[A-Za-z]:[\\/]|\/)/.test(path)) {
 		return false;
 	}
-
 	return path
 		.split(/[\\/]+/)
 		.every(
@@ -145,38 +149,6 @@ async function resolveUploadTargetPath(
 	);
 }
 
-function inferMediaType(
-	fileName: string,
-	supportedExtensions: SupportedExtensions,
-): "image" | "video" | "audio" {
-	const extension = extname(fileName).toLowerCase();
-	if (supportedExtensions.video.includes(extension)) {
-		return "video";
-	}
-	if (supportedExtensions.audio.includes(extension)) {
-		return "audio";
-	}
-	return "image";
-}
-
-async function getLocalSource(
-	sourceId: string,
-	tx?: TauriDbExecutor,
-): Promise<LocalSource> {
-	const source = await TauriSourceRepository.findById(sourceId, tx);
-	if (!source) {
-		throw new ResourceNotFoundError("Media Source", sourceId);
-	}
-	if (source.type !== "local" || !("path" in source.connectionInfo)) {
-		throw new Error("Tauri currently supports only local sources.");
-	}
-
-	return {
-		id: source.id,
-		rootPath: source.connectionInfo.path,
-	};
-}
-
 async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
 	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>(
 		"probe_media",
@@ -184,6 +156,15 @@ async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
 			mediaPath: fullPath,
 		},
 	);
+}
+
+async function ensureParentDirectory(fullPath: string) {
+	const parentDir = dirname(fullPath);
+	if (parentDir !== "/") {
+		await getTauriAppServices().fileSystem.mkdir(parentDir, {
+			recursive: true,
+		});
+	}
 }
 
 async function persistExtractedMetadata(
@@ -382,142 +363,257 @@ async function syncContextMetadata(
 	}
 }
 
-async function copyMediaRelations(
-	sourceMediaId: string,
-	targetMediaId: string,
-	tx: TauriDbExecutor,
-) {
-	const [
-		sourceAuthors,
-		sourceProjects,
-		sourceCharacters,
-		sourceIps,
-		sourceUrls,
-	] = await Promise.all([
-		TauriAuthorRepository.findByMediaId(sourceMediaId, tx),
-		TauriProjectRepository.findByMediaId(sourceMediaId),
-		TauriCharacterRepository.findByMediaId(sourceMediaId),
-		TauriIpRepository.findByMediaId(sourceMediaId),
-		TauriMediaRepository.getUrls(sourceMediaId, tx),
-	]);
+const tauriPathAdapter: MediaPathAdapter = {
+	extname,
+	basename,
+	join: joinLocalPath,
+	relative(basePath: string, fullPath: string) {
+		const normalizedBase = basePath.replace(/[\\/]+$/, "");
+		if (fullPath.startsWith(`${normalizedBase}/`)) {
+			return normalizeRelativePath(fullPath.slice(normalizedBase.length + 1));
+		}
+		if (fullPath.startsWith(`${normalizedBase}\\`)) {
+			return normalizeRelativePath(fullPath.slice(normalizedBase.length + 1));
+		}
+		return normalizeRelativePath(fullPath);
+	},
+};
 
-	await TauriAuthorRepository.addMediaBulk(
-		targetMediaId,
-		sourceAuthors.map((author) => author.id),
-		tx,
-	);
-
-	for (const project of sourceProjects) {
-		await TauriProjectRepository.addMedia(targetMediaId, project.id);
-	}
-
-	for (const character of sourceCharacters) {
-		await TauriCharacterRepository.addMedia(
-			targetMediaId,
-			character.id,
-			undefined,
-			"manual",
-			tx,
+const tauriMediaStorage: IMediaStorage = {
+	async saveFile(
+		basePath: string,
+		file: MediaSourceFile,
+		options: {
+			filename?: string;
+			overwrite?: boolean;
+			autoIncrement?: boolean;
+		},
+	): Promise<MediaStorageResult> {
+		const requestedPath = options.filename?.trim() || file.name;
+		if (!requestedPath) {
+			throw new Error("Filename is required");
+		}
+		const target = await resolveUploadTargetPath(
+			basePath,
+			requestedPath,
+			options.overwrite ?? false,
+			options.autoIncrement ?? false,
 		);
-	}
-
-	for (const ip of sourceIps) {
-		await TauriIpRepository.addMedia(
-			targetMediaId,
-			ip.id,
-			undefined,
-			"manual",
-			tx,
+		await ensureParentDirectory(target.fullPath);
+		const buffer = await file.arrayBuffer();
+		await getTauriAppServices().fileSystem.writeFile(
+			target.fullPath,
+			new Uint8Array(buffer),
 		);
-	}
 
-	if (sourceUrls.length > 0) {
-		await TauriMediaRepository.addUrls(
-			targetMediaId,
-			sourceUrls.map((item) => item.url),
-			tx,
-		);
-	}
+		try {
+			const metadata = await this.getFileMetadata(target.fullPath);
+			return {
+				filePath: target.relativePath,
+				fileName: basename(target.relativePath),
+				width: metadata.width,
+				height: metadata.height,
+				size: metadata.size,
+				createdAt: metadata.createdAt,
+				modifiedAt: metadata.modifiedAt,
+				conflict: target.conflict,
+			};
+		} catch (error) {
+			await getTauriAppServices().fileSystem.rm(target.fullPath, {
+				force: true,
+			});
+			throw error;
+		}
+	},
 
-	const sourceTags = await TauriMediaRepository.getTags(sourceMediaId, tx);
-	if (sourceTags.length > 0) {
-		await tx
-			.insert(mediaTags)
-			.values(
-				sourceTags.map((tag) => ({
-					mediaId: targetMediaId,
-					tagId: tag.id,
-					tagType: tag.type,
-					confidence: tag.confidence ?? null,
-					source: tag.source,
-				})),
-			)
-			.onConflictDoNothing();
-	}
-
-	const sourceGenerationInfo = await TauriMediaRepository.getGenerationInfo(
-		sourceMediaId,
-		tx,
-	);
-	if (sourceGenerationInfo) {
-		await tx.insert(mediaGenerationInfo).values({
-			mediaId: targetMediaId,
-			metadata: sourceGenerationInfo.metadata,
-			prompt: sourceGenerationInfo.prompt,
-			negativePrompt: sourceGenerationInfo.negativePrompt,
-			workflow: sourceGenerationInfo.workflow,
-			loras: sourceGenerationInfo.loras,
-			vae: sourceGenerationInfo.vae,
-			hypernetworks: sourceGenerationInfo.hypernetworks,
-			embeddings: sourceGenerationInfo.embeddings,
-			aiGenerated: sourceGenerationInfo.aiGenerated,
-			modelName: sourceGenerationInfo.modelName,
-			seed: sourceGenerationInfo.seed,
-			cfgScale: sourceGenerationInfo.cfgScale,
-			steps: sourceGenerationInfo.steps,
+	async deleteFile(basePath: string, filePath: string): Promise<void> {
+		await getTauriAppServices().fileSystem.rm(joinLocalPath(basePath, filePath), {
+			force: true,
 		});
-	}
-}
+	},
 
-async function getVerifiedDetails(
-	sourceId: string,
-	mediaId: string,
-	tx?: TauriDbExecutor,
-): Promise<MediaDetails> {
-	const details = await TauriMediaRepository.getDetails(mediaId, tx);
-	if (!details || details.mediaSourceId !== sourceId) {
-		throw new ResourceNotFoundError("Media", mediaId);
-	}
-	return details;
+	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
+		return await getTauriAppServices().fileSystem.readFile(
+			joinLocalPath(basePath, filePath),
+		);
+	},
+
+	async scanDirectory(basePath: string): Promise<string[]> {
+		const files: string[] = [];
+		const queue = [basePath];
+		while (queue.length > 0) {
+			const current = queue.shift();
+			if (!current) {
+				continue;
+			}
+			for (const entry of await getTauriAppServices().fileSystem.readdir(
+				current,
+			)) {
+				const fullPath = joinLocalPath(current, entry);
+				const stat = await getTauriAppServices().fileSystem.stat(fullPath);
+				if (stat.isDirectory) {
+					queue.push(fullPath);
+				} else {
+					files.push(fullPath);
+				}
+			}
+		}
+		return files;
+	},
+
+	async getFileMetadata(fullPath: string): Promise<MediaMetadata> {
+		const probe = await probeMedia(fullPath);
+		return {
+			width: probe.width,
+			height: probe.height,
+			size: probe.size,
+			createdAt: new Date(probe.createdAt),
+			modifiedAt: new Date(probe.modifiedAt),
+		};
+	},
+
+	async copyFile(
+		sourcePath: string,
+		targetBasePath: string,
+		options: {
+			filename?: string;
+			overwrite?: boolean;
+			autoIncrement?: boolean;
+		},
+	): Promise<MediaStorageResult> {
+		const target = await resolveUploadTargetPath(
+			targetBasePath,
+			options.filename || basename(sourcePath),
+			options.overwrite ?? false,
+			options.autoIncrement ?? false,
+		);
+		await ensureParentDirectory(target.fullPath);
+		await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
+
+		try {
+			const metadata = await this.getFileMetadata(target.fullPath);
+			return {
+				filePath: target.relativePath,
+				fileName: basename(target.relativePath),
+				width: metadata.width,
+				height: metadata.height,
+				size: metadata.size,
+				createdAt: metadata.createdAt,
+				modifiedAt: metadata.modifiedAt,
+				conflict: target.conflict,
+			};
+		} catch (error) {
+			await getTauriAppServices().fileSystem.rm(target.fullPath, {
+				force: true,
+			});
+			throw error;
+		}
+	},
+};
+
+const characterRepository: CharacterRepository = {
+	...TauriCharacterRepository,
+	addToMedia: TauriCharacterRepository.addMedia,
+	removeFromMedia: TauriCharacterRepository.removeMedia,
+	async addToMediaBulk(
+		mediaId: string,
+		charactersToAdd: { id: string; confidence?: number }[],
+		source = "manual",
+		tx?: Transaction,
+	) {
+		for (const character of charactersToAdd) {
+			await TauriCharacterRepository.addMedia(
+				mediaId,
+				character.id,
+				character.confidence,
+				source,
+				tx as TauriDbExecutor | undefined,
+			);
+		}
+	},
+};
+
+const mediaService = createMediaService({
+	mediaRepository: TauriMediaRepository,
+	sourceRepository: TauriSourceRepository,
+	storageService: tauriMediaStorage,
+	tagRepository: TauriTagRepository,
+	imageProcessor: {
+		async generateThumbnail(mediaPath, outputPath, size, quality) {
+			await getTauriAppServices().imageProcessor.generateThumbnail(
+				mediaPath,
+				outputPath,
+				size,
+				quality,
+			);
+		},
+		async extractMetadata(mediaPath) {
+			return await getTauriAppServices().imageProcessor.extractMetadata(
+				mediaPath,
+			);
+		},
+		async getDimensions(mediaPath) {
+			return await getTauriAppServices().imageProcessor.getDimensions(mediaPath);
+		},
+	},
+	authorRepository: TauriAuthorRepository,
+	projectRepository: TauriProjectRepository,
+	characterRepository,
+	ipRepository: TauriIpRepository,
+	transactionManager: {
+		async transaction<T>(
+			callback: (tx: Transaction) => Promise<T>,
+		): Promise<T> {
+			return await getTauriAppServices().db.transaction(callback);
+		},
+	},
+	contextMetadataUpdater: async (mediaId, context, tx) => {
+		await syncContextMetadata(
+			mediaId,
+			updateMediaRequestSchema.parse(context),
+			tx as TauriDbExecutor,
+		);
+	},
+	pathAdapter: tauriPathAdapter,
+	afterMediaRegistered: async ({ media, sourcePath, filePath }) => {
+		await getTauriAppServices().db.transaction(async (tx) => {
+			await persistExtractedMetadata(
+				media.id,
+				joinLocalPath(sourcePath, filePath),
+				tx,
+			);
+		});
+	},
+});
+
+function bytesToMediaSourceFile(
+	bytes: number[],
+	filename: string,
+): MediaSourceFile {
+	return {
+		name: filename,
+		async arrayBuffer() {
+			return new Uint8Array(bytes);
+		},
+	};
 }
 
 export const TauriMediaService = {
-	async search(
+	async searchMedia(
 		sourceId: string | undefined | null,
 		params: MediaSearchRequest,
 	): Promise<MediaSearchResponse> {
-		return sourceId
-			? await TauriMediaRepository.search(sourceId, params)
-			: await TauriMediaRepository.globalSearch(params);
+		return await mediaService.searchMedia(sourceId, params);
 	},
 
-	async getDetails(sourceId: string, mediaId: string): Promise<MediaDetails> {
-		const details = await getVerifiedDetails(sourceId, mediaId);
-		if (details.generationInfo) {
-			return details;
-		}
-
-		const source = await getLocalSource(sourceId);
-		const fullPath = joinLocalPath(source.rootPath, details.filePath);
-
-		await getTauriAppServices().db.transaction(async (tx) => {
-			await persistExtractedMetadata(mediaId, fullPath, tx);
-		});
-
-		return await getVerifiedDetails(sourceId, mediaId);
+	async getMediaDetails(
+		sourceId: string,
+		mediaId: string,
+	): Promise<MediaDetails> {
+		return await mediaService.getMediaDetails(sourceId, mediaId);
 	},
 
-	async upload(
+	async uploadMedia(
 		sourceId: string,
 		bytes: number[],
 		options: {
@@ -529,225 +625,51 @@ export const TauriMediaService = {
 		},
 	): Promise<UploadResponse> {
 		const uploadRequest = uploadMediaRequestSchema.parse(options);
-		const source = await getLocalSource(sourceId);
-		const config = await TauriConfigService.getConfig();
-		const requestedPath = uploadRequest.filename?.trim();
-		if (!requestedPath) {
+		const filename = uploadRequest.filename?.trim();
+		if (!filename) {
 			throw new Error("Filename is required");
 		}
-
-		const target = await resolveUploadTargetPath(
-			source.rootPath,
-			requestedPath,
-			uploadRequest.overwrite ?? false,
-			uploadRequest.autoIncrement ?? false,
+		return await mediaService.uploadMedia(
+			sourceId,
+			bytesToMediaSourceFile(bytes, filename),
+			uploadRequest,
 		);
-
-		const parentDir = dirname(target.fullPath);
-		if (parentDir !== "/") {
-			await getTauriAppServices().fileSystem.mkdir(parentDir, {
-				recursive: true,
-			});
-		}
-
-		await getTauriAppServices().fileSystem.writeFile(
-			target.fullPath,
-			new Uint8Array(bytes),
-		);
-
-		try {
-			const probe = await probeMedia(target.fullPath);
-			const media = await getTauriAppServices().db.transaction(async (tx) => {
-				const created = await TauriMediaRepository.upsert(
-					{
-						mediaSourceId: source.id,
-						filePath: target.relativePath,
-						fileName: basename(target.relativePath),
-						mediaType: inferMediaType(
-							target.relativePath,
-							config.media.supportedExtensions,
-						),
-						width: probe.width,
-						height: probe.height,
-						fileSize: probe.size,
-						description: uploadRequest.description ?? null,
-						createdAt: new Date(probe.createdAt),
-						modifiedAt: new Date(probe.modifiedAt),
-					},
-					tx,
-				);
-
-				if (uploadRequest.sourceUrl) {
-					await TauriMediaRepository.addUrls(
-						created.id,
-						[uploadRequest.sourceUrl],
-						tx,
-					);
-				}
-
-				await persistExtractedMetadata(created.id, target.fullPath, tx);
-				return created;
-			});
-
-			return {
-				success: Boolean(media),
-				filePath: target.relativePath,
-				conflict: target.conflict,
-			};
-		} catch (error) {
-			await getTauriAppServices().fileSystem.rm(target.fullPath, {
-				force: true,
-			});
-			throw error;
-		}
 	},
 
-	async update(
+	async updateMedia(
 		sourceId: string,
 		mediaId: string,
 		updates: UpdateMediaRequest,
 	): Promise<MediaDetails> {
-		const parsedUpdates = updateMediaRequestSchema.parse(updates);
-
-		return await getTauriAppServices().db.transaction(async (tx) => {
-			const existing = await TauriMediaRepository.findById(mediaId, tx);
-			if (!existing || existing.mediaSourceId !== sourceId) {
-				throw new ResourceNotFoundError("Media", mediaId);
-			}
-
-			await TauriMediaRepository.update(mediaId, parsedUpdates, tx);
-			await syncContextMetadata(mediaId, parsedUpdates, tx);
-
-			return await getVerifiedDetails(sourceId, mediaId, tx);
-		});
+		await mediaService.updateMedia(sourceId, mediaId, updates);
+		return await mediaService.getMediaDetails(sourceId, mediaId);
 	},
 
-	async delete(sourceId: string, mediaId: string): Promise<{ success: true }> {
-		const source = await getLocalSource(sourceId);
-		const media = await getVerifiedDetails(sourceId, mediaId);
-		const fullPath = joinLocalPath(source.rootPath, media.filePath);
-
-		await getTauriAppServices().fileSystem.rm(fullPath, { force: true });
-
-		await getTauriAppServices().db.transaction(async (tx) => {
-			await TauriMediaRepository.delete(mediaId, tx);
-		});
-
+	async deleteMedia(
+		sourceId: string,
+		mediaId: string,
+	): Promise<{ success: true }> {
+		await mediaService.deleteMedia(sourceId, mediaId);
 		return { success: true };
 	},
 
-	async copy(
+	async copyMedia(
+		_mediaSourceId: string,
 		mediaId: string,
 		targetSourceId: string,
 	): Promise<{ success: true }> {
-		return await getTauriAppServices().db.transaction(async (tx) => {
-			const sourceMedia = await TauriMediaRepository.findById(mediaId, tx);
-			if (!sourceMedia) {
-				throw new ResourceNotFoundError("Media", mediaId);
-			}
-
-			const source = await getLocalSource(sourceMedia.mediaSourceId, tx);
-			const targetSource = await getLocalSource(targetSourceId, tx);
-			const config = await TauriConfigService.getConfig();
-			const sourcePath = joinLocalPath(source.rootPath, sourceMedia.filePath);
-			const target = await resolveUploadTargetPath(
-				targetSource.rootPath,
-				sourceMedia.fileName,
-				false,
-				true,
-			);
-
-			const parentDir = dirname(target.fullPath);
-			if (parentDir !== "/") {
-				await getTauriAppServices().fileSystem.mkdir(parentDir, {
-					recursive: true,
-				});
-			}
-
-			await getTauriAppServices().fileSystem.copyFile(
-				sourcePath,
-				target.fullPath,
-			);
-			const probe = await probeMedia(target.fullPath);
-			const copied = await TauriMediaRepository.create(
-				{
-					mediaSourceId: targetSource.id,
-					filePath: target.relativePath,
-					fileName: basename(target.relativePath),
-					mediaType: inferMediaType(
-						target.relativePath,
-						config.media.supportedExtensions,
-					),
-					width: probe.width,
-					height: probe.height,
-					fileSize: probe.size,
-					description: sourceMedia.description,
-					createdAt: sourceMedia.createdAt,
-					modifiedAt: sourceMedia.modifiedAt,
-				},
-				tx,
-			);
-
-			await copyMediaRelations(sourceMedia.id, copied.id, tx);
-			return { success: true };
+		await getTauriAppServices().db.transaction(async (tx) => {
+			await mediaService.copyMedia(mediaId, targetSourceId, tx);
 		});
+		return { success: true };
 	},
 
-	async move(
+	async moveMedia(
+		_mediaSourceId: string,
 		mediaId: string,
 		targetSourceId: string,
 	): Promise<{ success: true }> {
-		return await getTauriAppServices().db.transaction(async (tx) => {
-			const sourceMedia = await TauriMediaRepository.findById(mediaId, tx);
-			if (!sourceMedia) {
-				throw new ResourceNotFoundError("Media", mediaId);
-			}
-
-			const source = await getLocalSource(sourceMedia.mediaSourceId, tx);
-			const targetSource = await getLocalSource(targetSourceId, tx);
-			const config = await TauriConfigService.getConfig();
-			const sourcePath = joinLocalPath(source.rootPath, sourceMedia.filePath);
-			const target = await resolveUploadTargetPath(
-				targetSource.rootPath,
-				sourceMedia.fileName,
-				false,
-				true,
-			);
-
-			const parentDir = dirname(target.fullPath);
-			if (parentDir !== "/") {
-				await getTauriAppServices().fileSystem.mkdir(parentDir, {
-					recursive: true,
-				});
-			}
-
-			await getTauriAppServices().fileSystem.rename(
-				sourcePath,
-				target.fullPath,
-			);
-			const probe = await probeMedia(target.fullPath);
-			const moved = await TauriMediaRepository.create(
-				{
-					mediaSourceId: targetSource.id,
-					filePath: target.relativePath,
-					fileName: basename(target.relativePath),
-					mediaType: inferMediaType(
-						target.relativePath,
-						config.media.supportedExtensions,
-					),
-					width: probe.width,
-					height: probe.height,
-					fileSize: probe.size,
-					description: sourceMedia.description,
-					createdAt: sourceMedia.createdAt,
-					modifiedAt: sourceMedia.modifiedAt,
-				},
-				tx,
-			);
-
-			await copyMediaRelations(sourceMedia.id, moved.id, tx);
-			await TauriMediaRepository.delete(sourceMedia.id, tx);
-			return { success: true };
-		});
+		await mediaService.moveMedia(mediaId, targetSourceId);
+		return { success: true };
 	},
 };

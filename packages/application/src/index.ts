@@ -5,6 +5,7 @@ export * from "./services/character-service";
 export * from "./services/collection-service";
 export * from "./services/config-service";
 export * from "./services/ip-service";
+export * from "./services/media-service";
 export * from "./services/media-processing-job";
 export * from "./services/preset-service";
 export * from "./services/project-service";
