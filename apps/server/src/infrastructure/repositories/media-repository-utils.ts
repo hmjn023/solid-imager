@@ -24,9 +24,6 @@ import {
 	tags,
 } from "~/infrastructure/db/schema";
 
-/**
- * Escapes special characters ...
- */
 function escapeLikeString(str: string): string {
 	return str.replace(/[%_]/g, "\\$&");
 }
@@ -45,9 +42,6 @@ type SearchOptions = {
 	offset?: number;
 };
 
-/**
- * Builds the WHERE clause for media search.
- */
 function buildWhereClause(
 	mediaSourceId: string | undefined,
 	options: SearchOptions,
@@ -59,7 +53,6 @@ function buildWhereClause(
 		conditions.push(eq(medias.mediaSourceId, mediaSourceId));
 	}
 
-	// Filename/description search with escape
 	if (options.query) {
 		const escapedQuery = escapeLikeString(options.query);
 		conditions.push(
@@ -70,10 +63,8 @@ function buildWhereClause(
 		);
 	}
 
-	// Include tags filter
 	if (options.tags && options.tags.length > 0) {
 		if (options.tagMode === "and") {
-			// AND mode: media must have ALL specified tags
 			const mediaIdsWithAllTags = client
 				.select({ mediaId: mediaTags.mediaId })
 				.from(mediaTags)
@@ -84,7 +75,6 @@ function buildWhereClause(
 
 			conditions.push(inArray(medias.id, mediaIdsWithAllTags));
 		} else {
-			// OR mode: media must have ANY of the specified tags
 			const mediaIdsWithAnyTags = client
 				.select({ mediaId: mediaTags.mediaId })
 				.from(mediaTags)
@@ -95,7 +85,6 @@ function buildWhereClause(
 		}
 	}
 
-	// Exclude tags filter
 	if (options.excludeTags && options.excludeTags.length > 0) {
 		const excludedMediaIds = client
 			.select({ mediaId: mediaTags.mediaId })
@@ -106,7 +95,6 @@ function buildWhereClause(
 		conditions.push(notInArray(medias.id, excludedMediaIds));
 	}
 
-	// Project filter
 	if (options.projects && options.projects.length > 0) {
 		const projectMediaIds = client
 			.select({ mediaId: mediaProjects.mediaId })
@@ -115,7 +103,6 @@ function buildWhereClause(
 		conditions.push(inArray(medias.id, projectMediaIds));
 	}
 
-	// IP filter
 	if (options.ips && options.ips.length > 0) {
 		const ipMediaIds = client
 			.select({ mediaId: mediaIps.mediaId })
@@ -124,7 +111,6 @@ function buildWhereClause(
 		conditions.push(inArray(medias.id, ipMediaIds));
 	}
 
-	// Character filter
 	if (options.characters && options.characters.length > 0) {
 		const characterMediaIds = client
 			.select({ mediaId: mediaCharacters.mediaId })
@@ -136,9 +122,6 @@ function buildWhereClause(
 	return and(...conditions);
 }
 
-/**
- * Builds the ORDER BY clause for media search.
- */
 function buildOrderByClause(
 	sort?: "date" | "name" | "size",
 	order: "asc" | "desc" = "desc",
@@ -161,19 +144,9 @@ function buildOrderByClause(
 			order === "asc" ? asc(medias.id) : desc(medias.id),
 		];
 	}
-	// Default sort
 	return [desc(medias.createdAt), desc(medias.id)];
 }
 
-/**
- * Searches for media within a specific source based on a query and/or tags.
- * Uses SQL-based pagination and filtering for performance.
- *
- * @param {string} mediaSourceId - The ID of the media source to search within.
- * @param {object} searchOptions - Options for the search.
- * @returns {Promise<{ media: InferSelectModel<typeof medias>[]; total: number }>} A promise that resolves with matching media items and total count.
- * @throws {UnexpectedError} If a database error occurs during the search.
- */
 export const searchMedia = async (
 	mediaSourceId: string,
 	searchOptions: SearchOptions,
@@ -186,7 +159,6 @@ export const searchMedia = async (
 			searchOptions.order,
 		);
 
-		// Optimize: Combine count and data retrieval into a single query using window functions
 		const query = client
 			.select({
 				...getTableColumns(medias),
@@ -196,7 +168,6 @@ export const searchMedia = async (
 			.where(whereClause)
 			.orderBy(...orderByClause);
 
-		// Apply pagination if limit is provided
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {
@@ -211,17 +182,12 @@ export const searchMedia = async (
 
 		const mediaList = results.map(
 			(r: InferSelectModel<typeof medias> & { totalCount: number }) => {
-				// Extract original media columns by removing totalCount
 				const { totalCount, ...mediaData } = r;
 				return mediaData;
 			},
 		);
 
 		let total = results.length > 0 ? results[0].totalCount : 0;
-
-		// Fallback: If result is empty but offset > 0, we don't know the total.
-		// We must run a count query to get the total.
-		// If offset is 0 and result is empty, total is definitely 0.
 		if (mediaList.length === 0 && (searchOptions.offset || 0) > 0) {
 			const countResult = await client
 				.select({ total: count() })
@@ -239,16 +205,6 @@ export const searchMedia = async (
 	}
 };
 
-/**
- * Searches for media within a specific directory of a given source based on a query and/or tags.
- * @param {string} mediaSourceId - The ID of the media source to search within.
- * @param {string} directoryPath - The path to the directory to search.
- * @param {object} searchOptions - Options for the search.
- * @param {string} [searchOptions.query] - A search query string to match against filenames and descriptions.
- * @param {string[]} [searchOptions.tags] - An array of tag names to filter media by.
- * @returns {Promise<InferSelectModel<typeof medias>[]>} A promise that resolves with an array of matching media items within the directory.
- * @throws {UnexpectedError} If a database error occurs during the search.
- */
 export const searchMediaInDirectory = async (
 	mediaSourceId: string,
 	directoryPath: string,
@@ -292,13 +248,6 @@ export const searchMediaInDirectory = async (
 	}
 };
 
-/**
- * Performs a global search for media across all sources based on search options.
- * @param {SearchOptions} searchOptions - Options for the search.
- * @param {TransactionClient} client - The database client to use.
- * @returns {Promise<{ media: InferSelectModel<typeof medias>[]; total: number }>} A promise that resolves with matching media items from all sources.
- * @throws {UnexpectedError} If a database error occurs during the search.
- */
 export const globalSearchMedia = async (
 	searchOptions: SearchOptions,
 	client: TransactionClient = db,
@@ -310,20 +259,17 @@ export const globalSearchMedia = async (
 			searchOptions.order,
 		);
 
-		// Execute Count Query
 		const [{ total }] = await client
 			.select({ total: count() })
 			.from(medias)
 			.where(whereClause);
 
-		// Execute Main Query
 		const query = client
 			.select()
 			.from(medias)
 			.where(whereClause)
 			.orderBy(...orderByClause);
 
-		// Apply pagination if limit is provided
 		let pagedQuery: any = query;
 
 		if (searchOptions.limit !== undefined) {

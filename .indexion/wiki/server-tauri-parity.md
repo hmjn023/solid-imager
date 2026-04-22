@@ -85,6 +85,7 @@
 | `preset-repository.ts`    | `packages/db/src/repositories/preset-repository.ts`      | 同上                                                 | 同上                                         |
 | `project-repository.ts`   | `packages/db/src/repositories/project-repository.ts`     | 同上                                                 | 同上                                         |
 | `source-repository.ts`    | `packages/db/src/repositories/source-repository.ts`      | `DrizzleSourceRepository`（factory 委譲クラス）     | `TauriSourceRepository`（`orderByName` option付き） |
+| `media-repository.ts`     | `packages/db/src/repositories/media-repository.ts`       | `MediaRepository`（thin wrapper）                   | `TauriMediaRepository`（thin wrapper + bulk helpers） |
 | `tag-repository.ts`       | `packages/db/src/repositories/tag-repository.ts`         | 同上                                                 | 同上                                         |
 | `media-search` (util)     | `packages/db/src/repositories/media-search.ts`           | 旧 `media-repository-utils.ts` 相当の検索ロジック   | 同上                                         |
 
@@ -92,11 +93,11 @@
 >
 > Factory の共通オプション: `orderByName`（`findAll` を `asc(name)` でソート）は author / character / ip / preset / project / source / tag で利用可。Tauri wrapper 側で有効化して旧実装の挙動を維持している。
 
-### 未共通化（対応あり）
+### 共通化済み（対応あり）
 
 | リポジトリ            | 備考                                                                          |
 | --------------------- | ----------------------------------------------------------------------------- |
-| `media-repository.ts` | server: `DrizzleMediaRepository`（class）↔ tauri: object リテラル。共通化未着手（検索・メディアCRUD・関連テーブル操作が多く、factory化余地あり） |
+| `media-repository.ts` | `packages/db/src/repositories/media-repository.ts` に共通化。server / tauri は `createMediaRepository(getExecutor)` の薄い wrapper のみを保持 |
 
 ### 片側のみ
 

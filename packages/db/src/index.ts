@@ -2,6 +2,7 @@ export * from "./migrations";
 export * from "./repositories/author-repository";
 export * from "./repositories/character-repository";
 export * from "./repositories/ip-repository";
+export * from "./repositories/media-repository";
 export * from "./repositories/media-search";
 export * from "./repositories/preset-repository";
 export * from "./repositories/project-repository";
