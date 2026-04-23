@@ -268,7 +268,7 @@ const localProcedureHandlers = {
 				params: z.unknown(),
 			})
 			.parse(input);
-		return await TauriMediaService.search(
+		return await TauriMediaService.searchMedia(
 			sourceId,
 			mediaSearchRequestSchema.parse(params),
 		);
@@ -280,7 +280,7 @@ const localProcedureHandlers = {
 				mediaId: uuidSchema,
 			})
 			.parse(input);
-		return await TauriMediaService.getDetails(sourceId, mediaId);
+		return await TauriMediaService.getMediaDetails(sourceId, mediaId);
 	},
 	"media.update": async (input: unknown) => {
 		const { sourceId, mediaId, data } = z
@@ -290,7 +290,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriMediaService.update(
+		return await TauriMediaService.updateMedia(
 			sourceId,
 			mediaId,
 			updateMediaRequestSchema.parse(data),
@@ -323,7 +323,7 @@ const localProcedureHandlers = {
 			overwrite,
 			autoIncrement,
 		});
-		return await TauriMediaService.upload(sourceId, bytes, {
+		return await TauriMediaService.uploadMedia(sourceId, bytes, {
 			filename: parsedRequest.filename,
 			description: parsedRequest.description,
 			sourceUrl: parsedRequest.sourceUrl,
@@ -338,7 +338,7 @@ const localProcedureHandlers = {
 				mediaId: uuidSchema,
 			})
 			.parse(input);
-		return await TauriMediaService.delete(sourceId, mediaId);
+		return await TauriMediaService.deleteMedia(sourceId, mediaId);
 	},
 	"media.copy": async (input: unknown) => {
 		const { mediaId, targetSourceId } = z
@@ -347,7 +347,7 @@ const localProcedureHandlers = {
 				targetSourceId: uuidSchema,
 			})
 			.parse(input);
-		return await TauriMediaService.copy(mediaId, targetSourceId);
+		return await TauriMediaService.copyMedia("", mediaId, targetSourceId);
 	},
 	"media.move": async (input: unknown) => {
 		const { mediaId, targetSourceId } = z
@@ -356,7 +356,7 @@ const localProcedureHandlers = {
 				targetSourceId: uuidSchema,
 			})
 			.parse(input);
-		return await TauriMediaService.move(mediaId, targetSourceId);
+		return await TauriMediaService.moveMedia("", mediaId, targetSourceId);
 	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {

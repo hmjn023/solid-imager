@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-22（PR #267 レビュー対応を反映）
+最終更新: 2026-04-23（media-service 共通化を反映）
 
 ## Routes（対応度: 90%）
 
@@ -110,10 +110,10 @@
 | `app-config-repository.ts`  | tauriのみ                                |
 | `tauri-job-repository.ts`   | tauriのみ                                |
 
-## Services（対応度: ~70%）
+## Services（対応度: ~75%）
 
 `packages/application` を追加し、repository 依存だけで成立する application service と、platform 非依存の utility / job payload 定義を共通化した。
-共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`）へ揃える。server / tauri 側は既存の外部 API 名を維持しつつ、内部で `@solid-imager/application/services/*` の factory を利用する。
+共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`, `searchMedia`, `uploadMedia`）へ揃える。server / tauri 側は外部 wire API を維持しつつ、内部で `@solid-imager/application/services/*` の factory を利用する。
 
 ### 完全共通化済み（service本体）
 
@@ -129,6 +129,7 @@
 | `collection-service.ts` | `packages/application/src/services/collection-service.ts` | serverのみ wrapper                             | ―                                                    |
 | `user-service.ts`      | `packages/application/src/services/user-service.ts`   | serverのみ wrapper                              | ―                                                    |
 | `search-service.ts`    | `packages/application/src/services/search-service.ts` | server proxy を維持                             | ―                                                    |
+| `media-service.ts`     | `packages/application/src/services/media-service.ts`  | 旧 `MediaServiceImpl` constructor と proxy を維持 | `TauriMediaService` も server 側メソッド名へ寄せる |
 
 ### 共通化済み（utility / port / payload）
 
@@ -151,7 +152,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `character-service.ts` | `getAllCharacters`, `createCharacter`        | `list`, `create`                                        |
 | `ip-service.ts`        | `getAllIps`, `createIp`                      | `list`, `create`                                        |
 | `project-service.ts`   | `getAllProjects`, `getProjectsForMedia`      | `list`, `listForMedia`, `addToMedia`, `removeFromMedia` |
-| `media-service.ts`     | ―                                            | ―                                                       |
+| `media-service.ts`     | `searchMedia`, `getMediaDetails`, `uploadMedia` | `searchMedia`, `getMediaDetails`, `uploadMedia`         |
 | `preset-service.ts`    | ―                                            | ―                                                       |
 | `source-service.ts`    | server: `media-source-service.ts`            | `TauriSourceService`（local-api/services/）          |
 | `config-service.ts`  | server: `server-config-service.ts`         | `TauriConfigService`（local-api/services/）       |
@@ -220,18 +221,19 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | ------ | -------------------------------- | ----------------------------------------------------- | ---------- |
 | 高     | Hooks                            | `deepEqual` をcoreに移すだけで即共通化可能            | ✅ 完了    |
 | 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           | ✅ 完了    |
-| 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 主要CRUD・source/config/job/stub共通化済み |
-| 中     | Repositories                     | `packages/db` に factory 集約、server/tauri は executor 注入の wrapper のみ | ✅ media以外完了 |
+| 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 主要CRUD・media・source/config/job/stub共通化済み |
+| 中     | Repositories                     | `packages/db` に factory 集約、server/tauri は executor 注入の wrapper のみ | ✅ 完了 |
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
 
-## 前回からの主な変更点（2026-04-22更新）
+## 前回からの主な変更点（2026-04-23更新）
 
+- **Services**: `media-service.ts` を `packages/application/src/services/media-service.ts` に共通化。server 側は既存 constructor/proxy 互換 wrapper、Tauri 側は `IMediaStorage` / `IImageProcessor` / transaction / metadata hook を注入する adapter へ変更。Tauri local procedure の wire 名は維持し、service method 名は server 側 (`searchMedia`, `getMediaDetails`, `uploadMedia` など) へ寄せた
 - **Repositories（PR #267 レビュー対応）**: author factory に `orderByName` オプションを追加し Tauri wrapper で有効化（旧 `asc(name)` ソートを復元）。update に `isUniqueViolation → ResourceConflictError` を追加し他 repo と整合。tag `addTagsToMedia` で (name, type) のデデュープと、挿入後 lookup 失敗時の log+skip（flatMap）に変更
 - **Repositories**: `packages/db` を追加し、author / character / ip / preset / project / source / tag の 7 repository と media-search ユーティリティを factory 形式で共通化。server / tauri は `createXRepository(getExecutor)` を呼ぶだけの薄い wrapper に縮退。重複していた server 側 `authors-repository.ts` は削除
 - **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
 - **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
-- **Services**: `packages/application` を追加し、主要CRUD系（author, tag, character, ip, project, preset, category, collection, user）と search / source / config / TODO stub service を共通化。server / tauri wrapper は既存API名を維持
-- **Services対応度**: Tauri local-api の 11 services のうち、8 services（author, tag, character, ip, project, preset, source, config）が `packages/application` を利用。残りの media / ai / source-backup は platform 固有処理が多いため未共通化
+- **Services**: `packages/application` を追加し、主要CRUD系（author, tag, character, ip, project, preset, category, collection, user）と media / search / source / config / TODO stub service を共通化。server / tauri wrapper は既存の外部 wire API を維持
+- **Services対応度**: Tauri local-api の 11 services のうち、9 services（author, tag, character, ip, project, preset, media, source, config）が `packages/application` を利用。残りの ai / source-backup は platform 固有処理が多いため未共通化
 - **Jobs**: media-processing job の step 定義・payload helper を `packages/application` に移動。server / tauri の実行基盤は引き続き別実装
-- 対応度の推定値を更新（Repositories 65% → ~85%、Services ~55% → ~70%、Jobs ~30% → ~35%）
+- 対応度の推定値を更新（Repositories 65% → ~85%、Services ~55% → ~75%、Jobs ~30% → ~35%）
