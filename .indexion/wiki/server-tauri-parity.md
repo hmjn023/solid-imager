@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-23（media-service 共通化を反映）
+最終更新: 2026-04-23（job runtime 共通化を反映）
 
 ## Routes（対応度: 90%）
 
@@ -105,7 +105,7 @@
 | --------------------------- | ---------------------------------------- |
 | `category-repository.ts`    | serverのみ                               |
 | `collection-repository.ts`  | serverのみ                               |
-| `job-repository.ts`         | serverのみ                               |
+| `job-repository.ts`         | server / tauri（`packages/db` factory の薄い wrapper） |
 | `user-repository.ts`        | serverのみ                               |
 | `app-config-repository.ts`  | tauriのみ                                |
 | `tauri-job-repository.ts`   | tauriのみ                                |
@@ -203,13 +203,16 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
   - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
   - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
-## Jobs（対応度: ~35%）
+## Jobs（対応度: ~70%）
+
+server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。
 
 | ファイル     | server                                         | tauri                                          |
 | ------------ | ---------------------------------------------- | ---------------------------------------------- |
-| ジョブキュー | `job-queue.ts`（stub / 未実装）                | `tauri-job-queue.ts`（実装済み、DB永続化あり） |
-| ジョブワーカー | `job-worker.ts`                              | ―                                              |
-| サムネイル   | `thumbnails.ts`                                | `process-media-job.ts`                        |
+| job repository | `JobRepository`（`createJobRepository(() => db)`） | `TauriJobRepository`（`createJobRepository(() => getTauriAppServices().db)`） |
+| ジョブキュー / worker | `JobWorker`（shared re-export）         | `tauri-job-queue.ts`（shared worker bootstrap adapter） |
+| processMedia payload | `{ mediaId, sourcePath, steps?, type: "processMedia" }` | 同左 |
+| サムネイル   | `thumbnails.ts`                                | `tauri-job-queue.ts` 内 processor              |
 | ダウンロード | `download-jobs.ts`, `download-rate-limiter.ts` | なし                                           |
 | ファイル監視 | `file-watcher-service.ts`（TS）                | `watcher.rs`（Rust）                           |
 | タグ抽出     | `tag-extraction.ts`, `tagging-jobs.ts`         | なし                                           |

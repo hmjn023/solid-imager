@@ -134,7 +134,7 @@ describe("MaintenanceService", () => {
 			// One job per missing-metadata media item
 			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(2);
 
-			// Jobs should be created with skipThumbnailGeneration: true
+			// Jobs should be created with metadata-only steps.
 			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
 				expect.objectContaining({
 					type: "processMedia",
@@ -142,7 +142,7 @@ describe("MaintenanceService", () => {
 					payload: expect.objectContaining({
 						mediaId: "media-1",
 						sourcePath: "/local/images",
-						skipThumbnailGeneration: true,
+						steps: ["extractMetadata", "queueAutoTagging"],
 					}),
 				}),
 			);
@@ -252,7 +252,7 @@ describe("MaintenanceService", () => {
 					type: "processMedia",
 					payload: expect.objectContaining({
 						mediaId: "media-1",
-						skipMetadataExtraction: true,
+						steps: ["generateThumbnail"],
 					}),
 				}),
 			);

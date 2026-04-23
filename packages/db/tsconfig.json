@@ -5,6 +5,8 @@
 		"moduleResolution": "bundler",
 		"baseUrl": ".",
 		"paths": {
+			"@solid-imager/application": ["../application/src"],
+			"@solid-imager/application/*": ["../application/src/*"],
 			"@solid-imager/core": ["../core/src"],
 			"@solid-imager/core/*": ["../core/src/*"],
 			"@/*": ["../core/src/*"]

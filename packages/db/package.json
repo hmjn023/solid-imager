@@ -25,6 +25,7 @@
 		"typecheck": "sh -c 'tsc --noEmit'"
 	},
 	"dependencies": {
+		"@solid-imager/application": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"drizzle-orm": "^0.44.7"
 	},

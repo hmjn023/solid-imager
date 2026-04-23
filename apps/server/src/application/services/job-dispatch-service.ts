@@ -1,3 +1,4 @@
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import { services } from "~/application/registry";
 import type { Job as DbJob } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -12,7 +13,7 @@ export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
 	type: "processMedia" | "downloadImage";
-	payload?: any;
+	payload?: unknown;
 };
 
 export type DeferredJobs = {
@@ -23,7 +24,7 @@ export type DeferredJobs = {
 export type DeferredSse = {
 	mediaSourceId: string;
 	event: string;
-	payload: any;
+	payload: unknown;
 };
 
 export type DeferredActions = {
@@ -32,7 +33,7 @@ export type DeferredActions = {
 };
 
 // Helper for unified job processing (Called by JobWorker)
-export async function processJob(job: DbJob) {
+export async function processJob(job: JobRecord) {
 	const mediaSourceId = job.mediaSourceId;
 	if (!mediaSourceId && job.type !== "bulk_tagging_dispatch") {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
@@ -47,11 +48,11 @@ export async function processJob(job: DbJob) {
 		const { processDownloadJob } = await import(
 			"~/infrastructure/jobs/download-jobs"
 		);
-		await processDownloadJob(job);
+		await processDownloadJob(job as DbJob);
 	} else if (job.type === "auto_tagging") {
-		await processAutoTaggingJob(job);
+		await processAutoTaggingJob(job as DbJob);
 	} else if (job.type === "bulk_tagging_dispatch") {
-		await processBulkTaggingDispatchJob(job);
+		await processBulkTaggingDispatchJob(job as DbJob);
 	} else {
 		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
 	}
@@ -62,11 +63,15 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		const repo = services.getJobRepository();
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
+				const payload =
+					typeof job.payload === "object" && job.payload !== null
+						? job.payload
+						: {};
 				await repo.create({
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,
 					payload: {
-						...job.payload,
+						...payload,
 						mediaId: job.mediaId,
 						sourcePath: job.sourcePath,
 					},

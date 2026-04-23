@@ -73,7 +73,11 @@ export function initServices() {
 		pythonClient.updateConfig(newConfig.ai),
 	);
 
-	const jobWorker = new JobWorker(jobRepo, processJob);
+	const jobWorker = new JobWorker({
+		jobRepository: jobRepo,
+		processor: processJob,
+		logger,
+	});
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
 	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
