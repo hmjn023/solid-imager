@@ -1,7 +1,3 @@
-import type {
-	IMediaStorage,
-	MediaSourceFile,
-} from "@solid-imager/core/interfaces/media-storage";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	Transaction,
@@ -13,10 +9,10 @@ import {
 	type MediaDetails,
 	type MediaGenerationInfo,
 	type MediaSearchResponse,
-	type UpdateMediaRequest,
 	mediaIdSchema,
 	mediaSearchRequestSchema,
 	mediaSourceIdSchema,
+	type UpdateMediaRequest,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import {
@@ -32,6 +28,10 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type {
+	IMediaStorage,
+	MediaSourceFile,
+} from "@solid-imager/core/interfaces/media-storage";
 import type { ProcessMediaJobRepository } from "../ports/job-repository";
 import { queueMediaProcessingJob } from "./media-processing-job";
 
@@ -160,7 +160,10 @@ const defaultPathAdapter: MediaPathAdapter = {
 	},
 };
 
-function getMediaTypeFromFileName(fileName: string, pathAdapter: MediaPathAdapter) {
+function getMediaTypeFromFileName(
+	fileName: string,
+	pathAdapter: MediaPathAdapter,
+) {
 	const ext = pathAdapter.extname(fileName).toLowerCase();
 	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
 		return "video";
@@ -221,7 +224,8 @@ function normalizeGenerationInfo(info: MediaGenerationInfo) {
 }
 
 async function readHeaderBytes(file: MediaSourceFile): Promise<Uint8Array> {
-	const buffer = await file.arrayBuffer();
+	const headerSource = file.slice ? file.slice(0, FILE_HEADER_BYTES) : file;
+	const buffer = await headerSource.arrayBuffer();
 	return new Uint8Array(buffer).slice(0, FILE_HEADER_BYTES);
 }
 
@@ -386,19 +390,33 @@ export class MediaServiceImpl {
 			throw error;
 		}
 
-		if (uploadRequest.sourceUrl) {
-			await this.mediaRepository.addUrls(insertedMedia.id, [
-				uploadRequest.sourceUrl,
-			]);
+		try {
+			if (uploadRequest.sourceUrl) {
+				await this.mediaRepository.addUrls(insertedMedia.id, [
+					uploadRequest.sourceUrl,
+				]);
+			}
+
+			await this.afterMediaRegistered?.({
+				media: insertedMedia,
+				mediaSourceId: validatedSourceId,
+				sourcePath: basePath,
+				filePath: fileInfo.filePath,
+			});
+			await this.queueProcessingJob(
+				insertedMedia.id,
+				validatedSourceId,
+				basePath,
+			);
+		} catch (error) {
+			await this.rollbackPersistedUpload(
+				insertedMedia.id,
+				basePath,
+				fileInfo.filePath,
+			);
+			throw error;
 		}
 
-		await this.afterMediaRegistered?.({
-			media: insertedMedia,
-			mediaSourceId: validatedSourceId,
-			sourcePath: basePath,
-			filePath: fileInfo.filePath,
-		});
-		await this.queueProcessingJob(insertedMedia.id, validatedSourceId, basePath);
 		this.startProcessing(validatedSourceId);
 
 		return {
@@ -816,7 +834,10 @@ export class MediaServiceImpl {
 		if (mediaSource?.type === "local") {
 			const connectionInfo = mediaSource.connectionInfo as { path: string };
 			try {
-				await this.storageService.deleteFile(connectionInfo.path, media.filePath);
+				await this.storageService.deleteFile(
+					connectionInfo.path,
+					media.filePath,
+				);
 			} catch (_error) {
 				// File deletion is best-effort after DB deletion, matching old behavior.
 			}
@@ -837,6 +858,30 @@ export class MediaServiceImpl {
 		return undefined;
 	}
 
+	private async rollbackPersistedUpload(
+		mediaId: string,
+		basePath: string,
+		filePath: string,
+	): Promise<void> {
+		try {
+			await this.mediaRepository.delete(mediaId);
+		} catch (error) {
+			this.logger?.error?.(
+				{ err: error, mediaId },
+				"[MediaService] rollback media delete failed",
+			);
+		}
+
+		try {
+			await this.storageService.deleteFile(basePath, filePath);
+		} catch (error) {
+			this.logger?.error?.(
+				{ err: error, filePath },
+				"[MediaService] rollback file delete failed",
+			);
+		}
+	}
+
 	private async queueProcessingJob(
 		mediaId: string,
 		mediaSourceId: string,
@@ -853,7 +898,9 @@ export class MediaServiceImpl {
 		});
 	}
 
-	private async executeDeferredActions(actions: DeferredActions): Promise<void> {
+	private async executeDeferredActions(
+		actions: DeferredActions,
+	): Promise<void> {
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
 				if (job.type === "processMedia" && job.mediaId && job.sourcePath) {

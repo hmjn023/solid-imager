@@ -2,12 +2,6 @@ import {
 	createMediaService,
 	type MediaPathAdapter,
 } from "@solid-imager/application/services/media-service";
-import type {
-	IMediaStorage,
-	MediaMetadata,
-	MediaSourceFile,
-	MediaStorageResult,
-} from "@solid-imager/core/interfaces/media-storage";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	type MediaDetails,
@@ -22,6 +16,12 @@ import type {
 } from "@solid-imager/core/domain/media/upload-schemas";
 import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+import type {
+	IMediaStorage,
+	MediaMetadata,
+	MediaSourceFile,
+	MediaStorageResult,
+} from "@solid-imager/core/interfaces/media-storage";
 import {
 	authors,
 	characters,
@@ -34,15 +34,10 @@ import {
 	mediaUrls,
 	tags,
 } from "@solid-imager/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
-import {
-	basename,
-	dirname,
-	extname,
-	joinLocalPath,
-} from "../../path-utils";
+import { basename, dirname, extname, joinLocalPath } from "../../path-utils";
 import { TauriAuthorRepository } from "../repositories/author-repository";
 import { TauriCharacterRepository } from "../repositories/character-repository";
 import { TauriIpRepository } from "../repositories/ip-repository";
@@ -165,6 +160,24 @@ async function ensureParentDirectory(fullPath: string) {
 			recursive: true,
 		});
 	}
+}
+
+function mediaCharacterConflictSet(source: string) {
+	let sourceUpdateSql = sql`excluded.source`;
+	let confidenceUpdateSql = sql`excluded.confidence`;
+
+	if (source === "AI") {
+		sourceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.source ELSE media_characters.source END`;
+		confidenceUpdateSql = sql`CASE WHEN media_characters.source = 'AI' THEN excluded.confidence ELSE media_characters.confidence END`;
+	} else if (source === "manual") {
+		sourceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.source ELSE media_characters.source END`;
+		confidenceUpdateSql = sql`CASE WHEN media_characters.source IN ('AI', 'manual') THEN excluded.confidence ELSE media_characters.confidence END`;
+	}
+
+	return {
+		source: sourceUpdateSql,
+		confidence: confidenceUpdateSql,
+	};
 }
 
 async function persistExtractedMetadata(
@@ -427,9 +440,12 @@ const tauriMediaStorage: IMediaStorage = {
 	},
 
 	async deleteFile(basePath: string, filePath: string): Promise<void> {
-		await getTauriAppServices().fileSystem.rm(joinLocalPath(basePath, filePath), {
-			force: true,
-		});
+		await getTauriAppServices().fileSystem.rm(
+			joinLocalPath(basePath, filePath),
+			{
+				force: true,
+			},
+		);
 	},
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
@@ -488,7 +504,10 @@ const tauriMediaStorage: IMediaStorage = {
 			options.autoIncrement ?? false,
 		);
 		await ensureParentDirectory(target.fullPath);
-		await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
+		await getTauriAppServices().fileSystem.copyFile(
+			sourcePath,
+			target.fullPath,
+		);
 
 		try {
 			const metadata = await this.getFileMetadata(target.fullPath);
@@ -521,15 +540,34 @@ const characterRepository: CharacterRepository = {
 		source = "manual",
 		tx?: Transaction,
 	) {
-		for (const character of charactersToAdd) {
-			await TauriCharacterRepository.addMedia(
-				mediaId,
-				character.id,
-				character.confidence,
-				source,
-				tx as TauriDbExecutor | undefined,
-			);
+		const rows = charactersToAdd.flatMap((character) => {
+			if (!character.id) {
+				console.error("Invalid character record: missing id", character);
+				return [];
+			}
+
+			return [
+				{
+					mediaId,
+					characterId: character.id,
+					confidence: character.confidence ?? null,
+					source,
+				},
+			];
+		});
+		if (rows.length === 0) {
+			return;
 		}
+
+		const executor =
+			(tx as TauriDbExecutor | undefined) ?? getTauriAppServices().db;
+		await executor
+			.insert(mediaCharacters)
+			.values(rows)
+			.onConflictDoUpdate({
+				target: [mediaCharacters.mediaId, mediaCharacters.characterId],
+				set: mediaCharacterConflictSet(source),
+			});
 	},
 };
 
@@ -553,7 +591,9 @@ const mediaService = createMediaService({
 			);
 		},
 		async getDimensions(mediaPath) {
-			return await getTauriAppServices().imageProcessor.getDimensions(mediaPath);
+			return await getTauriAppServices().imageProcessor.getDimensions(
+				mediaPath,
+			);
 		},
 	},
 	authorRepository: TauriAuthorRepository,
