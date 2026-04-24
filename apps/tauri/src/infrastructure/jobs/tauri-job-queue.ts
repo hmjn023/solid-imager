@@ -93,6 +93,13 @@ class TauriJobQueue {
 		this.worker.wake();
 	}
 
+	registerQueuedSources(sourceIds: string[]): void {
+		for (const sourceId of sourceIds) {
+			this.registerSourceCounter(sourceId);
+		}
+		this.worker.wake();
+	}
+
 	wake(): void {
 		this.worker.wake();
 	}
