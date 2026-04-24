@@ -137,7 +137,10 @@ async function withUniqueJobLock<T>(
 
 function hasTransaction(
 	executor: DrizzleExecutor,
-): executor is Extract<DrizzleExecutor, { transaction: (...args: any[]) => any }> {
+): executor is Extract<
+	DrizzleExecutor,
+	{ transaction: (...args: any[]) => any }
+> {
 	return "transaction" in executor;
 }
 
@@ -219,6 +222,27 @@ export function createJobRepository(
 			return rows[0] ? mapToJobRecord(rows[0]) : null;
 		},
 
+		async findPendingImportRequests(): Promise<JobRecord[]> {
+			const rows = await getExecutor()
+				.select()
+				.from(jobs)
+				.where(and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")))
+				.orderBy(sql`${jobs.createdAt} desc`);
+			return rows.map(mapToJobRecord);
+		},
+
+		async findImportRequestsByIds(jobIds: string[]): Promise<JobRecord[]> {
+			if (jobIds.length === 0) {
+				return [];
+			}
+
+			const rows = await getExecutor()
+				.select()
+				.from(jobs)
+				.where(and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")));
+			return rows.map(mapToJobRecord);
+		},
+
 		async findPending(
 			limit: number,
 			options: FindPendingJobsOptions = {},
@@ -268,6 +292,31 @@ export function createJobRepository(
 					updatedAt: new Date(),
 				})
 				.where(and(...conditions));
+		},
+
+		async markImportRequestsCompleted(jobIds: string[]): Promise<void> {
+			if (jobIds.length === 0) {
+				return;
+			}
+
+			await getExecutor()
+				.update(jobs)
+				.set({
+					status: "completed",
+					error: null,
+					updatedAt: new Date(),
+				})
+				.where(and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")));
+		},
+
+		async deleteImportRequests(jobIds: string[]): Promise<void> {
+			if (jobIds.length === 0) {
+				return;
+			}
+
+			await getExecutor()
+				.delete(jobs)
+				.where(and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")));
 		},
 
 		async markAsInProgress(id: string): Promise<void> {

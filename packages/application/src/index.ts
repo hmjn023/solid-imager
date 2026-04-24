@@ -4,6 +4,7 @@ export * from "./services/category-service";
 export * from "./services/character-service";
 export * from "./services/collection-service";
 export * from "./services/config-service";
+export * from "./services/import-request-service";
 export * from "./services/ip-service";
 export * from "./services/job-worker";
 export * from "./services/maintenance-service";
