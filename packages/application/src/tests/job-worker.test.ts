@@ -123,4 +123,33 @@ describe("JobWorker", () => {
 
 		expect(processor).toHaveBeenCalledWith(job);
 	});
+
+	it("re-polls immediately when wake is called during an active poll", async () => {
+		const job = makeJob("job-2");
+		let resolveFirstPoll!: (jobs: JobRecord[]) => void;
+		const firstPoll = new Promise<JobRecord[]>((resolve) => {
+			resolveFirstPoll = resolve;
+		});
+		let callCount = 0;
+		vi.mocked(repository.findPending).mockImplementation(async () => {
+			callCount++;
+			if (callCount === 1) {
+				return await firstPoll;
+			}
+			if (callCount === 4) {
+				return [job];
+			}
+			return [];
+		});
+
+		worker.start();
+		await Promise.resolve();
+
+		worker.wake();
+		resolveFirstPoll([]);
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(repository.findPending).toHaveBeenCalledTimes(4);
+		expect(processor).toHaveBeenCalledWith(job);
+	});
 });

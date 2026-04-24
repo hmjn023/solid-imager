@@ -55,6 +55,7 @@ export class JobWorker {
 	private isRunning = false;
 	private timeoutId: ReturnType<typeof setTimeout> | null = null;
 	private pollPromise: Promise<void> | null = null;
+	private pollRequested = false;
 	private pollIntervalMs = 1000;
 	private concurrency = 3;
 	private aiConcurrency = 1;
@@ -126,6 +127,7 @@ export class JobWorker {
 		if (!this.isRunning) {
 			return;
 		}
+		this.pollRequested = true;
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);
 			this.timeoutId = null;
@@ -152,14 +154,17 @@ export class JobWorker {
 			return;
 		}
 
-		try {
-			await this.pollAiJobs();
-			await this.pollNormalJobs();
-		} catch (error) {
-			this.logger?.error?.({ err: error }, "Error polling for jobs");
-		} finally {
-			this.scheduleNextPoll();
+		while (this.isRunning && this.pollRequested) {
+			this.pollRequested = false;
+			try {
+				await this.pollAiJobs();
+				await this.pollNormalJobs();
+			} catch (error) {
+				this.logger?.error?.({ err: error }, "Error polling for jobs");
+			}
 		}
+
+		this.scheduleNextPoll();
 	}
 
 	private async pollAiJobs(): Promise<void> {

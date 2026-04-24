@@ -4,7 +4,7 @@ import type {
 	JobRepositoryPort,
 	NewJobRecord,
 } from "@solid-imager/application/ports/job-repository";
-import { and, asc, eq, inArray, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -12,6 +12,7 @@ export type JobRepositoryExecutorProvider = () => DrizzleExecutor;
 
 const DEFAULT_INSERT_CHUNK_SIZE = 500;
 const ACTIVE_JOB_STATUSES = ["pending", "in_progress"] as const;
+const UNIQUE_JOB_LOCK_KEY = 0x4a4f4253;
 
 function mapToJobRecord(row: typeof jobs.$inferSelect): JobRecord {
 	return {
@@ -72,6 +73,60 @@ function toUpdateValue(
 	};
 }
 
+async function insertJob(
+	executor: DrizzleExecutor,
+	job: NewJobRecord,
+): Promise<JobRecord> {
+	const [created] = await executor.insert(jobs).values(toInsertValue(job)).returning();
+	return mapToJobRecord(created);
+}
+
+function getUniqueJobKey(job: NewJobRecord): string | null {
+	const payload = job.payload;
+	if (
+		typeof payload !== "object" ||
+		payload === null ||
+		!("mediaId" in payload) ||
+		typeof payload.mediaId !== "string"
+	) {
+		return null;
+	}
+	return `${job.type}:${payload.mediaId}`;
+}
+
+function getUniqueMediaId(job: NewJobRecord): string | null {
+	const payload = job.payload;
+	if (
+		typeof payload !== "object" ||
+		payload === null ||
+		!("mediaId" in payload) ||
+		typeof payload.mediaId !== "string"
+	) {
+		return null;
+	}
+	return payload.mediaId;
+}
+
+async function withUniqueJobLock<T>(
+	executor: DrizzleExecutor,
+	key: string,
+	action: (executor: DrizzleExecutor) => Promise<T>,
+): Promise<T> {
+	if ("transaction" in executor) {
+		return await executor.transaction(async (tx) => {
+			await tx.execute(
+				sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
+			);
+			return await action(tx);
+		});
+	}
+
+	await executor.execute(
+		sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
+	);
+	return await action(executor);
+}
+
 export function createJobRepository(
 	getExecutor: JobRepositoryExecutorProvider,
 	options: { insertChunkSize?: number } = {},
@@ -80,11 +135,7 @@ export function createJobRepository(
 
 	return {
 		async create(job: NewJobRecord): Promise<JobRecord> {
-			const [created] = await getExecutor()
-				.insert(jobs)
-				.values(toInsertValue(job))
-				.returning();
-			return mapToJobRecord(created);
+			return await insertJob(getExecutor(), job);
 		},
 
 		async createMany(newJobs: NewJobRecord[]): Promise<JobRecord[]> {
@@ -105,32 +156,33 @@ export function createJobRepository(
 		},
 
 		async createIfUnique(job: NewJobRecord): Promise<JobRecord | null> {
-			if (!hasMediaIdPayload(job.payload)) {
-				return await this.create(job);
+			const uniqueKey = getUniqueJobKey(job);
+			if (!uniqueKey) {
+				return await insertJob(getExecutor(), job);
 			}
-			const mediaId = job.payload.mediaId;
 
-			const activeRows = await getExecutor()
-				.select()
-				.from(jobs)
-				.where(
-					and(
-						eq(jobs.type, job.type),
-						or(
-							eq(jobs.status, ACTIVE_JOB_STATUSES[0]),
-							eq(jobs.status, ACTIVE_JOB_STATUSES[1]),
+			const mediaId = getUniqueMediaId(job);
+			const executor = getExecutor();
+			return await withUniqueJobLock(executor, uniqueKey, async (tx) => {
+				const activeRows = await tx
+					.select()
+					.from(jobs)
+					.where(
+						and(
+							eq(jobs.type, job.type),
+							inArray(jobs.status, [...ACTIVE_JOB_STATUSES]),
 						),
-					),
+					);
+				const existing = activeRows.find(
+					(row) =>
+						hasMediaIdPayload(row.payload) && row.payload.mediaId === mediaId,
 				);
-			const existing = activeRows.find(
-				(row) =>
-					hasMediaIdPayload(row.payload) && row.payload.mediaId === mediaId,
-			);
-			if (existing) {
-				return null;
-			}
+				if (existing) {
+					return null;
+				}
 
-			return await this.create(job);
+				return await insertJob(tx, job);
+			});
 		},
 
 		async findById(id: string): Promise<JobRecord | null> {
