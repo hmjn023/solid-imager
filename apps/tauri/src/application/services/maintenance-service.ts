@@ -179,7 +179,7 @@ export class MaintenanceService {
 			if (!sourcePath) continue;
 
 			try {
-				const created = await TauriJobRepository.createIfUnique({
+				const created = await TauriJobRepository.createUniqueProcessMedia({
 					sourceId: item.mediaSourceId,
 					mediaId: item.id,
 					sourcePath: sourcePath,
@@ -200,6 +200,7 @@ export class MaintenanceService {
 		if (queuedCount > 0) {
 			console.info(`[maintenance] Dispatched ${queuedCount} recovery jobs`);
 			tauriJobQueue.enqueuePersisted(createdJobs);
+			tauriJobQueue.wake();
 		}
 	}
 }

@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { MediaProcessingStep } from "~/application/services/media-processing-job";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
@@ -46,9 +47,9 @@ export class MaintenanceService {
 				{ count: missing.length },
 				"Found media with missing metadata. Queueing jobs...",
 			);
-			// If metadata is missing, we prioritize fetching it.
-			// We skip thumbnail generation here to avoid redundant work, assuming queueMissingThumbnails handles that.
-			await this.dispatchJobs(missing, { skipThumbnailGeneration: true });
+			await this.dispatchJobs(missing, {
+				steps: ["extractMetadata", "queueAutoTagging"],
+			});
 		} catch (error) {
 			logger.error({ err: error }, "Failed to queue missing metadata jobs");
 		}
@@ -79,7 +80,7 @@ export class MaintenanceService {
 						"Found media with missing thumbnails in batch. Queueing jobs...",
 					);
 					await this.dispatchJobs(missingInBatch, {
-						skipMetadataExtraction: true,
+						steps: ["generateThumbnail"],
 					});
 				}
 
@@ -147,8 +148,7 @@ export class MaintenanceService {
 	private async dispatchJobs(
 		items: { id: string; mediaSourceId: string; filePath: string }[],
 		options: {
-			skipMetadataExtraction?: boolean;
-			skipThumbnailGeneration?: boolean;
+			steps: MediaProcessingStep[];
 		},
 	) {
 		// Resolve source paths efficiently
@@ -192,8 +192,8 @@ export class MaintenanceService {
 							payload: {
 								mediaId: item.id,
 								sourcePath: basePath,
-								type: "processMedia", // Legacy payload requirement
-								...options,
+								steps: options.steps,
+								type: "processMedia",
 							},
 						});
 					} catch (err) {

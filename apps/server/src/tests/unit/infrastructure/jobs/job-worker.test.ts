@@ -1,3 +1,4 @@
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import {
 	afterEach,
@@ -8,7 +9,6 @@ import {
 	vi,
 } from "vite-plus/test";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 // Mock logger to avoid noise
@@ -26,7 +26,7 @@ vi.mock("~/infrastructure/logger", () => ({
 
 describe("JobWorker", () => {
 	let jobRepo: IJobRepository;
-	let processor: (job: Job) => Promise<void>;
+	let processor: (job: JobRecord) => Promise<void>;
 	let worker: JobWorker;
 
 	const TimerDelay = 100;
@@ -38,9 +38,11 @@ describe("JobWorker", () => {
 		// Mock Repository
 		jobRepo = {
 			create: vi.fn(),
+			createMany: vi.fn(),
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn().mockResolvedValue([]),
+			resetInProgressToPending: vi.fn(),
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
 			markAsCompleted: vi.fn().mockResolvedValue(undefined),
 			markAsFailed: vi.fn().mockResolvedValue(undefined),
@@ -50,7 +52,10 @@ describe("JobWorker", () => {
 
 		processor = vi.fn().mockResolvedValue(undefined);
 
-		worker = new JobWorker(jobRepo, processor);
+		worker = new JobWorker({
+			jobRepository: jobRepo,
+			processor,
+		});
 	});
 
 	afterEach(() => {
@@ -72,13 +77,15 @@ describe("JobWorker", () => {
 					id: `job-${i}`,
 					type: "normal_job",
 					status: "pending",
-				}) as Job,
+				}) as JobRecord,
 		);
 
 		// Mock findPending to return jobs
 		// When excluding AI types, return normal jobs
-		(jobRepo.findPending as any).mockImplementation(
-			(limit: number, options: any) => {
+		(
+			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
+		).mockImplementation(
+			(limit: number, options: { excludeTypes?: string[] }) => {
 				if (options?.excludeTypes) {
 					return Promise.resolve(normalJobs.slice(0, limit));
 				}
@@ -92,7 +99,9 @@ describe("JobWorker", () => {
 		// Should fetch 2 normal jobs
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			2,
-			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				excludeTypes: ["auto_tagging", "import_request"],
+			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(2);
 	});
@@ -111,12 +120,14 @@ describe("JobWorker", () => {
 					id: `ai-job-${i}`,
 					type: "auto_tagging",
 					status: "pending",
-				}) as Job,
+				}) as JobRecord,
 		);
 
 		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
-			(limit: number, options: any) => {
+		(
+			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
+		).mockImplementation(
+			(limit: number, options: { includeTypes?: string[] }) => {
 				if (options?.includeTypes) {
 					return Promise.resolve(aiJobs.slice(0, limit));
 				}
@@ -148,21 +159,26 @@ describe("JobWorker", () => {
 			id: "ai-1",
 			type: "auto_tagging",
 			status: "pending",
-		} as Job;
+		} as JobRecord;
 		const normalJob1 = {
 			id: "normal-1",
 			type: "normal",
 			status: "pending",
-		} as Job;
+		} as JobRecord;
 		const normalJob2 = {
 			id: "normal-2",
 			type: "normal",
 			status: "pending",
-		} as Job;
+		} as JobRecord;
 
 		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
-			(limit: number, options: any) => {
+		(
+			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
+		).mockImplementation(
+			(
+				limit: number,
+				options: { excludeTypes?: string[]; includeTypes?: string[] },
+			) => {
 				if (options?.includeTypes) {
 					// AI request
 					return Promise.resolve([aiJob].slice(0, limit));
@@ -185,7 +201,9 @@ describe("JobWorker", () => {
 		);
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			2,
-			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				excludeTypes: ["auto_tagging", "import_request"],
+			}),
 		);
 
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);

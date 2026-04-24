@@ -6,6 +6,8 @@ import path from "node:path";
 
 // Registry for backward compatibility proxy
 
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
+import { runProcessMediaJob } from "@solid-imager/application/services/process-media-runner";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
@@ -20,14 +22,9 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
-import {
-	hasMediaProcessingStep,
-	type MediaProcessingJobPayload,
-	queueMediaProcessingJob,
-} from "~/application/services/media-processing-job";
+import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
 import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
@@ -141,91 +138,43 @@ export class MediaProcessingServiceImpl {
 	/**
 	 * Executes the processMedia job.
 	 */
-	async executeProcessMediaJob(job: Job): Promise<void> {
+	async executeProcessMediaJob(job: JobRecord): Promise<void> {
 		if (job.type !== "processMedia") {
 			return;
 		}
 
-		const payload = job.payload as MediaProcessingJobPayload | null;
-		const mediaId = payload?.mediaId;
-
-		if (!mediaId) {
-			logger.error({ jobId: job.id }, "Missing mediaId in job payload");
-			return;
-		}
-
-		const media = await this.mediaRepo.findById(mediaId);
-		if (!media) {
-			logger.warn({ mediaId }, "Media not found for processMedia job");
-			return;
-		}
-
-		const mediaPath = path.join(payload.sourcePath, media.filePath);
-
-		const mediaSourceId = job.mediaSourceId;
-		if (!mediaSourceId) {
-			logger.error({ jobId: job.id }, "Missing mediaSourceId in job");
-			return;
-		}
-
-		// Step 1: Metadata extraction
-		if (hasMediaProcessingStep(payload, "extractMetadata")) {
-			try {
-				const metadata = await ImageProcessor.extractMetadata(mediaPath);
-
-				await this.mediaRepo.upsertGenerationInfo(
-					media.id,
-					typeof metadata.prompt === "object"
-						? JSON.stringify(metadata.prompt)
-						: (metadata.prompt as string | null),
-					metadata.workflow as object | null,
-				);
-
-				if (metadata.tags.length > 0) {
-					await this.tagRepo.addTagsToMedia(
-						media.id,
-						metadata.tags,
-						"comfyui_workflow",
-					);
-				}
-			} catch (e) {
-				logger.warn(
-					{ err: e, mediaId },
-					"Metadata extraction failed, continuing...",
-				);
-			}
-		}
-
-		// Step 2: Thumbnail generation
-		if (hasMediaProcessingStep(payload, "generateThumbnail")) {
-			try {
-				await generateThumbnail(media, payload.sourcePath, mediaSourceId);
+		await runProcessMediaJob(job, {
+			mediaRepository: this.mediaRepo,
+			tagRepository: this.tagRepo,
+			pathJoin: path.join,
+			extractMetadata: ImageProcessor.extractMetadata,
+			generateThumbnail: async ({ media, sourcePath, mediaSourceId }) => {
+				await generateThumbnail(media, sourcePath, mediaSourceId);
+			},
+			emitThumbnailGenerated: ({ media, mediaSourceId }) => {
 				SseManager.sendEvent(mediaSourceId, "thumbnail-generated", {
 					mediaId: media.id,
 				});
-			} catch (e) {
-				logger.error({ err: e, mediaId }, "Thumbnail generation failed");
-			}
-		}
-
-		// Step 3: AI tagging
-		if (
-			this.enableAutoTagging &&
-			hasMediaProcessingStep(payload, "queueAutoTagging") &&
-			media.mediaType === "image"
-		) {
-			try {
-				await this.jobRepo.create({
-					type: "auto_tagging",
-					mediaSourceId,
-					payload: {
-						mediaId: media.id,
-					},
-				});
-			} catch (e) {
-				logger.warn({ err: e, mediaId }, "Failed to queue AI tagging job");
-			}
-		}
+			},
+			queueAutoTagging: async ({ mediaId, mediaSourceId }) => {
+				try {
+					await this.jobRepo.createIfUnique({
+						type: "auto_tagging",
+						mediaSourceId,
+						payload: {
+							mediaId,
+						},
+					});
+				} catch (error) {
+					logger.warn(
+						{ err: error, mediaId },
+						"Failed to queue AI tagging job",
+					);
+				}
+			},
+			isAutoTaggingEnabled: () => this.enableAutoTagging,
+			logger,
+		});
 	}
 
 	private async registerContextMetadata(
@@ -503,7 +452,7 @@ export const MediaProcessingService = {
 			.registerAndProcess(mediaSourceId, relativePath, contextMetadata);
 	},
 
-	executeProcessMediaJob: async (job: Job) => {
+	executeProcessMediaJob: async (job: JobRecord) => {
 		const { services } = await import("~/application/registry");
 		return services.getMediaProcessingService().executeProcessMediaJob(job);
 	},

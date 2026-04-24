@@ -50,8 +50,8 @@ const backupService = createBackupService({
 					payload: {
 						mediaId,
 						sourcePath: rootPath,
+						steps: ["generateThumbnail"],
 						type: "processMedia",
-						skipMetadataExtraction: true,
 					},
 				});
 			}
