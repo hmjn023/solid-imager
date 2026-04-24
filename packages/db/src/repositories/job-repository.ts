@@ -124,7 +124,12 @@ async function withUniqueJobLock<T>(
 		});
 	}
 
-	await asSqlExecutor(executor).execute(
+	const sqlExecutor: unknown = executor;
+	if (!hasExecute(sqlExecutor)) {
+		throw new Error("Drizzle executor does not support execute()");
+	}
+
+	await sqlExecutor.execute(
 		sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
 	);
 	return await action(executor);
@@ -136,10 +141,15 @@ function hasTransaction(
 	return "transaction" in executor;
 }
 
-function asSqlExecutor(
-	executor: DrizzleExecutor,
-): { execute: (query: unknown) => Promise<unknown> } {
-	return executor as { execute: (query: unknown) => Promise<unknown> };
+function hasExecute(
+	executor: unknown,
+): executor is { execute: (query: unknown) => Promise<unknown> } {
+	return (
+		typeof executor === "object" &&
+		executor !== null &&
+		"execute" in executor &&
+		typeof executor.execute === "function"
+	);
 }
 
 export function createJobRepository(
