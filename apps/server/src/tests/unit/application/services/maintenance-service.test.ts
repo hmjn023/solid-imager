@@ -28,9 +28,12 @@ vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
 		info: vi.fn(),
+		debug: vi.fn(),
 		warn: vi.fn(),
 		error: vi.fn(),
+		fatal: vi.fn(),
 	},
+	updateLogLevel: vi.fn(),
 }));
 
 // ---- Repository mocks ----

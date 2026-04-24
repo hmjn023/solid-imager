@@ -77,7 +77,10 @@ async function insertJob(
 	executor: DrizzleExecutor,
 	job: NewJobRecord,
 ): Promise<JobRecord> {
-	const [created] = await executor.insert(jobs).values(toInsertValue(job)).returning();
+	const [created] = await executor
+		.insert(jobs)
+		.values(toInsertValue(job))
+		.returning();
 	return mapToJobRecord(created);
 }
 
@@ -112,7 +115,7 @@ async function withUniqueJobLock<T>(
 	key: string,
 	action: (executor: DrizzleExecutor) => Promise<T>,
 ): Promise<T> {
-	if ("transaction" in executor) {
+	if (hasTransaction(executor)) {
 		return await executor.transaction(async (tx) => {
 			await tx.execute(
 				sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
@@ -121,10 +124,32 @@ async function withUniqueJobLock<T>(
 		});
 	}
 
-	await executor.execute(
+	const sqlExecutor: unknown = executor;
+	if (!hasExecute(sqlExecutor)) {
+		throw new Error("Drizzle executor does not support execute()");
+	}
+
+	await sqlExecutor.execute(
 		sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
 	);
 	return await action(executor);
+}
+
+function hasTransaction(
+	executor: DrizzleExecutor,
+): executor is Extract<DrizzleExecutor, { transaction: (...args: any[]) => any }> {
+	return "transaction" in executor;
+}
+
+function hasExecute(
+	executor: unknown,
+): executor is { execute: (query: unknown) => Promise<unknown> } {
+	return (
+		typeof executor === "object" &&
+		executor !== null &&
+		"execute" in executor &&
+		typeof executor.execute === "function"
+	);
 }
 
 export function createJobRepository(

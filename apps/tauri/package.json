@@ -14,7 +14,8 @@
 		"lint": "biome lint ./src",
 		"format": "biome format --fix ./src",
 		"check": "biome check --fix --unsafe ./src",
-		"typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
+		"typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
+		"test": "vp test run --config ./vitest.config.ts"
 	},
 	"dependencies": {
 		"@electric-sql/pglite": "^0.3.16",
