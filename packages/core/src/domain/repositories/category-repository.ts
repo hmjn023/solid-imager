@@ -1,17 +1,11 @@
-import type { NewCategory, UpdateCategory } from "@/domain/categories/schemas";
+import type {
+	Category,
+	NewCategory,
+	UpdateCategory,
+} from "@/domain/categories/schemas";
 import type { Transaction } from "@/domain/interfaces/transaction-manager";
 
-// Define strict Category entity as it is not fully exported from schemas yet
-// Assuming similar structure to Drizzle schema but domain-pure
-export type Category = {
-	id: string;
-	name: string;
-	description: string | null;
-	color: string | null;
-	parentId: string | null;
-	createdAt: Date;
-	updatedAt: Date;
-};
+export type { Category };
 
 export type CategoryRepository = {
 	findAll(): Promise<Category[]>;

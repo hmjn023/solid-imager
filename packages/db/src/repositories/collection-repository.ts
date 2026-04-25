@@ -34,8 +34,8 @@ function isUniqueViolation(error: unknown): boolean {
 	);
 }
 
-function mapToCollection(row: DbCollection): Collection {
-	return collectionSchema.parse({
+function mapToCollection(row: DbCollection): Collection | null {
+	const result = collectionSchema.safeParse({
 		id: row.id,
 		userId: row.userId,
 		name: row.name,
@@ -43,6 +43,7 @@ function mapToCollection(row: DbCollection): Collection {
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	});
+	return result.success ? result.data : null;
 }
 
 export function createCollectionRepository(
@@ -51,20 +52,34 @@ export function createCollectionRepository(
 ): ICollectionRepository {
 	return {
 		async findAll(): Promise<Collection[]> {
-			const query = getExecutor().select().from(collections);
-			const rows = await (options.orderByName
-				? query.orderBy(asc(collections.name))
-				: query);
-			return rows.map((row) => mapToCollection(row));
+			try {
+				const query = getExecutor().select().from(collections);
+				const rows = await (options.orderByName
+					? query.orderBy(asc(collections.name))
+					: query);
+				return rows.flatMap((row) => {
+					const mapped = mapToCollection(row);
+					return mapped ? [mapped] : [];
+				});
+			} catch (error) {
+				throw new UnexpectedError("Failed to select collections", error);
+			}
 		},
 
-		async findById(id: string): Promise<Collection | null> {
-			const rows = await getExecutor()
-				.select()
-				.from(collections)
-				.where(eq(collections.id, id))
-				.limit(1);
-			return rows[0] ? mapToCollection(rows[0]) : null;
+		async findById(id: string, tx?: unknown): Promise<Collection | null> {
+			try {
+				const rows = await getExecutor(tx)
+					.select()
+					.from(collections)
+					.where(eq(collections.id, id))
+					.limit(1);
+				return rows[0] ? mapToCollection(rows[0]) : null;
+			} catch (error) {
+				throw new UnexpectedError(
+					`Failed to select collection by ID: ${id}`,
+					error,
+				);
+			}
 		},
 
 		async create(collection: NewCollection, tx?: unknown): Promise<Collection> {
@@ -77,8 +92,13 @@ export function createCollectionRepository(
 						description: collection.description ?? "",
 					})
 					.returning();
-				return mapToCollection(rows[0]);
+				const mapped = mapToCollection(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse created collection");
+				}
+				return mapped;
 			} catch (error) {
+				if (error instanceof UnexpectedError) throw error;
 				if (isUniqueViolation(error)) {
 					throw new ResourceConflictError(
 						"Collection with this name already exists",
@@ -109,9 +129,16 @@ export function createCollectionRepository(
 				if (!rows[0]) {
 					throw new ResourceNotFoundError("Collection", id);
 				}
-				return mapToCollection(rows[0]);
+				const mapped = mapToCollection(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse updated collection");
+				}
+				return mapped;
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof UnexpectedError
+				) {
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
@@ -124,13 +151,21 @@ export function createCollectionRepository(
 		},
 
 		async delete(id: string, tx?: unknown): Promise<void> {
-			const rows = await getExecutor(tx)
-				.delete(collections)
-				.where(eq(collections.id, id))
-				.returning();
+			try {
+				const rows = await getExecutor(tx)
+					.delete(collections)
+					.where(eq(collections.id, id))
+					.returning();
 
-			if (rows.length === 0) {
-				throw new ResourceNotFoundError("Collection", id);
+				if (rows.length === 0) {
+					throw new ResourceNotFoundError("Collection", id);
+				}
+			} catch (error) {
+				if (error instanceof ResourceNotFoundError) throw error;
+				throw new UnexpectedError(
+					`Failed to delete collection with ID: ${id}`,
+					error,
+				);
 			}
 		},
 
@@ -162,18 +197,26 @@ export function createCollectionRepository(
 			mediaId: string,
 			tx?: unknown,
 		): Promise<void> {
-			const rows = await getExecutor(tx)
-				.delete(mediaCollections)
-				.where(
-					and(
-						eq(mediaCollections.collectionId, collectionId),
-						eq(mediaCollections.mediaId, mediaId),
-					),
-				)
-				.returning();
+			try {
+				const rows = await getExecutor(tx)
+					.delete(mediaCollections)
+					.where(
+						and(
+							eq(mediaCollections.collectionId, collectionId),
+							eq(mediaCollections.mediaId, mediaId),
+						),
+					)
+					.returning();
 
-			if (rows.length === 0) {
-				throw new ResourceNotFoundError("CollectionItem association");
+				if (rows.length === 0) {
+					throw new ResourceNotFoundError("CollectionItem association");
+				}
+			} catch (error) {
+				if (error instanceof ResourceNotFoundError) throw error;
+				throw new UnexpectedError(
+					"Failed to remove item from collection",
+					error,
+				);
 			}
 		},
 	};

@@ -212,7 +212,11 @@ async function ensureMasterData(
 	}
 
 	const result = new Map<string, string>();
-	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
+	for (
+		let index = 0;
+		index < nameList.length;
+		index += MASTER_DATA_CHUNK_SIZE
+	) {
 		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 		await executor
 			.insert(table)
@@ -249,7 +253,11 @@ async function ensureAuthors(
 		string,
 		{ id: string; accountId: string | null }
 	>();
-	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
+	for (
+		let index = 0;
+		index < nameList.length;
+		index += MASTER_DATA_CHUNK_SIZE
+	) {
 		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 		const existingRecords = await executor
 			.select({
@@ -279,10 +287,16 @@ async function ensureAuthors(
 	});
 
 	if (updates.length > 0) {
-		for (let index = 0; index < updates.length; index += AUTHOR_UPDATE_CHUNK_SIZE) {
+		for (
+			let index = 0;
+			index < updates.length;
+			index += AUTHOR_UPDATE_CHUNK_SIZE
+		) {
 			const chunk = updates.slice(index, index + AUTHOR_UPDATE_CHUNK_SIZE);
 			const accountIdCase = sql.join(
-				chunk.map(([name, data]) => sql`when ${name} then ${data.accountId ?? null}`),
+				chunk.map(
+					([name, data]) => sql`when ${name} then ${data.accountId ?? null}`,
+				),
 				sql.raw(" "),
 			);
 			await executor
@@ -291,13 +305,22 @@ async function ensureAuthors(
 					accountId: sql`case ${authors.name} ${accountIdCase} else ${authors.accountId} end`,
 					updatedAt: new Date(),
 				})
-				.where(inArray(authors.name, chunk.map(([name]) => name)));
+				.where(
+					inArray(
+						authors.name,
+						chunk.map(([name]) => name),
+					),
+				);
 		}
 	}
 
 	const missing = entries.filter(([name]) => !existingByName.has(name));
 	if (missing.length > 0) {
-		for (let index = 0; index < missing.length; index += MASTER_DATA_CHUNK_SIZE) {
+		for (
+			let index = 0;
+			index < missing.length;
+			index += MASTER_DATA_CHUNK_SIZE
+		) {
 			const chunk = missing.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 			const created = await executor
 				.insert(authors)
@@ -368,7 +391,9 @@ async function restoreMasterData(
 	}
 
 	const [tagMap, authorMap, projectMap, ipMap, charMap] = await Promise.all([
-		ensureMasterData(executor, tags, tags.name, tagNames, { source: "restored" }),
+		ensureMasterData(executor, tags, tags.name, tagNames, {
+			source: "restored",
+		}),
 		ensureAuthors(executor, authorData),
 		ensureMasterData(executor, projects, projects.name, projectNames, {
 			description: "",
@@ -435,8 +460,9 @@ async function mapMediaPathsToIds(
 	mediaSourceId: string,
 	items: MediaDumpItem[],
 ): Promise<Map<string, string>> {
-	const filePaths = items
-		.flatMap((item) => (item.filePath ? [item.filePath] : []));
+	const filePaths = items.flatMap((item) =>
+		item.filePath ? [item.filePath] : [],
+	);
 	if (filePaths.length === 0) {
 		return new Map();
 	}
@@ -661,7 +687,11 @@ async function restoreRelations(
 			.values(mediaUrlsData.slice(index, index + chunkSize))
 			.onConflictDoNothing();
 	}
-	for (let index = 0; index < mediaGenerationInfoData.length; index += chunkSize) {
+	for (
+		let index = 0;
+		index < mediaGenerationInfoData.length;
+		index += chunkSize
+	) {
 		await executor
 			.insert(mediaGenerationInfo)
 			.values(mediaGenerationInfoData.slice(index, index + chunkSize))
@@ -726,7 +756,9 @@ export async function filterValidItems(
 }
 
 export function createBackupService(deps: BackupServiceDeps) {
-	async function findMediaSourceForFile(filePath: string): Promise<string | null> {
+	async function findMediaSourceForFile(
+		filePath: string,
+	): Promise<string | null> {
 		try {
 			validateRelativePath(filePath);
 		} catch {
@@ -757,14 +789,19 @@ export function createBackupService(deps: BackupServiceDeps) {
 		return null;
 	}
 
-	async function createDumpItems(mediaSourceId: string): Promise<MediaDumpItem[]> {
+	async function createDumpItems(
+		mediaSourceId: string,
+	): Promise<MediaDumpItem[]> {
 		const source = await deps.sourceRepository.findById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");
 		}
 
 		const mediaList: MediaDumpItem[] = [];
-		for await (const media of iterateMediaDumpItems(deps.getExecutor, mediaSourceId)) {
+		for await (const media of iterateMediaDumpItems(
+			deps.getExecutor,
+			mediaSourceId,
+		)) {
 			mediaList.push(media);
 		}
 		return mediaList;
@@ -830,7 +867,7 @@ export function createBackupService(deps: BackupServiceDeps) {
 			await deps.onRestoreComplete({
 				source,
 				mediaIds,
-				rootPath: ((source.connectionInfo as { path?: string }).path ?? ""),
+				rootPath: (source.connectionInfo as { path?: string }).path ?? "",
 			});
 		}
 

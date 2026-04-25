@@ -31,8 +31,8 @@ function isUniqueViolation(error: unknown): boolean {
 	);
 }
 
-function mapToUser(row: DbUser): User {
-	return userSchema.parse({
+function mapToUser(row: DbUser): User | null {
+	const result = userSchema.safeParse({
 		id: row.id,
 		name: row.name,
 		email: row.email,
@@ -40,6 +40,7 @@ function mapToUser(row: DbUser): User {
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	});
+	return result.success ? result.data : null;
 }
 
 export function createUserRepository(
@@ -53,15 +54,18 @@ export function createUserRepository(
 				const rows = options.orderByName
 					? await query.orderBy(asc(users.name))
 					: await query;
-				return rows.map(mapToUser);
+				return rows.flatMap((row) => {
+					const mapped = mapToUser(row);
+					return mapped ? [mapped] : [];
+				});
 			} catch (error) {
 				throw new UnexpectedError("Failed to select users", error);
 			}
 		},
 
-		async findById(id: string): Promise<User | null> {
+		async findById(id: string, tx?: unknown): Promise<User | null> {
 			try {
-				const rows = await getExecutor()
+				const rows = await getExecutor(tx)
 					.select()
 					.from(users)
 					.where(eq(users.id, id))
@@ -72,9 +76,9 @@ export function createUserRepository(
 			}
 		},
 
-		async findByEmail(email: string): Promise<User | null> {
+		async findByEmail(email: string, tx?: unknown): Promise<User | null> {
 			try {
-				const rows = await getExecutor()
+				const rows = await getExecutor(tx)
 					.select()
 					.from(users)
 					.where(eq(users.email, email))
@@ -88,9 +92,9 @@ export function createUserRepository(
 			}
 		},
 
-		async create(input: NewUser): Promise<User> {
+		async create(input: NewUser, tx?: unknown): Promise<User> {
 			try {
-				const rows = await getExecutor()
+				const rows = await getExecutor(tx)
 					.insert(users)
 					.values({
 						name: input.name,
@@ -98,8 +102,13 @@ export function createUserRepository(
 						password: input.password,
 					})
 					.returning();
-				return mapToUser(rows[0]);
+				const mapped = mapToUser(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse created user");
+				}
+				return mapped;
 			} catch (error) {
+				if (error instanceof UnexpectedError) throw error;
 				if (isUniqueViolation(error)) {
 					throw new ResourceConflictError(
 						"User with this email already exists",
@@ -109,9 +118,9 @@ export function createUserRepository(
 			}
 		},
 
-		async update(id: string, input: UpdateUser): Promise<User> {
+		async update(id: string, input: UpdateUser, tx?: unknown): Promise<User> {
 			try {
-				const rows = await getExecutor()
+				const rows = await getExecutor(tx)
 					.update(users)
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
@@ -127,9 +136,16 @@ export function createUserRepository(
 				if (!rows[0]) {
 					throw new ResourceNotFoundError("User", id);
 				}
-				return mapToUser(rows[0]);
+				const mapped = mapToUser(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse updated user");
+				}
+				return mapped;
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof UnexpectedError
+				) {
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
@@ -144,9 +160,9 @@ export function createUserRepository(
 			}
 		},
 
-		async delete(id: string): Promise<void> {
+		async delete(id: string, tx?: unknown): Promise<void> {
 			try {
-				const rows = await getExecutor()
+				const rows = await getExecutor(tx)
 					.delete(users)
 					.where(eq(users.id, id))
 					.returning();

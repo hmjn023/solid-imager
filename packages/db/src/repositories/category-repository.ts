@@ -1,6 +1,7 @@
-import type {
-	NewCategory,
-	UpdateCategory,
+import {
+	categorySchema,
+	type NewCategory,
+	type UpdateCategory,
 } from "@solid-imager/core/domain/categories/schemas";
 import {
 	ResourceNotFoundError,
@@ -24,8 +25,8 @@ type CreateCategoryRepositoryOptions = {
 	orderByName?: boolean;
 };
 
-function mapToCategory(row: DbCategory): Category {
-	return {
+function mapToCategory(row: DbCategory): Category | null {
+	const result = categorySchema.safeParse({
 		id: row.id,
 		name: row.name,
 		description: row.description ?? null,
@@ -33,7 +34,8 @@ function mapToCategory(row: DbCategory): Category {
 		parentId: row.parentId ?? null,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
-	};
+	});
+	return result.success ? result.data : null;
 }
 
 export function createCategoryRepository(
@@ -47,7 +49,10 @@ export function createCategoryRepository(
 				const rows = await (options.orderByName
 					? query.orderBy(asc(categories.name))
 					: query);
-				return rows.map((row) => mapToCategory(row));
+				return rows.flatMap((row) => {
+					const mapped = mapToCategory(row);
+					return mapped ? [mapped] : [];
+				});
 			} catch (error) {
 				throw new UnexpectedError("Failed to select categories", error);
 			}
@@ -79,8 +84,13 @@ export function createCategoryRepository(
 						color: category.color ?? "#808080",
 					})
 					.returning();
-				return mapToCategory(rows[0]);
+				const mapped = mapToCategory(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse created category");
+				}
+				return mapped;
 			} catch (error) {
+				if (error instanceof UnexpectedError) throw error;
 				throw new UnexpectedError("Failed to insert category", error);
 			}
 		},
@@ -100,9 +110,16 @@ export function createCategoryRepository(
 				if (rows.length === 0) {
 					throw new ResourceNotFoundError("Category", id);
 				}
-				return mapToCategory(rows[0]);
+				const mapped = mapToCategory(rows[0]);
+				if (!mapped) {
+					throw new UnexpectedError("Failed to parse updated category");
+				}
+				return mapped;
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof UnexpectedError
+				) {
 					throw error;
 				}
 				throw new UnexpectedError(

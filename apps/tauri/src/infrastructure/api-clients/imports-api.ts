@@ -136,7 +136,10 @@ export async function processPendingImports(
 	jobIds: string[],
 	targetSourceId?: string,
 ) {
-	return await importRequestService.processPendingImports(jobIds, targetSourceId);
+	return await importRequestService.processPendingImports(
+		jobIds,
+		targetSourceId,
+	);
 }
 
 export async function cancelPendingImports(jobIds: string[]) {

@@ -44,6 +44,8 @@ export function useMediaSourceEvents(
 				};
 			}
 
+			let isCleanedUp = false;
+
 			// Register a Tauri listener for each event name that the shared hook
 			// understands. We fan-out to the unified `handler(event, data)` callback
 			// after filtering by `mediaSourceId` / `sourceId` relevance.
@@ -68,6 +70,8 @@ export function useMediaSourceEvents(
 
 			const unlistenPromises = EVENT_NAMES.map((eventName) =>
 				listen<EventPayload>(eventName, (event) => {
+					if (isCleanedUp) return;
+
 					const payload = event.payload;
 					// Route to handler only if the event is relevant for this source.
 					// media-copied and media-moved may target either side of the operation.
@@ -90,6 +94,7 @@ export function useMediaSourceEvents(
 			);
 
 			return () => {
+				isCleanedUp = true;
 				void Promise.all(unlistenPromises).then((unlistenFns) => {
 					for (const unlisten of unlistenFns) {
 						unlisten();
