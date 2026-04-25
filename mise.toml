@@ -10,8 +10,12 @@ PATH = "{{config_root}}/node_modules/.bin:{{env.PATH}}"
 
 [tools]
 bun = "latest"
+"github:k1LoW/mo" = "latest"
 "npm:@upstash/context7-mcp" = "latest"
 "npm:chrome-devtools-mcp" = "latest"
 "npm:ultracite" = "latest"
 "pipx:git+https://github.com/oraios/serena.git" = "latest"
 rust = "latest"
+opencode = "latest"
+"cargo:dua-cli" = "latest"
+"npm:@endevco/aube" = "latest"

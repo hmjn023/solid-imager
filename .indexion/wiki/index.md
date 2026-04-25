@@ -24,6 +24,10 @@ For specific topics, browse the **Categories** section.
 - [リポジトリ層ルール](wiki://repository-rules)
 - [バックアップ / リストア](wiki://backup-restore)
 
+### .agents
+
+- [Skills Catalog](wiki://skills)
+
 ### packages
 
 - [Core Concepts](wiki://core-concepts)
@@ -40,13 +44,17 @@ For specific topics, browse the **Categories** section.
 - [Overview](wiki://overview)
 - [Getting Started](wiki://getting-started)
 - [Architecture](wiki://architecture)
-- [処理フロー](wiki://process-flows)
 - [デプロイ / 本番運用](wiki://deploy)
 
 ## Recent Changes
 
-- pages add: process-flows
-- db-schema: ER diagram (Mermaid)
+- lint: overview
+- lint: architecture
+- lint: getting-started
+- lint: core-concepts
+- pages update: server-tauri-parity
+- lint: apps-server
+- lint: apps-tauri
 - pages add: deploy
 - pages add: backup-restore
 - pages add: search-design
@@ -56,14 +64,8 @@ For specific topics, browse the **Categories** section.
 - pages add: testing
 - pages add: ai-service
 - pages add: db-schema
-- pages add: server-tauri-parity
-- lint: overview
-- pages add: apps-tauri
-- pages add: apps-server
 - pages add: packages-ui
 - pages add: packages-core
 - pages add: apps-xtracter
 - pages add: apps-cli
-- pages add: core-concepts
-- pages add: architecture
-- pages add: getting-started
+

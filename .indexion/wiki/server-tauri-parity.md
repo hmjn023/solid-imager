@@ -49,9 +49,19 @@
 - app 側の差分は executor 注入、transport、filesystem、IPC などの platform 固有 I/O に閉じ込める
 - 例外を認める場合は、なぜ shared package では表現できないのかを明文化する
 
-## Routes（対応度: 90%）
+## 厳格判定ルール
 
-ページルートはほぼ同一構成。server側のみAPIルート群が存在し、tauriはRust IPCで代替。
+- 同名 route / component / service / repository が両 app にあるだけでは parity 達成とみなさない
+- shared package を import していても、app 側に重い orchestration や分岐が残るなら「部分完了」とする
+- 完了と呼べるのは、shared contract を両 app が使い、差分が platform 固有 I/O に閉じている場合だけ
+- 例外は transport、filesystem、IPC、executor、OS integration に閉じるものに限定する
+- `server 正` の基準から見て tauri 側 public I/F や失敗時の扱いが別物なら、共通化済みと数えない
+
+## Routes（対応度: ~75%）
+
+ページルートの対応関係自体は高いが、route 本体の責務分割、nav action の配置、refresh 挙動、restore/import UX はまだ揃い切っていない。server側のみAPIルート群が存在し、tauriはRust IPCで代替。
+
+厳格基準では、`search.tsx` / `manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は route レベルの状態管理と action がまだ大きく、`packages/ui` や shared route helper へ寄せられる余地が残る。
 
 | server                                           | tauri                                            | 備考                         |
 | ------------------------------------------------ | ------------------------------------------------ | ---------------------------- |
@@ -73,14 +83,18 @@
 | `routes/api/sources.$mediaSourceId.$mediaId.thumbnail.ts` | ―                                       | serverのみ（サムネイル配信）  |
 | `routes/docs/swagger/index.tsx`                  | ―                                                | serverのみ（Swagger UI）     |
 
-## Hooks（対応度: 100%、実装は異なる）
+## Hooks（対応度: ~50%）
 
 | ファイル名                          | server実装                                  | tauri実装                                  | 差異                             | 備考                              |
 | ----------------------------------- | ------------------------------------------ | ----------------------------------------- | -------------------------------- | -------------------------------- |
-| `use-media-source-events.ts`        | oRPC + SSE + AbortController               | `@tauri-apps/api/event` の `listen()`     | イベント取得方式が根本的に異なる |                                  |
+| `use-media-source-events.ts`        | oRPC + SSE + AbortController               | `@tauri-apps/api/event` の `listen()`     | イベント取得方式が根本的に異なるだけでなく、公開 callback も一致していない | tauri 側のみ `onJobProgress` を持つ |
 | `use-current-search-persistence.ts` | `packages/ui` 経由で `@solid-imager/core` | `packages/ui` 経由で `@solid-imager/core` | 共通化済み                       | deepEqualはcore/utils/deep-equal |
 
-## Components（対応度: ~90%）
+## Components（対応度: ~80%）
+
+leaf component の共有は進んだが、route からの組み立て、nav action 配置、platform 固有 I/O を含む viewer / import 操作は app ごとの差が残る。
+
+厳格基準では、component 共有より route orchestration の共有度を重く見る。presentational component が shared でも、上位 route に重い差分が残る限り高評価しない。
 
 ### 対応あり
 
@@ -91,7 +105,7 @@
 | `source-delete-modal.tsx`                   | ほぼ同一                                                                                          |
 | `source-form-modal.tsx`                     | ほぼ同一                                                                                          |
 | `upload-media-modal.tsx`                    | ほぼ同一                                                                                          |
-| `media/media-viewer.tsx`                    | server: HTTP `/api/sources/…` ↔ tauri: `fileSystem.readFile()` + `createObjectURL()` + onCleanup |
+| `media/media-viewer.tsx`                    | 対応はあるが実装差分が大きい。server は HTTP `/api/sources/…`、tauri は `fileSystem.readFile()` + `createObjectURL()` + onCleanup |
 | `media/search-filters.tsx`                  | （packages/ui/shared）                                                                            |
 | `media/preset-manager.tsx`                  | （packages/ui/shared）                                                                            |
 | `media/pro-search-dialog.tsx`               | ほぼ同一                                                                                          |
@@ -116,11 +130,13 @@
 | `components/simple-modal.tsx` | serverのみ  |
 | `components/counter.tsx`      | serverのみ  |
 
-## Repositories（対応度: ~85%）
+## Repositories（対応度: ~70%）
 
-`packages/db` を追加し、Drizzle ベースの repository 実装を factory (`createXRepository(getExecutor)`) として共通化した。server / tauri はそれぞれ executor provider（`db` グローバル or `getTauriAppServices().db`）を注入する薄い wrapper のみを保持する。`mapToX` も `packages/db` 側に集約。
+`packages/db` に主要 repository factory は集約されたが、server / tauri / shared の 3 層でまだ非対称な領域が残る。author / character / ip / media / preset / project / source / tag / job は前進している一方、category / collection / user / app-config は揃っていない。
 
-### 完全共通化済み（factory本体は `@solid-imager/db/repositories/*`）
+厳格基準では、factory 化された数ではなく、未共通 repository が主機能に与える影響で評価する。category / collection / user / app-config が残る間は高評価しない。
+
+### 共通 factory あり（factory本体は `@solid-imager/db/repositories/*`）
 
 | リポジトリ                | 共通実装                                                 | server側 wrapper                                    | tauri側 wrapper                              |
 | ------------------------- | -------------------------------------------------------- | --------------------------------------------------- | -------------------------------------------- |
@@ -144,7 +160,7 @@
 | --------------------- | ----------------------------------------------------------------------------- |
 | `media-repository.ts` | `packages/db/src/repositories/media-repository.ts` に共通化。server / tauri は `createMediaRepository(getExecutor)` の薄い wrapper のみを保持 |
 
-### 片側のみ
+### 未対応・片側のみ
 
 | リポジトリ                  | 存在するapp                              |
 | --------------------------- | ---------------------------------------- |
@@ -155,12 +171,15 @@
 | `app-config-repository.ts`  | tauriのみ                                |
 | `tauri-job-repository.ts`   | tauriのみ                                |
 
-## Services（対応度: ~75%）
+## Services（対応度: ~55%）
 
-`packages/application` を追加し、repository 依存だけで成立する application service と、platform 非依存の utility / job payload 定義を共通化した。
-共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`, `searchMedia`, `uploadMedia`）へ揃える。server / tauri 側は外部 wire API を維持しつつ、内部で `@solid-imager/application/services/*` の factory を利用する。
+`packages/application` の追加自体は前進だが、「shared 実装がある」と「server / tauri の主実装がそれを薄く利用している」は別。CRUD 系の一部は shared 化できている一方、source / media / backup / ai / search / tagging / thumbnail など主機能の責務はまだ非対称で、特に tauri 側 `source-service.ts` と `media-service.ts` は app 固有ロジックを多く抱えている。
 
-### 完全共通化済み（service本体）
+共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`, `searchMedia`, `uploadMedia`）へ揃える方針だが、実装実態はサービスごとにばらつきがある。
+
+厳格基準では、`apps/tauri/src/infrastructure/local-api/services/source-service.ts` と `media-service.ts` が大きい時点で、主要サービス共通化は未達寄りとみなす。
+
+### service 本体を shared 利用しているもの
 
 | サービス               | 共通実装                                      | server側 wrapper                                  | tauri側 wrapper                                      |
 | ---------------------- | --------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
@@ -183,11 +202,11 @@
 | `media-processing-job`  | `packages/application/src/services/media-processing-job.ts` | server / tauri の step 定義を共有 |
 | `maintenance-service`   | `packages/application/src/services/maintenance-service.ts` | startup recovery の判定・job enqueue を共有。thumbnail path 解決と queue wake は app adapter に残す |
 | `config-service`        | `packages/application/src/services/config-service.ts`, `utils/config-merge.ts` | Tauri は共通 service、server は config merge utility を使用 |
-| `source-service`        | `packages/application/src/services/source-service.ts` | Safe DTO 変換と status/testConnection orchestration を共有。watcher/sync はTauri側に残す |
+| `source-service`        | `packages/application/src/services/source-service.ts` | server は shared service を利用するが、tauri 側は `toSafeMediaSource` の再利用が主で watcher/sync を含む大半は独自実装 |
 | `backup-service`        | `packages/db/src/backup.ts` | dump/restore の DB ロジックを共有。zip / fs / command client は app 固有のまま |
 | TODO stub services      | `packages/application/src/services/stub-services.ts` | analytics / bulk-operation / data-migration / filter-preset / integration / workflow |
 
-### 対応あり（Tauri: 11 services）
+### 対応あり（名称・責務が近いもの）
 
 CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, `get*Details`, `create*`, `update*`, `delete*` など）を正とし、Tauri 側は既存API互換 wrapper で `list/get/create/update/delete` を維持する。
 
@@ -205,7 +224,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `ai-service.ts`      | ―                                            | `TauriAiService`（local-api/services/）（server委譲） |
 | `source-backup-service.ts` | `backup-service.ts`（server）          | `TauriSourceBackupService`（local-api/services/）   |
 
-### 片側のみ
+### 未対応・片側のみ
 
 | サービス                      | 存在するapp | 対応するtauri実装                   |
 | ----------------------------- | ----------- | ----------------------------------- |
@@ -224,7 +243,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `media-processing-job.ts`     | serverのみ  | なし（`process-media-job.ts` が近い）   |
 | `media-processing-service.ts` | serverのみ  | なし                                |
 | `media-source-service.ts`     | serverのみ  | `source-service.ts`（tauri）        |
-| `search-service.ts`           | serverのみ  | なし                                |
+| `search-service.ts`           | serverのみ  | tauri は API client 経由で利用し、service wrapper は未整備 |
 | `server-config-service.ts`    | serverのみ  | `config-service.ts`（tauri）        |
 | `tagging-service.ts`          | serverのみ  | なし                                |
 | `thumbnail-service.ts`        | serverのみ  | なし                                |
@@ -248,7 +267,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
   - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
   - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
-## Jobs（対応度: ~50%）
+## Jobs（対応度: ~35%）
 
 server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。
 
@@ -267,10 +286,10 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 | 優先度 | 領域                             | 必要な作業                                            | 状態       |
 | ------ | -------------------------------- | ----------------------------------------------------- | ---------- |
-| 高     | Hooks                            | `deepEqual` をcoreに移すだけで即共通化可能            | ✅ 完了    |
-| 高     | Components（検索・プリセット系） | APIコール層を外部注入にしてpresentational化           | ✅ 完了    |
-| 中     | Services                         | `packages/application` に共通 service を切り出し、server/tauri wrapper から利用 | ✅ 主要CRUD・media・source/config/job/stub共通化済み |
-| 中     | Repositories                     | `packages/db` に factory 集約、server/tauri は executor 注入の wrapper のみ | ✅ 完了 |
+| 高     | Hooks                            | `use-current-search-persistence` は完了済みだが、`use-media-source-events` の公開I/Fを揃える | 部分完了 |
+| 高     | Components（検索・プリセット系） | shared component は導入済み。route 組み立てと nav action 配置差分を詰める | 部分完了 |
+| 中     | Services                         | `packages/application` 利用範囲を広げ、tauri の source/media/search 周辺を薄い adapter に縮退 | 部分完了 |
+| 中     | Repositories                     | `packages/db` 化されていない category / collection / user と app-config 周辺の扱いを整理 | 部分完了 |
 | 低     | Jobs                             | 実装方針が根本的に異なる（SSE vs Rust IPC）           |            |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
 
@@ -283,16 +302,33 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - import inbox の pending queue は `localStorage` を廃止し、server / tauri とも `jobs` table の `import_request` を source of truth とする
 - import request の `bulkAdd / listPending / process / cancel` は `packages/application/src/services/import-request-service.ts` を正とし、server / tauri は restore / execute / event publish の adapter だけを注入する
 
+## 再監査メモ（2026-04-25）
+
+- route ファイル名は揃っているが、`search.tsx` と `sources/$mediaSourceId/index.tsx` は nav action 配置、event refresh、restore/import UX の差が残るため「同一」ではなく「対応あり」止まり
+- hook は `use-current-search-persistence.ts` のみ実質共通。`use-media-source-events.ts` は tauri 側だけ `onJobProgress` を公開しており、hook I/F parity は未達
+- repository は author / character / ip / media / preset / project / source / tag / job が shared factory 化済みだが、category / collection / user は server 側のみ、`app-config-repository.ts` は tauri 側のみ
+- service は CRUD 系の一部に shared 実装がある一方、tauri 側 `source-service.ts` と `media-service.ts` が大きく、server 正の shared service へ十分に寄っていない
+- jobs は payload / worker の一部共有に留まり、download / tagging / watcher / event delivery は依然として別系統
+
+## さらに厳しく見たときの未共通化ポイント
+
+- routes: `search.tsx` / `manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は state・loader・event refresh・action 群を shared helper か shared screen component に寄せる余地がある
+- hooks: `use-media-source-events.ts` は event transport 差分だけを adapter に押し込み、hook 自体は shared 化できる余地がある
+- queries / api-clients: `queries/*.ts` と `search-api.ts` などは app ごとに薄く重複しており、transport 注入前提の共通 query option builder に寄せられる余地がある
+- services: tauri 側 `source-service.ts` / `media-service.ts` / `source-backup-service.ts` は shared package が前提の thin adapter にはなっていない
+- components: `nav.tsx` を例外としても、nav action slot や source detail action 群は shared 化できる
+- skills: `shared-ui-parity` と `server-tauri-commonization` は役割分担が近く、完了条件が緩い。現状は「shared import がある」だけで前進扱いしやすい
+
 ## 前回からの主な変更点（2026-04-25更新）
 
 - **Jobs / Components**: import inbox を共通化。`packages/application/src/services/import-request-service.ts` に import request service を追加し、`packages/ui/src/import-review-modal.tsx` / `packages/ui/src/pending-downloads-indicator.tsx` を server / tauri で共有。Tauri の pending queue は `localStorage` から `jobs` table (`type=import_request`) へ移行し、server と同じ保存モデルへ統一
 - **Services**: `media-service.ts` を `packages/application/src/services/media-service.ts` に共通化。server 側は既存 constructor/proxy 互換 wrapper、Tauri 側は `IMediaStorage` / `IImageProcessor` / transaction / metadata hook を注入する adapter へ変更。Tauri local procedure の wire 名は維持し、service method 名は server 側 (`searchMedia`, `getMediaDetails`, `uploadMedia` など) へ寄せた
 - **Repositories（PR #267 レビュー対応）**: author factory に `orderByName` オプションを追加し Tauri wrapper で有効化（旧 `asc(name)` ソートを復元）。update に `isUniqueViolation → ResourceConflictError` を追加し他 repo と整合。tag `addTagsToMedia` で (name, type) のデデュープと、挿入後 lookup 失敗時の log+skip（flatMap）に変更
 - **Repositories**: `packages/db` を追加し、author / character / ip / preset / project / source / tag の 7 repository と media-search ユーティリティを factory 形式で共通化。server / tauri は `createXRepository(getExecutor)` を呼ぶだけの薄い wrapper に縮退。重複していた server 側 `authors-repository.ts` は削除
-- **Hooks**: `use-current-search-persistence.ts` が既に `packages/ui` 経由で `@solid-imager/core/utils/deep-equal` を使用。共通化済み
+- **Hooks**: `use-current-search-persistence.ts` は共通化済み。ただし `use-media-source-events.ts` は未共通化で、hook の公開I/Fも一致していない
 - **Components**: `SearchControlPanel`, `SearchFilters`, `PresetManager`, `AssociationManager` が `packages/ui` に実装済み。server/tauri 両方で `@solid-imager/ui/search-control-panel` を import 使用
 - **Services**: `maintenance-service.ts` を `packages/application/src/services/maintenance-service.ts` に共通化。server は Node fs + `getSourceCacheDir()` adapter、Tauri は `thumbnailDir` 解決と `tauriJobQueue.registerQueuedSources()` adapter に縮退
-- **Services**: `packages/application` を追加し、主要CRUD系（author, tag, character, ip, project, preset, category, collection, user）と media / search / source / config / TODO stub service を共通化。server / tauri wrapper は既存の外部 wire API を維持
-- **Services対応度**: Tauri local-api / application の主要サービスのうち、10 services（author, tag, character, ip, project, preset, media, source, config, maintenance）が `packages/application` を利用。残りの ai / source-backup は platform 固有処理が多いため未共通化
+- **Services**: `packages/application` は増えているが、「shared 実装が存在する」と「server / tauri の主実装がそれを薄く利用している」は別。特に tauri 側の source / media はまだ app 固有責務が大きい
+- **Services対応度**: 単純 CRUD と config / maintenance は前進したが、source / media / search / backup / ai / tagging を含む主機能の parity はなお過渡期
 - **Jobs**: media-processing job の step 定義・payload helper を `packages/application` に移動。server / tauri の実行基盤は引き続き別実装
-- 対応度の推定値を更新（Repositories 65% → ~85%、Services ~55% → ~75%、Jobs ~30% → ~35%）
+- 対応度の推定値を再補正（Routes 90% → ~75%、Hooks 100% → ~50%、Components ~90% → ~80%、Repositories ~85% → ~70%、Services ~75% → ~55%、Jobs ~50% → ~35%）
