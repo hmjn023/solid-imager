@@ -16,9 +16,7 @@ const {
 } = vi.hoisted(() => ({
 	mockAppDataDir: vi.fn(async () => "/app"),
 	mockIsAbsolute: vi.fn(async () => false),
-	mockJoin: vi.fn(
-		async (left: string, right: string) => `${left}/${right}`,
-	),
+	mockJoin: vi.fn(async (left: string, right: string) => `${left}/${right}`),
 	mockGetTauriAppServices: vi.fn(),
 	mockInitialize: vi.fn(async () => undefined),
 	mockRegisterQueuedSources: vi.fn(),
