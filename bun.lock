@@ -67,6 +67,7 @@
         "solid-js": "^1.9.12",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-dist": "^5.32.1",
+        "tinyglobby": "^0.2.15",
         "uuid": "^13.0.0",
         "vite-tsconfig-paths": "^5.1.4",
         "yauzl": "^3.2.1",
@@ -200,6 +201,7 @@
       "version": "0.0.0",
       "dependencies": {
         "@kobalte/core": "^0.13.11",
+        "@solid-imager/core": "workspace:*",
         "@solidjs/router": "^0.15.4",
         "@tanstack/solid-virtual": "^3.13.16",
         "class-variance-authority": "^0.7.1",
@@ -210,10 +212,10 @@
         "solid-sonner": "^0.3.1",
         "tailwind-merge": "^3.4.0",
         "tailwindcss-animate": "^1.0.7",
+        "zod": "^4.3.5",
       },
       "devDependencies": {
         "@biomejs/biome": "^2.2.4",
-        "@solid-imager/core": "workspace:*",
         "typescript": "^5.9.3",
         "vite-plus": "latest",
         "vite-tsconfig-paths": "^5.1.4",
