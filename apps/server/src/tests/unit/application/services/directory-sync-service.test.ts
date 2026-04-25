@@ -15,8 +15,8 @@ vi.mock("node:fs/promises", () => ({
 	},
 }));
 
-vi.mock("fast-glob", () => ({
-	default: vi
+vi.mock("tinyglobby", () => ({
+	glob: vi
 		.fn()
 		.mockResolvedValue(["file1.jpg", "sub/file2.png", "new_file.mp3"]),
 }));

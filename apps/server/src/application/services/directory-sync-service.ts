@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import fg from "fast-glob";
+import { glob } from "tinyglobby";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -128,12 +128,13 @@ export const DirectorySyncService = {
 			}
 
 			// 2. Scan actual file system
-			// fast-glob uses POSIX separators even on Windows
-			const fsPaths = await fg("**/*", {
+			// tinyglobby uses POSIX separators even on Windows
+			const fsPaths = await glob("**/*", {
 				cwd: basePath,
 				ignore: ["**/.*", "**/.*/**"], // Ignore dotfiles and dot directories
 				onlyFiles: true,
 				caseSensitiveMatch: false,
+				expandDirectories: false,
 			});
 
 			const mediaExtensions = services.getConfigService().getConfig()

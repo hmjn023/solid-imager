@@ -15,6 +15,7 @@
 	},
 	"dependencies": {
 		"@kobalte/core": "^0.13.11",
+		"@solid-imager/core": "workspace:*",
 		"@solidjs/router": "^0.15.4",
 		"@tanstack/solid-virtual": "^3.13.16",
 		"class-variance-authority": "^0.7.1",
@@ -24,11 +25,11 @@
 		"solid-js": "^1.9.12",
 		"solid-sonner": "^0.3.1",
 		"tailwind-merge": "^3.4.0",
-		"tailwindcss-animate": "^1.0.7"
+		"tailwindcss-animate": "^1.0.7",
+		"zod": "^4.3.5"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.4",
-		"@solid-imager/core": "workspace:*",
 		"typescript": "^5.9.3",
 		"vite-plus": "latest",
 		"vite-tsconfig-paths": "^5.1.4",
