@@ -105,8 +105,8 @@
 | `media/search-control-panel.tsx`            | ほぼ同一                                                                                          |
 | `media/sort-controls.tsx`                   | ほぼ同一                                                                                          |
 | `media/thumbnail-image.tsx`                 | ほぼ同一                                                                                          |
-| `imports/import-review-modal.tsx`           | server: `orpc.imports.*()` ↔ tauri: 専用ラッパー関数。デフォルトソース選択ロジックも微妙に異なる |
-| `imports/pending-downloads-indicator.tsx`   | ほぼ同一                                                                                          |
+| `imports/import-review-modal.tsx`           | `packages/ui/import-review-modal.tsx` を共有。app 側は data/action adapter のみ                 |
+| `imports/pending-downloads-indicator.tsx`   | `packages/ui/pending-downloads-indicator.tsx` を共有。app 側は event subscription adapter のみ |
 
 ### 片側のみ
 
@@ -248,7 +248,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
   - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
   - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
-## Jobs（対応度: ~35%）
+## Jobs（対応度: ~50%）
 
 server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。
 
@@ -280,9 +280,12 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - 新しい例外を追加する場合は、なぜ transport 差分や platform 固有事情で分離が必要なのかを明記する
 - 片側だけ変更して完了にしない。未対応なら、もう片側への影響か未対応理由を必ず残す
 - PGlite は共通化を諦める理由ではなく、shared repository / executor 注入で吸収する前提で扱う
+- import inbox の pending queue は `localStorage` を廃止し、server / tauri とも `jobs` table の `import_request` を source of truth とする
+- import request の `bulkAdd / listPending / process / cancel` は `packages/application/src/services/import-request-service.ts` を正とし、server / tauri は restore / execute / event publish の adapter だけを注入する
 
 ## 前回からの主な変更点（2026-04-25更新）
 
+- **Jobs / Components**: import inbox を共通化。`packages/application/src/services/import-request-service.ts` に import request service を追加し、`packages/ui/src/import-review-modal.tsx` / `packages/ui/src/pending-downloads-indicator.tsx` を server / tauri で共有。Tauri の pending queue は `localStorage` から `jobs` table (`type=import_request`) へ移行し、server と同じ保存モデルへ統一
 - **Services**: `media-service.ts` を `packages/application/src/services/media-service.ts` に共通化。server 側は既存 constructor/proxy 互換 wrapper、Tauri 側は `IMediaStorage` / `IImageProcessor` / transaction / metadata hook を注入する adapter へ変更。Tauri local procedure の wire 名は維持し、service method 名は server 側 (`searchMedia`, `getMediaDetails`, `uploadMedia` など) へ寄せた
 - **Repositories（PR #267 レビュー対応）**: author factory に `orderByName` オプションを追加し Tauri wrapper で有効化（旧 `asc(name)` ソートを復元）。update に `isUniqueViolation → ResourceConflictError` を追加し他 repo と整合。tag `addTagsToMedia` で (name, type) のデデュープと、挿入後 lookup 失敗時の log+skip（flatMap）に変更
 - **Repositories**: `packages/db` を追加し、author / character / ip / preset / project / source / tag の 7 repository と media-search ユーティリティを factory 形式で共通化。server / tauri は `createXRepository(getExecutor)` を呼ぶだけの薄い wrapper に縮退。重複していた server 側 `authors-repository.ts` は削除

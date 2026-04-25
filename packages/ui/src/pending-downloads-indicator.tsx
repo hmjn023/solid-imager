@@ -1,0 +1,116 @@
+import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import {
+	createResource,
+	createSignal,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
+import { isServer } from "solid-js/web";
+import { isImportInboxEvent } from "./import-inbox-helpers";
+import {
+	ImportReviewModal,
+	type PendingImportJob,
+} from "./import-review-modal";
+import { toast } from "./toast";
+
+export type ImportEventHandler = (
+	event: string,
+	payload: unknown,
+) => void | Promise<void>;
+
+export type PendingDownloadsIndicatorProps = {
+	listPending: () => Promise<PendingImportJob[]>;
+	listSources: () => Promise<SafeMediaSource[]>;
+	processPending: (
+		jobIds: string[],
+		targetSourceId: string,
+	) => Promise<{ success: boolean; processedCount: number }>;
+	cancelPending: (jobIds: string[]) => Promise<{ success: boolean }>;
+	subscribeImportEvents: (
+		handler: ImportEventHandler,
+	) => Promise<(() => void) | undefined> | (() => void) | undefined;
+};
+
+export function PendingDownloadsIndicator(
+	props: PendingDownloadsIndicatorProps,
+) {
+	const [isModalOpen, setIsModalOpen] = createSignal(false);
+	const [pendingCount, { refetch }] = createResource(async () => {
+		try {
+			return (await props.listPending()).length;
+		} catch (error) {
+			if (!isServer) {
+				toast.error(`Failed to check inbox: ${(error as Error).message}`);
+			}
+			return 0;
+		}
+	});
+
+	onMount(() => {
+		if (isServer) {
+			return;
+		}
+
+		let disposed = false;
+		let cleanup: (() => void) | undefined;
+
+		void Promise.resolve(
+			props.subscribeImportEvents((event) => {
+				if (isImportInboxEvent(event)) {
+					void refetch();
+				}
+			}),
+		)
+			.then((unsub) => {
+				if (disposed) {
+					unsub?.();
+					return;
+				}
+				cleanup = unsub;
+			})
+			.catch(() => {
+				if (!disposed) {
+					toast.error("Connection to inbox lost");
+				}
+			});
+
+		onCleanup(() => {
+			disposed = true;
+			cleanup?.();
+		});
+	});
+
+	return (
+		<>
+			<button
+				class={`flex items-center gap-1 rounded px-3 py-1.5 font-bold text-xs transition-colors ${
+					(pendingCount() ?? 0) > 0
+						? "bg-sky-600 text-white hover:bg-sky-500"
+						: "cursor-default bg-gray-700 text-gray-400"
+				}`}
+				disabled={(pendingCount() ?? 0) === 0}
+				onClick={() => setIsModalOpen(true)}
+				type="button"
+			>
+				<span>Inbox</span>
+				<Show when={(pendingCount() ?? 0) > 0}>
+					<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">
+						{pendingCount()}
+					</span>
+				</Show>
+			</button>
+			<ImportReviewModal
+				cancelPending={props.cancelPending}
+				isOpen={isModalOpen()}
+				listPending={props.listPending}
+				listSources={props.listSources}
+				onClose={() => setIsModalOpen(false)}
+				onImportCompleted={() => {
+					void refetch();
+				}}
+				processPending={props.processPending}
+			/>
+		</>
+	);
+}

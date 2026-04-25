@@ -1,6 +1,12 @@
+import {
+	createImportRequestService,
+	type PendingImportJob,
+} from "@solid-imager/application/services/import-request-service";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
+import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
+import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
 import {
 	dirname,
 	extname,
@@ -8,34 +14,6 @@ import {
 	splitStemAndExt,
 } from "../path-utils";
 import { fetchMediaSource, syncMediaSources } from "./sources-api";
-
-type PendingImportJob = {
-	id: string;
-	item: DownloadItem;
-	createdAt: string;
-	targetSourceId?: string;
-};
-
-const IMPORT_QUEUE_KEY = "solid-imager.pending-imports";
-
-function readQueue(): PendingImportJob[] {
-	if (typeof localStorage === "undefined") {
-		return [];
-	}
-	try {
-		const raw = localStorage.getItem(IMPORT_QUEUE_KEY);
-		return raw ? (JSON.parse(raw) as PendingImportJob[]) : [];
-	} catch {
-		return [];
-	}
-}
-
-function writeQueue(queue: PendingImportJob[]) {
-	if (typeof localStorage === "undefined") {
-		return;
-	}
-	localStorage.setItem(IMPORT_QUEUE_KEY, JSON.stringify(queue));
-}
 
 async function emitImportEvent(
 	event: string,
@@ -51,18 +29,6 @@ function resolveDownloadTarget(item: DownloadItem) {
 	return item.sourceUrls?.[0];
 }
 
-function createPendingJob(
-	item: DownloadItem,
-	targetSourceId?: string,
-): PendingImportJob {
-	return {
-		id: crypto.randomUUID(),
-		item,
-		createdAt: new Date().toISOString(),
-		targetSourceId,
-	};
-}
-
 async function downloadItemToSource(
 	targetSourceId: string,
 	item: DownloadItem,
@@ -71,14 +37,17 @@ async function downloadItemToSource(
 	if (!downloadTarget) {
 		throw new Error("targetUrl or sourceUrls[0] is required");
 	}
+
 	const source = await fetchMediaSource(targetSourceId);
 	if (source.type !== "local") {
 		throw new Error("Only local sources are supported in Tauri.");
 	}
+
 	const response = await fetch(downloadTarget);
 	if (!response.ok) {
 		throw new Error(`Failed to download ${downloadTarget}: ${response.status}`);
 	}
+
 	const bytes = new Uint8Array(await response.arrayBuffer());
 	const targetRoot = (source.connectionInfo as { path?: string }).path;
 	if (!targetRoot) {
@@ -141,53 +110,35 @@ export async function processImportItemsToSource(
 	return { success: true, processedCount: items.length };
 }
 
+const importRequestService = createImportRequestService({
+	jobRepository: TauriJobRepository,
+	findMediaSourceForFile: async (filePath) =>
+		await TauriSourceBackupService.findMediaSourceForFile(filePath),
+	restoreSource: async (sourceId, items) =>
+		await TauriSourceBackupService.restoreSource(sourceId, items),
+	executeImport: async (targetSourceId, items) =>
+		await processImportItemsToSource(targetSourceId, items),
+	publishImportEvent: emitImportEvent,
+});
+
 export async function bulkAddImportItems(
 	items: DownloadItem[],
 	targetSourceId?: string,
 ) {
-	const queue = [
-		...readQueue(),
-		...items.map((item) => createPendingJob(item, targetSourceId)),
-	];
-	writeQueue(queue);
-	await emitImportEvent("import-request:created", { count: items.length });
-	return { addedCount: items.length, skippedCount: 0, restoredCount: 0 };
+	return await importRequestService.bulkAddImportItems(items, targetSourceId);
 }
 
-export async function listPendingImports() {
-	return readQueue();
+export async function listPendingImports(): Promise<PendingImportJob[]> {
+	return await importRequestService.listPendingImports();
 }
 
 export async function processPendingImports(
 	jobIds: string[],
 	targetSourceId?: string,
 ) {
-	const queue = readQueue();
-	const selectedJobs = queue.filter((job) => jobIds.includes(job.id));
-	const itemsByTargetSource = new Map<string, DownloadItem[]>();
-	for (const job of selectedJobs) {
-		const resolvedTargetSourceId = targetSourceId || job.targetSourceId;
-		if (!resolvedTargetSourceId) {
-			throw new Error("Target source is required");
-		}
-		const existingItems = itemsByTargetSource.get(resolvedTargetSourceId) || [];
-		existingItems.push(job.item);
-		itemsByTargetSource.set(resolvedTargetSourceId, existingItems);
-	}
-	for (const [resolvedTargetSourceId, items] of itemsByTargetSource) {
-		await processImportItemsToSource(resolvedTargetSourceId, items);
-	}
-	const remaining = queue.filter((job) => !jobIds.includes(job.id));
-	writeQueue(remaining);
-	await emitImportEvent("import-request:processed", {
-		processedCount: selectedJobs.length,
-	});
-	return { success: true, processedCount: selectedJobs.length };
+	return await importRequestService.processPendingImports(jobIds, targetSourceId);
 }
 
 export async function cancelPendingImports(jobIds: string[]) {
-	const remaining = readQueue().filter((job) => !jobIds.includes(job.id));
-	writeQueue(remaining);
-	await emitImportEvent("import-request:deleted", { jobIds });
-	return { success: true };
+	return await importRequestService.cancelPendingImports(jobIds);
 }

@@ -36,6 +36,8 @@ export type JobRepositoryPort = {
 	createMany(jobs: NewJobRecord[]): Promise<JobRecord[]>;
 	createIfUnique(job: NewJobRecord): Promise<JobRecord | null>;
 	findById(id: string): Promise<JobRecord | null>;
+	findPendingImportRequests(): Promise<JobRecord[]>;
+	findImportRequestsByIds(jobIds: string[]): Promise<JobRecord[]>;
 	findPending(
 		limit: number,
 		options?: FindPendingJobsOptions,
@@ -43,6 +45,8 @@ export type JobRepositoryPort = {
 	resetInProgressToPending(options?: {
 		includeTypes?: string[];
 	}): Promise<void>;
+	markImportRequestsCompleted(jobIds: string[]): Promise<void>;
+	deleteImportRequests(jobIds: string[]): Promise<void>;
 	markAsInProgress(id: string): Promise<void>;
 	markAsCompleted(id: string, result?: unknown): Promise<void>;
 	markAsFailed(id: string, error: string): Promise<void>;
