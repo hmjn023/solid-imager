@@ -67,10 +67,7 @@ export function createCollectionRepository(
 			return rows[0] ? mapToCollection(rows[0]) : null;
 		},
 
-		async create(
-			collection: NewCollection,
-			tx?: unknown,
-		): Promise<Collection> {
+		async create(collection: NewCollection, tx?: unknown): Promise<Collection> {
 			try {
 				const rows = await getExecutor(tx)
 					.insert(collections)
@@ -143,11 +140,13 @@ export function createCollectionRepository(
 			tx?: unknown,
 		): Promise<void> {
 			try {
-				await getExecutor(tx).insert(mediaCollections).values({
-					collectionId,
-					mediaId: item.mediaId,
-					displayOrder: item.displayOrder ?? null,
-				});
+				await getExecutor(tx)
+					.insert(mediaCollections)
+					.values({
+						collectionId,
+						mediaId: item.mediaId,
+						displayOrder: item.displayOrder ?? null,
+					});
 			} catch (error) {
 				if (isUniqueViolation(error)) {
 					throw new ResourceConflictError(
