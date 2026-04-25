@@ -59,7 +59,12 @@ export function useMediaSourceEvents(
 				"job-progress",
 			] as const;
 
-			type EventPayload = { mediaSourceId?: string; sourceId?: string; targetId?: string; jobId?: string };
+			type EventPayload = {
+				mediaSourceId?: string;
+				sourceId?: string;
+				targetId?: string;
+				jobId?: string;
+			};
 
 			const unlistenPromises = EVENT_NAMES.map((eventName) =>
 				listen<EventPayload>(eventName, (event) => {

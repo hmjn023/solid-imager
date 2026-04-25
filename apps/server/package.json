@@ -60,6 +60,7 @@
 		"solid-js": "^1.9.12",
 		"swagger-jsdoc": "^6.2.8",
 		"swagger-ui-dist": "^5.32.1",
+		"tinyglobby": "^0.2.15",
 		"uuid": "^13.0.0",
 		"vite-tsconfig-paths": "^5.1.4",
 		"yauzl": "^3.2.1",
