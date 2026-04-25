@@ -1,151 +1,101 @@
 import {
-	type AllJobsCompletedEvent,
-	allJobsCompletedEventSchema,
-	type JobProgressEvent,
-	jobProgressEventSchema,
-	type MediaAddedEvent,
-	type MediaChangedEvent,
-	type MediaCopiedEvent,
-	type MediaDeletedEvent,
-	type MediaMovedEvent,
-	mediaAddedEventSchema,
-	mediaChangedEventSchema,
-	mediaCopiedEventSchema,
-	mediaDeletedEventSchema,
-	mediaMovedEventSchema,
-	type ThumbnailGeneratedEvent,
-	thumbnailGeneratedEventSchema,
-	type WatcherErrorEvent,
-	watcherErrorEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+	type MediaSourceEventTransport,
+	type UseMediaSourceEventsOptions,
+	useMediaSourceEvents as useMediaSourceEventsShared,
+} from "@solid-imager/ui/hooks/use-media-source-events";
 import { listen } from "@tauri-apps/api/event";
-import { type Accessor, createEffect, onCleanup } from "solid-js";
+import type { Accessor } from "solid-js";
 
-type MediaSourceEventsOptions = {
-	enabled?: boolean | Accessor<boolean>;
-	onMediaAdded?: (data: MediaAddedEvent) => void;
-	onMediaDeleted?: (data: MediaDeletedEvent) => void;
-	onMediaChanged?: (data: MediaChangedEvent) => void;
-	onMediaCopied?: (data: MediaCopiedEvent) => void;
-	onMediaMoved?: (data: MediaMovedEvent) => void;
-	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
-	onJobProgress?: (data: JobProgressEvent) => void;
-	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
-	onWatcherError?: (data: WatcherErrorEvent) => void;
-};
+export type {
+	AllJobsCompletedEvent,
+	JobProgressEvent,
+	MediaAddedEvent,
+	MediaChangedEvent,
+	MediaCopiedEvent,
+	MediaDeletedEvent,
+	MediaMovedEvent,
+	ThumbnailGeneratedEvent,
+	WatcherErrorEvent,
+} from "@solid-imager/ui/hooks/use-media-source-events";
 
-type SafeParseSchema<T> = {
-	safeParse: (
-		input: unknown,
-	) => { success: true; data: T } | { success: false; error: unknown };
-};
+type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
-function parseEventPayload<T>(
-	schema: SafeParseSchema<T>,
-	payload: unknown,
-): T | null {
-	const result = schema.safeParse(payload);
-	return result.success ? result.data : null;
-}
-
+/**
+ * Tauri-side thin wrapper around the shared `useMediaSourceEvents` hook.
+ *
+ * Creates a Tauri event-bus transport scoped to `mediaSourceId` and injects it
+ * into the shared hook. Each call to `transport.listen` registers one Tauri
+ * event listener per event name and fans out to the shared handler, filtering
+ * events to those relevant for the current `mediaSourceId`.
+ */
 export function useMediaSourceEvents(
 	mediaSourceId: Accessor<string | undefined>,
 	options: MediaSourceEventsOptions = {},
-) {
-	createEffect(() => {
-		const id = mediaSourceId();
-		const isEnabled =
-			typeof options.enabled === "function"
-				? options.enabled()
-				: (options.enabled ?? true);
-		if (!(id && isEnabled)) {
-			return;
-		}
+): void {
+	const transport: MediaSourceEventTransport = {
+		listen(handler) {
+			// Reading `mediaSourceId()` synchronously here is intentional:
+			// this function is called inside the shared hook's `createEffect`,
+			// so Solid tracks it and re-runs the effect when the id changes.
+			const id = mediaSourceId();
+			if (!id) {
+				return () => {
+					/* no-op */
+				};
+			}
 
-		const unlistenPromises = [
-			listen("media-added", (event) => {
-				const payload = parseEventPayload(mediaAddedEventSchema, event.payload);
-				if (payload && payload.mediaSourceId === id) {
-					options.onMediaAdded?.(payload);
-				}
-			}),
-			listen("media-deleted", (event) => {
-				const payload = parseEventPayload(
-					mediaDeletedEventSchema,
-					event.payload,
-				);
-				if (payload && payload.mediaSourceId === id) {
-					options.onMediaDeleted?.(payload);
-				}
-			}),
-			listen("media-changed", (event) => {
-				const payload = parseEventPayload(
-					mediaChangedEventSchema,
-					event.payload,
-				);
-				if (payload && payload.mediaSourceId === id) {
-					options.onMediaChanged?.(payload);
-				}
-			}),
-			listen("media-copied", (event) => {
-				const payload = parseEventPayload(
-					mediaCopiedEventSchema,
-					event.payload,
-				);
-				if (payload && (payload.sourceId === id || payload.targetId === id)) {
-					options.onMediaCopied?.(payload);
-				}
-			}),
-			listen("media-moved", (event) => {
-				const payload = parseEventPayload(mediaMovedEventSchema, event.payload);
-				if (payload && (payload.sourceId === id || payload.targetId === id)) {
-					options.onMediaMoved?.(payload);
-				}
-			}),
-			listen("thumbnail-generated", (event) => {
-				const payload = parseEventPayload(
-					thumbnailGeneratedEventSchema,
-					event.payload,
-				);
-				if (payload && payload.mediaSourceId === id) {
-					options.onThumbnailGenerated?.(payload);
-				}
-			}),
-			listen("job-progress", (event) => {
-				const payload = parseEventPayload(
-					jobProgressEventSchema,
-					event.payload,
-				);
-				if (payload && payload.jobId === id) {
-					options.onJobProgress?.(payload);
-				}
-			}),
-			listen("all-jobs-completed", (event) => {
-				const payload = parseEventPayload(
-					allJobsCompletedEventSchema,
-					event.payload,
-				);
-				if (payload && payload.mediaSourceId === id) {
-					options.onAllJobsCompleted?.(payload);
-				}
-			}),
-			listen("watcher-error", (event) => {
-				const payload = parseEventPayload(
-					watcherErrorEventSchema,
-					event.payload,
-				);
-				if (payload && payload.mediaSourceId === id) {
-					options.onWatcherError?.(payload);
-				}
-			}),
-		];
+			// Register a Tauri listener for each event name that the shared hook
+			// understands. We fan-out to the unified `handler(event, data)` callback
+			// after filtering by `mediaSourceId` / `sourceId` relevance.
+			const EVENT_NAMES = [
+				"media-added",
+				"media-deleted",
+				"media-changed",
+				"media-copied",
+				"media-moved",
+				"thumbnail-generated",
+				"all-jobs-completed",
+				"watcher-error",
+				"job-progress",
+			] as const;
 
-		onCleanup(() => {
-			void Promise.all(unlistenPromises).then((unlistenFns) => {
-				for (const unlisten of unlistenFns) {
-					unlisten();
-				}
-			});
-		});
+			type EventPayload = { mediaSourceId?: string; sourceId?: string; targetId?: string; jobId?: string };
+
+			const unlistenPromises = EVENT_NAMES.map((eventName) =>
+				listen<EventPayload>(eventName, (event) => {
+					const payload = event.payload;
+					// Route to handler only if the event is relevant for this source.
+					// media-copied and media-moved may target either side of the operation.
+					const relevant =
+						payload?.mediaSourceId === id ||
+						payload?.sourceId === id ||
+						payload?.targetId === id ||
+						// job-progress is scoped by jobId which may equal the sourceId
+						payload?.jobId === id ||
+						// Fall back to delivering the event unfiltered when no source key present
+						(payload?.mediaSourceId === undefined &&
+							payload?.sourceId === undefined &&
+							payload?.targetId === undefined &&
+							payload?.jobId === undefined);
+
+					if (relevant) {
+						handler(eventName, payload);
+					}
+				}),
+			);
+
+			return () => {
+				void Promise.all(unlistenPromises).then((unlistenFns) => {
+					for (const unlisten of unlistenFns) {
+						unlisten();
+					}
+				});
+			};
+		},
+	};
+
+	useMediaSourceEventsShared({
+		...options,
+		transport,
 	});
 }
