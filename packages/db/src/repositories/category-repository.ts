@@ -1,8 +1,11 @@
+import type {
+	NewCategory,
+	UpdateCategory,
+} from "@solid-imager/core/domain/categories/schemas";
 import {
 	ResourceNotFoundError,
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
-import type { NewCategory, UpdateCategory } from "@solid-imager/core/domain/categories/schemas";
 import type {
 	Category,
 	CategoryRepository,
