@@ -110,43 +110,35 @@ export async function processImportItemsToSource(
 	return { success: true, processedCount: items.length };
 }
 
-function createTauriImportRequestService() {
-	return createImportRequestService({
-		jobRepository: TauriJobRepository,
-		findMediaSourceForFile: async (filePath) =>
-			await TauriSourceBackupService.findMediaSourceForFile(filePath),
-		restoreSource: async (sourceId, items) =>
-			await TauriSourceBackupService.restoreSource(sourceId, items),
-		executeImport: async (targetSourceId, items) =>
-			await processImportItemsToSource(targetSourceId, items),
-		publishImportEvent: emitImportEvent,
-	});
-}
+const importRequestService = createImportRequestService({
+	jobRepository: TauriJobRepository,
+	findMediaSourceForFile: async (filePath) =>
+		await TauriSourceBackupService.findMediaSourceForFile(filePath),
+	restoreSource: async (sourceId, items) =>
+		await TauriSourceBackupService.restoreSource(sourceId, items),
+	executeImport: async (targetSourceId, items) =>
+		await processImportItemsToSource(targetSourceId, items),
+	publishImportEvent: emitImportEvent,
+});
 
 export async function bulkAddImportItems(
 	items: DownloadItem[],
 	targetSourceId?: string,
 ) {
-	return await createTauriImportRequestService().bulkAddImportItems(
-		items,
-		targetSourceId,
-	);
+	return await importRequestService.bulkAddImportItems(items, targetSourceId);
 }
 
 export async function listPendingImports(): Promise<PendingImportJob[]> {
-	return await createTauriImportRequestService().listPendingImports();
+	return await importRequestService.listPendingImports();
 }
 
 export async function processPendingImports(
 	jobIds: string[],
 	targetSourceId?: string,
 ) {
-	return await createTauriImportRequestService().processPendingImports(
-		jobIds,
-		targetSourceId,
-	);
+	return await importRequestService.processPendingImports(jobIds, targetSourceId);
 }
 
 export async function cancelPendingImports(jobIds: string[]) {
-	return await createTauriImportRequestService().cancelPendingImports(jobIds);
+	return await importRequestService.cancelPendingImports(jobIds);
 }
