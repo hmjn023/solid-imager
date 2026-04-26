@@ -1,7 +1,11 @@
-import { toSafeMediaSource } from "@solid-imager/application/services/source-service";
+import {
+	createSourceService,
+	toSafeMediaSource,
+} from "@solid-imager/application/services/source-service";
 import type {
 	MediaSource,
 	NewMediaSource,
+	SourceRepository,
 } from "@solid-imager/core/domain/repositories/source-repository";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { emit, listen } from "@tauri-apps/api/event";
@@ -45,6 +49,72 @@ type SourceWatchEventPayload = {
 	paths: string[];
 	timestamp?: string;
 };
+
+const sourceRepository: SourceRepository = TauriSourceRepository;
+const sourceService = createSourceService({
+	repository: sourceRepository,
+	connectionTester: {
+		async testConnection(source) {
+			if (source.type !== "local") {
+				return {
+					success: false,
+					message: `Tauri source service does not support source type: ${source.type}`,
+				};
+			}
+
+			const rootPath = getLocalSourceRootPath(source);
+			const fs = getTauriAppServices().fileSystem;
+			if (!(await fs.exists(rootPath))) {
+				return {
+					success: false,
+					message: `Source path does not exist: ${rootPath}`,
+				};
+			}
+
+			const stat = await fs.stat(rootPath);
+			if (!stat.isDirectory) {
+				return {
+					success: false,
+					message: `Source path is not a directory: ${rootPath}`,
+				};
+			}
+
+			return { success: true };
+		},
+	},
+});
+
+function getLocalConnectionPath(connectionInfo: MediaSource["connectionInfo"]) {
+	if (!("path" in connectionInfo) || typeof connectionInfo.path !== "string") {
+		throw new Error("Local source connectionInfo.path is required.");
+	}
+	return connectionInfo.path;
+}
+
+function getLocalSourceRootPath(
+	source: Pick<MediaSource, "type" | "connectionInfo">,
+) {
+	if (source.type !== "local") {
+		throw new Error(
+			`Tauri currently supports only local sources: ${source.type}`,
+		);
+	}
+	return getLocalConnectionPath(source.connectionInfo);
+}
+
+async function ensureLocalSourcePathExists(rootPath: string): Promise<void> {
+	if (!(await getTauriAppServices().fileSystem.exists(rootPath))) {
+		throw new Error(`Source path does not exist: ${rootPath}`);
+	}
+}
+
+async function requireSource(id: string): Promise<MediaSource> {
+	const source = await sourceService.get(id);
+	if (!source) {
+		throw new Error(`Source not found: ${id}`);
+	}
+	return source;
+}
 
 function inferMediaType(
 	filePath: string,
@@ -116,10 +186,7 @@ function buildSingleFileIndexInput(
 		audio: string[];
 	},
 ): FileToIndex | null {
-	const relativePath = toRelativePath(
-		(source.connectionInfo as { path: string }).path,
-		fullPath,
-	);
+	const relativePath = toRelativePath(getLocalSourceRootPath(source), fullPath);
 	if (!relativePath || hasHiddenSegment(relativePath)) {
 		return null;
 	}
@@ -242,7 +309,7 @@ async function upsertIndexedFile(
 		{
 			sourceId: source.id,
 			mediaId: row.id,
-			sourcePath: (source.connectionInfo as { path: string }).path,
+			sourcePath: getLocalSourceRootPath(source),
 		},
 	]);
 
@@ -362,7 +429,7 @@ async function reconcileWatchedPath(
 		}
 
 		const relativePath = toRelativePath(
-			(source.connectionInfo as { path: string }).path,
+			getLocalSourceRootPath(source),
 			fullPath,
 		);
 		if (!relativePath || hasHiddenSegment(relativePath)) {
@@ -421,9 +488,7 @@ async function ensureSourceWatchListener(): Promise<void> {
 			}
 
 			void (async () => {
-				const source = await TauriSourceRepository.findById(
-					payload.mediaSourceId,
-				);
+				const source = await sourceService.get(payload.mediaSourceId);
 				if (!source || source.type !== "local") {
 					return;
 				}
@@ -467,7 +532,7 @@ async function startSourceWatcher(source: MediaSource): Promise<void> {
 		return;
 	}
 
-	const rootPath = (source.connectionInfo as { path: string }).path;
+	const rootPath = getLocalSourceRootPath(source);
 	await stopSourceWatcher(source.id);
 	await getTauriAppServices().commandClient.invoke("source_watch_start", {
 		mediaSourceId: source.id,
@@ -498,13 +563,8 @@ async function startSourceWatcherSafely(source: MediaSource): Promise<void> {
 }
 
 async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
-	const rootPath = (source.connectionInfo as { path: string }).path;
-	const fs = getTauriAppServices().fileSystem;
-	const exists = await fs.exists(rootPath);
-
-	if (!exists) {
-		throw new Error(`Source path does not exist: ${rootPath}`);
-	}
+	const rootPath = getLocalSourceRootPath(source);
+	await ensureLocalSourcePathExists(rootPath);
 
 	const config = await TauriConfigService.getConfig();
 	const existingRecords = await TauriMediaRepository.findAllPathsBySourceId(
@@ -524,7 +584,6 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 
 	// Filter to supported media files and build fullPath lookup
 	const filesToIndex: FileToIndex[] = [];
-	const relPathToFullPath = new Map<string, string>();
 	for (const fullPath of scannedFiles) {
 		const relativePath = toRelativePath(rootPath, fullPath);
 		const mediaType = inferMediaType(
@@ -539,7 +598,6 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 				normalizedRelPath,
 				mediaType,
 			});
-			relPathToFullPath.set(normalizedRelPath, fullPath);
 		}
 	}
 	console.debug(`[sync] mediaFiles=${filesToIndex.length}`);
@@ -626,24 +684,20 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 
 export const TauriSourceService = {
 	async list(): Promise<SafeMediaSource[]> {
-		const sources = await TauriSourceRepository.findAll();
-		return sources.map(toSafeMediaSource);
+		return await sourceService.listSafe();
 	},
 
 	async get(id: string): Promise<SafeMediaSource | null> {
-		const source = await TauriSourceRepository.findById(id);
-		return source ? toSafeMediaSource(source) : null;
+		return await sourceService.getSafe(id);
 	},
 
 	async create(input: NewMediaSource): Promise<SafeMediaSource> {
 		if (input.type !== "local") {
 			throw new Error("Tauri currently supports only local sources.");
 		}
-		const localPath = (input.connectionInfo as { path: string }).path;
-		if (!(await getTauriAppServices().fileSystem.exists(localPath))) {
-			throw new Error(`Source path does not exist: ${localPath}`);
-		}
-		const source = await TauriSourceRepository.create(input);
+		const localPath = getLocalConnectionPath(input.connectionInfo);
+		await ensureLocalSourcePathExists(localPath);
+		const source = await sourceRepository.create(input);
 		await syncLocalSource(source);
 		await startSourceWatcherSafely(source);
 		return toSafeMediaSource(source);
@@ -653,10 +707,7 @@ export const TauriSourceService = {
 		id: string,
 		input: Partial<MediaSource>,
 	): Promise<SafeMediaSource> {
-		const previousSource = await TauriSourceRepository.findById(id);
-		if (!previousSource) {
-			throw new Error(`Source not found: ${id}`);
-		}
+		const previousSource = await requireSource(id);
 		if (input.type && input.type !== "local") {
 			throw new Error("Tauri currently supports only local sources.");
 		}
@@ -664,13 +715,10 @@ export const TauriSourceService = {
 			input.connectionInfo && "path" in input.connectionInfo
 				? input.connectionInfo.path
 				: null;
-		if (
-			nextPath &&
-			!(await getTauriAppServices().fileSystem.exists(nextPath))
-		) {
-			throw new Error(`Source path does not exist: ${nextPath}`);
+		if (nextPath) {
+			await ensureLocalSourcePathExists(nextPath);
 		}
-		const source = await TauriSourceRepository.update(id, input);
+		const source = await sourceRepository.update(id, input);
 		await stopSourceWatcher(previousSource.id);
 		if (source.type === "local") {
 			await startSourceWatcherSafely(source);
@@ -680,11 +728,11 @@ export const TauriSourceService = {
 
 	async delete(id: string): Promise<void> {
 		await stopSourceWatcher(id);
-		await TauriSourceRepository.delete(id);
+		await sourceRepository.delete(id);
 	},
 
 	async startWatchingAllLocalSources(): Promise<void> {
-		const sources = await TauriSourceRepository.findAll();
+		const sources = await sourceService.list();
 		await ensureSourceWatchListener();
 		for (const source of sources) {
 			if (source.type !== "local") {
@@ -718,10 +766,7 @@ export const TauriSourceService = {
 
 		for (const id of ids) {
 			try {
-				const source = await TauriSourceRepository.findById(id);
-				if (!source) {
-					throw new Error(`Source not found: ${id}`);
-				}
+				const source = await requireSource(id);
 				if (source.type !== "local") {
 					results.push({ id, success: true, added: 0, deleted: 0 });
 					continue;
@@ -739,5 +784,13 @@ export const TauriSourceService = {
 		}
 
 		return { results };
+	},
+
+	async testConnection(id: string) {
+		return await sourceService.testConnection(id);
+	},
+
+	async getStatus(id: string) {
+		return await sourceService.getStatus(id);
 	},
 };
