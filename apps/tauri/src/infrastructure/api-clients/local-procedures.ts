@@ -1,8 +1,16 @@
 import { authorSchema } from "@solid-imager/core/domain/authors/schemas";
 import {
+	newCategorySchema,
+	updateCategorySchema,
+} from "@solid-imager/core/domain/categories/schemas";
+import {
 	newCharacterSchema,
 	updateCharacterSchema,
 } from "@solid-imager/core/domain/characters/schemas";
+import {
+	newCollectionSchema,
+	updateCollectionSchema,
+} from "@solid-imager/core/domain/collections/schemas";
 import {
 	AppConfigSchema,
 	defaultAppConfig,
@@ -38,11 +46,17 @@ import {
 	tagResponseSchema,
 	updateTagSchema,
 } from "@solid-imager/core/domain/tags/schemas";
+import {
+	newUserSchema,
+	updateUserSchema,
+} from "@solid-imager/core/domain/users/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
 import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriAuthorService } from "../local-api/services/author-service";
+import { TauriCategoryService } from "../local-api/services/category-service";
 import { TauriCharacterService } from "../local-api/services/character-service";
+import { TauriCollectionService } from "../local-api/services/collection-service";
 import { TauriConfigService } from "../local-api/services/config-service";
 import { TauriIpService } from "../local-api/services/ip-service";
 import { TauriMediaService } from "../local-api/services/media-service";
@@ -51,6 +65,7 @@ import { TauriProjectService } from "../local-api/services/project-service";
 import { TauriSourceBackupService } from "../local-api/services/source-backup-service";
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
+import { TauriUserService } from "../local-api/services/user-service";
 
 const authorUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
@@ -379,6 +394,79 @@ const localProcedureHandlers = {
 		await TauriAuthorService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
 	},
+	"categories.list": async () => await TauriCategoryService.list(),
+	"categories.get": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		return await TauriCategoryService.get(id);
+	},
+	"categories.create": async (input: unknown) =>
+		await TauriCategoryService.create(newCategorySchema.parse(input)),
+	"categories.update": async (input: unknown) => {
+		const { id, data } = z
+			.object({
+				id: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriCategoryService.update(
+			id,
+			updateCategorySchema.parse(data),
+		);
+	},
+	"categories.delete": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		await TauriCategoryService.delete(id);
+		return mutationSuccessSchema.parse({ success: true });
+	},
+	"collections.list": async () => await TauriCollectionService.list(),
+	"collections.get": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		return await TauriCollectionService.get(id);
+	},
+	"collections.create": async (input: unknown) =>
+		await TauriCollectionService.create(newCollectionSchema.parse(input)),
+	"collections.update": async (input: unknown) => {
+		const { id, data } = z
+			.object({
+				id: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriCollectionService.update(
+			id,
+			updateCollectionSchema.parse(data),
+		);
+	},
+	"collections.delete": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		await TauriCollectionService.delete(id);
+		return mutationSuccessSchema.parse({ success: true });
+	},
+	"collections.addToMedia": async (input: unknown) => {
+		const { collectionId, mediaId, displayOrder } = z
+			.object({
+				collectionId: uuidSchema,
+				mediaId: uuidSchema,
+				displayOrder: z.number().int().optional(),
+			})
+			.parse(input);
+		await TauriCollectionService.addToMedia(
+			collectionId,
+			mediaId,
+			displayOrder,
+		);
+		return mutationSuccessSchema.parse({ success: true });
+	},
+	"collections.removeFromMedia": async (input: unknown) => {
+		const { collectionId, mediaId } = z
+			.object({
+				collectionId: uuidSchema,
+				mediaId: uuidSchema,
+			})
+			.parse(input);
+		await TauriCollectionService.removeFromMedia(collectionId, mediaId);
+		return mutationSuccessSchema.parse({ success: true });
+	},
 	"projects.list": async () => await TauriProjectService.list(),
 	"projects.create": async (input: unknown) =>
 		await TauriProjectService.create(newProjectSchema.parse(input)),
@@ -529,6 +617,27 @@ const localProcedureHandlers = {
 		await TauriTagService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
 	},
+	"users.list": async () => await TauriUserService.list(),
+	"users.get": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		return await TauriUserService.get(id);
+	},
+	"users.create": async (input: unknown) =>
+		await TauriUserService.create(newUserSchema.parse(input)),
+	"users.update": async (input: unknown) => {
+		const { id, data } = z
+			.object({
+				id: uuidSchema,
+				data: z.unknown(),
+			})
+			.parse(input);
+		return await TauriUserService.update(id, updateUserSchema.parse(data));
+	},
+	"users.delete": async (input: unknown) => {
+		const { id } = z.object({ id: uuidSchema }).parse(input);
+		await TauriUserService.delete(id);
+		return mutationSuccessSchema.parse({ success: true });
+	},
 	"presets.list": async () => await TauriPresetService.list(),
 	"presets.get": async (input: unknown) => {
 		const { id } = z.object({ id: z.number().int() }).parse(input);
@@ -615,6 +724,8 @@ function localDatabaseDisabledFallback(
 		case "sources.delete":
 			return deleteFallbackSource(input);
 		case "authors.list":
+		case "categories.list":
+		case "collections.list":
 		case "projects.list":
 		case "projects.listForMedia":
 		case "ips.list":
@@ -623,11 +734,15 @@ function localDatabaseDisabledFallback(
 		case "characters.listForMedia":
 		case "tags.list":
 		case "presets.list":
+		case "users.list":
 		case "ai.scanBatchTaggingTargets":
 			return [];
 		case "authors.get":
+		case "categories.get":
+		case "collections.get":
 		case "tags.get":
 		case "presets.getByName":
+		case "users.get":
 			return null;
 		case "media.search":
 			return { media: [], total: 0 };

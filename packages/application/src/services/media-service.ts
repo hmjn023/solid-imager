@@ -121,6 +121,13 @@ export type MediaServiceDeps = {
 	};
 };
 
+type BatchUpsertMediaRepository = IMediaRepository & {
+	batchUpsert(
+		inputs: Array<AddMediaRequest>,
+		tx?: Transaction,
+	): Promise<Array<{ id: string; filePath: string }>>;
+};
+
 function splitPath(path: string): string[] {
 	return path.split(/[\\/]+/).filter((segment) => segment.length > 0);
 }
@@ -488,17 +495,30 @@ export class MediaServiceImpl {
 		directoryPath: string,
 	): Promise<void> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
+		if (!mediaSource) {
+			throw new ResourceNotFoundError("Media Source", validatedSourceId);
+		}
+		if (mediaSource.type !== "local") {
+			throw new Error(
+				"Only local media sources are supported for existing media registration.",
+			);
+		}
+
+		const sourceRootPath = (mediaSource.connectionInfo as { path: string })
+			.path;
 		const files = await this.storageService.scanDirectory(directoryPath);
-		const newMediaItems: { id: string; filePath: string }[] = [];
+		const existingRecords =
+			await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
+		const existingPaths = new Set(
+			existingRecords.map((record) => record.filePath),
+		);
+		const newMediaInputs: AddMediaRequest[] = [];
 
 		for (const file of files) {
 			try {
-				const relativePath = this.pathAdapter.relative(directoryPath, file);
-				const existing = await this.mediaRepository.findByPath(
-					validatedSourceId,
-					relativePath,
-				);
-				if (existing) {
+				const relativePath = this.pathAdapter.relative(sourceRootPath, file);
+				if (existingPaths.has(relativePath)) {
 					continue;
 				}
 
@@ -517,8 +537,7 @@ export class MediaServiceImpl {
 						modifiedAt: metadata.modifiedAt,
 						description: null,
 					};
-					const created = await this.mediaRepository.upsert(newMedia);
-					newMediaItems.push({ id: created.id, filePath: relativePath });
+					newMediaInputs.push(newMedia);
 				} catch (_error) {
 					// Keep scan best-effort, matching the original server behavior.
 				}
@@ -527,9 +546,23 @@ export class MediaServiceImpl {
 			}
 		}
 
-		for (const item of newMediaItems) {
-			await this.queueProcessingJob(item.id, validatedSourceId, directoryPath);
-		}
+		const newMediaItems = await this.persistExistingMediaBatch(newMediaInputs);
+		await Promise.all(
+			newMediaItems.map(async (item) => {
+				try {
+					await this.queueProcessingJob(
+						item.id,
+						validatedSourceId,
+						sourceRootPath,
+					);
+				} catch (error) {
+					this.logger?.error?.(
+						{ err: error, mediaId: item.id, mediaSourceId: validatedSourceId },
+						"[MediaService] queue processing job failed during existing media registration",
+					);
+				}
+			}),
+		);
 	}
 
 	async getAllMedia(mediaSourceId: string): Promise<Media[]> {
@@ -896,6 +929,39 @@ export class MediaServiceImpl {
 			mediaSourceId,
 			sourcePath,
 		});
+	}
+
+	private async persistExistingMediaBatch(
+		inputs: AddMediaRequest[],
+	): Promise<Array<{ id: string; filePath: string }>> {
+		if (inputs.length === 0) {
+			return [];
+		}
+
+		if ("batchUpsert" in this.mediaRepository) {
+			const repository = this.mediaRepository as BatchUpsertMediaRepository;
+			return await repository.batchUpsert(inputs);
+		}
+
+		const results = await Promise.all(
+			inputs.map(async (input) => {
+				try {
+					const created = await this.mediaRepository.upsert(input);
+					return { id: created.id, filePath: input.filePath };
+				} catch (error) {
+					this.logger?.error?.(
+						{
+							err: error,
+							filePath: input.filePath,
+							mediaSourceId: input.mediaSourceId,
+						},
+						"[MediaService] fallback upsert failed during existing media registration",
+					);
+					return null;
+				}
+			}),
+		);
+		return results.flatMap((item) => (item ? [item] : []));
 	}
 
 	private async executeDeferredActions(
