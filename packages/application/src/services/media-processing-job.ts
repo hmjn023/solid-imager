@@ -1,4 +1,7 @@
-import type { ProcessMediaJobRepository } from "../ports/job-repository";
+import type {
+	NewJobRecord,
+	ProcessMediaJobRepository,
+} from "../ports/job-repository";
 
 export const MEDIA_PROCESSING_STEPS = [
 	"extractMetadata",
@@ -30,6 +33,51 @@ export type QueueMediaProcessingJobInput = {
 	steps?: MediaProcessingStep[];
 };
 
+export function parseMediaProcessingJobPayload(
+	payload: unknown,
+): MediaProcessingJobPayload | null {
+	if (
+		typeof payload !== "object" ||
+		payload === null ||
+		!("mediaId" in payload) ||
+		typeof payload.mediaId !== "string" ||
+		!("sourcePath" in payload) ||
+		typeof payload.sourcePath !== "string"
+	) {
+		return null;
+	}
+
+	const steps =
+		"steps" in payload && Array.isArray(payload.steps)
+			? payload.steps.filter((step): step is MediaProcessingStep =>
+					MEDIA_PROCESSING_STEPS.includes(step as MediaProcessingStep),
+				)
+			: undefined;
+
+	return {
+		mediaId: payload.mediaId,
+		sourcePath: payload.sourcePath,
+		steps,
+		type:
+			"type" in payload && payload.type === "processMedia"
+				? "processMedia"
+				: undefined,
+	};
+}
+
+export function toProcessMediaNewJob(job: ProcessMediaJob): NewJobRecord {
+	return {
+		type: "processMedia",
+		mediaSourceId: job.sourceId,
+		payload: {
+			mediaId: job.mediaId,
+			sourcePath: job.sourcePath,
+			steps: job.steps,
+			type: "processMedia",
+		} satisfies MediaProcessingJobPayload,
+	};
+}
+
 export function getMediaProcessingSteps(
 	payload: MediaProcessingJobPayload | null | undefined,
 ): ReadonlyArray<MediaProcessingStep> {
@@ -51,13 +99,11 @@ export async function queueMediaProcessingJob({
 	steps,
 }: QueueMediaProcessingJobInput): Promise<void> {
 	await jobRepo.create({
-		type: "processMedia",
-		mediaSourceId,
-		payload: {
+		...toProcessMediaNewJob({
+			sourceId: mediaSourceId,
 			mediaId,
 			sourcePath,
 			steps,
-			type: "processMedia",
-		} satisfies MediaProcessingJobPayload,
+		}),
 	});
 }

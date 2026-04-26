@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-26（shared hook / repository factory の実態へ同期）
+最終更新: 2026-04-26（processMedia orchestration shared 化へ同期）
 
 ## このページの使い方
 
@@ -272,9 +272,9 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
   - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
   - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
-## Jobs（対応度: ~74%）
+## Jobs（対応度: ~82%）
 
-server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。2026-04-26 の更新で、job type dispatch / deferred actions / background startup coordinator に加えて、`downloadImage` / `auto_tagging` / `bulk_tagging_dispatch` の runner、job event publish contract、watcher の change/delete reconciliation helper も `packages/application` に寄せた。app 側に残る重い差分は downloader I/O、Rust watcher ingress、SSE/Tauri event transport、thumbnail 生成の platform 部分が中心。
+server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。2026-04-26 の更新で、job type dispatch / deferred actions / background startup coordinator に加えて、`downloadImage` / `auto_tagging` / `bulk_tagging_dispatch` の runner、job event publish contract、watcher の change/delete reconciliation helper、`processMedia` の payload helper / runner / batch runner / source progress tracker も `packages/application` に寄せた。Tauri 側の `tauri-job-queue.ts` は processMedia polling、job state 更新、Rust thumbnail batch IPC、Tauri event transport の adapter に縮退している。app 側に残る主な差分は downloader I/O、Rust watcher ingress、SSE/Tauri event transport、thumbnail 生成の platform I/O である。
 
 | 領域 | server | tauri |
 | ---- | ------ | ----- |
@@ -283,11 +283,12 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | dispatch / canonical job type | `packages/application/src/services/job-runtime.ts` を利用 | 同左 |
 | background startup | `BackgroundJobsCoordinator` + `file-watcher-service.ts` adapter | `BackgroundJobsCoordinator` + `source-service.ts` / maintenance adapter |
 | processMedia payload | `{ mediaId, sourcePath, steps?, type: "processMedia" }` | 同左 |
+| processMedia 実行 | `process-media-runner.ts` + `media-processing-service.ts` adapter | `process-media-runner.ts` batch runner + `tauri-job-queue.ts` adapter |
 | download runner | `packages/application/src/services/download-job-runner.ts` + `download-jobs.ts` adapter | 同左 + `imports-api.ts` adapter |
 | tagging runner | `packages/application/src/services/tagging-job-runner.ts` + `tagging-jobs.ts` adapter | 同左 + `ai-service.ts` adapter |
 | watcher reconciliation | `packages/application/src/services/watcher-runtime.ts` + `file-watcher-service.ts` / `directory-sync-service.ts` adapter | 同左 + `source-service.ts` adapter |
 | job / media event contract | `packages/application/src/services/runtime-events.ts` + `sse-manager.ts` transport | 同左 + Tauri event bus transport |
-| サムネイル | `thumbnails.ts` | `tauri-job-queue.ts` 内 processor |
+| サムネイル | `thumbnails.ts` adapter | Rust batch IPC adapter |
 | ファイル監視 ingress | `file-watcher-service.ts`（TS / chokidar wiring） | `watcher.rs`（Rust ingress） |
 
 ## 共通化の優先度メモ
@@ -298,7 +299,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | 高     | Components（検索・プリセット系） | shared component は導入済み。route 組み立てと nav action 配置差分を詰める | 部分完了 |
 | 中     | Services                         | `packages/application` 利用範囲を広げ、tauri の source/media/search 周辺を薄い adapter に縮退 | 部分完了 |
 | 中     | Repositories                     | `packages/db` 化されていない category / collection / user と app-config 周辺の扱いを整理 | 部分完了 |
-| 低     | Jobs                             | runner / dispatch / watcher helper は shared 化済み。残るのは transport / downloader I/O / thumbnail の platform 部分 | 部分完了 |
+| 低     | Jobs                             | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るのは transport、downloader I/O、thumbnail の platform 部分 | 部分完了 |
 | 対象者 | API Routes                       | 設計思想が異なるため共通化不要                        | 該当なし   |
 
 ## 保守メモ
@@ -316,7 +317,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - hook は `use-current-search-persistence.ts` に加えて `use-media-source-events.ts` も `packages/ui` の shared hook を使う構成へ寄った。未共通なのは transport adapter と relevance filter の層
 - repository は author / category / character / collection / ip / media / preset / project / source / tag / user / job が shared factory 化済み。主要 CRUD repository の非対称はかなり解消され、残る app 固有 repository は `app-config-repository.ts` など platform 固有層が中心
 - service は CRUD 系の shared 利用がかなり進んだ一方、tauri 側 `source-service.ts` と `media-service.ts` はまだ大きく、server 正の shared service へ十分に寄っていない
-- jobs は worker 共有の段階を超え、download / tagging / watcher reconciliation / event publish contract まで `packages/application` に寄った。未共通なのは transport と platform I/O の層
+- jobs は worker 共有の段階を超え、download / tagging / watcher reconciliation / event publish contract / processMedia orchestration まで `packages/application` に寄った。未共通なのは transport と platform I/O の層
 
 ## さらに厳しく見たときの未共通化ポイント
 
@@ -346,5 +347,5 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services**: `maintenance-service.ts` を `packages/application/src/services/maintenance-service.ts` に共通化。server は Node fs + `getSourceCacheDir()` adapter、Tauri は `thumbnailDir` 解決と `tauriJobQueue.registerQueuedSources()` adapter に縮退
 - **Services**: `packages/application` は増えており、tauri 側 source は shared service 利用へ前進した。watcher / sync の削除・変更経路は shared helper を使う段階まで寄ったが、media / backup はまだ app 固有責務が大きい
 - **Services対応度**: 単純 CRUD と config / maintenance は前進したが、source / media / search / backup / ai / tagging を含む主機能の parity はなお過渡期
-- **Jobs**: media-processing job の step 定義・payload helper に加え、canonical job type / shared dispatcher / deferred actions executor / background coordinator / download runner / tagging runner / watcher runtime / event publish contract を `packages/application` に移動。server / tauri は共通 runtime を使い、差分は downloader / thumbnail / watcher ingress / SSE or Tauri event transport に縮退
-- 対応度の推定値を再補正（Routes ~75%、Hooks ~75%、Components ~80%、Repositories ~88%、Services ~68%、Jobs ~74%）
+- **Jobs**: media-processing job の step 定義・payload helper に加え、canonical job type / shared dispatcher / deferred actions executor / background coordinator / download runner / tagging runner / watcher runtime / event publish contract / processMedia batch runner / source progress tracker を `packages/application` に移動。server / tauri は共通 runtime を使い、差分は downloader / thumbnail I/O / watcher ingress / SSE or Tauri event transport に縮退
+- 対応度の推定値を再補正（Routes ~75%、Hooks ~75%、Components ~80%、Repositories ~88%、Services ~68%、Jobs ~82%）

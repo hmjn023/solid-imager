@@ -8,6 +8,7 @@ export * from "./services/config-service";
 export * from "./services/download-job-runner";
 export * from "./services/import-request-service";
 export * from "./services/ip-service";
+export * from "./services/job-progress-tracker";
 export * from "./services/job-runtime";
 export * from "./services/job-worker";
 export * from "./services/maintenance-service";
