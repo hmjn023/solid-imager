@@ -121,6 +121,13 @@ export type MediaServiceDeps = {
 	};
 };
 
+type BatchUpsertMediaRepository = IMediaRepository & {
+	batchUpsert(
+		inputs: Array<AddMediaRequest>,
+		tx?: Transaction,
+	): Promise<Array<{ id: string; filePath: string }>>;
+};
+
 function splitPath(path: string): string[] {
 	return path.split(/[\\/]+/).filter((segment) => segment.length > 0);
 }
@@ -489,16 +496,17 @@ export class MediaServiceImpl {
 	): Promise<void> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const files = await this.storageService.scanDirectory(directoryPath);
-		const newMediaItems: { id: string; filePath: string }[] = [];
+		const existingRecords =
+			await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
+		const existingPaths = new Set(
+			existingRecords.map((record) => record.filePath),
+		);
+		const newMediaInputs: AddMediaRequest[] = [];
 
 		for (const file of files) {
 			try {
 				const relativePath = this.pathAdapter.relative(directoryPath, file);
-				const existing = await this.mediaRepository.findByPath(
-					validatedSourceId,
-					relativePath,
-				);
-				if (existing) {
+				if (existingPaths.has(relativePath)) {
 					continue;
 				}
 
@@ -517,8 +525,7 @@ export class MediaServiceImpl {
 						modifiedAt: metadata.modifiedAt,
 						description: null,
 					};
-					const created = await this.mediaRepository.upsert(newMedia);
-					newMediaItems.push({ id: created.id, filePath: relativePath });
+					newMediaInputs.push(newMedia);
 				} catch (_error) {
 					// Keep scan best-effort, matching the original server behavior.
 				}
@@ -527,6 +534,7 @@ export class MediaServiceImpl {
 			}
 		}
 
+		const newMediaItems = await this.persistExistingMediaBatch(newMediaInputs);
 		for (const item of newMediaItems) {
 			await this.queueProcessingJob(item.id, validatedSourceId, directoryPath);
 		}
@@ -896,6 +904,26 @@ export class MediaServiceImpl {
 			mediaSourceId,
 			sourcePath,
 		});
+	}
+
+	private async persistExistingMediaBatch(
+		inputs: AddMediaRequest[],
+	): Promise<Array<{ id: string; filePath: string }>> {
+		if (inputs.length === 0) {
+			return [];
+		}
+
+		if ("batchUpsert" in this.mediaRepository) {
+			const repository = this.mediaRepository as BatchUpsertMediaRepository;
+			return await repository.batchUpsert(inputs);
+		}
+
+		const createdItems: Array<{ id: string; filePath: string }> = [];
+		for (const input of inputs) {
+			const created = await this.mediaRepository.upsert(input);
+			createdItems.push({ id: created.id, filePath: input.filePath });
+		}
+		return createdItems;
 	}
 
 	private async executeDeferredActions(
