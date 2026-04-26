@@ -495,6 +495,18 @@ export class MediaServiceImpl {
 		directoryPath: string,
 	): Promise<void> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
+		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
+		if (!mediaSource) {
+			throw new ResourceNotFoundError("Media Source", validatedSourceId);
+		}
+		if (mediaSource.type !== "local") {
+			throw new Error(
+				"Only local media sources are supported for existing media registration.",
+			);
+		}
+
+		const sourceRootPath = (mediaSource.connectionInfo as { path: string })
+			.path;
 		const files = await this.storageService.scanDirectory(directoryPath);
 		const existingRecords =
 			await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
@@ -505,7 +517,7 @@ export class MediaServiceImpl {
 
 		for (const file of files) {
 			try {
-				const relativePath = this.pathAdapter.relative(directoryPath, file);
+				const relativePath = this.pathAdapter.relative(sourceRootPath, file);
 				if (existingPaths.has(relativePath)) {
 					continue;
 				}
@@ -535,9 +547,22 @@ export class MediaServiceImpl {
 		}
 
 		const newMediaItems = await this.persistExistingMediaBatch(newMediaInputs);
-		for (const item of newMediaItems) {
-			await this.queueProcessingJob(item.id, validatedSourceId, directoryPath);
-		}
+		await Promise.all(
+			newMediaItems.map(async (item) => {
+				try {
+					await this.queueProcessingJob(
+						item.id,
+						validatedSourceId,
+						sourceRootPath,
+					);
+				} catch (error) {
+					this.logger?.error?.(
+						{ err: error, mediaId: item.id, mediaSourceId: validatedSourceId },
+						"[MediaService] queue processing job failed during existing media registration",
+					);
+				}
+			}),
+		);
 	}
 
 	async getAllMedia(mediaSourceId: string): Promise<Media[]> {
@@ -918,12 +943,25 @@ export class MediaServiceImpl {
 			return await repository.batchUpsert(inputs);
 		}
 
-		const createdItems: Array<{ id: string; filePath: string }> = [];
-		for (const input of inputs) {
-			const created = await this.mediaRepository.upsert(input);
-			createdItems.push({ id: created.id, filePath: input.filePath });
-		}
-		return createdItems;
+		const results = await Promise.all(
+			inputs.map(async (input) => {
+				try {
+					const created = await this.mediaRepository.upsert(input);
+					return { id: created.id, filePath: input.filePath };
+				} catch (error) {
+					this.logger?.error?.(
+						{
+							err: error,
+							filePath: input.filePath,
+							mediaSourceId: input.mediaSourceId,
+						},
+						"[MediaService] fallback upsert failed during existing media registration",
+					);
+					return null;
+				}
+			}),
+		);
+		return results.flatMap((item) => (item ? [item] : []));
 	}
 
 	private async executeDeferredActions(

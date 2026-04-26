@@ -60,6 +60,15 @@ describe("MediaService Optimization", () => {
 		);
 
 		mockStorageService.scanDirectory.mockResolvedValue(allFiles);
+		mockSourceRepository.findById.mockResolvedValue({
+			id: sourceId,
+			name: "local",
+			description: null,
+			type: "local",
+			connectionInfo: { path: directoryPath },
+			createdAt: now,
+			updatedAt: now,
+		});
 		mockMediaRepository.findAllPathsBySourceId.mockResolvedValue([
 			{ id: "id-existing", filePath: "existing.png" },
 		]);

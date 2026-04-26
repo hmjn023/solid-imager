@@ -396,7 +396,7 @@ const localProcedureHandlers = {
 	},
 	"categories.list": async () => await TauriCategoryService.list(),
 	"categories.get": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		return await TauriCategoryService.get(id);
 	},
 	"categories.create": async (input: unknown) =>
@@ -404,7 +404,7 @@ const localProcedureHandlers = {
 	"categories.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
-				id: z.string().uuid(),
+				id: uuidSchema,
 				data: z.unknown(),
 			})
 			.parse(input);
@@ -414,13 +414,13 @@ const localProcedureHandlers = {
 		);
 	},
 	"categories.delete": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		await TauriCategoryService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"collections.list": async () => await TauriCollectionService.list(),
 	"collections.get": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		return await TauriCollectionService.get(id);
 	},
 	"collections.create": async (input: unknown) =>
@@ -428,7 +428,7 @@ const localProcedureHandlers = {
 	"collections.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
-				id: z.string().uuid(),
+				id: uuidSchema,
 				data: z.unknown(),
 			})
 			.parse(input);
@@ -438,15 +438,15 @@ const localProcedureHandlers = {
 		);
 	},
 	"collections.delete": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		await TauriCollectionService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"collections.addToMedia": async (input: unknown) => {
 		const { collectionId, mediaId, displayOrder } = z
 			.object({
-				collectionId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				collectionId: uuidSchema,
+				mediaId: uuidSchema,
 				displayOrder: z.number().int().optional(),
 			})
 			.parse(input);
@@ -460,8 +460,8 @@ const localProcedureHandlers = {
 	"collections.removeFromMedia": async (input: unknown) => {
 		const { collectionId, mediaId } = z
 			.object({
-				collectionId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				collectionId: uuidSchema,
+				mediaId: uuidSchema,
 			})
 			.parse(input);
 		await TauriCollectionService.removeFromMedia(collectionId, mediaId);
@@ -619,7 +619,7 @@ const localProcedureHandlers = {
 	},
 	"users.list": async () => await TauriUserService.list(),
 	"users.get": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		return await TauriUserService.get(id);
 	},
 	"users.create": async (input: unknown) =>
@@ -627,14 +627,14 @@ const localProcedureHandlers = {
 	"users.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
-				id: z.string().uuid(),
+				id: uuidSchema,
 				data: z.unknown(),
 			})
 			.parse(input);
 		return await TauriUserService.update(id, updateUserSchema.parse(data));
 	},
 	"users.delete": async (input: unknown) => {
-		const { id } = z.object({ id: z.string().uuid() }).parse(input);
+		const { id } = z.object({ id: uuidSchema }).parse(input);
 		await TauriUserService.delete(id);
 		return mutationSuccessSchema.parse({ success: true });
 	},
