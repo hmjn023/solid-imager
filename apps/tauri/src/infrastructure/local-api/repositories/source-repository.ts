@@ -1,11 +1,9 @@
 import { createSourceRepository } from "@solid-imager/db/repositories/source-repository";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
-import { getTauriAppServices } from "~/app-services";
+import { getTauriDrizzleExecutor } from "./drizzle-executor";
 
-function getExecutor(tx?: unknown): DrizzleExecutor {
-	return (tx ?? getTauriAppServices().db) as DrizzleExecutor;
-}
-
-export const TauriSourceRepository = createSourceRepository(getExecutor, {
-	orderByName: true,
-});
+export const TauriSourceRepository = createSourceRepository(
+	getTauriDrizzleExecutor,
+	{
+		orderByName: true,
+	},
+);
