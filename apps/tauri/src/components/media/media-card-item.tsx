@@ -1,10 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Card } from "@solid-imager/ui/card";
-import {
-	Checkbox,
-	CheckboxControl,
-	CheckboxLabel,
-} from "@solid-imager/ui/checkbox";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "@solid-imager/ui/checkbox";
 import { Show } from "solid-js";
 import { ThumbnailImage } from "./thumbnail-image";
 
@@ -47,10 +43,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				</div>
 				<Show when={props.selectable}>
 					<div class="absolute top-2 right-2 rounded bg-background/90 p-1">
-						<Checkbox
-							checked={props.selected}
-							onChange={() => props.onToggle?.(props.media.id)}
-						>
+						<Checkbox checked={props.selected} onChange={() => props.onToggle?.(props.media.id)}>
 							<CheckboxControl />
 							<CheckboxLabel class="sr-only">Select media</CheckboxLabel>
 						</Checkbox>
@@ -62,10 +55,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				<h3 class="truncate font-semibold text-sm" title={props.media.fileName}>
 					{props.media.fileName}
 				</h3>
-				<p
-					class="truncate text-muted-foreground text-xs"
-					title={props.media.filePath}
-				>
+				<p class="truncate text-muted-foreground text-xs" title={props.media.filePath}>
 					{props.media.filePath}
 				</p>
 				<div class="flex justify-between text-muted-foreground text-xs">

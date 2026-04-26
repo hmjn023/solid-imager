@@ -11,15 +11,10 @@ import {
 	newCollectionSchema,
 	updateCollectionSchema,
 } from "@solid-imager/core/domain/collections/schemas";
+import { AppConfigSchema, defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { newIpSchema, updateIpSchema } from "@solid-imager/core/domain/ips/schemas";
 import {
-	AppConfigSchema,
-	defaultAppConfig,
-} from "@solid-imager/core/domain/config/config-schema";
-import {
-	newIpSchema,
-	updateIpSchema,
-} from "@solid-imager/core/domain/ips/schemas";
-import {
+	bulkDownloadRequestSchema,
 	createPresetRequestSchema,
 	mediaSearchRequestSchema,
 	newAuthorSchema,
@@ -28,10 +23,7 @@ import {
 	updatePresetRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { uploadMediaRequestSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import {
-	newProjectSchema,
-	updateProjectSchema,
-} from "@solid-imager/core/domain/projects/schemas";
+import { newProjectSchema, updateProjectSchema } from "@solid-imager/core/domain/projects/schemas";
 import {
 	mediaSourceInfoSchema,
 	type SafeMediaSource,
@@ -46,12 +38,10 @@ import {
 	tagResponseSchema,
 	updateTagSchema,
 } from "@solid-imager/core/domain/tags/schemas";
-import {
-	newUserSchema,
-	updateUserSchema,
-} from "@solid-imager/core/domain/users/schemas";
+import { newUserSchema, updateUserSchema } from "@solid-imager/core/domain/users/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
+import { tauriJobQueue } from "../jobs/tauri-job-queue";
 import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriAuthorService } from "../local-api/services/author-service";
 import { TauriCategoryService } from "../local-api/services/category-service";
@@ -66,6 +56,7 @@ import { TauriSourceBackupService } from "../local-api/services/source-backup-se
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 import { TauriUserService } from "../local-api/services/user-service";
+import { enqueueDownloadJobs } from "./imports-api";
 
 const authorUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
@@ -156,11 +147,7 @@ function updateFallbackSource(input: unknown) {
 		id,
 		connectionInfo: patch.connectionInfo ?? sources[index].connectionInfo,
 	});
-	const nextSources = [
-		...sources.slice(0, index),
-		updated,
-		...sources.slice(index + 1),
-	];
+	const nextSources = [...sources.slice(0, index), updated, ...sources.slice(index + 1)];
 	writeFallbackSources(nextSources);
 	return updated;
 }
@@ -192,17 +179,13 @@ function mergeConfig(base: unknown, patch: unknown): unknown {
 }
 
 function readFallbackConfig() {
-	const stored = AppConfigSchema.safeParse(
-		readStorageJson(fallbackConfigStorageKey),
-	);
+	const stored = AppConfigSchema.safeParse(readStorageJson(fallbackConfigStorageKey));
 	return stored.success ? stored.data : defaultAppConfig;
 }
 
 function updateFallbackConfig(input: unknown) {
 	const patch = AppConfigSchema.partial().parse(input);
-	const config = AppConfigSchema.parse(
-		mergeConfig(readFallbackConfig(), patch),
-	);
+	const config = AppConfigSchema.parse(mergeConfig(readFallbackConfig(), patch));
 	writeStorageJson(fallbackConfigStorageKey, config);
 	return config;
 }
@@ -210,9 +193,7 @@ function updateFallbackConfig(input: unknown) {
 const localProcedureHandlers = {
 	"config.get": async () => await TauriConfigService.getConfig(),
 	"config.update": async (input: unknown) =>
-		await TauriConfigService.updateConfig(
-			AppConfigSchema.partial().parse(input),
-		),
+		await TauriConfigService.updateConfig(AppConfigSchema.partial().parse(input)),
 	"sources.list": async () => await TauriSourceService.list(),
 	"sources.get": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -231,10 +212,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriSourceService.update(
-			id,
-			mediaSourceInfoSchema.partial().parse(data),
-		);
+		return await TauriSourceService.update(id, mediaSourceInfoSchema.partial().parse(data));
 	},
 	"sources.delete": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -283,10 +261,7 @@ const localProcedureHandlers = {
 				params: z.unknown(),
 			})
 			.parse(input);
-		return await TauriMediaService.searchMedia(
-			sourceId,
-			mediaSearchRequestSchema.parse(params),
-		);
+		return await TauriMediaService.searchMedia(sourceId, mediaSearchRequestSchema.parse(params));
 	},
 	"media.getDetails": async (input: unknown) => {
 		const { sourceId, mediaId } = z
@@ -312,15 +287,7 @@ const localProcedureHandlers = {
 		);
 	},
 	"media.upload": async (input: unknown) => {
-		const {
-			sourceId,
-			bytes,
-			filename,
-			description,
-			sourceUrl,
-			overwrite,
-			autoIncrement,
-		} = z
+		const { sourceId, bytes, filename, description, sourceUrl, overwrite, autoIncrement } = z
 			.object({
 				sourceId: uuidSchema,
 				bytes: z.array(z.number().int().min(0).max(255)),
@@ -373,6 +340,16 @@ const localProcedureHandlers = {
 			.parse(input);
 		return await TauriMediaService.moveMedia("", mediaId, targetSourceId);
 	},
+	"downloads.start": async (input: unknown) => {
+		const parsed = bulkDownloadRequestSchema.parse(input);
+		const jobCount = await enqueueDownloadJobs(parsed.mediaSourceId, parsed.items);
+		tauriJobQueue.wake();
+		return {
+			success: true,
+			jobCount,
+			message: `Queued ${jobCount} download jobs`,
+		};
+	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -408,10 +385,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriCategoryService.update(
-			id,
-			updateCategorySchema.parse(data),
-		);
+		return await TauriCategoryService.update(id, updateCategorySchema.parse(data));
 	},
 	"categories.delete": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -432,10 +406,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriCollectionService.update(
-			id,
-			updateCollectionSchema.parse(data),
-		);
+		return await TauriCollectionService.update(id, updateCollectionSchema.parse(data));
 	},
 	"collections.delete": async (input: unknown) => {
 		const { id } = z.object({ id: uuidSchema }).parse(input);
@@ -450,11 +421,7 @@ const localProcedureHandlers = {
 				displayOrder: z.number().int().optional(),
 			})
 			.parse(input);
-		await TauriCollectionService.addToMedia(
-			collectionId,
-			mediaId,
-			displayOrder,
-		);
+		await TauriCollectionService.addToMedia(collectionId, mediaId, displayOrder);
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"collections.removeFromMedia": async (input: unknown) => {
@@ -477,10 +444,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriProjectService.update(
-			id,
-			updateProjectSchema.parse(data),
-		);
+		return await TauriProjectService.update(id, updateProjectSchema.parse(data));
 	},
 	"projects.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -512,8 +476,7 @@ const localProcedureHandlers = {
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"ips.list": async () => await TauriIpService.list(),
-	"ips.create": async (input: unknown) =>
-		await TauriIpService.create(newIpSchema.parse(input)),
+	"ips.create": async (input: unknown) => await TauriIpService.create(newIpSchema.parse(input)),
 	"ips.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
@@ -562,10 +525,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriCharacterService.update(
-			id,
-			updateCharacterSchema.parse(data),
-		);
+		return await TauriCharacterService.update(id, updateCharacterSchema.parse(data));
 	},
 	"characters.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
@@ -601,8 +561,7 @@ const localProcedureHandlers = {
 		const { id } = z.object({ id: z.string().uuid() }).parse(input);
 		return await TauriTagService.get(id);
 	},
-	"tags.create": async (input: unknown) =>
-		await TauriTagService.create(newTagSchema.parse(input)),
+	"tags.create": async (input: unknown) => await TauriTagService.create(newTagSchema.parse(input)),
 	"tags.update": async (input: unknown) => {
 		const { id, data } = z
 			.object({
@@ -656,10 +615,7 @@ const localProcedureHandlers = {
 				data: z.unknown(),
 			})
 			.parse(input);
-		return await TauriPresetService.update(
-			id,
-			updatePresetRequestSchema.parse(data),
-		);
+		return await TauriPresetService.update(id, updatePresetRequestSchema.parse(data));
 	},
 	"presets.delete": async (input: unknown) => {
 		const { id } = z.object({ id: z.number().int() }).parse(input);
@@ -679,12 +635,17 @@ const localProcedureHandlers = {
 		});
 	},
 	"ai.scanBatchTaggingTargets": async (input: unknown) =>
-		await TauriAiService.scanBatchTaggingTargets(
-			batchTaggingRequestSchema.parse(input ?? {}),
-		),
+		await TauriAiService.scanBatchTaggingTargets(batchTaggingRequestSchema.parse(input ?? {})),
+	"ai.batchTagging": async (input: unknown) => {
+		const result = await TauriAiService.batchTagging(batchTaggingRequestSchema.parse(input ?? {}));
+		tauriJobQueue.wake();
+		return result;
+	},
 	"ai.startBatchTaggingWithIds": async (input: unknown) => {
 		const parsed = batchTaggingWithIdsSchema.parse(input);
-		return await TauriAiService.startBatchTaggingWithIds(parsed);
+		const result = await TauriAiService.startBatchTaggingWithIds(parsed);
+		tauriJobQueue.wake();
+		return result;
 	},
 } as const;
 

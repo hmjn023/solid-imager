@@ -12,11 +12,15 @@ export class MaintenanceService extends SharedMaintenanceService {
 		mediaRepository: IMediaRepository,
 		jobRepository: IJobRepository,
 		sourceRepository: SourceRepository,
+		options: {
+			afterJobsQueued?: (sourceIds: string[]) => Promise<void> | void;
+		} = {},
 	) {
 		super({
 			mediaRepository,
 			jobRepository,
 			sourceRepository,
+			afterJobsQueued: options.afterJobsQueued,
 			logger,
 			listExistingThumbnailIds: async (sourceId: string) => {
 				const cacheDir = getSourceCacheDir(sourceId);

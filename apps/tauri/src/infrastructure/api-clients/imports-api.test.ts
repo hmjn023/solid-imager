@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
 const {
 	mockCreateMany,
@@ -20,12 +13,8 @@ const {
 	mockEmit,
 	mockGetTauriAppServices,
 } = vi.hoisted(() => ({
-	mockCreateMany: vi.fn<(jobs: unknown[]) => Promise<unknown[]>>(
-		async () => [],
-	),
-	mockFindPendingImportRequests: vi.fn<() => Promise<unknown[]>>(
-		async () => [],
-	),
+	mockCreateMany: vi.fn<(jobs: unknown[]) => Promise<unknown[]>>(async () => []),
+	mockFindPendingImportRequests: vi.fn<() => Promise<unknown[]>>(async () => []),
 	mockFindImportRequestsByIds: vi.fn<() => Promise<unknown[]>>(async () => []),
 	mockMarkImportRequestsCompleted: vi.fn(async () => undefined),
 	mockDeleteImportRequests: vi.fn(async () => undefined),
@@ -39,6 +28,13 @@ const {
 	mockSyncMediaSources: vi.fn(async () => ({ results: [] })),
 	mockEmit: vi.fn(async () => undefined),
 	mockGetTauriAppServices: vi.fn(),
+}));
+
+vi.mock("~/infrastructure/local-api/repositories/media-repository", () => ({
+	TauriMediaRepository: {
+		batchUpsert: vi.fn(async () => [{ id: "media-1", filePath: "image.png" }]),
+		findByPath: vi.fn(async () => null),
+	},
 }));
 
 vi.mock("~/infrastructure/local-api/repositories/tauri-job-repository", () => ({
@@ -87,6 +83,15 @@ describe("tauri imports api", () => {
 				exists: vi.fn(async () => false),
 				mkdir: vi.fn(async () => undefined),
 				writeFile: vi.fn(async () => undefined),
+				stat: vi.fn(async () => ({
+					size: 3,
+					mtime: new Date().toISOString(),
+					birthtime: new Date().toISOString(),
+					isDirectory: false,
+				})),
+			},
+			commandClient: {
+				invoke: vi.fn(async () => undefined),
 			},
 		});
 	});
@@ -172,33 +177,30 @@ describe("tauri imports api", () => {
 			connectionInfo: { path: "/library" },
 		});
 		const mkdir = vi.fn(async () => undefined);
-		const writeFile = vi.fn(async () => undefined);
+		const invoke = vi.fn(async () => undefined);
 		mockGetTauriAppServices.mockReturnValue({
 			fileSystem: {
 				exists: vi.fn(async () => false),
 				mkdir,
-				writeFile,
+				writeFile: vi.fn(async () => undefined),
+				stat: vi.fn(async () => ({
+					size: 3,
+					mtime: new Date().toISOString(),
+					birthtime: new Date().toISOString(),
+					isDirectory: false,
+				})),
 			},
+			commandClient: { invoke },
 		});
-		vi.stubGlobal(
-			"fetch",
-			vi.fn(async () => ({
-				ok: true,
-				status: 200,
-				url: "https://example.com/image.png",
-				headers: { get: () => "image/png" },
-				arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
-			})),
-		);
 
-		const result = await importsApi.processPendingImports(
-			["job-1"],
-			"source-1",
-		);
+		const result = await importsApi.processPendingImports(["job-1"], "source-1");
 
 		expect(result).toEqual({ success: true, processedCount: 1 });
 		expect(mkdir).toHaveBeenCalled();
-		expect(writeFile).toHaveBeenCalled();
+		expect(invoke).toHaveBeenCalledWith("download_file", {
+			url: "https://example.com/image.png",
+			destPath: expect.stringContaining("image.png"),
+		});
 		expect(mockSyncMediaSources).toHaveBeenCalledWith(["source-1"]);
 		expect(mockMarkImportRequestsCompleted).toHaveBeenCalledWith(["job-1"]);
 		expect(mockEmit).toHaveBeenCalledWith("import-request:processed", {

@@ -5,6 +5,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import {
+	type DownloadArtifact,
+	queueDownloadJobs as queueSharedDownloadJobs,
+	runDownloadImageJob,
+} from "@solid-imager/application/services/download-job-runner";
 import type {
 	AddMediaRequest,
 	DownloadItem,
@@ -222,17 +227,23 @@ function resolveCreatedAt(
 	fileMeta: { createdAt: Date },
 ): Date {
 	if (item.createdAt) {
-		return new Date(item.createdAt);
+		const d = new Date(item.createdAt);
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	if (metadata.upload_date) {
-		return new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		const d = new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	return fileMeta.createdAt;
 }
 
 // Update helper to determine media type from extension
 
-async function handleYtDlpDownload(
+async function _handleYtDlpDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
@@ -415,7 +426,7 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 /**
  * Handles direct image download (non-twitter)
  */
-async function handleDirectImageDownload(
+async function _handleDirectImageDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
@@ -442,6 +453,7 @@ async function handleDirectImageDownload(
 
 		const response = await fetch(item.targetUrl, {
 			headers,
+			signal: AbortSignal.timeout(30000),
 		});
 		if (!response.ok) {
 			logger.error(
@@ -476,6 +488,9 @@ async function handleDirectImageDownload(
 		const fullPath = path.join(basePath, fileInfo.filePath);
 
 		let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
+		if (createdAt && Number.isNaN(createdAt.getTime())) {
+			createdAt = undefined;
+		}
 
 		// If createdAt is missing, try to fetch from source URL (e.g. Tweet URL)
 		if (!createdAt) {
@@ -553,87 +568,179 @@ async function handleDirectImageDownload(
  * Extracts and normalizes a DownloadItem from a job payload.
  * Handles backward compatibility mapping.
  */
-function getDownloadItemFromJob(job: Job): DownloadItem {
-	if (!job.payload) {
-		return {} as DownloadItem;
-	}
-	const payload = job.payload as any;
-	const item = { ...payload } as unknown as DownloadItem;
-
-	if (!item.targetUrl && payload?.imageUrl) {
-		item.targetUrl = payload.imageUrl;
-	}
-
-	if (!item.description && payload?.description) {
-		item.description = payload.description;
-	}
-
-	if (!item.sourceUrls) {
-		item.sourceUrls = payload?.sourceUrl ? [payload.sourceUrl] : [];
-	}
-
-	return item;
-}
-
 export async function processDownloadJob(job: Job): Promise<void> {
-	const mediaSourceId = job.mediaSourceId;
-	if (!mediaSourceId) {
-		logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
-		return;
-	}
-	// Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
-	const item = getDownloadItemFromJob(job);
+	await runDownloadImageJob(job, {
+		resolveBasePath: async (mediaSourceId) => {
+			const sourceRepo = new DrizzleSourceRepository();
+			const mediaSource = await sourceRepo.findById(mediaSourceId);
+			if (!mediaSource || mediaSource.type !== "local") {
+				throw new Error("Media source not found or not a local source");
+			}
+			return (mediaSource.connectionInfo as { path: string }).path;
+		},
+		selectMode: (item) =>
+			item.targetUrl?.match(TWITTER_URL_REGEX) ? "specialized" : "direct",
+		download: async (item, context) => {
+			if (!item.targetUrl) {
+				throw new Error("Missing targetUrl");
+			}
+			if (context.mode === "specialized") {
+				const results = await downloadWithYtDlp(
+					item.targetUrl,
+					context.basePath,
+					item.cookies,
+					item.userAgent,
+				);
+				const artifacts: DownloadArtifact[] = [];
+				for (let index = 0; index < results.length; index++) {
+					const res = results[index];
+					let { filePath, metadata } = res;
+					const extension = path.extname(filePath);
+					let unifiedName = generateMediaFilename(item, extension);
+					if (results.length > 1) {
+						const ext = path.extname(unifiedName);
+						const base = path.basename(unifiedName, ext);
+						unifiedName = `${base}_${index}${ext}`;
+					}
+					const dir = path.dirname(filePath);
+					const targetPath = await _resolveFinalPathWithAvoidance(
+						dir,
+						unifiedName,
+						filePath,
+					);
+					if (targetPath !== filePath) {
+						await fs.rename(filePath, targetPath);
+						filePath = targetPath;
+					}
+					const relativePath = path.relative(context.basePath, filePath);
+					const mediaType = getMediaTypeFromExtension(filePath);
+					const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
+					artifacts.push({
+						mediaSourceId: context.mediaSourceId,
+						filePath: relativePath,
+						fileName: path.basename(filePath),
+						mediaType,
+						description:
+							item.description || metadata.description || metadata.title,
+						width: metadata.width || fileMeta.width || 0,
+						height: metadata.height || fileMeta.height || 0,
+						fileSize: fileMeta.size,
+						createdAt: resolveCreatedAt(item, metadata, fileMeta),
+						modifiedAt: fileMeta.modifiedAt,
+						sourceUrls: Array.from(
+							new Set([item.targetUrl ?? "", ...(item.sourceUrls ?? [])]),
+						),
+					});
+				}
+				return artifacts;
+			}
 
-	if (!item.targetUrl) {
-		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
-		return;
-	}
-
-	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
-
-	const sourceRepo = new DrizzleSourceRepository();
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (!mediaSource || mediaSource.type !== "local") {
-		const error = "Media source not found or not a local source";
-		logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
-		SseManager.sendEvent(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error,
-		});
-		throw new Error(error);
-	}
-
-	const connectionInfo = mediaSource.connectionInfo as { path: string };
-	const basePath = connectionInfo.path;
-
-	// Decision: Direct download or yt-dlp?
-	// Use regex to detect Twitter URLs which might need yt-dlp if target is the tweet link
-	const isTwitterPost = item.targetUrl.match(TWITTER_URL_REGEX);
-
-	logger.info(
-		{ isTwitterPost: !!isTwitterPost },
-		"[DownloadJob] URL pattern check",
-	);
-
-	try {
-		if (isTwitterPost) {
-			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(item, mediaSourceId, basePath);
-		} else {
-			await handleDirectImageDownload(item, mediaSourceId, basePath);
-		}
-	} catch (error) {
-		logger.error(
-			{ err: error, url: item.targetUrl },
-			"[DownloadJob] Job execution failed",
-		);
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		throw error;
-	}
+			const urlPath = new URL(item.targetUrl).pathname;
+			const extension = path.extname(urlPath) || ".png";
+			const filename = generateMediaFilename(item, extension);
+			const headers = buildFetchHeaders(item);
+			await waitForDownloadRateLimit();
+			const response = await fetch(item.targetUrl, {
+				headers,
+				signal: AbortSignal.timeout(30000),
+			});
+			if (!response.ok) {
+				throw new Error(
+					`Failed to download image: ${response.status} ${response.statusText}`,
+				);
+			}
+			const arrayBuffer = await response.arrayBuffer();
+			const fileInfo = await ServerMediaStorage.saveFile(
+				context.basePath,
+				{
+					name: filename,
+					arrayBuffer: async () => arrayBuffer,
+				},
+				{
+					filename,
+					overwrite: false,
+					autoIncrement: true,
+				},
+			);
+			let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
+			if (createdAt && Number.isNaN(createdAt.getTime())) {
+				createdAt = undefined;
+			}
+			if (!createdAt) {
+				const tweetUrl = item.sourceUrls?.find((u) =>
+					u.match(TWITTER_URL_REGEX),
+				);
+				if (tweetUrl) {
+					const meta = await fetchMetadataWithYtDlp(
+						tweetUrl,
+						item.cookies,
+						item.userAgent,
+					);
+					if (meta?.upload_date) {
+						const d = new Date(
+							meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"),
+						);
+						if (!Number.isNaN(d.getTime())) {
+							createdAt = d;
+						}
+					}
+				}
+			}
+			return [
+				{
+					mediaSourceId: context.mediaSourceId,
+					filePath: fileInfo.filePath,
+					fileName: fileInfo.fileName,
+					mediaType: getMediaTypeFromExtension(
+						path.join(context.basePath, fileInfo.filePath),
+					),
+					description: formatMetadataAsMarkdown(item),
+					width: fileInfo.width,
+					height: fileInfo.height,
+					fileSize: fileInfo.size,
+					createdAt: createdAt ?? fileInfo.createdAt,
+					modifiedAt: fileInfo.modifiedAt,
+					sourceUrls: Array.from(
+						new Set([item.targetUrl, ...(item.sourceUrls ?? [])]),
+					),
+				},
+			];
+		},
+		registerMedia: async (artifact, context) => {
+			const newMedia: AddMediaRequest = {
+				mediaSourceId: context.mediaSourceId,
+				filePath: artifact.filePath,
+				fileName: artifact.fileName,
+				mediaType: artifact.mediaType,
+				description: artifact.description,
+				width: artifact.width,
+				height: artifact.height,
+				fileSize: artifact.fileSize ?? 0,
+				createdAt: artifact.createdAt,
+				modifiedAt: artifact.modifiedAt,
+				sourceUrls: artifact.sourceUrls,
+			};
+			await registerMedia(
+				newMedia,
+				context.mediaSourceId,
+				context.item,
+				context.basePath,
+			);
+		},
+		events: {
+			downloadError: (event) => {
+				SseManager.sendEvent(
+					job.mediaSourceId ?? "global-jobs",
+					"download-error",
+					{
+						url: event.url,
+						error: event.error,
+					},
+				);
+			},
+		},
+		logger,
+	});
 }
 
 /**
@@ -739,23 +846,5 @@ export async function queueDownloadJobs(
 	}
 
 	const repo = services.getJobRepository();
-
-	for (const item of items) {
-		await repo.create({
-			type: "downloadImage",
-			mediaSourceId,
-			payload: {
-				...item,
-				// Backward compatibility fields
-				imageUrl: item.targetUrl,
-				sourceUrl: item.targetUrl,
-				description: item.description ?? formatMetadataAsMarkdown(item),
-				createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
-			},
-		});
-	}
-
-	// Jobs are picked up by the worker automatically.
-
-	return items.length;
+	return await queueSharedDownloadJobs(repo, mediaSourceId, items);
 }

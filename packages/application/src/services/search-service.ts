@@ -21,9 +21,7 @@ export class SearchServiceImpl {
 		this.mediaRepository = mediaRepository;
 	}
 
-	async globalSearchMedia(
-		searchOptions: SearchOptions,
-	): Promise<MediaSearchResponse> {
+	async globalSearchMedia(searchOptions: SearchOptions): Promise<MediaSearchResponse> {
 		const limit = searchOptions.limit || DEFAULT_PAGE_LIMIT;
 		const offset = searchOptions.page ? (searchOptions.page - 1) * limit : 0;
 

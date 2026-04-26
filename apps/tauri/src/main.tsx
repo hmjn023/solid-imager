@@ -1,3 +1,4 @@
+import { BackgroundJobsCoordinator } from "@solid-imager/application/services/background-jobs-coordinator";
 import { RouterProvider } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
 import "./index.css";
@@ -5,6 +6,7 @@ import { setTauriAppServices } from "./app-services";
 import { MaintenanceService } from "./application/services/maintenance-service";
 import { initializeTauriApp, type TauriAppServices } from "./bootstrap";
 import { tauriJobQueue } from "./infrastructure/jobs/tauri-job-queue";
+import { TauriConfigService } from "./infrastructure/local-api/services/config-service";
 import { TauriSourceService } from "./infrastructure/local-api/services/source-service";
 import { createAppRouter } from "./router";
 
@@ -44,8 +46,7 @@ async function initializeWithTimeout() {
 }
 
 function renderStartupError(error: unknown) {
-	const message =
-		error instanceof Error ? error.stack || error.message : String(error);
+	const message = error instanceof Error ? error.stack || error.message : String(error);
 	appRoot.replaceChildren();
 
 	const container = document.createElement("div");
@@ -55,10 +56,7 @@ function renderStartupError(error: unknown) {
 	);
 
 	const title = document.createElement("h1");
-	title.setAttribute(
-		"style",
-		"color: #ef4444; font-size: 1.5rem; margin-bottom: 1rem;",
-	);
+	title.setAttribute("style", "color: #ef4444; font-size: 1.5rem; margin-bottom: 1rem;");
 	title.textContent = "Initialization Error";
 
 	const description = document.createElement("p");
@@ -93,9 +91,36 @@ function startBackgroundServices(services: TauriAppServices) {
 	}
 
 	void (async () => {
-		await tauriJobQueue.initialize();
-		await TauriSourceService.startWatchingAllLocalSources();
-		await new MaintenanceService().performStartupChecks();
+		const coordinator = new BackgroundJobsCoordinator({
+			loadConfig: async () => await services.apiClient.config.get(),
+			onConfigChange: (listener) => {
+				TauriConfigService.onChange((config) => {
+					void listener(config);
+				});
+			},
+			updateWorkerConfig: (config) => {
+				tauriJobQueue.updateConfig(config);
+			},
+			resetRunnableJobs: async () => {
+				await tauriJobQueue.resetRunnableJobs();
+			},
+			startWorker: () => {
+				tauriJobQueue.start();
+			},
+			startWatchingAllSources: async () => {
+				await TauriSourceService.startWatchingAllLocalSources();
+			},
+			performStartupChecks: async ({ afterJobsQueued }) => {
+				await new MaintenanceService({
+					afterJobsQueued: async (sourceIds) => {
+						await tauriJobQueue.initialize();
+						tauriJobQueue.registerQueuedSources(sourceIds);
+						await afterJobsQueued(sourceIds);
+					},
+				}).performStartupChecks();
+			},
+		});
+		await coordinator.start();
 	})().catch((error: unknown) => {
 		console.error("Failed to start Tauri background services", error);
 	});

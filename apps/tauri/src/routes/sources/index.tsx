@@ -1,7 +1,4 @@
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
+import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
@@ -28,9 +25,9 @@ export const Route = createFileRoute("/sources/")({
 function SourcesRoute() {
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-	const [editingSource, setEditingSource] = createSignal<
-		SafeMediaSource | MediaSourceInfo | null
-	>(null);
+	const [editingSource, setEditingSource] = createSignal<SafeMediaSource | MediaSourceInfo | null>(
+		null,
+	);
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
@@ -78,9 +75,7 @@ function SourcesRoute() {
 		setDeletingSource(null);
 	};
 
-	const handleSyncSource = async (
-		source: SafeMediaSource | MediaSourceInfo,
-	) => {
+	const handleSyncSource = async (source: SafeMediaSource | MediaSourceInfo) => {
 		if (!source.id || isSyncing()) {
 			return;
 		}
@@ -104,9 +99,7 @@ function SourcesRoute() {
 		setIsSyncing(true);
 		toast.info("Starting sync for all sources...");
 		try {
-			const ids = sources
-				.map((source) => source.id)
-				.filter(Boolean) as string[];
+			const ids = sources.map((source) => source.id).filter(Boolean) as string[];
 			await syncMediaSources(ids);
 		} catch (error) {
 			toast.error(`Failed to sync all sources: ${(error as Error).message}`);
@@ -122,9 +115,7 @@ function SourcesRoute() {
 		}
 
 		const sourceIds = new Set(
-			sources
-				.map((source) => source.id)
-				.filter((id): id is string => Boolean(id)),
+			sources.map((source) => source.id).filter((id): id is string => Boolean(id)),
 		);
 		const unlistenPromises = [
 			listen("all-jobs-completed", (event) => {
@@ -208,9 +199,7 @@ function SourcesRoute() {
 
 			{mediaSources.isError && (
 				<div class="mt-8 text-center">
-					<p class="text-red-500">
-						Error loading sources: {mediaSources.error?.message}
-					</p>
+					<p class="text-red-500">Error loading sources: {mediaSources.error?.message}</p>
 				</div>
 			)}
 

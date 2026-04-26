@@ -5,6 +5,10 @@
  */
 
 import path from "node:path";
+import {
+	changeWatchedFile,
+	deleteWatchedFile,
+} from "@solid-imager/application/services/watcher-runtime";
 import { services } from "~/application/registry";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
@@ -75,23 +79,15 @@ async function handleFileDeleted(
 	relativePath: string,
 ): Promise<void> {
 	try {
-		// Find media by path
-		const media = await MediaRepository.findByPath(mediaSourceId, relativePath);
-
-		if (!media) {
-			return;
-		}
-
-		// Delete from database
-		await MediaRepository.delete(media.id);
-
-		// Delete thumbnail
-		await deleteThumbnail(mediaSourceId, media.id);
-
-		// Notify
-		SseManager.sendEvent(mediaSourceId, "media-deleted", {
-			filePath: media.filePath,
-			timestamp: new Date().toISOString(),
+		await deleteWatchedFile(mediaSourceId, relativePath, {
+			findByPath: MediaRepository.findByPath,
+			deleteMedia: MediaRepository.delete,
+			deleteThumbnail,
+			events: {
+				mediaDeleted: (event) => {
+					SseManager.sendEvent(mediaSourceId, "media-deleted", event);
+				},
+			},
 		});
 	} catch (error) {
 		logger.error(
@@ -118,38 +114,40 @@ async function handleFileChanged(
 		const basePath = (source.connectionInfo as { path: string }).path;
 		const fullPath = path.join(basePath, relativePath);
 
-		// Find media by path
-		const media = await MediaRepository.findByPath(mediaSourceId, relativePath);
-
-		if (!media) {
-			// Treat as new file
-			await handleFileAdded(mediaSourceId, relativePath);
-			return;
-		}
-
-		// Update file metadata (size, dimensions, mtime)
 		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
-		await MediaRepository.update(media.id, {
-			width: fileMetadata.width,
-			height: fileMetadata.height,
-			fileSize: fileMetadata.size,
-			modifiedAt: fileMetadata.modifiedAt,
-		});
-
-		// Queue processMedia job for thumbnail regeneration and metadata re-extraction
 		const jobRepo = services.getJobRepository();
-		await queueMediaProcessingJob({
-			jobRepo,
-			mediaId: media.id,
+		await changeWatchedFile(
 			mediaSourceId,
-			sourcePath: basePath,
-		});
-
-		// Notify
-		SseManager.sendEvent(mediaSourceId, "media-changed", {
-			mediaId: media.id,
-			filePath: media.filePath,
-		});
+			relativePath,
+			basePath,
+			{
+				width: fileMetadata.width,
+				height: fileMetadata.height,
+				fileSize: fileMetadata.size,
+				modifiedAt: fileMetadata.modifiedAt,
+			},
+			{
+				findByPath: MediaRepository.findByPath,
+				updateMedia: async (mediaId, data) => {
+					await MediaRepository.update(mediaId, {
+						width: data.width,
+						height: data.height,
+						fileSize: data.fileSize ?? undefined,
+						modifiedAt: data.modifiedAt,
+					});
+				},
+				queueProcessMedia: queueMediaProcessingJob,
+				jobRepo,
+				events: {
+					mediaChanged: (event) => {
+						SseManager.sendEvent(mediaSourceId, "media-changed", event);
+					},
+				},
+				onMissing: async () => {
+					await handleFileAdded(mediaSourceId, relativePath);
+				},
+			},
+		);
 	} catch (error) {
 		logger.error(
 			{ err: error, mediaSourceId, relativePath },

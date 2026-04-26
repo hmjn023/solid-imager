@@ -1,12 +1,5 @@
-import {
-	type DownloadItem,
-	downloadItemSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import type {
-	JobRecord,
-	JobRepositoryPort,
-	NewJobRecord,
-} from "../ports/job-repository";
+import { type DownloadItem, downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { JobRecord, JobRepositoryPort, NewJobRecord } from "../ports/job-repository";
 
 export const IMPORT_REQUEST_JOB_TYPE = "import_request";
 
@@ -49,14 +42,8 @@ type ImportExecutionResult = {
 export type ImportRequestServiceDeps = {
 	jobRepository: ImportRequestJobRepository;
 	findMediaSourceForFile(filePath: string): Promise<string | null>;
-	restoreSource(
-		sourceId: string,
-		items: DownloadItem[],
-	): Promise<RestoreResult>;
-	executeImport(
-		targetSourceId: string,
-		items: DownloadItem[],
-	): Promise<ImportExecutionResult>;
+	restoreSource(sourceId: string, items: DownloadItem[]): Promise<RestoreResult>;
+	executeImport(targetSourceId: string, items: DownloadItem[]): Promise<ImportExecutionResult>;
 	publishImportEvent(
 		event: ImportRequestEventName,
 		payload: Record<string, unknown>,
@@ -101,11 +88,7 @@ function mapPendingJob(job: JobRecord): PendingImportJob | null {
 }
 
 function readTargetSourceId(payload: unknown): string | undefined {
-	if (
-		typeof payload !== "object" ||
-		payload === null ||
-		!("targetSourceId" in payload)
-	) {
+	if (typeof payload !== "object" || payload === null || !("targetSourceId" in payload)) {
 		return undefined;
 	}
 
@@ -168,11 +151,7 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 				return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
 			}
 
-			const classification = await classifyBulkAddItems(
-				items,
-				deps,
-				targetSourceId,
-			);
+			const classification = await classifyBulkAddItems(items, deps, targetSourceId);
 			const { restoreGroups, importItems } = classification;
 			let { skippedCount } = classification;
 			let restoredCount = 0;
@@ -188,9 +167,7 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 			}
 
 			if (importItems.length > 0) {
-				await deps.jobRepository.createMany(
-					importItems.map(toImportRequestJob),
-				);
+				await deps.jobRepository.createMany(importItems.map(toImportRequestJob));
 				await deps.publishImportEvent("import-request:created", {
 					count: importItems.length,
 				});
@@ -225,8 +202,7 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 				return pendingJob ? [pendingJob] : [];
 			});
 			const items = pendingJobs.map((job) => job.item);
-			const resolvedTargetSourceId =
-				targetSourceId ?? pendingJobs[0]?.targetSourceId;
+			const resolvedTargetSourceId = targetSourceId ?? pendingJobs[0]?.targetSourceId;
 
 			if (!resolvedTargetSourceId) {
 				throw new Error("Target source is required");
@@ -237,9 +213,7 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 					? await deps.executeImport(resolvedTargetSourceId, items)
 					: { processedCount: 0 };
 
-			await deps.jobRepository.markImportRequestsCompleted(
-				pendingJobs.map((job) => job.id),
-			);
+			await deps.jobRepository.markImportRequestsCompleted(pendingJobs.map((job) => job.id));
 			await deps.publishImportEvent("import-request:processed", {
 				processedCount: result.processedCount,
 			});
@@ -247,9 +221,7 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 			return { success: true, processedCount: result.processedCount };
 		},
 
-		async cancelPendingImports(
-			jobIds: string[],
-		): Promise<{ success: boolean }> {
+		async cancelPendingImports(jobIds: string[]): Promise<{ success: boolean }> {
 			if (jobIds.length === 0) {
 				return { success: true };
 			}

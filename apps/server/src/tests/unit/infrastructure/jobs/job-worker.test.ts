@@ -84,14 +84,14 @@ describe("JobWorker", () => {
 				}) as JobRecord,
 		);
 
-		// Mock findPending to return jobs
-		// When excluding AI types, return normal jobs
+		// Return 2 normal jobs on first normal poll, then empty to avoid infinite loop
 		(
 			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
 		).mockImplementation(
 			(limit: number, options: { excludeTypes?: string[] }) => {
 				if (options?.excludeTypes) {
-					return Promise.resolve(normalJobs.slice(0, limit));
+					const batch = normalJobs.splice(0, limit);
+					return Promise.resolve(batch);
 				}
 				return Promise.resolve([]);
 			},
@@ -100,14 +100,12 @@ describe("JobWorker", () => {
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
-		// Should fetch 2 normal jobs
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
-			2,
-			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "import_request"],
-			}),
-		);
-		expect(processor).toHaveBeenCalledTimes(2);
+		// findPending must never be called with limit > concurrency (2)
+		for (const [limit] of vi.mocked(jobRepo.findPending).mock.calls) {
+			expect(limit).toBeLessThanOrEqual(2);
+		}
+		// All 5 jobs were eventually processed
+		expect(processor).toHaveBeenCalledTimes(5);
 	});
 
 	it("should respect aiConcurrency limit for AI jobs", async () => {
@@ -127,13 +125,14 @@ describe("JobWorker", () => {
 				}) as JobRecord,
 		);
 
-		// Mock findPending
+		// Return at most 1 AI job per poll, then empty to avoid infinite loop
 		(
 			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
 		).mockImplementation(
 			(limit: number, options: { includeTypes?: string[] }) => {
 				if (options?.includeTypes) {
-					return Promise.resolve(aiJobs.slice(0, limit));
+					const batch = aiJobs.splice(0, limit);
+					return Promise.resolve(batch);
 				}
 				return Promise.resolve([]);
 			},
@@ -142,12 +141,11 @@ describe("JobWorker", () => {
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
-		// Should fetch 1 AI job
+		// Should fetch 1 AI job (limited by aiConcurrency)
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
-		expect(processor).toHaveBeenCalledTimes(1);
 		expect(processor).toHaveBeenCalledWith(
 			expect.objectContaining({ id: "ai-job-0" }),
 		);
@@ -159,23 +157,15 @@ describe("JobWorker", () => {
 			jobs: { concurrency: 2, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
 
-		const aiJob = {
-			id: "ai-1",
-			type: "auto_tagging",
-			status: "pending",
-		} as JobRecord;
-		const normalJob1 = {
-			id: "normal-1",
-			type: "normal",
-			status: "pending",
-		} as JobRecord;
-		const normalJob2 = {
-			id: "normal-2",
-			type: "normal",
-			status: "pending",
-		} as JobRecord;
+		const aiJobs = [
+			{ id: "ai-1", type: "auto_tagging", status: "pending" } as JobRecord,
+		];
+		const normalJobs = [
+			{ id: "normal-1", type: "normal", status: "pending" } as JobRecord,
+			{ id: "normal-2", type: "normal", status: "pending" } as JobRecord,
+		];
 
-		// Mock findPending
+		// Drain from arrays so subsequent polls return empty (avoids infinite loop)
 		(
 			jobRepo.findPending as unknown as ReturnType<typeof vi.fn>
 		).mockImplementation(
@@ -184,12 +174,10 @@ describe("JobWorker", () => {
 				options: { excludeTypes?: string[]; includeTypes?: string[] },
 			) => {
 				if (options?.includeTypes) {
-					// AI request
-					return Promise.resolve([aiJob].slice(0, limit));
+					return Promise.resolve(aiJobs.splice(0, limit));
 				}
 				if (options?.excludeTypes) {
-					// Normal request
-					return Promise.resolve([normalJob1, normalJob2].slice(0, limit));
+					return Promise.resolve(normalJobs.splice(0, limit));
 				}
 				return Promise.resolve([]);
 			},
@@ -198,7 +186,7 @@ describe("JobWorker", () => {
 		worker.start();
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
-		// Should fetch 1 AI job and 2 Normal jobs
+		// Should fetch 1 AI job and 2 Normal jobs on the first poll
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
@@ -206,7 +194,7 @@ describe("JobWorker", () => {
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "import_request"],
+				excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
 			}),
 		);
 

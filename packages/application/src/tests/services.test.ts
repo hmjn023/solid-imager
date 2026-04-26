@@ -7,14 +7,8 @@ import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-re
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
 import { describe, expect, it, vi } from "vite-plus/test";
 import { createCharacterService } from "../services/character-service";
-import {
-	hasMediaProcessingStep,
-	queueMediaProcessingJob,
-} from "../services/media-processing-job";
-import {
-	createMediaService,
-	validateFileSignature,
-} from "../services/media-service";
+import { hasMediaProcessingStep, queueMediaProcessingJob } from "../services/media-processing-job";
+import { createMediaService, validateFileSignature } from "../services/media-service";
 import { createPresetService } from "../services/preset-service";
 
 describe("shared application services", () => {
@@ -95,10 +89,7 @@ describe("shared application services", () => {
 			},
 		});
 
-		await service.addCharacterToMedia(
-			"00000000-0000-0000-0000-000000000003",
-			character.id,
-		);
+		await service.addCharacterToMedia("00000000-0000-0000-0000-000000000003", character.id);
 
 		expect(characterRepository.addToMedia).toHaveBeenCalledWith(
 			"00000000-0000-0000-0000-000000000003",
@@ -145,8 +136,7 @@ describe("shared application services", () => {
 	it("reads only sliced header bytes during signature validation", async () => {
 		const slice = vi.fn(() => ({
 			arrayBuffer: vi.fn(
-				async () =>
-					new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+				async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 			),
 		}));
 		const file = {
@@ -364,17 +354,13 @@ describe("shared application services", () => {
 				{
 					name: "image.png",
 					arrayBuffer: vi.fn(
-						async () =>
-							new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+						async () => new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
 					),
 				},
 				{ filename: "image.png" },
 			),
 		).rejects.toThrow(hookError);
 		expect(mediaRepository.delete).toHaveBeenCalledWith(mediaId);
-		expect(storageService.deleteFile).toHaveBeenCalledWith(
-			"/media",
-			"image.png",
-		);
+		expect(storageService.deleteFile).toHaveBeenCalledWith("/media", "image.png");
 	});
 });

@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { JobRecord, JobRepositoryPort } from "../ports/job-repository";
 import { type JobProcessor, JobWorker } from "../services/job-worker";
 
@@ -70,17 +63,16 @@ describe("JobWorker", () => {
 	it("uses independent normal and AI concurrency pools", async () => {
 		const normalJobs = [makeJob("normal-1"), makeJob("normal-2")];
 		const aiJobs = [makeJob("ai-1", "auto_tagging")];
-		vi.mocked(repository.findPending).mockImplementation(
-			async (limit, options) => {
-				if (options?.includeTypes) {
-					return aiJobs.slice(0, limit);
-				}
-				if (options?.excludeTypes) {
-					return normalJobs.slice(0, limit);
-				}
-				return [];
-			},
-		);
+		// splice so arrays drain after first dispatch, preventing infinite wake-on-complete loop
+		vi.mocked(repository.findPending).mockImplementation(async (limit, options) => {
+			if (options?.includeTypes) {
+				return aiJobs.splice(0, limit);
+			}
+			if (options?.excludeTypes) {
+				return normalJobs.splice(0, limit);
+			}
+			return [];
+		});
 
 		worker.start();
 		await vi.advanceTimersByTimeAsync(1);
@@ -89,9 +81,20 @@ describe("JobWorker", () => {
 			includeTypes: ["auto_tagging"],
 		});
 		expect(repository.findPending).toHaveBeenCalledWith(2, {
-			excludeTypes: ["auto_tagging", "import_request"],
+			excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
 		});
 		expect(processor).toHaveBeenCalledTimes(3);
+	});
+
+	it("does not poll tracker job types", async () => {
+		vi.mocked(repository.findPending).mockResolvedValue([]);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(repository.findPending).toHaveBeenCalledWith(2, {
+			excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
+		});
 	});
 
 	it("marks successful and failed jobs", async () => {
@@ -153,7 +156,30 @@ describe("JobWorker", () => {
 		resolveFirstPoll([]);
 		await vi.advanceTimersByTimeAsync(1);
 
-		expect(repository.findPending).toHaveBeenCalledTimes(4);
+		// At least 4 calls (2 per poll x 2 re-poll iterations);
+		// wake-on-complete may add more.
+		expect(vi.mocked(repository.findPending).mock.calls.length).toBeGreaterThanOrEqual(4);
 		expect(processor).toHaveBeenCalledWith(job);
+	});
+
+	it("immediately re-polls after a job completes without waiting for the poll interval", async () => {
+		const job1 = makeJob("job-1");
+		const job2 = makeJob("job-2");
+
+		// poll 1: [] (AI), [job1] (normal)
+		// poll 2: [] (AI), [job2] (normal)
+		// thereafter: []
+		vi.mocked(repository.findPending)
+			.mockResolvedValueOnce([]) // poll1 AI
+			.mockResolvedValueOnce([job1]) // poll1 normal
+			.mockResolvedValueOnce([]) // poll2 AI (wake-on-complete)
+			.mockResolvedValueOnce([job2]) // poll2 normal
+			.mockResolvedValue([]); // thereafter
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(processor).toHaveBeenCalledWith(job1);
+		expect(processor).toHaveBeenCalledWith(job2);
 	});
 });

@@ -9,11 +9,7 @@ function appendCacheKey(url: string, cacheKey: number) {
 	return `${url}${separator}t=${cacheKey}`;
 }
 
-function joinThumbnailPath(
-	basePath: string,
-	mediaSourceId: string,
-	mediaId: string,
-) {
+function joinThumbnailPath(basePath: string, mediaSourceId: string, mediaId: string) {
 	const separator = basePath.includes("\\") ? "\\" : "/";
 	const normalizedBase = basePath.replace(/[\\/]+$/, "");
 	return `${normalizedBase}${separator}${mediaSourceId}${separator}${mediaId}.webp`;
@@ -42,6 +38,35 @@ async function getThumbnailBasePath() {
 
 export function resetThumbnailRuntimeCache() {
 	thumbnailBasePathPromise = null;
+}
+
+const thumbnailReadyListeners = new Map<string, Set<() => void>>();
+
+export function subscribeToThumbnailReady(mediaId: string, callback: () => void): () => void {
+	let listeners = thumbnailReadyListeners.get(mediaId);
+	if (!listeners) {
+		listeners = new Set();
+		thumbnailReadyListeners.set(mediaId, listeners);
+	}
+	listeners.add(callback);
+	return () => {
+		const current = thumbnailReadyListeners.get(mediaId);
+		if (current) {
+			current.delete(callback);
+			if (current.size === 0) {
+				thumbnailReadyListeners.delete(mediaId);
+			}
+		}
+	};
+}
+
+export function notifyThumbnailReady(mediaId: string): void {
+	const listeners = thumbnailReadyListeners.get(mediaId);
+	if (listeners) {
+		for (const callback of listeners) {
+			callback();
+		}
+	}
 }
 
 export async function getThumbnailResource(

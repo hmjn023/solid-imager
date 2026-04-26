@@ -1,3 +1,4 @@
+import { BackgroundJobsCoordinator } from "@solid-imager/application/services/background-jobs-coordinator";
 import { services } from "~/application/registry";
 import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
@@ -8,6 +9,7 @@ import { PythonClient } from "~/infrastructure/ai/python-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
+import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -122,6 +124,7 @@ export function startBackgroundWorker() {
 
 	const jobWorker = services.getJobWorker();
 	const jobRepo = services.getJobRepository();
+	const configService = services.getConfigService();
 
 	// Singleton management for JobWorker to prevent duplicates during HMR
 	const globalAny = globalThis as any;
@@ -130,17 +133,41 @@ export function startBackgroundWorker() {
 	}
 
 	globalAny.__JOB_WORKER__ = jobWorker;
-	jobWorker.start();
+	const coordinator = new BackgroundJobsCoordinator({
+		loadConfig: () => configService.getConfig(),
+		onConfigChange: (listener) => {
+			configService.onChange((nextConfig) => {
+				void listener(nextConfig);
+			});
+		},
+		updateWorkerConfig: (config) => {
+			jobWorker.updateConfig(config);
+		},
+		resetRunnableJobs: async () => {
+			await jobRepo.resetInProgressToPending();
+		},
+		startWorker: () => {
+			jobWorker.start();
+		},
+		startWatchingAllSources: async () => {
+			await FileWatcherService.startMonitoringAll();
+		},
+		performStartupChecks: async ({ afterJobsQueued }) => {
+			const maintenanceService = new MaintenanceService(
+				services.getMediaRepository(),
+				jobRepo,
+				services.getSourceRepository(),
+				{
+					afterJobsQueued,
+				},
+			);
+			await maintenanceService.performStartupChecks();
+		},
+		logger,
+	});
 
-	// Initialize MaintenanceService and perform startup checks (background)
-	const maintenanceService = new MaintenanceService(
-		services.getMediaRepository(),
-		jobRepo,
-		services.getSourceRepository(),
-	);
-
-	maintenanceService.performStartupChecks().catch((err) => {
-		logger.error({ err }, "Maintenance startup checks failed");
+	void coordinator.start().catch((err) => {
+		logger.error({ err }, "Background coordinator startup failed");
 	});
 
 	// Cleanup on process exit

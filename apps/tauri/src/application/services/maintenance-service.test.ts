@@ -6,8 +6,6 @@ const {
 	mockIsAbsolute,
 	mockJoin,
 	mockGetTauriAppServices,
-	mockInitialize,
-	mockRegisterQueuedSources,
 	mockGetConfig,
 	mockFindIdsWithMissingGenerationInfo,
 	mockFindAllMediaIndices,
@@ -18,8 +16,6 @@ const {
 	mockIsAbsolute: vi.fn(async () => false),
 	mockJoin: vi.fn(async (left: string, right: string) => `${left}/${right}`),
 	mockGetTauriAppServices: vi.fn(),
-	mockInitialize: vi.fn(async () => undefined),
-	mockRegisterQueuedSources: vi.fn(),
 	mockGetConfig: vi.fn(),
 	mockFindIdsWithMissingGenerationInfo: vi.fn(),
 	mockFindAllMediaIndices: vi.fn(),
@@ -35,13 +31,6 @@ vi.mock("@tauri-apps/api/path", () => ({
 
 vi.mock("~/app-services", () => ({
 	getTauriAppServices: mockGetTauriAppServices,
-}));
-
-vi.mock("~/infrastructure/jobs/tauri-job-queue", () => ({
-	tauriJobQueue: {
-		initialize: mockInitialize,
-		registerQueuedSources: mockRegisterQueuedSources,
-	},
 }));
 
 vi.mock("~/infrastructure/local-api/repositories/media-repository", () => ({
@@ -104,13 +93,13 @@ describe("Tauri MaintenanceService", () => {
 		});
 		mockCreateIfUnique.mockResolvedValue({ id: "job-1" });
 
-		const service = new MaintenanceService();
+		const afterJobsQueued = vi.fn(async () => undefined);
+		const service = new MaintenanceService({ afterJobsQueued });
 		await service.performStartupChecks();
 
 		expect(mockJoin).toHaveBeenCalledWith("/app", "thumbs");
 		expect(mockJoin).toHaveBeenCalledWith("/app/thumbs", "source-1");
-		expect(mockInitialize).toHaveBeenCalledOnce();
-		expect(mockRegisterQueuedSources).toHaveBeenCalledWith(["source-1"]);
+		expect(afterJobsQueued).toHaveBeenCalledWith(["source-1"]);
 		expect(mockCreateIfUnique).toHaveBeenCalledWith({
 			type: "processMedia",
 			mediaSourceId: "source-1",

@@ -42,9 +42,7 @@ function toInsertValue(job: NewJobRecord): typeof jobs.$inferInsert {
 	return {
 		...(job.id !== undefined ? { id: job.id } : {}),
 		type: job.type,
-		...(job.mediaSourceId !== undefined
-			? { mediaSourceId: job.mediaSourceId }
-			: {}),
+		...(job.mediaSourceId !== undefined ? { mediaSourceId: job.mediaSourceId } : {}),
 		...(job.status !== undefined ? { status: job.status } : {}),
 		...(job.payload !== undefined ? { payload: job.payload } : {}),
 		...(job.result !== undefined ? { result: job.result } : {}),
@@ -55,14 +53,10 @@ function toInsertValue(job: NewJobRecord): typeof jobs.$inferInsert {
 	};
 }
 
-function toUpdateValue(
-	job: Partial<JobRecord>,
-): Partial<typeof jobs.$inferInsert> {
+function toUpdateValue(job: Partial<JobRecord>): Partial<typeof jobs.$inferInsert> {
 	return {
 		...(job.type !== undefined ? { type: job.type } : {}),
-		...(job.mediaSourceId !== undefined
-			? { mediaSourceId: job.mediaSourceId }
-			: {}),
+		...(job.mediaSourceId !== undefined ? { mediaSourceId: job.mediaSourceId } : {}),
 		...(job.status !== undefined ? { status: job.status } : {}),
 		...(job.payload !== undefined ? { payload: job.payload } : {}),
 		...(job.result !== undefined ? { result: job.result } : {}),
@@ -73,14 +67,8 @@ function toUpdateValue(
 	};
 }
 
-async function insertJob(
-	executor: DrizzleExecutor,
-	job: NewJobRecord,
-): Promise<JobRecord> {
-	const [created] = await executor
-		.insert(jobs)
-		.values(toInsertValue(job))
-		.returning();
+async function insertJob(executor: DrizzleExecutor, job: NewJobRecord): Promise<JobRecord> {
+	const [created] = await executor.insert(jobs).values(toInsertValue(job)).returning();
 	return mapToJobRecord(created);
 }
 
@@ -117,9 +105,7 @@ async function withUniqueJobLock<T>(
 ): Promise<T> {
 	if (hasTransaction(executor)) {
 		return await executor.transaction(async (tx) => {
-			await tx.execute(
-				sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`,
-			);
+			await tx.execute(sql`SELECT pg_advisory_xact_lock(${UNIQUE_JOB_LOCK_KEY}, hashtext(${key}))`);
 			return await action(tx);
 		});
 	}
@@ -137,10 +123,7 @@ async function withUniqueJobLock<T>(
 
 function hasTransaction(
 	executor: DrizzleExecutor,
-): executor is Extract<
-	DrizzleExecutor,
-	{ transaction: (...args: any[]) => any }
-> {
+): executor is Extract<DrizzleExecutor, { transaction: (...args: any[]) => any }> {
 	return "transaction" in executor;
 }
 
@@ -195,15 +178,9 @@ export function createJobRepository(
 				const activeRows = await tx
 					.select()
 					.from(jobs)
-					.where(
-						and(
-							eq(jobs.type, job.type),
-							inArray(jobs.status, [...ACTIVE_JOB_STATUSES]),
-						),
-					);
+					.where(and(eq(jobs.type, job.type), inArray(jobs.status, [...ACTIVE_JOB_STATUSES])));
 				const existing = activeRows.find(
-					(row) =>
-						hasMediaIdPayload(row.payload) && row.payload.mediaId === mediaId,
+					(row) => hasMediaIdPayload(row.payload) && row.payload.mediaId === mediaId,
 				);
 				if (existing) {
 					return null;
@@ -214,11 +191,7 @@ export function createJobRepository(
 		},
 
 		async findById(id: string): Promise<JobRecord | null> {
-			const rows = await getExecutor()
-				.select()
-				.from(jobs)
-				.where(eq(jobs.id, id))
-				.limit(1);
+			const rows = await getExecutor().select().from(jobs).where(eq(jobs.id, id)).limit(1);
 			return rows[0] ? mapToJobRecord(rows[0]) : null;
 		},
 
@@ -243,19 +216,15 @@ export function createJobRepository(
 			return rows.map(mapToJobRecord);
 		},
 
-		async findPending(
-			limit: number,
-			options: FindPendingJobsOptions = {},
-		): Promise<JobRecord[]> {
+		async findPending(limit: number, options: FindPendingJobsOptions = {}): Promise<JobRecord[]> {
 			if (options.excludeTypes?.length && options.includeTypes?.length) {
-				throw new Error(
-					"Cannot use excludeTypes and includeTypes simultaneously.",
-				);
+				throw new Error("Cannot use excludeTypes and includeTypes simultaneously.");
 			}
 
 			const conditions = [
 				eq(jobs.status, "pending"),
 				ne(jobs.type, "import_request"),
+				ne(jobs.type, "bulk_tagging_parent"),
 			];
 
 			if (options.excludeTypes?.length) {
@@ -275,14 +244,13 @@ export function createJobRepository(
 			return rows.map(mapToJobRecord);
 		},
 
-		async resetInProgressToPending(
-			resetOptions: { includeTypes?: string[] } = {},
-		): Promise<void> {
+		async resetInProgressToPending(resetOptions: { includeTypes?: string[] } = {}): Promise<void> {
 			const conditions = [eq(jobs.status, "in_progress")];
 			if (resetOptions.includeTypes?.length) {
 				conditions.push(inArray(jobs.type, resetOptions.includeTypes));
 			} else {
 				conditions.push(ne(jobs.type, "import_request"));
+				conditions.push(ne(jobs.type, "bulk_tagging_parent"));
 			}
 
 			await getExecutor()
@@ -354,10 +322,7 @@ export function createJobRepository(
 		},
 
 		async update(id: string, data: Partial<JobRecord>): Promise<void> {
-			await getExecutor()
-				.update(jobs)
-				.set(toUpdateValue(data))
-				.where(eq(jobs.id, id));
+			await getExecutor().update(jobs).set(toUpdateValue(data)).where(eq(jobs.id, id));
 		},
 
 		async incrementProgress(id: string): Promise<void> {
