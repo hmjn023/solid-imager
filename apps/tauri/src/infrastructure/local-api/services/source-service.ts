@@ -2,6 +2,10 @@ import {
 	createSourceService,
 	toSafeMediaSource,
 } from "@solid-imager/application/services/source-service";
+import {
+	deleteWatchedDirectory,
+	deleteWatchedFile,
+} from "@solid-imager/application/services/watcher-runtime";
 import type {
 	MediaSource,
 	NewMediaSource,
@@ -339,22 +343,15 @@ async function deleteIndexedFile(
 	relativePath: string,
 ): Promise<boolean> {
 	const normalizedRelPath = normalizeRelativePath(relativePath);
-	const existing = await TauriMediaRepository.findByPath(
-		source.id,
-		normalizedRelPath,
-	);
-	if (!existing) {
-		return false;
-	}
-
-	await TauriMediaRepository.delete(existing.id);
-	await emit("media-deleted", {
-		mediaSourceId: source.id,
-		mediaId: existing.id,
-		filePath: existing.filePath,
-		timestamp: new Date().toISOString(),
+	return await deleteWatchedFile(source.id, normalizedRelPath, {
+		findByPath: TauriMediaRepository.findByPath,
+		deleteMedia: TauriMediaRepository.delete,
+		events: {
+			mediaDeleted: async (event) => {
+				await emit("media-deleted", event);
+			},
+		},
 	});
-	return true;
 }
 
 async function deleteIndexedDirectory(
@@ -369,19 +366,14 @@ async function deleteIndexedDirectory(
 		return;
 	}
 
-	const deletedRecords =
-		await TauriMediaRepository.deleteBySourceIdAndPathPrefix(
-			source.id,
-			normalizedRelPath,
-		);
-	for (const record of deletedRecords) {
-		await emit("media-deleted", {
-			mediaSourceId: source.id,
-			mediaId: record.id,
-			filePath: record.filePath,
-			timestamp: new Date().toISOString(),
-		});
-	}
+	await deleteWatchedDirectory(source.id, normalizedRelPath, {
+		deleteByPathPrefix: TauriMediaRepository.deleteBySourceIdAndPathPrefix,
+		events: {
+			mediaDeleted: async (event) => {
+				await emit("media-deleted", event);
+			},
+		},
+	});
 }
 
 async function reconcileWatchedPath(
@@ -666,16 +658,20 @@ async function syncLocalSource(source: MediaSource): Promise<SyncResult> {
 
 	// Delete removed files
 	let deleted = 0;
-	for (const [relativePath, mediaId] of dbPathMap.entries()) {
+	for (const [relativePath] of dbPathMap.entries()) {
 		if (actualMediaPaths.has(relativePath)) continue;
-		await TauriMediaRepository.delete(mediaId);
-		await emit("media-deleted", {
-			mediaSourceId: source.id,
-			mediaId,
-			filePath: relativePath,
-			timestamp: new Date().toISOString(),
+		const wasDeleted = await deleteWatchedFile(source.id, relativePath, {
+			findByPath: TauriMediaRepository.findByPath,
+			deleteMedia: TauriMediaRepository.delete,
+			events: {
+				mediaDeleted: async (event) => {
+					await emit("media-deleted", event);
+				},
+			},
 		});
-		deleted += 1;
+		if (wasDeleted) {
+			deleted += 1;
+		}
 	}
 
 	console.debug(`[sync] done: added=${added} deleted=${deleted}`);

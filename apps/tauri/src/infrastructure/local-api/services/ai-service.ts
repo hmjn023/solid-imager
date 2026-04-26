@@ -1,11 +1,16 @@
 import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import {
+	createJobEventPublisher,
+	runAutoTaggingJob,
+	runBulkTaggingDispatchJob,
+} from "@solid-imager/application/services/tagging-job-runner";
+import {
 	type Media,
 	mediaSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import {
-	type TaggingResponse,
 	batchTaggingRequestSchema,
+	type TaggingResponse,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import {
@@ -28,13 +33,12 @@ import {
 	isNull,
 	sql,
 } from "drizzle-orm";
-import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
-import { TauriJobRepository } from "../repositories/tauri-job-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
+import { TauriJobRepository } from "../repositories/tauri-job-repository";
 
 const AI_SOURCE = "AI";
 
@@ -46,11 +50,6 @@ type BatchTaggingInput = {
 type BatchTaggingWithIdsInput = BatchTaggingInput & {
 	mediaIds: string[];
 };
-
-const parentJobPayloadSchema = z.object({
-	total: z.number(),
-	processed: z.number(),
-});
 
 async function resolveLocalMediaFile(
 	mediaId: string,
@@ -255,39 +254,9 @@ async function emitMediaChanged(mediaId: string) {
 	});
 }
 
-async function updateParentTaggingJob(parentId: string) {
-	await TauriJobRepository.incrementProgress(parentId);
-	const parentJob = await TauriJobRepository.findById(parentId);
-	if (!parentJob) {
-		return;
-	}
-
-	const parsedPayload = parentJobPayloadSchema.safeParse(parentJob.payload);
-	if (!parsedPayload.success) {
-		console.error("[jobs] invalid parent tagging payload", parentJob.payload);
-		return;
-	}
-
-	await emit("job-progress", {
-		jobId: parentId,
-		processed: parsedPayload.data.processed,
-		total: parsedPayload.data.total,
-	});
-
-	if (parsedPayload.data.processed >= parsedPayload.data.total) {
-		await TauriJobRepository.update(parentId, { status: "completed" });
-		await emit("job-completed", {
-			jobId: parentId,
-			message: "Batch tagging completed.",
-		});
-		if (parentJob.mediaSourceId) {
-			await emit("all-jobs-completed", {
-				mediaSourceId: parentJob.mediaSourceId,
-				processed: parsedPayload.data.total,
-			});
-		}
-	}
-}
+const jobEvents = createJobEventPublisher(async (event, payload) => {
+	await emit(event, payload);
+});
 
 export const TauriAiService = {
 	async scanBatchTaggingTargets(input: BatchTaggingInput): Promise<Media[]> {
@@ -361,7 +330,9 @@ export const TauriAiService = {
 		});
 
 		const mediaItems = await Promise.all(
-			input.mediaIds.map(async (mediaId) => await TauriMediaRepository.findById(mediaId)),
+			input.mediaIds.map(
+				async (mediaId) => await TauriMediaRepository.findById(mediaId),
+			),
 		);
 		const foundMedia = mediaItems.flatMap((media) => (media ? [media] : []));
 
@@ -393,51 +364,29 @@ export const TauriAiService = {
 	},
 
 	async processAutoTaggingJob(job: JobRecord): Promise<void> {
-		const payload = z
-			.object({
-				mediaId: z.string().uuid(),
-			})
-			.parse(job.payload);
-
-		try {
-			const response = await tagMediaFromServer(payload.mediaId);
-			await persistAiTags(payload.mediaId, response);
-			await emitMediaChanged(payload.mediaId);
-			if (job.parentId) {
-				await updateParentTaggingJob(job.parentId);
-			}
-		} catch (error) {
-			if (job.parentId) {
-				await TauriJobRepository.update(job.parentId, { status: "failed" });
-				await emit("job-failed", {
-					jobId: job.parentId,
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
-			throw error;
-		}
+		await runAutoTaggingJob(job, {
+			jobRepository: TauriJobRepository,
+			executeAutoTagging: async ({ mediaId }) => {
+				const response = await tagMediaFromServer(mediaId);
+				await persistAiTags(mediaId, response);
+				await emitMediaChanged(mediaId);
+			},
+			jobEvents,
+			logger: console,
+		});
 	},
 
 	async processBulkTaggingDispatchJob(job: JobRecord): Promise<void> {
-		const payload = z
-			.object({
-				force: z.boolean().optional(),
-				mediaSourceId: z.string().optional(),
-				batchSize: z.number().optional(),
-			})
-			.parse(job.payload);
-		const targets = await TauriAiService.scanBatchTaggingTargets(payload);
-		await Promise.all(
-			targets.map(async (media) => {
-				await TauriJobRepository.create({
-					type: "auto_tagging",
-					mediaSourceId: media.mediaSourceId,
-					payload: {
-						mediaId: media.id,
-						force: payload.force,
-					},
-				});
-			}),
-		);
+		await runBulkTaggingDispatchJob(job, {
+			jobRepository: TauriJobRepository,
+			scanTargets: async (payload) =>
+				(await TauriAiService.scanBatchTaggingTargets(payload)).map(
+					(media) => ({
+						id: media.id,
+						mediaSourceId: media.mediaSourceId,
+					}),
+				),
+			logger: console,
+		});
 	},
 };

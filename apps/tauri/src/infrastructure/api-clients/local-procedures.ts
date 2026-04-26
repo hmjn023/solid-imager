@@ -53,6 +53,7 @@ import {
 } from "@solid-imager/core/domain/users/schemas";
 import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
+import { tauriJobQueue } from "../jobs/tauri-job-queue";
 import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriAuthorService } from "../local-api/services/author-service";
 import { TauriCategoryService } from "../local-api/services/category-service";
@@ -67,7 +68,6 @@ import { TauriSourceBackupService } from "../local-api/services/source-backup-se
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 import { TauriUserService } from "../local-api/services/user-service";
-import { tauriJobQueue } from "../jobs/tauri-job-queue";
 import { enqueueDownloadJobs } from "./imports-api";
 
 const authorUpdateSchema = z.object({
@@ -378,7 +378,10 @@ const localProcedureHandlers = {
 	},
 	"downloads.start": async (input: unknown) => {
 		const parsed = bulkDownloadRequestSchema.parse(input);
-		const jobCount = await enqueueDownloadJobs(parsed.mediaSourceId, parsed.items);
+		const jobCount = await enqueueDownloadJobs(
+			parsed.mediaSourceId,
+			parsed.items,
+		);
 		tauriJobQueue.wake();
 		return {
 			success: true,

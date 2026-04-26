@@ -1,11 +1,17 @@
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
+import {
+	type DownloadArtifact,
+	queueDownloadJobs as queueSharedDownloadJobs,
+	runDownloadImageJob,
+} from "@solid-imager/application/services/download-job-runner";
 import {
 	createImportRequestService,
 	type PendingImportJob,
 } from "@solid-imager/application/services/import-request-service";
-import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
+import { TauriMediaRepository } from "~/infrastructure/local-api/repositories/media-repository";
 import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
 import { TauriSourceService } from "~/infrastructure/local-api/services/source-service";
@@ -116,28 +122,106 @@ export async function enqueueDownloadJobs(
 	targetSourceId: string,
 	items: DownloadItem[],
 ): Promise<number> {
-	for (const item of items) {
-		await TauriJobRepository.create({
-			type: "downloadImage",
-			mediaSourceId: targetSourceId,
-			payload: {
-				...item,
-				imageUrl: item.targetUrl,
-				sourceUrl: item.targetUrl,
-				createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
-			},
-		});
-	}
-	return items.length;
+	return await queueSharedDownloadJobs(
+		TauriJobRepository,
+		targetSourceId,
+		items,
+	);
 }
 
 export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
-	if (!job.mediaSourceId) {
-		throw new Error(`Job ${job.id} missing mediaSourceId`);
-	}
+	await runDownloadImageJob(job, {
+		resolveBasePath: async (mediaSourceId) => {
+			const source = await fetchMediaSource(mediaSourceId);
+			if (source.type !== "local") {
+				throw new Error("Only local sources are supported in Tauri.");
+			}
+			const rootPath = (source.connectionInfo as { path?: string }).path;
+			if (!rootPath) {
+				throw new Error("Source path is missing.");
+			}
+			return rootPath;
+		},
+		selectMode: () => "direct",
+		download: async (item, context) => {
+			const downloadTarget = resolveDownloadTarget(item);
+			if (!downloadTarget) {
+				throw new Error("targetUrl or sourceUrls[0] is required");
+			}
+			const response = await fetch(downloadTarget);
+			if (!response.ok) {
+				throw new Error(
+					`Failed to download ${downloadTarget}: ${response.status}`,
+				);
+			}
+			const bytes = new Uint8Array(await response.arrayBuffer());
+			const sourceFileName =
+				item.fileName ||
+				basenameFromUrl(downloadTarget) ||
+				`${crypto.randomUUID()}${guessExtension(response)}`;
+			const targetPath = await resolveUniqueTargetPath(
+				context.basePath,
+				sourceFileName,
+			);
+			await getTauriAppServices().fileSystem.mkdir(dirname(targetPath), {
+				recursive: true,
+			});
+			await getTauriAppServices().fileSystem.writeFile(targetPath, bytes);
 
-	await downloadItemToSource(job.mediaSourceId, job.payload as DownloadItem);
-	await TauriSourceService.sync([job.mediaSourceId]);
+			const relativePath = targetPath.slice(`${context.basePath}/`.length);
+			const mediaType = response.headers
+				.get("content-type")
+				?.startsWith("video/")
+				? "video"
+				: response.headers.get("content-type")?.startsWith("audio/")
+					? "audio"
+					: "image";
+
+			return [
+				{
+					mediaSourceId: context.mediaSourceId,
+					filePath: relativePath,
+					fileName: sourceFileName,
+					mediaType,
+					width: 0,
+					height: 0,
+					fileSize: bytes.byteLength,
+					description: item.description ?? null,
+					createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+					modifiedAt: new Date(),
+					sourceUrls: Array.from(
+						new Set(
+							[item.targetUrl, ...(item.sourceUrls ?? [])].filter(
+								(value): value is string => typeof value === "string",
+							),
+						),
+					),
+				} satisfies DownloadArtifact,
+			];
+		},
+		registerMedia: async (_artifact, context) => {
+			await TauriSourceService.sync([context.mediaSourceId]);
+			const filePath = _artifact.filePath.replaceAll("\\", "/");
+			const existing = await TauriMediaRepository.findByPath(
+				context.mediaSourceId,
+				filePath,
+			);
+			if (existing) {
+				await emit("media-changed", {
+					mediaSourceId: context.mediaSourceId,
+					mediaId: existing.id,
+					filePath: existing.filePath,
+					timestamp: new Date().toISOString(),
+				});
+			}
+		},
+		events: {
+			downloadError: async (event) => {
+				await emit("download-error", event);
+			},
+		},
+		logger: console,
+	});
 }
 
 const importRequestService = createImportRequestService({

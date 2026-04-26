@@ -28,6 +28,11 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
 			{ id: "id2", filePath: "sub/file2.png" },
 			{ id: "id3", filePath: "file_to_delete.mp4" },
 		]),
+		findByPath: vi.fn(async (_mediaSourceId: string, relativePath: string) =>
+			relativePath === "file_to_delete.mp4"
+				? { id: "id3", filePath: "file_to_delete.mp4" }
+				: null,
+		),
 		delete: vi.fn(),
 	},
 }));

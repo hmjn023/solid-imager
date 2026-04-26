@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { deleteWatchedFile } from "@solid-imager/application/services/watcher-runtime";
 import { glob } from "tinyglobby";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
@@ -59,13 +60,23 @@ async function processDeletions(
 	await Promise.all(
 		filesToDelete.map(async (fileToDelete) => {
 			try {
-				await MediaRepository.delete(fileToDelete.id);
-				await deleteThumbnail(mediaSourceId, fileToDelete.id);
-				SseManager.sendEvent(mediaSourceId, "media-deleted", {
-					filePath: fileToDelete.relativePath,
-					timestamp: new Date().toISOString(),
-				});
-				result.deleted++;
+				const deleted = await deleteWatchedFile(
+					mediaSourceId,
+					fileToDelete.relativePath,
+					{
+						findByPath: MediaRepository.findByPath,
+						deleteMedia: MediaRepository.delete,
+						deleteThumbnail,
+						events: {
+							mediaDeleted: (event) => {
+								SseManager.sendEvent(mediaSourceId, "media-deleted", event);
+							},
+						},
+					},
+				);
+				if (deleted) {
+					result.deleted++;
+				}
 			} catch (error) {
 				logger.error(
 					{ err: error, mediaSourceId, fileToDelete },

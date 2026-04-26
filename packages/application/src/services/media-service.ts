@@ -33,10 +33,7 @@ import type {
 	MediaSourceFile,
 } from "@solid-imager/core/interfaces/media-storage";
 import type { ProcessMediaJobRepository } from "../ports/job-repository";
-import type {
-	DeferredActions,
-	DeferredEvent,
-} from "./job-runtime";
+import type { DeferredActions, DeferredEvent } from "./job-runtime";
 import { queueMediaProcessingJob } from "./media-processing-job";
 
 export type {

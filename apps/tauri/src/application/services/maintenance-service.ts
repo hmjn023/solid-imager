@@ -9,9 +9,11 @@ import { TauriConfigService } from "~/infrastructure/local-api/services/config-s
 export class MaintenanceService {
 	private readonly shared: SharedMaintenanceService;
 
-	constructor(options: {
-		afterJobsQueued?: (sourceIds: string[]) => Promise<void> | void;
-	} = {}) {
+	constructor(
+		options: {
+			afterJobsQueued?: (sourceIds: string[]) => Promise<void> | void;
+		} = {},
+	) {
 		this.shared = new SharedMaintenanceService({
 			mediaRepository: TauriMediaRepository,
 			jobRepository: TauriJobRepository,

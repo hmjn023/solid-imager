@@ -269,12 +269,14 @@ export const orpc = {
 			mediaId: string;
 			response: ReturnType<typeof taggingResponseSchema.parse>;
 		}) => invoke("ai.applyTags", input, mutationSuccessSchema),
-		batchTagging: (input: {
-			force?: boolean;
-			mediaSourceId?: string;
-		}) => invoke("ai.batchTagging", input, mutationSuccessSchema.extend({
-			message: z.string(),
-		})),
+		batchTagging: (input: { force?: boolean; mediaSourceId?: string }) =>
+			invoke(
+				"ai.batchTagging",
+				input,
+				mutationSuccessSchema.extend({
+					message: z.string(),
+				}),
+			),
 		scanBatchTaggingTargets: (input: {
 			force?: boolean;
 			mediaSourceId?: string;

@@ -71,8 +71,9 @@ export class JobWorker {
 		this.processor = options.processor;
 		this.logger = options.logger;
 		this.aiJobTypes = new Set(options.aiJobTypes ?? AI_JOB_TYPES);
-		this.excludedJobTypes =
-			options.excludedJobTypes ?? [...NON_RUNNABLE_JOB_TYPES];
+		this.excludedJobTypes = options.excludedJobTypes ?? [
+			...NON_RUNNABLE_JOB_TYPES,
+		];
 	}
 
 	start(): void {

@@ -1,7 +1,7 @@
 import { createJobDispatcher } from "@solid-imager/application/services/job-runtime";
 import { JobWorker } from "@solid-imager/application/services/job-worker";
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { runProcessMediaJob } from "@solid-imager/application/services/process-media-runner";
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { emit } from "@tauri-apps/api/event";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
