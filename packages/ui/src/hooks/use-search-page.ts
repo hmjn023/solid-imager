@@ -122,12 +122,13 @@ export function useSearchPage(
 		if (
 			!(searchResultQuery.isLoading || isRestored()) &&
 			searchResultQuery.data &&
-			searchResultQuery.data.pages.length > 0 &&
-			scrollY() > 0
+			searchResultQuery.data.pages.length > 0
 		) {
-			requestAnimationFrame(() => {
-				window.scrollTo(0, scrollY());
-			});
+			if (scrollY() > 0) {
+				requestAnimationFrame(() => {
+					window.scrollTo(0, scrollY());
+				});
+			}
 			setIsRestored(true);
 		}
 	});
