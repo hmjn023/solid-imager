@@ -20,6 +20,7 @@ import {
 	updateIpSchema,
 } from "@solid-imager/core/domain/ips/schemas";
 import {
+	bulkDownloadRequestSchema,
 	createPresetRequestSchema,
 	mediaSearchRequestSchema,
 	newAuthorSchema,
@@ -66,6 +67,8 @@ import { TauriSourceBackupService } from "../local-api/services/source-backup-se
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 import { TauriUserService } from "../local-api/services/user-service";
+import { tauriJobQueue } from "../jobs/tauri-job-queue";
+import { enqueueDownloadJobs } from "./imports-api";
 
 const authorUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
@@ -372,6 +375,16 @@ const localProcedureHandlers = {
 			})
 			.parse(input);
 		return await TauriMediaService.moveMedia("", mediaId, targetSourceId);
+	},
+	"downloads.start": async (input: unknown) => {
+		const parsed = bulkDownloadRequestSchema.parse(input);
+		const jobCount = await enqueueDownloadJobs(parsed.mediaSourceId, parsed.items);
+		tauriJobQueue.wake();
+		return {
+			success: true,
+			jobCount,
+			message: `Queued ${jobCount} download jobs`,
+		};
 	},
 	"authors.list": async () => await TauriAuthorService.list(),
 	"authors.get": async (input: unknown) => {
@@ -682,9 +695,18 @@ const localProcedureHandlers = {
 		await TauriAiService.scanBatchTaggingTargets(
 			batchTaggingRequestSchema.parse(input ?? {}),
 		),
+	"ai.batchTagging": async (input: unknown) => {
+		const result = await TauriAiService.batchTagging(
+			batchTaggingRequestSchema.parse(input ?? {}),
+		);
+		tauriJobQueue.wake();
+		return result;
+	},
 	"ai.startBatchTaggingWithIds": async (input: unknown) => {
 		const parsed = batchTaggingWithIdsSchema.parse(input);
-		return await TauriAiService.startBatchTaggingWithIds(parsed);
+		const result = await TauriAiService.startBatchTaggingWithIds(parsed);
+		tauriJobQueue.wake();
+		return result;
 	},
 } as const;
 

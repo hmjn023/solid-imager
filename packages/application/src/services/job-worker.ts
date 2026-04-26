@@ -4,6 +4,7 @@ import type {
 	JobRecord,
 	JobRepositoryPort,
 } from "../ports/job-repository";
+import { AI_JOB_TYPES, NON_RUNNABLE_JOB_TYPES } from "./job-runtime";
 
 export type JobProcessor = (job: JobRecord) => Promise<void>;
 
@@ -25,9 +26,6 @@ type JobWorkerOptions = {
 	aiJobTypes?: string[];
 	excludedJobTypes?: string[];
 };
-
-const DEFAULT_AI_JOB_TYPES = ["auto_tagging"];
-const DEFAULT_EXCLUDED_JOB_TYPES = ["import_request"];
 
 function toWorkerConfig(config: AppConfig | JobWorkerConfig): JobWorkerConfig {
 	if ("jobs" in config) {
@@ -72,9 +70,9 @@ export class JobWorker {
 		this.jobRepository = options.jobRepository;
 		this.processor = options.processor;
 		this.logger = options.logger;
-		this.aiJobTypes = new Set(options.aiJobTypes ?? DEFAULT_AI_JOB_TYPES);
+		this.aiJobTypes = new Set(options.aiJobTypes ?? AI_JOB_TYPES);
 		this.excludedJobTypes =
-			options.excludedJobTypes ?? DEFAULT_EXCLUDED_JOB_TYPES;
+			options.excludedJobTypes ?? [...NON_RUNNABLE_JOB_TYPES];
 	}
 
 	start(): void {

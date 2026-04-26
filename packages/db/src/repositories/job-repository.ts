@@ -256,6 +256,7 @@ export function createJobRepository(
 			const conditions = [
 				eq(jobs.status, "pending"),
 				ne(jobs.type, "import_request"),
+				ne(jobs.type, "bulk_tagging_parent"),
 			];
 
 			if (options.excludeTypes?.length) {
@@ -283,6 +284,7 @@ export function createJobRepository(
 				conditions.push(inArray(jobs.type, resetOptions.includeTypes));
 			} else {
 				conditions.push(ne(jobs.type, "import_request"));
+				conditions.push(ne(jobs.type, "bulk_tagging_parent"));
 			}
 
 			await getExecutor()

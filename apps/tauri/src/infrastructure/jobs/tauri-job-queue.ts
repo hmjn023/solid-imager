@@ -1,9 +1,12 @@
+import { createJobDispatcher } from "@solid-imager/application/services/job-runtime";
 import { JobWorker } from "@solid-imager/application/services/job-worker";
+import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { runProcessMediaJob } from "@solid-imager/application/services/process-media-runner";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { emit } from "@tauri-apps/api/event";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
+import { processQueuedDownloadJob } from "../api-clients/imports-api";
 import { TauriMediaRepository } from "../local-api/repositories/media-repository";
 import { TauriTagRepository } from "../local-api/repositories/tag-repository";
 import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";
@@ -33,28 +36,25 @@ function buildThumbnailPath(
 	return `${basePath.replace(/[\\/]+$/, "")}${sep}${sourceId}${sep}${mediaId}.webp`;
 }
 
-function isAutoTaggingPayload(value: unknown): value is { mediaId: string } {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		"mediaId" in value &&
-		typeof value.mediaId === "string"
-	);
-}
-
 class TauriJobQueue {
 	private readonly sourceCounters = new Map<string, SourceCounter>();
 	private readonly worker = new JobWorker({
 		jobRepository: TauriJobRepository,
-		processor: async (job) => {
-			if (job.type === "processMedia") {
+		processor: createJobDispatcher({
+			processMedia: async (job) => {
 				await this.processMediaJob(job);
-				return;
-			}
-			if (job.type === "auto_tagging") {
-				await this.processAutoTaggingJob(job.payload);
-			}
-		},
+			},
+			downloadImage: async (job) => {
+				await processQueuedDownloadJob(job);
+			},
+			auto_tagging: async (job) => {
+				await TauriAiService.processAutoTaggingJob(job);
+			},
+			bulk_tagging_dispatch: async (job) => {
+				await TauriAiService.processBulkTaggingDispatchJob(job);
+				this.worker.wake();
+			},
+		}),
 		logger: console,
 	});
 	private initializationPromise: Promise<void> | null = null;
@@ -74,6 +74,18 @@ class TauriJobQueue {
 			});
 		}
 		await this.initializationPromise;
+	}
+
+	updateConfig(config: AppConfig): void {
+		this.worker.updateConfig(config);
+	}
+
+	async resetRunnableJobs(): Promise<void> {
+		await TauriJobRepository.resetInProgressToPending();
+	}
+
+	start(): void {
+		this.worker.start();
 	}
 
 	async enqueue(jobs: ProcessMediaJob[]): Promise<void> {
@@ -106,11 +118,9 @@ class TauriJobQueue {
 
 	private async initializeInternal(): Promise<void> {
 		const config = await TauriConfigService.getConfig();
-		this.worker.updateConfig(config);
-		await TauriJobRepository.resetInProgressToPending({
-			includeTypes: ["processMedia", "auto_tagging"],
-		});
-		this.worker.start();
+		this.updateConfig(config);
+		await this.resetRunnableJobs();
+		this.start();
 	}
 
 	private registerSourceCounter(sourceId: string): void {
@@ -177,14 +187,6 @@ class TauriJobQueue {
 			}
 		}
 	}
-
-	private async processAutoTaggingJob(payload: unknown): Promise<void> {
-		if (!isAutoTaggingPayload(payload)) {
-			throw new Error("Invalid auto_tagging job payload");
-		}
-		await TauriAiService.tagSingleMedia(payload.mediaId);
-	}
-
 	private async markDone(sourceId: string): Promise<void> {
 		const counter = this.sourceCounters.get(sourceId);
 		if (!counter) return;

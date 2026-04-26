@@ -104,7 +104,7 @@ describe("JobWorker", () => {
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "import_request"],
+				excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
 			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(2);
@@ -206,7 +206,7 @@ describe("JobWorker", () => {
 		expect(jobRepo.findPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "import_request"],
+				excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
 			}),
 		);
 

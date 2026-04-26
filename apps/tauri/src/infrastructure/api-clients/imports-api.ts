@@ -2,11 +2,13 @@ import {
 	createImportRequestService,
 	type PendingImportJob,
 } from "@solid-imager/application/services/import-request-service";
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
+import { TauriSourceService } from "~/infrastructure/local-api/services/source-service";
 import {
 	dirname,
 	extname,
@@ -108,6 +110,34 @@ export async function processImportItemsToSource(
 	}
 	await syncMediaSources([targetSourceId]);
 	return { success: true, processedCount: items.length };
+}
+
+export async function enqueueDownloadJobs(
+	targetSourceId: string,
+	items: DownloadItem[],
+): Promise<number> {
+	for (const item of items) {
+		await TauriJobRepository.create({
+			type: "downloadImage",
+			mediaSourceId: targetSourceId,
+			payload: {
+				...item,
+				imageUrl: item.targetUrl,
+				sourceUrl: item.targetUrl,
+				createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
+			},
+		});
+	}
+	return items.length;
+}
+
+export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
+	if (!job.mediaSourceId) {
+		throw new Error(`Job ${job.id} missing mediaSourceId`);
+	}
+
+	await downloadItemToSource(job.mediaSourceId, job.payload as DownloadItem);
+	await TauriSourceService.sync([job.mediaSourceId]);
 }
 
 const importRequestService = createImportRequestService({

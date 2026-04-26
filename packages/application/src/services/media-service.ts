@@ -33,7 +33,18 @@ import type {
 	MediaSourceFile,
 } from "@solid-imager/core/interfaces/media-storage";
 import type { ProcessMediaJobRepository } from "../ports/job-repository";
+import type {
+	DeferredActions,
+	DeferredEvent,
+} from "./job-runtime";
 import { queueMediaProcessingJob } from "./media-processing-job";
+
+export type {
+	DeferredActions,
+	DeferredEvent,
+	DeferredJob,
+	DeferredJobs,
+} from "./job-runtime";
 
 const SIGNATURES: Record<string, number[]> = {
 	png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
@@ -51,29 +62,6 @@ const WEBP_SUBTYPE = [0x57, 0x45, 0x42, 0x50];
 const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
-
-export type DeferredJob = {
-	mediaId?: string;
-	sourcePath?: string;
-	type: "processMedia" | "downloadImage";
-	payload?: unknown;
-};
-
-export type DeferredJobs = {
-	mediaSourceId: string;
-	jobs: DeferredJob[];
-};
-
-export type DeferredEvent = {
-	mediaSourceId: string;
-	event: string;
-	payload: unknown;
-};
-
-export type DeferredActions = {
-	jobs: DeferredJobs[];
-	sse: DeferredEvent[];
-};
 
 export type MediaPathAdapter = {
 	extname(path: string): string;

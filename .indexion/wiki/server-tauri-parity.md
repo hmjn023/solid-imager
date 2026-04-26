@@ -272,19 +272,21 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
   - tauri: `importSourceZip(mediaSourceId: string, bytes: number[])`
   - zip の実入力は app ごとに異なるため、今回は wrapper 差分として残す
 
-## Jobs（対応度: ~35%）
+## Jobs（対応度: ~62%）
 
-server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。
+server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB executor / repository を Tauri 固有実装として分ける理由にはしない。`jobs` table を source of truth とし、repository は `packages/db/src/repositories/job-repository.ts`、worker は `packages/application/src/services/job-worker.ts` を共通実装として使う。2026-04-26 の更新で、job type dispatch と background startup coordinator も `packages/application` に寄せ、app 側には processor adapter / watcher / event transport が主に残る状態まで進めた。
 
 | ファイル     | server                                         | tauri                                          |
 | ------------ | ---------------------------------------------- | ---------------------------------------------- |
 | job repository | `JobRepository`（`createJobRepository(() => db)`） | `TauriJobRepository`（`createJobRepository(() => getTauriAppServices().db)`） |
 | ジョブキュー / worker | `JobWorker`（shared re-export）         | `tauri-job-queue.ts`（shared worker bootstrap adapter） |
+| dispatch / canonical job type | `packages/application/src/services/job-runtime.ts` を利用 | 同左 |
+| background startup | `BackgroundJobsCoordinator` + `file-watcher-service.ts` adapter | `BackgroundJobsCoordinator` + `source-service.ts` / maintenance adapter |
 | processMedia payload | `{ mediaId, sourcePath, steps?, type: "processMedia" }` | 同左 |
 | サムネイル   | `thumbnails.ts`                                | `tauri-job-queue.ts` 内 processor              |
-| ダウンロード | `download-jobs.ts`, `download-rate-limiter.ts` | なし                                           |
+| ダウンロード | `download-jobs.ts`, `download-rate-limiter.ts` | `imports-api.ts` の download processor adapter |
 | ファイル監視 | `file-watcher-service.ts`（TS）                | `watcher.rs`（Rust）                           |
-| タグ抽出     | `tag-extraction.ts`, `tagging-jobs.ts`         | なし                                           |
+| タグ抽出     | `tag-extraction.ts`, `tagging-jobs.ts`         | `ai-service.ts` の job-aware adapter           |
 | SSE管理      | `sse-manager.ts`                               | なし（Rust IPC）                               |
 
 ## 共通化の優先度メモ
@@ -343,5 +345,5 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services**: `maintenance-service.ts` を `packages/application/src/services/maintenance-service.ts` に共通化。server は Node fs + `getSourceCacheDir()` adapter、Tauri は `thumbnailDir` 解決と `tauriJobQueue.registerQueuedSources()` adapter に縮退
 - **Services**: `packages/application` は増えており、tauri 側 source は shared service 利用へ前進した。ただし source の watcher/sync と media / backup はまだ app 固有責務が大きい
 - **Services対応度**: 単純 CRUD と config / maintenance は前進したが、source / media / search / backup / ai / tagging を含む主機能の parity はなお過渡期
-- **Jobs**: media-processing job の step 定義・payload helper を `packages/application` に移動。server / tauri の実行基盤は引き続き別実装
+- **Jobs**: media-processing job の step 定義・payload helper に加え、canonical job type / shared dispatcher / deferred actions executor / background coordinator を `packages/application` に移動。server / tauri は共通 runtime を使い、差分は downloader / watcher / SSE or Tauri event transport に縮退
 - 対応度の推定値を再補正（Routes 90% → ~75%、Hooks 100% → ~75%、Components ~90% → ~80%、Repositories ~85% → ~78%、Services ~75% → ~55%、Jobs ~50% → ~35%）

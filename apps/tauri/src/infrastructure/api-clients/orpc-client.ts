@@ -50,6 +50,11 @@ const batchTaggingStartResponseSchema = z.object({
 	message: z.string(),
 	jobId: z.string(),
 });
+const bulkDownloadResponseSchema = z.object({
+	success: z.boolean(),
+	jobCount: z.number(),
+	message: z.string(),
+});
 
 type Parser<TOutput> = {
 	parse: (input: unknown) => TOutput;
@@ -141,6 +146,10 @@ export const orpc = {
 			invoke("media.copy", input, mutationSuccessSchema),
 		move: (input: { mediaId: string; targetSourceId: string }) =>
 			invoke("media.move", input, mutationSuccessSchema),
+	},
+	downloads: {
+		start: (input: { mediaSourceId: string; items: unknown[] }) =>
+			invoke("downloads.start", input, bulkDownloadResponseSchema),
 	},
 	projects: {
 		list: () => invoke("projects.list", undefined, projectListSchema),
@@ -260,6 +269,12 @@ export const orpc = {
 			mediaId: string;
 			response: ReturnType<typeof taggingResponseSchema.parse>;
 		}) => invoke("ai.applyTags", input, mutationSuccessSchema),
+		batchTagging: (input: {
+			force?: boolean;
+			mediaSourceId?: string;
+		}) => invoke("ai.batchTagging", input, mutationSuccessSchema.extend({
+			message: z.string(),
+		})),
 		scanBatchTaggingTargets: (input: {
 			force?: boolean;
 			mediaSourceId?: string;

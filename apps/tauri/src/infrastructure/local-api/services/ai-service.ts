@@ -1,9 +1,11 @@
+import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import {
 	type Media,
 	mediaSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import {
 	type TaggingResponse,
+	batchTaggingRequestSchema,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import {
@@ -26,10 +28,12 @@ import {
 	isNull,
 	sql,
 } from "drizzle-orm";
+import { z } from "zod";
 import { getTauriAppServices } from "~/app-services";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
+import { TauriJobRepository } from "../repositories/tauri-job-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
 
 const AI_SOURCE = "AI";
@@ -42,6 +46,11 @@ type BatchTaggingInput = {
 type BatchTaggingWithIdsInput = BatchTaggingInput & {
 	mediaIds: string[];
 };
+
+const parentJobPayloadSchema = z.object({
+	total: z.number(),
+	processed: z.number(),
+});
 
 async function resolveLocalMediaFile(
 	mediaId: string,
@@ -246,29 +255,38 @@ async function emitMediaChanged(mediaId: string) {
 	});
 }
 
-async function processBatchTaggingJob(
-	jobId: string,
-	input: BatchTaggingWithIdsInput,
-) {
-	const total = input.mediaIds.length;
-	let processed = 0;
-
-	for (const mediaId of input.mediaIds) {
-		const response = await tagMediaFromServer(mediaId);
-		await persistAiTags(mediaId, response);
-		await emitMediaChanged(mediaId);
-		processed += 1;
-		await emit("job-progress", { jobId, processed, total });
+async function updateParentTaggingJob(parentId: string) {
+	await TauriJobRepository.incrementProgress(parentId);
+	const parentJob = await TauriJobRepository.findById(parentId);
+	if (!parentJob) {
+		return;
 	}
 
-	await emit("job-completed", {
-		jobId,
-		message: "Batch tagging completed.",
+	const parsedPayload = parentJobPayloadSchema.safeParse(parentJob.payload);
+	if (!parsedPayload.success) {
+		console.error("[jobs] invalid parent tagging payload", parentJob.payload);
+		return;
+	}
+
+	await emit("job-progress", {
+		jobId: parentId,
+		processed: parsedPayload.data.processed,
+		total: parsedPayload.data.total,
 	});
-	await emit("all-jobs-completed", {
-		mediaSourceId: input.mediaSourceId,
-		processed,
-	});
+
+	if (parsedPayload.data.processed >= parsedPayload.data.total) {
+		await TauriJobRepository.update(parentId, { status: "completed" });
+		await emit("job-completed", {
+			jobId: parentId,
+			message: "Batch tagging completed.",
+		});
+		if (parentJob.mediaSourceId) {
+			await emit("all-jobs-completed", {
+				mediaSourceId: parentJob.mediaSourceId,
+				processed: parsedPayload.data.total,
+			});
+		}
+	}
 }
 
 export const TauriAiService = {
@@ -318,19 +336,53 @@ export const TauriAiService = {
 		return Array.from(uniqueRows.values()).map((row) => mediaSchema.parse(row));
 	},
 
-	async startBatchTaggingWithIds(input: BatchTaggingWithIdsInput) {
-		const jobId = crypto.randomUUID();
-		void processBatchTaggingJob(jobId, input).catch(async (error: unknown) => {
-			await emit("job-failed", {
-				jobId,
-				error: error instanceof Error ? error.message : String(error),
-			});
+	async batchTagging(input: BatchTaggingInput) {
+		await TauriJobRepository.create({
+			type: "bulk_tagging_dispatch",
+			mediaSourceId: input.mediaSourceId,
+			payload: batchTaggingRequestSchema.parse(input),
 		});
 
 		return {
 			success: true,
+			message: "Batch tagging started",
+		};
+	},
+
+	async startBatchTaggingWithIds(input: BatchTaggingWithIdsInput) {
+		const parentJob = await TauriJobRepository.create({
+			type: "bulk_tagging_parent",
+			mediaSourceId: input.mediaSourceId,
+			status: "in_progress",
+			payload: {
+				total: input.mediaIds.length,
+				processed: 0,
+			},
+		});
+
+		const mediaItems = await Promise.all(
+			input.mediaIds.map(async (mediaId) => await TauriMediaRepository.findById(mediaId)),
+		);
+		const foundMedia = mediaItems.flatMap((media) => (media ? [media] : []));
+
+		await Promise.all(
+			foundMedia.map(async (media) => {
+				await TauriJobRepository.create({
+					type: "auto_tagging",
+					mediaSourceId: media.mediaSourceId,
+					parentId: parentJob.id,
+					payload: {
+						mediaId: media.id,
+						force: input.force,
+					},
+				});
+			}),
+		);
+
+		return {
+			success: true,
 			message: "Batch tagging started with selected media.",
-			jobId,
+			jobId: parentJob.id,
 		};
 	},
 
@@ -340,9 +392,52 @@ export const TauriAiService = {
 		return { success: true as const };
 	},
 
-	async tagSingleMedia(mediaId: string): Promise<void> {
-		const response = await tagMediaFromServer(mediaId);
-		await persistAiTags(mediaId, response);
-		await emitMediaChanged(mediaId);
+	async processAutoTaggingJob(job: JobRecord): Promise<void> {
+		const payload = z
+			.object({
+				mediaId: z.string().uuid(),
+			})
+			.parse(job.payload);
+
+		try {
+			const response = await tagMediaFromServer(payload.mediaId);
+			await persistAiTags(payload.mediaId, response);
+			await emitMediaChanged(payload.mediaId);
+			if (job.parentId) {
+				await updateParentTaggingJob(job.parentId);
+			}
+		} catch (error) {
+			if (job.parentId) {
+				await TauriJobRepository.update(job.parentId, { status: "failed" });
+				await emit("job-failed", {
+					jobId: job.parentId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+			throw error;
+		}
+	},
+
+	async processBulkTaggingDispatchJob(job: JobRecord): Promise<void> {
+		const payload = z
+			.object({
+				force: z.boolean().optional(),
+				mediaSourceId: z.string().optional(),
+				batchSize: z.number().optional(),
+			})
+			.parse(job.payload);
+		const targets = await TauriAiService.scanBatchTaggingTargets(payload);
+		await Promise.all(
+			targets.map(async (media) => {
+				await TauriJobRepository.create({
+					type: "auto_tagging",
+					mediaSourceId: media.mediaSourceId,
+					payload: {
+						mediaId: media.id,
+						force: payload.force,
+					},
+				});
+			}),
+		);
 	},
 };

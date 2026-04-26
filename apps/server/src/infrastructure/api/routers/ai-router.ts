@@ -144,6 +144,7 @@ export const aiRouter = {
 			const parentJob = await jobRepo.create({
 				type: "bulk_tagging_parent",
 				mediaSourceId,
+				status: "in_progress",
 				payload: {
 					total: mediaIds.length,
 					processed: 0,

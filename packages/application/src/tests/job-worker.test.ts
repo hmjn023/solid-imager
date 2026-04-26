@@ -89,9 +89,20 @@ describe("JobWorker", () => {
 			includeTypes: ["auto_tagging"],
 		});
 		expect(repository.findPending).toHaveBeenCalledWith(2, {
-			excludeTypes: ["auto_tagging", "import_request"],
+			excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
 		});
 		expect(processor).toHaveBeenCalledTimes(3);
+	});
+
+	it("does not poll tracker job types", async () => {
+		vi.mocked(repository.findPending).mockResolvedValue([]);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(repository.findPending).toHaveBeenCalledWith(2, {
+			excludeTypes: ["auto_tagging", "import_request", "bulk_tagging_parent"],
+		});
 	});
 
 	it("marks successful and failed jobs", async () => {

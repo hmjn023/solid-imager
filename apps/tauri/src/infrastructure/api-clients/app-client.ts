@@ -4,7 +4,6 @@ import type {
 	SyncMediaItemsResponse,
 	UploadMediaRequest,
 } from "@solid-imager/core/interfaces/media-manager-client";
-import { processImportItemsToSource } from "./imports-api";
 import { orpc } from "./orpc-client";
 
 function toBooleanString(value: boolean | undefined) {
@@ -54,12 +53,7 @@ export const tauriMediaApiContract: MediaApiContract = {
 		return response;
 	},
 	async startDownloadJobs(mediaSourceId, items) {
-		const result = await processImportItemsToSource(mediaSourceId, items);
-		return {
-			success: true,
-			jobCount: result.processedCount,
-			message: `Started ${result.processedCount} download jobs`,
-		};
+		return await orpc.downloads.start({ mediaSourceId, items });
 	},
 };
 

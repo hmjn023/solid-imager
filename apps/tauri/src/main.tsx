@@ -1,3 +1,4 @@
+import { BackgroundJobsCoordinator } from "@solid-imager/application/services/background-jobs-coordinator";
 import { RouterProvider } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
 import "./index.css";
@@ -5,6 +6,7 @@ import { setTauriAppServices } from "./app-services";
 import { MaintenanceService } from "./application/services/maintenance-service";
 import { initializeTauriApp, type TauriAppServices } from "./bootstrap";
 import { tauriJobQueue } from "./infrastructure/jobs/tauri-job-queue";
+import { TauriConfigService } from "./infrastructure/local-api/services/config-service";
 import { TauriSourceService } from "./infrastructure/local-api/services/source-service";
 import { createAppRouter } from "./router";
 
@@ -93,9 +95,36 @@ function startBackgroundServices(services: TauriAppServices) {
 	}
 
 	void (async () => {
-		await tauriJobQueue.initialize();
-		await TauriSourceService.startWatchingAllLocalSources();
-		await new MaintenanceService().performStartupChecks();
+		const coordinator = new BackgroundJobsCoordinator({
+			loadConfig: async () => await services.apiClient.config.get(),
+			onConfigChange: (listener) => {
+				TauriConfigService.onChange((config) => {
+					void listener(config);
+				});
+			},
+			updateWorkerConfig: (config) => {
+				tauriJobQueue.updateConfig(config);
+			},
+			resetRunnableJobs: async () => {
+				await tauriJobQueue.resetRunnableJobs();
+			},
+			startWorker: () => {
+				tauriJobQueue.start();
+			},
+			startWatchingAllSources: async () => {
+				await TauriSourceService.startWatchingAllLocalSources();
+			},
+			performStartupChecks: async ({ afterJobsQueued }) => {
+				await new MaintenanceService({
+					afterJobsQueued: async (sourceIds) => {
+						await tauriJobQueue.initialize();
+						tauriJobQueue.registerQueuedSources(sourceIds);
+						await afterJobsQueued(sourceIds);
+					},
+				}).performStartupChecks();
+			},
+		});
+		await coordinator.start();
 	})().catch((error: unknown) => {
 		console.error("Failed to start Tauri background services", error);
 	});
