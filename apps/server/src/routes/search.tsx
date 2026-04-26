@@ -32,22 +32,10 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
-import {
-	createInfiniteQuery,
-	createQuery,
-	keepPreviousData,
-	useQueryClient,
-} from "@tanstack/solid-query";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { createSignal, For, onMount, Show } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
@@ -66,109 +54,31 @@ import {
 	setSearchState,
 } from "~/presentation/store/search-store";
 
-const buildSearchParams = (state: typeof searchState) => {
-	const condition = getSearchCondition();
-	return {
-		condition: condition || undefined,
-		sort: state.sortBy,
-		order: state.sortOrder,
-		limit: state.limit,
-	};
-};
-
-/**
- * Serialize condition as JSON for stable query key comparison.
- * This prevents mode toggles (simple/pro) with equivalent conditions
- * from producing different query keys due to SolidJS store proxy references.
- */
-const useStableConditionKey = () =>
-	createMemo(() => JSON.stringify(getSearchCondition() ?? null));
-
-const QUERY_GC_TIME = 1000 * 60 * 5;
-
 export default function Search() {
 	const queryClient = useQueryClient();
 
 	// Enable search persistence for global search
 	useCurrentSearchPersistence("all", PresetClient);
 
-	const [isRestored, setIsRestored] = createSignal(false);
 	const [isMounted, setIsMounted] = createSignal(false);
 
 	onMount(() => {
 		setIsMounted(true);
 	});
 
-	createEffect(() => {
-		if (isServer) {
-			return;
-		}
-		// Restoration logic: wait until not loading and haven't restored yet
-		if (
-			!(searchResultQuery.isLoading || isRestored()) &&
-			searchResultQuery.data &&
-			searchResultQuery.data.pages.length > 0 &&
-			searchState.scrollY > 0
-		) {
-			// Restore scroll position
-			// Use requestAnimationFrame to ensure DOM is updated
-			requestAnimationFrame(() => {
-				window.scrollTo(0, searchState.scrollY);
-			});
-			setIsRestored(true);
-		}
-	});
-
-	onCleanup(() => {
-		if (isServer) {
-			return;
-		}
-		setSearchState("scrollY", window.scrollY);
-	});
-
-	// Fetch filter data
-	const tags = createQuery(() => tagsQueryOptions());
-	const sources = createQuery(() => mediaSourcesQueryOptions());
-	const allProjects = createQuery(() => allProjectsQueryOptions());
-	const allIps = createQuery(() => allIpsQueryOptions());
-	const allCharacters = createQuery(() => allCharactersQueryOptions());
-	const allAuthors = createQuery(() => allAuthorsQueryOptions());
-
-	// Use only effective search params as query key to avoid unnecessary refetches
-	// (e.g., mode toggle with equivalent conditions should NOT refetch)
-	const conditionKey = useStableConditionKey();
-
-	const searchResultQuery = createInfiniteQuery(() => {
-		const params = buildSearchParams(searchState);
-		const source = searchState.selectedSource || undefined;
-		return {
-			queryKey: [
-				"searchResults",
-				source,
-				conditionKey(),
-				searchState.sortBy,
-				searchState.sortOrder,
-				searchState.limit,
-			],
-			queryFn: async ({ pageParam }) =>
-				await searchMedia(source, {
-					...params,
-					offset: pageParam as number,
-				}),
-			initialPageParam: 0,
-			getNextPageParam: (lastPage, allPages) => {
-				const loadedCount = allPages.reduce(
-					(sum, page) => sum + page.media.length,
-					0,
-				);
-				if (loadedCount < lastPage.total) {
-					return loadedCount;
-				}
-			},
-			placeholderData: keepPreviousData,
-			gcTime: QUERY_GC_TIME, // Keep cache for 5 minutes for scroll restoration
-		};
-	});
+	const { searchResultQuery, searchResults, handleSearch, setLoadMoreRef } =
+		useSearchPage({
+			searchMedia,
+			queryClient,
+			selectedSource: () => searchState.selectedSource,
+			getSearchCondition,
+			sortBy: () => searchState.sortBy,
+			sortOrder: () => searchState.sortOrder,
+			limit: () => searchState.limit,
+			scrollY: () => searchState.scrollY,
+			setScrollY: (y) => setSearchState("scrollY", y),
+			setOffset: (o) => setSearchState("offset", o),
+		});
 
 	// Subscribe to real-time events
 	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
@@ -183,52 +93,13 @@ export default function Search() {
 		},
 	});
 
-	const searchResults = createMemo(() => {
-		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
-			(m) => {
-				if (seen.has(m.id)) {
-					return false;
-				}
-				seen.add(m.id);
-				return true;
-			},
-		);
-	});
-
-	const handleSearch = () => {
-		setSearchState("offset", 0);
-		setSearchState("scrollY", 0);
-		window.scrollTo(0, 0);
-	};
-
-	// Infinite scroll trigger
-	const [loadMoreRef, setLoadMoreRef] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
-
-	createEffect(() => {
-		const el = loadMoreRef();
-		if (isServer || !el) {
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (
-					entries[0].isIntersecting &&
-					searchResultQuery.hasNextPage &&
-					!searchResultQuery.isFetchingNextPage
-				) {
-					searchResultQuery.fetchNextPage();
-				}
-			},
-			{ threshold: 0.5, rootMargin: "1000px" },
-		);
-
-		observer.observe(el);
-		onCleanup(() => observer.disconnect());
-	});
+	// Fetch filter data
+	const tags = createQuery(() => tagsQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 
 	return (
 		<main class="container mx-auto p-4">

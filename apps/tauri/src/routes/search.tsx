@@ -1,4 +1,3 @@
-import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
 import {
@@ -9,14 +8,10 @@ import {
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
-import {
-	createInfiniteQuery,
-	createQuery,
-	keepPreviousData,
-	useQueryClient,
-} from "@tanstack/solid-query";
+import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
+import { createSignal, For, onCleanup, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -44,62 +39,25 @@ export const Route = createFileRoute("/search")({
 	component: SearchRoute,
 });
 
-const QUERY_GC_TIME = 1000 * 60 * 5;
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 function SearchRoute() {
 	const queryClient = useQueryClient();
-	const [isRestored, setIsRestored] = createSignal(false);
 	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
 
 	useCurrentSearchPersistence("all", PresetClient);
 
-	const tags = createQuery(() => tagsQueryOptions());
-	const sources = createQuery(() => mediaSourcesQueryOptions());
-	const allProjects = createQuery(() => allProjectsQueryOptions());
-	const allIps = createQuery(() => allIpsQueryOptions());
-	const allCharacters = createQuery(() => allCharactersQueryOptions());
-	const allAuthors = createQuery(() => allAuthorsQueryOptions());
-	const getSourceRootPath = (mediaSourceId: string) => {
-		const source = sources.data?.find((item) => item.id === mediaSourceId);
-		if (source?.type !== "local") {
-			return undefined;
-		}
-		const connectionInfo = source.connectionInfo as { path?: string };
-		return connectionInfo.path;
-	};
-
-	const conditionKey = createMemo(() => JSON.stringify(getSearchCondition() ?? null));
-
-	const searchResultQuery = createInfiniteQuery<MediaSearchResponse>(() => {
-		const source = searchState.selectedSource || undefined;
-		return {
-			queryKey: [
-				"searchResults",
-				source,
-				conditionKey(),
-				searchState.sortBy,
-				searchState.sortOrder,
-				searchState.limit,
-			],
-			queryFn: async ({ pageParam }) =>
-				await searchMedia(source, {
-					condition: getSearchCondition() || undefined,
-					sort: searchState.sortBy,
-					order: searchState.sortOrder,
-					limit: searchState.limit,
-					offset: Number(pageParam ?? 0),
-				}),
-			initialPageParam: 0,
-			getNextPageParam: (lastPage, allPages) => {
-				const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
-				if (loadedCount < lastPage.total) {
-					return loadedCount;
-				}
-			},
-			placeholderData: keepPreviousData,
-			gcTime: QUERY_GC_TIME,
-		};
+	const { searchResultQuery, searchResults, handleSearch, setLoadMoreRef } = useSearchPage({
+		searchMedia,
+		queryClient,
+		selectedSource: () => searchState.selectedSource,
+		getSearchCondition,
+		sortBy: () => searchState.sortBy,
+		sortOrder: () => searchState.sortOrder,
+		limit: () => searchState.limit,
+		scrollY: () => searchState.scrollY,
+		setScrollY: (y) => setSearchState("scrollY", y),
+		setOffset: (o) => setSearchState("offset", o),
 	});
 
 	const scheduleSearchResultsRefresh = () => {
@@ -122,68 +80,26 @@ function SearchRoute() {
 		onAllJobsCompleted: scheduleSearchResultsRefresh,
 	});
 
-	const searchResults = createMemo(() => {
-		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((page) => page.media) || []).filter((media) => {
-			if (seen.has(media.id)) {
-				return false;
-			}
-			seen.add(media.id);
-			return true;
-		});
-	});
-
-	createEffect(() => {
-		if (
-			!(searchResultQuery.isLoading || isRestored()) &&
-			searchResultQuery.data &&
-			searchResultQuery.data.pages.length > 0 &&
-			searchState.scrollY > 0
-		) {
-			requestAnimationFrame(() => {
-				window.scrollTo(0, searchState.scrollY);
-			});
-			setIsRestored(true);
+	const tags = createQuery(() => tagsQueryOptions());
+	const sources = createQuery(() => mediaSourcesQueryOptions());
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
+	const allAuthors = createQuery(() => allAuthorsQueryOptions());
+	const getSourceRootPath = (mediaSourceId: string) => {
+		const source = sources.data?.find((item) => item.id === mediaSourceId);
+		if (source?.type !== "local") {
+			return undefined;
 		}
-	});
+		const connectionInfo = source.connectionInfo as { path?: string };
+		return connectionInfo.path;
+	};
 
 	onCleanup(() => {
-		setSearchState("scrollY", window.scrollY);
 		const timer = refreshTimer();
 		if (timer) {
 			clearTimeout(timer);
 		}
-	});
-
-	const handleSearch = () => {
-		setSearchState("offset", 0);
-		setSearchState("scrollY", 0);
-		window.scrollTo(0, 0);
-	};
-
-	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement | undefined>(undefined);
-
-	createEffect(() => {
-		const element = loadMoreRef();
-		if (!element) {
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (
-					entries[0].isIntersecting &&
-					searchResultQuery.hasNextPage &&
-					!searchResultQuery.isFetchingNextPage
-				) {
-					void searchResultQuery.fetchNextPage();
-				}
-			},
-			{ threshold: 0.5, rootMargin: "1000px" },
-		);
-
-		observer.observe(element);
-		onCleanup(() => observer.disconnect());
 	});
 
 	const panel = (

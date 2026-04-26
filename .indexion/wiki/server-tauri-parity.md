@@ -61,7 +61,7 @@
 
 ページルートの対応関係自体は高いが、route 本体の責務分割、nav action の配置、refresh 挙動、restore/import UX はまだ揃い切っていない。server側のみAPIルート群が存在し、tauriはRust IPCで代替。
 
-厳格基準では、`search.tsx` / `manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は route レベルの状態管理と action がまだ大きく、`packages/ui` や shared route helper へ寄せられる余地が残る。
+厳格基準では、`search.tsx` の infinite query / dedup / scroll restoration / intersection observer は `packages/ui/src/hooks/use-search-page.ts` へ共通化済み。app 側は JSX レイアウト、nav action 配置、refresh 戦略（server: 即時 / tauri: debounce）、`sourceRootPath` 注入など platform 固有差分のみを残す。`manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は route レベルの状態管理と action がまだ大きく、shared route helper へ寄せられる余地が残る。
 
 | server                                                    | tauri                                              | 備考                               |
 | --------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
@@ -91,6 +91,7 @@ hook 本体は `packages/ui/src/hooks` へ寄り、app 側は transport adapter 
 | ----------------------------------- | ------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
 | `use-media-source-events.ts`        | `packages/ui` の shared hook + oRPC SSE transport | `packages/ui` の shared hook + Tauri event transport | transport 実装と event relevance filter が異なる | `onJobProgress` を含む callback I/F は shared hook 側へ統合済み |
 | `use-current-search-persistence.ts` | `packages/ui` 経由で `@solid-imager/core`         | `packages/ui` 経由で `@solid-imager/core`            | 共通化済み                                       | deepEqualはcore/utils/deep-equal                                |
+| `use-search-page.ts`                | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | infinite query / dedup / scroll restore / observer を shared 化 |
 
 ## Components（対応度: ~80%）
 
@@ -321,7 +322,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 ## さらに厳しく見たときの未共通化ポイント
 
-- routes: `search.tsx` / `manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は state・loader・event refresh・action 群を shared helper か shared screen component に寄せる余地がある
+- routes: `search.tsx` の infinite query / dedup / scroll restoration / intersection observer は `packages/ui/src/hooks/use-search-page.ts` へ共通化済み。残る差分は JSX レイアウト（nav action / mobile filter 配置）、refresh 戦略、および `sourceRootPath` 注入など platform 固有層。`manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は state・loader・event refresh・action 群を shared helper か shared screen component に寄せる余地がある
 - hooks: `use-media-source-events.ts` 本体は shared 化済み。今後は transport adapter と event relevance filter の責務をさらに薄くできるかを確認する
 - queries / api-clients: `queries/*.ts` と `search-api.ts` などは app ごとに薄く重複しており、transport 注入前提の共通 query option builder に寄せられる余地がある
 - services: tauri 側 `source-service.ts` は shared `createSourceService` に寄ったが、`media-service.ts` / `source-backup-service.ts` はまだ shared package 前提の thin adapter にはなっていない
@@ -348,4 +349,5 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services**: `packages/application` は増えており、tauri 側 source は shared service 利用へ前進した。watcher / sync の削除・変更経路は shared helper を使う段階まで寄ったが、media / backup はまだ app 固有責務が大きい
 - **Services対応度**: 単純 CRUD と config / maintenance は前進したが、source / media / search / backup / ai / tagging を含む主機能の parity はなお過渡期
 - **Jobs**: media-processing job の step 定義・payload helper に加え、canonical job type / shared dispatcher / deferred actions executor / background coordinator / download runner / tagging runner / watcher runtime / event publish contract / processMedia batch runner / source progress tracker を `packages/application` に移動。server / tauri は共通 runtime を使い、差分は downloader / thumbnail I/O / watcher ingress / SSE or Tauri event transport に縮退
-- 対応度の推定値を再補正（Routes ~75%、Hooks ~75%、Components ~80%、Repositories ~88%、Services ~68%、Jobs ~82%）
+- **Hooks / Routes**: `packages/ui/src/hooks/use-search-page.ts` を新設し、`search.tsx` の infinite query 構築、結果重複排除、スクロール位置復元、無限スクロール IntersectionObserver を shared hook へ切り出し。`apps/server/src/routes/search.tsx` と `apps/tauri/src/routes/search.tsx` は両方ともこの shared hook を利用。app 側に残る差分は JSX レイアウト（Portal vs inline Dialog）、refresh 戦略（server: 即時 invalidate / tauri: debounce 300ms + `onAllJobsCompleted`）、`sourceRootPath` 注入、SSR `isMounted` ガードなど platform 固有層のみ
+- 対応度の推定値を再補正（Routes ~78%、Hooks ~80%、Components ~80%、Repositories ~88%、Services ~68%、Jobs ~82%）
