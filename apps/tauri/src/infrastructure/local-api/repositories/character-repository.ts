@@ -1,12 +1,8 @@
 import { createCharacterRepository } from "@solid-imager/db/repositories/character-repository";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
 import { getTauriAppServices } from "~/app-services";
+import { getTauriDrizzleExecutor } from "./drizzle-executor";
 
-function getExecutor(tx?: unknown): DrizzleExecutor {
-	return (tx ?? getTauriAppServices().db) as DrizzleExecutor;
-}
-
-const repository = createCharacterRepository(getExecutor, {
+const repository = createCharacterRepository(getTauriDrizzleExecutor, {
 	orderByName: true,
 	throwOnMissingRemove: true,
 	transaction: (callback) =>
