@@ -80,9 +80,7 @@ function isSafeRelativeUploadPath(path: string) {
 	}
 	return path
 		.split(/[\\/]+/)
-		.every(
-			(segment) => segment.length === 0 || segment === "." || segment !== "..",
-		);
+		.every((segment) => segment.length === 0 || segment === "." || segment !== "..");
 }
 
 async function resolveUploadTargetPath(
@@ -97,10 +95,7 @@ async function resolveUploadTargetPath(
 
 	const normalizedRequested = normalizeRelativePath(requestedPath);
 	const requestedFullPath = joinLocalPath(rootPath, normalizedRequested);
-	if (
-		overwrite ||
-		!(await getTauriAppServices().fileSystem.exists(requestedFullPath))
-	) {
+	if (overwrite || !(await getTauriAppServices().fileSystem.exists(requestedFullPath))) {
 		return {
 			relativePath: normalizedRequested,
 			fullPath: requestedFullPath,
@@ -122,9 +117,7 @@ async function resolveUploadTargetPath(
 	while (index <= MAX_FILENAME_COLLISION_ATTEMPTS) {
 		const candidateName = `${stem}-${index}${extension}`;
 		const candidateRelative =
-			parentDir === "/"
-				? candidateName
-				: normalizeRelativePath(`${parentDir}/${candidateName}`);
+			parentDir === "/" ? candidateName : normalizeRelativePath(`${parentDir}/${candidateName}`);
 		const candidateFullPath = joinLocalPath(rootPath, candidateRelative);
 		if (!(await getTauriAppServices().fileSystem.exists(candidateFullPath))) {
 			return {
@@ -145,12 +138,9 @@ async function resolveUploadTargetPath(
 }
 
 async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
-	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>(
-		"probe_media",
-		{
-			mediaPath: fullPath,
-		},
-	);
+	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>("probe_media", {
+		mediaPath: fullPath,
+	});
 }
 
 async function ensureParentDirectory(fullPath: string) {
@@ -180,37 +170,21 @@ function mediaCharacterConflictSet(source: string) {
 	};
 }
 
-async function persistExtractedMetadata(
-	mediaId: string,
-	fullPath: string,
-	tx: TauriDbExecutor,
-) {
-	const extracted =
-		await getTauriAppServices().imageProcessor.extractMetadata(fullPath);
+async function persistExtractedMetadata(mediaId: string, fullPath: string, tx: TauriDbExecutor) {
+	const extracted = await getTauriAppServices().imageProcessor.extractMetadata(fullPath);
 
 	await tx
 		.delete(mediaTags)
-		.where(
-			and(
-				eq(mediaTags.mediaId, mediaId),
-				eq(mediaTags.source, EXTRACTED_TAG_SOURCE),
-			),
-		);
-	await tx
-		.delete(mediaGenerationInfo)
-		.where(eq(mediaGenerationInfo.mediaId, mediaId));
+		.where(and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, EXTRACTED_TAG_SOURCE)));
+	await tx.delete(mediaGenerationInfo).where(eq(mediaGenerationInfo.mediaId, mediaId));
 
 	const hasMetadata =
-		extracted.tags.length > 0 ||
-		extracted.prompt !== null ||
-		extracted.workflow !== null;
+		extracted.tags.length > 0 || extracted.prompt !== null || extracted.workflow !== null;
 	if (!hasMetadata) {
 		return;
 	}
 
-	const uniqueTagNames = Array.from(
-		new Set(extracted.tags.map((tag) => tag.name)),
-	);
+	const uniqueTagNames = Array.from(new Set(extracted.tags.map((tag) => tag.name)));
 	if (uniqueTagNames.length > 0) {
 		await tx
 			.insert(tags)
@@ -259,9 +233,7 @@ async function persistExtractedMetadata(
 			: extracted.prompt
 				? JSON.stringify(extracted.prompt)
 				: null,
-		extracted.workflow && typeof extracted.workflow === "object"
-			? extracted.workflow
-			: null,
+		extracted.workflow && typeof extracted.workflow === "object" ? extracted.workflow : null,
 		tx,
 	);
 }
@@ -281,16 +253,8 @@ async function syncContextMetadata(
 		for (const author of updates.authors) {
 			const existingAuthor = (
 				author.accountId
-					? await tx
-							.select()
-							.from(authors)
-							.where(eq(authors.accountId, author.accountId))
-							.limit(1)
-					: await tx
-							.select()
-							.from(authors)
-							.where(eq(authors.name, author.name))
-							.limit(1)
+					? await tx.select().from(authors).where(eq(authors.accountId, author.accountId)).limit(1)
+					: await tx.select().from(authors).where(eq(authors.name, author.name)).limit(1)
 			)[0];
 			const authorId =
 				existingAuthor?.id ??
@@ -310,16 +274,10 @@ async function syncContextMetadata(
 	}
 
 	if (updates.characters !== undefined) {
-		await tx
-			.delete(mediaCharacters)
-			.where(eq(mediaCharacters.mediaId, mediaId));
+		await tx.delete(mediaCharacters).where(eq(mediaCharacters.mediaId, mediaId));
 		for (const character of updates.characters) {
 			const existingCharacter = (
-				await tx
-					.select()
-					.from(characters)
-					.where(eq(characters.name, character.name))
-					.limit(1)
+				await tx.select().from(characters).where(eq(characters.name, character.name)).limit(1)
 			)[0];
 			const characterId =
 				existingCharacter?.id ??
@@ -348,9 +306,7 @@ async function syncContextMetadata(
 	if (updates.ips !== undefined) {
 		await tx.delete(mediaIps).where(eq(mediaIps.mediaId, mediaId));
 		for (const ip of updates.ips) {
-			const existingIp = (
-				await tx.select().from(ips).where(eq(ips.name, ip.name)).limit(1)
-			)[0];
+			const existingIp = (await tx.select().from(ips).where(eq(ips.name, ip.name)).limit(1))[0];
 			const ipId =
 				existingIp?.id ??
 				(
@@ -364,13 +320,7 @@ async function syncContextMetadata(
 						.returning({ id: ips.id })
 				)[0]?.id;
 			if (ipId) {
-				await TauriIpRepository.addMedia(
-					mediaId,
-					ipId,
-					ip.confidence ?? undefined,
-					"manual",
-					tx,
-				);
+				await TauriIpRepository.addMedia(mediaId, ipId, ip.confidence ?? undefined, "manual", tx);
 			}
 		}
 	}
@@ -414,10 +364,7 @@ const tauriMediaStorage: IMediaStorage = {
 		);
 		await ensureParentDirectory(target.fullPath);
 		const buffer = await file.arrayBuffer();
-		await getTauriAppServices().fileSystem.writeFile(
-			target.fullPath,
-			new Uint8Array(buffer),
-		);
+		await getTauriAppServices().fileSystem.writeFile(target.fullPath, new Uint8Array(buffer));
 
 		try {
 			const metadata = await this.getFileMetadata(target.fullPath);
@@ -440,18 +387,13 @@ const tauriMediaStorage: IMediaStorage = {
 	},
 
 	async deleteFile(basePath: string, filePath: string): Promise<void> {
-		await getTauriAppServices().fileSystem.rm(
-			joinLocalPath(basePath, filePath),
-			{
-				force: true,
-			},
-		);
+		await getTauriAppServices().fileSystem.rm(joinLocalPath(basePath, filePath), {
+			force: true,
+		});
 	},
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
-		return await getTauriAppServices().fileSystem.readFile(
-			joinLocalPath(basePath, filePath),
-		);
+		return await getTauriAppServices().fileSystem.readFile(joinLocalPath(basePath, filePath));
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
@@ -462,9 +404,7 @@ const tauriMediaStorage: IMediaStorage = {
 			if (!current) {
 				continue;
 			}
-			for (const entry of await getTauriAppServices().fileSystem.readdir(
-				current,
-			)) {
+			for (const entry of await getTauriAppServices().fileSystem.readdir(current)) {
 				const fullPath = joinLocalPath(current, entry);
 				const stat = await getTauriAppServices().fileSystem.stat(fullPath);
 				if (stat.isDirectory) {
@@ -504,10 +444,7 @@ const tauriMediaStorage: IMediaStorage = {
 			options.autoIncrement ?? false,
 		);
 		await ensureParentDirectory(target.fullPath);
-		await getTauriAppServices().fileSystem.copyFile(
-			sourcePath,
-			target.fullPath,
-		);
+		await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
 
 		try {
 			const metadata = await this.getFileMetadata(target.fullPath);
@@ -559,8 +496,7 @@ const characterRepository: CharacterRepository = {
 			return;
 		}
 
-		const executor =
-			(tx as TauriDbExecutor | undefined) ?? getTauriAppServices().db;
+		const executor = (tx as TauriDbExecutor | undefined) ?? getTauriAppServices().db;
 		await executor
 			.insert(mediaCharacters)
 			.values(rows)
@@ -586,14 +522,10 @@ const mediaService = createMediaService({
 			);
 		},
 		async extractMetadata(mediaPath) {
-			return await getTauriAppServices().imageProcessor.extractMetadata(
-				mediaPath,
-			);
+			return await getTauriAppServices().imageProcessor.extractMetadata(mediaPath);
 		},
 		async getDimensions(mediaPath) {
-			return await getTauriAppServices().imageProcessor.getDimensions(
-				mediaPath,
-			);
+			return await getTauriAppServices().imageProcessor.getDimensions(mediaPath);
 		},
 	},
 	authorRepository: TauriAuthorRepository,
@@ -601,9 +533,7 @@ const mediaService = createMediaService({
 	characterRepository,
 	ipRepository: TauriIpRepository,
 	transactionManager: {
-		async transaction<T>(
-			callback: (tx: Transaction) => Promise<T>,
-		): Promise<T> {
+		async transaction<T>(callback: (tx: Transaction) => Promise<T>): Promise<T> {
 			return await getTauriAppServices().db.transaction(callback);
 		},
 	},
@@ -617,19 +547,12 @@ const mediaService = createMediaService({
 	pathAdapter: tauriPathAdapter,
 	afterMediaRegistered: async ({ media, sourcePath, filePath }) => {
 		await getTauriAppServices().db.transaction(async (tx) => {
-			await persistExtractedMetadata(
-				media.id,
-				joinLocalPath(sourcePath, filePath),
-				tx,
-			);
+			await persistExtractedMetadata(media.id, joinLocalPath(sourcePath, filePath), tx);
 		});
 	},
 });
 
-function bytesToMediaSourceFile(
-	bytes: number[],
-	filename: string,
-): MediaSourceFile {
+function bytesToMediaSourceFile(bytes: number[], filename: string): MediaSourceFile {
 	return {
 		name: filename,
 		async arrayBuffer() {
@@ -646,10 +569,7 @@ export const TauriMediaService = {
 		return await mediaService.searchMedia(sourceId, params);
 	},
 
-	async getMediaDetails(
-		sourceId: string,
-		mediaId: string,
-	): Promise<MediaDetails> {
+	async getMediaDetails(sourceId: string, mediaId: string): Promise<MediaDetails> {
 		return await mediaService.getMediaDetails(sourceId, mediaId);
 	},
 
@@ -685,10 +605,7 @@ export const TauriMediaService = {
 		return await mediaService.getMediaDetails(sourceId, mediaId);
 	},
 
-	async deleteMedia(
-		sourceId: string,
-		mediaId: string,
-	): Promise<{ success: true }> {
+	async deleteMedia(sourceId: string, mediaId: string): Promise<{ success: true }> {
 		await mediaService.deleteMedia(sourceId, mediaId);
 		return { success: true };
 	},

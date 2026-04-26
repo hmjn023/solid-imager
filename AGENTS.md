@@ -59,25 +59,25 @@
 
 ## スキル一覧
 
-| スキル名            | 説明                                                      | ロード条件                                    |
-| ------------------- | --------------------------------------------------------- | --------------------------------------------- |
-| `solid-imager`      | プロジェクト概要、セットアップ、コーディング規約          | 常時                                          |
-| `orpc-api`          | oRPC APIエンドポイント開発ワークフロー                    | API実装・変更時                               |
-| `solid-start-ssr`   | TanStack Start + TanStack Query SSR/CSRベストプラクティス | フロントエンド実装時                          |
-| `database-schema`   | DBスキーマ変更・マイグレーション手順                      | DBスキーマ変更時                              |
-| `ai-service`        | Python AIサービス連携                                     | AI機能実装時                                  |
-| `browser-extension` | xtracterブラウザ拡張機能開発                              | 拡張機能変更時                                |
-| `api-docs`          | OpenAPI仕様更新トリガー                                   | API仕様更新時                                 |
-| `safe-dto`          | APIレスポンスのセキュリティ（Safe DTO）                   | APIレスポンス実装時                           |
-| `repository-rules`  | リポジトリ層ルール（明示的マッピング）                    | リポジトリ実装時                              |
-| `schema-driven-dev` | ZodによるSchema-Driven Development                        | スキーマ定義時                                |
-| `ui-components`     | solid-ui (shadcn/ui ポート) コンポーネント開発            | UIコンポーネント変更時                        |
-| `shared-ui-parity`  | `apps/server` と `apps/tauri` の同一機能の同期と移植手順  | 片側のUIやbackend変更をもう片側へ反映するとき |
-| `server-tauri-commonization` | 既存の `apps/server` / `apps/tauri` 実装を server 正で shared package へ切り出す手順 | 既存の重複実装や乖離を共通化するとき |
-| `indexion`          | indexion wiki / digest / search / graph の運用            | wikiやskillsの更新、索引再生成時              |
-| `vite-plus`         | Vite+ CLI操作（既存）                                     | Vite+関連タスク時                             |
-| `cli`               | imager-cli コマンド開発                                   | CLIコマンド追加・変更時                       |
-| `issue-driven`      | GitHub Issue駆動開発ワークフロー（証跡・進捗管理）        | issueをベースに開発作業を始めるとき           |
+| スキル名                     | 説明                                                                                 | ロード条件                                    |
+| ---------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| `solid-imager`               | プロジェクト概要、セットアップ、コーディング規約                                     | 常時                                          |
+| `orpc-api`                   | oRPC APIエンドポイント開発ワークフロー                                               | API実装・変更時                               |
+| `solid-start-ssr`            | TanStack Start + TanStack Query SSR/CSRベストプラクティス                            | フロントエンド実装時                          |
+| `database-schema`            | DBスキーマ変更・マイグレーション手順                                                 | DBスキーマ変更時                              |
+| `ai-service`                 | Python AIサービス連携                                                                | AI機能実装時                                  |
+| `browser-extension`          | xtracterブラウザ拡張機能開発                                                         | 拡張機能変更時                                |
+| `api-docs`                   | OpenAPI仕様更新トリガー                                                              | API仕様更新時                                 |
+| `safe-dto`                   | APIレスポンスのセキュリティ（Safe DTO）                                              | APIレスポンス実装時                           |
+| `repository-rules`           | リポジトリ層ルール（明示的マッピング）                                               | リポジトリ実装時                              |
+| `schema-driven-dev`          | ZodによるSchema-Driven Development                                                   | スキーマ定義時                                |
+| `ui-components`              | solid-ui (shadcn/ui ポート) コンポーネント開発                                       | UIコンポーネント変更時                        |
+| `shared-ui-parity`           | `apps/server` と `apps/tauri` の同一機能の同期と移植手順                             | 片側のUIやbackend変更をもう片側へ反映するとき |
+| `server-tauri-commonization` | 既存の `apps/server` / `apps/tauri` 実装を server 正で shared package へ切り出す手順 | 既存の重複実装や乖離を共通化するとき          |
+| `indexion`                   | indexion wiki / digest / search / graph の運用                                       | wikiやskillsの更新、索引再生成時              |
+| `vite-plus`                  | Vite+ CLI操作（既存）                                                                | Vite+関連タスク時                             |
+| `cli`                        | imager-cli コマンド開発                                                              | CLIコマンド追加・変更時                       |
+| `issue-driven`               | GitHub Issue駆動開発ワークフロー（証跡・進捗管理）                                   | issueをベースに開発作業を始めるとき           |
 
 <!--VITE PLUS START-->
 

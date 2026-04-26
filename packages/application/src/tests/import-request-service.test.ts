@@ -152,25 +152,18 @@ describe("import-request-service", () => {
 		const result = await service.processPendingImports(["job-1", "job-2"]);
 
 		expect(result).toEqual({ success: true, processedCount: 2 });
-		expect(executeImport).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000001",
-			[
-				expect.objectContaining({
-					targetUrl: "https://example.com/a.png",
-				}),
-				expect.objectContaining({
-					targetUrl: "https://example.com/b.png",
-				}),
-			],
-		);
-		expect(markImportRequestsCompleted).toHaveBeenCalledWith([
-			"job-1",
-			"job-2",
+		expect(executeImport).toHaveBeenCalledWith("00000000-0000-4000-8000-000000000001", [
+			expect.objectContaining({
+				targetUrl: "https://example.com/a.png",
+			}),
+			expect.objectContaining({
+				targetUrl: "https://example.com/b.png",
+			}),
 		]);
-		expect(publishImportEvent).toHaveBeenCalledWith(
-			"import-request:processed",
-			{ processedCount: 2 },
-		);
+		expect(markImportRequestsCompleted).toHaveBeenCalledWith(["job-1", "job-2"]);
+		expect(publishImportEvent).toHaveBeenCalledWith("import-request:processed", {
+			processedCount: 2,
+		});
 	});
 
 	it("deletes selected jobs and emits a deletion event", async () => {
@@ -190,9 +183,9 @@ describe("import-request-service", () => {
 			publishImportEvent,
 		});
 
-		await expect(
-			service.cancelPendingImports(["job-1", "job-2"]),
-		).resolves.toEqual({ success: true });
+		await expect(service.cancelPendingImports(["job-1", "job-2"])).resolves.toEqual({
+			success: true,
+		});
 		expect(deleteImportRequests).toHaveBeenCalledWith(["job-1", "job-2"]);
 		expect(publishImportEvent).toHaveBeenCalledWith("import-request:deleted", {
 			jobIds: ["job-1", "job-2"],

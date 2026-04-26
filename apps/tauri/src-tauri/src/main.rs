@@ -35,6 +35,7 @@ fn main() {
             commands::fs::fs_copy_file,
             commands::fs::fs_rename,
             commands::fs::fs_mkdtemp,
+            commands::fs::download_file,
             commands::media::image_generate_thumbnail,
             commands::media::image_generate_thumbnails_batch,
             commands::media::image_extract_metadata,

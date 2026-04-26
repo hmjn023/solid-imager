@@ -20,10 +20,7 @@ export class TauriFileSystem implements IFileSystem {
 	}
 
 	async readFile(path: string) {
-		const data = await this.commandClient.invoke<Uint8Array | number[]>(
-			"fs_read_file",
-			{ path },
-		);
+		const data = await this.commandClient.invoke<Uint8Array | number[]>("fs_read_file", { path });
 
 		return toUint8Array(data);
 	}

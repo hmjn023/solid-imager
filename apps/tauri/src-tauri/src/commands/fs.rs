@@ -1,4 +1,5 @@
 use super::utils::*;
+use futures_util::StreamExt;
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -137,4 +138,45 @@ pub fn fs_mkdtemp(prefix: String) -> Result<String, String> {
     })?;
 
     Ok(path.to_string_lossy().into_owned())
+}
+
+#[tauri::command(async)]
+pub async fn download_file(
+    url: String,
+    dest_path: String,
+    headers: Option<Vec<(String, String)>>,
+) -> Result<(), String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(300))
+        .build()
+        .map_err(|e| format!("Failed to build HTTP client: {e}"))?;
+
+    let mut request = client.get(&url);
+    if let Some(hdrs) = headers {
+        for (key, value) in hdrs {
+            request = request.header(&key, &value);
+        }
+    }
+
+    let response = request
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request failed: {e}"))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP error: {}", response.status()));
+    }
+
+    let mut file = std::fs::File::create(&dest_path)
+        .map_err(|e| with_path_context("Creating file for download", &dest_path, e))?;
+
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk.map_err(|e| format!("Download stream error: {e}"))?;
+        use std::io::Write;
+        file.write_all(&chunk)
+            .map_err(|e| with_path_context("Writing download chunk", &dest_path, e))?;
+    }
+
+    Ok(())
 }

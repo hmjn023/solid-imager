@@ -227,10 +227,16 @@ function resolveCreatedAt(
 	fileMeta: { createdAt: Date },
 ): Date {
 	if (item.createdAt) {
-		return new Date(item.createdAt);
+		const d = new Date(item.createdAt);
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	if (metadata.upload_date) {
-		return new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		const d = new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	return fileMeta.createdAt;
 }
@@ -447,6 +453,7 @@ async function _handleDirectImageDownload(
 
 		const response = await fetch(item.targetUrl, {
 			headers,
+			signal: AbortSignal.timeout(30000),
 		});
 		if (!response.ok) {
 			logger.error(
@@ -481,6 +488,9 @@ async function _handleDirectImageDownload(
 		const fullPath = path.join(basePath, fileInfo.filePath);
 
 		let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
+		if (createdAt && Number.isNaN(createdAt.getTime())) {
+			createdAt = undefined;
+		}
 
 		// If createdAt is missing, try to fetch from source URL (e.g. Tweet URL)
 		if (!createdAt) {
@@ -630,7 +640,10 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			const filename = generateMediaFilename(item, extension);
 			const headers = buildFetchHeaders(item);
 			await waitForDownloadRateLimit();
-			const response = await fetch(item.targetUrl, { headers });
+			const response = await fetch(item.targetUrl, {
+				headers,
+				signal: AbortSignal.timeout(30000),
+			});
 			if (!response.ok) {
 				throw new Error(
 					`Failed to download image: ${response.status} ${response.statusText}`,
@@ -650,6 +663,9 @@ export async function processDownloadJob(job: Job): Promise<void> {
 				},
 			);
 			let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
+			if (createdAt && Number.isNaN(createdAt.getTime())) {
+				createdAt = undefined;
+			}
 			if (!createdAt) {
 				const tweetUrl = item.sourceUrls?.find((u) =>
 					u.match(TWITTER_URL_REGEX),
@@ -661,9 +677,12 @@ export async function processDownloadJob(job: Job): Promise<void> {
 						item.userAgent,
 					);
 					if (meta?.upload_date) {
-						createdAt = new Date(
+						const d = new Date(
 							meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"),
 						);
+						if (!Number.isNaN(d.getTime())) {
+							createdAt = d;
+						}
 					}
 				}
 			}

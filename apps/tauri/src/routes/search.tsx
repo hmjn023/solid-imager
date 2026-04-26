@@ -1,11 +1,6 @@
 import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -21,14 +16,7 @@ import {
 	useQueryClient,
 } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onCleanup,
-	Show,
-} from "solid-js";
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -40,11 +28,7 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import {
-	getSearchCondition,
-	searchState,
-	setSearchState,
-} from "~/presentation/store/search-store";
+import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
 	loader: async ({ context }) => {
@@ -66,9 +50,7 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 function SearchRoute() {
 	const queryClient = useQueryClient();
 	const [isRestored, setIsRestored] = createSignal(false);
-	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<
-		typeof setTimeout
-	> | null>(null);
+	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
 
 	useCurrentSearchPersistence("all", PresetClient);
 
@@ -87,9 +69,7 @@ function SearchRoute() {
 		return connectionInfo.path;
 	};
 
-	const conditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
+	const conditionKey = createMemo(() => JSON.stringify(getSearchCondition() ?? null));
 
 	const searchResultQuery = createInfiniteQuery<MediaSearchResponse>(() => {
 		const source = searchState.selectedSource || undefined;
@@ -112,10 +92,7 @@ function SearchRoute() {
 				}),
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
-				const loadedCount = allPages.reduce(
-					(sum, page) => sum + page.media.length,
-					0,
-				);
+				const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
 				if (loadedCount < lastPage.total) {
 					return loadedCount;
 				}
@@ -147,9 +124,7 @@ function SearchRoute() {
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (
-			searchResultQuery.data?.pages.flatMap((page) => page.media) || []
-		).filter((media) => {
+		return (searchResultQuery.data?.pages.flatMap((page) => page.media) || []).filter((media) => {
 			if (seen.has(media.id)) {
 				return false;
 			}
@@ -186,9 +161,7 @@ function SearchRoute() {
 		window.scrollTo(0, 0);
 	};
 
-	const [loadMoreRef, setLoadMoreRef] = createSignal<
-		HTMLDivElement | undefined
-	>(undefined);
+	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement | undefined>(undefined);
 
 	createEffect(() => {
 		const element = loadMoreRef();
@@ -279,12 +252,8 @@ function SearchRoute() {
 						</For>
 					</div>
 
-					<Show
-						when={searchResults().length === 0 && !searchResultQuery.isLoading}
-					>
-						<div class="py-12 text-center text-gray-500">
-							検索結果が見つかりませんでした
-						</div>
+					<Show when={searchResults().length === 0 && !searchResultQuery.isLoading}>
+						<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
 					</Show>
 
 					<div ref={setLoadMoreRef} />

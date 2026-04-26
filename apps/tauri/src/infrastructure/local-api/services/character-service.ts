@@ -46,9 +46,7 @@ const characterService = createCharacterService({
 	ipRepository: TauriIpRepository,
 	defaultAssociationSource: "manual",
 	transactionManager: {
-		async transaction<T>(
-			callback: (tx: Transaction) => Promise<T>,
-		): Promise<T> {
+		async transaction<T>(callback: (tx: Transaction) => Promise<T>): Promise<T> {
 			return await getTauriAppServices().db.transaction(callback);
 		},
 	},

@@ -7,10 +7,7 @@ export type TaggingJobTarget = {
 };
 
 export type AutoTaggingRunnerDeps = {
-	jobRepository: Pick<
-		JobRepositoryPort,
-		"incrementProgress" | "findById" | "update"
-	>;
+	jobRepository: Pick<JobRepositoryPort, "incrementProgress" | "findById" | "update">;
 	executeAutoTagging(input: {
 		mediaId: string;
 		mediaSourceId: string;
@@ -23,12 +20,12 @@ export type AutoTaggingRunnerDeps = {
 };
 
 export type BulkTaggingDispatchRunnerDeps = {
-	jobRepository: Pick<JobRepositoryPort, "create">;
+	jobRepository: Pick<JobRepositoryPort, "createMany">;
 	scanTargets(input: {
 		force?: boolean;
 		batchSize?: number;
 		mediaSourceId?: string;
-	}): Promise<TaggingJobTarget[]>;
+	}): AsyncGenerator<TaggingJobTarget>;
 	logger?: {
 		info?(data: unknown, message?: string): void;
 	};
@@ -46,10 +43,7 @@ function getAutoTaggingPayload(payload: unknown): {
 	) {
 		return {
 			mediaId: payload.mediaId,
-			force:
-				"force" in payload && typeof payload.force === "boolean"
-					? payload.force
-					: undefined,
+			force: "force" in payload && typeof payload.force === "boolean" ? payload.force : undefined,
 		};
 	}
 
@@ -87,10 +81,7 @@ function getBulkTaggingDispatchPayload(payload: unknown): {
 	}
 
 	return {
-		force:
-			"force" in payload && typeof payload.force === "boolean"
-				? payload.force
-				: undefined,
+		force: "force" in payload && typeof payload.force === "boolean" ? payload.force : undefined,
 		batchSize:
 			"batchSize" in payload && typeof payload.batchSize === "number"
 				? payload.batchSize
@@ -173,24 +164,47 @@ export async function runBulkTaggingDispatchJob(
 	deps: BulkTaggingDispatchRunnerDeps,
 ): Promise<void> {
 	const payload = getBulkTaggingDispatchPayload(job.payload);
-	const targets = await deps.scanTargets(payload);
+	const batch: TaggingJobTarget[] = [];
+	let totalCount = 0;
 
-	for (const target of targets) {
-		await deps.jobRepository.create({
-			type: "auto_tagging",
-			mediaSourceId: target.mediaSourceId,
-			payload: {
-				mediaId: target.id,
-				mediaSourceId: target.mediaSourceId,
-				force: payload.force,
-			},
-		});
+	for await (const target of deps.scanTargets(payload)) {
+		batch.push(target);
+		if (batch.length >= 500) {
+			await deps.jobRepository.createMany(
+				batch.map((t) => ({
+					type: "auto_tagging",
+					mediaSourceId: t.mediaSourceId,
+					payload: {
+						mediaId: t.id,
+						mediaSourceId: t.mediaSourceId,
+						force: payload.force,
+					},
+				})),
+			);
+			totalCount += batch.length;
+			batch.length = 0;
+		}
+	}
+
+	if (batch.length > 0) {
+		await deps.jobRepository.createMany(
+			batch.map((t) => ({
+				type: "auto_tagging",
+				mediaSourceId: t.mediaSourceId,
+				payload: {
+					mediaId: t.id,
+					mediaSourceId: t.mediaSourceId,
+					force: payload.force,
+				},
+			})),
+		);
+		totalCount += batch.length;
 	}
 
 	deps.logger?.info?.(
 		{
 			jobId: job.id,
-			processedCount: targets.length,
+			processedCount: totalCount,
 			mediaSourceId: payload.mediaSourceId,
 		},
 		"Bulk tagging dispatch completed",

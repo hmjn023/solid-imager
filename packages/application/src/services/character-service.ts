@@ -51,10 +51,7 @@ export class CharacterServiceImpl {
 		return await this.characterRepo.findById(id);
 	}
 
-	async updateCharacter(
-		id: string,
-		input: UpdateCharacter,
-	): Promise<Character> {
+	async updateCharacter(id: string, input: UpdateCharacter): Promise<Character> {
 		return await this.characterRepo.update(id, input);
 	}
 
@@ -66,10 +63,7 @@ export class CharacterServiceImpl {
 		return await this.characterRepo.findByMediaId(mediaId);
 	}
 
-	async addCharacterToMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
+	async addCharacterToMedia(mediaId: string, characterId: string): Promise<void> {
 		await this.transactionManager.transaction(async (tx: Transaction) => {
 			const character = await this.characterRepo.findById(characterId, tx);
 			if (!character) {
@@ -88,30 +82,17 @@ export class CharacterServiceImpl {
 		});
 	}
 
-	async linkCharacterIps(
-		mediaId: string,
-		character: Character,
-		tx?: Transaction,
-	): Promise<void> {
+	async linkCharacterIps(mediaId: string, character: Character, tx?: Transaction): Promise<void> {
 		if (!character.ips || character.ips.length === 0) {
 			return;
 		}
 
 		for (const ip of character.ips) {
-			await this.ipRepo.addMedia(
-				mediaId,
-				ip.id,
-				undefined,
-				"character_link",
-				tx,
-			);
+			await this.ipRepo.addMedia(mediaId, ip.id, undefined, "character_link", tx);
 		}
 	}
 
-	async removeCharacterFromMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
+	async removeCharacterFromMedia(mediaId: string, characterId: string): Promise<void> {
 		await this.characterRepo.removeFromMedia(mediaId, characterId);
 	}
 }

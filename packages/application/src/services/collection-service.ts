@@ -22,10 +22,7 @@ export function createCollectionService(repository: ICollectionRepository) {
 			return await repository.create(input);
 		},
 
-		async updateCollection(
-			id: string,
-			input: UpdateCollection,
-		): Promise<Collection> {
+		async updateCollection(id: string, input: UpdateCollection): Promise<Collection> {
 			return await repository.update(id, input);
 		},
 
@@ -33,17 +30,11 @@ export function createCollectionService(repository: ICollectionRepository) {
 			await repository.delete(id);
 		},
 
-		async addMediaToCollection(
-			collectionId: string,
-			item: NewCollectionItem,
-		): Promise<void> {
+		async addMediaToCollection(collectionId: string, item: NewCollectionItem): Promise<void> {
 			await repository.addItem(collectionId, item);
 		},
 
-		async removeMediaFromCollection(
-			collectionId: string,
-			mediaId: string,
-		): Promise<void> {
+		async removeMediaFromCollection(collectionId: string, mediaId: string): Promise<void> {
 			await repository.removeItem(collectionId, mediaId);
 		},
 	};

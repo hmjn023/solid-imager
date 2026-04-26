@@ -72,6 +72,10 @@ async function processDeletions(
 								SseManager.sendEvent(mediaSourceId, "media-deleted", event);
 							},
 						},
+						existing: {
+							id: fileToDelete.id,
+							filePath: fileToDelete.relativePath,
+						},
 					},
 				);
 				if (deleted) {

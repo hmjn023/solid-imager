@@ -17,17 +17,6 @@ import {
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 
-type AutoTaggingJobPayload = {
-	mediaId: string;
-	force?: boolean;
-};
-
-type BulkTaggingDispatchJobPayload = {
-	force?: boolean;
-	batchSize?: number;
-	mediaSourceId?: string;
-};
-
 export async function processAutoTaggingJob(job: Job): Promise<void> {
 	const JOB_EVENTS_CHANNEL = "global-jobs";
 	await runAutoTaggingJob(job, {
@@ -47,7 +36,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	await runBulkTaggingDispatchJob(job, {
 		jobRepository: services.getJobRepository(),
-		scanTargets: async (payload) => {
+		scanTargets: async function* (payload) {
 			const force = payload.force ?? false;
 			const batchSize = payload.batchSize ?? 1000;
 			const mediaSourceId = payload.mediaSourceId;
@@ -94,7 +83,6 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 			);
 
 			let offset = 0;
-			const results: Array<{ id: string; mediaSourceId: string }> = [];
 			while (true) {
 				const rows = await db
 					.select({
@@ -109,10 +97,18 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 				if (rows.length === 0) {
 					break;
 				}
-				results.push(...rows);
+				for (const row of rows) {
+					if (
+						typeof row.id === "string" &&
+						typeof row.mediaSourceId === "string"
+					) {
+						yield row;
+					} else {
+						logger.warn({ row }, "Skipping invalid tagging target row");
+					}
+				}
 				offset += batchSize;
 			}
-			return results;
 		},
 		logger,
 	});

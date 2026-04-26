@@ -1,8 +1,4 @@
-import type {
-	JobRecord,
-	JobRepositoryPort,
-	NewJobRecord,
-} from "../ports/job-repository";
+import type { JobRecord, JobRepositoryPort, NewJobRecord } from "../ports/job-repository";
 
 export const CANONICAL_JOB_TYPES = [
 	"processMedia",
@@ -16,15 +12,9 @@ export const CANONICAL_JOB_TYPES = [
 export type CanonicalJobType = (typeof CANONICAL_JOB_TYPES)[number];
 
 export const AI_JOB_TYPES = ["auto_tagging"] as const;
-export const NON_RUNNABLE_JOB_TYPES = [
-	"import_request",
-	"bulk_tagging_parent",
-] as const;
+export const NON_RUNNABLE_JOB_TYPES = ["import_request", "bulk_tagging_parent"] as const;
 
-export type RunnableJobType = Exclude<
-	CanonicalJobType,
-	(typeof NON_RUNNABLE_JOB_TYPES)[number]
->;
+export type RunnableJobType = Exclude<CanonicalJobType, (typeof NON_RUNNABLE_JOB_TYPES)[number]>;
 
 export type DeferredJob = {
 	mediaId?: string;
@@ -76,10 +66,7 @@ export function createJobDispatcher(
 ): RunnableJobProcessor {
 	return async (job) => {
 		if (isNonRunnableJobType(job.type)) {
-			logger?.warn?.(
-				{ jobId: job.id, type: job.type },
-				"Skipping non-runnable job type",
-			);
+			logger?.warn?.({ jobId: job.id, type: job.type }, "Skipping non-runnable job type");
 			return;
 		}
 
@@ -98,10 +85,7 @@ export async function executeDeferredActions(
 ): Promise<void> {
 	for (const item of actions.jobs) {
 		for (const job of item.jobs) {
-			const payload =
-				typeof job.payload === "object" && job.payload !== null
-					? job.payload
-					: {};
+			const payload = typeof job.payload === "object" && job.payload !== null ? job.payload : {};
 			const newJob: NewJobRecord = {
 				type: job.type,
 				mediaSourceId: item.mediaSourceId,

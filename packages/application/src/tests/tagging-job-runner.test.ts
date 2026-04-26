@@ -71,30 +71,41 @@ describe("tagging-job-runner", () => {
 	});
 
 	it("enqueues auto-tagging child jobs from dispatch results", async () => {
-		const create = vi.fn(async () => makeJob());
+		const createMany = vi.fn(async () => []);
 		await runBulkTaggingDispatchJob(
 			makeJob({
 				type: "bulk_tagging_dispatch",
 				payload: { force: true, mediaSourceId: "source-1" },
 			}),
 			{
-				jobRepository: { create },
-				scanTargets: vi.fn(async () => [
-					{ id: "media-1", mediaSourceId: "source-1" },
-					{ id: "media-2", mediaSourceId: "source-2" },
-				]),
+				jobRepository: { createMany },
+				scanTargets: vi.fn(async function* () {
+					yield { id: "media-1", mediaSourceId: "source-1" };
+					yield { id: "media-2", mediaSourceId: "source-2" };
+				}),
 			},
 		);
 
-		expect(create).toHaveBeenCalledTimes(2);
-		expect(create).toHaveBeenCalledWith({
-			type: "auto_tagging",
-			mediaSourceId: "source-1",
-			payload: {
-				mediaId: "media-1",
+		expect(createMany).toHaveBeenCalledTimes(1);
+		expect(createMany).toHaveBeenCalledWith([
+			{
+				type: "auto_tagging",
 				mediaSourceId: "source-1",
-				force: true,
+				payload: {
+					mediaId: "media-1",
+					mediaSourceId: "source-1",
+					force: true,
+				},
 			},
-		});
+			{
+				type: "auto_tagging",
+				mediaSourceId: "source-2",
+				payload: {
+					mediaId: "media-2",
+					mediaSourceId: "source-2",
+					force: true,
+				},
+			},
+		]);
 	});
 });

@@ -14,9 +14,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { characterIps, characters, mediaCharacters } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-export type CharacterRepositoryExecutorProvider = (
-	tx?: unknown,
-) => DrizzleExecutor;
+export type CharacterRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 export type CharacterRepositoryTransactionRunner = <T>(
 	callback: (tx: unknown) => Promise<T>,
 ) => Promise<T>;
@@ -42,12 +40,7 @@ type CharacterWithAssociation = Character & {
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		error.code === "23505"
-	);
+	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function mapToCharacter(row: CharacterWithIpsRow): Character {
@@ -86,10 +79,7 @@ export function createCharacterRepository(
 	getExecutor: CharacterRepositoryExecutorProvider,
 	options: CreateCharacterRepositoryOptions = {},
 ): CharacterRepository {
-	async function findCharacterWithIps(
-		id: string,
-		tx?: unknown,
-	): Promise<Character | null> {
+	async function findCharacterWithIps(id: string, tx?: unknown): Promise<Character | null> {
 		const row = await getExecutor(tx).query.characters.findFirst({
 			where: eq(characters.id, id),
 			with: {
@@ -142,10 +132,7 @@ export function createCharacterRepository(
 			try {
 				return await findCharacterWithIps(id, tx);
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to select character by ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to select character by ID: ${id}`, error);
 			}
 		},
 
@@ -163,10 +150,7 @@ export function createCharacterRepository(
 				});
 				return row ? mapToCharacter(row) : null;
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to select character by name: ${name}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to select character by name: ${name}`, error);
 			}
 		},
 
@@ -197,17 +181,13 @@ export function createCharacterRepository(
 
 					const result = await findCharacterWithIps(created.id, innerTx);
 					if (!result) {
-						throw new UnexpectedError(
-							"Created character could not be reloaded",
-						);
+						throw new UnexpectedError("Created character could not be reloaded");
 					}
 					return result;
 				});
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Character with this name already exists",
-					);
+					throw new ResourceConflictError("Character with this name already exists");
 				}
 				if (error instanceof UnexpectedError) {
 					throw error;
@@ -216,11 +196,7 @@ export function createCharacterRepository(
 			}
 		},
 
-		async update(
-			id: string,
-			input: UpdateCharacter,
-			tx?: unknown,
-		): Promise<Character> {
+		async update(id: string, input: UpdateCharacter, tx?: unknown): Promise<Character> {
 			try {
 				return await runWithTransaction(tx, async (innerTx) => {
 					const client = getExecutor(innerTx);
@@ -234,15 +210,11 @@ export function createCharacterRepository(
 						const rows = await client
 							.update(characters)
 							.set({
-								...(characterData.name !== undefined
-									? { name: characterData.name }
-									: {}),
+								...(characterData.name !== undefined ? { name: characterData.name } : {}),
 								...(characterData.description !== undefined
 									? { description: characterData.description ?? "" }
 									: {}),
-								...(characterData.source !== undefined
-									? { source: characterData.source }
-									: {}),
+								...(characterData.source !== undefined ? { source: characterData.source } : {}),
 								updatedAt: new Date(),
 							})
 							.where(eq(characters.id, id))
@@ -259,9 +231,7 @@ export function createCharacterRepository(
 					}
 
 					if (ipIds !== undefined) {
-						await client
-							.delete(characterIps)
-							.where(eq(characterIps.characterId, id));
+						await client.delete(characterIps).where(eq(characterIps.characterId, id));
 
 						if (ipIds.length > 0) {
 							await client.insert(characterIps).values(
@@ -285,14 +255,9 @@ export function createCharacterRepository(
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Character with this name already exists",
-					);
+					throw new ResourceConflictError("Character with this name already exists");
 				}
-				throw new UnexpectedError(
-					`Failed to update character with ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to update character with ID: ${id}`, error);
 			}
 		},
 
@@ -310,10 +275,7 @@ export function createCharacterRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(
-					`Failed to delete character with ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to delete character with ID: ${id}`, error);
 			}
 		},
 
@@ -322,9 +284,7 @@ export function createCharacterRepository(
 				const rows = await getExecutor(tx).query.mediaCharacters.findMany({
 					...(options.orderByName
 						? {
-								orderBy: (mediaCharacters, { asc }) => [
-									asc(mediaCharacters.characterId),
-								],
+								orderBy: (mediaCharacters, { asc }) => [asc(mediaCharacters.characterId)],
 							}
 						: {}),
 					where: eq(mediaCharacters.mediaId, mediaId),
@@ -343,17 +303,11 @@ export function createCharacterRepository(
 
 				return rows.map((row) => mapToCharacter(row.character));
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to find characters for media: ${mediaId}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to find characters for media: ${mediaId}`, error);
 			}
 		},
 
-		async getMediaCharacters(
-			mediaId: string,
-			tx?: unknown,
-		): Promise<CharacterWithAssociation[]> {
+		async getMediaCharacters(mediaId: string, tx?: unknown): Promise<CharacterWithAssociation[]> {
 			try {
 				const rows = await getExecutor(tx).query.mediaCharacters.findMany({
 					where: eq(mediaCharacters.mediaId, mediaId),
@@ -376,10 +330,7 @@ export function createCharacterRepository(
 					associationSource: row.source,
 				}));
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to find media characters for media: ${mediaId}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to find media characters for media: ${mediaId}`, error);
 			}
 		},
 
@@ -411,19 +362,12 @@ export function createCharacterRepository(
 			}
 		},
 
-		async removeFromMedia(
-			mediaId: string,
-			characterId: string,
-			tx?: unknown,
-		): Promise<void> {
+		async removeFromMedia(mediaId: string, characterId: string, tx?: unknown): Promise<void> {
 			try {
 				const query = getExecutor(tx)
 					.delete(mediaCharacters)
 					.where(
-						and(
-							eq(mediaCharacters.mediaId, mediaId),
-							eq(mediaCharacters.characterId, characterId),
-						),
+						and(eq(mediaCharacters.mediaId, mediaId), eq(mediaCharacters.characterId, characterId)),
 					);
 
 				if (options.throwOnMissingRemove) {
@@ -472,10 +416,7 @@ export function createCharacterRepository(
 						set: mediaCharacterConflictSet(source),
 					});
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to bulk add characters to media ${mediaId}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to bulk add characters to media ${mediaId}`, error);
 			}
 		},
 	};

@@ -25,10 +25,7 @@ export function deepMerge<T>(base: T, patch: Partial<T>): T {
 			typeof value === "object" &&
 			!Array.isArray(current) &&
 			!Array.isArray(value)
-				? deepMerge(
-						current as Record<string, unknown>,
-						value as Record<string, unknown>,
-					)
+				? deepMerge(current as Record<string, unknown>, value as Record<string, unknown>)
 				: value;
 	}
 	return result as T;

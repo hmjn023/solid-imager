@@ -61,7 +61,7 @@ Monorepo workspaces:
 
 These are enforced by review and prior incidents:
 
-- **No `as unknown as DomainModel`.** Every repository must expose a `mapToX(dbRow): X` function that explicitly converts DB rows (snake_case, nullable) to domain types (camelCase, `undefined`). Server and Tauri implementations share the _mapping logic_ even though the repository shape differs (class vs. object literal).
+- **No `as unknown as DomainModel`.** Every repository must expose a `mapToX(dbRow): X` function that explicitly converts DB rows (snake*case, nullable) to domain types (camelCase, `undefined`). Server and Tauri implementations share the \_mapping logic* even though the repository shape differs (class vs. object literal).
 - **Safe DTO pattern on every oRPC response that touches `MediaSource`, `User`, or `AppConfig`.** Strip `password`/`privateKey` (SFTP), `secretAccessKey`/`accessKeyId` (S3), etc. Conversion functions (`toSafeMediaSource`) live in the router file. `SafeX` schemas live in `packages/core`.
 - **UUID v4 everywhere**, and intermediate tables are named `media_{entity}` (e.g., `media_tags`, `media_characters`).
 - **Schema-driven oRPC.** Zod schema in `packages/core` first → router input/output → service → repository. Don't invent ad-hoc response shapes in handlers.

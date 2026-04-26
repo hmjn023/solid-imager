@@ -21,18 +21,8 @@ import {
 	AlertDialogTitle,
 } from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@solid-imager/ui/card";
-import {
-	Checkbox,
-	CheckboxControl,
-	CheckboxLabel,
-} from "@solid-imager/ui/checkbox";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@solid-imager/ui/card";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "@solid-imager/ui/checkbox";
 import {
 	Combobox,
 	ComboboxContent,
@@ -73,11 +63,7 @@ import {
 	deleteCharacter,
 	updateCharacter,
 } from "~/infrastructure/api-clients/characters-api";
-import {
-	createIp,
-	deleteIp,
-	updateIp,
-} from "~/infrastructure/api-clients/ips-api";
+import { createIp, deleteIp, updateIp } from "~/infrastructure/api-clients/ips-api";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createProject,
@@ -97,15 +83,10 @@ function isCharacter(item: Entity): item is Character {
 }
 
 type SafeParseSchema<T> = {
-	safeParse: (
-		input: unknown,
-	) => { success: true; data: T } | { success: false; error: unknown };
+	safeParse: (input: unknown) => { success: true; data: T } | { success: false; error: unknown };
 };
 
-function parseEventPayload<T>(
-	schema: SafeParseSchema<T>,
-	payload: unknown,
-): T | null {
+function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
 	const result = schema.safeParse(payload);
 	return result.success ? result.data : null;
 }
@@ -134,18 +115,12 @@ export default function ManagerPage() {
 		ipIds?: string[];
 	}>({ name: "", description: "" });
 
-	const [selectedSourceId, setSelectedSourceId] = createSignal<
-		string | undefined
-	>(undefined);
+	const [selectedSourceId, setSelectedSourceId] = createSignal<string | undefined>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
 	const [scannedMedia, setScannedMedia] = createSignal<Media[]>([]);
-	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
-		new Set(),
-	);
-	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
-		null,
-	);
+	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(new Set());
+	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(null);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 
 	const [currentPage, setCurrentPage] = createSignal(1);
@@ -346,16 +321,11 @@ export default function ManagerPage() {
 				const data = parseEventPayload(jobProgressEventSchema, event.payload);
 				if (data?.jobId === jobId) {
 					setJobProgress(data);
-					setTaggingStatus(
-						`Processing: ${data.processed} / ${data.total} tagged.`,
-					);
+					setTaggingStatus(`Processing: ${data.processed} / ${data.total} tagged.`);
 				}
 			}),
 			listen("job-completed", (event) => {
-				const data = parseEventPayload<JobCompletedEvent>(
-					jobCompletedEventSchema,
-					event.payload,
-				);
+				const data = parseEventPayload<JobCompletedEvent>(jobCompletedEventSchema, event.payload);
 				if (data?.jobId === jobId) {
 					toast.success(data.message || "Batch tagging completed!");
 					setTaggingStatus("Batch tagging completed successfully.");
@@ -364,10 +334,7 @@ export default function ManagerPage() {
 				}
 			}),
 			listen("job-failed", (event) => {
-				const data = parseEventPayload<JobFailedEvent>(
-					jobFailedEventSchema,
-					event.payload,
-				);
+				const data = parseEventPayload<JobFailedEvent>(jobFailedEventSchema, event.payload);
 				if (data?.jobId === jobId) {
 					toast.error(`Job failed: ${data.error || "unknown error"}`);
 					setTaggingStatus(`Job failed: ${data.error || "unknown error"}`);
@@ -449,9 +416,7 @@ export default function ManagerPage() {
 								<Label>Target Media Source (Optional)</Label>
 								<Select
 									itemComponent={(props) => (
-										<SelectItem item={props.item}>
-											{props.item.rawValue.name}
-										</SelectItem>
+										<SelectItem item={props.item}>{props.item.rawValue.name}</SelectItem>
 									)}
 									onChange={(value) => setSelectedSourceId(value?.id)}
 									options={Array.isArray(sources.data) ? sources.data : []}
@@ -470,9 +435,7 @@ export default function ManagerPage() {
 										<SelectValue<unknown>>
 											{(state) => {
 												const option = state.selectedOption();
-												return option &&
-													typeof option === "object" &&
-													"name" in option
+												return option && typeof option === "object" && "name" in option
 													? (option as { name: string }).name
 													: "All Sources";
 											}}
@@ -480,9 +443,7 @@ export default function ManagerPage() {
 									</SelectTrigger>
 									<SelectContent />
 								</Select>
-								<p class="text-muted-foreground text-xs">
-									Leave empty to process all sources.
-								</p>
+								<p class="text-muted-foreground text-xs">Leave empty to process all sources.</p>
 							</div>
 
 							<div class="flex items-center space-x-2">
@@ -497,31 +458,23 @@ export default function ManagerPage() {
 								</Checkbox>
 							</div>
 							<p class="text-muted-foreground text-xs">
-								If checked, existing AI tags will be ignored and images will be
-								re-analyzed.
+								If checked, existing AI tags will be ignored and images will be re-analyzed.
 							</p>
 
 							<div class="flex items-center gap-x-2 pt-2">
 								<Button onClick={handleScan}>Scan for Targets</Button>
-								<Button
-									disabled={scannedMedia().length === 0}
-									onClick={handleStartBatchTagging}
-								>
+								<Button disabled={scannedMedia().length === 0} onClick={handleStartBatchTagging}>
 									Start Batch Tagging ({selectedMedia().size})
 								</Button>
 							</div>
 
 							<Show when={taggingStatus()}>
-								<div class="mt-4 rounded bg-gray-100 p-2 text-sm">
-									{taggingStatus()}
-								</div>
+								<div class="mt-4 rounded bg-gray-100 p-2 text-sm">{taggingStatus()}</div>
 							</Show>
 							<Show when={jobProgress()}>
 								{(progress) => (
 									<div class="mt-4">
-										<Progress
-											value={(progress().processed / progress().total) * 100}
-										/>
+										<Progress value={(progress().processed / progress().total) * 100} />
 									</div>
 								)}
 							</Show>
@@ -531,9 +484,7 @@ export default function ManagerPage() {
 					<Show when={scannedMedia().length > 0}>
 						<div class="mt-4">
 							<div class="mb-2 flex items-center justify-between">
-								<h3 class="font-bold text-lg">
-									Scanned Media ({scannedMedia().length})
-								</h3>
+								<h3 class="font-bold text-lg">Scanned Media ({scannedMedia().length})</h3>
 								<div class="flex items-center gap-2">
 									<PaginationControls
 										currentPage={currentPage()}
@@ -541,9 +492,7 @@ export default function ManagerPage() {
 										totalPages={totalPages()}
 									/>
 									<Button onClick={toggleSelectAll} size="sm" variant="outline">
-										{selectedMedia().size === scannedMedia().length
-											? "Deselect All"
-											: "Select All"}
+										{selectedMedia().size === scannedMedia().length ? "Deselect All" : "Select All"}
 									</Button>
 								</div>
 							</div>
@@ -583,21 +532,15 @@ export default function ManagerPage() {
 									<Show when={item.description}>
 										<CardDescription>{item.description}</CardDescription>
 									</Show>
-									{activeTab() === "characters" &&
-										isCharacter(item) &&
-										item.ips.length > 0 && (
-											<CardDescription>
-												IPs: {item.ips.map((ip) => ip.name).join(", ")}
-											</CardDescription>
-										)}
+									{activeTab() === "characters" && isCharacter(item) && item.ips.length > 0 && (
+										<CardDescription>
+											IPs: {item.ips.map((ip) => ip.name).join(", ")}
+										</CardDescription>
+									)}
 								</CardHeader>
 								<CardContent>
 									<div class="flex justify-end space-x-2">
-										<Button
-											onClick={() => openEditDialog(item)}
-											size="sm"
-											variant="outline"
-										>
+										<Button onClick={() => openEditDialog(item)} size="sm" variant="outline">
 											Edit
 										</Button>
 										<Button
@@ -623,9 +566,7 @@ export default function ManagerPage() {
 					<DialogHeader>
 						<DialogTitle>
 							{editingItem() ? "Edit" : "Create"}{" "}
-							{activeTab() === "tagging"
-								? "TAGGING"
-								: activeTab().slice(0, -1).toUpperCase()}
+							{activeTab() === "tagging" ? "TAGGING" : activeTab().slice(0, -1).toUpperCase()}
 						</DialogTitle>
 						<DialogDescription>
 							{editingItem()
@@ -667,9 +608,7 @@ export default function ManagerPage() {
 									<Combobox<Ip>
 										itemComponent={(props) => (
 											<ComboboxItem item={props.item}>
-												<ComboboxItemLabel>
-													{props.item.rawValue.name}
-												</ComboboxItemLabel>
+												<ComboboxItemLabel>{props.item.rawValue.name}</ComboboxItemLabel>
 												<ComboboxItemIndicator />
 											</ComboboxItem>
 										)}
@@ -684,9 +623,7 @@ export default function ManagerPage() {
 										options={ips.data || []}
 										optionTextValue="name"
 										optionValue="id"
-										value={(ips.data || []).filter((ip) =>
-											formData().ipIds?.includes(ip.id),
-										)}
+										value={(ips.data || []).filter((ip) => formData().ipIds?.includes(ip.id))}
 									>
 										<ComboboxControl>
 											<ComboboxInput placeholder="Select IPs..." />
@@ -699,17 +636,12 @@ export default function ManagerPage() {
 						</Show>
 					</div>
 					<DialogFooter>
-						<Button onClick={editingItem() ? handleUpdate : handleCreate}>
-							Save
-						</Button>
+						<Button onClick={editingItem() ? handleUpdate : handleCreate}>Save</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 
-			<AlertDialog
-				onOpenChange={setIsDeleteDialogOpen}
-				open={isDeleteDialogOpen()}
-			>
+			<AlertDialog onOpenChange={setIsDeleteDialogOpen} open={isDeleteDialogOpen()}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
