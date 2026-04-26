@@ -77,6 +77,7 @@ import {
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
 import {
 	getSearchCondition,
 	searchState,
@@ -200,8 +201,8 @@ function SourceMediaRoute() {
 		onMediaMoved: () => {
 			scheduleMediaRefresh();
 		},
-		onThumbnailGenerated: () => {
-			scheduleMediaRefresh();
+		onThumbnailGenerated: (data) => {
+			notifyThumbnailReady(data.mediaId);
 		},
 		onJobProgress: (data) => {
 			setJobProgress(data);

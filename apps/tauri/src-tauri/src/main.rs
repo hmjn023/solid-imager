@@ -36,6 +36,7 @@ fn main() {
             commands::fs::fs_rename,
             commands::fs::fs_mkdtemp,
             commands::media::image_generate_thumbnail,
+            commands::media::image_generate_thumbnails_batch,
             commands::media::image_extract_metadata,
             commands::media::image_get_dimensions,
             commands::media::probe_media,

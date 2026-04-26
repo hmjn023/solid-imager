@@ -70,13 +70,14 @@ describe("JobWorker", () => {
 	it("uses independent normal and AI concurrency pools", async () => {
 		const normalJobs = [makeJob("normal-1"), makeJob("normal-2")];
 		const aiJobs = [makeJob("ai-1", "auto_tagging")];
+		// splice so arrays drain after first dispatch, preventing infinite wake-on-complete loop
 		vi.mocked(repository.findPending).mockImplementation(
 			async (limit, options) => {
 				if (options?.includeTypes) {
-					return aiJobs.slice(0, limit);
+					return aiJobs.splice(0, limit);
 				}
 				if (options?.excludeTypes) {
-					return normalJobs.slice(0, limit);
+					return normalJobs.splice(0, limit);
 				}
 				return [];
 			},
@@ -164,7 +165,32 @@ describe("JobWorker", () => {
 		resolveFirstPoll([]);
 		await vi.advanceTimersByTimeAsync(1);
 
-		expect(repository.findPending).toHaveBeenCalledTimes(4);
+		// At least 4 calls (2 per poll x 2 re-poll iterations);
+		// wake-on-complete may add more.
+		expect(
+			vi.mocked(repository.findPending).mock.calls.length,
+		).toBeGreaterThanOrEqual(4);
 		expect(processor).toHaveBeenCalledWith(job);
+	});
+
+	it("immediately re-polls after a job completes without waiting for the poll interval", async () => {
+		const job1 = makeJob("job-1");
+		const job2 = makeJob("job-2");
+
+		// poll 1: [] (AI), [job1] (normal)
+		// poll 2: [] (AI), [job2] (normal)
+		// thereafter: []
+		vi.mocked(repository.findPending)
+			.mockResolvedValueOnce([]) // poll1 AI
+			.mockResolvedValueOnce([job1]) // poll1 normal
+			.mockResolvedValueOnce([]) // poll2 AI (wake-on-complete)
+			.mockResolvedValueOnce([job2]) // poll2 normal
+			.mockResolvedValue([]); // thereafter
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(1);
+
+		expect(processor).toHaveBeenCalledWith(job1);
+		expect(processor).toHaveBeenCalledWith(job2);
 	});
 });

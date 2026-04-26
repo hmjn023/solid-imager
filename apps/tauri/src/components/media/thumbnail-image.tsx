@@ -1,7 +1,10 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { createEffect, createSignal, onCleanup, Show } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { getTauriAppServices } from "~/app-services";
-import { getThumbnailResource } from "~/infrastructure/media/thumbnail-runtime";
+import {
+	getThumbnailResource,
+	subscribeToThumbnailReady,
+} from "~/infrastructure/media/thumbnail-runtime";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 
 const DEFAULT_MAX_RETRIES = 40;
@@ -114,6 +117,15 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		onCleanup(() => {
 			cancelled = true;
 		});
+	});
+
+	onMount(() => {
+		const unsubscribe = subscribeToThumbnailReady(props.media.id, () => {
+			clearRetryTimer();
+			setRetryCount(0);
+			setCacheKey(Date.now());
+		});
+		onCleanup(unsubscribe);
 	});
 
 	onCleanup(() => {

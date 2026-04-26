@@ -222,6 +222,7 @@ export class JobWorker {
 			if (isAiJob) {
 				this.activeAiJobs--;
 			}
+			this.wake();
 		}
 	}
 }
