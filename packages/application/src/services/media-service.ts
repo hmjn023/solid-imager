@@ -31,6 +31,7 @@ import type { IImageProcessor } from "@solid-imager/core/domain/services/image-p
 import type { IMediaStorage, MediaSourceFile } from "@solid-imager/core/interfaces/media-storage";
 import type { ProcessMediaJobRepository } from "../ports/job-repository";
 import type { DeferredActions, DeferredEvent } from "./job-runtime";
+import { extractAndPersistMediaMetadata } from "./media-metadata-extractor";
 import { queueMediaProcessingJob } from "./media-processing-job";
 
 export type { DeferredActions, DeferredEvent, DeferredJob, DeferredJobs } from "./job-runtime";
@@ -380,7 +381,21 @@ export class MediaServiceImpl {
 
 		let finalGenerationInfo = mediaDetails.generationInfo;
 		if (!finalGenerationInfo) {
-			finalGenerationInfo = await this.extractAndUpdateMetadata(mediaDetails, validatedSourceId);
+			const mediaSource = await this.sourceRepository.findById(validatedSourceId);
+			if (mediaSource && mediaSource.type === "local") {
+				const connectionInfo = mediaSource.connectionInfo as { path: string };
+				finalGenerationInfo = await extractAndPersistMediaMetadata(
+					mediaDetails,
+					connectionInfo.path,
+					{
+						mediaRepository: this.mediaRepository,
+						tagRepository: this.tagRepository,
+						imageProcessor: this.imageProcessor,
+						pathAdapter: this.pathAdapter,
+						logger: this.logger,
+					},
+				);
+			}
 		}
 
 		return {
@@ -537,7 +552,22 @@ export class MediaServiceImpl {
 		if (!media || media.mediaSourceId !== validatedSourceId) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
-		return await this.extractAndUpdateMetadata(media, validatedSourceId);
+		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
+		if (!mediaSource || mediaSource.type !== "local") {
+			return null;
+		}
+		const connectionInfo = mediaSource.connectionInfo as { path: string };
+		return await extractAndPersistMediaMetadata(
+			media,
+			connectionInfo.path,
+			{
+				mediaRepository: this.mediaRepository,
+				tagRepository: this.tagRepository,
+				imageProcessor: this.imageProcessor,
+				pathAdapter: this.pathAdapter,
+				logger: this.logger,
+			},
+		);
 	}
 
 	async getMediaTags(mediaSourceId: string, mediaId: string) {
@@ -893,48 +923,7 @@ export class MediaServiceImpl {
 		}
 	}
 
-	private async extractAndUpdateMetadata(
-		media: Media,
-		sourceId: string,
-	): Promise<MediaGenerationInfo | null> {
-		const mediaSource = await this.sourceRepository.findById(sourceId);
-		if (!mediaSource || mediaSource.type !== "local") {
-			return null;
-		}
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const fullPath = this.pathAdapter.join(connectionInfo.path, media.filePath);
 
-		try {
-			const metadata = await this.imageProcessor.extractMetadata(fullPath);
-			this.logger?.info?.(
-				{
-					mediaId: media.id,
-					fullPath,
-					tagsCount: metadata.tags.length,
-					hasWorkflow: !!metadata.workflow,
-					hasPrompt: !!metadata.prompt,
-				},
-				"[MediaService] extractAndUpdateMetadata result",
-			);
-			await this.mediaRepository.upsertGenerationInfo(
-				media.id,
-				typeof metadata.prompt === "object"
-					? JSON.stringify(metadata.prompt)
-					: (metadata.prompt as string | null),
-				metadata.workflow as object | null,
-			);
-			if (metadata.tags.length > 0) {
-				await this.tagRepository.addTagsToMedia(media.id, metadata.tags, "comfyui_workflow");
-			}
-			return await this.mediaRepository.getGenerationInfo(media.id);
-		} catch (error) {
-			this.logger?.error?.(
-				{ err: error, mediaId: media.id, fullPath },
-				"[MediaService] extractAndUpdateMetadata FAILED",
-			);
-			return null;
-		}
-	}
 }
 
 export function createMediaService(deps: MediaServiceDeps) {

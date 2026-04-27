@@ -143,7 +143,7 @@ describe("MediaProcessingService", () => {
 			const ipId = "ip-1";
 			const testConfidence = 0.9;
 			mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
-			mockCharacterService.findByName.mockResolvedValue({
+			mockCharacterRepo.findByName.mockResolvedValue({
 				id: charId,
 				name: "Char Name",
 				ips: [{ id: ipId, name: "IP Name" }],
@@ -154,7 +154,10 @@ describe("MediaProcessingService", () => {
 				characters: [{ name: "Char Name", confidence: testConfidence }],
 			});
 
-			expect(mockCharacterService.findByName).toHaveBeenCalledWith("Char Name");
+			expect(mockCharacterRepo.findByName).toHaveBeenCalledWith(
+				"Char Name",
+				undefined,
+			);
 			expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
 				mediaId,
 				charId,
@@ -162,9 +165,11 @@ describe("MediaProcessingService", () => {
 				"manual",
 				undefined,
 			);
-			expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
+			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
 				mediaId,
-				expect.objectContaining({ id: charId }),
+				ipId,
+				undefined,
+				"character_link",
 				undefined,
 			);
 		});
@@ -184,8 +189,8 @@ describe("MediaProcessingService", () => {
 			mockIpRepo.findByName.mockResolvedValue({ id: ipId, name: ipName });
 
 			// 2. Character registration (called second)
-			mockCharacterService.findByName.mockResolvedValue(null);
-			mockCharacterService.createCharacter.mockResolvedValue({
+			mockCharacterRepo.findByName.mockResolvedValue(null);
+			mockCharacterRepo.create.mockResolvedValue({
 				id: charId,
 				name: charName,
 				ips: [{ id: ipId, name: ipName }],
@@ -206,11 +211,15 @@ describe("MediaProcessingService", () => {
 			);
 
 			// Verify Character was created with IP ID
-			expect(mockCharacterService.createCharacter).toHaveBeenCalledWith({
-				name: charName,
-				description: "",
-				ipIds: [ipId],
-			});
+			expect(mockCharacterRepo.create).toHaveBeenCalledWith(
+				{
+					name: charName,
+					description: "",
+					ipIds: [ipId],
+					source: "manual",
+				},
+				undefined,
+			);
 
 			// Verify both were linked to media
 			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
@@ -227,9 +236,11 @@ describe("MediaProcessingService", () => {
 				"manual",
 				undefined,
 			);
-			expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
+			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
 				mediaId,
-				expect.objectContaining({ id: charId }),
+				ipId,
+				undefined,
+				"character_link",
 				undefined,
 			);
 		});
