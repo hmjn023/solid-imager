@@ -47,6 +47,7 @@ async function updateCharacterForMedia(
 			},
 			tx,
 		);
+		character = await deps.characterRepository.findById(character.id, tx);
 	} else if (ipIdsToLink.length > 0) {
 		const existingIpIds = character.ips?.map((i) => i.id) || [];
 		const newIpIds = [...new Set([...existingIpIds, ...ipIdsToLink])];
@@ -73,15 +74,12 @@ async function updateCharacterForMedia(
 	);
 
 	if (character.ips && character.ips.length > 0) {
-		for (const ip of character.ips) {
-			await deps.ipRepository.addMedia(
-				mediaId,
-				ip.id,
-				undefined,
-				"character_link",
-				tx,
-			);
-		}
+		await deps.ipRepository.addMediaBulk(
+			mediaId,
+			character.ips.flatMap((ip) => (ip.id ? [{ id: ip.id }] : [])),
+			"character_link",
+			tx,
+		);
 	}
 }
 
@@ -172,7 +170,9 @@ export async function updateMediaContextMetadata(
 	}
 
 	if (context.characters?.length) {
-		const contextIpNames = context.ips?.map((ip) => ip.name);
+		const contextIpNames = context.ips?.flatMap((ip) =>
+			ip.name?.trim() ? [ip.name.trim()] : [],
+		);
 		for (const charData of context.characters) {
 			try {
 				await updateCharacterForMedia(

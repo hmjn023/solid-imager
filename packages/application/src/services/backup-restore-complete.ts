@@ -1,8 +1,8 @@
 import type { BackupSource } from "@solid-imager/db/backup";
-import type { ProcessMediaJobRepository } from "../ports/job-repository";
+import type { JobRepositoryPort } from "../ports/job-repository";
 
 export type BackupRestoreCompleteDeps = {
-	jobRepository: ProcessMediaJobRepository;
+	jobRepository: JobRepositoryPort;
 };
 
 export async function enqueueThumbnailJobsAfterRestore(
@@ -19,16 +19,16 @@ export async function enqueueThumbnailJobsAfterRestore(
 	}
 
 	const sourceId = source.id ?? "";
-	for (const mediaId of mediaIds) {
-		await deps.jobRepository.create({
-			type: "processMedia",
+	await deps.jobRepository.createMany(
+		mediaIds.map((mediaId) => ({
+			type: "processMedia" as const,
 			mediaSourceId: sourceId,
 			payload: {
 				mediaId,
 				sourcePath: rootPath,
 				steps: ["generateThumbnail"],
-				type: "processMedia",
+				type: "processMedia" as const,
 			},
-		});
-	}
+		})),
+	);
 }
