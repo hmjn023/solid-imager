@@ -196,7 +196,7 @@ leaf component の共有は進んだが、route からの組み立て、nav acti
 | `collection-service.ts` | `packages/application/src/services/collection-service.ts` | serverのみ wrapper                                       | `TauriCollectionService` を追加。`list/get/create/update/delete/addToMedia/removeFromMedia` を維持                              |
 | `user-service.ts`       | `packages/application/src/services/user-service.ts`       | serverのみ wrapper                                       | `TauriUserService` を追加。`list/get/create/update/delete` を維持                                                               |
 | `search-service.ts`     | `packages/application/src/services/search-service.ts`     | server proxy を維持                                      | ―                                                                                                                               |
-| `media-service.ts`      | `packages/application/src/services/media-service.ts`      | 旧 `MediaServiceImpl` constructor と proxy を維持        | `TauriMediaService` も server 側メソッド名へ寄せる。`registerExistingMedia` は batch lookup / batch upsert を優先する実装へ改善 |
+| `media-service.ts`      | `packages/application/src/services/media-service.ts`      | 旧 `MediaServiceImpl` constructor と proxy を維持        | `TauriMediaService` は thin adapter に縮退。`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` を shared 化 |
 
 ### 共通化済み（utility / port / payload）
 
@@ -207,6 +207,7 @@ leaf component の共有は進んだが、route からの組み立て、nav acti
 | `config-service`       | `packages/application/src/services/config-service.ts`, `utils/config-merge.ts` | Tauri は共通 service、server は config merge utility を使用                                                                                                                    |
 | `source-service`       | `packages/application/src/services/source-service.ts`                          | server は shared service を利用。tauri も `createSourceService` を使って list/get/testConnection/getStatus を共有し、watcher / sync / fs / event / queue だけを adapter に残す |
 | `backup-service`       | `packages/db/src/backup.ts`                                                    | dump/restore の DB ロジックを共有。zip / fs / command client は app 固有のまま                                                                                                 |
+| `backup-restore-complete` | `packages/application/src/services/backup-restore-complete.ts`              | restore 後の thumbnail job enqueue を shared 化。server / tauri とも利用                                                                                                      |
 | TODO stub services     | `packages/application/src/services/stub-services.ts`                           | analytics / bulk-operation / data-migration / filter-preset / integration / workflow                                                                                           |
 
 ### 対応あり（名称・責務が近いもの）
@@ -351,3 +352,11 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Jobs**: media-processing job の step 定義・payload helper に加え、canonical job type / shared dispatcher / deferred actions executor / background coordinator / download runner / tagging runner / watcher runtime / event publish contract / processMedia batch runner / source progress tracker を `packages/application` に移動。server / tauri は共通 runtime を使い、差分は downloader / thumbnail I/O / watcher ingress / SSE or Tauri event transport に縮退
 - **Hooks / Routes**: `packages/ui/src/hooks/use-search-page.ts` を新設し、`search.tsx` の infinite query 構築、結果重複排除、スクロール位置復元、無限スクロール IntersectionObserver を shared hook へ切り出し。`apps/server/src/routes/search.tsx` と `apps/tauri/src/routes/search.tsx` は両方ともこの shared hook を利用。app 側に残る差分は JSX レイアウト（Portal vs inline Dialog）、refresh 戦略（server: 即時 invalidate / tauri: debounce 300ms + `onAllJobsCompleted`）、`sourceRootPath` 注入、SSR `isMounted` ガードなど platform 固有層のみ
 - 対応度の推定値を再補正（Routes ~78%、Hooks ~80%、Components ~80%、Repositories ~88%、Services ~68%、Jobs ~82%）
+
+## 前回からの主な変更点（2026-04-27更新）
+
+- **Services / Media**: `packages/application/src/services/media-context-metadata.ts` を新設し、`updateMediaContextMetadata` を shared 化。server 側 `MediaProcessingServiceImpl` と tauri 側 `TauriMediaService` の context metadata 更新ロジックを統合。tauri 側の `syncContextMetadata`（Drizzle query 直書き）と `characterRepository.addToMediaBulk` の再実装を削除し、shared `updateMediaContextMetadata` + `packages/db` の `CharacterRepository` を直接使用
+- **Services / Media**: `packages/application/src/services/media-metadata-extractor.ts` を新設し、`extractAndPersistMediaMetadata` を shared 化。`MediaServiceImpl` の `extractAndUpdateMetadata` private メソッドを shared 関数へ移動。tauri 側の `persistExtractedMetadata`（Drizzle query 直書き）を削除し、shared 関数を利用
+- **Services / Media**: `packages/application/src/services/media-service.ts` の `getMediaDetails` / `reprocessMetadata` を shared `extractAndPersistMediaMetadata` を使う形に変更。server / tauri とも同じ metadata 抽出・保存ロジックを共有
+- **Services / Backup**: `packages/application/src/services/backup-restore-complete.ts` を新設し、`enqueueThumbnailJobsAfterRestore` を shared 化。server 側 `backup-service.ts` と tauri 側 `source-backup-service.ts` の restore 後処理を統合。tauri 側に `onRestoreComplete` を追加し、server 側と同じ挙動に揃える
+- **Services対応度**: media-service / source-backup-service の主要ロジックを shared 化したことで、Services 対応度は ~75% 程度へ上昇。残る差分は upload collision resolution algorithm（platform 非依存部分の shared 化余地あり）、zip 処理、および platform 固有 I/O 層

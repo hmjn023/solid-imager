@@ -1,7 +1,9 @@
+import { enqueueThumbnailJobsAfterRestore } from "@solid-imager/application/services/backup-restore-complete";
 import { createBackupService } from "@solid-imager/db/backup";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import { joinLocalPath } from "../../path-utils";
+import { TauriJobRepository } from "../repositories/tauri-job-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
 import { TauriSourceService } from "./source-service";
 
@@ -56,6 +58,12 @@ const backupService = createBackupService({
 	runTransaction: async <T>(callback: (executor: TauriDbExecutor) => Promise<T>) => {
 		return await getTauriAppServices().db.transaction(
 			async (tx) => await callback(tx as TauriDbExecutor),
+		);
+	},
+	onRestoreComplete: async ({ source, mediaIds, rootPath }) => {
+		await enqueueThumbnailJobsAfterRestore(
+			{ source, mediaIds, rootPath },
+			{ jobRepository: TauriJobRepository },
 		);
 	},
 });

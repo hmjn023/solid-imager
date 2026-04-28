@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { enqueueThumbnailJobsAfterRestore } from "@solid-imager/application/services/backup-restore-complete";
 import { createBackupService } from "@solid-imager/db/backup";
 import type { DrizzleExecutor } from "@solid-imager/db/types";
 import { eq } from "drizzle-orm";
@@ -37,24 +38,11 @@ const backupService = createBackupService({
 		);
 	},
 	onRestoreComplete: async ({ source, mediaIds, rootPath }) => {
-		if (source.type !== "local" || mediaIds.length === 0) {
-			return;
-		}
-
 		try {
-			const jobRepo = services.getJobRepository();
-			for (const mediaId of mediaIds) {
-				await jobRepo.create({
-					type: "processMedia",
-					mediaSourceId: source.id,
-					payload: {
-						mediaId,
-						sourcePath: rootPath,
-						steps: ["generateThumbnail"],
-						type: "processMedia",
-					},
-				});
-			}
+			await enqueueThumbnailJobsAfterRestore(
+				{ source, mediaIds, rootPath },
+				{ jobRepository: services.getJobRepository() },
+			);
 		} catch (error) {
 			logger.warn(
 				{ err: error },
