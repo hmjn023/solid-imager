@@ -70,7 +70,7 @@ export function Nav() {
 							</li>
 						))}
 					</ul>
-				<div class="ml-auto flex items-center gap-2" id="nav-actions">
+				<div class="flex items-center gap-2" id="nav-actions">
 					<PendingDownloadsIndicator />
 				</div>
 				</div>
