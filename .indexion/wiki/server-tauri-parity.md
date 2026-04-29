@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-26（processMedia orchestration shared 化へ同期）
+最終更新: 2026-04-29（manager route の shared screen/hook 化へ同期）
 
 ## このページの使い方
 
@@ -61,7 +61,7 @@
 
 ページルートの対応関係自体は高いが、route 本体の責務分割、nav action の配置、refresh 挙動、restore/import UX はまだ揃い切っていない。server側のみAPIルート群が存在し、tauriはRust IPCで代替。
 
-厳格基準では、`search.tsx` の infinite query / dedup / scroll restoration / intersection observer は `packages/ui/src/hooks/use-search-page.ts` へ共通化済み。app 側は JSX レイアウト、nav action 配置、refresh 戦略（server: 即時 / tauri: debounce）、`sourceRootPath` 注入など platform 固有差分のみを残す。`manager.tsx` / `config.tsx` / `sources/$mediaSourceId/index.tsx` は route レベルの状態管理と action がまだ大きく、shared route helper へ寄せられる余地が残る。
+厳格基準では、`search.tsx` の infinite query / dedup / scroll restoration / intersection observer は `packages/ui/src/hooks/use-search-page.ts` へ共通化済み。`manager.tsx` も `packages/ui/src/hooks/use-manager-page.ts` と `packages/ui/src/screens/manager-screen.tsx` へ UI / 状態管理を移し、app 側 route は query/API adapter、batch job event transport、media card render prop の注入に縮退した。`config.tsx` / `sources/$mediaSourceId/index.tsx` は route レベルの状態管理と action がまだ大きく、shared route helper へ寄せられる余地が残る。
 
 | server                                                    | tauri                                              | 備考                               |
 | --------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
@@ -90,6 +90,7 @@ hook 本体は `packages/ui/src/hooks` へ寄り、app 側は transport adapter 
 | ファイル名                          | server実装                                        | tauri実装                                            | 差異                                             | 備考                                                            |
 | ----------------------------------- | ------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
 | `use-media-source-events.ts`        | `packages/ui` の shared hook + oRPC SSE transport | `packages/ui` の shared hook + Tauri event transport | transport 実装と event relevance filter が異なる | `onJobProgress` を含む callback I/F は shared hook 側へ統合済み |
+| `use-batch-job-events.ts`           | `/api/events` SSE を購読し shared manager job handlers へ委譲 | Tauri `listen` と core event schema で購読し shared manager job handlers へ委譲 | transport のみ異なる | `manager.tsx` の batch tagging progress/completed/failed 更新は `packages/ui/src/hooks/use-manager-page.ts` 側へ移動 |
 | `use-current-search-persistence.ts` | `packages/ui` 経由で `@solid-imager/core`         | `packages/ui` 経由で `@solid-imager/core`            | 共通化済み                                       | deepEqualはcore/utils/deep-equal                                |
 | `use-search-page.ts`                | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | infinite query / dedup / scroll restore / observer を shared 化 |
 
