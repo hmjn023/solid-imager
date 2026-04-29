@@ -23,9 +23,15 @@ function parseJsonEventPayload<T>(
 	event: MessageEvent,
 ): T | null {
 	try {
-		const result = schema.safeParse(JSON.parse(event.data));
-		return result.success ? result.data : null;
-	} catch {
+		const parsed = JSON.parse(event.data);
+		const result = schema.safeParse(parsed);
+		if (!result.success) {
+			console.error("Failed to validate event payload:", result.error);
+			return null;
+		}
+		return result.data;
+	} catch (e) {
+		console.error("Failed to parse event JSON:", e);
 		return null;
 	}
 }
