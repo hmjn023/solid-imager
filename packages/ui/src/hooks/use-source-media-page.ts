@@ -91,11 +91,17 @@ export type SourceMediaPageActions = {
 	restoreSource: (
 		sourceId: string,
 		data: unknown,
-	) => Promise<{ processed: number; skipped: number }>;
+	) => Promise<{ processed: number; skipped: number; errors: string[] }>;
 	importSourceZip: (
 		sourceId: string,
 		file: File,
-	) => Promise<{ importedCount: number }>;
+	) => Promise<{
+		success: boolean;
+		importedCount: number;
+		skippedCount: number;
+		errors: string[];
+		message: string;
+	}>;
 };
 
 export type SourceMediaPagePresetClient = PresetManagerClient &

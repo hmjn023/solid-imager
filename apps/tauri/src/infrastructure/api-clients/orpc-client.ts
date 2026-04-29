@@ -45,6 +45,18 @@ const binaryFilePayloadSchema = z.object({
 	mimeType: z.string(),
 	data: z.array(z.number().int().min(0).max(255)),
 });
+const restoreSourceResultSchema = z.object({
+	processed: z.number(),
+	skipped: z.number(),
+	errors: z.array(z.string()),
+});
+const importSourceZipResultSchema = z.object({
+	success: z.boolean(),
+	importedCount: z.number(),
+	skippedCount: z.number(),
+	errors: z.array(z.string()),
+	message: z.string(),
+});
 const batchTaggingStartResponseSchema = z.object({
 	success: z.boolean(),
 	message: z.string(),
@@ -114,12 +126,12 @@ export const orpc = {
 		sync: (input: { ids: string[] }) =>
 			invoke("sources.sync", input, syncSourcesResponseSchema),
 		restore: (input: { id: string; data: unknown[] }) =>
-			invoke("sources.restore", input, z.any()),
+			invoke("sources.restore", input, restoreSourceResultSchema),
 		dump: (input: { id: string }) => invoke("sources.dump", input, z.any()),
 		dumpZip: (input: { id: string }) =>
 			invoke("sources.dumpZip", input, binaryFilePayloadSchema),
 		importZip: (input: { id: string; bytes: number[] }) =>
-			invoke("sources.importZip", input, z.any()),
+			invoke("sources.importZip", input, importSourceZipResultSchema),
 	},
 	media: {
 		search: (input: { sourceId?: string | null; params: MediaSearchRequest }) =>

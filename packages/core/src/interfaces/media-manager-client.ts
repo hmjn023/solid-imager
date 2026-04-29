@@ -109,8 +109,20 @@ export type SourcesApiContract = {
 	deleteMediaSource: (id: string) => Promise<MutationSuccess>;
 	syncMediaSources: (ids: string[]) => Promise<SyncSourcesResponse>;
 	fetchSourceDump: (id: string, mode?: "json" | "zip") => Promise<Blob>;
-	restoreSource: (id: string, data: unknown) => Promise<unknown>;
-	importSourceZip: (id: string, file: File) => Promise<unknown>;
+	restoreSource: (
+		id: string,
+		data: unknown,
+	) => Promise<{ processed: number; skipped: number; errors: string[] }>;
+	importSourceZip: (
+		id: string,
+		file: File,
+	) => Promise<{
+		success: boolean;
+		importedCount: number;
+		skippedCount: number;
+		errors: string[];
+		message: string;
+	}>;
 };
 
 export function createMediaApi(contract: MediaApiContract) {

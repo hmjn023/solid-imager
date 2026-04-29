@@ -167,14 +167,8 @@ export function SourceMediaPage() {
 			syncMediaItems,
 			startDownloadJobs,
 			fetchSourceDump,
-			restoreSource: async (sourceId, data) => {
-				const result = await restoreSource(sourceId, data);
-				return result as { processed: number; skipped: number };
-			},
-			importSourceZip: async (sourceId, file) => {
-				const result = await importSourceZip(sourceId, file);
-				return result as { importedCount: number };
-			},
+			restoreSource,
+			importSourceZip,
 		},
 		queryClient,
 		presetClient: PresetClient,
