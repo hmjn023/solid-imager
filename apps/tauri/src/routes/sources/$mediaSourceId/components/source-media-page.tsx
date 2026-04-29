@@ -1,7 +1,10 @@
 import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
 import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
 import { Progress } from "@solid-imager/ui/progress";
-import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
+import {
+	SourceMediaScreen,
+	type SourceMediaScreenProps,
+} from "@solid-imager/ui/screens/source-media-screen";
 import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
@@ -160,14 +163,7 @@ export function SourceMediaPage() {
 		onThumbnailReady: notifyThumbnailReady,
 	});
 
-	const renderActions = (actionProps: {
-		isSyncing: boolean;
-		isSyncDisabled: boolean;
-		onDumpDownload: (mode?: "json" | "zip") => void;
-		onSyncLoadedMedia: () => void;
-		onAddMedia: () => void;
-		onRestore: () => void;
-	}) => (
+	const renderActions: SourceMediaScreenProps["renderActions"] = (actionProps) => (
 		<MediaListActions
 			filterPanel={
 				<SearchControlPanel
@@ -191,11 +187,9 @@ export function SourceMediaPage() {
 		/>
 	);
 
-	const renderJobProgress = (progressProps: {
-		jobProgress: () =>
-			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
-			| null;
-	}) => (
+	const renderJobProgress: NonNullable<SourceMediaScreenProps["renderJobProgress"]> = (
+		progressProps,
+	) => (
 		<Show when={progressProps.jobProgress()}>
 			{(progress) => (
 				<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">

@@ -1,6 +1,9 @@
 import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
 import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
-import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
+import {
+	SourceMediaScreen,
+	type SourceMediaScreenProps,
+} from "@solid-imager/ui/screens/source-media-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
@@ -121,14 +124,7 @@ export function SourceMediaPage() {
 		sortOrder: () => searchState.sortOrder,
 	});
 
-	const renderActions = (_props: {
-		isSyncing: boolean;
-		isSyncDisabled: boolean;
-		onDumpDownload: (mode?: "json" | "zip") => void;
-		onSyncLoadedMedia: () => void;
-		onAddMedia: () => void;
-		onRestore: () => void;
-	}) => (
+	const renderActions: SourceMediaScreenProps["renderActions"] = (_props) => (
 		<MediaListActions
 			filterData={page.filterData()}
 			onDumpDownload={page.handleDumpDownload}
