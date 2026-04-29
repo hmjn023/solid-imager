@@ -1,5 +1,4 @@
 import { Button } from "@solid-imager/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@solid-imager/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -7,11 +6,11 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
-import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
+import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal, For, onCleanup, Show } from "solid-js";
+import { createSignal, onCleanup } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -23,7 +22,11 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
 	loader: async ({ context }) => {
@@ -43,11 +46,13 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 function SearchRoute() {
 	const queryClient = useQueryClient();
-	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
+	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	useCurrentSearchPersistence("all", PresetClient);
 
-	const { searchResultQuery, searchResults, handleSearch, setLoadMoreRef } = useSearchPage({
+	const page = useSearchPage({
 		searchMedia,
 		queryClient,
 		selectedSource: () => searchState.selectedSource,
@@ -86,6 +91,7 @@ function SearchRoute() {
 	const allIps = createQuery(() => allIpsQueryOptions());
 	const allCharacters = createQuery(() => allCharactersQueryOptions());
 	const allAuthors = createQuery(() => allAuthorsQueryOptions());
+
 	const getSourceRootPath = (mediaSourceId: string) => {
 		const source = sources.data?.find((item) => item.id === mediaSourceId);
 		if (source?.type !== "local") {
@@ -102,9 +108,8 @@ function SearchRoute() {
 		}
 	});
 
-	const panel = (
-		<SearchControlPanel
-			context="global"
+	return (
+		<SearchScreen
 			filterData={{
 				tags: tags.data,
 				projects: allProjects.data,
@@ -112,69 +117,40 @@ function SearchRoute() {
 				characters: allCharacters.data,
 				authors: allAuthors.data,
 			}}
-			onSearch={handleSearch}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
+			page={page}
 			presetClient={PresetClient}
+			renderMediaItem={(media) => (
+				<MediaGridItem
+					media={media}
+					sourceRootPath={getSourceRootPath(media.mediaSourceId)}
+				/>
+			)}
+			renderNavActions={(panel) => (
+				<div class="mb-8 flex items-center justify-between">
+					<div>
+						<h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
+						<p class="text-gray-600">
+							タグやファイル名でメディアを検索できます
+						</p>
+					</div>
+					<div class="md:hidden">
+						<Dialog>
+							<DialogTrigger as={Button} variant="outline">
+								Filters
+							</DialogTrigger>
+							<DialogContent class="max-h-[80vh] overflow-y-auto">
+								<DialogHeader>
+									<DialogTitle>検索フィルター</DialogTitle>
+								</DialogHeader>
+								<div class="space-y-4">{panel}</div>
+							</DialogContent>
+						</Dialog>
+					</div>
+				</div>
+			)}
 			selectedSource={searchState.selectedSource}
 			sources={sources.data}
 		/>
-	);
-
-	return (
-		<main class="container mx-auto p-4">
-			<div class="mb-8 flex items-center justify-between">
-				<div>
-					<h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
-					<p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
-				</div>
-				<div class="md:hidden">
-					<Dialog>
-						<DialogTrigger as={Button} variant="outline">
-							Filters
-						</DialogTrigger>
-						<DialogContent class="max-h-[80vh] overflow-y-auto">
-							<DialogHeader>
-								<DialogTitle>検索フィルター</DialogTitle>
-							</DialogHeader>
-							<div class="space-y-4">{panel}</div>
-						</DialogContent>
-					</Dialog>
-				</div>
-			</div>
-
-			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
-				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
-					<CardHeader>
-						<CardTitle>検索フィルター</CardTitle>
-					</CardHeader>
-					<CardContent class="space-y-4">{panel}</CardContent>
-				</Card>
-
-				<div class="space-y-4">
-					<div class="mb-4 flex items-center justify-between">
-						<p class="text-gray-600 text-sm">
-							{searchResultQuery.data?.pages[0]?.total ?? 0} 件の結果
-						</p>
-					</div>
-
-					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-						<For each={searchResults()}>
-							{(media) => (
-								<MediaGridItem
-									media={media}
-									sourceRootPath={getSourceRootPath(media.mediaSourceId)}
-								/>
-							)}
-						</For>
-					</div>
-
-					<Show when={searchResults().length === 0 && !searchResultQuery.isLoading}>
-						<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
-					</Show>
-
-					<div ref={setLoadMoreRef} />
-				</div>
-			</div>
-		</main>
 	);
 }

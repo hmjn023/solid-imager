@@ -17,7 +17,7 @@ type MediaGridProps = {
 	isPending: boolean;
 	loadMoreRef: (element: HTMLDivElement) => void;
 	mediaPages: Accessor<MediaSearchResponse[] | undefined>;
-	mediaSourceId: Accessor<string>;
+	mediaSourceId: Accessor<string | undefined>;
 	onCopyMove: (mediaId: string, mode: "copy" | "move") => void;
 	onDelete: (mediaId: string) => void;
 	onSyncSingleMedia: (mediaId: string) => void;
@@ -50,7 +50,7 @@ export function MediaGrid(props: MediaGridProps) {
 										<a
 											class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
 											data-media-id={item.id}
-											href={`/sources/${props.mediaSourceId()}/${item.id}`}
+											href={`/sources/${props.mediaSourceId() ?? ""}/${item.id}`}
 											onContextMenu={() => props.setContextMenuMediaId(item.id)}
 										>
 											<Show
@@ -67,7 +67,7 @@ export function MediaGrid(props: MediaGridProps) {
 													height={item.height}
 													loading="lazy"
 													mediaId={item.id}
-													mediaSourceId={props.mediaSourceId()}
+													mediaSourceId={props.mediaSourceId() ?? ""}
 													modifiedAt={item.modifiedAt}
 													width={item.width}
 												/>

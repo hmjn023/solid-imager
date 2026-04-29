@@ -55,7 +55,9 @@ describe("MediaService Optimization", () => {
 		const directoryPath = "/media";
 		const existingFiles = ["existing.png"];
 		const newFiles = ["new1.png", "new2.png"];
-		const allFiles = [...existingFiles, ...newFiles].map((f) => `${directoryPath}/${f}`);
+		const allFiles = [...existingFiles, ...newFiles].map(
+			(f) => `${directoryPath}/${f}`,
+		);
 
 		mockStorageService.scanDirectory.mockResolvedValue(allFiles);
 		mockSourceRepository.findById.mockResolvedValue({
@@ -89,10 +91,14 @@ describe("MediaService Optimization", () => {
 
 		// Verify
 		// 1. scanDirectory was called
-		expect(mockStorageService.scanDirectory).toHaveBeenCalledWith(directoryPath);
+		expect(mockStorageService.scanDirectory).toHaveBeenCalledWith(
+			directoryPath,
+		);
 
 		// 2. findAllPathsBySourceId was called (Batch lookup)
-		expect(mockMediaRepository.findAllPathsBySourceId).toHaveBeenCalledWith(sourceId);
+		expect(mockMediaRepository.findAllPathsBySourceId).toHaveBeenCalledWith(
+			sourceId,
+		);
 
 		// 3. getFileMetadata was called ONLY for new files
 		expect(mockStorageService.getFileMetadata).toHaveBeenCalledTimes(2);

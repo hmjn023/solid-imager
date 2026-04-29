@@ -3,7 +3,11 @@ import {
 	ResourceNotFoundError,
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
-import type { Ip, NewIp, UpdateIp } from "@solid-imager/core/domain/ips/schemas";
+import type {
+	Ip,
+	NewIp,
+	UpdateIp,
+} from "@solid-imager/core/domain/ips/schemas";
 import { ipSchema } from "@solid-imager/core/domain/ips/schemas";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -22,7 +26,12 @@ type CreateIpRepositoryOptions = {
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "23505"
+	);
 }
 
 function mapToIp(row: typeof ips.$inferSelect): Ip {
@@ -61,17 +70,27 @@ export function createIpRepository(
 	return {
 		async findAll(): Promise<Ip[]> {
 			const query = getExecutor().select().from(ips);
-			const rows = options.orderByName ? await query.orderBy(asc(ips.name)) : await query;
+			const rows = options.orderByName
+				? await query.orderBy(asc(ips.name))
+				: await query;
 			return rows.map(mapToIp);
 		},
 
 		async findById(id: string, tx?: unknown): Promise<Ip | null> {
-			const rows = await getExecutor(tx).select().from(ips).where(eq(ips.id, id)).limit(1);
+			const rows = await getExecutor(tx)
+				.select()
+				.from(ips)
+				.where(eq(ips.id, id))
+				.limit(1);
 			return rows[0] ? mapToIp(rows[0]) : null;
 		},
 
 		async findByName(name: string, tx?: unknown): Promise<Ip | null> {
-			const rows = await getExecutor(tx).select().from(ips).where(eq(ips.name, name)).limit(1);
+			const rows = await getExecutor(tx)
+				.select()
+				.from(ips)
+				.where(eq(ips.name, name))
+				.limit(1);
 			return rows[0] ? mapToIp(rows[0]) : null;
 		},
 
@@ -79,8 +98,13 @@ export function createIpRepository(
 			if (names.length === 0) {
 				return [];
 			}
-			const query = getExecutor(tx).select().from(ips).where(inArray(ips.name, names));
-			const rows = options.orderByName ? await query.orderBy(asc(ips.name)) : await query;
+			const query = getExecutor(tx)
+				.select()
+				.from(ips)
+				.where(inArray(ips.name, names));
+			const rows = options.orderByName
+				? await query.orderBy(asc(ips.name))
+				: await query;
 			return rows.map(mapToIp);
 		},
 
@@ -109,7 +133,9 @@ export function createIpRepository(
 					.update(ips)
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
-						...(input.description !== undefined ? { description: input.description ?? null } : {}),
+						...(input.description !== undefined
+							? { description: input.description ?? null }
+							: {}),
 						...(input.source !== undefined ? { source: input.source } : {}),
 						updatedAt: new Date(),
 					})
@@ -132,7 +158,10 @@ export function createIpRepository(
 		},
 
 		async delete(id: string, tx?: unknown): Promise<void> {
-			const rows = await getExecutor(tx).delete(ips).where(eq(ips.id, id)).returning();
+			const rows = await getExecutor(tx)
+				.delete(ips)
+				.where(eq(ips.id, id))
+				.returning();
 			if (!rows[0]) {
 				throw new ResourceNotFoundError("IP", id);
 			}
@@ -151,11 +180,16 @@ export function createIpRepository(
 				.from(ips)
 				.innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
 				.where(eq(mediaIps.mediaId, mediaId));
-			const rows = options.orderByName ? await query.orderBy(asc(ips.name)) : await query;
+			const rows = options.orderByName
+				? await query.orderBy(asc(ips.name))
+				: await query;
 			return rows.map(mapToIp);
 		},
 
-		async getMediaIps(mediaId: string, tx?: unknown): Promise<IpWithAssociation[]> {
+		async getMediaIps(
+			mediaId: string,
+			tx?: unknown,
+		): Promise<IpWithAssociation[]> {
 			const query = getExecutor(tx)
 				.select({
 					id: ips.id,
@@ -170,7 +204,9 @@ export function createIpRepository(
 				.from(ips)
 				.innerJoin(mediaIps, eq(ips.id, mediaIps.ipId))
 				.where(eq(mediaIps.mediaId, mediaId));
-			const rows = options.orderByName ? await query.orderBy(asc(ips.name)) : await query;
+			const rows = options.orderByName
+				? await query.orderBy(asc(ips.name))
+				: await query;
 
 			return rows.map((row) => ({
 				...mapToIp(row),
@@ -200,7 +236,11 @@ export function createIpRepository(
 				});
 		},
 
-		async removeMedia(mediaId: string, ipId: string, tx?: unknown): Promise<void> {
+		async removeMedia(
+			mediaId: string,
+			ipId: string,
+			tx?: unknown,
+		): Promise<void> {
 			const rows = await getExecutor(tx)
 				.delete(mediaIps)
 				.where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.ipId, ipId)))

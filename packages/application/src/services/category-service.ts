@@ -1,4 +1,7 @@
-import type { NewCategory, UpdateCategory } from "@solid-imager/core/domain/categories/schemas";
+import type {
+	NewCategory,
+	UpdateCategory,
+} from "@solid-imager/core/domain/categories/schemas";
 import type {
 	Category,
 	CategoryRepository,

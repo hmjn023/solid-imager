@@ -1,4 +1,7 @@
-import { ResourceNotFoundError, UnexpectedError } from "@solid-imager/core/domain/errors";
+import {
+	ResourceNotFoundError,
+	UnexpectedError,
+} from "@solid-imager/core/domain/errors";
 import type {
 	AddMediaRequest,
 	Author,
@@ -36,7 +39,10 @@ import {
 	tags,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
-import { executeMediaSearch, executeMediaSearchInDirectory } from "./media-search";
+import {
+	executeMediaSearch,
+	executeMediaSearchInDirectory,
+} from "./media-search";
 
 export type MediaRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 
@@ -120,7 +126,9 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
 			source: item.source,
 			confidence: item.confidence,
 		})),
-		generationInfo: row.generationInfo ? mapToMediaGenerationInfo(row.generationInfo) : null,
+		generationInfo: row.generationInfo
+			? mapToMediaGenerationInfo(row.generationInfo)
+			: null,
 		authors: row.authors.map((item) => item.author),
 		urls: row.urls.map(mapToMediaUrl),
 		characters: row.characters.map((item) => ({
@@ -140,7 +148,10 @@ function escapeLikePattern(value: string): string {
 	return value.replace(/[%_\\]/g, (char) => `\\${char}`);
 }
 
-function getExecutor(getExecutorFn: MediaRepositoryExecutorProvider, tx?: unknown) {
+function getExecutor(
+	getExecutorFn: MediaRepositoryExecutorProvider,
+	tx?: unknown,
+) {
 	return getExecutorFn(tx);
 }
 
@@ -192,20 +203,35 @@ export function createMediaRepository(
 					.limit(1);
 				return rows[0] ? mapToMedia(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(`Failed to select media by ID: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to select media by ID: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
-		async findByPath(sourceId: string, filePath: string, tx?: unknown): Promise<Media | null> {
+		async findByPath(
+			sourceId: string,
+			filePath: string,
+			tx?: unknown,
+		): Promise<Media | null> {
 			try {
 				const rows = await getExecutor(getExecutorFn, tx)
 					.select()
 					.from(medias)
-					.where(and(eq(medias.mediaSourceId, sourceId), eq(medias.filePath, filePath)))
+					.where(
+						and(
+							eq(medias.mediaSourceId, sourceId),
+							eq(medias.filePath, filePath),
+						),
+					)
 					.limit(1);
 				return rows[0] ? mapToMedia(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError("Failed to select media by source ID and file path", error);
+				throw new UnexpectedError(
+					"Failed to select media by source ID and file path",
+					error,
+				);
 			}
 		},
 
@@ -258,7 +284,11 @@ export function createMediaRepository(
 			}
 		},
 
-		async update(mediaId: string, updates: UpdateMediaRequest, tx?: unknown): Promise<Media> {
+		async update(
+			mediaId: string,
+			updates: UpdateMediaRequest,
+			tx?: unknown,
+		): Promise<Media> {
 			try {
 				const dbUpdates: Partial<NewMedia> = {};
 				if (updates.filePath !== undefined) {
@@ -301,7 +331,10 @@ export function createMediaRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(`Failed to update media with ID: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to update media with ID: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
@@ -318,7 +351,10 @@ export function createMediaRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(`Failed to delete media with ID: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to delete media with ID: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
@@ -335,7 +371,10 @@ export function createMediaRepository(
 			});
 		},
 
-		globalSearch(params: MediaSearchRequest, tx?: unknown): Promise<MediaSearchResponse> {
+		globalSearch(
+			params: MediaSearchRequest,
+			tx?: unknown,
+		): Promise<MediaSearchResponse> {
 			return executeMediaSearch({
 				client: getExecutor(getExecutorFn, tx),
 				params,
@@ -343,11 +382,20 @@ export function createMediaRepository(
 			});
 		},
 
-		async getDetails(mediaId: string, tx?: unknown): Promise<MediaDetails | null> {
+		async getDetails(
+			mediaId: string,
+			tx?: unknown,
+		): Promise<MediaDetails | null> {
 			try {
-				return await selectMediaDetails(getExecutor(getExecutorFn, tx), mediaId);
+				return await selectMediaDetails(
+					getExecutor(getExecutorFn, tx),
+					mediaId,
+				);
 			} catch (error) {
-				throw new UnexpectedError(`Failed to get media details for mediaId: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to get media details for mediaId: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
@@ -373,11 +421,17 @@ export function createMediaRepository(
 					.orderBy(asc(tags.name));
 				return rows.map((row) => tagSchema.parse(row));
 			} catch (error) {
-				throw new UnexpectedError(`Failed to retrieve tags for media ID: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to retrieve tags for media ID: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
-		async getGenerationInfo(mediaId: string, tx?: unknown): Promise<MediaGenerationInfo | null> {
+		async getGenerationInfo(
+			mediaId: string,
+			tx?: unknown,
+		): Promise<MediaGenerationInfo | null> {
 			try {
 				const rows = await getExecutor(getExecutorFn, tx)
 					.select()
@@ -440,7 +494,10 @@ export function createMediaRepository(
 					.orderBy(asc(authors.name));
 				return rows.map((row) => authorSchema.parse(row));
 			} catch (error) {
-				throw new UnexpectedError(`Failed to retrieve authors for media ID: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to retrieve authors for media ID: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
@@ -452,11 +509,18 @@ export function createMediaRepository(
 					.where(eq(mediaUrls.mediaId, mediaId));
 				return rows.map(mapToMediaUrl);
 			} catch (error) {
-				throw new UnexpectedError(`Failed to select media URLs for mediaId: ${mediaId}`, error);
+				throw new UnexpectedError(
+					`Failed to select media URLs for mediaId: ${mediaId}`,
+					error,
+				);
 			}
 		},
 
-		async addUrls(mediaId: string, urls: string[], tx?: unknown): Promise<MediaUrl[]> {
+		async addUrls(
+			mediaId: string,
+			urls: string[],
+			tx?: unknown,
+		): Promise<MediaUrl[]> {
 			if (urls.length === 0) {
 				return [];
 			}
@@ -506,7 +570,10 @@ export function createMediaRepository(
 					.offset(offset);
 				return rows.map(mapToMedia);
 			} catch (error) {
-				throw new UnexpectedError(`Failed to select medias by source ID: ${mediaSourceId}`, error);
+				throw new UnexpectedError(
+					`Failed to select medias by source ID: ${mediaSourceId}`,
+					error,
+				);
 			}
 		},
 
@@ -536,10 +603,21 @@ export function createMediaRepository(
 						filePath: medias.filePath,
 					})
 					.from(medias)
-					.leftJoin(mediaGenerationInfo, eq(medias.id, mediaGenerationInfo.mediaId))
-					.where(and(eq(medias.status, "active"), isNull(mediaGenerationInfo.mediaId)));
+					.leftJoin(
+						mediaGenerationInfo,
+						eq(medias.id, mediaGenerationInfo.mediaId),
+					)
+					.where(
+						and(
+							eq(medias.status, "active"),
+							isNull(mediaGenerationInfo.mediaId),
+						),
+					);
 			} catch (error) {
-				throw new UnexpectedError("Failed to select media IDs with missing generation info", error);
+				throw new UnexpectedError(
+					"Failed to select media IDs with missing generation info",
+					error,
+				);
 			}
 		},
 

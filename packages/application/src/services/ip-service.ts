@@ -1,4 +1,8 @@
-import type { Ip, NewIp, UpdateIp } from "@solid-imager/core/domain/ips/schemas";
+import type {
+	Ip,
+	NewIp,
+	UpdateIp,
+} from "@solid-imager/core/domain/ips/schemas";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 
 export type IpService = ReturnType<typeof createIpService>;

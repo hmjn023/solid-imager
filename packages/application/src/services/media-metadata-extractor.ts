@@ -24,7 +24,13 @@ export async function extractAndPersistMediaMetadata(
 	deps: MediaMetadataExtractorDeps,
 	tx?: Transaction,
 ): Promise<MediaGenerationInfo | null> {
-	const { mediaRepository, tagRepository, imageProcessor, pathAdapter, logger } = deps;
+	const {
+		mediaRepository,
+		tagRepository,
+		imageProcessor,
+		pathAdapter,
+		logger,
+	} = deps;
 	const fullPath = pathAdapter.join(sourcePath, media.filePath);
 
 	try {

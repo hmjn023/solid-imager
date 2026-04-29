@@ -143,7 +143,10 @@ function buildValueCondition(
 	}
 }
 
-function buildKeywordCondition(client: DrizzleExecutor, node: SearchCriterion): SQL | undefined {
+function buildKeywordCondition(
+	client: DrizzleExecutor,
+	node: SearchCriterion,
+): SQL | undefined {
 	const pattern = `%${escapeLikePattern(String(node.value))}%`;
 	const condition = or(
 		like(medias.fileName, pattern),
@@ -184,7 +187,10 @@ function buildRelationQuery(
 					.from(mediaTags)
 					.innerJoin(tags, eq(mediaTags.tagId, tags.id))
 					.where(
-						and(eq(mediaTags.mediaId, medias.id), buildValueCondition(tags.name, operator, value)),
+						and(
+							eq(mediaTags.mediaId, medias.id),
+							buildValueCondition(tags.name, operator, value),
+						),
 					),
 			);
 			break;
@@ -209,7 +215,10 @@ function buildRelationQuery(
 					.from(mediaIps)
 					.innerJoin(ips, eq(mediaIps.ipId, ips.id))
 					.where(
-						and(eq(mediaIps.mediaId, medias.id), buildValueCondition(ips.name, operator, value)),
+						and(
+							eq(mediaIps.mediaId, medias.id),
+							buildValueCondition(ips.name, operator, value),
+						),
 					),
 			);
 			break;
@@ -251,7 +260,10 @@ function buildRelationQuery(
 	return negate ? not(subquery) : subquery;
 }
 
-function buildRelationCondition(client: DrizzleExecutor, node: SearchCriterion): SQL | undefined {
+function buildRelationCondition(
+	client: DrizzleExecutor,
+	node: SearchCriterion,
+): SQL | undefined {
 	return buildRelationQuery(
 		client,
 		node.target as "tag" | "project" | "ip" | "character" | "author",
@@ -297,7 +309,10 @@ function buildDetailsQuery(
 			.select({ one: sql`1` })
 			.from(mediaDetails)
 			.where(
-				and(eq(mediaDetails.mediaId, medias.id), buildValueCondition(column, operator, value)),
+				and(
+					eq(mediaDetails.mediaId, medias.id),
+					buildValueCondition(column, operator, value),
+				),
 			),
 	);
 	if (!condition) {
@@ -346,7 +361,10 @@ function buildStandardQuery(
 	return negate ? not(condition) : condition;
 }
 
-function buildCriterionQuery(client: DrizzleExecutor, node: SearchCriterion): SQL | undefined {
+function buildCriterionQuery(
+	client: DrizzleExecutor,
+	node: SearchCriterion,
+): SQL | undefined {
 	if (node.target === "keyword") {
 		return buildKeywordCondition(client, node);
 	}
@@ -357,12 +375,28 @@ function buildCriterionQuery(client: DrizzleExecutor, node: SearchCriterion): SQ
 		return buildFolderCondition(node);
 	}
 	if (["rating", "favorite", "viewCount"].includes(node.target)) {
-		return buildDetailsQuery(client, node.target, node.operator, node.value, node.negate ?? false);
+		return buildDetailsQuery(
+			client,
+			node.target,
+			node.operator,
+			node.value,
+			node.negate ?? false,
+		);
 	}
 	if (node.target === "aiGenerated") {
-		return buildGenerationInfoQuery(client, node.operator, node.value, node.negate ?? false);
+		return buildGenerationInfoQuery(
+			client,
+			node.operator,
+			node.value,
+			node.negate ?? false,
+		);
 	}
-	return buildStandardQuery(node.target, node.operator, node.value, node.negate ?? false);
+	return buildStandardQuery(
+		node.target,
+		node.operator,
+		node.value,
+		node.negate ?? false,
+	);
 }
 
 function buildSearchQuery(
@@ -382,7 +416,8 @@ function buildSearchQuery(
 		if (conditions.length === 0) {
 			return;
 		}
-		const combined = node.operator === "and" ? and(...conditions) : or(...conditions);
+		const combined =
+			node.operator === "and" ? and(...conditions) : or(...conditions);
 		if (!combined) {
 			return;
 		}
@@ -476,7 +511,10 @@ export async function executeMediaSearchInDirectory({
 		const prefixPattern = `${escapeLikePattern(normalizedPath)}/`;
 		const conditions: (SQL | undefined)[] = [
 			eq(medias.mediaSourceId, mediaSourceId),
-			or(eq(medias.filePath, normalizedPath), like(medias.filePath, `${prefixPattern}%`)),
+			or(
+				eq(medias.filePath, normalizedPath),
+				like(medias.filePath, `${prefixPattern}%`),
+			),
 		];
 
 		if (params.query) {

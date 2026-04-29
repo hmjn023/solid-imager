@@ -3,7 +3,10 @@ import {
 	type NewCategory,
 	type UpdateCategory,
 } from "@solid-imager/core/domain/categories/schemas";
-import { ResourceNotFoundError, UnexpectedError } from "@solid-imager/core/domain/errors";
+import {
+	ResourceNotFoundError,
+	UnexpectedError,
+} from "@solid-imager/core/domain/errors";
 import type {
 	Category,
 	CategoryRepository,
@@ -14,7 +17,9 @@ import type { DrizzleExecutor } from "../types";
 
 type DbCategory = typeof categories.$inferSelect;
 
-export type CategoryRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
+export type CategoryRepositoryExecutorProvider = (
+	tx?: unknown,
+) => DrizzleExecutor;
 
 type CreateCategoryRepositoryOptions = {
 	orderByName?: boolean;
@@ -41,7 +46,9 @@ export function createCategoryRepository(
 		async findAll(): Promise<Category[]> {
 			try {
 				const query = getExecutor().select().from(categories);
-				const rows = await (options.orderByName ? query.orderBy(asc(categories.name)) : query);
+				const rows = await (options.orderByName
+					? query.orderBy(asc(categories.name))
+					: query);
 				return rows.flatMap((row) => {
 					const mapped = mapToCategory(row);
 					return mapped ? [mapped] : [];
@@ -60,7 +67,10 @@ export function createCategoryRepository(
 					.limit(1);
 				return rows[0] ? mapToCategory(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(`Failed to select category by ID: ${id}`, error);
+				throw new UnexpectedError(
+					`Failed to select category by ID: ${id}`,
+					error,
+				);
 			}
 		},
 
@@ -85,7 +95,11 @@ export function createCategoryRepository(
 			}
 		},
 
-		async update(id: string, category: UpdateCategory, tx?: unknown): Promise<Category> {
+		async update(
+			id: string,
+			category: UpdateCategory,
+			tx?: unknown,
+		): Promise<Category> {
 			try {
 				const rows = await getExecutor(tx)
 					.update(categories)
@@ -102,10 +116,16 @@ export function createCategoryRepository(
 				}
 				return mapped;
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError || error instanceof UnexpectedError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof UnexpectedError
+				) {
 					throw error;
 				}
-				throw new UnexpectedError(`Failed to update category with ID: ${id}`, error);
+				throw new UnexpectedError(
+					`Failed to update category with ID: ${id}`,
+					error,
+				);
 			}
 		},
 
@@ -123,7 +143,10 @@ export function createCategoryRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(`Failed to delete category with ID: ${id}`, error);
+				throw new UnexpectedError(
+					`Failed to delete category with ID: ${id}`,
+					error,
+				);
 			}
 		},
 	};

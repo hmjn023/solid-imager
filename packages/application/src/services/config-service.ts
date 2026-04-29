@@ -1,4 +1,7 @@
-import { type AppConfig, AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
+import {
+	type AppConfig,
+	AppConfigSchema,
+} from "@solid-imager/core/domain/config/config-schema";
 import { deepMerge } from "../utils/config-merge";
 
 export type ConfigListener = (config: AppConfig) => void;

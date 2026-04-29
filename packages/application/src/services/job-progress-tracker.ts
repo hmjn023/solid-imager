@@ -4,8 +4,15 @@ type SourceCounter = {
 };
 
 export type SourceJobProgressEvents = {
-	jobProgress(input: { sourceId: string; processed: number; total: number }): Promise<void> | void;
-	allJobsCompleted(input: { sourceId: string; processed: number }): Promise<void> | void;
+	jobProgress(input: {
+		sourceId: string;
+		processed: number;
+		total: number;
+	}): Promise<void> | void;
+	allJobsCompleted(input: {
+		sourceId: string;
+		processed: number;
+	}): Promise<void> | void;
 };
 
 export class SourceJobProgressTracker {

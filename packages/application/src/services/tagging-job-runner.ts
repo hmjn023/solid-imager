@@ -7,7 +7,10 @@ export type TaggingJobTarget = {
 };
 
 export type AutoTaggingRunnerDeps = {
-	jobRepository: Pick<JobRepositoryPort, "incrementProgress" | "findById" | "update">;
+	jobRepository: Pick<
+		JobRepositoryPort,
+		"incrementProgress" | "findById" | "update"
+	>;
 	executeAutoTagging(input: {
 		mediaId: string;
 		mediaSourceId: string;
@@ -43,7 +46,10 @@ function getAutoTaggingPayload(payload: unknown): {
 	) {
 		return {
 			mediaId: payload.mediaId,
-			force: "force" in payload && typeof payload.force === "boolean" ? payload.force : undefined,
+			force:
+				"force" in payload && typeof payload.force === "boolean"
+					? payload.force
+					: undefined,
 		};
 	}
 
@@ -81,7 +87,10 @@ function getBulkTaggingDispatchPayload(payload: unknown): {
 	}
 
 	return {
-		force: "force" in payload && typeof payload.force === "boolean" ? payload.force : undefined,
+		force:
+			"force" in payload && typeof payload.force === "boolean"
+				? payload.force
+				: undefined,
 		batchSize:
 			"batchSize" in payload && typeof payload.batchSize === "number"
 				? payload.batchSize

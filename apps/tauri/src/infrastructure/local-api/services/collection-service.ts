@@ -29,7 +29,11 @@ export const TauriCollectionService = {
 		await collectionService.deleteCollection(id);
 	},
 
-	async addToMedia(collectionId: string, mediaId: string, displayOrder?: number): Promise<void> {
+	async addToMedia(
+		collectionId: string,
+		mediaId: string,
+		displayOrder?: number,
+	): Promise<void> {
 		await collectionService.addMediaToCollection(collectionId, {
 			mediaId,
 			displayOrder,
