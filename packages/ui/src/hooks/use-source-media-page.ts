@@ -102,7 +102,7 @@ export type SourceMediaPagePresetClient = PresetManagerClient &
 	PresetClientLike;
 
 export type UseSourceMediaPageOptions = {
-	mediaSourceId: () => string;
+	mediaSourceId: () => string | undefined;
 	queries: SourceMediaPageQueries;
 	actions: SourceMediaPageActions;
 	queryClient: QueryClient;
@@ -116,7 +116,7 @@ export type UseSourceMediaPageOptions = {
 };
 
 export type UseSourceMediaPageResult = {
-	mediaSourceId: () => string;
+	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
 	filterData: SourceMediaPageFilterData;

@@ -49,6 +49,7 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "@solid-imager/ui/context-menu";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { createWindowVirtualizer } from "@tanstack/solid-virtual";
 import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 
@@ -432,7 +433,14 @@ export function SourceMediaPage() {
 	) => (
 		<MediaListActions
 			filterPanel={
-				<div>Filter panel placeholder</div>
+				<SearchControlPanel
+					class="w-full"
+					context="source"
+					filterData={page.filterData}
+					onSearch={page.handleSearch}
+					presetClient={page.presetClient}
+					usePopover={false}
+				/>
 			}
 			isSyncDisabled={actionProps.isSyncDisabled}
 			isSyncing={actionProps.isSyncing}

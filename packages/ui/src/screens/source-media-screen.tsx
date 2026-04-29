@@ -28,7 +28,7 @@ export type SourceMediaScreenProps = {
 			| import("@solid-imager/core/domain/media/schemas").MediaSearchResponse[]
 			| undefined;
 		mediaResults: () => import("@solid-imager/core/domain/media/schemas").MediaSearchResponse["media"];
-		mediaSourceId: () => string;
+		mediaSourceId: () => string | undefined;
 		isPending: boolean;
 		isError: boolean;
 		isFetchingNextPage: boolean;

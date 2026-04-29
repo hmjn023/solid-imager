@@ -113,7 +113,7 @@ export function SourceMediaPage() {
 			syncMediaItems,
 			startDownloadJobs,
 			fetchSourceDump,
-			restoreSource: (sourceId, data) => restoreSource(sourceId, data as any),
+			restoreSource: (sourceId, data) => restoreSource(sourceId, data),
 			importSourceZip: (sourceId, file) => importSourceZip(sourceId, file),
 		},
 		queryClient,
