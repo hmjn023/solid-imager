@@ -70,9 +70,9 @@ export function Nav() {
 							</li>
 						))}
 					</ul>
-					<div class="ml-4">
-						<PendingDownloadsIndicator />
-					</div>
+				<div class="flex items-center gap-2" id="nav-actions">
+					<PendingDownloadsIndicator />
+				</div>
 				</div>
 			</nav>
 			<div class="h-[60px]" />
