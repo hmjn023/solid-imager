@@ -1,12 +1,10 @@
 import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
 import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
-import {
-	SourceMediaScreen,
-	type SourceMediaScreenProps,
-} from "@solid-imager/ui/screens/source-media-screen";
+import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -35,7 +33,6 @@ import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
-import { MediaGrid } from "./media-grid";
 import { MediaListActions } from "./media-list-actions";
 
 function createServerTransport(
@@ -124,29 +121,17 @@ export function SourceMediaPage() {
 		sortOrder: () => searchState.sortOrder,
 	});
 
-	const renderGrid: SourceMediaScreenProps["renderGrid"] = (gridProps) => (
-		<MediaGrid
-			contextMenuMediaId={gridProps.contextMenuMediaId}
-			isError={gridProps.isError}
-			isFetchingNextPage={gridProps.isFetchingNextPage}
-			isPending={gridProps.isPending}
-			loadMoreRef={gridProps.setLoadMoreRef}
-			mediaPages={gridProps.mediaPages}
-			mediaSourceId={gridProps.mediaSourceId}
-			onCopyMove={gridProps.onCopyMove}
-			onDelete={gridProps.onDelete}
-			onSyncSingleMedia={gridProps.onSyncSingleMedia}
-			queryError={gridProps.queryError}
-			setContextMenuMediaId={gridProps.setContextMenuMediaId}
-		/>
-	);
-
-	const renderActions: SourceMediaScreenProps["renderActions"] = (
-		actionProps,
-	) => (
+	const renderActions = (_props: {
+		isSyncing: boolean;
+		isSyncDisabled: boolean;
+		onDumpDownload: (mode?: "json" | "zip") => void;
+		onSyncLoadedMedia: () => void;
+		onAddMedia: () => void;
+		onRestore: () => void;
+	}) => (
 		<MediaListActions
 			filterData={page.filterData()}
-			onDumpDownload={actionProps.onDumpDownload}
+			onDumpDownload={page.handleDumpDownload}
 			onSearch={page.handleSearch}
 		/>
 	);
@@ -155,7 +140,9 @@ export function SourceMediaPage() {
 		<SourceMediaScreen
 			page={page}
 			renderActions={renderActions}
-			renderGrid={renderGrid}
+			renderItem={(media, { onContextMenu }) => (
+				<MediaGridItem media={media} onContextMenu={onContextMenu} />
+			)}
 			renderMoveCopyDialog={() => (
 				<MoveCopyMediaDialog
 					currentSourceId={page.mediaSourceId() || ""}
@@ -179,6 +166,7 @@ export function SourceMediaPage() {
 					pastedUrl={page.pastedUrl()}
 				/>
 			)}
+			showOpenInNewTab
 		/>
 	);
 }
