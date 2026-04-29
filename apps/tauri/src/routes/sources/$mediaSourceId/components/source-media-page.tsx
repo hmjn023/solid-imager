@@ -28,7 +28,6 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
 } from "@solid-imager/ui/dialog";
 import { Progress } from "@solid-imager/ui/progress";
 import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
@@ -82,6 +81,7 @@ import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
+import { MediaListActions } from "./media-list-actions";
 
 const MEDIA_ITEMS_PER_PAGE = 100;
 const DEBOUNCE_DELAY_MS = 1000;
@@ -820,49 +820,18 @@ export function SourceMediaPage() {
 			onDragOver={handleDragOver}
 			onDrop={handleDrop}
 		>
-			<div class="mb-8 flex items-center justify-between">
-				<div>
-					<h1 class="mb-2 font-bold text-3xl">
-						{source()?.name ?? "Media Source"}
-					</h1>
-					<p class="text-gray-600">{source()?.description}</p>
-				</div>
-				<div class="flex flex-wrap gap-2">
-					<Button onClick={() => fileInputRef?.click()}>Add Media</Button>
-					<Button onClick={handleDumpDownload} variant="outline">
-						Dump JSON
-					</Button>
-					<Button onClick={handleZipDumpDownload} variant="outline">
-						Dump ZIP
-					</Button>
-					<Button
-						onClick={() => document.getElementById("restore-input")?.click()}
-						variant="outline"
-					>
-						Restore
-					</Button>
-					<Button
-						disabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
-						onClick={handleSyncLoadedMedia}
-						variant="outline"
-					>
-						{isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
-					</Button>
-					<div class="md:hidden">
-						<Dialog>
-							<DialogTrigger as={Button} variant="outline">
-								Filters
-							</DialogTrigger>
-							<DialogContent class="max-h-[80vh] overflow-y-auto">
-								<DialogHeader>
-									<DialogTitle>検索フィルター</DialogTitle>
-								</DialogHeader>
-								<div class="space-y-4">{panel}</div>
-							</DialogContent>
-						</Dialog>
-					</div>
-				</div>
-			</div>
+			<MediaListActions
+				filterPanel={panel}
+				isSyncDisabled={isSyncingMedia() || !mediaQuery.data?.pages.length}
+				isSyncing={isSyncingMedia()}
+				onAddMedia={() => fileInputRef?.click()}
+				onDumpDownload={handleDumpDownload}
+				onRestore={() => document.getElementById("restore-input")?.click()}
+				onSyncLoadedMedia={handleSyncLoadedMedia}
+				onZipDumpDownload={handleZipDumpDownload}
+				sourceDescription={source()?.description}
+				sourceName={source()?.name}
+			/>
 
 			<input
 				accept=".json,.zip"
