@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { Button } from "../button";
@@ -12,6 +13,7 @@ import {
 import { useCurrentSearchPersistence } from "../hooks/use-current-search-persistence";
 import type { UseSourceMediaPageResult } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
+import { SourceMediaGrid } from "../source-media-grid";
 
 export type SourceMediaScreenProps = {
 	page: UseSourceMediaPageResult;
@@ -23,26 +25,11 @@ export type SourceMediaScreenProps = {
 		onAddMedia: () => void;
 		onRestore: () => void;
 	}) => JSX.Element;
-	renderGrid: (props: {
-		mediaPages: () =>
-			| import("@solid-imager/core/domain/media/schemas").MediaSearchResponse[]
-			| undefined;
-		mediaResults: () => import("@solid-imager/core/domain/media/schemas").MediaSearchResponse["media"];
-		mediaSourceId: () => string | undefined;
-		isPending: boolean;
-		isError: boolean;
-		isFetchingNextPage: boolean;
-		queryError: Error | null;
-		contextMenuMediaId: () => string | null;
-		setContextMenuMediaId: (
-			value: string | null | ((prev: string | null) => string | null),
-		) => void;
-		onDelete: (mediaId: string) => void;
-		onCopyMove: (mediaId: string, mode: "copy" | "move") => void;
-		onSyncSingleMedia: (mediaId: string) => void;
-		loadMoreRef: HTMLDivElement | undefined;
-		setLoadMoreRef: (el: HTMLDivElement) => void;
-	}) => JSX.Element;
+	/** Render a single media grid item. */
+	renderItem: (
+		media: Media,
+		options: { onContextMenu: () => void },
+	) => JSX.Element;
 	renderJobProgress?: (props: {
 		jobProgress: () =>
 			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
@@ -50,6 +37,10 @@ export type SourceMediaScreenProps = {
 	}) => JSX.Element;
 	renderUploadModal: () => JSX.Element;
 	renderMoveCopyDialog: () => JSX.Element;
+	/** Enable virtualization for large lists. Default: false. */
+	enableVirtualization?: boolean;
+	/** Show "Open in New Tab" context menu item. Default: false. */
+	showOpenInNewTab?: boolean;
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
@@ -96,22 +87,24 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</div>
 				</div>
 
-				{props.renderGrid({
-					mediaPages: () => page().mediaQuery.data?.pages,
-					mediaResults: page().mediaResults,
-					mediaSourceId: page().mediaSourceId,
-					isPending: page().mediaQuery.isPending,
-					isError: page().mediaQuery.isError,
-					isFetchingNextPage: page().mediaQuery.isFetchingNextPage,
-					queryError: page().mediaQuery.error ?? null,
-					contextMenuMediaId: page().contextMenuMediaId,
-					setContextMenuMediaId: page().setContextMenuMediaId,
-					onDelete: page().handleDelete,
-					onCopyMove: page().handleCopyMove,
-					onSyncSingleMedia: page().handleSyncSingleMedia,
-					loadMoreRef: page().loadMoreRef,
-					setLoadMoreRef: page().setLoadMoreRef,
-				})}
+				<SourceMediaGrid
+					contextMenuMediaId={page().contextMenuMediaId}
+					enableVirtualization={props.enableVirtualization}
+					isError={page().mediaQuery.isError}
+					isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+					isPending={page().mediaQuery.isPending}
+					mediaResults={page().mediaResults}
+					mediaSourceId={page().mediaSourceId}
+					onCopyMove={page().handleCopyMove}
+					onDelete={page().handleDelete}
+					onSyncSingleMedia={page().handleSyncSingleMedia}
+					queryError={page().mediaQuery.error ?? null}
+					renderItem={props.renderItem}
+					setContextMenuMediaId={page().setContextMenuMediaId}
+					setLoadMoreRef={page().setLoadMoreRef}
+					showOpenInNewTab={props.showOpenInNewTab}
+					totalCount={page().mediaQuery.data?.pages[0]?.total}
+				/>
 			</div>
 
 			{/* Hidden file inputs */}
