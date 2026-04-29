@@ -45,43 +45,35 @@ export function MediaGrid(props: MediaGridProps) {
 					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
 						<For each={props.mediaPages()}>
 							{(page) => (
-								<For each={page.media}>
-									{(item) => {
-										if (!item) {
-											return null;
-										}
-
-										return (
-											<a
-												class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
-												data-media-id={item.id}
-												href={`/sources/${props.mediaSourceId()}/${item.id}`}
-												onContextMenu={() =>
-													props.setContextMenuMediaId(item.id)
+								<For each={page.media.flatMap((item) => (item ? [item] : []))}>
+									{(item) => (
+										<a
+											class="relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md"
+											data-media-id={item.id}
+											href={`/sources/${props.mediaSourceId()}/${item.id}`}
+											onContextMenu={() => props.setContextMenuMediaId(item.id)}
+										>
+											<Show
+												fallback={
+													<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+														{item.mediaType}
+													</div>
 												}
+												when={item.mediaType !== "audio"}
 											>
-												<Show
-													fallback={
-														<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
-															{item.mediaType}
-														</div>
-													}
-													when={item.mediaType !== "audio"}
-												>
-													<ThumbnailImage
-														alt={item.fileName}
-														class="h-full w-full object-cover"
-														height={item.height}
-														loading="lazy"
-														mediaId={item.id}
-														mediaSourceId={props.mediaSourceId()}
-														modifiedAt={item.modifiedAt}
-														width={item.width}
-													/>
-												</Show>
-											</a>
-										);
-									}}
+												<ThumbnailImage
+													alt={item.fileName}
+													class="h-full w-full object-cover"
+													height={item.height}
+													loading="lazy"
+													mediaId={item.id}
+													mediaSourceId={props.mediaSourceId()}
+													modifiedAt={item.modifiedAt}
+													width={item.width}
+												/>
+											</Show>
+										</a>
+									)}
 								</For>
 							)}
 						</For>

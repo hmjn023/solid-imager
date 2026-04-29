@@ -297,28 +297,29 @@ export function SourceMediaPage() {
 			}
 			// Case 3: JSON is an object with an 'images' key (new handling for user's provided structure)
 			else if (jsonContent.images && Array.isArray(jsonContent.images)) {
-				items = jsonContent.images
-					.map((image: any) => {
-						const imageUrl = image.originalUrl || image.displayUrl;
-						if (!imageUrl) {
-							return null; // Skip if no valid URL is found
-						}
+				items = jsonContent.images.flatMap((image: any) => {
+					const imageUrl = image.originalUrl || image.displayUrl;
+					if (!imageUrl) {
+						return [];
+					}
 
-						let tweetUrl: string | undefined;
-						if (image.source === "twitter" && image.metadata?.postId) {
-							tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
-						}
+					let tweetUrl: string | undefined;
+					if (image.source === "twitter" && image.metadata?.postId) {
+						tweetUrl = `https://twitter.com/i/web/status/${image.metadata.postId}`;
+					}
 
-						return {
-							imageUrl,
-							tweetUrl,
-							tweetText: image.metadata?.title,
-							authorName: image.metadata?.author,
-							timestamp: image.metadata?.timestamp || image.date, // Assuming 'date' can be a fallback for timestamp
-							// Add other fields as needed from the provided JSON structure to match DownloadItem
-						};
-					})
-					.filter(Boolean) as DownloadItem[]; // Filter out nulls
+					return [
+						{
+							targetUrl: imageUrl,
+							description: image.metadata?.title,
+							sourceUrls: tweetUrl ? [tweetUrl] : undefined,
+							authors: image.metadata?.author
+								? [{ name: image.metadata.author }]
+								: undefined,
+							createdAt: image.metadata?.timestamp || image.date,
+						},
+					];
+				});
 			} else {
 				throw new Error(
 					"JSONファイルはアイテムの配列であるか、'items'または'images'キーを含むオブジェクトである必要があります。",
