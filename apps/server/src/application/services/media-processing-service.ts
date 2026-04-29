@@ -14,6 +14,7 @@ import type {
 	Media,
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
+import { inferMediaType } from "@solid-imager/core/domain/media/utils/media-type-utils";
 // Repository Interfaces
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -90,14 +91,8 @@ export class MediaProcessingServiceImpl {
 		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
 
 		// Determine media type
-		const ext = path.extname(relativePath).toLowerCase();
 		const extensions = this.configService.getConfig().media.supportedExtensions;
-		let mediaType: "image" | "video" | "audio" = "image";
-		if (extensions.video.includes(ext)) {
-			mediaType = "video";
-		} else if (extensions.audio.includes(ext)) {
-			mediaType = "audio";
-		}
+		const mediaType = inferMediaType(relativePath, extensions) ?? "image";
 
 		// Step 1: Create media record
 		const media = await this.mediaRepo.create({

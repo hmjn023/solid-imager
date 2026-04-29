@@ -31,10 +31,10 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 					);
 
 					return Response.json(
-						await BackupService.importSourceZip(
-							params.mediaSourceId,
-							tempFilePath,
-						),
+						await BackupService.importSourceZip(params.mediaSourceId, {
+							type: "path",
+							path: tempFilePath,
+						}),
 					);
 				} finally {
 					try {

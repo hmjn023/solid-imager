@@ -4,6 +4,10 @@ import {
 	createMediaService,
 	type MediaPathAdapter,
 } from "@solid-imager/application/services/media-service";
+import {
+	normalizeRelativePath,
+	resolveUploadTargetPath,
+} from "@solid-imager/application/services/media-upload-utils";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	MediaDetails,
@@ -44,89 +48,6 @@ type ProbeMediaResult = {
 	mimeType?: string | null;
 	codec?: string | null;
 };
-
-type ResolvedUploadTarget = {
-	relativePath: string;
-	fullPath: string;
-	conflict?: UploadResponse["conflict"];
-};
-
-function normalizeRelativePath(path: string) {
-	return path
-		.split(/[\\/]+/)
-		.filter((segment) => segment.length > 0 && segment !== ".")
-		.join("/");
-}
-
-function isSafeRelativeUploadPath(path: string) {
-	if (/^(?:[A-Za-z]:[\\/]|\/)/.test(path)) {
-		return false;
-	}
-	return path
-		.split(/[\\/]+/)
-		.every(
-			(segment) => segment.length === 0 || segment === "." || segment !== "..",
-		);
-}
-
-async function resolveUploadTargetPath(
-	rootPath: string,
-	requestedPath: string,
-	overwrite: boolean,
-	autoIncrement: boolean,
-): Promise<ResolvedUploadTarget> {
-	if (!isSafeRelativeUploadPath(requestedPath)) {
-		throw new Error(`Invalid upload path: ${requestedPath}`);
-	}
-
-	const normalizedRequested = normalizeRelativePath(requestedPath);
-	const requestedFullPath = joinLocalPath(rootPath, normalizedRequested);
-	if (
-		overwrite ||
-		!(await getTauriAppServices().fileSystem.exists(requestedFullPath))
-	) {
-		return {
-			relativePath: normalizedRequested,
-			fullPath: requestedFullPath,
-		};
-	}
-
-	if (!autoIncrement) {
-		throw new Error(`File already exists: ${normalizedRequested}`);
-	}
-
-	const parentDir = dirname(normalizedRequested);
-	const extension = extname(normalizedRequested);
-	const stem = basename(normalizedRequested).slice(
-		0,
-		Math.max(0, basename(normalizedRequested).length - extension.length),
-	);
-
-	let index = 1;
-	while (index <= MAX_FILENAME_COLLISION_ATTEMPTS) {
-		const candidateName = `${stem}-${index}${extension}`;
-		const candidateRelative =
-			parentDir === "/"
-				? candidateName
-				: normalizeRelativePath(`${parentDir}/${candidateName}`);
-		const candidateFullPath = joinLocalPath(rootPath, candidateRelative);
-		if (!(await getTauriAppServices().fileSystem.exists(candidateFullPath))) {
-			return {
-				relativePath: candidateRelative,
-				fullPath: candidateFullPath,
-				conflict: {
-					existingFile: normalizedRequested,
-					suggestedName: candidateRelative,
-				},
-			};
-		}
-		index += 1;
-	}
-
-	throw new Error(
-		`Could not resolve a non-conflicting filename after ${MAX_FILENAME_COLLISION_ATTEMPTS} attempts`,
-	);
-}
 
 async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
 	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>(
@@ -181,6 +102,11 @@ const tauriMediaStorage: IMediaStorage = {
 			requestedPath,
 			options.overwrite ?? false,
 			options.autoIncrement ?? false,
+			{
+				pathAdapter: tauriPathAdapter,
+				exists: (p) => getTauriAppServices().fileSystem.exists(p),
+				maxAttempts: MAX_FILENAME_COLLISION_ATTEMPTS,
+			},
 		);
 		await ensureParentDirectory(target.fullPath);
 		const buffer = await file.arrayBuffer();
@@ -272,6 +198,11 @@ const tauriMediaStorage: IMediaStorage = {
 			options.filename || basename(sourcePath),
 			options.overwrite ?? false,
 			options.autoIncrement ?? false,
+			{
+				pathAdapter: tauriPathAdapter,
+				exists: (p) => getTauriAppServices().fileSystem.exists(p),
+				maxAttempts: MAX_FILENAME_COLLISION_ATTEMPTS,
+			},
 		);
 		await ensureParentDirectory(target.fullPath);
 		await getTauriAppServices().fileSystem.copyFile(

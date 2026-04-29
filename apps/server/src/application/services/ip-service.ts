@@ -16,63 +16,60 @@ export const IpService = {
 	/**
 	 * Retrieves all Intellectual Properties (IPs).
 	 */
-	async getAllIps() {
-		return await ipService.getAllIps();
+	async list() {
+		return await ipService.list();
 	},
 
 	/**
 	 * Creates a new Intellectual Property (IP).
 	 */
-	async createIp(ipData: { name: string; description?: string }) {
+	async create(ipData: { name: string; description?: string }) {
 		const newIp: NewIp = {
 			name: ipData.name,
 			description: ipData.description,
 		};
-		return await ipService.createIp(newIp);
+		return await ipService.create(newIp);
 	},
 
 	/**
 	 * Retrieves details of a specific Intellectual Property (IP) by its ID.
 	 */
-	async getIpDetails(ipId: string) {
-		return await ipService.getIpDetails(ipId);
+	async get(ipId: string) {
+		return await ipService.get(ipId);
 	},
 
 	/**
 	 * Updates an existing Intellectual Property (IP).
 	 */
-	async updateIp(
-		ipId: string,
-		ipData: { name?: string; description?: string },
-	) {
-		return await ipService.updateIp(ipId, ipData);
+	async update(ipId: string, ipData: { name?: string; description?: string }) {
+		return await ipService.update(ipId, ipData);
 	},
 
 	/**
 	 * Deletes an Intellectual Property (IP) by its ID.
 	 */
-	async deleteIp(ipId: string) {
-		return await ipService.deleteIp(ipId);
+	async delete(ipId: string) {
+		return await ipService.delete(ipId);
 	},
 
 	/**
 	 * Retrieves IPs associated with a specific media.
 	 */
-	async getIpsForMedia(mediaId: string) {
-		return await ipService.getIpsForMedia(mediaId);
+	async listForMedia(mediaId: string) {
+		return await ipService.listForMedia(mediaId);
 	},
 
 	/**
 	 * Adds an IP to a media.
 	 */
-	async addIpToMedia(mediaId: string, ipId: string) {
-		return await ipService.addIpToMedia(mediaId, ipId);
+	async addToMedia(mediaId: string, ipId: string) {
+		return await ipService.addToMedia(mediaId, ipId);
 	},
 
 	/**
 	 * Removes an IP from a media.
 	 */
-	async removeIpFromMedia(mediaId: string, ipId: string) {
-		return await ipService.removeIpFromMedia(mediaId, ipId);
+	async removeFromMedia(mediaId: string, ipId: string) {
+		return await ipService.removeFromMedia(mediaId, ipId);
 	},
 };

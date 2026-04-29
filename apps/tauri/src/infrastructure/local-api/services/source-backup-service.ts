@@ -1,3 +1,7 @@
+import type {
+	ImportSourceZipInput,
+	ImportSourceZipResult,
+} from "@solid-imager/application/services/backup-orchestration";
 import { enqueueThumbnailJobsAfterRestore } from "@solid-imager/application/services/backup-restore-complete";
 import { createBackupService } from "@solid-imager/db/backup";
 import { getTauriAppServices } from "~/app-services";
@@ -17,14 +21,6 @@ type RestoreSourceResult = {
 	processed: number;
 	skipped: number;
 	errors: string[];
-};
-
-type ImportSourceZipResult = {
-	success: boolean;
-	importedCount: number;
-	skippedCount: number;
-	errors: string[];
-	message: string;
 };
 
 function toLocalSourcePath(
@@ -134,8 +130,13 @@ export const TauriSourceBackupService = {
 
 	async importSourceZip(
 		mediaSourceId: string,
-		bytes: number[],
+		input: ImportSourceZipInput,
 	): Promise<ImportSourceZipResult> {
+		if (input.type !== "bytes") {
+			throw new Error("Tauri only supports bytes-based zip import");
+		}
+		const bytes = input.bytes;
+
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
 		const dumpData = await getTauriAppServices().commandClient.invoke<

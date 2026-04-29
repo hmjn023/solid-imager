@@ -277,7 +277,10 @@ const localProcedureHandlers = {
 				bytes: z.array(z.number().int().min(0).max(255)),
 			})
 			.parse(input);
-		return await TauriSourceBackupService.importSourceZip(id, bytes);
+		return await TauriSourceBackupService.importSourceZip(id, {
+			type: "bytes",
+			bytes,
+		});
 	},
 	"media.search": async (input: unknown) => {
 		const { sourceId, params } = z
@@ -466,11 +469,10 @@ const localProcedureHandlers = {
 				displayOrder: z.number().int().optional(),
 			})
 			.parse(input);
-		await TauriCollectionService.addToMedia(
-			collectionId,
+		await TauriCollectionService.addToMedia(collectionId, {
 			mediaId,
 			displayOrder,
-		);
+		});
 		return mutationSuccessSchema.parse({ success: true });
 	},
 	"collections.removeFromMedia": async (input: unknown) => {

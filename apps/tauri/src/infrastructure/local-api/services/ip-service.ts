@@ -10,34 +10,34 @@ const ipService = createIpService(TauriIpRepository);
 
 export const TauriIpService = {
 	async list(): Promise<Ip[]> {
-		return await ipService.getAllIps();
+		return await ipService.list();
 	},
 
 	async get(id: string): Promise<Ip | null> {
-		return await ipService.getIpDetails(id);
+		return await ipService.get(id);
 	},
 
 	async create(input: NewIp): Promise<Ip> {
-		return await ipService.createIp(input);
+		return await ipService.create(input);
 	},
 
 	async update(id: string, input: UpdateIp): Promise<Ip> {
-		return await ipService.updateIp(id, input);
+		return await ipService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await ipService.deleteIp(id);
+		await ipService.delete(id);
 	},
 
 	async listForMedia(mediaId: string): Promise<Ip[]> {
-		return await ipService.getIpsForMedia(mediaId);
+		return await ipService.listForMedia(mediaId);
 	},
 
 	async addToMedia(mediaId: string, ipId: string): Promise<void> {
-		await ipService.addIpToMedia(mediaId, ipId);
+		await ipService.addToMedia(mediaId, ipId);
 	},
 
 	async removeFromMedia(mediaId: string, ipId: string): Promise<void> {
-		await ipService.removeIpFromMedia(mediaId, ipId);
+		await ipService.removeFromMedia(mediaId, ipId);
 	},
 };

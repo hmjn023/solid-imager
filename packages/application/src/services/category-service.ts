@@ -11,23 +11,23 @@ export type CategoryService = ReturnType<typeof createCategoryService>;
 
 export function createCategoryService(repository: CategoryRepository) {
 	return {
-		async getAllCategories(): Promise<Category[]> {
+		async list(): Promise<Category[]> {
 			return await repository.findAll();
 		},
 
-		async getCategoryDetails(id: string): Promise<Category | null> {
+		async get(id: string): Promise<Category | null> {
 			return await repository.findById(id);
 		},
 
-		async createCategory(input: NewCategory): Promise<Category> {
+		async create(input: NewCategory): Promise<Category> {
 			return await repository.create(input);
 		},
 
-		async updateCategory(id: string, input: UpdateCategory): Promise<Category> {
+		async update(id: string, input: UpdateCategory): Promise<Category> {
 			return await repository.update(id, input);
 		},
 
-		async deleteCategory(id: string): Promise<void> {
+		async delete(id: string): Promise<void> {
 			await repository.delete(id);
 		},
 	};

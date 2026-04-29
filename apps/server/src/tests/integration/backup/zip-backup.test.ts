@@ -153,10 +153,10 @@ describe("BackupService ZIP Integration", () => {
 		await pipeline(zipStream, writeStream);
 
 		// 3. Restore to Source 2
-		const importResult = await BackupService.importSourceZip(
-			sourceId2,
-			zipFilePath,
-		);
+		const importResult = await BackupService.importSourceZip(sourceId2, {
+			type: "path",
+			path: zipFilePath,
+		});
 
 		expect(importResult.success).toBe(true);
 		expect(importResult.importedCount).toBe(1);

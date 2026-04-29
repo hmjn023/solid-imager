@@ -19,19 +19,19 @@ export const CollectionService = {
 	/**
 	 * Retrieves all collections.
 	 */
-	async getAllCollections() {
-		return await collectionService.getAllCollections();
+	async list() {
+		return await collectionService.list();
 	},
 
 	/**
 	 * Creates a new collection.
 	 */
-	async createCollection(collectionData: {
+	async create(collectionData: {
 		userId: string;
 		name: string;
 		description?: string;
 	}) {
-		return await collectionService.createCollection({
+		return await collectionService.create({
 			userId: collectionData.userId,
 			name: collectionData.name,
 			description: collectionData.description,
@@ -41,14 +41,14 @@ export const CollectionService = {
 	/**
 	 * Retrieves details of a specific collection by its ID.
 	 */
-	async getCollectionDetails(collectionId: string) {
-		return await collectionService.getCollectionDetails(collectionId);
+	async get(collectionId: string) {
+		return await collectionService.get(collectionId);
 	},
 
 	/**
 	 * Updates an existing collection.
 	 */
-	async updateCollection(
+	async update(
 		collectionId: string,
 		collectionData: {
 			userId?: string;
@@ -56,23 +56,20 @@ export const CollectionService = {
 			description?: string;
 		},
 	) {
-		return await collectionService.updateCollection(
-			collectionId,
-			collectionData,
-		);
+		return await collectionService.update(collectionId, collectionData);
 	},
 
 	/**
 	 * Deletes a collection by its ID.
 	 */
-	async deleteCollection(collectionId: string) {
-		return await collectionService.deleteCollection(collectionId);
+	async delete(collectionId: string) {
+		return await collectionService.delete(collectionId);
 	},
 
 	/**
 	 * Adds a media item to a specific collection.
 	 */
-	async addMediaToCollection(
+	async addToMedia(
 		collectionId: string,
 		mediaId: string,
 		displayOrder?: number,
@@ -81,16 +78,13 @@ export const CollectionService = {
 			mediaId,
 			displayOrder,
 		};
-		return await collectionService.addMediaToCollection(collectionId, item);
+		return await collectionService.addToMedia(collectionId, item);
 	},
 
 	/**
 	 * Removes a media item from a specific collection.
 	 */
-	async removeMediaFromCollection(collectionId: string, mediaId: string) {
-		return await collectionService.removeMediaFromCollection(
-			collectionId,
-			mediaId,
-		);
+	async removeFromMedia(collectionId: string, mediaId: string) {
+		return await collectionService.removeFromMedia(collectionId, mediaId);
 	},
 };

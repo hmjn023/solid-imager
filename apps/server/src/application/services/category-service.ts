@@ -13,24 +13,24 @@ const categoryService = createCategoryService(categoryRepo);
 const getCategoryByIdServer = async (
 	id: string,
 ): Promise<Category | undefined> => {
-	const result = await categoryService.getCategoryDetails(id);
+	const result = await categoryService.get(id);
 	return result ?? undefined;
 };
 
 const updateCategoryServer = async (
 	id: string,
 	data: UpdateCategory,
-): Promise<Category> => await categoryService.updateCategory(id, data);
+): Promise<Category> => await categoryService.update(id, data);
 
 const deleteCategoryServer = async (id: string): Promise<{ success: true }> => {
-	await categoryService.deleteCategory(id);
+	await categoryService.delete(id);
 	return { success: true };
 };
 
 export const CategoryService = {
-	getAllCategories: categoryService.getAllCategories,
-	createCategory: categoryService.createCategory,
-	getCategoryDetails: getCategoryByIdServer,
-	updateCategory: updateCategoryServer,
-	deleteCategory: deleteCategoryServer,
+	list: categoryService.list,
+	create: categoryService.create,
+	get: getCategoryByIdServer,
+	update: updateCategoryServer,
+	delete: deleteCategoryServer,
 };

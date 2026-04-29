@@ -8,41 +8,38 @@ export type AuthorService = ReturnType<typeof createAuthorService>;
 
 export function createAuthorService(repository: IAuthorRepository) {
 	return {
-		async getAllAuthors(): Promise<Author[]> {
+		async list(): Promise<Author[]> {
 			return await repository.findAll();
 		},
 
-		async getAuthor(id: string): Promise<Author | null> {
+		async get(id: string): Promise<Author | null> {
 			return await repository.findById(id);
 		},
 
-		async createAuthor(input: NewAuthor): Promise<Author> {
+		async create(input: NewAuthor): Promise<Author> {
 			return await repository.create(input);
 		},
 
-		async updateAuthor(
+		async update(
 			id: string,
 			input: Partial<Pick<Author, "name" | "accountId">>,
 		): Promise<Author> {
 			return await repository.update(id, input);
 		},
 
-		async deleteAuthor(id: string): Promise<void> {
+		async delete(id: string): Promise<void> {
 			await repository.delete(id);
 		},
 
-		async getAuthorsForMedia(mediaId: string): Promise<Author[]> {
+		async listForMedia(mediaId: string): Promise<Author[]> {
 			return await repository.findByMediaId(mediaId);
 		},
 
-		async addAuthorToMedia(mediaId: string, authorId: string): Promise<void> {
+		async addToMedia(mediaId: string, authorId: string): Promise<void> {
 			await repository.addMedia(mediaId, authorId);
 		},
 
-		async removeAuthorFromMedia(
-			mediaId: string,
-			authorId: string,
-		): Promise<void> {
+		async removeFromMedia(mediaId: string, authorId: string): Promise<void> {
 			await repository.removeMedia(mediaId, authorId);
 		},
 	};

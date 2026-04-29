@@ -9,38 +9,35 @@ export type ProjectService = ReturnType<typeof createProjectService>;
 
 export function createProjectService(repository: IProjectRepository) {
 	return {
-		async getAllProjects(): Promise<Project[]> {
+		async list(): Promise<Project[]> {
 			return await repository.findAll();
 		},
 
-		async getProjectDetails(id: string): Promise<Project | null> {
+		async get(id: string): Promise<Project | null> {
 			return await repository.findById(id);
 		},
 
-		async createProject(input: NewProject): Promise<Project> {
+		async create(input: NewProject): Promise<Project> {
 			return await repository.create(input);
 		},
 
-		async updateProject(id: string, input: UpdateProject): Promise<Project> {
+		async update(id: string, input: UpdateProject): Promise<Project> {
 			return await repository.update(id, input);
 		},
 
-		async deleteProject(id: string): Promise<void> {
+		async delete(id: string): Promise<void> {
 			await repository.delete(id);
 		},
 
-		async getProjectsForMedia(mediaId: string): Promise<Project[]> {
+		async listForMedia(mediaId: string): Promise<Project[]> {
 			return await repository.findByMediaId(mediaId);
 		},
 
-		async addProjectToMedia(mediaId: string, projectId: string): Promise<void> {
+		async addToMedia(mediaId: string, projectId: string): Promise<void> {
 			await repository.addMedia(mediaId, projectId);
 		},
 
-		async removeProjectFromMedia(
-			mediaId: string,
-			projectId: string,
-		): Promise<void> {
+		async removeFromMedia(mediaId: string, projectId: string): Promise<void> {
 			await repository.removeMedia(mediaId, projectId);
 		},
 	};

@@ -14,30 +14,21 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import {
-	characterIps,
-	characters,
-	ips,
 	mediaCharacters,
 	mediaIps,
 	medias,
 	mediaTags,
-	tags,
 } from "@solid-imager/db/schema";
 import { emit } from "@tauri-apps/api/event";
-import {
-	and,
-	asc,
-	eq,
-	getTableColumns,
-	inArray,
-	isNull,
-	sql,
-} from "drizzle-orm";
+import { and, asc, eq, getTableColumns, isNull } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
+import { TauriCharacterRepository } from "../repositories/character-repository";
+import { TauriIpRepository } from "../repositories/ip-repository";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
+import { TauriTagRepository } from "../repositories/tag-repository";
 import { TauriJobRepository } from "../repositories/tauri-job-repository";
 
 const AI_SOURCE = "AI";
@@ -81,163 +72,17 @@ async function tagMediaFromServer(mediaId: string): Promise<TaggingResponse> {
 }
 
 async function persistAiTags(mediaId: string, response: TaggingResponse) {
+	const { persistTaggingResponse } = await import(
+		"@solid-imager/application/services/tag-persistence"
+	);
 	await getTauriAppServices().db.transaction(async (tx) => {
-		await tx
-			.delete(mediaTags)
-			.where(
-				and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, AI_SOURCE)),
-			);
-		await tx
-			.delete(mediaCharacters)
-			.where(
-				and(
-					eq(mediaCharacters.mediaId, mediaId),
-					eq(mediaCharacters.source, AI_SOURCE),
-				),
-			);
-		await tx
-			.delete(mediaIps)
-			.where(
-				and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.source, AI_SOURCE)),
-			);
-
-		const generalTags = Object.entries(response.general);
-		if (generalTags.length > 0) {
-			const tagNames = generalTags.map(([name]) => name);
-			await tx
-				.insert(tags)
-				.values(tagNames.map((name) => ({ name, source: AI_SOURCE })))
-				.onConflictDoNothing();
-
-			const persistedTags = await tx
-				.select({ id: tags.id, name: tags.name })
-				.from(tags)
-				.where(inArray(tags.name, tagNames));
-			const tagIdByName = new Map(
-				persistedTags.map((item) => [item.name, item.id]),
-			);
-
-			const values = generalTags.flatMap(([name, confidence]) => {
-				const tagId = tagIdByName.get(name);
-				return tagId
-					? [
-							{
-								mediaId,
-								tagId,
-								tagType: "positive" as const,
-								confidence,
-								source: AI_SOURCE,
-							},
-						]
-					: [];
-			});
-			if (values.length > 0) {
-				await tx
-					.insert(mediaTags)
-					.values(values)
-					.onConflictDoUpdate({
-						target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
-						set: {
-							confidence: sql`excluded.confidence`,
-							source: sql`excluded.source`,
-						},
-					});
-			}
-		}
-
-		if (response.ips.length > 0) {
-			await tx
-				.insert(ips)
-				.values(response.ips.map((name) => ({ name, source: AI_SOURCE })))
-				.onConflictDoNothing();
-		}
-		const persistedIps =
-			response.ips.length > 0
-				? await tx
-						.select({ id: ips.id, name: ips.name })
-						.from(ips)
-						.where(inArray(ips.name, response.ips))
-				: [];
-		const ipIdByName = new Map(
-			persistedIps.map((item) => [item.name, item.id]),
-		);
-
-		if (persistedIps.length > 0) {
-			await tx
-				.insert(mediaIps)
-				.values(
-					persistedIps.map((item) => ({
-						mediaId,
-						ipId: item.id,
-						confidence: null,
-						source: AI_SOURCE,
-					})),
-				)
-				.onConflictDoUpdate({
-					target: [mediaIps.mediaId, mediaIps.ipId],
-					set: {
-						confidence: sql`excluded.confidence`,
-						source: sql`excluded.source`,
-					},
-				});
-		}
-
-		const charactersWithConfidence = Object.entries(response.character);
-		if (charactersWithConfidence.length > 0) {
-			const characterNames = charactersWithConfidence.map(([name]) => name);
-			await tx
-				.insert(characters)
-				.values(characterNames.map((name) => ({ name, source: AI_SOURCE })))
-				.onConflictDoNothing();
-
-			const persistedCharacters = await tx
-				.select({ id: characters.id, name: characters.name })
-				.from(characters)
-				.where(inArray(characters.name, characterNames));
-			const characterIdByName = new Map(
-				persistedCharacters.map((item) => [item.name, item.id]),
-			);
-
-			const characterIpValues = Object.entries(response.ips_mapping).flatMap(
-				([characterName, linkedIpNames]) => {
-					const characterId = characterIdByName.get(characterName);
-					if (!characterId) {
-						return [];
-					}
-					return linkedIpNames.flatMap((ipName) => {
-						const ipId = ipIdByName.get(ipName);
-						return ipId ? [{ characterId, ipId, source: AI_SOURCE }] : [];
-					});
-				},
-			);
-			if (characterIpValues.length > 0) {
-				await tx
-					.insert(characterIps)
-					.values(characterIpValues)
-					.onConflictDoNothing();
-			}
-
-			const mediaCharacterValues = charactersWithConfidence.flatMap(
-				([characterName, confidence]) => {
-					const characterId = characterIdByName.get(characterName);
-					return characterId
-						? [{ mediaId, characterId, confidence, source: AI_SOURCE }]
-						: [];
-				},
-			);
-			if (mediaCharacterValues.length > 0) {
-				await tx
-					.insert(mediaCharacters)
-					.values(mediaCharacterValues)
-					.onConflictDoUpdate({
-						target: [mediaCharacters.mediaId, mediaCharacters.characterId],
-						set: {
-							confidence: sql`excluded.confidence`,
-							source: sql`excluded.source`,
-						},
-					});
-			}
-		}
+		await persistTaggingResponse(mediaId, response, {
+			tagRepository: TauriTagRepository,
+			ipRepository: TauriIpRepository,
+			characterRepository: TauriCharacterRepository,
+			source: AI_SOURCE,
+			tx,
+		});
 	});
 }
 

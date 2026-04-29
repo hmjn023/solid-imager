@@ -9,25 +9,25 @@ const authorService = createAuthorService(TauriAuthorRepository);
 
 export const TauriAuthorService = {
 	async list(): Promise<Author[]> {
-		return await authorService.getAllAuthors();
+		return await authorService.list();
 	},
 
 	async get(id: string): Promise<Author | null> {
-		return await authorService.getAuthor(id);
+		return await authorService.get(id);
 	},
 
 	async create(input: NewAuthor): Promise<Author> {
-		return await authorService.createAuthor(input);
+		return await authorService.create(input);
 	},
 
 	async update(
 		id: string,
 		input: Partial<Pick<Author, "name" | "accountId">>,
 	): Promise<Author> {
-		return await authorService.updateAuthor(id, input);
+		return await authorService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await authorService.deleteAuthor(id);
+		await authorService.delete(id);
 	},
 };

@@ -29,41 +29,38 @@ export class CharacterServiceImpl {
 		});
 	}
 
-	async getAllCharacters(): Promise<Character[]> {
-		return await this.service.getAllCharacters();
+	async list(): Promise<Character[]> {
+		return await this.service.list();
 	}
 
-	async createCharacter(data: NewCharacter): Promise<Character> {
-		return await this.service.createCharacter(data);
+	async create(data: NewCharacter): Promise<Character> {
+		return await this.service.create(data);
 	}
 
 	async findByName(name: string): Promise<Character | null> {
 		return await this.service.findByName(name);
 	}
 
-	async getCharacterDetails(id: string): Promise<Character | undefined> {
-		const result = await this.service.getCharacterDetails(id);
+	async get(id: string): Promise<Character | undefined> {
+		const result = await this.service.get(id);
 		return result ?? undefined;
 	}
 
-	async updateCharacter(id: string, data: UpdateCharacter): Promise<Character> {
-		return await this.service.updateCharacter(id, data);
+	async update(id: string, data: UpdateCharacter): Promise<Character> {
+		return await this.service.update(id, data);
 	}
 
-	async deleteCharacter(id: string): Promise<{ success: true }> {
-		await this.service.deleteCharacter(id);
+	async delete(id: string): Promise<{ success: true }> {
+		await this.service.delete(id);
 		return { success: true };
 	}
 
-	async getCharactersForMedia(mediaId: string): Promise<Character[]> {
-		return await this.service.getCharactersForMedia(mediaId);
+	async listForMedia(mediaId: string): Promise<Character[]> {
+		return await this.service.listForMedia(mediaId);
 	}
 
-	async addCharacterToMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
-		return await this.service.addCharacterToMedia(mediaId, characterId);
+	async addToMedia(mediaId: string, characterId: string): Promise<void> {
+		return await this.service.addToMedia(mediaId, characterId);
 	}
 
 	linkCharacterIps(
@@ -72,34 +69,26 @@ export class CharacterServiceImpl {
 		return this.service.linkCharacterIps(...args);
 	}
 
-	async removeCharacterFromMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
-		await this.service.removeCharacterFromMedia(mediaId, characterId);
+	async removeFromMedia(mediaId: string, characterId: string): Promise<void> {
+		await this.service.removeFromMedia(mediaId, characterId);
 	}
 }
 
 // Backward compatibility proxy
 export const CharacterService = {
-	getAllCharacters: async () =>
-		services.getCharacterService().getAllCharacters(),
-	createCharacter: async (data: NewCharacter) =>
-		services.getCharacterService().createCharacter(data),
+	list: async () => services.getCharacterService().list(),
+	create: async (data: NewCharacter) =>
+		services.getCharacterService().create(data),
 	findByName: async (name: string) =>
 		services.getCharacterService().findByName(name),
-	getCharacterDetails: async (id: string) =>
-		services.getCharacterService().getCharacterDetails(id),
-	updateCharacter: async (id: string, data: UpdateCharacter) =>
-		services.getCharacterService().updateCharacter(id, data),
-	deleteCharacter: async (id: string) =>
-		services.getCharacterService().deleteCharacter(id),
-	getCharactersForMedia: async (mediaId: string) =>
-		services.getCharacterService().getCharactersForMedia(mediaId),
-	addCharacterToMedia: async (mediaId: string, characterId: string) =>
-		services.getCharacterService().addCharacterToMedia(mediaId, characterId),
-	removeCharacterFromMedia: async (mediaId: string, characterId: string) =>
-		services
-			.getCharacterService()
-			.removeCharacterFromMedia(mediaId, characterId),
+	get: async (id: string) => services.getCharacterService().get(id),
+	update: async (id: string, data: UpdateCharacter) =>
+		services.getCharacterService().update(id, data),
+	delete: async (id: string) => services.getCharacterService().delete(id),
+	listForMedia: async (mediaId: string) =>
+		services.getCharacterService().listForMedia(mediaId),
+	addToMedia: async (mediaId: string, characterId: string) =>
+		services.getCharacterService().addToMedia(mediaId, characterId),
+	removeFromMedia: async (mediaId: string, characterId: string) =>
+		services.getCharacterService().removeFromMedia(mediaId, characterId),
 };

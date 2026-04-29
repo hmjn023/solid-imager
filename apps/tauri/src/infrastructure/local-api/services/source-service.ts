@@ -6,6 +6,11 @@ import {
 	deleteWatchedDirectory,
 	deleteWatchedFile,
 } from "@solid-imager/application/services/watcher-runtime";
+import { inferMediaType } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import {
+	isHiddenPath,
+	normalizeRelativePath,
+} from "@solid-imager/core/domain/media/utils/path-utils";
 import type {
 	MediaSource,
 	NewMediaSource,
@@ -16,12 +21,7 @@ import { emit, listen } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import type { ProcessMediaJob } from "../../jobs/process-media-job";
 import { tauriJobQueue } from "../../jobs/tauri-job-queue";
-import {
-	basename,
-	extname,
-	joinLocalPath,
-	toRelativePath,
-} from "../../path-utils";
+import { basename, joinLocalPath, toRelativePath } from "../../path-utils";
 import { TauriMediaRepository } from "../repositories/media-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
 import { TauriConfigService } from "./config-service";
@@ -125,32 +125,6 @@ async function requireSource(id: string): Promise<MediaSource> {
 	return source;
 }
 
-function inferMediaType(
-	filePath: string,
-	supportedExtensions: {
-		image: string[];
-		video: string[];
-		audio: string[];
-	},
-): "image" | "video" | "audio" | null {
-	const normalizedExt = extname(filePath).toLowerCase();
-	if (supportedExtensions.image.includes(normalizedExt)) return "image";
-	if (supportedExtensions.video.includes(normalizedExt)) return "video";
-	if (supportedExtensions.audio.includes(normalizedExt)) return "audio";
-	return null;
-}
-
-function normalizeRelativePath(path: string) {
-	return path.replace(/[\\/]+/g, "/");
-}
-
-function hasHiddenSegment(path: string) {
-	return path
-		.split(/[\\/]/)
-		.filter(Boolean)
-		.some((segment) => segment.startsWith("."));
-}
-
 async function scanDirectoryRecursive(rootPath: string): Promise<string[]> {
 	const fs = getTauriAppServices().fileSystem;
 	const entries = await fs.readdir(rootPath);
@@ -182,7 +156,7 @@ function buildSingleFileIndexInput(
 	},
 ): FileToIndex | null {
 	const relativePath = toRelativePath(getLocalSourceRootPath(source), fullPath);
-	if (!relativePath || hasHiddenSegment(relativePath)) {
+	if (!relativePath || isHiddenPath(relativePath)) {
 		return null;
 	}
 
@@ -415,7 +389,7 @@ async function reconcileWatchedPath(
 			getLocalSourceRootPath(source),
 			fullPath,
 		);
-		if (!relativePath || hasHiddenSegment(relativePath)) {
+		if (!relativePath || isHiddenPath(relativePath)) {
 			return;
 		}
 		const existing = await TauriMediaRepository.findByPath(

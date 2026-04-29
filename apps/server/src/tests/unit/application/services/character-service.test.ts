@@ -60,7 +60,7 @@ describe("CharacterService", () => {
 				ips: [{ id: ipId, name: "IP Name" }],
 			});
 
-			await CharacterService.addCharacterToMedia(mediaId, charId);
+			await CharacterService.addToMedia(mediaId, charId);
 
 			expect(mockCharacterRepo.findById).toHaveBeenCalledWith(
 				charId,
@@ -86,7 +86,7 @@ describe("CharacterService", () => {
 			mockCharacterRepo.findById.mockResolvedValue(null);
 
 			await expect(
-				CharacterService.addCharacterToMedia(mediaId, charId),
+				CharacterService.addToMedia(mediaId, charId),
 			).rejects.toThrow(`Character not found: ${charId}`);
 		});
 	});

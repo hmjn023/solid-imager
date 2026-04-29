@@ -15,63 +15,63 @@ export const ProjectService = {
 	/**
 	 * Retrieves all projects.
 	 */
-	async getAllProjects() {
-		return await projectService.getAllProjects();
+	async list() {
+		return await projectService.list();
 	},
 
 	/**
 	 * Creates a new project.
 	 */
-	async createProject(projectData: { name: string; description?: string }) {
+	async create(projectData: { name: string; description?: string }) {
 		const newProject: NewProject = {
 			name: projectData.name,
 			description: projectData.description,
 		};
-		return await projectService.createProject(newProject);
+		return await projectService.create(newProject);
 	},
 
 	/**
 	 * Retrieves details of a specific project by its ID.
 	 */
-	async getProjectDetails(projectId: string) {
-		return await projectService.getProjectDetails(projectId);
+	async get(projectId: string) {
+		return await projectService.get(projectId);
 	},
 
 	/**
 	 * Updates an existing project.
 	 */
-	async updateProject(
+	async update(
 		projectId: string,
 		projectData: { name?: string; description?: string },
 	) {
-		return await projectService.updateProject(projectId, projectData);
+		return await projectService.update(projectId, projectData);
 	},
 
 	/**
 	 * Deletes a project by its ID.
 	 */
-	async deleteProject(projectId: string) {
-		return await projectService.deleteProject(projectId);
+	async delete(projectId: string) {
+		return await projectService.delete(projectId);
 	},
 
 	/**
 	 * Retrieves projects associated with a specific media.
 	 */
-	async getProjectsForMedia(mediaId: string) {
-		return await projectService.getProjectsForMedia(mediaId);
+	async listForMedia(mediaId: string) {
+		return await projectService.listForMedia(mediaId);
 	},
 
 	/**
 	 * Adds a project to a media.
 	 */
-	async addProjectToMedia(mediaId: string, projectId: string) {
-		return await projectService.addProjectToMedia(mediaId, projectId);
+	async addToMedia(mediaId: string, projectId: string) {
+		return await projectService.addToMedia(mediaId, projectId);
 	},
 
 	/**
 	 * Removes a project from a media.
 	 */
-	async removeProjectFromMedia(mediaId: string, projectId: string) {
-		return await projectService.removeProjectFromMedia(mediaId, projectId);
+	async removeFromMedia(mediaId: string, projectId: string) {
+		return await projectService.removeFromMedia(mediaId, projectId);
 	},
 };

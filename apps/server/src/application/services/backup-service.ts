@@ -1,5 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type {
+	ImportSourceZipInput,
+	ImportSourceZipResult,
+} from "@solid-imager/application/services/backup-orchestration";
 import { enqueueThumbnailJobsAfterRestore } from "@solid-imager/application/services/backup-restore-complete";
 import { createBackupService } from "@solid-imager/db/backup";
 import type { DrizzleExecutor } from "@solid-imager/db/types";
@@ -253,7 +257,15 @@ export const BackupService = {
 		return await createZipDump(mediaSourceId, mode);
 	},
 
-	async importSourceZip(mediaSourceId: string, zipFilePath: string) {
+	async importSourceZip(
+		mediaSourceId: string,
+		input: ImportSourceZipInput,
+	): Promise<ImportSourceZipResult> {
+		if (input.type !== "path") {
+			throw new Error("Server only supports path-based zip import");
+		}
+		const zipFilePath = input.path;
+
 		const source = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});

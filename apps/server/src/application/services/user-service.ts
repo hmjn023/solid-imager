@@ -8,19 +8,17 @@ import { UserRepository } from "~/infrastructure/repositories/user-repository";
 const userService = createUserService(UserRepository);
 
 export const UserService = {
-	getAllUsers: async () => await userService.getAllUsers(),
+	list: async () => await userService.list(),
 
-	createUser: async (userData: NewUser) =>
-		await userService.createUser(userData),
+	create: async (userData: NewUser) => await userService.create(userData),
 
-	getUserDetails: async (userId: string) =>
-		await userService.getUserDetails(userId),
+	get: async (userId: string) => await userService.get(userId),
 
-	updateUser: async (userId: string, userData: UpdateUser) =>
-		await userService.updateUser(userId, userData),
+	update: async (userId: string, userData: UpdateUser) =>
+		await userService.update(userId, userData),
 
-	deleteUser: async (userId: string) => {
-		await userService.deleteUser(userId);
+	delete: async (userId: string) => {
+		await userService.delete(userId);
 		return { success: true };
 	},
 };

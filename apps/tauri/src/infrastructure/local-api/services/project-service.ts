@@ -10,34 +10,34 @@ const projectService = createProjectService(TauriProjectRepository);
 
 export const TauriProjectService = {
 	async list(): Promise<Project[]> {
-		return await projectService.getAllProjects();
+		return await projectService.list();
 	},
 
 	async get(id: string): Promise<Project | null> {
-		return await projectService.getProjectDetails(id);
+		return await projectService.get(id);
 	},
 
 	async create(input: NewProject): Promise<Project> {
-		return await projectService.createProject(input);
+		return await projectService.create(input);
 	},
 
 	async update(id: string, input: UpdateProject): Promise<Project> {
-		return await projectService.updateProject(id, input);
+		return await projectService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await projectService.deleteProject(id);
+		await projectService.delete(id);
 	},
 
 	async listForMedia(mediaId: string): Promise<Project[]> {
-		return await projectService.getProjectsForMedia(mediaId);
+		return await projectService.listForMedia(mediaId);
 	},
 
 	async addToMedia(mediaId: string, projectId: string): Promise<void> {
-		await projectService.addProjectToMedia(mediaId, projectId);
+		await projectService.addToMedia(mediaId, projectId);
 	},
 
 	async removeFromMedia(mediaId: string, projectId: string): Promise<void> {
-		await projectService.removeProjectFromMedia(mediaId, projectId);
+		await projectService.removeFromMedia(mediaId, projectId);
 	},
 };

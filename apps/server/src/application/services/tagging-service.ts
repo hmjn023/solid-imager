@@ -15,8 +15,6 @@ import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
-import { ResourceConflictError } from "@solid-imager/core/domain/errors";
-
 export class TaggingService {
 	private readonly aiClient: IAiClient;
 	private readonly sourceRepo: SourceRepository;
@@ -157,123 +155,15 @@ export class TaggingService {
 		filePath: string,
 		response: TaggingResponse,
 	): Promise<void> {
-		// 1. Tags
-		const tagsToInsert = Object.entries(response.general).map(
-			([name, confidence]) => ({
-				name,
-				type: "positive" as const,
-				confidence,
-			}),
+		const { persistTaggingResponse } = await import(
+			"@solid-imager/application/services/tag-persistence"
 		);
-		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
-
-		// 2. IPs
-		const ipNames = response.ips;
-		const ipNameIdMap = new Map<string, string>();
-		const ipsToLink: { id: string; confidence?: number }[] = [];
-
-		// Process IPs sequentially to handle potential creations (bulk create/find not fully supported by repo yet without refactor)
-		// TODO: Refactor IpRepository to support findOrCreateBulk for true bulk performance
-		for (const ipName of ipNames) {
-			let ip = await this.ipRepo.findByName(ipName);
-			if (!ip) {
-				try {
-					ip = await this.ipRepo.create({ name: ipName, source: "AI" });
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						ip = await this.ipRepo.findByName(ipName);
-					} else {
-						throw e;
-					}
-				}
-			}
-			if (ip) {
-				ipNameIdMap.set(ipName, ip.id);
-				ipsToLink.push({ id: ip.id });
-			}
-		}
-
-		if (ipsToLink.length > 0) {
-			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI");
-		}
-
-		// 3. Characters
-		// ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
-		const charToIpIdsMap = new Map<string, string[]>(); // charName -> ipIds[]
-
-		for (const [charName, linkedIpNames] of Object.entries(
-			response.ips_mapping,
-		)) {
-			const ipIds: string[] = [];
-			for (const linkedIpName of linkedIpNames) {
-				const ipId = ipNameIdMap.get(linkedIpName);
-				if (ipId) {
-					ipIds.push(ipId);
-				}
-			}
-			if (ipIds.length > 0) {
-				charToIpIdsMap.set(charName, ipIds);
-			}
-		}
-
-		const charsToLink: { id: string; confidence: number }[] = [];
-
-		// Process Characters sequentially for creation/update
-		// TODO: Refactor CharacterRepository to support bulk operations
-		for (const [charName, confidence] of Object.entries(response.character)) {
-			const ipIds = charToIpIdsMap.get(charName) ?? [];
-			let char = await this.characterRepo.findByName(charName);
-
-			if (!char) {
-				try {
-					char = await this.characterRepo.create({
-						name: charName,
-						ipIds, // Link to IPs if known
-						source: "AI",
-					});
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						char = await this.characterRepo.findByName(charName);
-					} else {
-						throw e;
-					}
-				}
-			} else if (char.ips.length === 0 && ipIds.length > 0) {
-				// Link orphaned character (no IPs) to detected IPs
-				try {
-					await this.characterRepo.update(char.id, { ipIds });
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						// Ignore conflict during update
-					} else {
-						throw e;
-					}
-				}
-			} else if (ipIds.length > 0) {
-				// Character has existing IPs. We should check if we need to append new ones.
-				// We only append new ones, never remove existing ones for AI updates on existing chars
-				const existingIpIds = new Set(char.ips.map((i) => i.id));
-				const newIpIds = ipIds.filter((id) => !existingIpIds.has(id));
-
-				if (newIpIds.length > 0) {
-					try {
-						await this.characterRepo.update(char.id, {
-							ipIds: [...existingIpIds, ...newIpIds],
-						});
-					} catch (_e) {
-						// Ignore conflict
-					}
-				}
-			}
-
-			if (char) {
-				charsToLink.push({ id: char.id, confidence });
-			}
-		}
-
-		if (charsToLink.length > 0) {
-			await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
-		}
+		await persistTaggingResponse(mediaId, response, {
+			tagRepository: this.tagRepo,
+			ipRepository: this.ipRepo,
+			characterRepository: this.characterRepo,
+			source: "AI",
+		});
 
 		// Notify clients of the update
 		// Ensure all consumers (like use-media-source-events.ts) are updated to "media-changed"

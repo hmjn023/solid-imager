@@ -35,11 +35,11 @@ export class CharacterServiceImpl {
 		this.defaultAssociationSource = defaultAssociationSource;
 	}
 
-	async getAllCharacters(): Promise<Character[]> {
+	async list(): Promise<Character[]> {
 		return await this.characterRepo.findAll();
 	}
 
-	async createCharacter(input: NewCharacter): Promise<Character> {
+	async create(input: NewCharacter): Promise<Character> {
 		return await this.characterRepo.create(input);
 	}
 
@@ -47,29 +47,23 @@ export class CharacterServiceImpl {
 		return await this.characterRepo.findByName(name);
 	}
 
-	async getCharacterDetails(id: string): Promise<Character | null> {
+	async get(id: string): Promise<Character | null> {
 		return await this.characterRepo.findById(id);
 	}
 
-	async updateCharacter(
-		id: string,
-		input: UpdateCharacter,
-	): Promise<Character> {
+	async update(id: string, input: UpdateCharacter): Promise<Character> {
 		return await this.characterRepo.update(id, input);
 	}
 
-	async deleteCharacter(id: string): Promise<void> {
+	async delete(id: string): Promise<void> {
 		await this.characterRepo.delete(id);
 	}
 
-	async getCharactersForMedia(mediaId: string): Promise<Character[]> {
+	async listForMedia(mediaId: string): Promise<Character[]> {
 		return await this.characterRepo.findByMediaId(mediaId);
 	}
 
-	async addCharacterToMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
+	async addToMedia(mediaId: string, characterId: string): Promise<void> {
 		await this.transactionManager.transaction(async (tx: Transaction) => {
 			const character = await this.characterRepo.findById(characterId, tx);
 			if (!character) {
@@ -108,10 +102,7 @@ export class CharacterServiceImpl {
 		}
 	}
 
-	async removeCharacterFromMedia(
-		mediaId: string,
-		characterId: string,
-	): Promise<void> {
+	async removeFromMedia(mediaId: string, characterId: string): Promise<void> {
 		await this.characterRepo.removeFromMedia(mediaId, characterId);
 	}
 }

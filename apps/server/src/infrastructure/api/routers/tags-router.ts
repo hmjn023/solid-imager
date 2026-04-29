@@ -10,7 +10,7 @@ import { TagService } from "~/application/services/tag-service";
  * Tags Router Implementation
  */
 export const tagsRouter = {
-	list: os.handler(async () => await TagService.getAllTags()),
+	list: os.handler(async () => await TagService.list()),
 
 	get: os
 		.input(
@@ -19,7 +19,7 @@ export const tagsRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const tag = await TagService.getTagById(input.id);
+			const tag = await TagService.get(input.id);
 			if (!tag) {
 				throw new Error(`Tag not found: ${input.id}`);
 			}
@@ -28,7 +28,7 @@ export const tagsRouter = {
 
 	create: os
 		.input(newTagSchema)
-		.handler(async ({ input }) => await TagService.createTag(input)),
+		.handler(async ({ input }) => await TagService.create(input)),
 
 	update: os
 		.input(
@@ -38,7 +38,7 @@ export const tagsRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const updatedTag = await TagService.updateTag(input.id, input.data);
+			const updatedTag = await TagService.update(input.id, input.data);
 			if (!updatedTag) {
 				throw new Error(`Tag not found: ${input.id}`);
 			}
@@ -52,11 +52,11 @@ export const tagsRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const tag = await TagService.getTagById(input.id);
+			const tag = await TagService.get(input.id);
 			if (!tag) {
 				throw new Error(`Tag not found: ${input.id}`);
 			}
-			await TagService.deleteTag(input.id);
+			await TagService.delete(input.id);
 			return { success: true };
 		}),
 };

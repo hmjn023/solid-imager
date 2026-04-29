@@ -10,22 +10,22 @@ const categoryService = createCategoryService(TauriCategoryRepository);
 
 export const TauriCategoryService = {
 	async list(): Promise<Category[]> {
-		return await categoryService.getAllCategories();
+		return await categoryService.list();
 	},
 
 	async get(id: string): Promise<Category | null> {
-		return await categoryService.getCategoryDetails(id);
+		return await categoryService.get(id);
 	},
 
 	async create(input: NewCategory): Promise<Category> {
-		return await categoryService.createCategory(input);
+		return await categoryService.create(input);
 	},
 
 	async update(id: string, input: UpdateCategory): Promise<Category> {
-		return await categoryService.updateCategory(id, input);
+		return await categoryService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await categoryService.deleteCategory(id);
+		await categoryService.delete(id);
 	},
 };

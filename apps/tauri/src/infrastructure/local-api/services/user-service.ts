@@ -10,22 +10,22 @@ const userService = createUserService(TauriUserRepository);
 
 export const TauriUserService = {
 	async list(): Promise<User[]> {
-		return await userService.getAllUsers();
+		return await userService.list();
 	},
 
 	async get(id: string): Promise<User | null> {
-		return await userService.getUserDetails(id);
+		return await userService.get(id);
 	},
 
 	async create(input: NewUser): Promise<User> {
-		return await userService.createUser(input);
+		return await userService.create(input);
 	},
 
 	async update(id: string, input: UpdateUser): Promise<User> {
-		return await userService.updateUser(id, input);
+		return await userService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await userService.deleteUser(id);
+		await userService.delete(id);
 	},
 };

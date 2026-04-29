@@ -95,7 +95,7 @@ describe("shared application services", () => {
 			},
 		});
 
-		await service.addCharacterToMedia(
+		await service.addToMedia(
 			"00000000-0000-0000-0000-000000000003",
 			character.id,
 		);

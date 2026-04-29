@@ -1,6 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { deleteWatchedFile } from "@solid-imager/application/services/watcher-runtime";
+import {
+	inferMediaType,
+	type SupportedExtensions,
+} from "@solid-imager/core/domain/media/utils/media-type-utils";
+import { normalizeRelativePath } from "@solid-imager/core/domain/media/utils/path-utils";
 import { glob } from "tinyglobby";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
@@ -137,9 +142,7 @@ export const DirectorySyncService = {
 				await MediaRepository.findAllPathsBySourceId(mediaSourceId);
 			const dbPathMap = new Map<string, string>(); // relativePath -> id
 			for (const record of existingRecords) {
-				// Ensure path uses POSIX separators for uniform comparison
-				const normalizedPath = record.filePath.split(path.sep).join("/");
-				dbPathMap.set(normalizedPath, record.id);
+				dbPathMap.set(normalizeRelativePath(record.filePath), record.id);
 			}
 
 			// 2. Scan actual file system
@@ -152,18 +155,12 @@ export const DirectorySyncService = {
 				expandDirectories: false,
 			});
 
-			const mediaExtensions = services.getConfigService().getConfig()
-				.media.supportedExtensions;
-			const allowedExts = new Set(
-				Object.values(mediaExtensions)
-					.flat()
-					.map((ext) => ext.toLowerCase()),
-			);
+			const mediaExtensions = services.getConfigService().getConfig().media
+				.supportedExtensions as SupportedExtensions;
 
-			const actualMediaPaths = fsPaths.filter((p) => {
-				const ext = path.extname(p).toLowerCase();
-				return allowedExts.has(ext);
-			});
+			const actualMediaPaths = fsPaths.filter(
+				(p) => inferMediaType(p, mediaExtensions) !== null,
+			);
 			const allFilesPathSet = new Set(fsPaths);
 
 			// 3. Calculate diffs

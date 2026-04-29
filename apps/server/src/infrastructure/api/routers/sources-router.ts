@@ -325,7 +325,10 @@ export const sourcesRouter = {
 					fs.createWriteStream(tempFilePath),
 				);
 
-				return await BackupService.importSourceZip(input.id, tempFilePath);
+				return await BackupService.importSourceZip(input.id, {
+					type: "path",
+					path: tempFilePath,
+				});
 			} finally {
 				try {
 					await fs.promises.unlink(tempFilePath);

@@ -5,15 +5,15 @@ import { AuthorRepository } from "~/infrastructure/repositories/author-repositor
 const authorService = createAuthorService(AuthorRepository);
 
 export const AuthorService = {
-	getAllAuthors: authorService.getAllAuthors,
+	list: authorService.list,
 
-	getAuthor: authorService.getAuthor,
+	get: authorService.get,
 
-	createAuthor: authorService.createAuthor,
+	create: authorService.create,
 
-	async updateAuthor(id: string, input: Partial<Author>): Promise<Author> {
-		return authorService.updateAuthor(id, input);
+	async update(id: string, input: Partial<Author>): Promise<Author> {
+		return authorService.update(id, input);
 	},
 
-	deleteAuthor: authorService.deleteAuthor,
+	delete: authorService.delete,
 };

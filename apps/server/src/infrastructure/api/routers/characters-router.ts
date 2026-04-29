@@ -10,12 +10,12 @@ import { CharacterService } from "~/application/services/character-service";
  * Characters Router Implementation
  */
 export const charactersRouter = {
-	list: os.handler(() => CharacterService.getAllCharacters()),
+	list: os.handler(() => CharacterService.list()),
 
 	get: os
 		.input(z.object({ id: z.string().uuid() }))
 		.handler(async ({ input }) => {
-			const character = await CharacterService.getCharacterDetails(input.id);
+			const character = await CharacterService.get(input.id);
 			if (!character) {
 				throw new Error(`Character not found: ${input.id}`);
 			}
@@ -24,7 +24,7 @@ export const charactersRouter = {
 
 	create: os
 		.input(newCharacterSchema)
-		.handler(({ input }) => CharacterService.createCharacter(input)),
+		.handler(({ input }) => CharacterService.create(input)),
 
 	update: os
 		.input(
@@ -34,10 +34,7 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			const updated = await CharacterService.updateCharacter(
-				input.id,
-				input.data,
-			);
+			const updated = await CharacterService.update(input.id, input.data);
 			if (!updated) {
 				throw new Error(`Character not found: ${input.id}`);
 			}
@@ -46,14 +43,12 @@ export const charactersRouter = {
 
 	delete: os
 		.input(z.object({ id: z.string().uuid() }))
-		.handler(({ input }) => CharacterService.deleteCharacter(input.id)),
+		.handler(({ input }) => CharacterService.delete(input.id)),
 
 	// Media association
 	listForMedia: os
 		.input(z.object({ mediaId: z.string().uuid() }))
-		.handler(({ input }) =>
-			CharacterService.getCharactersForMedia(input.mediaId),
-		),
+		.handler(({ input }) => CharacterService.listForMedia(input.mediaId)),
 
 	addToMedia: os
 		.input(
@@ -63,10 +58,7 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			await CharacterService.addCharacterToMedia(
-				input.mediaId,
-				input.characterId,
-			);
+			await CharacterService.addToMedia(input.mediaId, input.characterId);
 			return { success: true };
 		}),
 
@@ -78,10 +70,7 @@ export const charactersRouter = {
 			}),
 		)
 		.handler(async ({ input }) => {
-			await CharacterService.removeCharacterFromMedia(
-				input.mediaId,
-				input.characterId,
-			);
+			await CharacterService.removeFromMedia(input.mediaId, input.characterId);
 			return { success: true };
 		}),
 };

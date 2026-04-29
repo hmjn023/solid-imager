@@ -16,31 +16,31 @@ export type TagService = ReturnType<typeof createTagService>;
 
 export function createTagService(repository: TagRepository) {
 	return {
-		async getAllTags(): Promise<Tag[]> {
+		async list(): Promise<Tag[]> {
 			return await repository.findAll();
 		},
 
-		async getTagById(id: string): Promise<Tag | null> {
+		async get(id: string): Promise<Tag | null> {
 			return await repository.findById(id);
 		},
 
-		async createTag(input: NewTag): Promise<Tag> {
+		async create(input: NewTag): Promise<Tag> {
 			return await repository.create(input);
 		},
 
-		async updateTag(id: string, input: UpdateTag): Promise<Tag> {
+		async update(id: string, input: UpdateTag): Promise<Tag> {
 			return await repository.update(id, input);
 		},
 
-		async deleteTag(id: string): Promise<void> {
+		async delete(id: string): Promise<void> {
 			await repository.delete(id);
 		},
 
-		async getTagsForMedia(mediaId: string): Promise<MediaTag[]> {
+		async listForMedia(mediaId: string): Promise<MediaTag[]> {
 			return await repository.findByMediaId(mediaId);
 		},
 
-		async addTagsToMedia(
+		async addToMedia(
 			mediaId: string,
 			tags: TagsToAdd,
 			source = "manual",

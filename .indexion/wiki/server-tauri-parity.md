@@ -248,13 +248,13 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `collection-service.ts`       | serverのみ  | `TauriCollectionService`（local-api/services/）            |
 | `data-migration-service.ts`   | serverのみ  | なし                                                       |
 | `directory-service.ts`        | serverのみ  | なし                                                       |
-| `directory-sync-service.ts`   | serverのみ  | なし                                                       |
+| `directory-sync-service.ts`   | serverのみ  | `syncLocalSource`（`source-service.ts` tauri）— Rust backend パイプライン経由 |
 | `event-service.ts`            | serverのみ  | なし（Rust IPC）                                           |
 | `filter-preset-service.ts`    | serverのみ  | なし                                                       |
 | `integration-service.ts`      | serverのみ  | なし                                                       |
-| `job-dispatch-service.ts`     | serverのみ  | なし                                                       |
-| `media-processing-job.ts`     | serverのみ  | なし（`process-media-job.ts` が近い）                      |
-| `media-processing-service.ts` | serverのみ  | なし                                                       |
+| `job-dispatch-service.ts`     | serverのみ  | `tauri-job-queue.ts` + Rust backend 統合パイプライン       |
+| `media-processing-job.ts`     | serverのみ  | `process-media-job.ts`（tauri、型定義 re-export）          |
+| `media-processing-service.ts` | serverのみ  | Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts` |
 | `media-source-service.ts`     | serverのみ  | `source-service.ts`（tauri）                               |
 | `search-service.ts`           | serverのみ  | tauri は API client 経由で利用し、service wrapper は未整備 |
 | `server-config-service.ts`    | serverのみ  | `config-service.ts`（tauri）                               |
@@ -395,3 +395,39 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services / Media**: `packages/application/src/services/media-service.ts` の `getMediaDetails` / `reprocessMetadata` を shared `extractAndPersistMediaMetadata` を使う形に変更。server / tauri とも同じ metadata 抽出・保存ロジックを共有
 - **Services / Backup**: `packages/application/src/services/backup-restore-complete.ts` を新設し、`enqueueThumbnailJobsAfterRestore` を shared 化。server 側 `backup-service.ts` と tauri 側 `source-backup-service.ts` の restore 後処理を統合。tauri 側に `onRestoreComplete` を追加し、server 側と同じ挙動に揃える
 - **Services対応度**: media-service / source-backup-service の主要ロジックを shared 化したことで、Services 対応度は ~75% 程度へ上昇。残る差分は upload collision resolution algorithm（platform 非依存部分の shared 化余地あり）、zip 処理、および platform 固有 I/O 層
+
+## 前回からの主な変更点（2026-04-30更新 — Services 全面共通化）
+
+- **Services / CRUD Naming**: `packages/application/src/services/{author,tag,character,ip,project,category,collection,user}-service.ts` のメソッド名を `getAll*` / `get*Details` / `create*` / `update*` / `delete*` から `list` / `get` / `create` / `update` / `delete` / `listForMedia` / `addToMedia` / `removeFromMedia` に一括統一。server / tauri 両方の wrapper、oRPC router、local-procedures を追随
+- **Services / Media**: `packages/application/src/services/media-upload-utils.ts` を新設。`resolveUploadTargetPath` / `isSafeRelativeUploadPath` / `normalizeRelativePath` を shared 化。tauri 側 `tauriMediaStorage` は shared collision resolution を利用し app 固有ロジックを縮退
+- **Services / Backup**: `packages/application/src/services/backup-orchestration.ts` を新設。`ImportSourceZipInput` / `ImportSourceZipResult` の shared schema を定義し、server / tauri の `importSourceZip` 引数形状を統一
+- **Services / AI Tagging**: `packages/application/src/services/tag-persistence.ts` を新設。`persistTaggingResponse` 関数で tag / character / IP の AI 結果永続化ロジックを shared 化。server 側 `TaggingService.saveTags` と tauri 側 `TauriAiService.persistAiTags` を統合し、両 app が同じ repository interface 経由で永続化
+- **Services対応度**: ~72% → **~95%** に更新。主要サービス（CRUD / media / backup / ai tagging）が shared contract を経由。残る未共通化は platform 固有 I/O（zip stream / HTTP URL / storage driver）とレガシーサービスに限定
+
+## Parity 例外（意図的な差分）
+
+| サービス | 存在する app | 理由 |
+|---|---|---|
+| `thumbnail-service` | server のみ | HTTP URL 構築（`/api/sources/…/thumbnail`）vs Rust IPC サムネイル生成。transport 固有 |
+| `directory-service` | server のみ | storage driver 抽象化（`getDriver(source)`）。tauri は local fs のみをサポート |
+| `event-service` | server のみ | レガシー SSE wrapper。`SseManager` / Tauri event bus で代替済み。削除推奨 |
+| `directory-sync-service` | server のみ | tauri 側は `source-service.ts` の `syncLocalSource` で同等処理を実装。`inferMediaType` / `normalizeRelativePath` / `isHiddenPath` を `packages/core` に shared 化済み。残る差分は filesystem scan I/O（`tinyglobby` vs Tauri `fs.readdir`）と media 登録・イベント transport の platform 固有層 |
+| `media-processing-service` | server のみ | tauri 側は Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts` で同等処理を実装。`runProcessMediaJob` / `media-processing-job.ts` / `updateMediaContextMetadata` は shared 化済み |
+| `job-dispatch-service` | server のみ | tauri 側は `tauri-job-queue.ts` + Rust backend 統合パイプラインで同等処理を実装。`createJobDispatcher` / `job-runtime.ts` は shared 化済み |
+
+## 前回からの主な変更点（2026-04-30更新 — Phase 5: directory-sync / media-processing / job-dispatch 残差分整理）
+
+- **Core / Media Utils**: `packages/core/src/domain/media/utils/media-type-utils.ts` に `inferMediaType(filePath, supportedExtensions)` を追加。config-driven なメディア種別判定ロジックを server / tauri で共有。server `directory-sync-service.ts` / `media-processing-service.ts`、tauri `source-service.ts` の inline 実装を shared 関数に置換
+- **Core / Path Utils**: `packages/core/src/domain/media/utils/path-utils.ts` に `normalizeRelativePath` と `isHiddenPath` を追加。server `directory-sync-service.ts`、tauri `source-service.ts` の inline path 正規化・hidden ファイル判定を shared 関数に置換
+- **Parity 例外明文化**: `directory-sync-service` / `media-processing-service` / `job-dispatch-service` が server-only である理由を wiki に明記。tauri 側は `syncLocalSource`（TS）+ Rust backend パイプライン（`media.rs` / `media_metadata.rs` / `watcher.rs`）で同等責務を実装しており、差分は platform 固有 I/O（`tinyglobby` vs Tauri `fs.readdir`、Node `ImageProcessor` vs Rust `image` crate、SSE vs Tauri event bus）に閉じる
+- **Services対応度**: ~95% を維持。Phase 5 による shared 化は純粋関数（`inferMediaType` / `normalizeRelativePath` / `isHiddenPath`）の抽出に限定。orchestration 層（`registerAndProcess` / `syncMediaSource` / `processJob`）は platform 固有 I/O の注入が必要なため app 側に残す
+
+## 新設 Shared ファイル
+
+| ファイル | 配置先 | 役割 |
+|---|---|---|
+| `media-upload-utils.ts` | `packages/application/src/services/` | upload collision resolution algorithm、path safety check、normalize |
+| `backup-orchestration.ts` | `packages/application/src/services/` | `ImportSourceZipInput` / `ImportSourceZipResult` schema、backup 引数統一 |
+| `tag-persistence.ts` | `packages/application/src/services/` | AI tagging 結果（tag / character / IP）の永続化ロジック |
+| `media-type-utils.ts` | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
+| `path-utils.ts` | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath` |

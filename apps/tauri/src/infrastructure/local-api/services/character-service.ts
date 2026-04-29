@@ -56,34 +56,34 @@ const characterService = createCharacterService({
 
 export const TauriCharacterService = {
 	async list(): Promise<Character[]> {
-		return await characterService.getAllCharacters();
+		return await characterService.list();
 	},
 
 	async get(id: string): Promise<Character | null> {
-		return await characterService.getCharacterDetails(id);
+		return await characterService.get(id);
 	},
 
 	async create(input: NewCharacter): Promise<Character> {
-		return await characterService.createCharacter(input);
+		return await characterService.create(input);
 	},
 
 	async update(id: string, input: UpdateCharacter): Promise<Character> {
-		return await characterService.updateCharacter(id, input);
+		return await characterService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await characterService.deleteCharacter(id);
+		await characterService.delete(id);
 	},
 
 	async listForMedia(mediaId: string): Promise<Character[]> {
-		return await characterService.getCharactersForMedia(mediaId);
+		return await characterService.listForMedia(mediaId);
 	},
 
 	async addToMedia(mediaId: string, characterId: string): Promise<void> {
-		await characterService.addCharacterToMedia(mediaId, characterId);
+		await characterService.addToMedia(mediaId, characterId);
 	},
 
 	async removeFromMedia(mediaId: string, characterId: string): Promise<void> {
-		await characterService.removeCharacterFromMedia(mediaId, characterId);
+		await characterService.removeFromMedia(mediaId, characterId);
 	},
 };

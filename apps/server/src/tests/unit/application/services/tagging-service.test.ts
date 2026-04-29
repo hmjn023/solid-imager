@@ -118,28 +118,34 @@ describe("TaggingService", () => {
 		await taggingService.getTagsForMedia("source-1", "media-1");
 
 		// Verify IP was looked up/created and linked to media
+		expect(mockIpRepo.addMediaBulk).toHaveBeenCalledTimes(1);
 		expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
 			"media-1",
 			expect.arrayContaining([expect.objectContaining({ id: "ip-vocaloid" })]),
 			"AI",
+			undefined,
 		);
 
 		// Verify character creation included the ipIds
+		expect(mockCharacterRepo.create).toHaveBeenCalledTimes(1);
 		expect(mockCharacterRepo.create).toHaveBeenCalledWith(
 			expect.objectContaining({
 				name: "HatsuneMiku",
 				ipIds: ["ip-vocaloid"], // Crucial: Character should be linked to IP
 				source: "AI",
 			}),
+			undefined,
 		);
 
 		// Verify character was linked to media
+		expect(mockCharacterRepo.addToMediaBulk).toHaveBeenCalledTimes(1);
 		expect(mockCharacterRepo.addToMediaBulk).toHaveBeenCalledWith(
 			"media-1",
 			expect.arrayContaining([
 				expect.objectContaining({ id: "char-new", confidence: 0.95 }),
 			]),
 			"AI",
+			undefined,
 		);
 	});
 });

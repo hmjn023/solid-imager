@@ -2,6 +2,7 @@ import { createCollectionService } from "@solid-imager/application/services/coll
 import type {
 	Collection,
 	NewCollection,
+	NewCollectionItem,
 	UpdateCollection,
 } from "@solid-imager/core/domain/collections/schemas";
 import { TauriCollectionRepository } from "../repositories/collection-repository";
@@ -10,37 +11,33 @@ const collectionService = createCollectionService(TauriCollectionRepository);
 
 export const TauriCollectionService = {
 	async list(): Promise<Collection[]> {
-		return await collectionService.getAllCollections();
+		return await collectionService.list();
 	},
 
 	async get(id: string): Promise<Collection | null> {
-		return await collectionService.getCollectionDetails(id);
+		return await collectionService.get(id);
 	},
 
 	async create(input: NewCollection): Promise<Collection> {
-		return await collectionService.createCollection(input);
+		return await collectionService.create(input);
 	},
 
 	async update(id: string, input: UpdateCollection): Promise<Collection> {
-		return await collectionService.updateCollection(id, input);
+		return await collectionService.update(id, input);
 	},
 
 	async delete(id: string): Promise<void> {
-		await collectionService.deleteCollection(id);
+		await collectionService.delete(id);
 	},
 
 	async addToMedia(
 		collectionId: string,
-		mediaId: string,
-		displayOrder?: number,
+		item: NewCollectionItem,
 	): Promise<void> {
-		await collectionService.addMediaToCollection(collectionId, {
-			mediaId,
-			displayOrder,
-		});
+		await collectionService.addToMedia(collectionId, item);
 	},
 
 	async removeFromMedia(collectionId: string, mediaId: string): Promise<void> {
-		await collectionService.removeMediaFromCollection(collectionId, mediaId);
+		await collectionService.removeFromMedia(collectionId, mediaId);
 	},
 };

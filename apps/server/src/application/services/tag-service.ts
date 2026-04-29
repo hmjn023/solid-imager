@@ -10,19 +10,19 @@ const tagRepo: TagRepository = new DrizzleTagRepository();
 const tagService = createTagService(tagRepo);
 
 const getTagById = async (id: string): Promise<Tag | undefined> => {
-	const result = await tagService.getTagById(id);
+	const result = await tagService.get(id);
 	return result ?? undefined;
 };
 
 const deleteTag = async (id: string): Promise<{ success: true }> => {
-	await tagService.deleteTag(id);
+	await tagService.delete(id);
 	return { success: true };
 };
 
 export const TagService = {
-	getAllTags: tagService.getAllTags,
-	createTag: tagService.createTag,
-	getTagById,
-	updateTag: tagService.updateTag,
-	deleteTag,
+	list: tagService.list,
+	create: tagService.create,
+	get: getTagById,
+	update: tagService.update,
+	delete: deleteTag,
 };
