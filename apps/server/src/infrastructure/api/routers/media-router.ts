@@ -169,10 +169,10 @@ export const mediaRouter = {
 				targetSourceId: z.string().uuid(),
 			}),
 		)
-		.handler(
-			async ({ input }) =>
-				await MediaService.copyMedia(input.mediaId, input.targetSourceId),
-		),
+		.handler(async ({ input }) => {
+			await MediaService.copyMedia(input.mediaId, input.targetSourceId);
+			return { success: true };
+		}),
 
 	/**
 	 * Move a media item to another source
@@ -184,10 +184,10 @@ export const mediaRouter = {
 				targetSourceId: z.string().uuid(),
 			}),
 		)
-		.handler(
-			async ({ input }) =>
-				await MediaService.moveMedia(input.mediaId, input.targetSourceId),
-		),
+		.handler(async ({ input }) => {
+			await MediaService.moveMedia(input.mediaId, input.targetSourceId);
+			return { success: true };
+		}),
 
 	/**
 	 * Upload media to a source

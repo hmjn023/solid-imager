@@ -359,7 +359,8 @@ const localProcedureHandlers = {
 				mediaId: uuidSchema,
 			})
 			.parse(input);
-		return await TauriMediaService.deleteMedia(sourceId, mediaId);
+		await TauriMediaService.deleteMedia(sourceId, mediaId);
+		return { success: true };
 	},
 	"media.copy": async (input: unknown) => {
 		const { mediaId, targetSourceId } = z

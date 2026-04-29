@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-04-29（source-media grid の `SourceMediaGrid` 共通化完了）
+最終更新: 2026-04-30（media-service / source-backup-service の adapter 化と public contract 統一）
 
 ## このページの使い方
 
@@ -180,13 +180,13 @@ leaf component の共有は進んだ。search / sources / manager / config / sou
 | `app-config-repository.ts` | tauriのみ                                              |
 | `tauri-job-repository.ts`  | tauriのみ                                              |
 
-## Services（対応度: ~72%）
+## Services（対応度: ~80%）
 
-`packages/application` の追加自体は前進し、CRUD 系はほぼ shared 化完了。source / media / backup など主機能も shared contract を使う形へ前進したが、tauri 側 `media-service.ts` と `source-backup-service.ts` はまだ app 固有ロジックを多く抱えている。
+`packages/application` の追加自体は前進し、CRUD 系はほぼ shared 化完了。source / media / backup など主機能も shared contract を使う形へ前進。tauri 側 `media-service.ts` は `createMediaService` を使う thin adapter に縮退し、`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃えた。`source-backup-service.ts` も `_` プレフィックス付き内部メソッドの公開を削除し、`createDump`/`importSourceZip` の platform I/O 差分のみを adapter として残す。
 
 共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`, `searchMedia`, `uploadMedia`）へ揃える方針だが、実装実態はサービスごとにばらつきがある。
 
-厳格基準では、`apps/tauri/src/infrastructure/local-api/services/source-service.ts` は shared `createSourceService` を使う段階まで前進。watcher / sync / filesystem / event / queue orchestration は Tauri adapter 内に残るが、list/get/testConnection/getStatus は shared 化。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う形へ前進し、`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` は shared 化済み。主要サービス共通化は前進したが、upload collision resolution algorithm など未 shared 部分が残る。
+厳格基準では、`apps/tauri/src/infrastructure/local-api/services/source-service.ts` は shared `createSourceService` を使う段階まで前進。watcher / sync / filesystem / event / queue orchestration は Tauri adapter 内に残るが、list/get/testConnection/getStatus は shared 化。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退。`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` は shared 化済み。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。主要サービス共通化は前進したが、upload collision resolution algorithm など未 shared 部分が残る。
 
 ### service 本体を shared 利用しているもの
 
@@ -202,7 +202,7 @@ leaf component の共有は進んだ。search / sources / manager / config / sou
 | `collection-service.ts` | `packages/application/src/services/collection-service.ts` | `CollectionService`（thin wrapper）                      | `TauriCollectionService`（thin wrapper）。`list/get/create/update/delete/addToMedia/removeFromMedia` を維持                   |
 | `user-service.ts`       | `packages/application/src/services/user-service.ts`       | `UserService`（thin wrapper）                            | `TauriUserService`（thin wrapper）。`list/get/create/update/delete` を維持                                                     |
 | `search-service.ts`     | `packages/application/src/services/search-service.ts`     | server proxy を維持                                      | ―                                                                                                                               |
-| `media-service.ts`      | `packages/application/src/services/media-service.ts`      | 旧 `MediaServiceImpl` constructor と proxy を維持        | `TauriMediaService` は thin adapter に縮退。`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` を shared 化 |
+| `media-service.ts`      | `packages/application/src/services/media-service.ts`      | 旧 `MediaServiceImpl` constructor と proxy を維持        | `TauriMediaService` は `createMediaService` を使う thin adapter。`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃え、transaction / deferred actions / return shape の差分を解消 |
 
 ### 共通化済み（utility / port / payload）
 
@@ -305,7 +305,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
 | 中     | Components（media-list-actions） | `MediaListActions` は app 側でまだ個別に組み立てられている。shared component 化の余地あり                                                      | 部分完了 |
 | 中     | Routes（source-media-page）      | `SourceMediaScreen` + `SourceMediaGrid` 共通化済み。残る差分は `renderItem` prop と `renderJobProgress` のみ                                      | ほぼ完了 |
-| 中     | Services                         | `packages/application` 利用範囲を広げ、tauri の media-service / source-backup-service を薄い adapter に縮退                                       | 部分完了 |
+| 中     | Services                         | `packages/application` 利用範囲を広げ、tauri の media-service / source-backup-service を薄い adapter に縮退。`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃え、`source-backup-service` の `_` メソッド公開を削除 | ほぼ完了 |
 | 中     | Hooks                            | `use-media-source-events` の transport adapter は既に薄い。`use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は完了 | 完了     |
 | 低     | Repositories                     | 主要 CRUD は shared factory 化済み。残るは app-config など platform 固有 repository                                                                 | ほぼ完了 |
 | 低     | Jobs                             | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るのは transport、downloader I/O、thumbnail の platform 部分 | 部分完了 |
@@ -325,7 +325,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - route ファイル名は揃っており、search / sources / manager / config / source-media は shared screen + shared hook + shared grid 化により「同一」に近い。`source-media-page` の tauri 側 `renderGrid` 差分は `SourceMediaGrid` 共通化で解消
 - hook は `use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` / `use-current-search-persistence.ts` / `use-media-source-events.ts` が `packages/ui` の shared hook を使う構成へ寄った。未共通なのは transport adapter と relevance filter の層
 - repository は author / category / character / collection / ip / media / preset / project / source / tag / user / job が shared factory 化済み。主要 CRUD repository の非対称はほぼ解消され、残る app 固有 repository は `app-config-repository.ts` など platform 固有層が中心
-- service は CRUD 系の shared 利用がほぼ完了。`source-service.ts` は shared `createSourceService` を使う形へ前進。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う形へ前進し、metadata 抽出・context metadata 更新は shared 化済み。残る未 shared 部分は upload collision resolution algorithm など
+- service は CRUD 系の shared 利用がほぼ完了。`source-service.ts` は shared `createSourceService` を使う形へ前進。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退し、`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃えた。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。残る未 shared 部分は upload collision resolution algorithm など
 - jobs は worker 共有の段階を超え、download / tagging / watcher reconciliation / event publish contract / processMedia orchestration まで `packages/application` に寄った。未共通なのは transport と platform I/O の層
 
 ## さらに厳しく見たときの未共通化ポイント
@@ -333,8 +333,13 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - routes: `search.tsx` / `sources/index.tsx` / `manager.tsx` / `config.tsx` / `source-media-page` は shared screen + shared hook 化により thin wrapper に縮退。差分は transport / renderItem / renderJobProgress / renderNavActions に閉じる
 - hooks: `use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は shared 化済み。`use-media-source-events.ts` 本体も shared 化済み。今後は transport adapter と event relevance filter の責務をさらに薄くできるかを確認する
 - queries / api-clients: `queries/*.ts` と `search-api.ts` などは app ごとに薄く重複しており、transport 注入前提の共通 query option builder に寄せられる余地がある
-- services: tauri 側 `source-service.ts` は shared `createSourceService` に寄ったが、`media-service.ts` / `source-backup-service.ts` はまだ shared package 前提の thin adapter にはなっていない
+- services: tauri 側 `source-service.ts` は shared `createSourceService` に寄り、`media-service.ts` / `source-backup-service.ts` も shared package 前提の thin adapter に縮退。残る差分は platform 固有 I/O（bytes 変換、Rust command、zip/fs）に閉じる
 - components: `nav.tsx` を例外としても、nav action slot や source detail action 群は shared 化できる。`MediaListActions` は app 側で個別に組み立てられており shared component 化の余地あり
+
+## 前回からの主な変更点（2026-04-30更新）
+
+- **Services**: `apps/tauri/src/infrastructure/local-api/services/media-service.ts` の `TauriMediaService` を shared `createMediaService` の thin adapter に縮退。`updateMedia` の `getMediaDetails` 追加呼び出しを削除、`copyMedia`/`moveMedia` の transaction 手動ラップを削除し shared の deferred actions に委譲、`deleteMedia` を `void` に。`apps/server/src/infrastructure/api/routers/media-router.ts` の `copy`/`move` も `{ success: true }` に揃え、`MutationSuccess` contract を統一
+- **Services**: `apps/tauri/src/infrastructure/local-api/services/source-backup-service.ts` から `_filterValidItems` / `_restoreMasterData` / `_restoreMediaRecords` / `_mapMediaPathsToIds` / `_transformMediaList` / `_restoreRelations` などの `_` プレフィックス付き内部メソッド公開を削除。`createDump`/`importSourceZip` の platform I/O 差分のみを adapter として残す
 
 ## 前回からの主な変更点（2026-04-26更新）
 

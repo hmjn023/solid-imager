@@ -349,36 +349,27 @@ export const TauriMediaService = {
 		sourceId: string,
 		mediaId: string,
 		updates: UpdateMediaRequest,
-	): Promise<MediaDetails> {
-		await mediaService.updateMedia(sourceId, mediaId, updates);
-		return await mediaService.getMediaDetails(sourceId, mediaId);
+	) {
+		return await mediaService.updateMedia(sourceId, mediaId, updates);
 	},
 
-	async deleteMedia(
-		sourceId: string,
-		mediaId: string,
-	): Promise<{ success: true }> {
+	async deleteMedia(sourceId: string, mediaId: string) {
 		await mediaService.deleteMedia(sourceId, mediaId);
-		return { success: true };
 	},
 
 	async copyMedia(
 		_mediaSourceId: string,
 		mediaId: string,
 		targetSourceId: string,
-	): Promise<{ success: true }> {
-		await getTauriAppServices().db.transaction(async (tx) => {
-			await mediaService.copyMedia(mediaId, targetSourceId, tx);
-		});
-		return { success: true };
+	) {
+		await mediaService.copyMedia(mediaId, targetSourceId);
 	},
 
 	async moveMedia(
 		_mediaSourceId: string,
 		mediaId: string,
 		targetSourceId: string,
-	): Promise<{ success: true }> {
+	) {
 		await mediaService.moveMedia(mediaId, targetSourceId);
-		return { success: true };
 	},
 };
