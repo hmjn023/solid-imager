@@ -1,15 +1,13 @@
 import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
 import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
-import { Progress } from "@solid-imager/ui/progress";
 import {
 	SourceMediaScreen,
 	type SourceMediaScreenProps,
 } from "@solid-imager/ui/screens/source-media-screen";
-import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import { listen } from "@tauri-apps/api/event";
-import { createMemo, Show } from "solid-js";
+import { createMemo } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -119,11 +117,8 @@ export function SourceMediaPage() {
 	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 	const sources = createQuery(() => mediaSourcesQueryOptions());
 
-	const source = createMemo(() =>
-		sources.data?.find((item) => item.id === mediaSourceId()),
-	);
 	const sourceRootPath = createMemo(() => {
-		const current = source();
+		const current = sources.data?.find((item) => item.id === mediaSourceId());
 		if (current?.type !== "local") {
 			return undefined;
 		}
@@ -163,50 +158,12 @@ export function SourceMediaPage() {
 		onThumbnailReady: notifyThumbnailReady,
 	});
 
-	const renderActions: SourceMediaScreenProps["renderActions"] = (actionProps) => (
+	const renderActions: SourceMediaScreenProps["renderActions"] = () => (
 		<MediaListActions
-			filterPanel={
-				<SearchControlPanel
-					class="w-full"
-					context="source"
-					filterData={page.filterData()}
-					onSearch={page.handleSearch}
-					presetClient={page.presetClient}
-					usePopover={false}
-				/>
-			}
-			isSyncDisabled={actionProps.isSyncDisabled}
-			isSyncing={actionProps.isSyncing}
-			onAddMedia={actionProps.onAddMedia}
-			onDumpDownload={() => actionProps.onDumpDownload("json")}
-			onRestore={actionProps.onRestore}
-			onSyncLoadedMedia={actionProps.onSyncLoadedMedia}
-			onZipDumpDownload={() => actionProps.onDumpDownload("zip")}
-			sourceDescription={source()?.description}
-			sourceName={source()?.name}
+			filterData={page.filterData()}
+			onDumpDownload={page.handleDumpDownload}
+			onSearch={page.handleSearch}
 		/>
-	);
-
-	const renderJobProgress: NonNullable<SourceMediaScreenProps["renderJobProgress"]> = (
-		progressProps,
-	) => (
-		<Show when={progressProps.jobProgress()}>
-			{(progress) => (
-				<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">
-					<div class="mb-2 flex items-center justify-between text-sm">
-						<span class="text-muted-foreground">
-							サムネイル生成中 {progress().processed} / {progress().total}
-						</span>
-						<span class="text-muted-foreground text-xs">
-							{Math.round((progress().processed / progress().total) * 100)}%
-						</span>
-					</div>
-					<Progress
-						value={(progress().processed / progress().total) * 100}
-					/>
-				</div>
-			)}
-		</Show>
 	);
 
 	return (
@@ -221,7 +178,7 @@ export function SourceMediaPage() {
 					sourceRootPath={sourceRootPath()}
 				/>
 			)}
-			renderJobProgress={renderJobProgress}
+			showOpenInNewTab
 			renderMoveCopyDialog={() => (
 				<MoveCopyMediaDialog
 					currentSourceId={mediaSourceId()}
