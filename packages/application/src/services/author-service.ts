@@ -1,4 +1,7 @@
-import type { Author, NewAuthor } from "@solid-imager/core/domain/media/schemas";
+import type {
+	Author,
+	NewAuthor,
+} from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 
 export type AuthorService = ReturnType<typeof createAuthorService>;
@@ -36,7 +39,10 @@ export function createAuthorService(repository: IAuthorRepository) {
 			await repository.addMedia(mediaId, authorId);
 		},
 
-		async removeAuthorFromMedia(mediaId: string, authorId: string): Promise<void> {
+		async removeAuthorFromMedia(
+			mediaId: string,
+			authorId: string,
+		): Promise<void> {
 			await repository.removeMedia(mediaId, authorId);
 		},
 	};

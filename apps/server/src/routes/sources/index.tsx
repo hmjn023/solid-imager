@@ -1,10 +1,6 @@
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
-import { SourceCard } from "@solid-imager/ui/source-card";
-import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
+import { SourceCard } from "@solid-imager/ui/source-card";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import SourceDeleteModal from "~/components/source-delete-modal";
@@ -30,7 +26,7 @@ export const Route = createFileRoute("/sources/")({
 	component: Sources,
 });
 
-const UUID_PREFIX_LENGTH = 4;
+const _UUID_PREFIX_LENGTH = 4;
 
 export default function Sources() {
 	const queryClient = useQueryClient();

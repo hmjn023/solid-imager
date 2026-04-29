@@ -1,4 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
 
 const {
 	mockCreateMany,
@@ -13,8 +20,12 @@ const {
 	mockEmit,
 	mockGetTauriAppServices,
 } = vi.hoisted(() => ({
-	mockCreateMany: vi.fn<(jobs: unknown[]) => Promise<unknown[]>>(async () => []),
-	mockFindPendingImportRequests: vi.fn<() => Promise<unknown[]>>(async () => []),
+	mockCreateMany: vi.fn<(jobs: unknown[]) => Promise<unknown[]>>(
+		async () => [],
+	),
+	mockFindPendingImportRequests: vi.fn<() => Promise<unknown[]>>(
+		async () => [],
+	),
 	mockFindImportRequestsByIds: vi.fn<() => Promise<unknown[]>>(async () => []),
 	mockMarkImportRequestsCompleted: vi.fn(async () => undefined),
 	mockDeleteImportRequests: vi.fn(async () => undefined),
@@ -193,7 +204,10 @@ describe("tauri imports api", () => {
 			commandClient: { invoke },
 		});
 
-		const result = await importsApi.processPendingImports(["job-1"], "source-1");
+		const result = await importsApi.processPendingImports(
+			["job-1"],
+			"source-1",
+		);
 
 		expect(result).toEqual({ success: true, processedCount: 1 });
 		expect(mkdir).toHaveBeenCalled();

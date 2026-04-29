@@ -21,7 +21,9 @@ export function ImportReviewModal(props: Props) {
 			listSources={fetchMediaSources}
 			onClose={props.onClose}
 			onImportCompleted={props.onImportCompleted}
-			processPending={(jobIds, targetSourceId) => processPendingImports(jobIds, targetSourceId)}
+			processPending={(jobIds, targetSourceId) =>
+				processPendingImports(jobIds, targetSourceId)
+			}
 		/>
 	);
 }

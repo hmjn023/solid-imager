@@ -1,7 +1,5 @@
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type {
-	MediaMetadataContext,
-} from "@solid-imager/core/domain/media/schemas";
+import type { MediaMetadataContext } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -22,7 +20,10 @@ export type MediaContextMetadataDeps = {
 async function updateCharacterForMedia(
 	mediaId: string,
 	charData: NonNullable<MediaMetadataContext["characters"]>[number],
-	deps: { characterRepository: CharacterRepository; ipRepository: IIpRepository },
+	deps: {
+		characterRepository: CharacterRepository;
+		ipRepository: IIpRepository;
+	},
 	contextIpNames?: string[],
 	tx?: Transaction,
 ): Promise<void> {
@@ -34,7 +35,9 @@ async function updateCharacterForMedia(
 			: contextIpNames;
 
 	const ipIdsToLink = ipNamesToLink?.length
-		? (await deps.ipRepository.findByNames(ipNamesToLink, tx)).map((ip) => ip.id)
+		? (await deps.ipRepository.findByNames(ipNamesToLink, tx)).map(
+				(ip) => ip.id,
+			)
 		: [];
 
 	if (!character) {

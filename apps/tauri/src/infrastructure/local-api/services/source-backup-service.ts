@@ -3,8 +3,8 @@ import { createBackupService } from "@solid-imager/db/backup";
 import { getTauriAppServices } from "~/app-services";
 import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import { joinLocalPath } from "../../path-utils";
-import { TauriJobRepository } from "../repositories/tauri-job-repository";
 import { TauriSourceRepository } from "../repositories/source-repository";
+import { TauriJobRepository } from "../repositories/tauri-job-repository";
 import { TauriSourceService } from "./source-service";
 
 type BinaryFilePayload = {
@@ -27,7 +27,9 @@ type ImportSourceZipResult = {
 	message: string;
 };
 
-function toLocalSourcePath(source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>) {
+function toLocalSourcePath(
+	source: Awaited<ReturnType<typeof TauriSourceRepository.findById>>,
+) {
 	if (!source) {
 		throw new Error("Media source not found");
 	}
@@ -55,7 +57,9 @@ const backupService = createBackupService({
 	sourceRepository: TauriSourceRepository,
 	resolvePath: joinLocalPath,
 	pathExists,
-	runTransaction: async <T>(callback: (executor: TauriDbExecutor) => Promise<T>) => {
+	runTransaction: async <T>(
+		callback: (executor: TauriDbExecutor) => Promise<T>,
+	) => {
 		return await getTauriAppServices().db.transaction(
 			async (tx) => await callback(tx as TauriDbExecutor),
 		);
@@ -121,23 +125,31 @@ export const TauriSourceBackupService = {
 		);
 	},
 
-	async restoreSource(mediaSourceId: string, items: unknown[]): Promise<RestoreSourceResult> {
+	async restoreSource(
+		mediaSourceId: string,
+		items: unknown[],
+	): Promise<RestoreSourceResult> {
 		return await backupService.restoreSource(mediaSourceId, items);
 	},
 
-	async importSourceZip(mediaSourceId: string, bytes: number[]): Promise<ImportSourceZipResult> {
+	async importSourceZip(
+		mediaSourceId: string,
+		bytes: number[],
+	): Promise<ImportSourceZipResult> {
 		const source = await TauriSourceRepository.findById(mediaSourceId);
 		const rootPath = toLocalSourcePath(source);
-		const dumpData = await getTauriAppServices().commandClient.invoke<unknown[]>(
-			"backup_extract_zip",
-			{
-				rootPath,
-				bytes,
-			},
-		);
+		const dumpData = await getTauriAppServices().commandClient.invoke<
+			unknown[]
+		>("backup_extract_zip", {
+			rootPath,
+			bytes,
+		});
 
 		await TauriSourceService.sync([mediaSourceId]);
-		const restoreResult = await backupService.restoreSource(mediaSourceId, dumpData);
+		const restoreResult = await backupService.restoreSource(
+			mediaSourceId,
+			dumpData,
+		);
 
 		return {
 			success: true,

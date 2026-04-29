@@ -88,7 +88,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						<SearchControlPanel
 							class="w-full"
 							context="source"
-							filterData={page().filterData}
+							filterData={page().filterData()}
 							onSearch={page().handleSearch}
 							presetClient={page().presetClient}
 							usePopover={false}
@@ -120,6 +120,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				class="hidden"
 				id="restore-input"
 				onChange={page().handleRestoreSelect}
+				ref={page().setRestoreInputRef}
 				type="file"
 			/>
 			<input

@@ -1,5 +1,9 @@
 import { createTagService } from "@solid-imager/application/services/tag-service";
-import type { NewTag, TagResponse, UpdateTag } from "@solid-imager/core/domain/tags/schemas";
+import type {
+	NewTag,
+	TagResponse,
+	UpdateTag,
+} from "@solid-imager/core/domain/tags/schemas";
 import { TauriTagRepository } from "../repositories/tag-repository";
 
 const tagService = createTagService(TauriTagRepository);

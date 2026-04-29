@@ -20,7 +20,10 @@ import { TauriTagRepository } from "../local-api/repositories/tag-repository";
 import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";
 import { TauriAiService } from "../local-api/services/ai-service";
 import { TauriConfigService } from "../local-api/services/config-service";
-import type { PersistedProcessMediaJob, ProcessMediaJob } from "./process-media-job";
+import type {
+	PersistedProcessMediaJob,
+	ProcessMediaJob,
+} from "./process-media-job";
 
 const BATCH_SIZE = 16;
 
@@ -41,7 +44,11 @@ async function resolveThumbnailBasePath(thumbnailDir: string): Promise<string> {
 	return join(await appDataDir(), thumbnailDir);
 }
 
-function buildThumbnailPath(basePath: string, sourceId: string, mediaId: string): string {
+function buildThumbnailPath(
+	basePath: string,
+	sourceId: string,
+	mediaId: string,
+): string {
 	const sep = basePath.includes("\\") ? "\\" : "/";
 	return `${basePath.replace(/[\\/]+$/, "")}${sep}${sourceId}${sep}${mediaId}.webp`;
 }
@@ -267,12 +274,20 @@ class TauriJobQueue {
 		return jobRecords.length;
 	}
 
-	private async generateThumbnails(items: ProcessMediaThumbnailInput[]): Promise<void> {
+	private async generateThumbnails(
+		items: ProcessMediaThumbnailInput[],
+	): Promise<void> {
 		const config = await TauriConfigService.getConfig();
-		const basePath = await resolveThumbnailBasePath(config.storage.thumbnailDir);
+		const basePath = await resolveThumbnailBasePath(
+			config.storage.thumbnailDir,
+		);
 		const thumbnailItems: ThumbnailBatchItem[] = items.map((item) => ({
 			mediaPath: item.fullPath,
-			outputPath: buildThumbnailPath(basePath, item.mediaSourceId, item.media.id),
+			outputPath: buildThumbnailPath(
+				basePath,
+				item.mediaSourceId,
+				item.media.id,
+			),
 			size: config.storage.thumbnailSize,
 			quality: config.storage.thumbnailQuality,
 		}));
@@ -287,7 +302,9 @@ class TauriJobQueue {
 
 		for (const result of thumbnailResults) {
 			if (result.error) {
-				console.error(`[jobs] Thumbnail failed for ${result.mediaPath}: ${result.error}`);
+				console.error(
+					`[jobs] Thumbnail failed for ${result.mediaPath}: ${result.error}`,
+				);
 			}
 		}
 	}

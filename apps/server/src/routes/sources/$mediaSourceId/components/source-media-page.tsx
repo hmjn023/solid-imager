@@ -145,7 +145,7 @@ export function SourceMediaPage() {
 		actionProps,
 	) => (
 		<MediaListActions
-			filterData={page.filterData}
+			filterData={page.filterData()}
 			onDumpDownload={actionProps.onDumpDownload}
 			onSearch={page.handleSearch}
 		/>

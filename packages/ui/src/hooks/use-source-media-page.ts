@@ -119,7 +119,7 @@ export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
-	filterData: SourceMediaPageFilterData;
+	filterData: () => SourceMediaPageFilterData;
 	handleSearch: () => void;
 	loadMoreRef: HTMLDivElement | undefined;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
@@ -180,13 +180,13 @@ export function useSourceMediaPage(
 	const id = mediaSourceId;
 
 	// --- Filter data queries ---
-	const filterData: SourceMediaPageFilterData = {
+	const filterData = (): SourceMediaPageFilterData => ({
 		tags: queries.tags(),
 		projects: queries.projects(),
 		ips: queries.ips(),
 		characters: queries.characters(),
 		authors: queries.authors(),
-	};
+	});
 
 	// --- Infinite query ---
 	const searchConditionKey = createMemo(() =>
@@ -597,7 +597,9 @@ export function useSourceMediaPage(
 				const result = await actions.importSourceZip(sourceId, file);
 				toast.success(
 					`Import complete: ${result.importedCount} items imported.`,
-					{ id: "restore-toast" },
+					{
+						id: "restore-toast",
+					},
 				);
 				refreshMediaQuery();
 				target.value = "";
@@ -609,7 +611,9 @@ export function useSourceMediaPage(
 			const result = await actions.restoreSource(sourceId, data);
 			toast.success(
 				`Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
-				{ id: "restore-toast" },
+				{
+					id: "restore-toast",
+				},
 			);
 			refreshMediaQuery();
 		} catch (error) {

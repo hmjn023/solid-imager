@@ -1,14 +1,32 @@
 import {
-	type MediaSourceEventTransport,
-} from "@solid-imager/ui/hooks/use-media-source-events";
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuSeparator,
+	ContextMenuTrigger,
+} from "@solid-imager/ui/context-menu";
+import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
+import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
+import { Progress } from "@solid-imager/ui/progress";
 import {
 	SourceMediaScreen,
 	type SourceMediaScreenProps,
 } from "@solid-imager/ui/screens/source-media-screen";
-import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
+import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
-import { createMemo } from "solid-js";
+import { createWindowVirtualizer } from "@tanstack/solid-virtual";
+import { listen } from "@tauri-apps/api/event";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Show,
+} from "solid-js";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -16,9 +34,9 @@ import {
 	copyMedia,
 	deleteMedia,
 	moveMedia,
+	startDownloadJobs,
 	syncMediaItems,
 	uploadMedia,
-	startDownloadJobs,
 } from "~/infrastructure/api-clients/media-api";
 import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
 import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
@@ -33,25 +51,11 @@ import {
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
-import { listen } from "@tauri-apps/api/event";
 import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
 import { MediaListActions } from "./media-list-actions";
-import { MediaGridItem } from "~/components/media/media-grid-item";
-import { Progress } from "@solid-imager/ui/progress";
-import { Show, For } from "solid-js";
-import {
-	ContextMenu,
-	ContextMenuContent,
-	ContextMenuItem,
-	ContextMenuSeparator,
-	ContextMenuTrigger,
-} from "@solid-imager/ui/context-menu";
-import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
-import { createWindowVirtualizer } from "@tanstack/solid-virtual";
-import { createSignal, onMount, onCleanup, createEffect } from "solid-js";
 
 function createTauriTransport(
 	mediaSourceId: () => string | undefined,
@@ -156,8 +160,7 @@ export function SourceMediaPage() {
 		},
 		actions: {
 			searchMedia,
-			uploadMedia: (sourceId, file, opts) =>
-				uploadMedia(sourceId, file, opts),
+			uploadMedia: (sourceId, file, opts) => uploadMedia(sourceId, file, opts),
 			deleteMedia,
 			copyMedia,
 			moveMedia,
@@ -237,8 +240,7 @@ export function SourceMediaPage() {
 
 	const useVirtualGrid = createMemo(
 		() =>
-			page.mediaResults().length > MEDIA_ITEMS_PER_PAGE &&
-			mediaItemWidth() > 0,
+			page.mediaResults().length > MEDIA_ITEMS_PER_PAGE && mediaItemWidth() > 0,
 	);
 
 	const updateMediaGridMetrics = () => {
@@ -334,8 +336,7 @@ export function SourceMediaPage() {
 						>
 							<For each={mediaRowVirtualizer.getVirtualItems()}>
 								{(virtualRow) => {
-									const rowMedia = () =>
-										mediaRows()[virtualRow.index] || [];
+									const rowMedia = () => mediaRows()[virtualRow.index] || [];
 									return (
 										<div
 											class="absolute left-0 top-0 grid gap-4"
@@ -351,9 +352,7 @@ export function SourceMediaPage() {
 													<MediaGridItem
 														media={media}
 														onContextMenu={() =>
-															gridProps.setContextMenuMediaId(
-																media.id,
-															)
+															gridProps.setContextMenuMediaId(media.id)
 														}
 														sourceRootPath={sourceRootPath()}
 													/>
@@ -369,9 +368,7 @@ export function SourceMediaPage() {
 				<ContextMenuContent>
 					<Show
 						fallback={
-							<ContextMenuItem disabled>
-								No media selected
-							</ContextMenuItem>
+							<ContextMenuItem disabled>No media selected</ContextMenuItem>
 						}
 						when={gridProps.contextMenuMediaId()}
 					>
@@ -413,7 +410,9 @@ export function SourceMediaPage() {
 				</ContextMenuContent>
 			</ContextMenu>
 
-			<Show when={gridProps.mediaResults().length === 0 && !gridProps.isPending}>
+			<Show
+				when={gridProps.mediaResults().length === 0 && !gridProps.isPending}
+			>
 				<div class="py-12 text-center text-gray-500">
 					検索結果が見つかりませんでした
 				</div>
@@ -436,7 +435,7 @@ export function SourceMediaPage() {
 				<SearchControlPanel
 					class="w-full"
 					context="source"
-					filterData={page.filterData}
+					filterData={page.filterData()}
 					onSearch={page.handleSearch}
 					presetClient={page.presetClient}
 					usePopover={false}
@@ -462,21 +461,13 @@ export function SourceMediaPage() {
 				<div class="mb-4 rounded-md border bg-muted/50 px-4 py-3">
 					<div class="mb-2 flex items-center justify-between text-sm">
 						<span class="text-muted-foreground">
-							サムネイル生成中 {progress().processed} /{" "}
-							{progress().total}
+							サムネイル生成中 {progress().processed} / {progress().total}
 						</span>
 						<span class="text-muted-foreground text-xs">
-							{Math.round(
-								(progress().processed / progress().total) * 100,
-							)}
-							%
+							{Math.round((progress().processed / progress().total) * 100)}%
 						</span>
 					</div>
-					<Progress
-						value={
-							(progress().processed / progress().total) * 100
-						}
-					/>
+					<Progress value={(progress().processed / progress().total) * 100} />
 				</div>
 			)}
 		</Show>

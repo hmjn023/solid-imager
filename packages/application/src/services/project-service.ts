@@ -37,7 +37,10 @@ export function createProjectService(repository: IProjectRepository) {
 			await repository.addMedia(mediaId, projectId);
 		},
 
-		async removeProjectFromMedia(mediaId: string, projectId: string): Promise<void> {
+		async removeProjectFromMedia(
+			mediaId: string,
+			projectId: string,
+		): Promise<void> {
 			await repository.removeMedia(mediaId, projectId);
 		},
 	};

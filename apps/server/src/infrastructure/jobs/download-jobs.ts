@@ -243,155 +243,6 @@ function resolveCreatedAt(
 
 // Update helper to determine media type from extension
 
-async function _handleYtDlpDownload(
-	item: DownloadItem,
-	mediaSourceId: string,
-	basePath: string,
-) {
-	if (!item.targetUrl) {
-		throw new Error("Missing targetUrl for yt-dlp download");
-	}
-
-	// Use yt-dlp
-	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
-
-	try {
-		await waitForDownloadRateLimit();
-
-		const results = await downloadWithYtDlp(
-			item.targetUrl,
-			basePath,
-			item.cookies,
-			item.userAgent,
-		);
-
-		logger.info(
-			{ count: results.length },
-			"[DownloadJob] yt-dlp download completed",
-		);
-
-		for (let i = 0; i < results.length; i++) {
-			await _processSingleYtDlpResult({
-				index: i,
-				results,
-				item,
-				mediaSourceId,
-				basePath,
-			});
-		}
-	} catch (error) {
-		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
-
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		throw error;
-	}
-}
-
-async function _processSingleYtDlpResult(params: {
-	index: number;
-	results: { filePath: string; metadata: YtDlpOutput }[];
-	item: DownloadItem;
-	mediaSourceId: string;
-	basePath: string;
-}) {
-	const { index, results, item, mediaSourceId, basePath } = params;
-	const res = results[index];
-	let { filePath, metadata } = res;
-
-	// Unify filename
-	const extension = path.extname(filePath);
-	let unifiedName = generateMediaFilename(item, extension);
-
-	// If multiple results for the same item, append index
-	if (results.length > 1) {
-		const ext = path.extname(unifiedName);
-		const base = path.basename(unifiedName, ext);
-		unifiedName = `${base}_${index}${ext}`;
-	}
-
-	const dir = path.dirname(filePath);
-	const targetPath = await _resolveFinalPathWithAvoidance(
-		dir,
-		unifiedName,
-		filePath,
-	);
-
-	try {
-		await fs.rename(filePath, targetPath);
-		filePath = targetPath;
-		logger.info(
-			{ from: res.filePath, to: filePath },
-			"[DownloadJob] Renamed yt-dlp output to unified name",
-		);
-	} catch (e) {
-		logger.warn(
-			{ err: e, filePath, targetPath },
-			"[DownloadJob] Failed to rename yt-dlp output",
-		);
-	}
-
-	// Calculate relative path
-	const relativePath = path.relative(basePath, filePath);
-
-	// Determine media type
-	const mediaType = getMediaTypeFromExtension(filePath);
-
-	logger.info(
-		{ relativePath, mediaType },
-		"[DownloadJob] Processing file from yt-dlp",
-	);
-
-	// Get file metadata
-	const fileMeta = await ServerMediaStorage.getFileMetadata(filePath);
-
-	const newMedia: AddMediaRequest = {
-		mediaSourceId,
-		filePath: relativePath,
-		fileName: path.basename(filePath),
-		mediaType,
-		description: item.description || metadata.description || metadata.title,
-		width: metadata.width || fileMeta.width || 0,
-		height: metadata.height || fileMeta.height || 0,
-		fileSize: fileMeta.size,
-		createdAt: resolveCreatedAt(item, metadata, fileMeta),
-		modifiedAt: fileMeta.modifiedAt,
-		sourceUrls: Array.from(
-			new Set([item.targetUrl ?? "", ...(item.sourceUrls ?? [])]),
-		),
-	};
-
-	await registerMedia(newMedia, mediaSourceId, item, basePath);
-}
-
-async function _resolveFinalPathWithAvoidance(
-	dir: string,
-	unifiedName: string,
-	currentPath: string,
-): Promise<string> {
-	const ext = path.extname(unifiedName);
-	const base = path.basename(unifiedName, ext);
-	let finalPath = path.join(dir, unifiedName);
-	let collisionIndex = 1;
-
-	while (true) {
-		if (finalPath === currentPath) {
-			break;
-		}
-		try {
-			await fs.access(finalPath);
-			finalPath = path.join(dir, `${base}_(${collisionIndex})${ext}`);
-			collisionIndex++;
-		} catch {
-			break;
-		}
-	}
-	return finalPath;
-}
-
 function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	const isDanbooru = item.targetUrl?.includes("donmai.us");
 
@@ -423,145 +274,29 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
-/**
- * Handles direct image download (non-twitter)
- */
-async function _handleDirectImageDownload(
-	item: DownloadItem,
-	mediaSourceId: string,
-	basePath: string,
-) {
-	if (!item.targetUrl) {
-		throw new Error("Missing targetUrl for direct download");
+async function _resolveFinalPathWithAvoidance(
+	dir: string,
+	unifiedName: string,
+	currentPath: string,
+): Promise<string> {
+	const ext = path.extname(unifiedName);
+	const base = path.basename(unifiedName, ext);
+	let finalPath = path.join(dir, unifiedName);
+	let collisionIndex = 1;
+
+	while (true) {
+		if (finalPath === currentPath) {
+			break;
+		}
+		try {
+			await fs.access(finalPath);
+			finalPath = path.join(dir, `${base}_(${collisionIndex})${ext}`);
+			collisionIndex++;
+		} catch {
+			break;
+		}
 	}
-
-	logger.info(
-		{ url: item.targetUrl },
-		"[DownloadJob] Using direct image download method",
-	);
-
-	// Generate unified filename
-	const urlPath = new URL(item.targetUrl).pathname;
-	const extension = path.extname(urlPath) || ".png";
-	const filename = generateMediaFilename(item, extension);
-
-	try {
-		// Download the image
-		const headers = buildFetchHeaders(item);
-
-		await waitForDownloadRateLimit();
-
-		const response = await fetch(item.targetUrl, {
-			headers,
-			signal: AbortSignal.timeout(30000),
-		});
-		if (!response.ok) {
-			logger.error(
-				{
-					status: response.status,
-					statusText: response.statusText,
-					url: item.targetUrl,
-				},
-				"[DownloadJob] Fetch failed",
-			);
-			throw new Error(
-				`Failed to download image: ${response.status} ${response.statusText}`,
-			);
-		}
-
-		const arrayBuffer = await response.arrayBuffer();
-
-		// Use ServerMediaStorage to save with autoIncrement
-		const fileInfo = await ServerMediaStorage.saveFile(
-			basePath,
-			{
-				name: filename,
-				arrayBuffer: async () => arrayBuffer,
-			},
-			{
-				filename,
-				overwrite: false,
-				autoIncrement: true,
-			},
-		);
-
-		const fullPath = path.join(basePath, fileInfo.filePath);
-
-		let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
-		if (createdAt && Number.isNaN(createdAt.getTime())) {
-			createdAt = undefined;
-		}
-
-		// If createdAt is missing, try to fetch from source URL (e.g. Tweet URL)
-		if (!createdAt) {
-			const tweetUrl = item.sourceUrls?.find((u) => u.match(TWITTER_URL_REGEX));
-			if (tweetUrl) {
-				logger.info(
-					{ tweetUrl },
-					"[DownloadJob] Attempting to fetch metadata from source URL for timestamp",
-				);
-				const meta = await fetchMetadataWithYtDlp(
-					tweetUrl,
-					item.cookies,
-					item.userAgent,
-				);
-				if (meta?.upload_date) {
-					createdAt = new Date(
-						meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"),
-					);
-					logger.info(
-						{ createdAt },
-						"[DownloadJob] Resolved createdAt from source URL",
-					);
-				}
-			}
-		}
-
-		// Fallback to file creation time
-		if (!createdAt) {
-			createdAt = fileInfo.createdAt;
-		}
-
-		// Determine media type using getMediaType
-		const mediaType = getMediaTypeFromExtension(fullPath);
-
-		// Create media entry
-		const newMedia: AddMediaRequest = {
-			mediaSourceId,
-			filePath: fileInfo.filePath,
-			fileName: fileInfo.fileName,
-			mediaType,
-			description: formatMetadataAsMarkdown(item),
-			width: fileInfo.width,
-			height: fileInfo.height,
-			fileSize: fileInfo.size,
-			createdAt,
-			modifiedAt: fileInfo.modifiedAt,
-			sourceUrls: Array.from(
-				new Set([item.targetUrl, ...(item.sourceUrls ?? [])]),
-			),
-		};
-
-		await registerMedia(newMedia, mediaSourceId, item, basePath);
-
-		logger.info(
-			{ url: item.targetUrl },
-			"[DownloadJob] Download completed successfully",
-		);
-	} catch (error) {
-		logger.error(
-			{ err: error, url: item.targetUrl },
-			"[DownloadJob] Download failed",
-		);
-
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-
-		throw error;
-	}
+	return finalPath;
 }
 
 /**

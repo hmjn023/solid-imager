@@ -38,7 +38,10 @@ async function runDatabaseCommand(
 
 	if (docker) {
 		const containerName = process.env.DB_CONTAINER || "solid-imager-db-1";
-		if (!agent) process.stdout.write(`Executing docker ${command} on ${containerName}...\n`);
+		if (!agent)
+			process.stdout.write(
+				`Executing docker ${command} on ${containerName}...\n`,
+			);
 		spawnCmd = "docker";
 		spawnArgs = ["exec", "-i", containerName, command, ...args];
 	} else {
@@ -49,7 +52,11 @@ async function runDatabaseCommand(
 	const inStream = inputFile ? createReadStream(inputFile) : null;
 
 	const child = spawn(spawnCmd, spawnArgs, {
-		stdio: [inStream ? "pipe" : "ignore", outStream ? "pipe" : "inherit", "pipe"],
+		stdio: [
+			inStream ? "pipe" : "ignore",
+			outStream ? "pipe" : "inherit",
+			"pipe",
+		],
 	});
 
 	if (inStream && child.stdin) {
@@ -128,9 +135,15 @@ export const dbCmd = Cli.create("db", {
 	.command("dump", {
 		description: "Dump the local database",
 		options: z.object({
-			format: z.enum(["sql", "json", "zip"]).default("sql").describe("Dump format"),
+			format: z
+				.enum(["sql", "json", "zip"])
+				.default("sql")
+				.describe("Dump format"),
 			output: z.string().default("./dump.sql").describe("Output file path"),
-			docker: z.boolean().default(true).describe("Use docker exec to dump from running container"),
+			docker: z
+				.boolean()
+				.default(true)
+				.describe("Use docker exec to dump from running container"),
 		}),
 		run: dumpHandler,
 	})
@@ -138,7 +151,10 @@ export const dbCmd = Cli.create("db", {
 		description: "Restore the local database",
 		args: z.object({ filepath: z.string() }),
 		options: z.object({
-			docker: z.boolean().default(true).describe("Use docker exec to restore to running container"),
+			docker: z
+				.boolean()
+				.default(true)
+				.describe("Use docker exec to restore to running container"),
 		}),
 		run: restoreHandler,
 	});

@@ -12,9 +12,7 @@ export type SourcesScreenProps = {
 	isLoading: boolean;
 	isError: boolean;
 	error: Error | null;
-	renderSourceCard: (
-		source: SafeMediaSource | MediaSourceInfo,
-	) => JSX.Element;
+	renderSourceCard: (source: SafeMediaSource | MediaSourceInfo) => JSX.Element;
 	renderFormModal: (props: {
 		editingSource: SafeMediaSource | MediaSourceInfo | null;
 		isOpen: boolean;

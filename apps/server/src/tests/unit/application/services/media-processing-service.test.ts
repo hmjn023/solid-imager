@@ -41,6 +41,7 @@ const mockCharacterService = {
 const mockIpRepo = {
 	create: vi.fn(),
 	addMedia: vi.fn(),
+	addMediaBulk: vi.fn(),
 	findByName: vi.fn(),
 	findByNames: vi.fn(),
 };
@@ -165,10 +166,9 @@ describe("MediaProcessingService", () => {
 				"manual",
 				undefined,
 			);
-			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
+			expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
 				mediaId,
-				ipId,
-				undefined,
+				[{ id: ipId }],
 				"character_link",
 				undefined,
 			);
@@ -191,6 +191,11 @@ describe("MediaProcessingService", () => {
 			// 2. Character registration (called second)
 			mockCharacterRepo.findByName.mockResolvedValue(null);
 			mockCharacterRepo.create.mockResolvedValue({
+				id: charId,
+				name: charName,
+				ips: [{ id: ipId, name: ipName }],
+			});
+			mockCharacterRepo.findById.mockResolvedValue({
 				id: charId,
 				name: charName,
 				ips: [{ id: ipId, name: ipName }],
@@ -222,11 +227,10 @@ describe("MediaProcessingService", () => {
 			);
 
 			// Verify both were linked to media
-			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
+			expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
 				mediaId,
-				ipId,
-				undefined,
-				"manual",
+				[{ id: ipId }],
+				"character_link",
 				undefined,
 			);
 			expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
@@ -234,13 +238,6 @@ describe("MediaProcessingService", () => {
 				charId,
 				1,
 				"manual",
-				undefined,
-			);
-			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
-				mediaId,
-				ipId,
-				undefined,
-				"character_link",
 				undefined,
 			);
 		});

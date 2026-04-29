@@ -1,6 +1,6 @@
-import { SourceCard } from "@solid-imager/ui/source-card";
-import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
+import { SourceCard } from "@solid-imager/ui/source-card";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { listen } from "@tauri-apps/api/event";

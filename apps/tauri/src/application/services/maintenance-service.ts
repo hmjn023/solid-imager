@@ -23,7 +23,10 @@ export class MaintenanceService {
 			listExistingThumbnailIds: async (sourceId: string) => {
 				const config = await TauriConfigService.getConfig();
 				const fs = getTauriAppServices().fileSystem;
-				const sourceCacheDir = await resolveSourceCacheDir(config.storage.thumbnailDir, sourceId);
+				const sourceCacheDir = await resolveSourceCacheDir(
+					config.storage.thumbnailDir,
+					sourceId,
+				);
 
 				try {
 					if (!(await fs.exists(sourceCacheDir))) {
@@ -47,7 +50,10 @@ export class MaintenanceService {
 	}
 }
 
-async function resolveSourceCacheDir(thumbnailDir: string, sourceId: string): Promise<string> {
+async function resolveSourceCacheDir(
+	thumbnailDir: string,
+	sourceId: string,
+): Promise<string> {
 	let basePath = thumbnailDir;
 	if (!(await isAbsolute(thumbnailDir))) {
 		basePath = await join(await appDataDir(), thumbnailDir);

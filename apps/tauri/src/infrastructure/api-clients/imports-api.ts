@@ -15,10 +15,19 @@ import { getTauriAppServices } from "~/app-services";
 import { TauriMediaRepository } from "~/infrastructure/local-api/repositories/media-repository";
 import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
-import { dirname, extname, joinLocalPath, splitStemAndExt, toRelativePath } from "../path-utils";
+import {
+	dirname,
+	extname,
+	joinLocalPath,
+	splitStemAndExt,
+	toRelativePath,
+} from "../path-utils";
 import { fetchMediaSource, syncMediaSources } from "./sources-api";
 
-async function emitImportEvent(event: string, payload: Record<string, unknown>) {
+async function emitImportEvent(
+	event: string,
+	payload: Record<string, unknown>,
+) {
 	await emit(event, payload);
 }
 
@@ -29,7 +38,10 @@ function resolveDownloadTarget(item: DownloadItem) {
 	return item.sourceUrls?.[0];
 }
 
-async function downloadItemToSource(targetSourceId: string, item: DownloadItem) {
+async function downloadItemToSource(
+	targetSourceId: string,
+	item: DownloadItem,
+) {
 	const downloadTarget = resolveDownloadTarget(item);
 	if (!downloadTarget) {
 		throw new Error("targetUrl or sourceUrls[0] is required");
@@ -90,7 +102,8 @@ async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
 	const { stem, extension } = splitStemAndExt(fileName);
 	let index = 0;
 	while (true) {
-		const candidateName = index === 0 ? `${stem}${extension}` : `${stem}-${index}${extension}`;
+		const candidateName =
+			index === 0 ? `${stem}${extension}` : `${stem}-${index}${extension}`;
 		const candidatePath = joinLocalPath(rootPath, candidateName);
 		if (!(await fs.exists(candidatePath))) {
 			return candidatePath;
@@ -99,7 +112,10 @@ async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
 	}
 }
 
-export async function processImportItemsToSource(targetSourceId: string, items: DownloadItem[]) {
+export async function processImportItemsToSource(
+	targetSourceId: string,
+	items: DownloadItem[],
+) {
 	for (const item of items) {
 		await downloadItemToSource(targetSourceId, item);
 	}
@@ -111,7 +127,11 @@ export async function enqueueDownloadJobs(
 	targetSourceId: string,
 	items: DownloadItem[],
 ): Promise<number> {
-	return await queueSharedDownloadJobs(TauriJobRepository, targetSourceId, items);
+	return await queueSharedDownloadJobs(
+		TauriJobRepository,
+		targetSourceId,
+		items,
+	);
 }
 
 export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
@@ -137,7 +157,10 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 				item.fileName ||
 				basenameFromUrl(downloadTarget) ||
 				`${crypto.randomUUID()}${guessExtensionFromUrl(downloadTarget)}`;
-			const targetPath = await resolveUniqueTargetPath(context.basePath, sourceFileName);
+			const targetPath = await resolveUniqueTargetPath(
+				context.basePath,
+				sourceFileName,
+			);
 			await getTauriAppServices().fileSystem.mkdir(dirname(targetPath), {
 				recursive: true,
 			});
@@ -151,7 +174,7 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 			const mediaType = inferMediaTypeFromPath(targetPath);
 
 			let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
-			if (createdAt && isNaN(createdAt.getTime())) {
+			if (createdAt && Number.isNaN(createdAt.getTime())) {
 				createdAt = undefined;
 			}
 
@@ -195,7 +218,10 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 					},
 				]);
 				if (!row) {
-					console.error("[registerMedia] batchUpsert returned empty result for", artifact.filePath);
+					console.error(
+						"[registerMedia] batchUpsert returned empty result for",
+						artifact.filePath,
+					);
 					return;
 				}
 				const existing = await TauriMediaRepository.findByPath(
@@ -215,7 +241,11 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 					await emit("media-added", eventPayload);
 				}
 			} catch (error) {
-				console.error("[registerMedia] Failed to upsert media for", artifact.filePath, error);
+				console.error(
+					"[registerMedia] Failed to upsert media for",
+					artifact.filePath,
+					error,
+				);
 			}
 		},
 		events: {
@@ -238,7 +268,10 @@ const importRequestService = createImportRequestService({
 	publishImportEvent: emitImportEvent,
 });
 
-export async function bulkAddImportItems(items: DownloadItem[], targetSourceId?: string) {
+export async function bulkAddImportItems(
+	items: DownloadItem[],
+	targetSourceId?: string,
+) {
 	return await importRequestService.bulkAddImportItems(items, targetSourceId);
 }
 
@@ -246,8 +279,14 @@ export async function listPendingImports(): Promise<PendingImportJob[]> {
 	return await importRequestService.listPendingImports();
 }
 
-export async function processPendingImports(jobIds: string[], targetSourceId?: string) {
-	return await importRequestService.processPendingImports(jobIds, targetSourceId);
+export async function processPendingImports(
+	jobIds: string[],
+	targetSourceId?: string,
+) {
+	return await importRequestService.processPendingImports(
+		jobIds,
+		targetSourceId,
+	);
 }
 
 export async function cancelPendingImports(jobIds: string[]) {

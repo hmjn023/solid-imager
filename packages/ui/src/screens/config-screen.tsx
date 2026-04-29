@@ -26,7 +26,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				await props.onSubmit(value as Partial<AppConfig>);
+				await props.onSubmit(value);
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
 			} catch (_error) {

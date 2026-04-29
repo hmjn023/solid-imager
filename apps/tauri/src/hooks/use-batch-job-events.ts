@@ -14,10 +14,15 @@ import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
 
 type SafeParseSchema<T> = {
-	safeParse: (input: unknown) => { success: true; data: T } | { success: false; error: unknown };
+	safeParse: (
+		input: unknown,
+	) => { success: true; data: T } | { success: false; error: unknown };
 };
 
-function parseEventPayload<T>(schema: SafeParseSchema<T>, payload: unknown): T | null {
+function parseEventPayload<T>(
+	schema: SafeParseSchema<T>,
+	payload: unknown,
+): T | null {
 	const result = schema.safeParse(payload);
 	if (!result.success) {
 		console.error("Failed to parse event payload:", result.error);
@@ -38,19 +43,28 @@ export function useBatchJobEvents(
 
 		const unlistenPromises = [
 			listen("job-progress", (event) => {
-				const data = parseEventPayload<JobProgressEvent>(jobProgressEventSchema, event.payload);
+				const data = parseEventPayload<JobProgressEvent>(
+					jobProgressEventSchema,
+					event.payload,
+				);
 				if (data?.jobId === jobId) {
 					handlers.handleJobProgress(data);
 				}
 			}),
 			listen("job-completed", (event) => {
-				const data = parseEventPayload<JobCompletedEvent>(jobCompletedEventSchema, event.payload);
+				const data = parseEventPayload<JobCompletedEvent>(
+					jobCompletedEventSchema,
+					event.payload,
+				);
 				if (data?.jobId === jobId) {
 					handlers.handleJobCompleted(data);
 				}
 			}),
 			listen("job-failed", (event) => {
-				const data = parseEventPayload<JobFailedEvent>(jobFailedEventSchema, event.payload);
+				const data = parseEventPayload<JobFailedEvent>(
+					jobFailedEventSchema,
+					event.payload,
+				);
 				if (data?.jobId === jobId) {
 					handlers.handleJobFailed(data);
 				}

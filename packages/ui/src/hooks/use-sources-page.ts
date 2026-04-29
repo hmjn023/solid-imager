@@ -14,10 +14,7 @@ export type SourcesPageActions = {
 };
 
 export type SourcesEventHandlers = {
-	onAllJobsCompleted: (data: {
-		sourceId: string;
-		processed?: number;
-	}) => void;
+	onAllJobsCompleted: (data: { sourceId: string; processed?: number }) => void;
 	onWatcherError: (data: { sourceId: string; error?: string }) => void;
 };
 
@@ -25,7 +22,7 @@ export type UseSourcesPageOptions = {
 	actions: SourcesPageActions;
 	queryClient: QueryClient;
 	invalidateQueryKey: string;
-	registerEvents?: (handlers: SourcesEventHandlers) => (() => void);
+	registerEvents?: (handlers: SourcesEventHandlers) => () => void;
 };
 
 export type UseSourcesPageResult = {
@@ -41,7 +38,9 @@ export type UseSourcesPageResult = {
 	handleFormSubmit: (sourceData: unknown) => Promise<void>;
 	handleDeleteSource: (source: SafeMediaSource | MediaSourceInfo) => void;
 	handleDeleteConfirm: (mediaSourceId: string) => Promise<void>;
-	handleSyncSource: (source: SafeMediaSource | MediaSourceInfo) => Promise<void>;
+	handleSyncSource: (
+		source: SafeMediaSource | MediaSourceInfo,
+	) => Promise<void>;
 	handleSyncAll: (sources: SafeMediaSource[] | undefined) => Promise<void>;
 };
 
@@ -143,9 +142,7 @@ export function useSourcesPage(
 		}
 	};
 
-	const handleSyncAll = async (
-		sources: SafeMediaSource[] | undefined,
-	) => {
+	const handleSyncAll = async (sources: SafeMediaSource[] | undefined) => {
 		if (!sources || sources.length === 0 || isSyncing()) {
 			return;
 		}
@@ -153,9 +150,7 @@ export function useSourcesPage(
 		setIsSyncing(true);
 		toast.info("Starting sync for all sources...");
 		try {
-			const ids = sources
-				.map((s) => s.id)
-				.filter(Boolean) as string[];
+			const ids = sources.map((s) => s.id).filter(Boolean) as string[];
 			await actions.syncMediaSources(ids);
 			toast.success("Sync finished for all sources");
 		} catch (error) {

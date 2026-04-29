@@ -31,7 +31,10 @@ export function Nav() {
 		const hideThreshold = 50;
 		if (currentScrollY < lastScrollY() || currentScrollY < 10) {
 			setIsVisible(true);
-		} else if (currentScrollY > lastScrollY() && currentScrollY > hideThreshold) {
+		} else if (
+			currentScrollY > lastScrollY() &&
+			currentScrollY > hideThreshold
+		) {
 			setIsVisible(false);
 		}
 
@@ -55,7 +58,9 @@ export function Nav() {
 			>
 				<div class="container flex items-center gap-4 p-3">
 					<div>
-						<p class="font-semibold text-white text-sm tracking-[0.25em] uppercase">Solid Imager</p>
+						<p class="font-semibold text-white text-sm tracking-[0.25em] uppercase">
+							Solid Imager
+						</p>
 						<p class="text-sky-100 text-xs">Standalone desktop UI</p>
 					</div>
 					<ul class="ml-auto flex items-center text-sm">
