@@ -1,8 +1,5 @@
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type {
-	Media,
-	MediaGenerationInfo,
-} from "@solid-imager/core/domain/media/schemas";
+import type { Media, MediaGenerationInfo } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
@@ -24,13 +21,7 @@ export async function extractAndPersistMediaMetadata(
 	deps: MediaMetadataExtractorDeps,
 	tx?: Transaction,
 ): Promise<MediaGenerationInfo | null> {
-	const {
-		mediaRepository,
-		tagRepository,
-		imageProcessor,
-		pathAdapter,
-		logger,
-	} = deps;
+	const { mediaRepository, tagRepository, imageProcessor, pathAdapter, logger } = deps;
 	const fullPath = pathAdapter.join(sourcePath, media.filePath);
 
 	try {
@@ -54,12 +45,7 @@ export async function extractAndPersistMediaMetadata(
 			tx,
 		);
 		if (metadata.tags.length > 0) {
-			await tagRepository.addTagsToMedia(
-				media.id,
-				metadata.tags,
-				"comfyui_workflow",
-				tx,
-			);
+			await tagRepository.addTagsToMedia(media.id, metadata.tags, "comfyui_workflow", tx);
 		}
 		return await mediaRepository.getGenerationInfo(media.id, tx);
 	} catch (error) {

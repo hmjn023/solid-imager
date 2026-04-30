@@ -12,9 +12,7 @@ import { getErrorMessage, globalOptions } from "../utils";
 function validateDimension(d: string): string {
 	const dimensionRegex = /^(\d+(%|px|vh|vw)?|auto)$/;
 	if (!dimensionRegex.test(d)) {
-		throw new Error(
-			`Invalid dimension: ${d}. Must be auto or a number with unit (%, px, vh, vw).`,
-		);
+		throw new Error(`Invalid dimension: ${d}. Must be auto or a number with unit (%, px, vh, vw).`);
 	}
 	return d;
 }
@@ -137,10 +135,7 @@ export const viewHandler = async (c: any) => {
 		const rpc = getClient(c.options.remote);
 		const media = await rpc.media.get({ sourceId, mediaId: c.args.id });
 
-		const url = new URL(
-			`/api/sources/${sourceId}/${media.id}`,
-			c.options.remote,
-		).toString();
+		const url = new URL(`/api/sources/${sourceId}/${media.id}`, c.options.remote).toString();
 		const res = await fetch(url);
 		if (!res.ok) {
 			return c.error({
@@ -187,10 +182,7 @@ export const downloadHandler = async (c: any) => {
 		const rpc = getClient(c.options.remote);
 		const media = await rpc.media.get({ sourceId, mediaId: c.args.id });
 
-		const url = new URL(
-			`/api/sources/${sourceId}/${media.id}`,
-			c.options.remote,
-		).toString();
+		const url = new URL(`/api/sources/${sourceId}/${media.id}`, c.options.remote).toString();
 		const res = await fetch(url);
 		if (!res.ok) {
 			return c.error({
@@ -207,15 +199,8 @@ export const downloadHandler = async (c: any) => {
 		}
 
 		const contentType = res.headers.get("Content-Type");
-		const defaultFilename = ensureExtension(
-			media.fileName || media.id,
-			contentType,
-		);
-		const filename = resolveDownloadPath(
-			c.options.output,
-			defaultFilename,
-			c.agent,
-		);
+		const defaultFilename = ensureExtension(media.fileName || media.id, contentType);
+		const filename = resolveDownloadPath(c.options.output, defaultFilename, c.agent);
 		const fileStream = createWriteStream(filename);
 
 		// Bun or Node native fetch bodies are ReadableStreams
@@ -244,8 +229,7 @@ export const mediaCmd = Cli.create("media", { description: "Media operations" })
 		run: searchHandler,
 	})
 	.command("view", {
-		description:
-			"View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
+		description: "View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
 		args: z.object({ id: z.string() }),
 		options: globalOptions.extend({
 			width: z.string().default("auto").describe("Width (e.g. 50%, 400px)"),

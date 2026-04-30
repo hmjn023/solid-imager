@@ -12,21 +12,14 @@ import { asc, eq } from "drizzle-orm";
 import { mediaSources } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-export type SourceRepositoryExecutorProvider = (
-	tx?: unknown,
-) => DrizzleExecutor;
+export type SourceRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 
 type CreateSourceRepositoryOptions = {
 	orderByName?: boolean;
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		error.code === "23505"
-	);
+	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function mapToMediaSource(row: typeof mediaSources.$inferSelect): MediaSource {
@@ -67,10 +60,7 @@ export function createSourceRepository(
 					.limit(1);
 				return rows[0] ? mapToMediaSource(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to select media source by ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to select media source by ID: ${id}`, error);
 			}
 		},
 
@@ -88,31 +78,21 @@ export function createSourceRepository(
 				return mapToMediaSource(rows[0]);
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Media source with this name or ID already exists",
-					);
+					throw new ResourceConflictError("Media source with this name or ID already exists");
 				}
 				throw new UnexpectedError("Failed to insert media source", error);
 			}
 		},
 
-		async update(
-			id: string,
-			input: Partial<MediaSource>,
-			tx?: unknown,
-		): Promise<MediaSource> {
+		async update(id: string, input: Partial<MediaSource>, tx?: unknown): Promise<MediaSource> {
 			try {
 				const rows = await getExecutor(tx)
 					.update(mediaSources)
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
-						...(input.description !== undefined
-							? { description: input.description }
-							: {}),
+						...(input.description !== undefined ? { description: input.description } : {}),
 						...(input.type !== undefined ? { type: input.type } : {}),
-						...(input.connectionInfo !== undefined
-							? { connectionInfo: input.connectionInfo }
-							: {}),
+						...(input.connectionInfo !== undefined ? { connectionInfo: input.connectionInfo } : {}),
 						updatedAt: new Date(),
 					})
 					.where(eq(mediaSources.id, id))
@@ -127,14 +107,9 @@ export function createSourceRepository(
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Media source with this name or ID already exists",
-					);
+					throw new ResourceConflictError("Media source with this name or ID already exists");
 				}
-				throw new UnexpectedError(
-					`Failed to update media source with ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to update media source with ID: ${id}`, error);
 			}
 		},
 
@@ -152,10 +127,7 @@ export function createSourceRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(
-					`Failed to delete media source with ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to delete media source with ID: ${id}`, error);
 			}
 		},
 	};

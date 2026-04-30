@@ -1,23 +1,26 @@
-import { Button } from "@solid-imager/ui/button";
+import type { ComponentProps } from "solid-js";
+import { Show } from "solid-js";
+import { isServer, Portal } from "solid-js/web";
+import { Button } from "./button";
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
-} from "@solid-imager/ui/dialog";
-import { SearchControlPanel } from "@solid-imager/ui/search-control-panel";
-import type { ComponentProps } from "solid-js";
-import { Show } from "solid-js";
-import { isServer, Portal } from "solid-js/web";
-import { PresetClient } from "~/infrastructure/api/clients/preset-client";
+} from "./dialog";
+import {
+	SearchControlPanel,
+	type SearchControlPanelProps,
+} from "./search-control-panel";
 
 type FilterData = ComponentProps<typeof SearchControlPanel>["filterData"];
 
-type MediaListActionsProps = {
+export type MediaListActionsProps = {
 	filterData: FilterData;
 	onDumpDownload: (mode: "json" | "zip") => void;
 	onSearch: () => void;
+	presetClient: SearchControlPanelProps["presetClient"];
 };
 
 export function MediaListActions(props: MediaListActionsProps) {
@@ -133,7 +136,7 @@ export function MediaListActions(props: MediaListActionsProps) {
 								context="source"
 								filterData={props.filterData}
 								onSearch={props.onSearch}
-								presetClient={PresetClient}
+								presetClient={props.presetClient}
 							/>
 						</div>
 					</DialogContent>

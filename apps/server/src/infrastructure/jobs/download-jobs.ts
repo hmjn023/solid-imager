@@ -10,6 +10,8 @@ import {
 	queueDownloadJobs as queueSharedDownloadJobs,
 	runDownloadImageJob,
 } from "@solid-imager/application/services/download-job-runner";
+import type { MediaPathAdapter } from "@solid-imager/application/services/media-service";
+import { resolveUploadTargetPath } from "@solid-imager/application/services/media-upload-utils";
 import type {
 	AddMediaRequest,
 	DownloadItem,
@@ -274,30 +276,12 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
-async function _resolveFinalPathWithAvoidance(
-	dir: string,
-	unifiedName: string,
-	currentPath: string,
-): Promise<string> {
-	const ext = path.extname(unifiedName);
-	const base = path.basename(unifiedName, ext);
-	let finalPath = path.join(dir, unifiedName);
-	let collisionIndex = 1;
-
-	while (true) {
-		if (finalPath === currentPath) {
-			break;
-		}
-		try {
-			await fs.access(finalPath);
-			finalPath = path.join(dir, `${base}_(${collisionIndex})${ext}`);
-			collisionIndex++;
-		} catch {
-			break;
-		}
-	}
-	return finalPath;
-}
+const pathAdapter: MediaPathAdapter = {
+	join: path.join,
+	extname: path.extname,
+	basename: path.basename,
+	relative: path.relative,
+};
 
 /**
  * Extracts and normalizes a DownloadItem from a job payload.
@@ -338,14 +322,27 @@ export async function processDownloadJob(job: Job): Promise<void> {
 						unifiedName = `${base}_${index}${ext}`;
 					}
 					const dir = path.dirname(filePath);
-					const targetPath = await _resolveFinalPathWithAvoidance(
+					const resolved = await resolveUploadTargetPath(
 						dir,
 						unifiedName,
-						filePath,
+						false,
+						true,
+						{
+							pathAdapter,
+							exists: async (p) => {
+								try {
+									await fs.access(p);
+									return true;
+								} catch {
+									return false;
+								}
+							},
+							skipIfEquals: filePath,
+						},
 					);
-					if (targetPath !== filePath) {
-						await fs.rename(filePath, targetPath);
-						filePath = targetPath;
+					if (resolved.fullPath !== filePath) {
+						await fs.rename(filePath, resolved.fullPath);
+						filePath = resolved.fullPath;
 					}
 					const relativePath = path.relative(context.basePath, filePath);
 					const mediaType = getMediaTypeFromExtension(filePath);

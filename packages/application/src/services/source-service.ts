@@ -70,10 +70,7 @@ export type SourceServiceDeps = {
 	connectionTester?: SourceConnectionTester;
 };
 
-export function createSourceService({
-	repository,
-	connectionTester,
-}: SourceServiceDeps) {
+export function createSourceService({ repository, connectionTester }: SourceServiceDeps) {
 	return {
 		async list(): Promise<MediaSource[]> {
 			return await repository.findAll();
@@ -103,10 +100,7 @@ export function createSourceService({
 
 			const source = await repository.findById(id);
 			if (!source) {
-				throw new FetchError(
-					"指定されたメディアソースが見つかりません",
-					HTTP_STATUS_NOT_FOUND,
-				);
+				throw new FetchError("指定されたメディアソースが見つかりません", HTTP_STATUS_NOT_FOUND);
 			}
 			const test = await connectionTester.testConnection(source);
 			if (!test.success) {
@@ -128,8 +122,7 @@ export function createSourceService({
 					lastChecked: new Date(),
 				};
 			} catch (error: unknown) {
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
+				const errorMessage = error instanceof Error ? error.message : String(error);
 				return {
 					mediaSourceId: id,
 					status: "error",

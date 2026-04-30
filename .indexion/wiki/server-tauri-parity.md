@@ -63,39 +63,39 @@
 
 厳格基準では、search / sources / manager / config / source-media の route 本体は共通化完了とみなせる。`source-media-page` の grid 部分も `SourceMediaGrid` (`packages/ui/src/source-media-grid.tsx`) へ共通化され、server / tauri は `renderItem` prop で app 固有の item 描画（`ThumbnailImage` / `<a>` vs `<Link>` など）を注入するだけに縮退。tauri は `enableVirtualization={true}` で仮想化を有効化。
 
-| server                                                    | tauri                                              | 備考                               |
-| --------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
-| `routes/__root.tsx`                                       | `routes/__root.tsx`                                | 同一                               |
-| `routes/$.tsx`                                            | `routes/$.tsx`                                     | 同一                               |
-| `routes/index.tsx`                                        | `routes/index.tsx`                                 | 同一                               |
-| `routes/about.tsx`                                        | `routes/about.tsx`                                 | 同一                               |
-| `routes/config.tsx`                                       | `routes/config.tsx`                                | `ConfigScreen` 共有。差分は `onSubmitSuccess` callback（tauri: thumbnail cache reset）のみ |
-| `routes/manager.tsx`                                      | `routes/manager.tsx`                               | `ManagerScreen` + `useManagerPage` 共有。差分は batch job event transport のみ |
-| `routes/search.tsx`                                       | `routes/search.tsx`                                | `SearchScreen` + `useSearchPage` 共有。差分は `renderNavActions`（Portal vs inline）、refresh 戦略、`sourceRootPath` 注入、SSR guard |
-| `routes/sources/index.tsx`                                | `routes/sources/index.tsx`                         | `SourcesScreen` + `useSourcesPage` 共有。差分は event transport（SSE vs Tauri event）と `href` 有無 |
+| server                                                    | tauri                                              | 備考                                                                                                                                                        |
+| --------------------------------------------------------- | -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `routes/__root.tsx`                                       | `routes/__root.tsx`                                | 同一                                                                                                                                                        |
+| `routes/$.tsx`                                            | `routes/$.tsx`                                     | 同一                                                                                                                                                        |
+| `routes/index.tsx`                                        | `routes/index.tsx`                                 | 同一                                                                                                                                                        |
+| `routes/about.tsx`                                        | `routes/about.tsx`                                 | 同一                                                                                                                                                        |
+| `routes/config.tsx`                                       | `routes/config.tsx`                                | `ConfigScreen` 共有。差分は `onSubmitSuccess` callback（tauri: thumbnail cache reset）のみ                                                                  |
+| `routes/manager.tsx`                                      | `routes/manager.tsx`                               | `ManagerScreen` + `useManagerPage` 共有。差分は batch job event transport のみ                                                                              |
+| `routes/search.tsx`                                       | `routes/search.tsx`                                | `SearchScreen` + `useSearchPage` 共有。差分は `renderNavActions`（Portal vs inline）、refresh 戦略、`sourceRootPath` 注入、SSR guard                        |
+| `routes/sources/index.tsx`                                | `routes/sources/index.tsx`                         | `SourcesScreen` + `useSourcesPage` 共有。差分は event transport（SSE vs Tauri event）と `href` 有無                                                         |
 | `routes/sources/$mediaSourceId/index.tsx`                 | `routes/sources/$mediaSourceId/index.tsx`          | `SourceMediaScreen` + `useSourceMediaPage` + `SourceMediaGrid` 共有。差分は `renderItem`（Thumbnail/Link の platform 差分）と `enableVirtualization` の有無 |
-| `routes/sources/$mediaSourceId/$mediaId/index.tsx`        | `routes/sources/$mediaSourceId/$mediaId/index.tsx` | 同一                               |
-| `routes/api/rpc.$.ts`                                     | ―（Rust IPC）                                      | oRPC vs Tauri IPC                  |
-| `routes/api/events.ts`                                    | ―（Rust IPC）                                      | SSE vs Tauri event                 |
-| `routes/api/sources.$mediaSourceId.dump.ts`               | ―                                                  | serverのみ                         |
-| `routes/api/sources.$mediaSourceId.import.ts`             | ―                                                  | serverのみ                         |
-| `routes/api/sources.$mediaSourceId.$mediaId.ts`           | ―                                                  | serverのみ（メディアファイル配信） |
-| `routes/api/sources.$mediaSourceId.$mediaId.thumbnail.ts` | ―                                                  | serverのみ（サムネイル配信）       |
-| `routes/docs/swagger/index.tsx`                           | ―                                                  | serverのみ（Swagger UI）           |
+| `routes/sources/$mediaSourceId/$mediaId/index.tsx`        | `routes/sources/$mediaSourceId/$mediaId/index.tsx` | 同一                                                                                                                                                        |
+| `routes/api/rpc.$.ts`                                     | ―（Rust IPC）                                      | oRPC vs Tauri IPC                                                                                                                                           |
+| `routes/api/events.ts`                                    | ―（Rust IPC）                                      | SSE vs Tauri event                                                                                                                                          |
+| `routes/api/sources.$mediaSourceId.dump.ts`               | ―                                                  | serverのみ                                                                                                                                                  |
+| `routes/api/sources.$mediaSourceId.import.ts`             | ―                                                  | serverのみ                                                                                                                                                  |
+| `routes/api/sources.$mediaSourceId.$mediaId.ts`           | ―                                                  | serverのみ（メディアファイル配信）                                                                                                                          |
+| `routes/api/sources.$mediaSourceId.$mediaId.thumbnail.ts` | ―                                                  | serverのみ（サムネイル配信）                                                                                                                                |
+| `routes/docs/swagger/index.tsx`                           | ―                                                  | serverのみ（Swagger UI）                                                                                                                                    |
 
 ## Hooks（対応度: ~85%）
 
 hook 本体は `packages/ui/src/hooks` へ寄り、app 側は transport adapter を注入する thin wrapper に縮退した。search / sources / source-media / manager それぞれのページ状態管理が shared hook 化され、route からの差分は query adapter と transport 実装に閉じる。差分は SSE と Tauri event bus の transport 実装に残るが、callback surface 自体はほぼ共通化済み。
 
-| ファイル名                          | server実装                                        | tauri実装                                            | 差異                                             | 備考                                                            |
-| ----------------------------------- | ------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------- |
-| `use-media-source-events.ts`        | `packages/ui` の shared hook + oRPC SSE transport | `packages/ui` の shared hook + Tauri event transport | transport 実装と event relevance filter が異なる | `onJobProgress` を含む callback I/F は shared hook 側へ統合済み |
-| `use-batch-job-events.ts`           | `/api/events` SSE を購読し shared manager job handlers へ委譲 | Tauri `listen` と core event schema で購読し shared manager job handlers へ委譲 | transport のみ異なる | `manager.tsx` の batch tagging progress/completed/failed 更新は `packages/ui/src/hooks/use-manager-page.ts` 側へ移動 |
-| `use-current-search-persistence.ts` | `packages/ui` 経由で `@solid-imager/core`         | `packages/ui` 経由で `@solid-imager/core`            | 共通化済み                                       | deepEqualはcore/utils/deep-equal                                |
-| `use-search-page.ts`                | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | infinite query / dedup / scroll restore / observer を shared 化 |
-| `use-sources-page.ts`               | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | source CRUD / sync / event の状態管理を shared 化               |
-| `use-source-media-page.ts`          | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | source media の検索 / upload / dump / restore / move/copy を shared 化 |
-| `use-manager-page.ts`               | `packages/ui` の shared hook                      | `packages/ui` の shared hook                         | 共通化済み                                       | manager の CRUD / batch tagging 状態管理を shared 化            |
+| ファイル名                          | server実装                                                    | tauri実装                                                                       | 差異                                             | 備考                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| `use-media-source-events.ts`        | `packages/ui` の shared hook + oRPC SSE transport             | `packages/ui` の shared hook + Tauri event transport                            | transport 実装と event relevance filter が異なる | `onJobProgress` を含む callback I/F は shared hook 側へ統合済み                                                      |
+| `use-batch-job-events.ts`           | `/api/events` SSE を購読し shared manager job handlers へ委譲 | Tauri `listen` と core event schema で購読し shared manager job handlers へ委譲 | transport のみ異なる                             | `manager.tsx` の batch tagging progress/completed/failed 更新は `packages/ui/src/hooks/use-manager-page.ts` 側へ移動 |
+| `use-current-search-persistence.ts` | `packages/ui` 経由で `@solid-imager/core`                     | `packages/ui` 経由で `@solid-imager/core`                                       | 共通化済み                                       | deepEqualはcore/utils/deep-equal                                                                                     |
+| `use-search-page.ts`                | `packages/ui` の shared hook                                  | `packages/ui` の shared hook                                                    | 共通化済み                                       | infinite query / dedup / scroll restore / observer を shared 化                                                      |
+| `use-sources-page.ts`               | `packages/ui` の shared hook                                  | `packages/ui` の shared hook                                                    | 共通化済み                                       | source CRUD / sync / event の状態管理を shared 化                                                                    |
+| `use-source-media-page.ts`          | `packages/ui` の shared hook                                  | `packages/ui` の shared hook                                                    | 共通化済み                                       | source media の検索 / upload / dump / restore / move/copy を shared 化                                               |
+| `use-manager-page.ts`               | `packages/ui` の shared hook                                  | `packages/ui` の shared hook                                                    | 共通化済み                                       | manager の CRUD / batch tagging 状態管理を shared 化                                                                 |
 
 ## Components（対応度: ~92%）
 
@@ -128,8 +128,8 @@ leaf component の共有は進んだ。search / sources / manager / config / sou
 | `media/thumbnail-image.tsx`               | ほぼ同一                                                                                                                          |
 | `imports/import-review-modal.tsx`         | `packages/ui/import-review-modal.tsx` を共有。app 側は data/action adapter のみ                                                   |
 | `imports/pending-downloads-indicator.tsx` | `packages/ui/pending-downloads-indicator.tsx` を共有。app 側は event subscription adapter のみ                                    |
-| `media/source-media-grid.tsx`             | `packages/ui/src/source-media-grid.tsx` を新設。server / tauri で共有。差分は `renderItem` prop のみ                         |
-| `media/media-list-actions.tsx`            | server / tauri とも `SourceMediaScreen` の `renderActions` prop として存在。app 側で組み立て（nav action の配置差分）             |
+| `media/source-media-grid.tsx`             | `packages/ui/src/source-media-grid.tsx` を新設。server / tauri で共有。差分は `renderItem` prop のみ                              |
+| `media/media-list-actions.tsx`            | `packages/ui/src/media-list-actions.tsx` を新設。server / tauri で共有。差分は `presetClient` prop 注入のみ                       |
 
 ### 片側のみ
 
@@ -186,35 +186,35 @@ leaf component の共有は進んだ。search / sources / manager / config / sou
 
 共通 service の public method は server 側で元々使っていた命名（例: `getAllAuthors`, `createAuthor`, `getCharactersForMedia`, `searchMedia`, `uploadMedia`）へ揃える方針だが、実装実態はサービスごとにばらつきがある。
 
-厳格基準では、`apps/tauri/src/infrastructure/local-api/services/source-service.ts` は shared `createSourceService` を使う段階まで前進。watcher / sync / filesystem / event / queue orchestration は Tauri adapter 内に残るが、list/get/testConnection/getStatus は shared 化。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退。`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` は shared 化済み。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。主要サービス共通化は前進したが、upload collision resolution algorithm など未 shared 部分が残る。
+厳格基準では、`apps/tauri/src/infrastructure/local-api/services/source-service.ts` は shared `createSourceService` を使う段階まで前進。watcher / sync / filesystem / event / queue orchestration は Tauri adapter 内に残るが、list/get/testConnection/getStatus は shared 化。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退。`contextMetadataUpdater` / `afterMediaRegistered` / `extractAndUpdateMetadata` は shared 化済み。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。upload collision resolution algorithm も `packages/application/src/services/media-upload-utils.ts` に shared 化し、server / tauri 両側が `resolveUploadTargetPath` を利用。server 側 `server-media-storage.ts` と `download-jobs.ts` の独自実装を削除。残る未 shared 部分は zip 処理など platform 固有 I/O 層。
 
 ### service 本体を shared 利用しているもの
 
-| サービス                | 共通実装                                                  | server側 wrapper                                         | tauri側 wrapper                                                                                                                 |
-| ----------------------- | --------------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `author-service.ts`     | `packages/application/src/services/author-service.ts`     | 旧 `getAllAuthors` 等を維持                              | `list/get/create/update/delete` を維持                                                                                          |
-| `tag-service.ts`        | `packages/application/src/services/tag-service.ts`        | 旧 `getAllTags` 等を維持                                 | `list/get/create/update/delete` を維持                                                                                          |
-| `character-service.ts`  | `packages/application/src/services/character-service.ts`  | 旧 `CharacterServiceImpl` constructor と旧メソッドを維持 | Tauri repository adapter 経由で利用                                                                                             |
-| `ip-service.ts`         | `packages/application/src/services/ip-service.ts`         | 旧 `getAllIps` 等を維持                                  | `list/get/create/update/delete/listForMedia` を維持                                                                             |
-| `project-service.ts`    | `packages/application/src/services/project-service.ts`    | 旧 `getAllProjects` 等を維持                             | `list/get/create/update/delete/listForMedia` を維持                                                                             |
-| `preset-service.ts`     | `packages/application/src/services/preset-service.ts`     | `setPresetRepository` を維持                             | `TauriPresetService` を維持                                                                                                     |
-| `category-service.ts`   | `packages/application/src/services/category-service.ts`   | `DrizzleCategoryService`（factory 委譲クラス）           | `TauriCategoryService`（thin wrapper）。`list/get/create/update/delete` を維持                                                 |
-| `collection-service.ts` | `packages/application/src/services/collection-service.ts` | `CollectionService`（thin wrapper）                      | `TauriCollectionService`（thin wrapper）。`list/get/create/update/delete/addToMedia/removeFromMedia` を維持                   |
-| `user-service.ts`       | `packages/application/src/services/user-service.ts`       | `UserService`（thin wrapper）                            | `TauriUserService`（thin wrapper）。`list/get/create/update/delete` を維持                                                     |
-| `search-service.ts`     | `packages/application/src/services/search-service.ts`     | server proxy を維持                                      | ―                                                                                                                               |
+| サービス                | 共通実装                                                  | server側 wrapper                                         | tauri側 wrapper                                                                                                                                                                                                        |
+| ----------------------- | --------------------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `author-service.ts`     | `packages/application/src/services/author-service.ts`     | 旧 `getAllAuthors` 等を維持                              | `list/get/create/update/delete` を維持                                                                                                                                                                                 |
+| `tag-service.ts`        | `packages/application/src/services/tag-service.ts`        | 旧 `getAllTags` 等を維持                                 | `list/get/create/update/delete` を維持                                                                                                                                                                                 |
+| `character-service.ts`  | `packages/application/src/services/character-service.ts`  | 旧 `CharacterServiceImpl` constructor と旧メソッドを維持 | Tauri repository adapter 経由で利用                                                                                                                                                                                    |
+| `ip-service.ts`         | `packages/application/src/services/ip-service.ts`         | 旧 `getAllIps` 等を維持                                  | `list/get/create/update/delete/listForMedia` を維持                                                                                                                                                                    |
+| `project-service.ts`    | `packages/application/src/services/project-service.ts`    | 旧 `getAllProjects` 等を維持                             | `list/get/create/update/delete/listForMedia` を維持                                                                                                                                                                    |
+| `preset-service.ts`     | `packages/application/src/services/preset-service.ts`     | `setPresetRepository` を維持                             | `TauriPresetService` を維持                                                                                                                                                                                            |
+| `category-service.ts`   | `packages/application/src/services/category-service.ts`   | `DrizzleCategoryService`（factory 委譲クラス）           | `TauriCategoryService`（thin wrapper）。`list/get/create/update/delete` を維持                                                                                                                                         |
+| `collection-service.ts` | `packages/application/src/services/collection-service.ts` | `CollectionService`（thin wrapper）                      | `TauriCollectionService`（thin wrapper）。`list/get/create/update/delete/addToMedia/removeFromMedia` を維持                                                                                                            |
+| `user-service.ts`       | `packages/application/src/services/user-service.ts`       | `UserService`（thin wrapper）                            | `TauriUserService`（thin wrapper）。`list/get/create/update/delete` を維持                                                                                                                                             |
+| `search-service.ts`     | `packages/application/src/services/search-service.ts`     | server proxy を維持                                      | ―                                                                                                                                                                                                                      |
 | `media-service.ts`      | `packages/application/src/services/media-service.ts`      | 旧 `MediaServiceImpl` constructor と proxy を維持        | `TauriMediaService` は `createMediaService` を使う thin adapter。`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃え、transaction / deferred actions / return shape の差分を解消 |
 
 ### 共通化済み（utility / port / payload）
 
-| 領域                   | 共通実装                                                                       | 備考                                                                                                                                                                           |
-| ---------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `media-processing-job` | `packages/application/src/services/media-processing-job.ts`                    | server / tauri の step 定義を共有                                                                                                                                              |
-| `maintenance-service`  | `packages/application/src/services/maintenance-service.ts`                     | startup recovery の判定・job enqueue を共有。thumbnail path 解決と queue wake は app adapter に残す                                                                            |
-| `config-service`       | `packages/application/src/services/config-service.ts`, `utils/config-merge.ts` | Tauri は共通 service、server は config merge utility を使用                                                                                                                    |
-| `source-service`       | `packages/application/src/services/source-service.ts`                          | server は shared service を利用。tauri も `createSourceService` を使って list/get/testConnection/getStatus を共有し、watcher / sync / fs / event / queue だけを adapter に残す |
-| `backup-service`       | `packages/db/src/backup.ts`                                                    | dump/restore の DB ロジックを共有。zip / fs / command client は app 固有のまま                                                                                                 |
-| `backup-restore-complete` | `packages/application/src/services/backup-restore-complete.ts`              | restore 後の thumbnail job enqueue を shared 化。server / tauri とも利用                                                                                                      |
-| TODO stub services     | `packages/application/src/services/stub-services.ts`                           | analytics / bulk-operation / data-migration / filter-preset / integration / workflow                                                                                           |
+| 領域                      | 共通実装                                                                       | 備考                                                                                                                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `media-processing-job`    | `packages/application/src/services/media-processing-job.ts`                    | server / tauri の step 定義を共有                                                                                                                                              |
+| `maintenance-service`     | `packages/application/src/services/maintenance-service.ts`                     | startup recovery の判定・job enqueue を共有。thumbnail path 解決と queue wake は app adapter に残す                                                                            |
+| `config-service`          | `packages/application/src/services/config-service.ts`, `utils/config-merge.ts` | Tauri は共通 service、server は config merge utility を使用                                                                                                                    |
+| `source-service`          | `packages/application/src/services/source-service.ts`                          | server は shared service を利用。tauri も `createSourceService` を使って list/get/testConnection/getStatus を共有し、watcher / sync / fs / event / queue だけを adapter に残す |
+| `backup-service`          | `packages/db/src/backup.ts`                                                    | dump/restore の DB ロジックを共有。zip / fs / command client は app 固有のまま                                                                                                 |
+| `backup-restore-complete` | `packages/application/src/services/backup-restore-complete.ts`                 | restore 後の thumbnail job enqueue を shared 化。server / tauri とも利用                                                                                                       |
+| TODO stub services        | `packages/application/src/services/stub-services.ts`                           | analytics / bulk-operation / data-migration / filter-preset / integration / workflow                                                                                           |
 
 ### 対応あり（名称・責務が近いもの）
 
@@ -239,29 +239,29 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 
 ### 未対応・片側のみ
 
-| サービス                      | 存在するapp | 対応するtauri実装                                          |
-| ----------------------------- | ----------- | ---------------------------------------------------------- |
-| `analytics-service.ts`        | serverのみ  | なし                                                       |
-| `backup-service.ts`           | serverのみ  | `source-backup-service.ts`（tauri）                        |
-| `bulk-operation-service.ts`   | serverのみ  | なし                                                       |
-| `category-service.ts`         | serverのみ  | `TauriCategoryService`（local-api/services/）              |
-| `collection-service.ts`       | serverのみ  | `TauriCollectionService`（local-api/services/）            |
-| `data-migration-service.ts`   | serverのみ  | なし                                                       |
-| `directory-service.ts`        | serverのみ  | なし                                                       |
+| サービス                      | 存在するapp | 対応するtauri実装                                                             |
+| ----------------------------- | ----------- | ----------------------------------------------------------------------------- |
+| `analytics-service.ts`        | serverのみ  | なし                                                                          |
+| `backup-service.ts`           | serverのみ  | `source-backup-service.ts`（tauri）                                           |
+| `bulk-operation-service.ts`   | serverのみ  | なし                                                                          |
+| `category-service.ts`         | serverのみ  | `TauriCategoryService`（local-api/services/）                                 |
+| `collection-service.ts`       | serverのみ  | `TauriCollectionService`（local-api/services/）                               |
+| `data-migration-service.ts`   | serverのみ  | なし                                                                          |
+| `directory-service.ts`        | serverのみ  | なし                                                                          |
 | `directory-sync-service.ts`   | serverのみ  | `syncLocalSource`（`source-service.ts` tauri）— Rust backend パイプライン経由 |
-| `event-service.ts`            | serverのみ  | なし（Rust IPC）                                           |
-| `filter-preset-service.ts`    | serverのみ  | なし                                                       |
-| `integration-service.ts`      | serverのみ  | なし                                                       |
-| `job-dispatch-service.ts`     | serverのみ  | `tauri-job-queue.ts` + Rust backend 統合パイプライン       |
-| `media-processing-job.ts`     | serverのみ  | `process-media-job.ts`（tauri、型定義 re-export）          |
-| `media-processing-service.ts` | serverのみ  | Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts` |
-| `media-source-service.ts`     | serverのみ  | `source-service.ts`（tauri）                               |
-| `search-service.ts`           | serverのみ  | tauri は API client 経由で利用し、service wrapper は未整備 |
-| `server-config-service.ts`    | serverのみ  | `config-service.ts`（tauri）                               |
-| `tagging-service.ts`          | serverのみ  | なし                                                       |
-| `thumbnail-service.ts`        | serverのみ  | なし                                                       |
-| `user-service.ts`             | serverのみ  | `TauriUserService`（local-api/services/）                  |
-| `workflow-service.ts`         | serverのみ  | なし                                                       |
+| `event-service.ts`            | serverのみ  | なし（Rust IPC）                                                              |
+| `filter-preset-service.ts`    | serverのみ  | なし                                                                          |
+| `integration-service.ts`      | serverのみ  | なし                                                                          |
+| `job-dispatch-service.ts`     | serverのみ  | `tauri-job-queue.ts` + Rust backend 統合パイプライン                          |
+| `media-processing-job.ts`     | serverのみ  | `process-media-job.ts`（tauri、型定義 re-export）                             |
+| `media-processing-service.ts` | serverのみ  | Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts`       |
+| `media-source-service.ts`     | serverのみ  | `source-service.ts`（tauri）                                                  |
+| `search-service.ts`           | serverのみ  | tauri は API client 経由で利用し、service wrapper は未整備                    |
+| `server-config-service.ts`    | serverのみ  | `config-service.ts`（tauri）                                                  |
+| `tagging-service.ts`          | serverのみ  | なし                                                                          |
+| `thumbnail-service.ts`        | serverのみ  | なし                                                                          |
+| `user-service.ts`             | serverのみ  | `TauriUserService`（local-api/services/）                                     |
+| `workflow-service.ts`         | serverのみ  | なし                                                                          |
 
 ### backup の引数差分メモ
 
@@ -301,15 +301,15 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 ## 共通化の優先度メモ
 
-| 優先度 | 領域                             | 必要な作業                                                                                                                                        | 状態     |
-| ------ | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| 中     | Components（media-list-actions） | `MediaListActions` は app 側でまだ個別に組み立てられている。shared component 化の余地あり                                                      | 部分完了 |
-| 中     | Routes（source-media-page）      | `SourceMediaScreen` + `SourceMediaGrid` 共通化済み。残る差分は `renderItem` prop と `renderJobProgress` のみ                                      | ほぼ完了 |
+| 優先度 | 領域                             | 必要な作業                                                                                                                                                                                                                                                | 状態     |
+| ------ | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| 中     | Components（media-list-actions） | `MediaListActions` は app 側でまだ個別に組み立てられている。shared component 化の余地あり                                                                                                                                                                 | 部分完了 |
+| 中     | Routes（source-media-page）      | `SourceMediaScreen` + `SourceMediaGrid` 共通化済み。残る差分は `renderItem` prop と `renderJobProgress` のみ                                                                                                                                              | ほぼ完了 |
 | 中     | Services                         | `packages/application` 利用範囲を広げ、tauri の media-service / source-backup-service を薄い adapter に縮退。`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃え、`source-backup-service` の `_` メソッド公開を削除 | ほぼ完了 |
-| 中     | Hooks                            | `use-media-source-events` の transport adapter は既に薄い。`use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は完了 | 完了     |
-| 低     | Repositories                     | 主要 CRUD は shared factory 化済み。残るは app-config など platform 固有 repository                                                                 | ほぼ完了 |
-| 低     | Jobs                             | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るのは transport、downloader I/O、thumbnail の platform 部分 | 部分完了 |
-| 対象者 | API Routes                       | 設計思想が異なるため共通化不要                                                                                                                    | 該当なし |
+| 中     | Hooks                            | `use-media-source-events` の transport adapter は既に薄い。`use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は完了                                                                                                   | 完了     |
+| 低     | Repositories                     | 主要 CRUD は shared factory 化済み。残るは app-config など platform 固有 repository                                                                                                                                                                       | ほぼ完了 |
+| 低     | Jobs                             | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るのは transport、downloader I/O、thumbnail の platform 部分                                                                                                         | 部分完了 |
+| 対象者 | API Routes                       | 設計思想が異なるため共通化不要                                                                                                                                                                                                                            | 該当なし |
 
 ## 保守メモ
 
@@ -325,7 +325,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - route ファイル名は揃っており、search / sources / manager / config / source-media は shared screen + shared hook + shared grid 化により「同一」に近い。`source-media-page` の tauri 側 `renderGrid` 差分は `SourceMediaGrid` 共通化で解消
 - hook は `use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` / `use-current-search-persistence.ts` / `use-media-source-events.ts` が `packages/ui` の shared hook を使う構成へ寄った。未共通なのは transport adapter と relevance filter の層
 - repository は author / category / character / collection / ip / media / preset / project / source / tag / user / job が shared factory 化済み。主要 CRUD repository の非対称はほぼ解消され、残る app 固有 repository は `app-config-repository.ts` など platform 固有層が中心
-- service は CRUD 系の shared 利用がほぼ完了。`source-service.ts` は shared `createSourceService` を使う形へ前進。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退し、`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃えた。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。残る未 shared 部分は upload collision resolution algorithm など
+- service は CRUD 系の shared 利用がほぼ完了。`source-service.ts` は shared `createSourceService` を使う形へ前進。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退し、`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃えた。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。upload collision resolution algorithm も `packages/application/src/services/media-upload-utils.ts` に shared 化し、server / tauri 両側が `resolveUploadTargetPath` を利用。server 側 `server-media-storage.ts` と `download-jobs.ts` の独自実装を削除。残る未 shared 部分は zip 処理など platform 固有 I/O 層
 - jobs は worker 共有の段階を超え、download / tagging / watcher reconciliation / event publish contract / processMedia orchestration まで `packages/application` に寄った。未共通なのは transport と platform I/O の層
 
 ## さらに厳しく見たときの未共通化ポイント
@@ -334,7 +334,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - hooks: `use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は shared 化済み。`use-media-source-events.ts` 本体も shared 化済み。今後は transport adapter と event relevance filter の責務をさらに薄くできるかを確認する
 - queries / api-clients: `queries/*.ts` と `search-api.ts` などは app ごとに薄く重複しており、transport 注入前提の共通 query option builder に寄せられる余地がある
 - services: tauri 側 `source-service.ts` は shared `createSourceService` に寄り、`media-service.ts` / `source-backup-service.ts` も shared package 前提の thin adapter に縮退。残る差分は platform 固有 I/O（bytes 変換、Rust command、zip/fs）に閉じる
-- components: `nav.tsx` を例外としても、nav action slot や source detail action 群は shared 化できる。`MediaListActions` は app 側で個別に組み立てられており shared component 化の余地あり
+- components: `nav.tsx` を例外としても、nav action slot や source detail action 群は shared 化できる。`MediaListActions` は `packages/ui/src/media-list-actions.tsx` に抽出し共通化完了。app 側は `presetClient` prop 注入のみ
 
 ## 前回からの主な変更点（2026-04-30更新）
 
@@ -399,7 +399,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services / Media**: `packages/application/src/services/media-metadata-extractor.ts` を新設し、`extractAndPersistMediaMetadata` を shared 化。`MediaServiceImpl` の `extractAndUpdateMetadata` private メソッドを shared 関数へ移動。tauri 側の `persistExtractedMetadata`（Drizzle query 直書き）を削除し、shared 関数を利用
 - **Services / Media**: `packages/application/src/services/media-service.ts` の `getMediaDetails` / `reprocessMetadata` を shared `extractAndPersistMediaMetadata` を使う形に変更。server / tauri とも同じ metadata 抽出・保存ロジックを共有
 - **Services / Backup**: `packages/application/src/services/backup-restore-complete.ts` を新設し、`enqueueThumbnailJobsAfterRestore` を shared 化。server 側 `backup-service.ts` と tauri 側 `source-backup-service.ts` の restore 後処理を統合。tauri 側に `onRestoreComplete` を追加し、server 側と同じ挙動に揃える
-- **Services対応度**: media-service / source-backup-service の主要ロジックを shared 化したことで、Services 対応度は ~75% 程度へ上昇。残る差分は upload collision resolution algorithm（platform 非依存部分の shared 化余地あり）、zip 処理、および platform 固有 I/O 層
+- **Services対応度**: media-service / source-backup-service の主要ロジックを shared 化したことで、Services 対応度は ~75% 程度へ上昇。残る差分は zip 処理および platform 固有 I/O 層
 
 ## 前回からの主な変更点（2026-04-30更新 — Services 全面共通化）
 
@@ -409,16 +409,22 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - **Services / AI Tagging**: `packages/application/src/services/tag-persistence.ts` を新設。`persistTaggingResponse` 関数で tag / character / IP の AI 結果永続化ロジックを shared 化。server 側 `TaggingService.saveTags` と tauri 側 `TauriAiService.persistAiTags` を統合し、両 app が同じ repository interface 経由で永続化
 - **Services対応度**: ~72% → **~95%** に更新。主要サービス（CRUD / media / backup / ai tagging）が shared contract を経由。残る未共通化は platform 固有 I/O（zip stream / HTTP URL / storage driver）とレガシーサービスに限定
 
+## 前回からの主な変更点（2026-04-30更新 — Components & Upload Collision）
+
+- **Components**: `packages/ui/src/media-list-actions.tsx` を新設。server / tauri の `media-list-actions.tsx` はバイト一致だったが app 側で個別定義されていた。`presetClient` を prop 化して shared component へ抽出し、両 app の route から削除。app 側は `presetClient={PresetClient}` を prop 注入する thin wrapper に縮退
+- **Services / Media**: `packages/application/src/services/media-upload-utils.ts` の `resolveUploadTargetPath` に `skipIfEquals` オプションを追加。server 側 `server-media-storage.ts` の `saveFile` / `copyFile` と `download-jobs.ts` の `_resolveFinalPathWithAvoidance` を shared 関数に置き換え。命名規則を `stem-{n}` から `base_{n}` に統一（server 側の旧命名を正とする）
+- **Services対応度**: ~95% を維持。upload collision resolution の共通化により、server / tauri の storage 層で platform 非依存の衝突解決ロジックが完全に共有化
+
 ## Parity 例外（意図的な差分）
 
-| サービス | 存在する app | 理由 |
-|---|---|---|
-| `thumbnail-service` | server のみ | HTTP URL 構築（`/api/sources/…/thumbnail`）vs Rust IPC サムネイル生成。transport 固有 |
-| `directory-service` | server のみ | storage driver 抽象化（`getDriver(source)`）。tauri は local fs のみをサポート |
-| `event-service` | server のみ | レガシー SSE wrapper。`SseManager` / Tauri event bus で代替済み。削除推奨 |
-| `directory-sync-service` | server のみ | tauri 側は `source-service.ts` の `syncLocalSource` で同等処理を実装。`inferMediaType` / `normalizeRelativePath` / `isHiddenPath` を `packages/core` に shared 化済み。残る差分は filesystem scan I/O（`tinyglobby` vs Tauri `fs.readdir`）と media 登録・イベント transport の platform 固有層 |
-| `media-processing-service` | server のみ | tauri 側は Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts` で同等処理を実装。`runProcessMediaJob` / `media-processing-job.ts` / `updateMediaContextMetadata` は shared 化済み |
-| `job-dispatch-service` | server のみ | tauri 側は `tauri-job-queue.ts` + Rust backend 統合パイプラインで同等処理を実装。`createJobDispatcher` / `job-runtime.ts` は shared 化済み |
+| サービス                   | 存在する app | 理由                                                                                                                                                                                                                                                                                            |
+| -------------------------- | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `thumbnail-service`        | server のみ  | HTTP URL 構築（`/api/sources/…/thumbnail`）vs Rust IPC サムネイル生成。transport 固有                                                                                                                                                                                                           |
+| `directory-service`        | server のみ  | storage driver 抽象化（`getDriver(source)`）。tauri は local fs のみをサポート                                                                                                                                                                                                                  |
+| `event-service`            | server のみ  | レガシー SSE wrapper。`SseManager` / Tauri event bus で代替済み。削除推奨                                                                                                                                                                                                                       |
+| `directory-sync-service`   | server のみ  | tauri 側は `source-service.ts` の `syncLocalSource` で同等処理を実装。`inferMediaType` / `normalizeRelativePath` / `isHiddenPath` を `packages/core` に shared 化済み。残る差分は filesystem scan I/O（`tinyglobby` vs Tauri `fs.readdir`）と media 登録・イベント transport の platform 固有層 |
+| `media-processing-service` | server のみ  | tauri 側は Rust commands (`media.rs` / `media_metadata.rs`) + `tauri-job-queue.ts` で同等処理を実装。`runProcessMediaJob` / `media-processing-job.ts` / `updateMediaContextMetadata` は shared 化済み                                                                                           |
+| `job-dispatch-service`     | server のみ  | tauri 側は `tauri-job-queue.ts` + Rust backend 統合パイプラインで同等処理を実装。`createJobDispatcher` / `job-runtime.ts` は shared 化済み                                                                                                                                                      |
 
 ## 前回からの主な変更点（2026-04-30更新 — Phase 5: directory-sync / media-processing / job-dispatch 残差分整理）
 
@@ -429,10 +435,10 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 ## 新設 Shared ファイル
 
-| ファイル | 配置先 | 役割 |
-|---|---|---|
-| `media-upload-utils.ts` | `packages/application/src/services/` | upload collision resolution algorithm、path safety check、normalize |
-| `backup-orchestration.ts` | `packages/application/src/services/` | `ImportSourceZipInput` / `ImportSourceZipResult` schema、backup 引数統一 |
-| `tag-persistence.ts` | `packages/application/src/services/` | AI tagging 結果（tag / character / IP）の永続化ロジック |
-| `media-type-utils.ts` | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
-| `path-utils.ts` | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath` |
+| ファイル                  | 配置先                                  | 役割                                                                                                       |
+| ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `media-upload-utils.ts`   | `packages/application/src/services/`    | upload collision resolution algorithm、path safety check、normalize                                        |
+| `backup-orchestration.ts` | `packages/application/src/services/`    | `ImportSourceZipInput` / `ImportSourceZipResult` schema、backup 引数統一                                   |
+| `tag-persistence.ts`      | `packages/application/src/services/`    | AI tagging 結果（tag / character / IP）の永続化ロジック                                                    |
+| `media-type-utils.ts`     | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
+| `path-utils.ts`           | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath`                                                                    |

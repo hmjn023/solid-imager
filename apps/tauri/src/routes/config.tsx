@@ -24,9 +24,7 @@ export default function ConfigPage() {
 				<div class="py-10 text-red-500">Error loading settings.</div>
 			</Show>
 
-			<Show when={configQuery.data}>
-				{(data) => <ConfigForm data={data()} />}
-			</Show>
+			<Show when={configQuery.data}>{(data) => <ConfigForm data={data()} />}</Show>
 		</div>
 	);
 }

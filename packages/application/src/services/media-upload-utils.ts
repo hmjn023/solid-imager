@@ -22,9 +22,7 @@ export function isSafeRelativeUploadPath(path: string) {
 	}
 	return path
 		.split(/[\\/]+/)
-		.every(
-			(segment) => segment.length === 0 || segment === "." || segment !== "..",
-		);
+		.every((segment) => segment.length === 0 || segment === "." || segment !== "..");
 }
 
 export async function resolveUploadTargetPath(
@@ -36,6 +34,7 @@ export async function resolveUploadTargetPath(
 		pathAdapter: MediaPathAdapter;
 		exists: (path: string) => Promise<boolean>;
 		maxAttempts?: number;
+		skipIfEquals?: string;
 	},
 ): Promise<ResolvedUploadTarget> {
 	if (!isSafeRelativeUploadPath(requestedPath)) {
@@ -43,15 +42,14 @@ export async function resolveUploadTargetPath(
 	}
 
 	const normalizedRequested = normalizeRelativePath(requestedPath);
-	const requestedFullPath = deps.pathAdapter.join(
-		rootPath,
-		normalizedRequested,
-	);
+	const requestedFullPath = deps.pathAdapter.join(rootPath, normalizedRequested);
 	if (overwrite || !(await deps.exists(requestedFullPath))) {
-		return {
-			relativePath: normalizedRequested,
-			fullPath: requestedFullPath,
-		};
+		if (!deps.skipIfEquals || requestedFullPath !== deps.skipIfEquals) {
+			return {
+				relativePath: normalizedRequested,
+				fullPath: requestedFullPath,
+			};
+		}
 	}
 
 	if (!autoIncrement) {
@@ -65,26 +63,22 @@ export async function resolveUploadTargetPath(
 		.basename(normalizedRequested)
 		.slice(
 			0,
-			Math.max(
-				0,
-				deps.pathAdapter.basename(normalizedRequested).length -
-					extension.length,
-			),
+			Math.max(0, deps.pathAdapter.basename(normalizedRequested).length - extension.length),
 		);
 
 	let index = 1;
 	const maxAttempts = deps.maxAttempts ?? 1000;
 	while (index <= maxAttempts) {
-		const candidateName = `${stem}-${index}${extension}`;
+		const candidateName = `${stem}_${index}${extension}`;
 		const candidateRelative =
 			parentDir === "" || parentDir === "/"
 				? candidateName
 				: normalizeRelativePath(`${parentDir}/${candidateName}`);
-		const candidateFullPath = deps.pathAdapter.join(
-			rootPath,
-			candidateRelative,
-		);
-		if (!(await deps.exists(candidateFullPath))) {
+		const candidateFullPath = deps.pathAdapter.join(rootPath, candidateRelative);
+		if (
+			!(await deps.exists(candidateFullPath)) ||
+			(deps.skipIfEquals && candidateFullPath === deps.skipIfEquals)
+		) {
 			return {
 				relativePath: candidateRelative,
 				fullPath: candidateFullPath,
@@ -97,7 +91,5 @@ export async function resolveUploadTargetPath(
 		index += 1;
 	}
 
-	throw new Error(
-		`Could not resolve a non-conflicting filename after ${maxAttempts} attempts`,
-	);
+	throw new Error(`Could not resolve a non-conflicting filename after ${maxAttempts} attempts`);
 }

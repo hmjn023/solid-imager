@@ -29,14 +29,8 @@ export type ProcessMediaRunnerDeps = {
 		sourcePath: string;
 		fullPath: string;
 	}): Promise<void>;
-	emitThumbnailGenerated(input: {
-		media: Media;
-		mediaSourceId: string;
-	}): Promise<void> | void;
-	queueAutoTagging(input: {
-		mediaId: string;
-		mediaSourceId: string;
-	}): Promise<void>;
+	emitThumbnailGenerated(input: { media: Media; mediaSourceId: string }): Promise<void> | void;
+	queueAutoTagging(input: { mediaId: string; mediaSourceId: string }): Promise<void>;
 	isAutoTaggingEnabled(): boolean | Promise<boolean>;
 	logger?: ProcessMediaRunnerLogger;
 };
@@ -48,10 +42,7 @@ export type ProcessMediaBatchJobResult = {
 	error?: string;
 };
 
-export type ProcessMediaBatchRunnerDeps = Omit<
-	ProcessMediaRunnerDeps,
-	"generateThumbnail"
-> & {
+export type ProcessMediaBatchRunnerDeps = Omit<ProcessMediaRunnerDeps, "generateThumbnail"> & {
 	generateThumbnails(input: ProcessMediaThumbnailInput[]): Promise<void>;
 };
 
@@ -100,13 +91,7 @@ export async function runProcessMediaJob(
 	await extractMetadataIfNeeded(item, deps);
 
 	if (hasMediaProcessingStep(item.payload, "generateThumbnail")) {
-		await generateThumbnail(
-			item.media,
-			item.job.mediaSourceId,
-			item.payload,
-			item.fullPath,
-			deps,
-		);
+		await generateThumbnail(item.media, item.job.mediaSourceId, item.payload, item.fullPath, deps);
 	}
 
 	await queueAutoTaggingIfNeeded(item, deps);
@@ -230,10 +215,7 @@ async function resolveProcessMediaItem(
 
 	const media = await deps.mediaRepository.findById(payload.mediaId);
 	if (!media) {
-		deps.logger?.warn?.(
-			{ mediaId: payload.mediaId },
-			"Media not found for processMedia job",
-		);
+		deps.logger?.warn?.({ mediaId: payload.mediaId }, "Media not found for processMedia job");
 		return null;
 	}
 
@@ -287,11 +269,7 @@ async function extractMetadata(
 		);
 
 		if (metadata.tags.length > 0) {
-			await deps.tagRepository.addTagsToMedia(
-				payload.mediaId,
-				metadata.tags,
-				"comfyui_workflow",
-			);
+			await deps.tagRepository.addTagsToMedia(payload.mediaId, metadata.tags, "comfyui_workflow");
 		}
 	} catch (error) {
 		deps.logger?.warn?.(
@@ -337,9 +315,6 @@ async function generateThumbnail(
 		});
 		await deps.emitThumbnailGenerated({ media, mediaSourceId });
 	} catch (error) {
-		deps.logger?.error?.(
-			{ err: error, mediaId: payload.mediaId },
-			"Thumbnail generation failed",
-		);
+		deps.logger?.error?.({ err: error, mediaId: payload.mediaId }, "Thumbnail generation failed");
 	}
 }

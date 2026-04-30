@@ -28,8 +28,7 @@ function SourcesRoute() {
 	const page = useSourcesPage({
 		actions: {
 			createMediaSource: (data: unknown) => createMediaSource(data as any),
-			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+			updateMediaSource: (id: string, data: unknown) => updateMediaSource(id, data as any),
 			deleteMediaSource,
 			syncMediaSources,
 		},
@@ -41,9 +40,7 @@ function SourcesRoute() {
 				return () => {};
 			}
 
-			const sourceIds = new Set(
-				sources.map((s) => s.id).filter((id): id is string => Boolean(id)),
-			);
+			const sourceIds = new Set(sources.map((s) => s.id).filter((id): id is string => Boolean(id)));
 
 			const unlistenPromises = [
 				listen("all-jobs-completed", (event) => {
@@ -51,9 +48,7 @@ function SourcesRoute() {
 						mediaSourceId?: string;
 						processed?: number;
 					};
-					if (
-						!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))
-					) {
+					if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
 						return;
 					}
 					handlers.onAllJobsCompleted({
@@ -66,9 +61,7 @@ function SourcesRoute() {
 						mediaSourceId?: string;
 						error?: string;
 					};
-					if (
-						!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))
-					) {
+					if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
 						return;
 					}
 					handlers.onWatcherError({
