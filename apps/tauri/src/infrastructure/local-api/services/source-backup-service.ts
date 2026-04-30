@@ -69,33 +69,7 @@ const backupService = createBackupService({
 });
 
 export const TauriSourceBackupService = {
-	...backupService,
-	_filterValidItems: backupService.filterValidItems,
-	_restoreMasterData: backupService.restoreMasterData,
-	_restoreMediaRecords: backupService.restoreMediaRecords,
-	_mapMediaPathsToIds: backupService.mapMediaPathsToIds,
-	_restoreRelations(params: {
-		validItems: unknown[];
-		mediaPathToId: Map<string, string>;
-		tagMap: Map<string, string>;
-		authorMap: Map<string, string>;
-		projectMap: Map<string, string>;
-		ipMap: Map<string, string>;
-		charMap: Map<string, string>;
-	}) {
-		return backupService.restoreRelations(getExecutor(), {
-			items: params.validItems as never[],
-			mediaPathToId: params.mediaPathToId,
-			tagMap: params.tagMap,
-			authorMap: params.authorMap,
-			projectMap: params.projectMap,
-			ipMap: params.ipMap,
-			charMap: params.charMap,
-		});
-	},
-	_transformMediaList(mediaList: unknown[]) {
-		return backupService.transformMediaList(mediaList as never[]);
-	},
+	findMediaSourceForFile: backupService.findMediaSourceForFile,
 
 	async createDump(
 		mediaSourceId: string,
