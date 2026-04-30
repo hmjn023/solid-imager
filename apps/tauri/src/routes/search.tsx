@@ -22,7 +22,11 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
 	loader: async ({ context }) => {
@@ -42,7 +46,9 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 function SearchRoute() {
 	const queryClient = useQueryClient();
-	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
+	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	useCurrentSearchPersistence("all", PresetClient);
 
@@ -115,13 +121,18 @@ function SearchRoute() {
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media) => (
-				<MediaGridItem media={media} sourceRootPath={getSourceRootPath(media.mediaSourceId)} />
+				<MediaGridItem
+					media={media}
+					sourceRootPath={getSourceRootPath(media.mediaSourceId)}
+				/>
 			)}
 			renderNavActions={(panel) => (
 				<div class="mb-8 flex items-center justify-between">
 					<div>
 						<h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
-						<p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
+						<p class="text-gray-600">
+							タグやファイル名でメディアを検索できます
+						</p>
 					</div>
 					<div class="md:hidden">
 						<Dialog>

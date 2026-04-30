@@ -54,19 +54,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
-	const [descriptionValue, setDescriptionValue] = createSignal(props.media.description || "");
+	const [descriptionValue, setDescriptionValue] = createSignal(
+		props.media.description || "",
+	);
 
 	createEffect(() => {
 		setDescriptionValue(props.media.description || "");
 	});
 
-	const positiveTags = createMemo(() => tags().filter((tag) => tag.type === "positive"));
-	const negativeTags = createMemo(() => tags().filter((tag) => tag.type === "negative"));
+	const positiveTags = createMemo(() =>
+		tags().filter((tag) => tag.type === "positive"),
+	);
+	const negativeTags = createMemo(() =>
+		tags().filter((tag) => tag.type === "negative"),
+	);
 	const genInfo = createMemo(() => props.media.generationInfo);
 
 	const projects = createQuery(() => ({
 		queryKey: ["projectsForMedia", props.media.id],
-		queryFn: () => fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
+		queryFn: () =>
+			fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
 	}));
 	const allProjects = createQuery(() => ({
 		queryKey: ["allProjects"],
@@ -88,7 +95,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			return characters;
 		}
 		const ipIds = new Set(currentIps.map((ip) => ip.id));
-		return characters.filter((character) => character.ips.some((ip) => ipIds.has(ip.id)));
+		return characters.filter((character) =>
+			character.ips.some((ip) => ipIds.has(ip.id)),
+		);
 	});
 
 	const handleSaveDescription = async () => {
@@ -109,14 +118,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	const handleAddProject = async (projectId: string) => {
-		await addProjectToMedia(props.media.mediaSourceId, props.media.id, projectId);
+		await addProjectToMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			projectId,
+		);
 		await queryClient.invalidateQueries({
 			queryKey: ["projectsForMedia", props.media.id],
 		});
 	};
 
 	const handleRemoveProject = async (projectId: string) => {
-		await removeProjectFromMedia(props.media.mediaSourceId, props.media.id, projectId);
+		await removeProjectFromMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			projectId,
+		);
 		await queryClient.invalidateQueries({
 			queryKey: ["projectsForMedia", props.media.id],
 		});
@@ -145,10 +162,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	const handleAddCharacter = async (characterId: string) => {
-		await addCharacterToMedia(props.media.mediaSourceId, props.media.id, characterId);
+		await addCharacterToMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			characterId,
+		);
 		props.onUpdate?.();
 
-		const character = allCharacters.data?.find((item) => item.id === characterId);
+		const character = allCharacters.data?.find(
+			(item) => item.id === characterId,
+		);
 		if (!character) {
 			return;
 		}
@@ -162,7 +185,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	const handleRemoveCharacter = async (characterId: string) => {
-		await removeCharacterFromMedia(props.media.mediaSourceId, props.media.id, characterId);
+		await removeCharacterFromMedia(
+			props.media.mediaSourceId,
+			props.media.id,
+			characterId,
+		);
 		props.onUpdate?.();
 	};
 
@@ -257,7 +284,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					>
 						<textarea
 							class="w-full rounded-md border border-gray-300 p-2 text-sm"
-							onInput={(event) => setDescriptionValue(event.currentTarget.value)}
+							onInput={(event) =>
+								setDescriptionValue(event.currentTarget.value)
+							}
 							placeholder="Enter description..."
 							rows={6}
 							value={descriptionValue()}
@@ -306,7 +335,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									<div class="flex items-center gap-2">
 										<span class="font-medium">{author.name}</span>
 										<Show when={author.accountId}>
-											<span class="text-gray-500 text-xs">({author.accountId})</span>
+											<span class="text-gray-500 text-xs">
+												({author.accountId})
+											</span>
 										</Show>
 									</div>
 								</li>
@@ -356,14 +387,20 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
-									badgeClass = "bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+									badgeClass =
+										"bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
 								} else if (tag.source === "comfyui_workflow") {
-									badgeClass = "bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+									badgeClass =
+										"bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
 								}
 								return (
 									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
 										{tag.name}
-										<ClipboardCopy class="ml-1.5 p-0.5" iconSize={12} text={tag.name} />
+										<ClipboardCopy
+											class="ml-1.5 p-0.5"
+											iconSize={12}
+											text={tag.name}
+										/>
 									</Badge>
 								);
 							}}
@@ -380,15 +417,24 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
-									badgeClass = "bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
+									badgeClass =
+										"bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
 										"bg-green-50 text-green-800 hover:bg-green-100 border-green-200 border";
 								}
 								return (
-									<Badge class={badgeClass} title={`Source: ${tag.source}`} variant="destructive">
+									<Badge
+										class={badgeClass}
+										title={`Source: ${tag.source}`}
+										variant="destructive"
+									>
 										{tag.name}
-										<ClipboardCopy class="ml-1.5 p-0.5" iconSize={12} text={tag.name} />
+										<ClipboardCopy
+											class="ml-1.5 p-0.5"
+											iconSize={12}
+											text={tag.name}
+										/>
 									</Badge>
 								);
 							}}
@@ -419,7 +465,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							<Show when={genInfo()?.negativePrompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
-										<span class="font-medium text-gray-600">Negative Prompt:</span>
+										<span class="font-medium text-gray-600">
+											Negative Prompt:
+										</span>
 										<ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
 									</div>
 									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">
@@ -432,7 +480,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-gray-600">Workflow:</span>
 										<ClipboardCopy
-											text={genInfo()?.workflow ? JSON.stringify(genInfo()?.workflow) : ""}
+											text={
+												genInfo()?.workflow
+													? JSON.stringify(genInfo()?.workflow)
+													: ""
+											}
 										/>
 									</div>
 									<pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs">

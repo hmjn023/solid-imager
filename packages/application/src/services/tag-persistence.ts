@@ -24,11 +24,13 @@ export async function persistTaggingResponse(
 	const tx = deps.tx;
 
 	// 1. Tags
-	const tagsToInsert = Object.entries(response.general).map(([name, confidence]) => ({
-		name,
-		type: "positive" as const,
-		confidence,
-	}));
+	const tagsToInsert = Object.entries(response.general).map(
+		([name, confidence]) => ({
+			name,
+			type: "positive" as const,
+			confidence,
+		}),
+	);
 	await deps.tagRepository.addTagsToMedia(mediaId, tagsToInsert, source, tx);
 
 	// 2. IPs
@@ -61,7 +63,9 @@ export async function persistTaggingResponse(
 	// 3. Characters
 	const charToIpIdsMap = new Map<string, string[]>();
 
-	for (const [charName, linkedIpNames] of Object.entries(response.ips_mapping)) {
+	for (const [charName, linkedIpNames] of Object.entries(
+		response.ips_mapping,
+	)) {
 		const ipIds: string[] = [];
 		for (const linkedIpName of linkedIpNames) {
 			const ipId = ipNameIdMap.get(linkedIpName);
@@ -132,6 +136,11 @@ export async function persistTaggingResponse(
 	}
 
 	if (charsToLink.length > 0) {
-		await deps.characterRepository.addToMediaBulk(mediaId, charsToLink, source, tx);
+		await deps.characterRepository.addToMediaBulk(
+			mediaId,
+			charsToLink,
+			source,
+			tx,
+		);
 	}
 }

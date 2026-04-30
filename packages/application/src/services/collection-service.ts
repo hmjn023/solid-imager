@@ -30,11 +30,17 @@ export function createCollectionService(repository: ICollectionRepository) {
 			await repository.delete(id);
 		},
 
-		async addToMedia(collectionId: string, item: NewCollectionItem): Promise<void> {
+		async addToMedia(
+			collectionId: string,
+			item: NewCollectionItem,
+		): Promise<void> {
 			await repository.addItem(collectionId, item);
 		},
 
-		async removeFromMedia(collectionId: string, mediaId: string): Promise<void> {
+		async removeFromMedia(
+			collectionId: string,
+			mediaId: string,
+		): Promise<void> {
 			await repository.removeItem(collectionId, mediaId);
 		},
 	};

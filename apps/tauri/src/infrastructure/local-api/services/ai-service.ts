@@ -4,13 +4,21 @@ import {
 	runAutoTaggingJob,
 	runBulkTaggingDispatchJob,
 } from "@solid-imager/application/services/tagging-job-runner";
-import { type Media, mediaSchema } from "@solid-imager/core/domain/media/schemas";
+import {
+	type Media,
+	mediaSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import {
 	batchTaggingRequestSchema,
 	type TaggingResponse,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { mediaCharacters, mediaIps, medias, mediaTags } from "@solid-imager/db/schema";
+import {
+	mediaCharacters,
+	mediaIps,
+	medias,
+	mediaTags,
+} from "@solid-imager/db/schema";
 import { emit } from "@tauri-apps/api/event";
 import { and, asc, eq, getTableColumns, isNull } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
@@ -34,7 +42,9 @@ type BatchTaggingWithIdsInput = BatchTaggingInput & {
 	mediaIds: string[];
 };
 
-async function resolveLocalMediaFile(mediaId: string): Promise<{ media: Media; fullPath: string }> {
+async function resolveLocalMediaFile(
+	mediaId: string,
+): Promise<{ media: Media; fullPath: string }> {
 	const media = await TauriMediaRepository.findById(mediaId);
 	if (!media) {
 		throw new Error(`Media not found: ${mediaId}`);
@@ -62,8 +72,9 @@ async function tagMediaFromServer(mediaId: string): Promise<TaggingResponse> {
 }
 
 async function persistAiTags(mediaId: string, response: TaggingResponse) {
-	const { persistTaggingResponse } =
-		await import("@solid-imager/application/services/tag-persistence");
+	const { persistTaggingResponse } = await import(
+		"@solid-imager/application/services/tag-persistence"
+	);
 	await getTauriAppServices().db.transaction(async (tx) => {
 		await persistTaggingResponse(mediaId, response, {
 			tagRepository: TauriTagRepository,
@@ -99,16 +110,27 @@ export const TauriAiService = {
 				...getTableColumns(medias),
 			})
 			.from(medias)
-			.leftJoin(mediaTags, and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, AI_SOURCE)))
+			.leftJoin(
+				mediaTags,
+				and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, AI_SOURCE)),
+			)
 			.leftJoin(
 				mediaCharacters,
-				and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, AI_SOURCE)),
+				and(
+					eq(mediaCharacters.mediaId, medias.id),
+					eq(mediaCharacters.source, AI_SOURCE),
+				),
 			)
-			.leftJoin(mediaIps, and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, AI_SOURCE)))
+			.leftJoin(
+				mediaIps,
+				and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, AI_SOURCE)),
+			)
 			.where(
 				and(
 					eq(medias.mediaType, "image"),
-					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
+					input.mediaSourceId
+						? eq(medias.mediaSourceId, input.mediaSourceId)
+						: undefined,
 					input.force
 						? undefined
 						: and(
@@ -153,7 +175,9 @@ export const TauriAiService = {
 		});
 
 		const mediaItems = await Promise.all(
-			input.mediaIds.map(async (mediaId) => await TauriMediaRepository.findById(mediaId)),
+			input.mediaIds.map(
+				async (mediaId) => await TauriMediaRepository.findById(mediaId),
+			),
 		);
 		const foundMedia = mediaItems.flatMap((media) => (media ? [media] : []));
 

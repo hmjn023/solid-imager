@@ -1,5 +1,9 @@
 import { createUserService } from "@solid-imager/application/services/user-service";
-import type { NewUser, UpdateUser, User } from "@solid-imager/core/domain/users/schemas";
+import type {
+	NewUser,
+	UpdateUser,
+	User,
+} from "@solid-imager/core/domain/users/schemas";
 import { TauriUserRepository } from "../repositories/user-repository";
 
 const userService = createUserService(TauriUserRepository);

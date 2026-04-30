@@ -1,5 +1,8 @@
 export type TauriCommandClient = {
-	invoke<TResponse>(command: string, payload?: Record<string, unknown>): Promise<TResponse>;
+	invoke<TResponse>(
+		command: string,
+		payload?: Record<string, unknown>,
+	): Promise<TResponse>;
 };
 
 type TauriInvoke = <TResponse>(
@@ -25,10 +28,13 @@ function resolveInvoke(): TauriInvoke {
 		throw new Error("Tauri command client is only available in the browser.");
 	}
 
-	const invoke = window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
+	const invoke =
+		window.__TAURI_INTERNALS__?.invoke ?? window.__TAURI__?.core?.invoke;
 
 	if (!invoke) {
-		throw new Error("Tauri runtime is not available. Launch this app inside the Tauri shell.");
+		throw new Error(
+			"Tauri runtime is not available. Launch this app inside the Tauri shell.",
+		);
 	}
 
 	return invoke;

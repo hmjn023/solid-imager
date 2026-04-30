@@ -40,7 +40,11 @@ export function createTagService(repository: TagRepository) {
 			return await repository.findByMediaId(mediaId);
 		},
 
-		async addToMedia(mediaId: string, tags: TagsToAdd, source = "manual"): Promise<void> {
+		async addToMedia(
+			mediaId: string,
+			tags: TagsToAdd,
+			source = "manual",
+		): Promise<void> {
 			await repository.addTagsToMedia(mediaId, tags, source);
 		},
 	};

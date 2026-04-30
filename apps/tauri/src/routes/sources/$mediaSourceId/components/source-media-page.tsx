@@ -1,5 +1,6 @@
 import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
 import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
+import { MediaListActions } from "@solid-imager/ui/media-list-actions";
 import {
 	SourceMediaScreen,
 	type SourceMediaScreenProps,
@@ -33,10 +34,14 @@ import {
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
-import { getSearchCondition, searchState } from "~/presentation/store/search-store";
-import { MediaListActions } from "@solid-imager/ui/media-list-actions";
+import {
+	getSearchCondition,
+	searchState,
+} from "~/presentation/store/search-store";
 
-function createTauriTransport(mediaSourceId: () => string | undefined): MediaSourceEventTransport {
+function createTauriTransport(
+	mediaSourceId: () => string | undefined,
+): MediaSourceEventTransport {
 	return {
 		listen(handler) {
 			const id = mediaSourceId();

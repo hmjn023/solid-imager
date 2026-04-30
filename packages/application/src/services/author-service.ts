@@ -1,4 +1,7 @@
-import type { Author, NewAuthor } from "@solid-imager/core/domain/media/schemas";
+import type {
+	Author,
+	NewAuthor,
+} from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 
 export type AuthorService = ReturnType<typeof createAuthorService>;
@@ -17,7 +20,10 @@ export function createAuthorService(repository: IAuthorRepository) {
 			return await repository.create(input);
 		},
 
-		async update(id: string, input: Partial<Pick<Author, "name" | "accountId">>): Promise<Author> {
+		async update(
+			id: string,
+			input: Partial<Pick<Author, "name" | "accountId">>,
+		): Promise<Author> {
 			return await repository.update(id, input);
 		},
 

@@ -8,7 +8,10 @@ export function createProject(data: { name: string; description?: string }) {
 	return orpc.projects.create(data);
 }
 
-export function updateProject(id: string, data: { name?: string; description?: string }) {
+export function updateProject(
+	id: string,
+	data: { name?: string; description?: string },
+) {
 	return orpc.projects.update({ id, data });
 }
 
@@ -20,10 +23,18 @@ export function fetchProjectsForMedia(_sourceId: string, mediaId: string) {
 	return orpc.projects.listForMedia({ mediaId });
 }
 
-export function addProjectToMedia(_sourceId: string, mediaId: string, projectId: string) {
+export function addProjectToMedia(
+	_sourceId: string,
+	mediaId: string,
+	projectId: string,
+) {
 	return orpc.projects.addToMedia({ mediaId, projectId });
 }
 
-export function removeProjectFromMedia(_sourceId: string, mediaId: string, projectId: string) {
+export function removeProjectFromMedia(
+	_sourceId: string,
+	mediaId: string,
+	projectId: string,
+) {
 	return orpc.projects.removeFromMedia({ mediaId, projectId });
 }

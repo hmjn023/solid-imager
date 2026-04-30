@@ -23,7 +23,12 @@ type CreateUserRepositoryOptions = {
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === "23505"
+	);
 }
 
 function mapToUser(row: DbUser): User | null {
@@ -46,7 +51,9 @@ export function createUserRepository(
 		async findAll(): Promise<User[]> {
 			try {
 				const query = getExecutor().select().from(users);
-				const rows = options.orderByName ? await query.orderBy(asc(users.name)) : await query;
+				const rows = options.orderByName
+					? await query.orderBy(asc(users.name))
+					: await query;
 				return rows.flatMap((row) => {
 					const mapped = mapToUser(row);
 					return mapped ? [mapped] : [];
@@ -58,7 +65,11 @@ export function createUserRepository(
 
 		async findById(id: string, tx?: unknown): Promise<User | null> {
 			try {
-				const rows = await getExecutor(tx).select().from(users).where(eq(users.id, id)).limit(1);
+				const rows = await getExecutor(tx)
+					.select()
+					.from(users)
+					.where(eq(users.id, id))
+					.limit(1);
 				return rows[0] ? mapToUser(rows[0]) : null;
 			} catch (error) {
 				throw new UnexpectedError(`Failed to select user by ID: ${id}`, error);
@@ -74,7 +85,10 @@ export function createUserRepository(
 					.limit(1);
 				return rows[0] ? mapToUser(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(`Failed to select user by email: ${email}`, error);
+				throw new UnexpectedError(
+					`Failed to select user by email: ${email}`,
+					error,
+				);
 			}
 		},
 
@@ -96,7 +110,9 @@ export function createUserRepository(
 			} catch (error) {
 				if (error instanceof UnexpectedError) throw error;
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError("User with this email already exists");
+					throw new ResourceConflictError(
+						"User with this email already exists",
+					);
 				}
 				throw new UnexpectedError("Failed to insert user", error);
 			}
@@ -109,7 +125,9 @@ export function createUserRepository(
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
 						...(input.email !== undefined ? { email: input.email } : {}),
-						...(input.password !== undefined ? { password: input.password } : {}),
+						...(input.password !== undefined
+							? { password: input.password }
+							: {}),
 						updatedAt: new Date(),
 					})
 					.where(eq(users.id, id))
@@ -124,19 +142,30 @@ export function createUserRepository(
 				}
 				return mapped;
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError || error instanceof UnexpectedError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof UnexpectedError
+				) {
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError("User with this email already exists");
+					throw new ResourceConflictError(
+						"User with this email already exists",
+					);
 				}
-				throw new UnexpectedError(`Failed to update user with ID: ${id}`, error);
+				throw new UnexpectedError(
+					`Failed to update user with ID: ${id}`,
+					error,
+				);
 			}
 		},
 
 		async delete(id: string, tx?: unknown): Promise<void> {
 			try {
-				const rows = await getExecutor(tx).delete(users).where(eq(users.id, id)).returning();
+				const rows = await getExecutor(tx)
+					.delete(users)
+					.where(eq(users.id, id))
+					.returning();
 
 				if (!rows[0]) {
 					throw new ResourceNotFoundError("User", id);
@@ -145,7 +174,10 @@ export function createUserRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				throw new UnexpectedError(`Failed to delete user with ID: ${id}`, error);
+				throw new UnexpectedError(
+					`Failed to delete user with ID: ${id}`,
+					error,
+				);
 			}
 		},
 	};

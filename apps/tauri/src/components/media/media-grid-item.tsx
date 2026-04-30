@@ -43,7 +43,10 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			</Show>
 
 			<div class="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-				<p class="truncate font-medium text-white text-xs" title={props.media.fileName}>
+				<p
+					class="truncate font-medium text-white text-xs"
+					title={props.media.fileName}
+				>
 					{props.media.fileName}
 				</p>
 			</div>

@@ -29,7 +29,9 @@ function extractSourceUrls(baseUrls: string[]): {
 	}
 
 	// Then add DOM sources if we are on a post page
-	const sourceLinks = document.querySelectorAll<HTMLAnchorElement>("#post-info-source a");
+	const sourceLinks = document.querySelectorAll<HTMLAnchorElement>(
+		"#post-info-source a",
+	);
 	for (const link of sourceLinks) {
 		const href = link.href;
 		if (href && !sourceUrls.includes(href)) {
@@ -55,17 +57,25 @@ function isExcludedTwitterUser(username: string): boolean {
 }
 
 export function processDanbooruMedia(
-	createButtonContainer: (metadata: TweetMetadata, type: "IMAGE" | "VIDEO") => HTMLDivElement,
+	createButtonContainer: (
+		metadata: TweetMetadata,
+		type: "IMAGE" | "VIDEO",
+	) => HTMLDivElement,
 	createAsyncButtonContainer: (
 		fetchMetadata: () => Promise<TweetMetadata | null>,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
 	// Danbooru has one main image per post page usually `#image` or `.image-container`
-	const imageContainer = document.querySelector(".image-container") as HTMLElement;
+	const imageContainer = document.querySelector(
+		".image-container",
+	) as HTMLElement;
 
 	// Post page logic
-	if (imageContainer && !imageContainer.classList.contains(PROCESSED_IMAGE_CLASS)) {
+	if (
+		imageContainer &&
+		!imageContainer.classList.contains(PROCESSED_IMAGE_CLASS)
+	) {
 		const metadata = extractDanbooruMetadata(imageContainer);
 		if (metadata) {
 			const style = window.getComputedStyle(imageContainer);
@@ -80,14 +90,18 @@ export function processDanbooruMedia(
 	}
 
 	// List page logic
-	const postPreviews = document.querySelectorAll(`.post-preview:not(.${PROCESSED_IMAGE_CLASS})`);
+	const postPreviews = document.querySelectorAll(
+		`.post-preview:not(.${PROCESSED_IMAGE_CLASS})`,
+	);
 	for (const preview of postPreviews) {
 		const postId = preview.getAttribute("data-id");
 		if (!postId) {
 			continue;
 		}
 
-		const previewContainer = preview.querySelector(".post-preview-container") as HTMLElement;
+		const previewContainer = preview.querySelector(
+			".post-preview-container",
+		) as HTMLElement;
 		if (!previewContainer) {
 			continue;
 		}
@@ -100,7 +114,9 @@ export function processDanbooruMedia(
 
 		const fetchMetadata = async () => {
 			try {
-				const response = await fetch(`https://danbooru.donmai.us/posts/${postId}.json`);
+				const response = await fetch(
+					`https://danbooru.donmai.us/posts/${postId}.json`,
+				);
 				if (!response.ok) {
 					return null;
 				}
@@ -148,7 +164,10 @@ function parseTagsFromApiString(tagString: string | undefined): string[] {
 	return result;
 }
 
-function parseDanbooruApiMetadata(data: DanbooruApiResponse, postId: string): TweetMetadata | null {
+function parseDanbooruApiMetadata(
+	data: DanbooruApiResponse,
+	postId: string,
+): TweetMetadata | null {
 	const targetUrl = data.file_url;
 	if (!targetUrl) {
 		return null;
@@ -215,7 +234,9 @@ function extractTargetUrl(container: HTMLElement): string | null {
 		// Fallback if image tag is not found or has no src
 		const fileUrl = container.getAttribute("data-file-url");
 		if (fileUrl) {
-			targetUrl = fileUrl.startsWith("/") ? `${window.location.origin}${fileUrl}` : fileUrl;
+			targetUrl = fileUrl.startsWith("/")
+				? `${window.location.origin}${fileUrl}`
+				: fileUrl;
 		}
 	}
 

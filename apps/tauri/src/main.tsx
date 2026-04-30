@@ -46,7 +46,8 @@ async function initializeWithTimeout() {
 }
 
 function renderStartupError(error: unknown) {
-	const message = error instanceof Error ? error.stack || error.message : String(error);
+	const message =
+		error instanceof Error ? error.stack || error.message : String(error);
 	appRoot.replaceChildren();
 
 	const container = document.createElement("div");
@@ -56,7 +57,10 @@ function renderStartupError(error: unknown) {
 	);
 
 	const title = document.createElement("h1");
-	title.setAttribute("style", "color: #ef4444; font-size: 1.5rem; margin-bottom: 1rem;");
+	title.setAttribute(
+		"style",
+		"color: #ef4444; font-size: 1.5rem; margin-bottom: 1rem;",
+	);
 	title.textContent = "Initialization Error";
 
 	const description = document.createElement("p");

@@ -1,4 +1,7 @@
-import type { NewJobRecord, ProcessMediaJobRepository } from "../ports/job-repository";
+import type {
+	NewJobRecord,
+	ProcessMediaJobRepository,
+} from "../ports/job-repository";
 
 export const MEDIA_PROCESSING_STEPS = [
 	"extractMetadata",
@@ -30,7 +33,9 @@ export type QueueMediaProcessingJobInput = {
 	steps?: MediaProcessingStep[];
 };
 
-export function parseMediaProcessingJobPayload(payload: unknown): MediaProcessingJobPayload | null {
+export function parseMediaProcessingJobPayload(
+	payload: unknown,
+): MediaProcessingJobPayload | null {
 	if (
 		typeof payload !== "object" ||
 		payload === null ||
@@ -53,7 +58,10 @@ export function parseMediaProcessingJobPayload(payload: unknown): MediaProcessin
 		mediaId: payload.mediaId,
 		sourcePath: payload.sourcePath,
 		steps,
-		type: "type" in payload && payload.type === "processMedia" ? "processMedia" : undefined,
+		type:
+			"type" in payload && payload.type === "processMedia"
+				? "processMedia"
+				: undefined,
 	};
 }
 

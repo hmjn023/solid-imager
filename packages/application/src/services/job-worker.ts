@@ -1,5 +1,9 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import type { FindPendingJobsOptions, JobRecord, JobRepositoryPort } from "../ports/job-repository";
+import type {
+	FindPendingJobsOptions,
+	JobRecord,
+	JobRepositoryPort,
+} from "../ports/job-repository";
 import { AI_JOB_TYPES, NON_RUNNABLE_JOB_TYPES } from "./job-runtime";
 
 export type JobProcessor = (job: JobRecord) => Promise<void>;
@@ -38,9 +42,10 @@ function mergeExcludeTypes(
 	options: FindPendingJobsOptions,
 	excludedJobTypes: string[],
 ): FindPendingJobsOptions {
-	const excludeTypes = [...(options.excludeTypes ?? []), ...excludedJobTypes].filter(
-		(value, index, values) => values.indexOf(value) === index,
-	);
+	const excludeTypes = [
+		...(options.excludeTypes ?? []),
+		...excludedJobTypes,
+	].filter((value, index, values) => values.indexOf(value) === index);
 	return { ...options, excludeTypes };
 }
 
@@ -66,7 +71,9 @@ export class JobWorker {
 		this.processor = options.processor;
 		this.logger = options.logger;
 		this.aiJobTypes = new Set(options.aiJobTypes ?? AI_JOB_TYPES);
-		this.excludedJobTypes = options.excludedJobTypes ?? [...NON_RUNNABLE_JOB_TYPES];
+		this.excludedJobTypes = options.excludedJobTypes ?? [
+			...NON_RUNNABLE_JOB_TYPES,
+		];
 	}
 
 	start(): void {
@@ -206,7 +213,8 @@ export class JobWorker {
 			await this.processor(job);
 			await this.jobRepository.markAsCompleted(job.id, { success: true });
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
+			const errorMessage =
+				error instanceof Error ? error.message : String(error);
 			this.logger?.error?.({ err: error, jobId: job.id }, "Job failed");
 			await this.jobRepository.markAsFailed(job.id, errorMessage);
 		} finally {
