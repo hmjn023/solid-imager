@@ -353,7 +353,7 @@ export const TauriMediaService = {
 		return await mediaService.updateMedia(sourceId, mediaId, updates);
 	},
 
-	async deleteMedia(sourceId: string, mediaId: string) {
+	async deleteMedia(sourceId: string, mediaId: string): Promise<void> {
 		await mediaService.deleteMedia(sourceId, mediaId);
 	},
 
