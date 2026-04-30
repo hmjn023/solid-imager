@@ -1,5 +1,10 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+	ThumbnailImage as SharedThumbnailImage,
+	type ThumbnailImageProps as SharedThumbnailImageProps,
+	type ThumbnailSource,
+} from "@solid-imager/ui/thumbnail-image";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { getTauriAppServices } from "~/app-services";
 import {
 	getThumbnailResource,
@@ -10,19 +15,6 @@ import { joinLocalPath } from "~/infrastructure/path-utils";
 const DEFAULT_MAX_RETRIES = 40;
 const DEFAULT_RETRY_DELAY_MS = 1500;
 const THUMBNAIL_MIME_TYPE = "image/webp";
-
-type ThumbnailImageProps = {
-	alt: string;
-	class?: string;
-	fallback?: string;
-	height?: number | null;
-	loading?: "eager" | "lazy";
-	maxRetries?: number;
-	media: Media;
-	retryDelayMs?: number;
-	sourceRootPath?: string;
-	width?: number | null;
-};
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	jpg: "image/jpeg",
@@ -42,9 +34,7 @@ function revokeObjectUrl(url: string | null) {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (
-		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
-	);
+	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
 }
 
 function createObjectUrl(bytes: Uint8Array, mimeType: string) {
@@ -53,16 +43,27 @@ function createObjectUrl(bytes: Uint8Array, mimeType: string) {
 	return URL.createObjectURL(new Blob([buffer], { type: mimeType }));
 }
 
-export function ThumbnailImage(props: ThumbnailImageProps) {
+type ThumbnailImageProps = {
+	alt: string;
+	class?: string;
+	fallback?: string;
+	height?: number | null;
+	loading?: "eager" | "lazy";
+	maxRetries?: number;
+	media: Media;
+	retryDelayMs?: number;
+	sourceRootPath?: string;
+	width?: number | null;
+};
+
+function createLocalThumbnailSource(props: ThumbnailImageProps): ThumbnailSource {
 	const fileSystem = getTauriAppServices().fileSystem;
-	const [thumbnailUrl, setThumbnailUrl] = createSignal<string | null>(null);
-	const [cacheKey, setCacheKey] = createSignal(0);
+	const [url, setUrl] = createSignal<string | null>(null);
+	const [fallbackUrl, setFallbackUrl] = createSignal<string | null>(null);
+	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(null);
 	const [retryCount, setRetryCount] = createSignal(0);
-	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(
-		null,
-	);
-	const [originalUrl, setOriginalUrl] = createSignal<string | null>(null);
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
+	let revokeOnLoad: string | null = null;
 
 	const clearRetryTimer = () => {
 		if (retryTimer) {
@@ -71,168 +72,137 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		}
 	};
 
-	const resetImage = () => {
+	const scheduleRetry = () => {
+		if (retryCount() >= (props.maxRetries ?? DEFAULT_MAX_RETRIES)) {
+			return;
+		}
 		clearRetryTimer();
-		setRetryCount(0);
-		setCacheKey(new Date(props.media.modifiedAt).getTime());
-		setOriginalUrl((currentUrl) => {
-			revokeObjectUrl(currentUrl);
-			return null;
-		});
-		setThumbnailFilePath(null);
-		setThumbnailUrl(null);
+		retryTimer = setTimeout(() => {
+			setRetryCount((count) => count + 1);
+			loadThumbnail();
+		}, props.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS);
+	};
+
+	const loadThumbnail = async () => {
+		try {
+			const resource = await getThumbnailResource(
+				props.media.mediaSourceId,
+				props.media.id,
+				new Date(props.media.modifiedAt).getTime(),
+			);
+			setThumbnailFilePath(resource.filePath);
+			setUrl(resource.url);
+		} catch {
+			setThumbnailFilePath(null);
+			setUrl(null);
+		}
+	};
+
+	const handleOriginalFallback = async (rootPath: string | undefined) => {
+		if (rootPath && !fallbackUrl()) {
+			try {
+				const bytes = await fileSystem.readFile(joinLocalPath(rootPath, props.media.filePath));
+				const blobUrl = createObjectUrl(bytes, resolveMimeType(props.media.fileName));
+				setFallbackUrl((current) => {
+					revokeObjectUrl(current);
+					return blobUrl;
+				});
+				revokeOnLoad = blobUrl;
+				scheduleRetry();
+			} catch {
+				scheduleRetry();
+			}
+			return;
+		}
+		scheduleRetry();
 	};
 
 	createEffect(() => {
 		void props.media.id;
 		void props.media.mediaSourceId;
 		void props.media.modifiedAt;
-		resetImage();
-	});
-
-	createEffect(() => {
-		const media = props.media;
-		const nextCacheKey = cacheKey();
-		let cancelled = false;
-
-		void (async () => {
-			try {
-				const resource = await getThumbnailResource(
-					media.mediaSourceId,
-					media.id,
-					nextCacheKey,
-				);
-				if (!cancelled) {
-					setThumbnailFilePath(resource.filePath);
-					setThumbnailUrl(resource.url);
-				}
-			} catch {
-				if (!cancelled) {
-					setThumbnailFilePath(null);
-					setThumbnailUrl(null);
-				}
-			}
-		})();
-
-		onCleanup(() => {
-			cancelled = true;
+		clearRetryTimer();
+		setRetryCount(0);
+		setFallbackUrl((current) => {
+			revokeObjectUrl(current);
+			return null;
 		});
+		setThumbnailFilePath(null);
+		setUrl(null);
+		loadThumbnail();
 	});
 
 	onMount(() => {
 		const unsubscribe = subscribeToThumbnailReady(props.media.id, () => {
 			clearRetryTimer();
 			setRetryCount(0);
-			setCacheKey(Date.now());
+			loadThumbnail();
 		});
 		onCleanup(unsubscribe);
 	});
 
 	onCleanup(() => {
 		clearRetryTimer();
-		setThumbnailUrl((currentUrl) => {
-			revokeObjectUrl(currentUrl);
+		setFallbackUrl((current) => {
+			revokeObjectUrl(current);
 			return null;
 		});
-		setOriginalUrl((currentUrl) => {
-			revokeObjectUrl(currentUrl);
-			return null;
-		});
+		if (revokeOnLoad) {
+			revokeObjectUrl(revokeOnLoad);
+		}
 	});
 
-	const handleLoad = () => {
-		clearRetryTimer();
-		if (thumbnailUrl()) {
-			setOriginalUrl((currentUrl) => {
-				revokeObjectUrl(currentUrl);
-				return null;
-			});
-		}
-	};
+	return {
+		async getUrl() {
+			return fallbackUrl() ?? url() ?? "";
+		},
+		subscribe(callback) {
+			return subscribeToThumbnailReady(props.media.id, callback);
+		},
+		onLoad() {
+			clearRetryTimer();
+			if (revokeOnLoad) {
+				revokeObjectUrl(revokeOnLoad);
+				revokeOnLoad = null;
+			}
+		},
+		async onError() {
+			setUrl(null);
+			const currentThumbnailFilePath = thumbnailFilePath();
+			const rootPath = props.sourceRootPath;
 
-	const scheduleRetry = () => {
-		if (retryCount() >= (props.maxRetries ?? DEFAULT_MAX_RETRIES)) {
-			return;
-		}
-
-		clearRetryTimer();
-		retryTimer = setTimeout(() => {
-			setRetryCount((count) => count + 1);
-			setCacheKey(Date.now());
-		}, props.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS);
-	};
-
-	const handleError = () => {
-		setThumbnailUrl(null);
-		const currentThumbnailFilePath = thumbnailFilePath();
-		const rootPath = props.sourceRootPath;
-
-		if (currentThumbnailFilePath) {
-			void (async () => {
+			if (currentThumbnailFilePath) {
 				try {
 					const bytes = await fileSystem.readFile(currentThumbnailFilePath);
-					setOriginalUrl((currentUrl) => {
-						revokeObjectUrl(currentUrl);
-						return createObjectUrl(bytes, THUMBNAIL_MIME_TYPE);
+					const blobUrl = createObjectUrl(bytes, THUMBNAIL_MIME_TYPE);
+					setFallbackUrl((current) => {
+						revokeObjectUrl(current);
+						return blobUrl;
 					});
+					revokeOnLoad = blobUrl;
 					clearRetryTimer();
 				} catch {
 					setThumbnailFilePath(null);
-					handleOriginalFallback(rootPath);
+					await handleOriginalFallback(rootPath);
 				}
-			})();
-			return;
-		}
-
-		handleOriginalFallback(rootPath);
-	};
-
-	const handleOriginalFallback = (rootPath: string | undefined) => {
-		if (rootPath && !originalUrl()) {
-			void (async () => {
-				try {
-					const bytes = await fileSystem.readFile(
-						joinLocalPath(rootPath, props.media.filePath),
-					);
-					setOriginalUrl((currentUrl) => {
-						revokeObjectUrl(currentUrl);
-						return createObjectUrl(
-							bytes,
-							resolveMimeType(props.media.fileName),
-						);
-					});
-					scheduleRetry();
-				} catch {
-					scheduleRetry();
-				}
-			})();
-			return;
-		}
-
-		scheduleRetry();
-	};
-
-	return (
-		<Show
-			fallback={
-				<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
-					{props.fallback ?? props.media.mediaType}
-				</div>
+				return;
 			}
-			when={thumbnailUrl() || originalUrl()}
-		>
-			{(url) => (
-				<img
-					alt={props.alt}
-					class={props.class}
-					height={props.height ?? undefined}
-					loading={props.loading}
-					onError={handleError}
-					onLoad={handleLoad}
-					src={url()}
-					width={props.width ?? undefined}
-				/>
-			)}
-		</Show>
-	);
+
+			await handleOriginalFallback(rootPath);
+		},
+	};
+}
+
+export function ThumbnailImage(props: ThumbnailImageProps) {
+	const source = createLocalThumbnailSource(props);
+	const sharedProps: SharedThumbnailImageProps = {
+		alt: props.alt,
+		class: props.class,
+		fallback: props.fallback,
+		height: props.height,
+		loading: props.loading,
+		source,
+		width: props.width,
+	};
+	return <SharedThumbnailImage {...sharedProps} />;
 }

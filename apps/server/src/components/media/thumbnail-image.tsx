@@ -1,3 +1,8 @@
+import {
+	ThumbnailImage as SharedThumbnailImage,
+	type ThumbnailImageProps as SharedThumbnailImageProps,
+	type ThumbnailSource,
+} from "@solid-imager/ui/thumbnail-image";
 import { createEffect, createSignal, onCleanup } from "solid-js";
 
 const DEFAULT_MAX_RETRIES = 10;
@@ -16,15 +21,9 @@ type ThumbnailImageProps = {
 	width?: number | null;
 };
 
-function getThumbnailUrl(
-	mediaSourceId: string,
-	mediaId: string,
-	cacheKey: number,
-): string {
-	return `/api/sources/${mediaSourceId}/${mediaId}/thumbnail?t=${cacheKey}`;
-}
-
-export function ThumbnailImage(props: ThumbnailImageProps) {
+function createHttpThumbnailSource(
+	props: ThumbnailImageProps,
+): ThumbnailSource {
 	const [cacheKey, setCacheKey] = createSignal(0);
 	const [retryCount, setRetryCount] = createSignal(0);
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
@@ -36,49 +35,48 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		}
 	};
 
-	const resetImage = () => {
-		clearRetryTimer();
-		setRetryCount(0);
-		setCacheKey(new Date(props.modifiedAt).getTime());
-	};
-
 	createEffect(() => {
 		void props.mediaId;
 		void props.mediaSourceId;
 		void props.modifiedAt;
-		resetImage();
+		clearRetryTimer();
+		setRetryCount(0);
+		setCacheKey(new Date(props.modifiedAt).getTime());
 	});
 
 	onCleanup(() => {
 		clearRetryTimer();
 	});
 
-	const handleLoad = () => {
-		clearRetryTimer();
+	return {
+		getUrl() {
+			return `/api/sources/${props.mediaSourceId}/${props.mediaId}/thumbnail?t=${cacheKey()}`;
+		},
+		onLoad() {
+			clearRetryTimer();
+		},
+		onError() {
+			if (retryCount() >= (props.maxRetries ?? DEFAULT_MAX_RETRIES)) {
+				return;
+			}
+			clearRetryTimer();
+			retryTimer = setTimeout(() => {
+				setRetryCount((prev) => prev + 1);
+				setCacheKey(Date.now());
+			}, props.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS);
+		},
 	};
+}
 
-	const handleError = () => {
-		if (retryCount() >= (props.maxRetries ?? DEFAULT_MAX_RETRIES)) {
-			return;
-		}
-
-		clearRetryTimer();
-		retryTimer = setTimeout(() => {
-			setRetryCount((prev) => prev + 1);
-			setCacheKey(Date.now());
-		}, props.retryDelayMs ?? DEFAULT_RETRY_DELAY_MS);
+export function ThumbnailImage(props: ThumbnailImageProps) {
+	const source = createHttpThumbnailSource(props);
+	const sharedProps: SharedThumbnailImageProps = {
+		alt: props.alt,
+		class: props.class,
+		height: props.height,
+		loading: props.loading,
+		source,
+		width: props.width,
 	};
-
-	return (
-		<img
-			alt={props.alt}
-			class={props.class}
-			height={props.height ?? undefined}
-			loading={props.loading}
-			onError={handleError}
-			onLoad={handleLoad}
-			src={getThumbnailUrl(props.mediaSourceId, props.mediaId, cacheKey())}
-			width={props.width ?? undefined}
-		/>
-	);
+	return <SharedThumbnailImage {...sharedProps} />;
 }
