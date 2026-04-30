@@ -332,12 +332,12 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 - routes: `search.tsx` / `sources/index.tsx` / `manager.tsx` / `config.tsx` / `source-media-page` は shared screen + shared hook 化により thin wrapper に縮退。差分は transport / renderItem / renderJobProgress / renderNavActions に閉じる
 - hooks: `use-search-page` / `use-sources-page` / `use-source-media-page` / `use-manager-page` は shared 化済み。`use-media-source-events.ts` 本体も shared 化済み。今後は transport adapter と event relevance filter の責務をさらに薄くできるかを確認する
-- queries / api-clients: `queries/*.ts` と `search-api.ts` などは app ごとに薄く重複しており、transport 注入前提の共通 query option builder に寄せられる余地がある
 - services: tauri 側 `source-service.ts` は shared `createSourceService` に寄り、`media-service.ts` / `source-backup-service.ts` も shared package 前提の thin adapter に縮退。残る差分は platform 固有 I/O（bytes 変換、Rust command、zip/fs）に閉じる
 - components: `nav.tsx` を例外としても、nav action slot や source detail action 群は shared 化できる。`MediaListActions` は `packages/ui/src/media-list-actions.tsx` に抽出し共通化完了。app 側は `presetClient` prop 注入のみ
 
 ## 前回からの主な変更点（2026-04-30更新）
 
+- **Query Options**: `packages/ui/src/query-options/` を新設。`authors` / `characters` / `config` / `ips` / `media-details` / `projects` / `sources` / `tags` の 8 クエリについて、`queryOptions` builder と query key 定義、デフォルトキャッシュ設定を shared 化。server / tauri の `infrastructure/api-clients/queries/*.ts` は shared builder に `fetch*` 関数を注入する thin wrapper に縮退。route ファイルの import パスと関数名は変更なし
 - **Services**: `apps/tauri/src/infrastructure/local-api/services/media-service.ts` の `TauriMediaService` を shared `createMediaService` の thin adapter に縮退。`updateMedia` の `getMediaDetails` 追加呼び出しを削除、`copyMedia`/`moveMedia` の transaction 手動ラップを削除し shared の deferred actions に委譲、`deleteMedia` を `void` に。`apps/server/src/infrastructure/api/routers/media-router.ts` の `copy`/`move` も `{ success: true }` に揃え、`MutationSuccess` contract を統一
 - **Services**: `apps/tauri/src/infrastructure/local-api/services/source-backup-service.ts` から `_filterValidItems` / `_restoreMasterData` / `_restoreMediaRecords` / `_mapMediaPathsToIds` / `_transformMediaList` / `_restoreRelations` などの `_` プレフィックス付き内部メソッド公開を削除。`createDump`/`importSourceZip` の platform I/O 差分のみを adapter として残す
 
@@ -442,3 +442,4 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | `tag-persistence.ts`      | `packages/application/src/services/`    | AI tagging 結果（tag / character / IP）の永続化ロジック                                                    |
 | `media-type-utils.ts`     | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
 | `path-utils.ts`           | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath`                                                                    |
+| `query-options/*.ts`      | `packages/ui/src/query-options/`        | TanStack Query `queryOptions` builder、query key 定義、デフォルトキャッシュ設定の shared 化                  |
