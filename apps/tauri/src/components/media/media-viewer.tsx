@@ -21,9 +21,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (
-		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
-	);
+	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
 }
 
 class LocalMediaSource implements MediaSource {
@@ -35,11 +33,7 @@ class LocalMediaSource implements MediaSource {
 		private sourceRootPath: string | null,
 	) {
 		this.type =
-			media.mediaType === "video"
-				? "video"
-				: media.mediaType === "audio"
-					? "audio"
-					: "image";
+			media.mediaType === "video" ? "video" : media.mediaType === "audio" ? "audio" : "image";
 	}
 
 	async getUrl() {
@@ -66,13 +60,6 @@ class LocalMediaSource implements MediaSource {
 			this.urls.splice(idx, 1);
 		}
 	}
-
-	async getMetadata() {
-		return {
-			width: this.media.width,
-			height: this.media.height,
-		};
-	}
 }
 
 type MediaViewerProps = {
@@ -81,9 +68,7 @@ type MediaViewerProps = {
 };
 
 export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(
-		() => new LocalMediaSource(props.media, props.sourceRootPath ?? null),
-	);
+	const source = createMemo(() => new LocalMediaSource(props.media, props.sourceRootPath ?? null));
 
 	return (
 		<SharedMediaViewer

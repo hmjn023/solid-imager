@@ -1,13 +1,16 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import {
+	type MediaSource,
+	MediaViewer as SharedMediaViewer,
+} from "@solid-imager/ui/media-viewer";
 import { useParams } from "@tanstack/solid-router";
 import { createMemo } from "solid-js";
-import { MediaViewer as SharedMediaViewer, type MediaSource } from "@solid-imager/ui/media-viewer";
 
 class HttpMediaSource implements MediaSource {
 	type: "image" | "video" | "audio";
 
 	constructor(
-		private media: MediaDetails,
+		media: MediaDetails,
 		private mediaSourceId: string,
 		private mediaId: string,
 	) {
@@ -21,13 +24,6 @@ class HttpMediaSource implements MediaSource {
 
 	getUrl() {
 		return `/api/sources/${this.mediaSourceId}/${this.mediaId}`;
-	}
-
-	async getMetadata() {
-		return {
-			width: this.media.width,
-			height: this.media.height,
-		};
 	}
 }
 

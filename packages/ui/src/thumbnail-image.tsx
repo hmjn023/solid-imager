@@ -26,7 +26,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		setError(false);
 		let cancelled = false;
 
-		void (async () => {
+		const load = async () => {
 			try {
 				const resolved = await source.getUrl();
 				if (!cancelled) {
@@ -35,30 +35,16 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 			} catch {
 				if (!cancelled) {
 					setError(true);
-					if (source.onError) {
-						source.onError();
-					}
+					source.onError?.();
 				}
 			}
-		})();
+		};
+
+		void load();
 
 		const unsubscribe = source.subscribe?.(() => {
 			setError(false);
-			void (async () => {
-				try {
-					const resolved = await source.getUrl();
-					if (!cancelled) {
-						setUrl(resolved);
-					}
-				} catch {
-					if (!cancelled) {
-						setError(true);
-						if (source.onError) {
-							source.onError();
-						}
-					}
-				}
-			})();
+			void load();
 		});
 
 		onCleanup(() => {
@@ -93,7 +79,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					{props.fallback ?? props.alt}
 				</div>
 			}
-			when={url() && !error()}
+			when={!error() ? url() : undefined}
 		>
 			{(resolvedUrl) => (
 				<img

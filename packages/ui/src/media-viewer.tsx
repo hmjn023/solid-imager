@@ -1,4 +1,3 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
 	createEffect,
 	createSignal,
@@ -11,7 +10,6 @@ import {
 export interface MediaSource {
 	type: "image" | "video" | "audio";
 	getUrl(): string | Promise<string>;
-	getMetadata(): Promise<{ width: number; height: number; duration?: number }>;
 	revokeUrl?(url: string): void;
 }
 
@@ -67,11 +65,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						when={mediaUrl()}
 					>
 						{(url) => (
-							<video
-								class="max-h-full max-w-full"
-								controls
-								src={url()}
-							>
+							<video class="max-h-full max-w-full" controls src={url()}>
 								<track kind="captions" />
 							</video>
 						)}

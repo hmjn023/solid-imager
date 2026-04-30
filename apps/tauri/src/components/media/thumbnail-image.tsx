@@ -34,9 +34,7 @@ function revokeObjectUrl(url: string | null) {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (
-		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
-	);
+	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
 }
 
 function createObjectUrl(bytes: Uint8Array, mimeType: string) {
@@ -58,15 +56,11 @@ type ThumbnailImageProps = {
 	width?: number | null;
 };
 
-function createLocalThumbnailSource(
-	props: ThumbnailImageProps,
-): ThumbnailSource {
+function createLocalThumbnailSource(props: ThumbnailImageProps): ThumbnailSource {
 	const fileSystem = getTauriAppServices().fileSystem;
 	const [url, setUrl] = createSignal<string | null>(null);
 	const [fallbackUrl, setFallbackUrl] = createSignal<string | null>(null);
-	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(
-		null,
-	);
+	const [thumbnailFilePath, setThumbnailFilePath] = createSignal<string | null>(null);
 	const [retryCount, setRetryCount] = createSignal(0);
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	let revokeOnLoad: string | null = null;
@@ -94,7 +88,7 @@ function createLocalThumbnailSource(
 			const resource = await getThumbnailResource(
 				props.media.mediaSourceId,
 				props.media.id,
-				Date.now(),
+				new Date(props.media.modifiedAt).getTime(),
 			);
 			setThumbnailFilePath(resource.filePath);
 			setUrl(resource.url);
@@ -107,13 +101,8 @@ function createLocalThumbnailSource(
 	const handleOriginalFallback = async (rootPath: string | undefined) => {
 		if (rootPath && !fallbackUrl()) {
 			try {
-				const bytes = await fileSystem.readFile(
-					joinLocalPath(rootPath, props.media.filePath),
-				);
-				const blobUrl = createObjectUrl(
-					bytes,
-					resolveMimeType(props.media.fileName),
-				);
+				const bytes = await fileSystem.readFile(joinLocalPath(rootPath, props.media.filePath));
+				const blobUrl = createObjectUrl(bytes, resolveMimeType(props.media.fileName));
 				setFallbackUrl((current) => {
 					revokeObjectUrl(current);
 					return blobUrl;
