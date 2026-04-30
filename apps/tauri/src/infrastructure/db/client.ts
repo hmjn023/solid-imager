@@ -11,9 +11,7 @@ export type InitializeTauriDbOptions = {
 };
 
 export type TauriDb = ReturnType<typeof drizzle<typeof schema>>;
-export type TauriDbTransaction = Parameters<
-	Parameters<TauriDb["transaction"]>[0]
->[0];
+export type TauriDbTransaction = Parameters<Parameters<TauriDb["transaction"]>[0]>[0];
 export type TauriDbExecutor = TauriDb | TauriDbTransaction;
 
 let dbPromise: Promise<TauriDb> | null = null;
@@ -31,16 +29,12 @@ async function createMigratedDb(dataDir: string): Promise<TauriDb> {
 	return db;
 }
 
-async function createTauriDb(
-	options: InitializeTauriDbOptions = {},
-): Promise<TauriDb> {
+async function createTauriDb(options: InitializeTauriDbOptions = {}): Promise<TauriDb> {
 	options.onStatus?.("Opening the local database...");
 	return await createMigratedDb(TAURI_PGLITE_DATA_DIR);
 }
 
-export async function initializeTauriDb(
-	options: InitializeTauriDbOptions = {},
-): Promise<TauriDb> {
+export async function initializeTauriDb(options: InitializeTauriDbOptions = {}): Promise<TauriDb> {
 	if (!dbPromise) {
 		dbPromise = createTauriDb(options);
 	}

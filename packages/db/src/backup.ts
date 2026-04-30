@@ -33,9 +33,7 @@ export type BackupServiceDeps = {
 	sourceRepository: SourceRepository;
 	resolvePath: (basePath: string, filePath: string) => string;
 	pathExists: (fullPath: string) => Promise<boolean>;
-	runTransaction?: <T>(
-		callback: (executor: DrizzleExecutor) => Promise<T>,
-	) => Promise<T>;
+	runTransaction?: <T>(callback: (executor: DrizzleExecutor) => Promise<T>) => Promise<T>;
 	onRestoreComplete?: (params: {
 		source: BackupSource;
 		mediaIds: string[];
@@ -59,11 +57,7 @@ type ValidItemsResult = {
 	errorMessages: string[];
 };
 
-type SimpleMasterDataTable =
-	| typeof tags
-	| typeof projects
-	| typeof ips
-	| typeof characters;
+type SimpleMasterDataTable = typeof tags | typeof projects | typeof ips | typeof characters;
 
 type SimpleMasterDataNameColumn =
 	| typeof tags.name
@@ -212,11 +206,7 @@ async function ensureMasterData(
 	}
 
 	const result = new Map<string, string>();
-	for (
-		let index = 0;
-		index < nameList.length;
-		index += MASTER_DATA_CHUNK_SIZE
-	) {
+	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
 		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 		await executor
 			.insert(table)
@@ -249,15 +239,8 @@ async function ensureAuthors(
 
 	const entries = Array.from(authorData.entries());
 	const nameList = entries.map(([name]) => name);
-	const existingByName = new Map<
-		string,
-		{ id: string; accountId: string | null }
-	>();
-	for (
-		let index = 0;
-		index < nameList.length;
-		index += MASTER_DATA_CHUNK_SIZE
-	) {
+	const existingByName = new Map<string, { id: string; accountId: string | null }>();
+	for (let index = 0; index < nameList.length; index += MASTER_DATA_CHUNK_SIZE) {
 		const chunk = nameList.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 		const existingRecords = await executor
 			.select({
@@ -281,22 +264,14 @@ async function ensureAuthors(
 
 	const updates = entries.filter(([name, data]) => {
 		const current = existingByName.get(name);
-		return Boolean(
-			current && data.accountId && current.accountId !== data.accountId,
-		);
+		return Boolean(current && data.accountId && current.accountId !== data.accountId);
 	});
 
 	if (updates.length > 0) {
-		for (
-			let index = 0;
-			index < updates.length;
-			index += AUTHOR_UPDATE_CHUNK_SIZE
-		) {
+		for (let index = 0; index < updates.length; index += AUTHOR_UPDATE_CHUNK_SIZE) {
 			const chunk = updates.slice(index, index + AUTHOR_UPDATE_CHUNK_SIZE);
 			const accountIdCase = sql.join(
-				chunk.map(
-					([name, data]) => sql`when ${name} then ${data.accountId ?? null}`,
-				),
+				chunk.map(([name, data]) => sql`when ${name} then ${data.accountId ?? null}`),
 				sql.raw(" "),
 			);
 			await executor
@@ -316,11 +291,7 @@ async function ensureAuthors(
 
 	const missing = entries.filter(([name]) => !existingByName.has(name));
 	if (missing.length > 0) {
-		for (
-			let index = 0;
-			index < missing.length;
-			index += MASTER_DATA_CHUNK_SIZE
-		) {
+		for (let index = 0; index < missing.length; index += MASTER_DATA_CHUNK_SIZE) {
 			const chunk = missing.slice(index, index + MASTER_DATA_CHUNK_SIZE);
 			const created = await executor
 				.insert(authors)
@@ -338,9 +309,7 @@ async function ensureAuthors(
 		}
 	}
 
-	return new Map(
-		Array.from(existingByName.entries()).map(([name, row]) => [name, row.id]),
-	);
+	return new Map(Array.from(existingByName.entries()).map(([name, row]) => [name, row.id]));
 }
 
 async function restoreMasterData(
@@ -424,10 +393,7 @@ async function restoreMediaRecords(
 		width: item.width ?? 0,
 		height: item.height ?? 0,
 		fileSize: item.fileSize ?? 0,
-		mediaType:
-			item.mediaType === "image" || item.mediaType === "video"
-				? item.mediaType
-				: "image",
+		mediaType: item.mediaType === "image" || item.mediaType === "video" ? item.mediaType : "image",
 		createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
 		modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
 		indexedAt: new Date(),
@@ -460,9 +426,7 @@ async function mapMediaPathsToIds(
 	mediaSourceId: string,
 	items: MediaDumpItem[],
 ): Promise<Map<string, string>> {
-	const filePaths = items.flatMap((item) =>
-		item.filePath ? [item.filePath] : [],
-	);
+	const filePaths = items.flatMap((item) => (item.filePath ? [item.filePath] : []));
 	if (filePaths.length === 0) {
 		return new Map();
 	}
@@ -506,9 +470,7 @@ async function restoreRelations(
 	const characterIpsData: Array<typeof characterIps.$inferInsert> = [];
 	const mediaIpsData: Array<typeof mediaIps.$inferInsert> = [];
 	const mediaUrlsData: Array<typeof mediaUrls.$inferInsert> = [];
-	const mediaGenerationInfoData: Array<
-		typeof mediaGenerationInfo.$inferInsert
-	> = [];
+	const mediaGenerationInfoData: Array<typeof mediaGenerationInfo.$inferInsert> = [];
 	const seenMediaIps = new Set<string>();
 
 	for (const item of params.items) {
@@ -526,10 +488,7 @@ async function restoreRelations(
 				mediaTagsData.push({
 					mediaId,
 					tagId,
-					tagType:
-						tag.type === "positive" || tag.type === "negative"
-							? tag.type
-							: "positive",
+					tagType: tag.type === "positive" || tag.type === "negative" ? tag.type : "positive",
 					confidence: tag.confidence ?? null,
 					source: tag.source ?? "restored",
 				});
@@ -537,30 +496,23 @@ async function restoreRelations(
 		}
 
 		for (const author of item.authors ?? []) {
-			const authorId = author.name
-				? params.authorMap.get(author.name)
-				: undefined;
+			const authorId = author.name ? params.authorMap.get(author.name) : undefined;
 			if (authorId) {
 				mediaAuthorsData.push({ mediaId, authorId });
 			}
 		}
 
 		for (const project of item.projects ?? []) {
-			const projectId = project.name
-				? params.projectMap.get(project.name)
-				: undefined;
+			const projectId = project.name ? params.projectMap.get(project.name) : undefined;
 			if (projectId) {
 				mediaProjectsData.push({ mediaId, projectId });
 			}
 		}
 
-		const mediaIpNames =
-			item.ips?.flatMap((ip) => (ip.name ? [ip.name] : [])) ?? [];
+		const mediaIpNames = item.ips?.flatMap((ip) => (ip.name ? [ip.name] : [])) ?? [];
 
 		for (const character of item.characters ?? []) {
-			const characterId = character.name
-				? params.charMap.get(character.name)
-				: undefined;
+			const characterId = character.name ? params.charMap.get(character.name) : undefined;
 			if (!characterId) {
 				continue;
 			}
@@ -573,9 +525,7 @@ async function restoreRelations(
 			});
 
 			const ipNamesToLink =
-				character.linkedIps &&
-				Array.isArray(character.linkedIps) &&
-				character.linkedIps.length > 0
+				character.linkedIps && Array.isArray(character.linkedIps) && character.linkedIps.length > 0
 					? character.linkedIps
 					: mediaIpNames;
 
@@ -628,20 +578,12 @@ async function restoreRelations(
 	for (let index = 0; index < mediaIds.length; index += deleteChunkSize) {
 		const chunk = mediaIds.slice(index, index + deleteChunkSize);
 		await executor.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
-		await executor
-			.delete(mediaAuthors)
-			.where(inArray(mediaAuthors.mediaId, chunk));
-		await executor
-			.delete(mediaProjects)
-			.where(inArray(mediaProjects.mediaId, chunk));
-		await executor
-			.delete(mediaCharacters)
-			.where(inArray(mediaCharacters.mediaId, chunk));
+		await executor.delete(mediaAuthors).where(inArray(mediaAuthors.mediaId, chunk));
+		await executor.delete(mediaProjects).where(inArray(mediaProjects.mediaId, chunk));
+		await executor.delete(mediaCharacters).where(inArray(mediaCharacters.mediaId, chunk));
 		await executor.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
 		await executor.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-		await executor
-			.delete(mediaGenerationInfo)
-			.where(inArray(mediaGenerationInfo.mediaId, chunk));
+		await executor.delete(mediaGenerationInfo).where(inArray(mediaGenerationInfo.mediaId, chunk));
 	}
 
 	const chunkSize = 1000;
@@ -687,11 +629,7 @@ async function restoreRelations(
 			.values(mediaUrlsData.slice(index, index + chunkSize))
 			.onConflictDoNothing();
 	}
-	for (
-		let index = 0;
-		index < mediaGenerationInfoData.length;
-		index += chunkSize
-	) {
+	for (let index = 0; index < mediaGenerationInfoData.length; index += chunkSize) {
 		await executor
 			.insert(mediaGenerationInfo)
 			.values(mediaGenerationInfoData.slice(index, index + chunkSize))
@@ -756,9 +694,7 @@ export async function filterValidItems(
 }
 
 export function createBackupService(deps: BackupServiceDeps) {
-	async function findMediaSourceForFile(
-		filePath: string,
-	): Promise<string | null> {
+	async function findMediaSourceForFile(filePath: string): Promise<string | null> {
 		try {
 			validateRelativePath(filePath);
 		} catch {
@@ -789,19 +725,14 @@ export function createBackupService(deps: BackupServiceDeps) {
 		return null;
 	}
 
-	async function createDumpItems(
-		mediaSourceId: string,
-	): Promise<MediaDumpItem[]> {
+	async function createDumpItems(mediaSourceId: string): Promise<MediaDumpItem[]> {
 		const source = await deps.sourceRepository.findById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");
 		}
 
 		const mediaList: MediaDumpItem[] = [];
-		for await (const media of iterateMediaDumpItems(
-			deps.getExecutor,
-			mediaSourceId,
-		)) {
+		for await (const media of iterateMediaDumpItems(deps.getExecutor, mediaSourceId)) {
 			mediaList.push(media);
 		}
 		return mediaList;
@@ -837,15 +768,13 @@ export function createBackupService(deps: BackupServiceDeps) {
 				await callback(deps.getExecutor()));
 
 		const { mediaPathToId } = await runTransaction(async (executor) => {
-			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await restoreMasterData(executor, validItems);
-
-			await restoreMediaRecords(executor, mediaSourceId, validItems);
-			const nextMediaPathToId = await mapMediaPathsToIds(
-				() => executor,
-				mediaSourceId,
+			const { tagMap, authorMap, projectMap, ipMap, charMap } = await restoreMasterData(
+				executor,
 				validItems,
 			);
+
+			await restoreMediaRecords(executor, mediaSourceId, validItems);
+			const nextMediaPathToId = await mapMediaPathsToIds(() => executor, mediaSourceId, validItems);
 
 			await restoreRelations(executor, {
 				items: validItems,

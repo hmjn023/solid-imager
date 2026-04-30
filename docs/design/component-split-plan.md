@@ -3,6 +3,7 @@
 ## 背景と目的
 
 `apps/server` と `apps/tauri` の共通化を進める前に、巨大なJSXファイルを責務ごとに分割する。これにより:
+
 - 共通化の単位を明確にする
 - `packages/ui` への切り出し候補を見える化する
 - テスト・保守性を向上させる
@@ -10,26 +11,29 @@
 ## 対象ファイル一覧
 
 ### Server側
-| ファイル | 行数 | 優先度 |
-|---|---|---|
+
+| ファイル                                  | 行数  | 優先度 |
+| ----------------------------------------- | ----- | ------ |
 | `routes/sources/$mediaSourceId/index.tsx` | 1,126 | **P0** |
-| `components/media/media-sidebar.tsx` | 519 | **P0** |
-| `routes/config.tsx` | 569 | **P1** |
-| `components/source-form-modal.tsx` | 430 | **P1** |
-| `components/upload-media-modal.tsx` | 333 | **P1** |
+| `components/media/media-sidebar.tsx`      | 519   | **P0** |
+| `routes/config.tsx`                       | 569   | **P1** |
+| `components/source-form-modal.tsx`        | 430   | **P1** |
+| `components/upload-media-modal.tsx`       | 333   | **P1** |
 
 ### Tauri側
-| ファイル | 行数 | 優先度 |
-|---|---|---|
+
+| ファイル                                  | 行数  | 優先度 |
+| ----------------------------------------- | ----- | ------ |
 | `routes/sources/$mediaSourceId/index.tsx` | 1,027 | **P0** |
-| `components/media/media-sidebar.tsx` | 449 | **P0** |
-| `routes/config.tsx` | 483 | **P1** |
-| `components/source-form-modal.tsx` | 149 | **P2** |
-| `components/upload-media-modal.tsx` | 260 | **P1** |
+| `components/media/media-sidebar.tsx`      | 449   | **P0** |
+| `routes/config.tsx`                       | 483   | **P1** |
+| `components/source-form-modal.tsx`        | 149   | **P2** |
+| `components/upload-media-modal.tsx`       | 260   | **P1** |
 
 ## 分割方針
 
 ### 原則
+
 1. **Container/Presentational 分離**: Data fetching と state management は hook/container に、描画は presentational component に分離
 2. **Feature-based 分割**: 機能単位（upload, search, association など）でファイルを分ける
 3. **server側を基準**: 分割後の命名・責務分割は server 側を正とし、tauri 側が追従
@@ -40,6 +44,7 @@
 ## P0: `routes/sources/$mediaSourceId/index.tsx` の分割
 
 ### 現状の責務
+
 - Query/Data Fetching (infinite scroll, filter data)
 - Scroll Restoration
 - Upload Handling (file select, drag&drop, clipboard paste)
@@ -71,22 +76,26 @@ apps/server/src/routes/sources/$mediaSourceId/
 ### 各ファイルの責務
 
 #### `index.tsx`
+
 - `createFileRoute` の定義
 - `loader`（prefetch）
 - ページレイアウトの組み立て
 - 各 hook の呼び出しと props 受け渡し
 
 #### `hooks/use-media-query.ts`
+
 - `createInfiniteQuery` の設定
 - `searchParams` / `searchConditionKey` の memoization
 - `MEDIA_ITEMS_PER_PAGE` 定数
 
 #### `hooks/use-scroll-restoration.ts`
+
 - `history.scrollRestoration = "manual"`
 - `getScrollPosition` / `setScrollPosition`
 - `IntersectionObserver` による無限スクロールトリガー
 
 #### `hooks/use-media-upload.ts`
+
 - `handleFileSelect`
 - `handleDrop` / `handleDragOver`
 - `handlePaste` / `processClipboardItems`
@@ -94,29 +103,35 @@ apps/server/src/routes/sources/$mediaSourceId/
 - Upload modal 用 state (`showUploadModal`, `fileToUpload`, `pastedUrl`)
 
 #### `hooks/use-media-dump.ts`
+
 - `handleDumpDownload` (json/zip)
 - `handleRestoreSelect` (file input → restore/import)
 
 #### `hooks/use-media-operations.ts`
+
 - `handleDelete` / `confirmDelete`
 - `handleCopyMove` / `handleConfirmCopyMove`
 - `handleSyncLoadedMedia` / `handleSyncSingleMedia`
 - Move/Copy dialog state
 
 #### `components/media-list-layout.tsx`
+
 - 2カラムレイアウト（sidebar + grid）
 - Drag&Drop イベントハンドラの設置
 
 #### `components/media-grid.tsx`
+
 - メディアグリッドの描画
 - `ThumbnailImage` の配置
 - 無限スクロールトリガー要素
 
 #### `components/media-context-menu.tsx`
+
 - `ContextMenu` コンポーネント
 - メニュー項目（Open, Delete, Copy, Move, Sync）
 
 #### `components/media-list-actions.tsx`
+
 - `Portal` によるナビゲーションボタン
 - Dump/Restore/Filter ボタン
 
@@ -125,6 +140,7 @@ apps/server/src/routes/sources/$mediaSourceId/
 ## P0: `components/media/media-sidebar.tsx` の分割
 
 ### 現状の責務
+
 - 基本情報表示（ファイル名、解像度、サイズ）
 - 説明のインライン編集
 - Source URLs 表示
@@ -152,28 +168,33 @@ apps/server/src/components/media/media-sidebar/
 ### 各ファイルの責務
 
 #### `index.tsx`
+
 - `aside` レイアウト
 - AI Tagging ボタン
 - 各 section コンポーネントの配置
 - `AssociationManager` は `use-media-associations.ts` のラッパーとして残すか、または section コンポーネント内に含める
 
 #### `sections/media-description.tsx`
+
 - `isEditingDescription` state
 - `handleSaveDescription` / `handleCancelEdit`
 - textarea / 表示切り替え
 
 #### `sections/media-tags.tsx`
+
 - Positive / Negative の分類
 - `Badge` コンポーネント
 - `ClipboardCopy`
 - Source による色分けロジック
 
 #### `sections/media-generation-info.tsx`
+
 - `Collapsible` ラップ
 - Prompt / Negative Prompt / Workflow の表示
 - `ClipboardCopy`
 
 #### `hooks/use-media-associations.ts`
+
 - Project / IP / Character の add/remove/create
 - `availableCharacters` の memoization（IPフィルタ）
 - Auto-assign IPs on character add
@@ -183,6 +204,7 @@ apps/server/src/components/media/media-sidebar/
 ## P1: `routes/config.tsx` の分割
 
 ### 現状の責務
+
 - フォーム定義（`createForm`）
 - 6つのタブ（Jobs, AI, Downloads, Storage, Media, Logging）
 - 各タブ内のフィールド定義
@@ -211,19 +233,23 @@ apps/server/src/routes/
 ### 各ファイルの責務
 
 #### `config.tsx`
+
 - Route 定義
 - `ConfigPage`（loading/error/data の状態管理）
 
 #### `config-form.tsx`
+
 - `createForm` の設定
 - Tabs の切り替え
 - Save ボタン
 
 #### `tabs/*.tsx`
+
 - 各タブのコンテンツ（fieldset 相当）
 - `form.Field` の呼び出し
 
 #### `fields/*.tsx`
+
 - `form.Field` の render prop を共通化
 - Number / String / Switch / StringList の4種類
 - これらは `packages/ui` への昇格候補
@@ -233,6 +259,7 @@ apps/server/src/routes/
 ## P1: `components/upload-media-modal.tsx` の分割
 
 ### 現状の責務
+
 - モーダル表示制御
 - ファイルアップロードフォーム
 - URL からのフェッチ
@@ -252,6 +279,7 @@ apps/server/src/components/upload-media-modal/
 ## P1: `components/source-form-modal.tsx` の分割
 
 ### 現状の責務
+
 - ソース作成/編集フォーム
 - ストレージタイプによる条件分岐
 - 検証ロジック
@@ -277,6 +305,7 @@ apps/server/src/components/source-form-modal/
 server側の分割完了後、tauri側を同じ構造に追従させる。
 
 ### 注意点
+
 - tauri側の `routes/sources/$mediaSourceId/index.tsx` は virtual scroll を使用している（`createWindowVirtualizer`）
 - 分割時は `media-grid.tsx` の実装に差分が出る可能性がある
 - hook 層は共通化を見据えて **server側の命名・インターフェースに揃える**
@@ -286,21 +315,25 @@ server側の分割完了後、tauri側を同じ構造に追従させる。
 ## 作業順序
 
 ### Phase 1: P0 分割（server側）
+
 1. `routes/sources/$mediaSourceId/index.tsx` の hook 切り出し
 2. `routes/sources/$mediaSourceId/index.tsx` の component 切り出し
 3. `components/media/media-sidebar.tsx` の section 切り出し
 4. `components/media/media-sidebar.tsx` の hook 切り出し
 
 ### Phase 2: P0 追従（tauri側）
+
 5. tauri `routes/sources/$mediaSourceId/index.tsx` を server 側の構造に揃えて分割
 6. tauri `components/media/media-sidebar.tsx` を server 側の構造に揃えて分割
 
 ### Phase 3: P1 分割（両方）
+
 7. `routes/config.tsx` の分割（両方）
 8. `components/upload-media-modal.tsx` の分割（両方）
 9. `components/source-form-modal.tsx` の分割（server側のみ、tauriは既に小さい）
 
 ### Phase 4: 共通化準備
+
 10. `packages/ui` への昇格候補の抽出（`fields/*`, `media-sidebar/sections/*` など）
 11. `packages/application` への hook 昇格候補の抽出
 

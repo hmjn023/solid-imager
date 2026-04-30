@@ -11,16 +11,12 @@ type BackgroundJobsCoordinatorHooks = {
 
 type BackgroundJobsCoordinatorOptions = {
 	loadConfig: () => Promise<AppConfig> | AppConfig;
-	onConfigChange: (
-		listener: (config: AppConfig) => Promise<void> | void,
-	) => Promise<void> | void;
+	onConfigChange: (listener: (config: AppConfig) => Promise<void> | void) => Promise<void> | void;
 	updateWorkerConfig: (config: AppConfig) => Promise<void> | void;
 	resetRunnableJobs: () => Promise<void>;
 	startWorker: () => Promise<void> | void;
 	startWatchingAllSources: () => Promise<void>;
-	performStartupChecks: (
-		hooks: BackgroundJobsCoordinatorHooks,
-	) => Promise<void>;
+	performStartupChecks: (hooks: BackgroundJobsCoordinatorHooks) => Promise<void>;
 	afterJobsQueued?: (sourceIds: string[]) => Promise<void> | void;
 	logger?: BackgroundJobsCoordinatorLogger;
 };
@@ -33,9 +29,7 @@ export class BackgroundJobsCoordinator {
 	private readonly startWorker: BackgroundJobsCoordinatorOptions["startWorker"];
 	private readonly startWatchingAllSources: BackgroundJobsCoordinatorOptions["startWatchingAllSources"];
 	private readonly performStartupChecks: BackgroundJobsCoordinatorOptions["performStartupChecks"];
-	private readonly afterJobsQueued:
-		| ((sourceIds: string[]) => Promise<void> | void)
-		| undefined;
+	private readonly afterJobsQueued: ((sourceIds: string[]) => Promise<void> | void) | undefined;
 	private readonly logger: BackgroundJobsCoordinatorLogger | undefined;
 
 	constructor(options: BackgroundJobsCoordinatorOptions) {

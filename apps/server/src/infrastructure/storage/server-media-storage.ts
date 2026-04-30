@@ -1,5 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { MediaPathAdapter } from "@solid-imager/application/services/media-service";
+import { resolveUploadTargetPath } from "@solid-imager/application/services/media-upload-utils";
 import type {
 	IMediaStorage,
 	MediaMetadata,
@@ -8,6 +10,13 @@ import type {
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import sharp from "sharp";
 import type { z } from "zod";
+
+const pathAdapter: MediaPathAdapter = {
+	join: path.join,
+	extname: path.extname,
+	basename: path.basename,
+	relative: path.relative,
+};
 
 /**
  * Resolves a path safely, ensuring it remains within the base path.
@@ -37,46 +46,29 @@ export const ServerMediaStorage: IMediaStorage = {
 		},
 	): Promise<MediaStorageResult> {
 		const uploadRequest = options;
-		let targetFileName = uploadRequest.filename || file.name;
+		const resolved = await resolveUploadTargetPath(
+			basePath,
+			uploadRequest.filename || file.name,
+			uploadRequest.overwrite ?? false,
+			uploadRequest.autoIncrement ?? false,
+			{
+				pathAdapter,
+				exists: async (p) => {
+					try {
+						await fs.stat(p);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+			},
+		);
 
-		let targetFilePath = resolveSafePath(basePath, targetFileName);
-		let relativeFilePath = path.relative(basePath, targetFilePath);
-		let conflict: z.infer<typeof conflictSchema> | undefined;
-
-		// Handle file name conflicts
-		let counter = 0;
-		while (
-			await fs
-				.stat(targetFilePath)
-				.then(() => true)
-				.catch(() => false)
-		) {
-			if (uploadRequest.overwrite) {
-				break; // Overwrite existing file
-			}
-
-			if (!uploadRequest.autoIncrement) {
-				conflict = {
-					existingFile: relativeFilePath,
-					suggestedName: "",
-				};
-				throw new Error("File already exists and overwrite is not allowed.");
-			}
-
-			counter++;
-			const ext = path.extname(file.name);
-			const base = path.basename(file.name, ext);
-			targetFileName = `${base}_${counter}${ext}`;
-			targetFilePath = resolveSafePath(basePath, targetFileName);
-			relativeFilePath = path.relative(basePath, targetFilePath);
-			conflict = {
-				existingFile: path.relative(
-					basePath,
-					resolveSafePath(basePath, uploadRequest.filename || file.name),
-				),
-				suggestedName: targetFileName,
-			};
-		}
+		const targetFilePath = resolved.fullPath;
+		const relativeFilePath = resolved.relativePath;
+		const targetFileName = path.basename(targetFilePath);
+		const conflict: z.infer<typeof conflictSchema> | undefined =
+			resolved.conflict;
 
 		// Save the file
 		const arrayBuffer = await file.arrayBuffer();
@@ -238,49 +230,30 @@ export const ServerMediaStorage: IMediaStorage = {
 	): Promise<MediaStorageResult> {
 		const uploadRequest = options;
 		const sourceFileName = path.basename(sourcePath);
-		let targetFileName = uploadRequest.filename || sourceFileName;
 
-		let targetFilePath = resolveSafePath(targetBasePath, targetFileName);
-		let relativeFilePath = path.relative(targetBasePath, targetFilePath);
-		let conflict: z.infer<typeof conflictSchema> | undefined;
+		const resolved = await resolveUploadTargetPath(
+			targetBasePath,
+			uploadRequest.filename || sourceFileName,
+			uploadRequest.overwrite ?? false,
+			uploadRequest.autoIncrement ?? false,
+			{
+				pathAdapter,
+				exists: async (p) => {
+					try {
+						await fs.stat(p);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+			},
+		);
 
-		// Handle file name conflicts
-		let counter = 0;
-		while (
-			await fs
-				.stat(targetFilePath)
-				.then(() => true)
-				.catch(() => false)
-		) {
-			if (uploadRequest.overwrite) {
-				break; // Overwrite existing file
-			}
-
-			if (!uploadRequest.autoIncrement) {
-				conflict = {
-					existingFile: relativeFilePath,
-					suggestedName: "",
-				};
-				throw new Error("File already exists and overwrite is not allowed.");
-			}
-
-			counter++;
-			const ext = path.extname(sourceFileName);
-			const base = path.basename(sourceFileName, ext);
-			targetFileName = `${base}_${counter}${ext}`;
-			targetFilePath = resolveSafePath(targetBasePath, targetFileName);
-			relativeFilePath = path.relative(targetBasePath, targetFilePath);
-			conflict = {
-				existingFile: path.relative(
-					targetBasePath,
-					resolveSafePath(
-						targetBasePath,
-						uploadRequest.filename || sourceFileName,
-					),
-				),
-				suggestedName: targetFileName,
-			};
-		}
+		const targetFilePath = resolved.fullPath;
+		const relativeFilePath = resolved.relativePath;
+		const targetFileName = path.basename(targetFilePath);
+		const conflict: z.infer<typeof conflictSchema> | undefined =
+			resolved.conflict;
 
 		// Copy the file
 		await fs.copyFile(sourcePath, targetFilePath);

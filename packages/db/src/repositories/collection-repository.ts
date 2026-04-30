@@ -17,21 +17,14 @@ import type { DrizzleExecutor } from "../types";
 
 type DbCollection = typeof collections.$inferSelect;
 
-export type CollectionRepositoryExecutorProvider = (
-	tx?: unknown,
-) => DrizzleExecutor;
+export type CollectionRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 
 type CreateCollectionRepositoryOptions = {
 	orderByName?: boolean;
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		error.code === "23505"
-	);
+	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function mapToCollection(row: DbCollection): Collection | null {
@@ -54,9 +47,7 @@ export function createCollectionRepository(
 		async findAll(): Promise<Collection[]> {
 			try {
 				const query = getExecutor().select().from(collections);
-				const rows = await (options.orderByName
-					? query.orderBy(asc(collections.name))
-					: query);
+				const rows = await (options.orderByName ? query.orderBy(asc(collections.name)) : query);
 				return rows.flatMap((row) => {
 					const mapped = mapToCollection(row);
 					return mapped ? [mapped] : [];
@@ -75,10 +66,7 @@ export function createCollectionRepository(
 					.limit(1);
 				return rows[0] ? mapToCollection(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to select collection by ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to select collection by ID: ${id}`, error);
 			}
 		},
 
@@ -100,27 +88,19 @@ export function createCollectionRepository(
 			} catch (error) {
 				if (error instanceof UnexpectedError) throw error;
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Collection with this name already exists",
-					);
+					throw new ResourceConflictError("Collection with this name already exists");
 				}
 				throw new UnexpectedError("Failed to create collection", error);
 			}
 		},
 
-		async update(
-			id: string,
-			updates: UpdateCollection,
-			tx?: unknown,
-		): Promise<Collection> {
+		async update(id: string, updates: UpdateCollection, tx?: unknown): Promise<Collection> {
 			try {
 				const rows = await getExecutor(tx)
 					.update(collections)
 					.set({
 						...(updates.name !== undefined ? { name: updates.name } : {}),
-						...(updates.description !== undefined
-							? { description: updates.description }
-							: {}),
+						...(updates.description !== undefined ? { description: updates.description } : {}),
 						updatedAt: new Date(),
 					})
 					.where(eq(collections.id, id))
@@ -135,16 +115,11 @@ export function createCollectionRepository(
 				}
 				return mapped;
 			} catch (error) {
-				if (
-					error instanceof ResourceNotFoundError ||
-					error instanceof UnexpectedError
-				) {
+				if (error instanceof ResourceNotFoundError || error instanceof UnexpectedError) {
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Collection with this name already exists",
-					);
+					throw new ResourceConflictError("Collection with this name already exists");
 				}
 				throw new UnexpectedError("Failed to update collection", error);
 			}
@@ -162,18 +137,11 @@ export function createCollectionRepository(
 				}
 			} catch (error) {
 				if (error instanceof ResourceNotFoundError) throw error;
-				throw new UnexpectedError(
-					`Failed to delete collection with ID: ${id}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to delete collection with ID: ${id}`, error);
 			}
 		},
 
-		async addItem(
-			collectionId: string,
-			item: NewCollectionItem,
-			tx?: unknown,
-		): Promise<void> {
+		async addItem(collectionId: string, item: NewCollectionItem, tx?: unknown): Promise<void> {
 			try {
 				await getExecutor(tx)
 					.insert(mediaCollections)
@@ -184,19 +152,13 @@ export function createCollectionRepository(
 					});
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"Media already exists in this collection",
-					);
+					throw new ResourceConflictError("Media already exists in this collection");
 				}
 				throw new UnexpectedError("Failed to add item to collection", error);
 			}
 		},
 
-		async removeItem(
-			collectionId: string,
-			mediaId: string,
-			tx?: unknown,
-		): Promise<void> {
+		async removeItem(collectionId: string, mediaId: string, tx?: unknown): Promise<void> {
 			try {
 				const rows = await getExecutor(tx)
 					.delete(mediaCollections)
@@ -213,10 +175,7 @@ export function createCollectionRepository(
 				}
 			} catch (error) {
 				if (error instanceof ResourceNotFoundError) throw error;
-				throw new UnexpectedError(
-					"Failed to remove item from collection",
-					error,
-				);
+				throw new UnexpectedError("Failed to remove item from collection", error);
 			}
 		},
 	};

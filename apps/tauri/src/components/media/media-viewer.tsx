@@ -1,12 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import {
-	createEffect,
-	createSignal,
-	Match,
-	onCleanup,
-	Show,
-	Switch,
-} from "solid-js";
+import { createEffect, createSignal, Match, onCleanup, Show, Switch } from "solid-js";
 import { getTauriAppServices } from "~/app-services";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 
@@ -32,9 +25,7 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (
-		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
-	);
+	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
 }
 
 export function MediaViewer(props: MediaViewerProps) {
@@ -54,9 +45,7 @@ export function MediaViewer(props: MediaViewerProps) {
 
 		void (async () => {
 			try {
-				const bytes = await fileSystem.readFile(
-					joinLocalPath(rootPath, media.filePath),
-				);
+				const bytes = await fileSystem.readFile(joinLocalPath(rootPath, media.filePath));
 				const buffer = new ArrayBuffer(bytes.byteLength);
 				new Uint8Array(buffer).set(bytes);
 				if (disposed) {

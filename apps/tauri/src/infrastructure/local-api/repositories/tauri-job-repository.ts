@@ -6,10 +6,7 @@ import {
 import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
 import type { DrizzleExecutor } from "@solid-imager/db/types";
 import { getTauriAppServices } from "~/app-services";
-import type {
-	PersistedProcessMediaJob,
-	ProcessMediaJob,
-} from "../../jobs/process-media-job";
+import type { PersistedProcessMediaJob, ProcessMediaJob } from "../../jobs/process-media-job";
 
 function getDb(): DrizzleExecutor {
 	return getTauriAppServices().db as DrizzleExecutor;
@@ -17,14 +14,10 @@ function getDb(): DrizzleExecutor {
 
 const sharedRepository = createJobRepository(getDb);
 
-function toPersistedProcessMediaJob(
-	row: JobRecord,
-): PersistedProcessMediaJob | null {
+function toPersistedProcessMediaJob(row: JobRecord): PersistedProcessMediaJob | null {
 	const payload = parseMediaProcessingJobPayload(row.payload);
 	if (!row.mediaSourceId || !payload) {
-		console.error(
-			`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`,
-		);
+		console.error(`[jobs] Job ${row.id} has invalid data or missing mediaSourceId.`);
 		return null;
 	}
 
@@ -47,21 +40,15 @@ export const TauriJobRepository = {
 	async createManyProcessMedia(
 		processMediaJobs: ProcessMediaJob[],
 	): Promise<PersistedProcessMediaJob[]> {
-		const rows = await sharedRepository.createMany(
-			processMediaJobs.map(toProcessMediaNewJob),
-		);
+		const rows = await sharedRepository.createMany(processMediaJobs.map(toProcessMediaNewJob));
 		return rows.flatMap((row) => {
 			const job = toPersistedProcessMediaJob(row);
 			return job ? [job] : [];
 		});
 	},
 
-	async createUniqueProcessMedia(
-		job: ProcessMediaJob,
-	): Promise<PersistedProcessMediaJob | null> {
-		const row = await sharedRepository.createIfUnique(
-			toProcessMediaNewJob(job),
-		);
+	async createUniqueProcessMedia(job: ProcessMediaJob): Promise<PersistedProcessMediaJob | null> {
+		const row = await sharedRepository.createIfUnique(toProcessMediaNewJob(job));
 		return row ? toPersistedProcessMediaJob(row) : null;
 	},
 };

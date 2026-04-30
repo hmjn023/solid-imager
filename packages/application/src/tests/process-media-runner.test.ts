@@ -24,9 +24,7 @@ function makeMedia(overrides: Partial<Media> = {}): Media {
 	};
 }
 
-function makeDeps(
-	media: Media | null = makeMedia(),
-): ProcessMediaBatchRunnerDeps {
+function makeDeps(media: Media | null = makeMedia()): ProcessMediaBatchRunnerDeps {
 	return {
 		mediaRepository: {
 			findById: vi.fn(async () => media),
@@ -107,9 +105,7 @@ describe("process-media-runner", () => {
 
 		const results = await runProcessMediaBatchJobs([makeJob()], deps);
 
-		expect(results).toEqual([
-			{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" },
-		]);
+		expect(results).toEqual([{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" }]);
 		expect(calls).toEqual(["metadata", "thumbnail", "event", "autoTagging"]);
 		expect(deps.mediaRepository.upsertGenerationInfo).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000001",
@@ -126,9 +122,7 @@ describe("process-media-runner", () => {
 			deps,
 		);
 
-		expect(results).toEqual([
-			{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" },
-		]);
+		expect(results).toEqual([{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" }]);
 		expect(deps.mediaRepository.findById).not.toHaveBeenCalled();
 		expect(deps.generateThumbnails).not.toHaveBeenCalled();
 	});
@@ -138,9 +132,7 @@ describe("process-media-runner", () => {
 
 		const results = await runProcessMediaBatchJobs([makeJob()], deps);
 
-		expect(results).toEqual([
-			{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" },
-		]);
+		expect(results).toEqual([{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" }]);
 		expect(deps.generateThumbnails).not.toHaveBeenCalled();
 	});
 
@@ -152,9 +144,7 @@ describe("process-media-runner", () => {
 
 		const results = await runProcessMediaBatchJobs([makeJob()], deps);
 
-		expect(results).toEqual([
-			{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" },
-		]);
+		expect(results).toEqual([{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" }]);
 		expect(deps.generateThumbnails).toHaveBeenCalled();
 		expect(deps.queueAutoTagging).toHaveBeenCalled();
 	});
@@ -167,9 +157,7 @@ describe("process-media-runner", () => {
 
 		const results = await runProcessMediaBatchJobs([makeJob()], deps);
 
-		expect(results).toEqual([
-			{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" },
-		]);
+		expect(results).toEqual([{ jobId: "job-1", mediaSourceId: "source-1", status: "completed" }]);
 		expect(deps.queueAutoTagging).toHaveBeenCalledWith({
 			mediaId: "00000000-0000-4000-8000-000000000001",
 			mediaSourceId: "source-1",
