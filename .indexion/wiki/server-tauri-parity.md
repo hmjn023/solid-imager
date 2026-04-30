@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（wave1: #303/#304/#305/#308 完了。Hooks parser 重複解消、media-viewer/thumbnail-image を adapter pattern で shared 化、event-service 削除）
+最終更新: 2026-05-01（wave1: #303/#304/#305/#308 完了。#309 media-card-item/media-grid-item を adapter pattern で shared 化。Hooks parser 重複解消、media-viewer/thumbnail-image を adapter pattern で shared 化、event-service 削除）
 
 ## このページの使い方
 
@@ -138,8 +138,8 @@
 | `media/media-sidebar-content.tsx`                   | **519 / 501**          | **最大の重複**。両 app に 500行超の完全重複。sidebar 内の全フォーム・タグ編集・関連付け・メタデータ表示が同一責務なのに shared 化されていない |
 | `source-form-modal/source-form-modal-content.tsx`   | **430 / 168**          | **重大な重複+乖離**。server 版が 430行で tauri 版が 168行。責務分割の問題。フォーム本体を `packages/ui` に寄せる余地が大きい                  |
 | `upload-media-modal/upload-media-modal-content.tsx` | **333 / 280**          | **重大な重複**。両 app に 280-330行の upload ロジック（ドラッグ&ドロップ、ファイル選択、衝突解決表示）が完全に重複                            |
-| `media/media-card-item.tsx`                         | ~107 / ~80             | 重複。checkbox API、CSS class、Link vs `<a>`、`sourceRootPath` prop の差分                                                                    |
-| `media/media-grid-item.tsx`                         | ~66 / ~55              | 重複。`<a>` vs `<Link>`、`sourceRootPath` prop の差分                                                                                         |
+| `media/media-card-item.tsx`                         | thin wrapper           | `packages/ui/src/media-card-item.tsx` を新設。差分は `renderThumbnail`、link adapter、`sourceRootPath`、表示条件/class 注入に集約             |
+| `media/media-grid-item.tsx`                         | thin wrapper           | `packages/ui/src/media-grid-item.tsx` を新設。差分は `<a>` / `<Link>` の link adapter、`renderThumbnail`、`sourceRootPath` 注入に集約          |
 | `media/move-copy-media-dialog.tsx`                  | ~116 / ~107            | ほぼ同一だが依然として `packages/ui` にない                                                                                                   |
 | `media/pro-search-dialog.tsx`                       | ほぼ同一               | ほぼ同一だが `packages/ui` にない                                                                                                             |
 | `media/ai-tagging-modal.tsx`                        | ほぼ同一               | ほぼ同一だが `packages/ui` にない                                                                                                             |
