@@ -8,28 +8,11 @@ import {
 	jobFailedEventSchema,
 	jobProgressEventSchema,
 } from "@solid-imager/core/domain/sources/events";
+import { parseEventPayload } from "@solid-imager/core/utils/event-parsers";
 import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
 import { listen } from "@tauri-apps/api/event";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
-
-type SafeParseSchema<T> = {
-	safeParse: (
-		input: unknown,
-	) => { success: true; data: T } | { success: false; error: unknown };
-};
-
-function parseEventPayload<T>(
-	schema: SafeParseSchema<T>,
-	payload: unknown,
-): T | null {
-	const result = schema.safeParse(payload);
-	if (!result.success) {
-		console.error("Failed to parse event payload:", result.error);
-		return null;
-	}
-	return result.data;
-}
 
 export function useBatchJobEvents(
 	activeJobId: Accessor<string | null>,
@@ -43,30 +26,30 @@ export function useBatchJobEvents(
 
 		const unlistenPromises = [
 			listen("job-progress", (event) => {
-				const data = parseEventPayload<JobProgressEvent>(
-					jobProgressEventSchema,
+				const result = parseEventPayload<JobProgressEvent>(
 					event.payload,
+					jobProgressEventSchema,
 				);
-				if (data?.jobId === jobId) {
-					handlers.handleJobProgress(data);
+				if (result.ok && result.data.jobId === jobId) {
+					handlers.handleJobProgress(result.data);
 				}
 			}),
 			listen("job-completed", (event) => {
-				const data = parseEventPayload<JobCompletedEvent>(
-					jobCompletedEventSchema,
+				const result = parseEventPayload<JobCompletedEvent>(
 					event.payload,
+					jobCompletedEventSchema,
 				);
-				if (data?.jobId === jobId) {
-					handlers.handleJobCompleted(data);
+				if (result.ok && result.data.jobId === jobId) {
+					handlers.handleJobCompleted(result.data);
 				}
 			}),
 			listen("job-failed", (event) => {
-				const data = parseEventPayload<JobFailedEvent>(
-					jobFailedEventSchema,
+				const result = parseEventPayload<JobFailedEvent>(
 					event.payload,
+					jobFailedEventSchema,
 				);
-				if (data?.jobId === jobId) {
-					handlers.handleJobFailed(data);
+				if (result.ok && result.data.jobId === jobId) {
+					handlers.handleJobFailed(result.data);
 				}
 			}),
 		];

@@ -8,33 +8,10 @@ import {
 	jobFailedEventSchema,
 	jobProgressEventSchema,
 } from "@solid-imager/core/domain/sources/events";
+import { parseJsonEventPayload } from "@solid-imager/core/utils/event-parsers";
 import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
-
-type SafeParseSchema<T> = {
-	safeParse: (
-		input: unknown,
-	) => { success: true; data: T } | { success: false; error: unknown };
-};
-
-function parseJsonEventPayload<T>(
-	schema: SafeParseSchema<T>,
-	event: MessageEvent,
-): T | null {
-	try {
-		const parsed = JSON.parse(event.data);
-		const result = schema.safeParse(parsed);
-		if (!result.success) {
-			console.error("Failed to validate event payload:", result.error);
-			return null;
-		}
-		return result.data;
-	} catch (e) {
-		console.error("Failed to parse event JSON:", e);
-		return null;
-	}
-}
 
 export function useBatchJobEvents(
 	activeJobId: Accessor<string | null>,
@@ -49,33 +26,33 @@ export function useBatchJobEvents(
 		const eventSource = new EventSource("/api/events");
 
 		const onProgress = (event: MessageEvent) => {
-			const data = parseJsonEventPayload<JobProgressEvent>(
+			const result = parseJsonEventPayload<JobProgressEvent>(
+				event.data,
 				jobProgressEventSchema,
-				event,
 			);
-			if (data?.jobId === jobId) {
-				handlers.handleJobProgress(data);
+			if (result.ok && result.data.jobId === jobId) {
+				handlers.handleJobProgress(result.data);
 			}
 		};
 
 		const onCompleted = (event: MessageEvent) => {
-			const data = parseJsonEventPayload<JobCompletedEvent>(
+			const result = parseJsonEventPayload<JobCompletedEvent>(
+				event.data,
 				jobCompletedEventSchema,
-				event,
 			);
-			if (data?.jobId === jobId) {
-				handlers.handleJobCompleted(data);
+			if (result.ok && result.data.jobId === jobId) {
+				handlers.handleJobCompleted(result.data);
 				eventSource.close();
 			}
 		};
 
 		const onFailed = (event: MessageEvent) => {
-			const data = parseJsonEventPayload<JobFailedEvent>(
+			const result = parseJsonEventPayload<JobFailedEvent>(
+				event.data,
 				jobFailedEventSchema,
-				event,
 			);
-			if (data?.jobId === jobId) {
-				handlers.handleJobFailed(data);
+			if (result.ok && result.data.jobId === jobId) {
+				handlers.handleJobFailed(result.data);
 				eventSource.close();
 			}
 		};

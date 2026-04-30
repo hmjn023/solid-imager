@@ -20,7 +20,8 @@
 		"./domain/shared/*": "./src/domain/shared/*.ts",
 		"./domain/config/*": "./src/domain/config/*.ts",
 		"./interfaces/*": "./src/interfaces/*.ts",
-		"./utils/deep-equal": "./src/utils/deep-equal.ts"
+		"./utils/deep-equal": "./src/utils/deep-equal.ts",
+		"./utils/event-parsers": "./src/utils/event-parsers.ts"
 	},
 	"scripts": {
 		"check": "biome check --fix --unsafe ./src",
