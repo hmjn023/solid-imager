@@ -1,8 +1,4 @@
-import { queryOptions } from "@tanstack/solid-query";
+import { buildIpsQueryOptions } from "@solid-imager/ui/query-options/ips-query";
 import { fetchAllIps } from "../ips-api";
 
-export const allIpsQueryOptions = () =>
-	queryOptions({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	});
+export const allIpsQueryOptions = () => buildIpsQueryOptions(fetchAllIps);

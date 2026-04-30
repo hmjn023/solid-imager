@@ -1,8 +1,5 @@
-import { queryOptions } from "@tanstack/solid-query";
+import { buildProjectsQueryOptions } from "@solid-imager/ui/query-options/projects-query";
 import { fetchAllProjects } from "../projects-api";
 
 export const allProjectsQueryOptions = () =>
-	queryOptions({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	});
+	buildProjectsQueryOptions(fetchAllProjects);

@@ -1,8 +1,5 @@
-import { queryOptions } from "@tanstack/solid-query";
+import { buildConfigQueryOptions } from "@solid-imager/ui/query-options/config-query";
 import { orpc } from "../orpc-client";
 
 export const configQueryOptions = () =>
-	queryOptions({
-		queryKey: ["config"],
-		queryFn: () => orpc.config.get(),
-	});
+	buildConfigQueryOptions(() => orpc.config.get());

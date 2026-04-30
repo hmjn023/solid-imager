@@ -66,7 +66,7 @@ describe("ServerMediaStorage Security", () => {
 			ServerMediaStorage.saveFile(TARGET_DIR, file, {
 				filename: traversalFilename,
 			}),
-		).rejects.toThrow("Invalid path");
+		).rejects.toThrow("Invalid upload path");
 	});
 
 	test("saveFile should NOT silently sanitize via stripping directories (it should fail if dir is missing)", async () => {
@@ -98,6 +98,6 @@ describe("ServerMediaStorage Security", () => {
 			ServerMediaStorage.copyFile(source, TARGET_DIR, {
 				filename: traversalName,
 			}),
-		).rejects.toThrow("Invalid path");
+		).rejects.toThrow("Invalid upload path");
 	});
 });

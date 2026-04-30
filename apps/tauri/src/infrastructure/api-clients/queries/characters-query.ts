@@ -1,8 +1,5 @@
-import { queryOptions } from "@tanstack/solid-query";
+import { buildCharactersQueryOptions } from "@solid-imager/ui/query-options/characters-query";
 import { fetchAllCharacters } from "../characters-api";
 
 export const allCharactersQueryOptions = () =>
-	queryOptions({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	});
+	buildCharactersQueryOptions(fetchAllCharacters);
