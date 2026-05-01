@@ -1,15 +1,19 @@
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type {
 	Author,
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import type { QueryClient } from "@tanstack/solid-query";
-import { createInfiniteQuery, createQuery, keepPreviousData } from "@tanstack/solid-query";
+import {
+	createInfiniteQuery,
+	createQuery,
+	keepPreviousData,
+} from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
 import type { buildAuthorsQueryOptions } from "../query-options/authors-query";
@@ -59,7 +63,9 @@ export interface UseSearchPageOptions {
 }
 
 export interface UseSearchPageResult {
-	searchResultQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
+	searchResultQuery: ReturnType<
+		typeof createInfiniteQuery<MediaSearchResponse>
+	>;
 	searchResults: () => MediaSearchResponse["media"];
 	filterData: SearchPageFilterData;
 	sources: () => SafeMediaSource[] | undefined;
@@ -72,7 +78,9 @@ export interface UseSearchPageResult {
 	conditionKey: () => string;
 }
 
-export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResult {
+export function useSearchPage(
+	options: UseSearchPageOptions,
+): UseSearchPageResult {
 	const {
 		searchMedia,
 		queryClient,
@@ -96,7 +104,9 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 	const allCharacters = createQuery(() => queries.characters());
 	const allAuthors = createQuery(() => queries.authors());
 
-	const conditionKey = createMemo(() => JSON.stringify(getSearchCondition() ?? null));
+	const conditionKey = createMemo(() =>
+		JSON.stringify(getSearchCondition() ?? null),
+	);
 
 	const buildSearchParams = (): Pick<
 		MediaSearchRequest,
@@ -115,7 +125,14 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 		const params = buildSearchParams();
 		const source = selectedSource() || undefined;
 		return {
-			queryKey: ["searchResults", source, conditionKey(), sortBy(), sortOrder(), limit()],
+			queryKey: [
+				"searchResults",
+				source,
+				conditionKey(),
+				sortBy(),
+				sortOrder(),
+				limit(),
+			],
 			queryFn: async ({ pageParam }) =>
 				await searchMedia(source, {
 					...params,
@@ -123,7 +140,10 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 				}),
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
-				const loadedCount = allPages.reduce((sum, page) => sum + page.media.length, 0);
+				const loadedCount = allPages.reduce(
+					(sum, page) => sum + page.media.length,
+					0,
+				);
 				if (loadedCount < lastPage.total) {
 					return loadedCount;
 				}
@@ -135,13 +155,15 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter((m) => {
-			if (seen.has(m.id)) {
-				return false;
-			}
-			seen.add(m.id);
-			return true;
-		});
+		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
+			(m) => {
+				if (seen.has(m.id)) {
+					return false;
+				}
+				seen.add(m.id);
+				return true;
+			},
+		);
 	});
 
 	const getSourceRootPath = (mediaSourceId: string) => {
@@ -153,7 +175,9 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 		return connectionInfo.path;
 	};
 
-	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<typeof setTimeout> | null>(null);
+	const [refreshTimer, setRefreshTimer] = createSignal<ReturnType<
+		typeof setTimeout
+	> | null>(null);
 
 	const refreshSearchResults = () => {
 		const timer = refreshTimer();
@@ -206,7 +230,9 @@ export function useSearchPage(options: UseSearchPageOptions): UseSearchPageResul
 		window.scrollTo(0, 0);
 	};
 
-	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement | undefined>(undefined);
+	const [loadMoreRef, setLoadMoreRef] = createSignal<
+		HTMLDivElement | undefined
+	>(undefined);
 
 	createEffect(() => {
 		const el = loadMoreRef();
