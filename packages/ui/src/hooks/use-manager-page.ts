@@ -253,13 +253,8 @@ export function useManagerPage(
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
 		if (tab) {
-			if (tab === "projects") {
-				void queryClient.invalidateQueries({ queryKey: ["allProjects"] });
-			} else if (tab === "ips") {
-				void queryClient.invalidateQueries({ queryKey: ["allIps"] });
-			} else if (tab === "characters") {
-				void queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
-			}
+			const option = queryOptions[tab]();
+			void queryClient.invalidateQueries({ queryKey: option.queryKey });
 		}
 	};
 

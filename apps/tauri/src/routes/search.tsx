@@ -83,18 +83,10 @@ function SearchRoute() {
 				/>
 			)}
 			renderNavActions={({ openMobileFilters }) => (
-				<div class="mb-8 flex items-center justify-between">
-					<div>
-						<h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
-						<p class="text-gray-600">
-							タグやファイル名でメディアを検索できます
-						</p>
-					</div>
-					<div class="md:hidden">
-						<Button onClick={openMobileFilters} variant="outline">
-							Filters
-						</Button>
-					</div>
+				<div class="md:hidden">
+					<Button onClick={openMobileFilters} variant="outline">
+						Filters
+					</Button>
 				</div>
 			)}
 			selectedSource={searchState.selectedSource}
