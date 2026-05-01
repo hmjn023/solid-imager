@@ -137,6 +137,7 @@ export function createLocalThumbnailSource(
 	const [retryCount, setRetryCount] = createSignal(0);
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 	let revokeOnLoad: string | null = null;
+	let lastRequestId = 0;
 
 	const clearRetryTimer = () => {
 		if (retryTimer) {
@@ -157,15 +158,23 @@ export function createLocalThumbnailSource(
 	};
 
 	const loadThumbnail = async () => {
+		lastRequestId += 1;
+		const requestId = lastRequestId;
 		try {
 			const resource = await props.getThumbnailResource(
 				props.media.mediaSourceId,
 				props.media.id,
 				new Date(props.media.modifiedAt).getTime(),
 			);
+			if (requestId !== lastRequestId) {
+				return;
+			}
 			setThumbnailFilePath(resource.filePath);
 			setUrl(resource.url);
 		} catch {
+			if (requestId !== lastRequestId) {
+				return;
+			}
 			setThumbnailFilePath(null);
 			setUrl(null);
 		}
@@ -214,11 +223,11 @@ export function createLocalThumbnailSource(
 
 	onCleanup(() => {
 		clearRetryTimer();
-		setFallbackUrl((current) => {
+		const current = fallbackUrl();
+		if (current) {
 			revokeObjectUrl(props.objectUrl, current);
-			return null;
-		});
-		if (revokeOnLoad) {
+		}
+		if (revokeOnLoad && revokeOnLoad !== current) {
 			revokeObjectUrl(props.objectUrl, revokeOnLoad);
 		}
 	});

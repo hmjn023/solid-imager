@@ -274,4 +274,78 @@ describe("createLocalThumbnailSource", () => {
 		unsubscribe?.();
 		dispose();
 	});
+
+	it("ignores stale thumbnail resource responses", async () => {
+		let dispose = () => {};
+		let listener: (() => void) | undefined;
+		let resolveFirst:
+			| ((resource: { filePath: string; url: string }) => void)
+			| undefined;
+		const getThumbnailResource = vi
+			.fn()
+			.mockImplementationOnce(
+				() =>
+					new Promise<{ filePath: string; url: string }>((resolve) => {
+						resolveFirst = resolve;
+					}),
+			)
+			.mockResolvedValueOnce({
+				filePath: "/thumb/source/media-new.webp",
+				url: "asset://thumb-new.webp?t=2",
+			});
+		const source = createRoot((rootDispose) => {
+			dispose = rootDispose;
+			return createLocalThumbnailSource({
+				getThumbnailResource,
+				joinPath: (rootPath, filePath) => `${rootPath}/${filePath}`,
+				media,
+				objectUrl: createObjectUrlAdapter(),
+				readFile: vi.fn(),
+				subscribeToThumbnailReady: (_mediaId, readyCallback) => {
+					listener = readyCallback;
+					return () => {};
+				},
+			});
+		});
+
+		source.subscribe?.(vi.fn());
+		listener?.();
+		await flushPromises();
+		expect(await source.getUrl()).toBe("asset://thumb-new.webp?t=2");
+
+		resolveFirst?.({
+			filePath: "/thumb/source/media-old.webp",
+			url: "asset://thumb-old.webp?t=1",
+		});
+		await flushPromises();
+
+		expect(await source.getUrl()).toBe("asset://thumb-new.webp?t=2");
+
+		dispose();
+	});
+
+	it("does not revoke the same fallback object URL twice during cleanup", async () => {
+		let dispose = () => {};
+		const objectUrl = createObjectUrlAdapter();
+		const source = createRoot((rootDispose) => {
+			dispose = rootDispose;
+			return createLocalThumbnailSource({
+				getThumbnailResource: vi.fn().mockResolvedValue({
+					filePath: "/thumb/source/media.webp",
+					url: "asset://thumb.webp?t=1",
+				}),
+				joinPath: (rootPath, filePath) => `${rootPath}/${filePath}`,
+				media,
+				objectUrl,
+				readFile: vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3])),
+				subscribeToThumbnailReady: () => () => {},
+			});
+		});
+
+		await flushPromises();
+		await Promise.resolve(source.onError?.());
+		dispose();
+
+		expect(objectUrl.revoked).toEqual(["blob:image/webp:1"]);
+	});
 });
