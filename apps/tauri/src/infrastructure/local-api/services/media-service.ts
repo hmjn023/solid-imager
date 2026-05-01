@@ -5,6 +5,11 @@ import {
 	type MediaPathAdapter,
 } from "@solid-imager/application/services/media-service";
 import {
+	buildMediaStorageResult,
+	resolveSafePath,
+	withCleanup,
+} from "@solid-imager/application/services/media-storage-utils";
+import {
 	normalizeRelativePath,
 	resolveUploadTargetPath,
 } from "@solid-imager/application/services/media-upload-utils";
@@ -115,39 +120,34 @@ const tauriMediaStorage: IMediaStorage = {
 			new Uint8Array(buffer),
 		);
 
-		try {
-			const metadata = await this.getFileMetadata(target.fullPath);
-			return {
-				filePath: target.relativePath,
-				fileName: basename(target.relativePath),
-				width: metadata.width,
-				height: metadata.height,
-				size: metadata.size,
-				createdAt: metadata.createdAt,
-				modifiedAt: metadata.modifiedAt,
-				conflict: target.conflict,
-			};
-		} catch (error) {
-			await getTauriAppServices().fileSystem.rm(target.fullPath, {
-				force: true,
-			});
-			throw error;
-		}
-	},
-
-	async deleteFile(basePath: string, filePath: string): Promise<void> {
-		await getTauriAppServices().fileSystem.rm(
-			joinLocalPath(basePath, filePath),
-			{
-				force: true,
+		return await withCleanup(
+			async () => {
+				const metadata = await this.getFileMetadata(target.fullPath);
+				return buildMediaStorageResult(
+					metadata,
+					target.relativePath,
+					basename(target.relativePath),
+					target.conflict,
+				);
+			},
+			async () => {
+				await getTauriAppServices().fileSystem.rm(target.fullPath, {
+					force: true,
+				});
 			},
 		);
 	},
 
+	async deleteFile(basePath: string, filePath: string): Promise<void> {
+		const safePath = resolveSafePath(basePath, filePath);
+		await getTauriAppServices().fileSystem.rm(safePath, {
+			force: true,
+		});
+	},
+
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
-		return await getTauriAppServices().fileSystem.readFile(
-			joinLocalPath(basePath, filePath),
-		);
+		const safePath = resolveSafePath(basePath, filePath);
+		return await getTauriAppServices().fileSystem.readFile(safePath);
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
@@ -210,24 +210,22 @@ const tauriMediaStorage: IMediaStorage = {
 			target.fullPath,
 		);
 
-		try {
-			const metadata = await this.getFileMetadata(target.fullPath);
-			return {
-				filePath: target.relativePath,
-				fileName: basename(target.relativePath),
-				width: metadata.width,
-				height: metadata.height,
-				size: metadata.size,
-				createdAt: metadata.createdAt,
-				modifiedAt: metadata.modifiedAt,
-				conflict: target.conflict,
-			};
-		} catch (error) {
-			await getTauriAppServices().fileSystem.rm(target.fullPath, {
-				force: true,
-			});
-			throw error;
-		}
+		return await withCleanup(
+			async () => {
+				const metadata = await this.getFileMetadata(target.fullPath);
+				return buildMediaStorageResult(
+					metadata,
+					target.relativePath,
+					basename(target.relativePath),
+					target.conflict,
+				);
+			},
+			async () => {
+				await getTauriAppServices().fileSystem.rm(target.fullPath, {
+					force: true,
+				});
+			},
+		);
 	},
 };
 

@@ -1,38 +1,24 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { MediaPathAdapter } from "@solid-imager/application/services/media-service";
+import {
+	buildMediaStorageResult,
+	resolveSafePath,
+	withCleanup,
+} from "@solid-imager/application/services/media-storage-utils";
 import { resolveUploadTargetPath } from "@solid-imager/application/services/media-upload-utils";
 import type {
 	IMediaStorage,
 	MediaMetadata,
 	MediaStorageResult,
 } from "@solid-imager/core";
-import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import sharp from "sharp";
-import type { z } from "zod";
 
 const pathAdapter: MediaPathAdapter = {
 	join: path.join,
 	extname: path.extname,
 	basename: path.basename,
 	relative: path.relative,
-};
-
-/**
- * Resolves a path safely, ensuring it remains within the base path.
- * Prevents path traversal attacks.
- */
-const resolveSafePath = (basePath: string, targetPath: string): string => {
-	const resolvedPath = path.resolve(basePath, targetPath);
-	const absoluteBase = path.resolve(basePath);
-
-	if (
-		resolvedPath !== absoluteBase &&
-		!resolvedPath.startsWith(absoluteBase + path.sep)
-	) {
-		throw new Error(`Invalid path: ${targetPath}`);
-	}
-	return resolvedPath;
 };
 
 export const ServerMediaStorage: IMediaStorage = {
@@ -67,35 +53,28 @@ export const ServerMediaStorage: IMediaStorage = {
 		const targetFilePath = resolved.fullPath;
 		const relativeFilePath = resolved.relativePath;
 		const targetFileName = path.basename(targetFilePath);
-		const conflict: z.infer<typeof conflictSchema> | undefined =
-			resolved.conflict;
+		const conflict = resolved.conflict;
 
 		// Save the file
 		const arrayBuffer = await file.arrayBuffer();
 		await fs.writeFile(targetFilePath, new Uint8Array(arrayBuffer));
 
 		// Extract valid metadata using getFileMetadata to support both images and videos
-		try {
-			const metadata = await ServerMediaStorage.getFileMetadata(targetFilePath);
-
-			return {
-				filePath: relativeFilePath,
-				fileName: targetFileName,
-				width: metadata.width,
-				height: metadata.height,
-				size: metadata.size,
-				createdAt: metadata.createdAt,
-				modifiedAt: metadata.modifiedAt,
-				conflict,
-			};
-		} catch (e) {
-			try {
+		return await withCleanup(
+			async () => {
+				const metadata =
+					await ServerMediaStorage.getFileMetadata(targetFilePath);
+				return buildMediaStorageResult(
+					metadata,
+					relativeFilePath,
+					targetFileName,
+					conflict,
+				);
+			},
+			async () => {
 				await fs.unlink(targetFilePath);
-			} catch (_) {
-				/* ignore unlink error */
-			}
-			throw e;
-		}
+			},
+		);
 	},
 
 	async deleteFile(basePath: string, filePath: string): Promise<void> {
@@ -252,34 +231,27 @@ export const ServerMediaStorage: IMediaStorage = {
 		const targetFilePath = resolved.fullPath;
 		const relativeFilePath = resolved.relativePath;
 		const targetFileName = path.basename(targetFilePath);
-		const conflict: z.infer<typeof conflictSchema> | undefined =
-			resolved.conflict;
+		const conflict = resolved.conflict;
 
 		// Copy the file
 		await fs.copyFile(sourcePath, targetFilePath);
 
 		// Extract metadata using getFileMetadata
-		try {
-			// Use ServerMediaStorage.getFileMetadata to support video files as well
-			const metadata = await ServerMediaStorage.getFileMetadata(targetFilePath);
-
-			return {
-				filePath: relativeFilePath,
-				fileName: targetFileName,
-				width: metadata.width,
-				height: metadata.height,
-				size: metadata.size,
-				createdAt: metadata.createdAt,
-				modifiedAt: metadata.modifiedAt,
-				conflict,
-			};
-		} catch (e) {
-			try {
+		return await withCleanup(
+			async () => {
+				// Use ServerMediaStorage.getFileMetadata to support video files as well
+				const metadata =
+					await ServerMediaStorage.getFileMetadata(targetFilePath);
+				return buildMediaStorageResult(
+					metadata,
+					relativeFilePath,
+					targetFileName,
+					conflict,
+				);
+			},
+			async () => {
 				await fs.unlink(targetFilePath);
-			} catch (_) {
-				// Ignore error if temporary file cleanup fails
-			}
-			throw e;
-		}
+			},
+		);
 	},
 };
