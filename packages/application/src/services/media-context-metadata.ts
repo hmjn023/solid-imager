@@ -30,14 +30,10 @@ async function updateCharacterForMedia(
 	let character = await deps.characterRepository.findByName(charData.name, tx);
 
 	const ipNamesToLink =
-		charData.linkedIps && charData.linkedIps.length > 0
-			? charData.linkedIps
-			: contextIpNames;
+		charData.linkedIps && charData.linkedIps.length > 0 ? charData.linkedIps : contextIpNames;
 
 	const ipIdsToLink = ipNamesToLink?.length
-		? (await deps.ipRepository.findByNames(ipNamesToLink, tx)).map(
-				(ip) => ip.id,
-			)
+		? (await deps.ipRepository.findByNames(ipNamesToLink, tx)).map((ip) => ip.id)
 		: [];
 
 	if (!character) {
@@ -55,11 +51,7 @@ async function updateCharacterForMedia(
 		const existingIpIds = character.ips?.map((i) => i.id) || [];
 		const newIpIds = [...new Set([...existingIpIds, ...ipIdsToLink])];
 		if (newIpIds.length > existingIpIds.length) {
-			await deps.characterRepository.update(
-				character.id,
-				{ ipIds: newIpIds },
-				tx,
-			);
+			await deps.characterRepository.update(character.id, { ipIds: newIpIds }, tx);
 			character = await deps.characterRepository.findById(character.id, tx);
 		}
 	}
@@ -140,10 +132,7 @@ export async function updateMediaContextMetadata(
 	}
 
 	if (context.ips?.length) {
-		const normalizedIpsMap = new Map<
-			string,
-			NonNullable<MediaMetadataContext["ips"]>[number]
-		>();
+		const normalizedIpsMap = new Map<string, NonNullable<MediaMetadataContext["ips"]>[number]>();
 		for (const ip of context.ips) {
 			const normalizedName = ip.name.trim();
 			if (!normalizedIpsMap.has(normalizedName)) {
@@ -154,10 +143,7 @@ export async function updateMediaContextMetadata(
 			try {
 				let existing = await ipRepository.findByName(name, tx);
 				if (!existing) {
-					existing = await ipRepository.create(
-						{ name, description: ipData.description ?? "" },
-						tx,
-					);
+					existing = await ipRepository.create({ name, description: ipData.description ?? "" }, tx);
 				}
 				await ipRepository.addMedia(
 					mediaId,
@@ -173,9 +159,7 @@ export async function updateMediaContextMetadata(
 	}
 
 	if (context.characters?.length) {
-		const contextIpNames = context.ips?.flatMap((ip) =>
-			ip.name?.trim() ? [ip.name.trim()] : [],
-		);
+		const contextIpNames = context.ips?.flatMap((ip) => (ip.name?.trim() ? [ip.name.trim()] : []));
 		for (const charData of context.characters) {
 			try {
 				await updateCharacterForMedia(
@@ -186,10 +170,7 @@ export async function updateMediaContextMetadata(
 					tx,
 				);
 			} catch (e) {
-				logger?.warn?.(
-					{ err: e, character: charData },
-					"Failed to register character",
-				);
+				logger?.warn?.({ err: e, character: charData }, "Failed to register character");
 			}
 		}
 	}

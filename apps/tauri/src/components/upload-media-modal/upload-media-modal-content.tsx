@@ -25,27 +25,25 @@ async function fetchFileFromUrl(url: string) {
 		throw new Error(`Failed to fetch URL: ${response.status}`);
 	}
 	const blob = await response.blob();
-	return new File(
-		[blob],
-		url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
-		{
-			type: blob.type,
-		},
-	);
+	return new File([blob], url.substring(url.lastIndexOf("/") + 1) || "fetched-image", {
+		type: blob.type,
+	});
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalProps) {
 	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {
-		for (const [index, file] of options.files.entries()) {
-			await props.onUpload({
-				file,
-				filename: index === 0 ? options.filename : file.name,
-				description: options.description,
-				sourceUrl: index === 0 ? options.sourceUrl : undefined,
-				overwrite: options.overwrite,
-				autoIncrement: options.autoIncrement,
-			});
-		}
+		await Promise.all(
+			options.files.map((file, index) =>
+				props.onUpload({
+					file,
+					filename: index === 0 ? options.filename : file.name,
+					description: options.description,
+					sourceUrl: index === 0 ? options.sourceUrl : undefined,
+					overwrite: options.overwrite,
+					autoIncrement: options.autoIncrement,
+				}),
+			),
+		);
 	};
 
 	return (

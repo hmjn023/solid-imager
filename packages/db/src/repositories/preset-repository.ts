@@ -10,9 +10,7 @@ import { eq } from "drizzle-orm";
 import { presets } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-export type PresetRepositoryExecutorProvider = (
-	tx?: unknown,
-) => DrizzleExecutor;
+export type PresetRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 
 const validSorts = new Set(["date", "name", "size", "rating", "viewCount"]);
 const validOrders = new Set(["asc", "desc"]);
@@ -45,19 +43,12 @@ export function createPresetRepository(
 ): PresetRepository {
 	return {
 		async list(): Promise<Preset[]> {
-			const rows = await getExecutor()
-				.select()
-				.from(presets)
-				.orderBy(presets.id);
+			const rows = await getExecutor().select().from(presets).orderBy(presets.id);
 			return rows.map(mapToPreset);
 		},
 
 		async get(id: number): Promise<Preset | null> {
-			const rows = await getExecutor()
-				.select()
-				.from(presets)
-				.where(eq(presets.id, id))
-				.limit(1);
+			const rows = await getExecutor().select().from(presets).where(eq(presets.id, id)).limit(1);
 			return rows[0] ? mapToPreset(rows[0]) : null;
 		},
 
@@ -84,10 +75,7 @@ export function createPresetRepository(
 			return mapToPreset(rows[0]);
 		},
 
-		async update(
-			id: number,
-			input: UpdatePresetRequest,
-		): Promise<Preset | null> {
+		async update(id: number, input: UpdatePresetRequest): Promise<Preset | null> {
 			const rows = await getExecutor()
 				.update(presets)
 				.set({
@@ -103,10 +91,7 @@ export function createPresetRepository(
 		},
 
 		async delete(id: number): Promise<boolean> {
-			const rows = await getExecutor()
-				.delete(presets)
-				.where(eq(presets.id, id))
-				.returning();
+			const rows = await getExecutor().delete(presets).where(eq(presets.id, id)).returning();
 			return rows.length > 0;
 		},
 	};

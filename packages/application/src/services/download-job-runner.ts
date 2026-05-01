@@ -1,9 +1,6 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import type { JobRecord, JobRepositoryPort } from "../ports/job-repository";
-import {
-	createTimestamp,
-	type MediaSourceEventPublisher,
-} from "./runtime-events";
+import { createTimestamp, type MediaSourceEventPublisher } from "./runtime-events";
 
 export type DownloadJobMode = "direct" | "specialized";
 
@@ -47,9 +44,7 @@ export type DownloadRunnerDeps = {
 	};
 };
 
-export function getDownloadItemFromJob(
-	job: Pick<JobRecord, "payload">,
-): DownloadItem {
+export function getDownloadItemFromJob(job: Pick<JobRecord, "payload">): DownloadItem {
 	if (!job.payload || typeof job.payload !== "object") {
 		return {} as DownloadItem;
 	}
@@ -64,8 +59,7 @@ export function getDownloadItemFromJob(
 		item.description = payload.description;
 	}
 	if (!item.sourceUrls) {
-		item.sourceUrls =
-			typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
+		item.sourceUrls = typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
 	}
 
 	return item;
@@ -77,9 +71,7 @@ export async function queueDownloadJobs(
 	items: DownloadItem[],
 ): Promise<number> {
 	for (const item of items) {
-		let createdAt: Date | undefined = item.createdAt
-			? new Date(item.createdAt)
-			: undefined;
+		let createdAt: Date | undefined = item.createdAt ? new Date(item.createdAt) : undefined;
 		if (createdAt && Number.isNaN(createdAt.getTime())) {
 			createdAt = undefined;
 		}
@@ -99,10 +91,7 @@ export async function queueDownloadJobs(
 	return items.length;
 }
 
-export async function runDownloadImageJob(
-	job: JobRecord,
-	deps: DownloadRunnerDeps,
-): Promise<void> {
+export async function runDownloadImageJob(job: JobRecord, deps: DownloadRunnerDeps): Promise<void> {
 	if (!job.mediaSourceId) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}

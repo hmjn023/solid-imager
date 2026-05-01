@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import type { JobRecord, JobRepositoryPort } from "../ports/job-repository";
 import { type JobProcessor, JobWorker } from "../services/job-worker";
 
@@ -71,17 +64,15 @@ describe("JobWorker", () => {
 		const normalJobs = [makeJob("normal-1"), makeJob("normal-2")];
 		const aiJobs = [makeJob("ai-1", "auto_tagging")];
 		// splice so arrays drain after first dispatch, preventing infinite wake-on-complete loop
-		vi.mocked(repository.findPending).mockImplementation(
-			async (limit, options) => {
-				if (options?.includeTypes) {
-					return aiJobs.splice(0, limit);
-				}
-				if (options?.excludeTypes) {
-					return normalJobs.splice(0, limit);
-				}
-				return [];
-			},
-		);
+		vi.mocked(repository.findPending).mockImplementation(async (limit, options) => {
+			if (options?.includeTypes) {
+				return aiJobs.splice(0, limit);
+			}
+			if (options?.excludeTypes) {
+				return normalJobs.splice(0, limit);
+			}
+			return [];
+		});
 
 		worker.start();
 		await vi.advanceTimersByTimeAsync(1);
@@ -167,9 +158,7 @@ describe("JobWorker", () => {
 
 		// At least 4 calls (2 per poll x 2 re-poll iterations);
 		// wake-on-complete may add more.
-		expect(
-			vi.mocked(repository.findPending).mock.calls.length,
-		).toBeGreaterThanOrEqual(4);
+		expect(vi.mocked(repository.findPending).mock.calls.length).toBeGreaterThanOrEqual(4);
 		expect(processor).toHaveBeenCalledWith(job);
 	});
 

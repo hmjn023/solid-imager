@@ -139,7 +139,7 @@
 | `source-form-modal/source-form-modal-content.tsx`   | **430 / 168**          | **重大な重複+乖離**。server 版が 430行で tauri 版が 168行。責務分割の問題。フォーム本体を `packages/ui` に寄せる余地が大きい                  |
 | `upload-media-modal/upload-media-modal-content.tsx` | **333 / 280**          | **重大な重複**。両 app に 280-330行の upload ロジック（ドラッグ&ドロップ、ファイル選択、衝突解決表示）が完全に重複                            |
 | `media/media-card-item.tsx`                         | thin wrapper           | `packages/ui/src/media-card-item.tsx` を新設。差分は `renderThumbnail`、link adapter、`sourceRootPath`、表示条件/class 注入に集約             |
-| `media/media-grid-item.tsx`                         | thin wrapper           | `packages/ui/src/media-grid-item.tsx` を新設。差分は `<a>` / `<Link>` の link adapter、`renderThumbnail`、`sourceRootPath` 注入に集約          |
+| `media/media-grid-item.tsx`                         | thin wrapper           | `packages/ui/src/media-grid-item.tsx` を新設。差分は `<a>` / `<Link>` の link adapter、`renderThumbnail`、`sourceRootPath` 注入に集約         |
 | `media/move-copy-media-dialog.tsx`                  | ~116 / ~107            | ほぼ同一だが依然として `packages/ui` にない                                                                                                   |
 | `media/pro-search-dialog.tsx`                       | ほぼ同一               | ほぼ同一だが `packages/ui` にない                                                                                                             |
 | `media/ai-tagging-modal.tsx`                        | ほぼ同一               | ほぼ同一だが `packages/ui` にない                                                                                                             |

@@ -1,11 +1,5 @@
-import {
-	ResourceConflictError,
-	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
-import type {
-	Author,
-	NewAuthor,
-} from "@solid-imager/core/domain/media/schemas";
+import { ResourceConflictError, ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { Author, NewAuthor } from "@solid-imager/core/domain/media/schemas";
 import { authorSchema } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import { and, asc, eq } from "drizzle-orm";
@@ -14,21 +8,14 @@ import type { DrizzleExecutor } from "../types";
 
 type DbAuthor = typeof authors.$inferSelect;
 
-export type AuthorRepositoryExecutorProvider = (
-	tx?: unknown,
-) => DrizzleExecutor;
+export type AuthorRepositoryExecutorProvider = (tx?: unknown) => DrizzleExecutor;
 
 type CreateAuthorRepositoryOptions = {
 	orderByName?: boolean;
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		error.code === "23505"
-	);
+	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function mapToAuthor(row: DbAuthor): Author {
@@ -48,18 +35,12 @@ export function createAuthorRepository(
 	return {
 		async findAll(): Promise<Author[]> {
 			const query = getExecutor().select().from(authors);
-			const rows = await (options.orderByName
-				? query.orderBy(asc(authors.name))
-				: query);
+			const rows = await (options.orderByName ? query.orderBy(asc(authors.name)) : query);
 			return rows.map((row) => mapToAuthor(row));
 		},
 
 		async findById(id: string): Promise<Author | null> {
-			const rows = await getExecutor()
-				.select()
-				.from(authors)
-				.where(eq(authors.id, id))
-				.limit(1);
+			const rows = await getExecutor().select().from(authors).where(eq(authors.id, id)).limit(1);
 			return rows[0] ? mapToAuthor(rows[0]) : null;
 		},
 
@@ -87,11 +68,7 @@ export function createAuthorRepository(
 				? eq(authors.accountId, input.accountId)
 				: eq(authors.name, input.name);
 
-			const existing = await client
-				.select()
-				.from(authors)
-				.where(condition)
-				.limit(1);
+			const existing = await client.select().from(authors).where(condition).limit(1);
 
 			if (existing[0]) {
 				return mapToAuthor(existing[0]);
@@ -107,19 +84,13 @@ export function createAuthorRepository(
 			return mapToAuthor(rows[0]);
 		},
 
-		async update(
-			id: string,
-			input: Partial<NewAuthor>,
-			tx?: unknown,
-		): Promise<Author> {
+		async update(id: string, input: Partial<NewAuthor>, tx?: unknown): Promise<Author> {
 			try {
 				const rows = await getExecutor(tx)
 					.update(authors)
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
-						...(input.accountId !== undefined
-							? { accountId: input.accountId }
-							: {}),
+						...(input.accountId !== undefined ? { accountId: input.accountId } : {}),
 						updatedAt: new Date(),
 					})
 					.where(eq(authors.id, id))
@@ -132,9 +103,7 @@ export function createAuthorRepository(
 				return mapToAuthor(rows[0]);
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						`Author with name "${input.name}" already exists`,
-					);
+					throw new ResourceConflictError(`Author with name "${input.name}" already exists`);
 				}
 				throw error;
 			}
@@ -159,22 +128,14 @@ export function createAuthorRepository(
 			return rows.map((row) => mapToAuthor(row));
 		},
 
-		async addMedia(
-			mediaId: string,
-			authorId: string,
-			tx?: unknown,
-		): Promise<void> {
+		async addMedia(mediaId: string, authorId: string, tx?: unknown): Promise<void> {
 			await getExecutor(tx)
 				.insert(mediaAuthors)
 				.values({ mediaId, authorId })
 				.onConflictDoNothing();
 		},
 
-		async addMediaBulk(
-			mediaId: string,
-			authorIds: string[],
-			tx?: unknown,
-		): Promise<void> {
+		async addMediaBulk(mediaId: string, authorIds: string[], tx?: unknown): Promise<void> {
 			if (authorIds.length === 0) {
 				return;
 			}
@@ -185,19 +146,10 @@ export function createAuthorRepository(
 				.onConflictDoNothing();
 		},
 
-		async removeMedia(
-			mediaId: string,
-			authorId: string,
-			tx?: unknown,
-		): Promise<void> {
+		async removeMedia(mediaId: string, authorId: string, tx?: unknown): Promise<void> {
 			await getExecutor(tx)
 				.delete(mediaAuthors)
-				.where(
-					and(
-						eq(mediaAuthors.mediaId, mediaId),
-						eq(mediaAuthors.authorId, authorId),
-					),
-				);
+				.where(and(eq(mediaAuthors.mediaId, mediaId), eq(mediaAuthors.authorId, authorId)));
 		},
 	};
 }

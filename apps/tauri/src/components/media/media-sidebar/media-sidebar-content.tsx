@@ -36,8 +36,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const projects = createQuery(() => ({
 		queryKey: ["projectsForMedia", props.media.id],
-		queryFn: () =>
-			fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
+		queryFn: () => fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
 	}));
 	const allProjects = createQuery(() => ({
 		queryKey: ["allProjects"],
@@ -89,11 +88,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			isUpdating={props.isUpdating}
 			media={props.media}
 			onCharacterAdd={async (characterId) => {
-				await addCharacterToMedia(
-					props.media.mediaSourceId,
-					props.media.id,
-					characterId,
-				);
+				await addCharacterToMedia(props.media.mediaSourceId, props.media.id, characterId);
 			}}
 			onCharacterCreate={async (name) => {
 				const character = await createCharacter({ name });
@@ -101,11 +96,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				return character;
 			}}
 			onCharacterRemove={async (characterId) => {
-				await removeCharacterFromMedia(
-					props.media.mediaSourceId,
-					props.media.id,
-					characterId,
-				);
+				await removeCharacterFromMedia(props.media.mediaSourceId, props.media.id, characterId);
 				props.onUpdate?.();
 			}}
 			onDescriptionUpdate={async (description) => {
@@ -123,19 +114,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				return ip;
 			}}
 			onIpRemove={async (ipId) => {
-				await removeIpFromMedia(
-					props.media.mediaSourceId,
-					props.media.id,
-					ipId,
-				);
+				await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
 				props.onUpdate?.();
 			}}
 			onProjectAdd={async (projectId) => {
-				await addProjectToMedia(
-					props.media.mediaSourceId,
-					props.media.id,
-					projectId,
-				);
+				await addProjectToMedia(props.media.mediaSourceId, props.media.id, projectId);
 				await invalidateProjectsForMedia();
 			}}
 			onProjectCreate={async (name) => {
@@ -144,11 +127,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				return project;
 			}}
 			onProjectRemove={async (projectId) => {
-				await removeProjectFromMedia(
-					props.media.mediaSourceId,
-					props.media.id,
-					projectId,
-				);
+				await removeProjectFromMedia(props.media.mediaSourceId, props.media.id, projectId);
 				await invalidateProjectsForMedia();
 			}}
 			onUpdate={props.onUpdate}

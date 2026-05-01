@@ -123,11 +123,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		const character = props.allCharacters.find((c) => c.id === characterId);
 		if (character?.ips && character.ips.length > 0) {
 			const currentIpIds = new Set((props.media.ips || []).map((ip) => ip.id));
-			for (const charIp of character.ips) {
-				if (!currentIpIds.has(charIp.id)) {
-					await props.onIpAdd(charIp.id);
-				}
-			}
+			const ipsToAdd = character.ips.filter(
+				(charIp) => !currentIpIds.has(charIp.id),
+			);
+			await Promise.all(ipsToAdd.map((charIp) => props.onIpAdd(charIp.id)));
 		}
 	};
 

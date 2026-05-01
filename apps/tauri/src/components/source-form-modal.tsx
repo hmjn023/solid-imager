@@ -1,7 +1,4 @@
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
+import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import {
 	SourceFormModal as SharedSourceFormModal,
 	type SourceFormData,
