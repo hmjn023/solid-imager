@@ -1,5 +1,10 @@
 import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import {
+	createBatchTaggingDispatchJob,
+	createBatchTaggingParentJob,
+	scanBatchTaggingTargets,
+} from "@solid-imager/application/services/batch-tagging";
+import {
 	createJobEventPublisher,
 	runAutoTaggingJob,
 	runBulkTaggingDispatchJob,
@@ -12,7 +17,6 @@ import {
 } from "@solid-imager/core/domain/tagging/schemas";
 import { mediaCharacters, mediaIps, medias, mediaTags } from "@solid-imager/db/schema";
 import { emit } from "@tauri-apps/api/event";
-import { and, asc, eq, getTableColumns, isNull } from "drizzle-orm";
 import { getTauriAppServices } from "~/app-services";
 import { serverOrpc } from "../../api-clients/server-orpc-client";
 import { joinLocalPath } from "../../path-utils";
@@ -94,46 +98,26 @@ const jobEvents = createJobEventPublisher(async (event, payload) => {
 
 export const TauriAiService = {
 	async scanBatchTaggingTargets(input: BatchTaggingInput): Promise<Media[]> {
-		const rows = await getTauriAppServices()
-			.db.select({
-				...getTableColumns(medias),
-			})
-			.from(medias)
-			.leftJoin(mediaTags, and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, AI_SOURCE)))
-			.leftJoin(
-				mediaCharacters,
-				and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, AI_SOURCE)),
-			)
-			.leftJoin(mediaIps, and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, AI_SOURCE)))
-			.where(
-				and(
-					eq(medias.mediaType, "image"),
-					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
-					input.force
-						? undefined
-						: and(
-								isNull(mediaTags.mediaId),
-								isNull(mediaCharacters.mediaId),
-								isNull(mediaIps.mediaId),
-							),
-				),
-			)
-			.orderBy(asc(medias.id));
+		const rows = await scanBatchTaggingTargets(
+			getTauriAppServices().db,
+			input,
+			{ medias, mediaTags, mediaCharacters, mediaIps },
+		);
 
 		const uniqueRows = new Map<string, (typeof rows)[number]>();
 		for (const row of rows) {
-			uniqueRows.set(row.id, row);
+			uniqueRows.set((row as any).id, row);
 		}
 
 		return Array.from(uniqueRows.values()).map((row) => mediaSchema.parse(row));
 	},
 
 	async batchTagging(input: BatchTaggingInput) {
-		await TauriJobRepository.create({
-			type: "bulk_tagging_dispatch",
-			mediaSourceId: input.mediaSourceId,
-			payload: batchTaggingRequestSchema.parse(input),
-		});
+		await createBatchTaggingDispatchJob(
+			TauriJobRepository,
+			input,
+			batchTaggingRequestSchema.parse(input),
+		);
 
 		return {
 			success: true,
@@ -142,40 +126,18 @@ export const TauriAiService = {
 	},
 
 	async startBatchTaggingWithIds(input: BatchTaggingWithIdsInput) {
-		const parentJob = await TauriJobRepository.create({
-			type: "bulk_tagging_parent",
-			mediaSourceId: input.mediaSourceId,
-			status: "in_progress",
-			payload: {
-				total: input.mediaIds.length,
-				processed: 0,
+		return await createBatchTaggingParentJob(
+			TauriJobRepository,
+			async (ids) => {
+				const mediaItems = await Promise.all(
+					ids.map(async (id) => await TauriMediaRepository.findById(id)),
+				);
+				return mediaItems.flatMap((media) =>
+					media ? [{ id: media.id, mediaSourceId: media.mediaSourceId }] : [],
+				);
 			},
-		});
-
-		const mediaItems = await Promise.all(
-			input.mediaIds.map(async (mediaId) => await TauriMediaRepository.findById(mediaId)),
+			input,
 		);
-		const foundMedia = mediaItems.flatMap((media) => (media ? [media] : []));
-
-		await Promise.all(
-			foundMedia.map(async (media) => {
-				await TauriJobRepository.create({
-					type: "auto_tagging",
-					mediaSourceId: media.mediaSourceId,
-					parentId: parentJob.id,
-					payload: {
-						mediaId: media.id,
-						force: input.force,
-					},
-				});
-			}),
-		);
-
-		return {
-			success: true,
-			message: "Batch tagging started with selected media.",
-			jobId: parentJob.id,
-		};
 	},
 
 	async applyTags(input: { mediaId: string; response: TaggingResponse }) {

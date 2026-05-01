@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み）
+最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization + #317 infrastructure commonization を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み。#317 batch-tagging / config-service / download-import は merged 済み）
 
 ## このページの使い方
 
@@ -391,17 +391,23 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - jobs: worker / runner / orchestration は shared 化済み。残るは transport / thumbnail I/O / watcher ingress。評価 ~85% は妥当
 - repositories: 主要 CRUD は shared factory 化済み。残るは app-config 等 platform 固有 repository。評価 ~90% は妥当
 
-## 再監査メモ（2026-05-01 — #298〜#316 commonization wave 後）
+## 再監査メモ（2026-05-01 — #298〜#317 commonization wave 後）
 
 - **Routes**: #301 / #307 により `search.tsx` と `manager.tsx` は thin wrapper 化済み。#302 / #306 は PR #313 merged。#316 で `media-detail-page.tsx` と `source-media-page.tsx` の orchestration を shared 化。`sources/index.tsx` は event transport 注入中心、media-detail / source-media は modal/dialog JSX 重複を解消し transport / `sourceRootPath` / thumbnail runtime adapter が主な差分。実態評価は **~93%**
 - **Components**: #298 / #299 / #300 / #304 / #305 / #309 / #314 / #316 により、media-sidebar、source-form-modal、upload-media-modal、thumbnail-image、media-viewer、media-card-item、media-grid-item、move-copy-media-dialog、source-delete-modal、ai-tagging-modal、media-sidebar-content、upload-media-modal-content を `packages/ui` へ抽出。残る主な未配置コンポーネントはほぼない。実態評価は **~93%**
 - **Hooks**: #303 で parser utility 重複を core へ抽出。#302 / PR #313 で sources event parse/filter/state update を `use-sources-events.ts` へ抽出。#316 で media-detail の event handling を shared 化。残る差分は app 別 transport wrapper のみ。実態評価は **~93%**
 - **Queries**: PR #297 + #314 で shared 化。`authors` / `characters` / `config` / `ips` / `media-details` / `projects`（+ `projectsForMedia`）/ `sources` / `tags` の 9 クエリが thin wrapper 化。実態評価 **~96%**
 - **Repositories**: 自己評価 ~92% は概ね正しい。主要 CRUD は shared factory 化済み。実態評価 **~90%**
-- **Services**: 自己評価 ~95% はやや過大評価。CRUD / media / backup / ai tagging は shared 化されたが、tauri 側 local-api adapter は依然として大きい。実態評価 **~85%**
+- **Services**: #317 で batch tagging query / config service / download URL helpers を shared 化。server-config-service は `ConfigServiceImpl` を使用する thin wrapper に縮退。実態評価 **~88%**
 - **Jobs**: 自己評価 ~85% は概ね正しい。worker / runner / orchestration は shared 化済み。実態評価 **~85%**
 
-**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#316 の wave で routes / components / hooks / queries は大幅に改善し、残る主な未共通化ポイントは transport / platform I/O 層に限定された。
+**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#317 の wave で routes / components / hooks / queries / services は大幅に改善し、残る主な未共通化ポイントは transport / platform I/O 層に限定された。
+
+## 前回からの主な変更点（2026-05-01更新 — #317 commonization wave）
+
+- **Services / Batch Tagging Query (#317, PR #317)**: `packages/application/src/services/batch-tagging.ts` を新設。`scanBatchTaggingTargets`（AI未タグ付けmedia検索Drizzle query）、`createBatchTaggingDispatchJob`、`createBatchTaggingParentJob`（mediaLookup callback注入）を shared 化。server `ai-router.ts` / tauri `ai-service.ts` は thin adapter に縮退。`db` / `tables` / `jobRepo` / `mediaLookup` を app 側で注入
+- **Services / Config Service Alignment (#317, PR #317)**: `apps/server/src/application/services/server-config-store.ts` を新設。`ConfigStore` adapter（file I/O + env override + validation + atomic write）を抽出。server `server-config-service.ts` は `createConfigService(store)` をラップする singleton thin wrapper に縮退。sync `getConfig()` のためメモリキャッシュを保持。tauri は既に shared `ConfigServiceImpl` を使用
+- **Core / Download URL Helpers (#317, PR #317)**: `packages/core/src/utils/download-utils.ts` を新設。`basenameFromUrl` / `guessExtensionFromUrl` を shared 化。tauri `imports-api.ts` は shared helpers を import し、独自の `resolveUniqueTargetPath` を削除して shared `resolveUploadTargetPath` + `MediaPathAdapter` に統一
 
 ## 前回からの主な変更点（2026-05-01更新 — #316 commonization wave）
 
@@ -543,6 +549,9 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | `media-type-utils.ts`     | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
 | `path-utils.ts`           | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath`                                                                    |
 | `query-options/*.ts`      | `packages/ui/src/query-options/`        | TanStack Query `queryOptions` builder、query key 定義、デフォルトキャッシュ設定の shared 化                |
+| `batch-tagging.ts`        | `packages/application/src/services/`    | `scanBatchTaggingTargets` Drizzle query、`createBatchTaggingDispatchJob`、`createBatchTaggingParentJob`    |
+| `server-config-store.ts`  | `apps/server/src/application/services/` | `ConfigStore` adapter（file I/O + env override + validation）for `ConfigServiceImpl`                       |
+| `download-utils.ts`       | `packages/core/src/utils/`              | `basenameFromUrl`、`guessExtensionFromUrl`                                                                 |
 | `media-sidebar-content.tsx`    | `packages/ui/src/`                      | MediaSidebar の query wiring + action handlers を shared 化。app 側は `aiTaggingModal` prop 注入のみ                  |
 | `media-detail-screen.tsx`      | `packages/ui/src/screens/`              | media detail の layout + `useMediaSourceEvents` wiring + `mediaDetails` query を shared 化                             |
 | `upload-media-modal-content.tsx`| `packages/ui/src/`                     | UploadModal の `handleUploadStart` batch mapping を shared 化。app 側は `onFetchUrl` prop 注入のみ                    |

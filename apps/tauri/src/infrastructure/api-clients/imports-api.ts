@@ -10,12 +10,21 @@ import {
 } from "@solid-imager/application/services/import-request-service";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import { basenameFromUrl, guessExtensionFromUrl } from "@solid-imager/core/utils/download-utils";
+import { resolveUploadTargetPath } from "@solid-imager/application/services/media-upload-utils";
+import type { MediaPathAdapter } from "@solid-imager/application/services/media-service";
 import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import { TauriMediaRepository } from "~/infrastructure/local-api/repositories/media-repository";
 import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
 import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
-import { dirname, extname, joinLocalPath, splitStemAndExt, toRelativePath } from "../path-utils";
+import {
+	basename,
+	dirname,
+	extname,
+	joinLocalPath,
+	toRelativePath,
+} from "../path-utils";
 import { fetchMediaSource, syncMediaSources } from "./sources-api";
 
 async function emitImportEvent(event: string, payload: Record<string, unknown>) {
@@ -28,6 +37,13 @@ function resolveDownloadTarget(item: DownloadItem) {
 	}
 	return item.sourceUrls?.[0];
 }
+
+const pathAdapter: MediaPathAdapter = {
+	join: joinLocalPath,
+	extname,
+	basename,
+	relative: toRelativePath,
+};
 
 async function downloadItemToSource(targetSourceId: string, item: DownloadItem) {
 	const downloadTarget = resolveDownloadTarget(item);
@@ -49,7 +65,17 @@ async function downloadItemToSource(targetSourceId: string, item: DownloadItem) 
 		item.fileName ||
 		basenameFromUrl(downloadTarget) ||
 		`${crypto.randomUUID()}${guessExtensionFromUrl(downloadTarget)}`;
-	const targetPath = await resolveUniqueTargetPath(targetRoot, sourceFileName);
+	const resolved = await resolveUploadTargetPath(
+		targetRoot,
+		sourceFileName,
+		false,
+		true,
+		{
+			pathAdapter,
+			exists: async (p) => await getTauriAppServices().fileSystem.exists(p),
+		},
+	);
+	const targetPath = resolved.fullPath;
 	await getTauriAppServices().fileSystem.mkdir(dirname(targetPath), {
 		recursive: true,
 	});
@@ -59,44 +85,12 @@ async function downloadItemToSource(targetSourceId: string, item: DownloadItem) 
 	});
 }
 
-function basenameFromUrl(url: string) {
-	try {
-		const parsed = new URL(url);
-		const fileName = parsed.pathname.split("/").pop();
-		return fileName || undefined;
-	} catch {
-		return undefined;
-	}
-}
-
-function guessExtensionFromUrl(url: string) {
-	try {
-		return extname(new URL(url).pathname) || "";
-	} catch {
-		return "";
-	}
-}
-
 function inferMediaTypeFromPath(filePath: string): "image" | "video" | "audio" {
 	const mediaType = getMediaTypeFromExtension(filePath);
 	if (mediaType === "video" || mediaType === "audio") {
 		return mediaType;
 	}
 	return "image";
-}
-
-async function resolveUniqueTargetPath(rootPath: string, fileName: string) {
-	const fs = getTauriAppServices().fileSystem;
-	const { stem, extension } = splitStemAndExt(fileName);
-	let index = 0;
-	while (true) {
-		const candidateName = index === 0 ? `${stem}${extension}` : `${stem}-${index}${extension}`;
-		const candidatePath = joinLocalPath(rootPath, candidateName);
-		if (!(await fs.exists(candidatePath))) {
-			return candidatePath;
-		}
-		index += 1;
-	}
 }
 
 export async function processImportItemsToSource(targetSourceId: string, items: DownloadItem[]) {
@@ -137,7 +131,18 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 				item.fileName ||
 				basenameFromUrl(downloadTarget) ||
 				`${crypto.randomUUID()}${guessExtensionFromUrl(downloadTarget)}`;
-			const targetPath = await resolveUniqueTargetPath(context.basePath, sourceFileName);
+			const resolved = await resolveUploadTargetPath(
+				context.basePath,
+				sourceFileName,
+				false,
+				true,
+				{
+					pathAdapter,
+					exists: async (p) =>
+						await getTauriAppServices().fileSystem.exists(p),
+				},
+			);
+			const targetPath = resolved.fullPath;
 			await getTauriAppServices().fileSystem.mkdir(dirname(targetPath), {
 				recursive: true,
 			});
@@ -209,7 +214,6 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 					timestamp: new Date().toISOString(),
 				};
 				if (existing && existing.id !== row.id) {
-					// Should not happen, but handle gracefully
 					await emit("media-changed", eventPayload);
 				} else {
 					await emit("media-added", eventPayload);
