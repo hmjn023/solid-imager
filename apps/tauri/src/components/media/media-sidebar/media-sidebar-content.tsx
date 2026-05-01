@@ -1,5 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebar as SharedMediaSidebar } from "@solid-imager/ui/media-sidebar";
+import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { getTauriAppServices } from "~/app-services";
 import {
@@ -19,9 +20,9 @@ import {
 	addProjectToMedia,
 	createProject,
 	fetchAllProjects,
-	fetchProjectsForMedia,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
+import { projectsForMediaQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 import { AiTaggingModal } from "../ai-tagging-modal";
 
@@ -34,10 +35,9 @@ type MediaSidebarProps = {
 
 export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
-	const projects = createQuery(() => ({
-		queryKey: ["projectsForMedia", props.media.id],
-		queryFn: () => fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
-	}));
+	const projects = createQuery(() =>
+		projectsForMediaQueryOptions(props.media.mediaSourceId, props.media.id),
+	);
 	const allProjects = createQuery(() => ({
 		queryKey: ["allProjects"],
 		queryFn: fetchAllProjects,
@@ -53,7 +53,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 	const invalidateProjectsForMedia = () =>
 		queryClient.invalidateQueries({
-			queryKey: ["projectsForMedia", props.media.id],
+			queryKey: projectsQueryKeys.forMedia(props.media.id),
 		});
 
 	const loadMediaFile = async () => {

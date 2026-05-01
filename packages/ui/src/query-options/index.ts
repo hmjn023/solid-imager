@@ -24,6 +24,7 @@ export {
 	mediaDetailsQueryKeys,
 } from "./media-query";
 export {
+	buildProjectsForMediaQueryOptions,
 	buildProjectsQueryOptions,
 	defaultProjectsQueryConfig,
 	projectsQueryKeys,
