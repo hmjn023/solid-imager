@@ -34,9 +34,14 @@ import {
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
-import { getSearchCondition, searchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+} from "~/presentation/store/search-store";
 
-function createTauriTransport(mediaSourceId: () => string | undefined): MediaSourceEventTransport {
+function createTauriTransport(
+	mediaSourceId: () => string | undefined,
+): MediaSourceEventTransport {
 	return {
 		listen(handler) {
 			const id = mediaSourceId();

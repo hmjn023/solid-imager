@@ -33,7 +33,10 @@ import {
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { logger } from "~/infrastructure/logger";
-import { getSearchCondition, searchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+} from "~/presentation/store/search-store";
 
 function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
@@ -51,7 +54,10 @@ function createServerTransport(
 
 			const startEventStream = async () => {
 				try {
-					const events = await orpc.sources.events({ id }, { signal: ac.signal });
+					const events = await orpc.sources.events(
+						{ id },
+						{ signal: ac.signal },
+					);
 
 					for await (const msg of events) {
 						if (ac.signal.aborted) {

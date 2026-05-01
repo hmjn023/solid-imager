@@ -11,7 +11,10 @@ import {
 	DialogTitle,
 } from "../dialog";
 import { useCurrentSearchPersistence } from "../hooks/use-current-search-persistence";
-import type { UseSourceMediaPageResult, UploadOptions } from "../hooks/use-source-media-page";
+import type {
+	UploadOptions,
+	UseSourceMediaPageResult,
+} from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
 import { SourceMediaGrid } from "../source-media-grid";
 
@@ -26,9 +29,14 @@ export type SourceMediaScreenProps = {
 		onRestore: () => void;
 	}) => JSX.Element;
 	/** Render a single media grid item. */
-	renderItem: (media: Media, options: { onContextMenu: () => void }) => JSX.Element;
+	renderItem: (
+		media: Media,
+		options: { onContextMenu: () => void },
+	) => JSX.Element;
 	renderJobProgress?: (props: {
-		jobProgress: () => import("@solid-imager/core/domain/sources/events").JobProgressEvent | null;
+		jobProgress: () =>
+			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
+			| null;
 	}) => JSX.Element;
 	uploadModalComponent: (props: {
 		isOpen: boolean;
@@ -66,7 +74,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		>
 			{props.renderActions({
 				isSyncing: page().isSyncingMedia(),
-				isSyncDisabled: page().isSyncingMedia() || !page().mediaQuery.data?.pages.length,
+				isSyncDisabled:
+					page().isSyncingMedia() || !page().mediaQuery.data?.pages.length,
 				onDumpDownload: page().handleDumpDownload,
 				onSyncLoadedMedia: page().handleSyncLoadedMedia,
 				onAddMedia: page().handleAddButtonClick,
@@ -154,16 +163,23 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				pastedUrl: page().pastedUrl(),
 			})}
 
-			<Dialog onOpenChange={page().setDeleteDialogOpen} open={page().deleteDialogOpen()}>
+			<Dialog
+				onOpenChange={page().setDeleteDialogOpen}
+				open={page().deleteDialogOpen()}
+			>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Delete Media</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this media? This action cannot be undone.
+							Are you sure you want to delete this media? This action cannot be
+							undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button onClick={() => page().setDeleteDialogOpen(false)} variant="outline">
+						<Button
+							onClick={() => page().setDeleteDialogOpen(false)}
+							variant="outline"
+						>
 							Cancel
 						</Button>
 						<Button onClick={page().confirmDelete} variant="destructive">

@@ -1,8 +1,11 @@
-import type { MediaSourceInfo, SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type {
+	MediaSourceInfo,
+	SafeMediaSource,
+} from "@solid-imager/core/domain/sources/schemas";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
 import { type Accessor, createSignal } from "solid-js";
 import { toast } from "../toast";
-import { useSourcesEvents, type RegisterEvents } from "./use-sources-events";
+import { type RegisterEvents, useSourcesEvents } from "./use-sources-events";
 
 export type SourcesPageActions = {
 	createMediaSource: (data: unknown) => Promise<unknown>;
@@ -32,18 +35,28 @@ export type UseSourcesPageResult = {
 	handleFormSubmit: (sourceData: unknown) => Promise<void>;
 	handleDeleteSource: (source: SafeMediaSource | MediaSourceInfo) => void;
 	handleDeleteConfirm: (mediaSourceId: string) => Promise<void>;
-	handleSyncSource: (source: SafeMediaSource | MediaSourceInfo) => Promise<void>;
+	handleSyncSource: (
+		source: SafeMediaSource | MediaSourceInfo,
+	) => Promise<void>;
 	handleSyncAll: (sources: SafeMediaSource[] | undefined) => Promise<void>;
 };
 
-export function useSourcesPage(options: UseSourcesPageOptions): UseSourcesPageResult {
-	const { actions, queryClient, invalidateQueryKey, registerEvents, getSourceIds } = options;
+export function useSourcesPage(
+	options: UseSourcesPageOptions,
+): UseSourcesPageResult {
+	const {
+		actions,
+		queryClient,
+		invalidateQueryKey,
+		registerEvents,
+		getSourceIds,
+	} = options;
 
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
-	const [editingSource, setEditingSource] = createSignal<SafeMediaSource | MediaSourceInfo | null>(
-		null,
-	);
+	const [editingSource, setEditingSource] = createSignal<
+		SafeMediaSource | MediaSourceInfo | null
+	>(null);
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
@@ -107,7 +120,9 @@ export function useSourcesPage(options: UseSourcesPageOptions): UseSourcesPageRe
 		}
 	};
 
-	const handleSyncSource = async (source: SafeMediaSource | MediaSourceInfo) => {
+	const handleSyncSource = async (
+		source: SafeMediaSource | MediaSourceInfo,
+	) => {
 		if (!source.id || isSyncing()) {
 			return;
 		}

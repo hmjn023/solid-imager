@@ -33,20 +33,26 @@ export default function Sources() {
 	const page = useSourcesPage({
 		actions: {
 			createMediaSource: (data: unknown) => createMediaSource(data as any),
-			updateMediaSource: (id: string, data: unknown) => updateMediaSource(id, data as any),
+			updateMediaSource: (id: string, data: unknown) =>
+				updateMediaSource(id, data as any),
 			deleteMediaSource,
 			syncMediaSources,
 		},
 		queryClient,
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		getSourceIds: () =>
-			mediaSources.data?.map((s) => s.id).filter((id): id is string => Boolean(id)) ?? [],
+			mediaSources.data
+				?.map((s) => s.id)
+				.filter((id): id is string => Boolean(id)) ?? [],
 		registerEvents: (handler) => {
 			const ac = new AbortController();
 
 			const startStreamForSource = async (id: string) => {
 				try {
-					const events = await orpc.sources.events({ id }, { signal: ac.signal });
+					const events = await orpc.sources.events(
+						{ id },
+						{ signal: ac.signal },
+					);
 
 					for await (const msg of events) {
 						if (ac.signal.aborted) {

@@ -37,10 +37,16 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 				case "all-jobs-completed": {
 					const result = allJobsCompletedEventSchema.safeParse(payload);
 					if (!result.success) {
-						console.warn("[useSourcesEvents] Invalid all-jobs-completed payload:", result.error);
+						console.warn(
+							"[useSourcesEvents] Invalid all-jobs-completed payload:",
+							result.error,
+						);
 						return;
 					}
-					if (result.data.mediaSourceId && !activeSourceIds.has(result.data.mediaSourceId)) {
+					if (
+						result.data.mediaSourceId &&
+						!activeSourceIds.has(result.data.mediaSourceId)
+					) {
 						return;
 					}
 					void options.queryClient.invalidateQueries({
@@ -51,10 +57,16 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 				case "watcher-error": {
 					const result = watcherErrorEventSchema.safeParse(payload);
 					if (!result.success) {
-						console.warn("[useSourcesEvents] Invalid watcher-error payload:", result.error);
+						console.warn(
+							"[useSourcesEvents] Invalid watcher-error payload:",
+							result.error,
+						);
 						return;
 					}
-					if (result.data.mediaSourceId && !activeSourceIds.has(result.data.mediaSourceId)) {
+					if (
+						result.data.mediaSourceId &&
+						!activeSourceIds.has(result.data.mediaSourceId)
+					) {
 						return;
 					}
 					toast.error(
