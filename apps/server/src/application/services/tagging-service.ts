@@ -47,6 +47,13 @@ export class TaggingService {
 		return await this.aiClient.tagImage(imageBuffer);
 	}
 
+	private getAiBaseUrl(): string | undefined {
+		const client = this.aiClient as unknown as {
+			getBaseUrl?: () => string;
+		};
+		return client.getBaseUrl?.();
+	}
+
 	async getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
@@ -67,13 +74,6 @@ export class TaggingService {
 			throw new Error("Media source not found");
 		}
 
-		const getAiBaseUrl = () => {
-			const client = this.aiClient as unknown as {
-				getBaseUrl?: () => string;
-			};
-			return client.getBaseUrl?.();
-		};
-
 		return await orchestrateTagging(mediaId, options, {
 			aiClient: this.aiClient,
 			reconstructDeps: {
@@ -81,7 +81,7 @@ export class TaggingService {
 				characterRepository: this.characterRepo,
 				ipRepository: this.ipRepo,
 			},
-			getAiBaseUrl,
+			getAiBaseUrl: () => this.getAiBaseUrl(),
 			mediaSourceType: mediaSource.type,
 			mediaSourceConnectionInfo: mediaSource.connectionInfo,
 			mediaFilePath: media.filePath,
@@ -131,16 +131,9 @@ export class TaggingService {
 			throw new Error("Media source not found");
 		}
 
-		const getAiBaseUrl = () => {
-			const client = this.aiClient as unknown as {
-				getBaseUrl?: () => string;
-			};
-			return client.getBaseUrl?.();
-		};
-
 		return await orchestrateCcipExtraction({
 			aiClient: this.aiClient,
-			getAiBaseUrl,
+			getAiBaseUrl: () => this.getAiBaseUrl(),
 			mediaSourceType: mediaSource.type,
 			mediaSourceConnectionInfo: mediaSource.connectionInfo,
 			mediaFilePath: media.filePath,

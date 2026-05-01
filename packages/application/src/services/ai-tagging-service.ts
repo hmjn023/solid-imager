@@ -57,13 +57,10 @@ export async function reconstructTaggingResponseFromCache(
 	}
 
 	for (const char of aiCharacters) {
-		const matchedIpNames: string[] = [];
-		for (const charIp of char.ips) {
+		const matchedIpNames = char.ips.flatMap((charIp) => {
 			const ipName = ipMap.get(charIp.id);
-			if (ipName) {
-				matchedIpNames.push(ipName);
-			}
-		}
+			return ipName ? [ipName] : [];
+		});
 		if (matchedIpNames.length > 0) {
 			response.ips_mapping[char.name] = matchedIpNames;
 		}

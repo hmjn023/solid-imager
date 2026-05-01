@@ -188,7 +188,7 @@ export const TauriAiService = {
 							characterRepository: TauriCharacterRepository,
 							ipRepository: TauriIpRepository,
 						},
-						getAiBaseUrl: () => undefined,
+						getAiBaseUrl: () => "http://tauri-client-proxy",
 						mediaSourceType: source.type,
 						mediaSourceConnectionInfo: source.connectionInfo,
 						mediaFilePath: media.filePath,
