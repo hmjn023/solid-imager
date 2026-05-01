@@ -14,7 +14,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { emit } from "@tauri-apps/api/event";
 import { appDataDir, isAbsolute, join } from "@tauri-apps/api/path";
 import { getTauriAppServices } from "~/app-services";
-import { processQueuedDownloadJob } from "../api-clients/imports-api";
+import { processQueuedDownloadJob } from "./download-jobs";
 import { TauriMediaRepository } from "../local-api/repositories/media-repository";
 import { TauriTagRepository } from "../local-api/repositories/tag-repository";
 import { TauriJobRepository } from "../local-api/repositories/tauri-job-repository";

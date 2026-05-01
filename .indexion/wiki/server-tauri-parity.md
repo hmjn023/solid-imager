@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization + #317 infrastructure commonization を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み。#317 batch-tagging / config-service / download-import は merged 済み）
+最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization + #317 infrastructure commonization + Tauri import/download job adapter parity を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み。#317 batch-tagging / config-service / download-import は merged 済み）
 
 ## このページの使い方
 
@@ -300,7 +300,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | background startup            | `BackgroundJobsCoordinator` + `file-watcher-service.ts` adapter                                                          | `BackgroundJobsCoordinator` + `source-service.ts` / maintenance adapter       |
 | processMedia payload          | `{ mediaId, sourcePath, steps?, type: "processMedia" }`                                                                  | 同左                                                                          |
 | processMedia 実行             | `process-media-runner.ts` + `media-processing-service.ts` adapter                                                        | `process-media-runner.ts` batch runner + `tauri-job-queue.ts` adapter         |
-| download runner               | `packages/application/src/services/download-job-runner.ts` + `download-jobs.ts` adapter                                  | 同左 + `imports-api.ts` adapter                                               |
+| download runner               | `packages/application/src/services/download-job-runner.ts` + `download-jobs.ts` adapter                                  | 同左 + `jobs/download-jobs.ts` adapter                                        |
 | tagging runner                | `packages/application/src/services/tagging-job-runner.ts` + `tagging-jobs.ts` adapter                                    | 同左 + `ai-service.ts` adapter                                                |
 | watcher reconciliation        | `packages/application/src/services/watcher-runtime.ts` + `file-watcher-service.ts` / `directory-sync-service.ts` adapter | 同左 + `source-service.ts` adapter                                            |
 | job / media event contract    | `packages/application/src/services/runtime-events.ts` + `sse-manager.ts` transport                                       | 同左 + Tauri event bus transport                                              |
@@ -335,7 +335,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - 片側だけ変更して完了にしない。未対応なら、もう片側への影響か未対応理由を必ず残す
 - PGlite は共通化を諦める理由ではなく、shared repository / executor 注入で吸収する前提で扱う
 - import inbox の pending queue は `localStorage` を廃止し、server / tauri とも `jobs` table の `import_request` を source of truth とする
-- import request の `bulkAdd / listPending / process / cancel` は `packages/application/src/services/import-request-service.ts` を正とし、server / tauri は restore / execute / event publish の adapter だけを注入する
+- import request の `bulkAdd / listPending / process / cancel` は `packages/application/src/services/import-request-service.ts` を正とし、server / tauri は restore / execute / event publish の adapter だけを注入する。Tauri の `processPendingImports` は direct download / sync を行わず、server と同じく download job enqueue 完了を `processedCount` として返す
 
 ## 再監査メモ（2026-04-29 — SourceMediaGrid 共通化後）
 
@@ -407,7 +407,8 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 - **Services / Batch Tagging Query (#317, PR #317)**: `packages/application/src/services/batch-tagging.ts` を新設。`scanBatchTaggingTargets`（AI未タグ付けmedia検索Drizzle query）、`createBatchTaggingDispatchJob`、`createBatchTaggingParentJob`（mediaLookup callback注入）を shared 化。server `ai-router.ts` / tauri `ai-service.ts` は thin adapter に縮退。`db` / `tables` / `jobRepo` / `mediaLookup` を app 側で注入
 - **Services / Config Service Alignment (#317, PR #317)**: `apps/server/src/application/services/server-config-store.ts` を新設。`ConfigStore` adapter（file I/O + env override + validation + atomic write）を抽出。server `server-config-service.ts` は `createConfigService(store)` をラップする singleton thin wrapper に縮退。sync `getConfig()` のためメモリキャッシュを保持。tauri は既に shared `ConfigServiceImpl` を使用
-- **Core / Download URL Helpers (#317, PR #317)**: `packages/core/src/utils/download-utils.ts` を新設。`basenameFromUrl` / `guessExtensionFromUrl` を shared 化。tauri `imports-api.ts` は shared helpers を import し、独自の `resolveUniqueTargetPath` を削除して shared `resolveUploadTargetPath` + `MediaPathAdapter` に統一
+- **Core / Download URL Helpers (#317, PR #317)**: `packages/core/src/utils/download-utils.ts` を新設。`basenameFromUrl` / `guessExtensionFromUrl` を shared 化。tauri `jobs/download-jobs.ts` は shared helpers を import し、独自の `resolveUniqueTargetPath` を削除して shared `resolveUploadTargetPath` + `MediaPathAdapter` に統一
+- **Tauri Import/Download Job Adapter**: `apps/tauri/src/infrastructure/jobs/download-jobs.ts` を新設し、server 側 `download-jobs.ts` と同じ責務名へ整理。`imports-api.ts` は `createImportRequestService` adapter に縮退し、pending import 処理は direct download ではなく `enqueueDownloadJobs` + `tauriJobQueue.wake()` に統一
 
 ## 前回からの主な変更点（2026-05-01更新 — #316 commonization wave）
 
