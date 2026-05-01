@@ -1,7 +1,10 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
+import {
+	prefetchManagerPageQueries,
+	useManagerPage,
+} from "@solid-imager/ui/hooks/use-manager-page";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
@@ -26,61 +29,47 @@ import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-que
 import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 
+const managerQueryOptions = {
+	projects: allProjectsQueryOptions,
+	ips: allIpsQueryOptions,
+	characters: allCharactersQueryOptions,
+	sources: mediaSourcesQueryOptions,
+};
+
+const managerActions = {
+	createProject,
+	updateProject,
+	deleteProject,
+	createIp,
+	updateIp,
+	deleteIp,
+	createCharacter,
+	updateCharacter,
+	deleteCharacter,
+	scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets,
+	startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds,
+};
+
 export const Route = createFileRoute("/manager")({
 	ssr: true,
 	beforeLoad: ({ context }) => {
 		void context;
 	},
 	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-		]);
+		await prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
 	},
 	component: ManagerPage,
 });
 
 export default function ManagerPage() {
 	const queryClient = useQueryClient();
-	const projects = createQuery(() => allProjectsQueryOptions());
-	const ips = createQuery(() => allIpsQueryOptions());
-	const characters = createQuery(() => allCharactersQueryOptions());
-	const sources = createQuery(() => mediaSourcesQueryOptions());
 
 	const manager = useManagerPage({
-		queries: {
-			projects: () => projects.data,
-			ips: () => ips.data,
-			characters: () => characters.data,
-			sources: () => sources.data,
-		},
-		actions: {
-			createProject,
-			updateProject,
-			deleteProject,
-			createIp,
-			updateIp,
-			deleteIp,
-			createCharacter,
-			updateCharacter,
-			deleteCharacter,
-			scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets,
-			startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds,
-			invalidate: (entityType) => {
-				if (entityType === "projects") {
-					void queryClient.invalidateQueries({ queryKey: ["allProjects"] });
-				} else if (entityType === "ips") {
-					void queryClient.invalidateQueries({ queryKey: ["allIps"] });
-				} else if (entityType === "characters") {
-					void queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
-				}
-			},
-		},
+		queryClient,
+		queryOptions: managerQueryOptions,
+		actions: managerActions,
+		useBatchJobEvents,
 	});
-
-	useBatchJobEvents(manager.activeJobId, manager.jobHandlers);
 
 	return (
 		<ManagerScreen

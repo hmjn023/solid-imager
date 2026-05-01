@@ -8,12 +8,17 @@ import type {
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import { createQuery, type QueryClient } from "@tanstack/solid-query";
 import {
 	type Accessor,
 	createEffect,
 	createSignal,
 	type Setter,
 } from "solid-js";
+import type { buildCharactersQueryOptions } from "../query-options/characters-query";
+import type { buildIpsQueryOptions } from "../query-options/ips-query";
+import type { buildProjectsQueryOptions } from "../query-options/projects-query";
+import type { buildSourcesQueryOptions } from "../query-options/sources-query";
 import { toast } from "../toast";
 
 export type ManagerEntityType = "projects" | "ips" | "characters" | "tagging";
@@ -66,11 +71,38 @@ export type ManagerPageActions = {
 	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
 };
 
+export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
+
+export type ManagerPageQueryOptions = {
+	projects: () => ReturnType<typeof buildProjectsQueryOptions>;
+	ips: () => ReturnType<typeof buildIpsQueryOptions>;
+	characters: () => ReturnType<typeof buildCharactersQueryOptions>;
+	sources: () => ReturnType<typeof buildSourcesQueryOptions>;
+};
+
 export type UseManagerPageOptions = {
-	queries: ManagerPageQueries;
-	actions: ManagerPageActions;
+	queryClient: QueryClient;
+	queryOptions: ManagerPageQueryOptions;
+	actions: ManagerPageMutationActions;
+	useBatchJobEvents?: (
+		activeJobId: Accessor<string | null>,
+		handlers: ManagerJobHandlers,
+	) => void;
+	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
 	itemsPerPage?: number;
 };
+
+export async function prefetchManagerPageQueries(
+	queryClient: QueryClient,
+	queryOptions: ManagerPageQueryOptions,
+) {
+	await Promise.all([
+		queryClient.ensureQueryData(queryOptions.projects()),
+		queryClient.ensureQueryData(queryOptions.ips()),
+		queryClient.ensureQueryData(queryOptions.characters()),
+		queryClient.ensureQueryData(queryOptions.sources()),
+	]);
+}
 
 export type ManagerJobHandlers = {
 	handleJobProgress: (event: JobProgressEvent) => void;
@@ -139,7 +171,25 @@ function activeCrudTab(
 export function useManagerPage(
 	options: UseManagerPageOptions,
 ): UseManagerPageResult {
-	const { actions, queries, itemsPerPage = 50 } = options;
+	const {
+		actions,
+		queryClient,
+		queryOptions,
+		useBatchJobEvents,
+		onBatchTaggingStart,
+		itemsPerPage = 50,
+	} = options;
+	const projects = createQuery(() => queryOptions.projects());
+	const ipsQuery = createQuery(() => queryOptions.ips());
+	const characters = createQuery(() => queryOptions.characters());
+	const sourcesQuery = createQuery(() => queryOptions.sources());
+
+	const queries: ManagerPageQueries = {
+		projects: () => projects.data,
+		ips: () => ipsQuery.data,
+		characters: () => characters.data,
+		sources: () => sourcesQuery.data,
+	};
 
 	const [activeTab, setActiveTab] = createSignal<ManagerEntityType>("projects");
 	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
@@ -203,7 +253,13 @@ export function useManagerPage(
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
 		if (tab) {
-			actions.invalidate(tab);
+			if (tab === "projects") {
+				void queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+			} else if (tab === "ips") {
+				void queryClient.invalidateQueries({ queryKey: ["allIps"] });
+			} else if (tab === "characters") {
+				void queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
+			}
 		}
 	};
 
@@ -326,6 +382,7 @@ export function useManagerPage(
 				mediaIds: Array.from(selectedMedia()),
 			});
 			if (result.success && result.jobId) {
+				onBatchTaggingStart?.(result);
 				toast.success(result.message);
 				setTaggingStatus("Batch tagging in progress...");
 				setActiveJobId(result.jobId);
@@ -381,6 +438,14 @@ export function useManagerPage(
 		setJobProgress(null);
 	};
 
+	const jobHandlers: ManagerJobHandlers = {
+		handleJobProgress,
+		handleJobCompleted,
+		handleJobFailed,
+	};
+
+	useBatchJobEvents?.(activeJobId, jobHandlers);
+
 	return {
 		activeTab,
 		setActiveTab,
@@ -418,10 +483,6 @@ export function useManagerPage(
 		handleStartBatchTagging,
 		toggleMediaSelection,
 		toggleSelectAll,
-		jobHandlers: {
-			handleJobProgress,
-			handleJobCompleted,
-			handleJobFailed,
-		},
+		jobHandlers,
 	};
 }
