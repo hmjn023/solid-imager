@@ -1,4 +1,5 @@
 export * from "./ports/job-repository";
+export * from "./services/ai-tagging-service";
 export * from "./services/author-service";
 export * from "./services/background-jobs-coordinator";
 export * from "./services/category-service";
