@@ -59,3 +59,4 @@ dev.log
 .playwright-cli/
 apps/tauri/src-tauri/target/
 .tsbuild/
+.worktree/

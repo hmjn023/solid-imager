@@ -21,24 +21,11 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
-/**
- * Server-side thin wrapper around the shared `useMediaSourceEvents` hook.
- *
- * Creates an oRPC SSE transport scoped to `mediaSourceId` and injects it into
- * the shared hook. The `mediaSourceId` accessor is read synchronously inside
- * the transport's `listen` method, which itself is called inside the shared
- * hook's `createEffect`, so changes to `mediaSourceId()` correctly re-trigger
- * the effect, abort the previous SSE connection, and open a new one.
- */
-export function useMediaSourceEvents(
+export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
-	options: MediaSourceEventsOptions = {},
-): void {
-	const transport: MediaSourceEventTransport = {
+): MediaSourceEventTransport {
+	return {
 		listen(handler) {
-			// Reading `mediaSourceId()` synchronously here is intentional:
-			// this function is called inside the shared hook's `createEffect`,
-			// so Solid tracks it and re-runs the effect when the id changes.
 			const id = mediaSourceId();
 			if (!id) {
 				return () => {
@@ -75,6 +62,22 @@ export function useMediaSourceEvents(
 			};
 		},
 	};
+}
+
+/**
+ * Server-side thin wrapper around the shared `useMediaSourceEvents` hook.
+ *
+ * Creates an oRPC SSE transport scoped to `mediaSourceId` and injects it into
+ * the shared hook. The `mediaSourceId` accessor is read synchronously inside
+ * the transport's `listen` method, which itself is called inside the shared
+ * hook's `createEffect`, so changes to `mediaSourceId()` correctly re-trigger
+ * the effect, abort the previous SSE connection, and open a new one.
+ */
+export function useMediaSourceEvents(
+	mediaSourceId: Accessor<string | undefined>,
+	options: MediaSourceEventsOptions = {},
+): void {
+	const transport = createServerTransport(mediaSourceId);
 
 	useMediaSourceEventsShared({
 		...options,

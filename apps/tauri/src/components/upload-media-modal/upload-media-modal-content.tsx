@@ -1,7 +1,7 @@
 import {
 	UploadMediaModalContent as SharedUploadMediaModalContent,
-	type UploadMediaModalSubmitOptions,
-} from "@solid-imager/ui/upload-media-modal";
+	UploadMediaModal,
+} from "@solid-imager/ui/upload-media-modal-content";
 
 type UploadMediaModalProps = {
 	isOpen: boolean;
@@ -25,40 +25,24 @@ async function fetchFileFromUrl(url: string) {
 		throw new Error(`Failed to fetch URL: ${response.status}`);
 	}
 	const blob = await response.blob();
-	return new File([blob], url.substring(url.lastIndexOf("/") + 1) || "fetched-image", {
-		type: blob.type,
-	});
+	return new File(
+		[blob],
+		url.substring(url.lastIndexOf("/") + 1) || "fetched-image",
+		{
+			type: blob.type,
+		},
+	);
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalProps) {
-	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {
-		await Promise.all(
-			options.files.map((file, index) =>
-				props.onUpload({
-					file,
-					filename: index === 0 ? options.filename : file.name,
-					description: options.description,
-					sourceUrl: index === 0 ? options.sourceUrl : undefined,
-					overwrite: options.overwrite,
-					autoIncrement: options.autoIncrement,
-				}),
-			),
-		);
-	};
-
 	return (
 		<SharedUploadMediaModalContent
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={fetchFileFromUrl}
-			onFilesSelected={(files) => {
-				const firstFile = files[0];
-				if (firstFile) {
-					props.onUrlFetch(firstFile);
-				}
-			}}
-			onUploadStart={handleUploadStart}
+			onUrlFetch={props.onUrlFetch}
+			onUpload={props.onUpload}
 			pastedUrl={props.pastedUrl}
 		/>
 	);
