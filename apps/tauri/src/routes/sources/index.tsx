@@ -28,17 +28,14 @@ function SourcesRoute() {
 	const page = useSourcesPage({
 		actions: {
 			createMediaSource: (data: unknown) => createMediaSource(data as any),
-			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+			updateMediaSource: (id: string, data: unknown) => updateMediaSource(id, data as any),
 			deleteMediaSource,
 			syncMediaSources,
 		},
 		queryClient,
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		getSourceIds: () =>
-			mediaSources.data
-				?.map((s) => s.id)
-				.filter((id): id is string => Boolean(id)) ?? [],
+			mediaSources.data?.map((s) => s.id).filter((id): id is string => Boolean(id)) ?? [],
 		registerEvents: (handler) => {
 			const unlistenPromises = [
 				listen("all-jobs-completed", (event) => {

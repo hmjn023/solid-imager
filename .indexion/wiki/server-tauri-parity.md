@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（#298〜#309 commonization wave を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 実装済み・review中）
+最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み）
 
 ## このページの使い方
 
@@ -72,9 +72,9 @@
 | `routes/config.tsx`                                              | `routes/config.tsx`                                              | ~36 / ~32              | **thin wrapper**。`ConfigScreen` 共有。差分は `onSubmitSuccess` callback のみ                                                                                                                                                                                                                                                                                   |
 | `routes/manager.tsx`                                             | `routes/manager.tsx`                                             | ~90 / ~87              | **thin wrapper**。#307 / PR #312 で query prefetch、action prop 組み立て、batch job event wiring を `useManagerPage` 側へ集約。app 側差分は API client / event hook / media card renderer 注入に限定                                                                                                                                                            |
 | `routes/search.tsx`                                              | `routes/search.tsx`                                              | ~114 / ~95             | **thin wrapper**。`SearchScreen` + `useSearchPage` へ filter query wiring、mobile filter dialog、refresh 戦略（server: 即時 invalidate / tauri: debounce 300ms + `onAllJobsCompleted`）、`sourceRootPath` helper、SSR `isMounted` ガードを集約。app側差分は query option / API client / event hook callback / `renderMediaItem` / `renderNavActions` 注入に限定 |
-| `routes/sources/index.tsx`                                       | `routes/sources/index.tsx`                                       | ~100 / ~90             | **PR中 (#302 / #313)**。`use-sources-events.ts` を新設し、event schema parse / relevance filter / invalidate / watcher-error toast を shared hook へ集約。route 側は SSE / Tauri `listen` transport 注入が主責務                                                                                                                                                  |
+| `routes/sources/index.tsx`                                       | `routes/sources/index.tsx`                                       | ~100 / ~90             | **thin wrapper**。#302 / PR #313 merged。`use-sources-events.ts` を新設し、event schema parse / relevance filter / invalidate / watcher-error toast を shared hook へ集約。route 側は SSE / Tauri `listen` transport 注入が主責務                                                                                                                               |
 | `routes/sources/$mediaSourceId/index.tsx`                        | `routes/sources/$mediaSourceId/index.tsx`                        | ~24 / ~22              | **thin wrapper**。loader + query prefetch のみ                                                                                                                                                                                                                                                                                                                  |
-| `routes/sources/$mediaSourceId/components/source-media-page.tsx` | `routes/sources/$mediaSourceId/components/source-media-page.tsx` | ~142 / ~182            | **部分完了 / PR中 (#306 / #313)**。upload / move-copy modal JSX 組み立てを `SourceMediaScreen` 側へ移動。route 側には transport factory、Tauri `sourceRootPath` memo、`notifyThumbnailReady`、API/action adapter が残るため完全 thin wrapper ではないが、modal/dialog 重複は解消済み                                           |
+| `routes/sources/$mediaSourceId/components/source-media-page.tsx` | `routes/sources/$mediaSourceId/components/source-media-page.tsx` | ~142 / ~182            | **thin wrapper**。#306 / PR #313 merged。upload / move-copy modal JSX 組み立てを `SourceMediaScreen` 側へ移動。route 側差分は transport factory、Tauri `sourceRootPath` memo、`notifyThumbnailReady`、API/action adapter に限定                                                                                                                                 |
 | `routes/sources/$mediaSourceId/$mediaId/index.tsx`               | `routes/sources/$mediaSourceId/$mediaId/index.tsx`               | 同一                   | 同一                                                                                                                                                                                                                                                                                                                                                            |
 | `routes/api/rpc.$.ts`                                            | ―（Rust IPC）                                                    | —                      | oRPC vs Tauri IPC                                                                                                                                                                                                                                                                                                                                               |
 | `routes/api/events.ts`                                           | ―（Rust IPC）                                                    | —                      | SSE vs Tauri event                                                                                                                                                                                                                                                                                                                                              |
@@ -101,7 +101,7 @@
 
 ## Queries / API Clients（対応度: ~95%）
 
-`packages/ui/src/query-options/` を新設し、`authors` / `characters` / `config` / `ips` / `media-details` / `projects` / `sources` / `tags` の 8 クエリについて `queryOptions` builder、query key 定義、デフォルトキャッシュ設定を shared 化。server / tauri の `infrastructure/api-clients/queries/*.ts` は shared builder に `fetch*` 関数を注入する 4-7 行の thin wrapper に縮退。route ファイルの import パスと関数名は変更なし。
+`packages/ui/src/query-options/` を新設し、`authors` / `characters` / `config` / `ips` / `media-details` / `projects`（+ `projectsForMedia`）/ `sources` / `tags` の 9 クエリについて `queryOptions` builder、query key 定義、デフォルトキャッシュ設定を shared 化。server / tauri の `infrastructure/api-clients/queries/*.ts` は shared builder に `fetch*` 関数を注入する 4-7 行の thin wrapper に縮退。route ファイルの import パスと関数名は変更なし。
 
 | ファイルパターン | server              | tauri               | 評価                                        |
 | ---------------- | ------------------- | ------------------- | ------------------------------------------- |
@@ -110,7 +110,7 @@
 
 ## Components（対応度: ~82%）
 
-leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #309 により主要な複合 UI の shared 化が進んだ。`media-sidebar`、`source-form-modal`、`upload-media-modal`、`media-card-item`、`media-grid-item` は `packages/ui` へ抽出済み。app 側は data/action adapter、link adapter、thumbnail renderer、platform 固有 path 注入へ縮退している。残る大きな未配置コンポーネントは move-copy / pro-search / AI tagging などの周辺 dialog 群。
+leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #309 / #314 により主要な複合 UI の shared 化が進んだ。`media-sidebar`、`source-form-modal`、`upload-media-modal`、`media-card-item`、`media-grid-item`、`move-copy-media-dialog`、`source-delete-modal`、`ai-tagging-modal` は `packages/ui` へ抽出済み。app 側は data/action adapter、link adapter、thumbnail renderer、platform 固有 path 注入へ縮退している。残る大きな未配置コンポーネントは pro-search 周辺 dialog 群（`pro-search-dialog.tsx` / `pro-search-builder.tsx` はすでに shared 化済み）。
 
 ### 対応あり（shared 化完了 or 近い）
 
@@ -118,7 +118,7 @@ leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #3
 | ----------------------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `nav.tsx`                                 | —                      | Tauri版がナビゲーションバーのマスター。serverのものをTauriに合わせること（例外）                                                                             |
 | `source-card.tsx`                         | ほぼ同一               | ほぼ同一                                                                                                                                                     |
-| `source-delete-modal.tsx`                 | ~51 / ~51              | 同一。`packages/ui` 未配置だが内容が同一                                                                                                                     |
+| `source-delete-modal.tsx`                 | ~51 / ~51              | `packages/ui/src/source-delete-modal.tsx` を共有。app 側は thin re-export wrapper のみ                                                                       |
 | `media/search-filters.tsx`                | —                      | `packages/ui/shared`                                                                                                                                         |
 | `media/preset-manager.tsx`                | —                      | `packages/ui/shared`                                                                                                                                         |
 | `media/association-manager.tsx`           | —                      | `packages/ui/shared`                                                                                                                                         |
@@ -128,22 +128,17 @@ leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #3
 | `media/media-list-actions.tsx`            | —                      | `packages/ui/src/media-list-actions.tsx` を新設。server / tauri で共有。差分は `presetClient` prop 注入のみ                                                  |
 | `media/media-viewer.tsx`                  | ~58 / ~96              | `packages/ui/src/media-viewer.tsx` を新設。`MediaSource` adapter pattern で shared 化。server/tauri は adapter 生成 + shared component 呼び出しに縮退        |
 | `media/thumbnail-image.tsx`               | ~70 / ~233             | `packages/ui/src/thumbnail-image.tsx` を新設。`ThumbnailSource` adapter pattern で shared 化。server/tauri は adapter 生成 + shared component 呼び出しに縮退 |
-| `media/media-sidebar-content.tsx`         | thin wrapper           | #298 / PR #311。`packages/ui/src/media-sidebar.tsx` を新設。app 側は data/action adapter 注入へ縮退                                              |
-| `source-form-modal-content.tsx`           | thin wrapper           | #299 / PR #311。`packages/ui/src/source-form-modal.tsx` を新設。validation / submit adapter の差分だけ app 側に残す                               |
-| `upload-media-modal-content.tsx`          | thin wrapper           | #300 / PR #311。`packages/ui/src/upload-media-modal.tsx` を新設。upload action / URL fetch adapter 注入へ縮退                                     |
-| `media/media-card-item.tsx`               | thin wrapper           | #309 / PR #311。`packages/ui/src/media-card-item.tsx` を新設。差分は `renderThumbnail`、link adapter、`sourceRootPath`、表示条件/class 注入に集約     |
-| `media/media-grid-item.tsx`               | thin wrapper           | #309 / PR #311。`packages/ui/src/media-grid-item.tsx` を新設。差分は `<a>` / `<Link>` link adapter、`renderThumbnail`、`sourceRootPath` 注入に集約   |
-| `media/pro-search-dialog.tsx`             | shared                 | `packages/ui/src/pro-search-dialog.tsx` を共有                                                                                                   |
-| `media/pro-search-builder.tsx`            | shared                 | `packages/ui/src/pro-search-builder.tsx` を共有                                                                                                  |
-| `media/search-control-panel.tsx`          | shared                 | `packages/ui/src/search-control-panel.tsx` を共有                                                                                                |
-| `media/sort-controls.tsx`                 | shared                 | `packages/ui/src/sort-controls.tsx` を共有                                                                                                      |
-
-### 重複が残る複合コンポーネント（`packages/ui` にない）
-
-| ファイル名                                          | 行数（server / tauri） | 評価                                                                                                                                          |
-| --------------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `media/move-copy-media-dialog.tsx`                  | ~116 / ~107            | ほぼ同一だが依然として `packages/ui` にない                                                                                                   |
-| `media/ai-tagging-modal.tsx`                        | ほぼ同一               | ほぼ同一だが `packages/ui` にない                                                                                                             |
+| `media/media-sidebar-content.tsx`         | thin wrapper           | #298 / PR #311。`packages/ui/src/media-sidebar.tsx` を新設。app 側は data/action adapter 注入へ縮退                                                          |
+| `source-form-modal-content.tsx`           | thin wrapper           | #299 / PR #311。`packages/ui/src/source-form-modal.tsx` を新設。validation / submit adapter の差分だけ app 側に残す                                          |
+| `upload-media-modal-content.tsx`          | thin wrapper           | #300 / PR #311。`packages/ui/src/upload-media-modal.tsx` を新設。upload action / URL fetch adapter 注入へ縮退                                                |
+| `media/media-card-item.tsx`               | thin wrapper           | #309 / PR #311。`packages/ui/src/media-card-item.tsx` を新設。差分は `renderThumbnail`、link adapter、`sourceRootPath`、表示条件/class 注入に集約            |
+| `media/media-grid-item.tsx`               | thin wrapper           | #309 / PR #311。`packages/ui/src/media-grid-item.tsx` を新設。差分は `<a>` / `<Link>` link adapter、`renderThumbnail`、`sourceRootPath` 注入に集約           |
+| `media/pro-search-dialog.tsx`             | shared                 | `packages/ui/src/pro-search-dialog.tsx` を共有                                                                                                               |
+| `media/pro-search-builder.tsx`            | shared                 | `packages/ui/src/pro-search-builder.tsx` を共有                                                                                                              |
+| `media/search-control-panel.tsx`          | shared                 | `packages/ui/src/search-control-panel.tsx` を共有                                                                                                            |
+| `media/sort-controls.tsx`                 | shared                 | `packages/ui/src/sort-controls.tsx` を共有                                                                                                                   |
+| `media/move-copy-media-dialog.tsx`        | ~116 / ~107            | `packages/ui/src/move-copy-media-dialog.tsx` を共有。app 側は `fetchMediaSources` adapter のみ                                                               |
+| `media/ai-tagging-modal.tsx`              | ほぼ同一               | `packages/ui/src/ai-tagging-modal.tsx` を共有。app 側は `fetchTags` adapter のみ。Tauri は file load + serverOrpc.ai.tag                                     |
 
 ### 片側のみ
 
@@ -314,24 +309,24 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 ## 共通化の優先度メモ（2026-05-01 更新 — #298〜#309 反映）
 
-| 優先度     | 領域                                            | 必要な作業                                                                                                                                   | 状態     |
-| ---------- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| **完了**   | **Components / media-sidebar-content.tsx**      | #298 / PR #311。`packages/ui/src/media-sidebar.tsx` へ抽出。app 側は data/action adapter 注入へ縮退                                           | 完了     |
-| **完了**   | **Components / source-form-modal-content.tsx**  | #299 / PR #311。`packages/ui/src/source-form-modal.tsx` へ抽出。差分は validation / submit adapter で吸収                                     | 完了     |
-| **完了**   | **Components / upload-media-modal-content.tsx** | #300 / PR #311。`packages/ui/src/upload-media-modal.tsx` へ抽出。ドラッグ&ドロップ、ファイル選択、衝突解決表示を共有                          | 完了     |
-| **完了**   | **Routes / search.tsx**                         | #301 / PR #312。filter query wiring、mobile dialog、refresh 戦略を `SearchScreen` / `useSearchPage` 側へ吸収                                 | 完了     |
-| **PR中**   | **Routes / sources/index.tsx**                  | #302 / PR #313。`use-sources-events.ts` へ event schema parse / relevance filter / invalidate / toast を集約                                 | 実装済み |
-| **完了**   | **Components / thumbnail-image.tsx**            | #304 / PR #310。HTTP retry vs local file + blob URL + runtime 購読を `ThumbnailSource` adapter pattern で抽象化                              | 完了     |
-| **完了**   | **Components / media-viewer.tsx**               | #305 / PR #310。HTTP source vs local file source を `MediaSource` adapter pattern で抽象化                                                    | 完了     |
-| **完了**   | **Hooks / use-batch-job-events.ts**             | #303 / PR #310。`SafeParseSchema` / `parseJsonEventPayload` / `parseEventPayload` を `packages/core/src/utils/event-parsers.ts` へ抽出       | 完了     |
-| **完了**   | **Routes / manager.tsx**                        | #307 / PR #312。query prefetch、action prop 組み立て、batch job event wiring を `useManagerPage` 側へ吸収                                     | 完了     |
-| **PR中**   | **Routes / source-media-page.tsx**              | #306 / PR #313。modal/dialog JSX 組み立てを `SourceMediaScreen` 側へ吸収。transport factory / sourceRootPath / thumbnail runtime は adapter 残し | 実装済み |
-| **一部完了** | **Components（その他）**                      | #309 / PR #311 で `media-card-item.tsx` / `media-grid-item.tsx` は shared 化済み。`move-copy-media-dialog.tsx` 等は未配置                     | 部分完了 |
-| **低**     | **Repositories**                                | 主要 CRUD は shared factory 化済み。残るは app-config 等 platform 固有 repository                                                            | ほぼ完了 |
-| **低**     | **Jobs**                                        | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るは transport / thumbnail I/O / watcher ingress        | 部分完了 |
-| **低**     | **Services**                                    | CRUD / media / backup / ai tagging は shared 化済み。残るは platform 固有 I/O（zip stream / HTTP URL / storage driver）とレガシーサービス    | ほぼ完了 |
-| **対象外** | **API Routes**                                  | 設計思想が異なるため共通化不要                                                                                                               | 該当なし |
-| **対象外** | **nav.tsx**                                     | Tauri 版をマスターとする例外。server 側は Tauri 版に寄せない                                                                                 | 該当なし |
+| 優先度     | 領域                                            | 必要な作業                                                                                                                                                                               | 状態     |
+| ---------- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
+| **完了**   | **Components / media-sidebar-content.tsx**      | #298 / PR #311。`packages/ui/src/media-sidebar.tsx` へ抽出。app 側は data/action adapter 注入へ縮退                                                                                      | 完了     |
+| **完了**   | **Components / source-form-modal-content.tsx**  | #299 / PR #311。`packages/ui/src/source-form-modal.tsx` へ抽出。差分は validation / submit adapter で吸収                                                                                | 完了     |
+| **完了**   | **Components / upload-media-modal-content.tsx** | #300 / PR #311。`packages/ui/src/upload-media-modal.tsx` へ抽出。ドラッグ&ドロップ、ファイル選択、衝突解決表示を共有                                                                     | 完了     |
+| **完了**   | **Routes / search.tsx**                         | #301 / PR #312。filter query wiring、mobile dialog、refresh 戦略を `SearchScreen` / `useSearchPage` 側へ吸収                                                                             | 完了     |
+| **完了**   | **Routes / sources/index.tsx**                  | #302 / PR #313 merged。`use-sources-events.ts` へ event schema parse / relevance filter / invalidate / toast を集約                                                                      | 完了     |
+| **完了**   | **Components / thumbnail-image.tsx**            | #304 / PR #310。HTTP retry vs local file + blob URL + runtime 購読を `ThumbnailSource` adapter pattern で抽象化                                                                          | 完了     |
+| **完了**   | **Components / media-viewer.tsx**               | #305 / PR #310。HTTP source vs local file source を `MediaSource` adapter pattern で抽象化                                                                                               | 完了     |
+| **完了**   | **Hooks / use-batch-job-events.ts**             | #303 / PR #310。`SafeParseSchema` / `parseJsonEventPayload` / `parseEventPayload` を `packages/core/src/utils/event-parsers.ts` へ抽出                                                   | 完了     |
+| **完了**   | **Routes / manager.tsx**                        | #307 / PR #312。query prefetch、action prop 組み立て、batch job event wiring を `useManagerPage` 側へ吸収                                                                                | 完了     |
+| **完了**   | **Routes / source-media-page.tsx**              | #306 / PR #313 merged。modal/dialog JSX 組み立てを `SourceMediaScreen` 側へ吸収。transport factory / sourceRootPath / thumbnail runtime は adapter 残し                                  | 完了     |
+| **完了**   | **Components（その他）**                        | #309 / PR #311 で `media-card-item.tsx` / `media-grid-item.tsx` は shared 化済み。#314 で `move-copy-media-dialog.tsx` / `source-delete-modal.tsx` / `ai-tagging-modal.tsx` を shared 化 | 完了     |
+| **低**     | **Repositories**                                | 主要 CRUD は shared factory 化済み。残るは app-config 等 platform 固有 repository                                                                                                        | ほぼ完了 |
+| **低**     | **Jobs**                                        | processMedia orchestration / download / tagging / watcher helper は shared 化済み。残るは transport / thumbnail I/O / watcher ingress                                                    | 部分完了 |
+| **低**     | **Services**                                    | CRUD / media / backup / ai tagging は shared 化済み。残るは platform 固有 I/O（zip stream / HTTP URL / storage driver）とレガシーサービス                                                | ほぼ完了 |
+| **対象外** | **API Routes**                                  | 設計思想が異なるため共通化不要                                                                                                                                                           | 該当なし |
+| **対象外** | **nav.tsx**                                     | Tauri 版をマスターとする例外。server 側は Tauri 版に寄せない                                                                                                                             | 該当なし |
 
 ## 保守メモ
 
@@ -350,7 +345,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - service は CRUD 系の shared 利用がほぼ完了。`source-service.ts` は shared `createSourceService` を使う形へ前進。`media-service.ts` は shared `packages/application/src/services/media-service.ts` を使う thin adapter に縮退し、`updateMedia`/`copyMedia`/`moveMedia`/`deleteMedia` の public contract を server 側に揃えた。`source-backup-service.ts` も shared `createBackupService` を使い、`_` プレフィックス付き内部メソッドの公開を削除。upload collision resolution algorithm も `packages/application/src/services/media-upload-utils.ts` に shared 化し、server / tauri 両側が `resolveUploadTargetPath` を利用。server 側 `server-media-storage.ts` と `download-jobs.ts` の独自実装を削除。残る未 shared 部分は zip 処理など platform 固有 I/O 層
 - jobs は worker 共有の段階を超え、download / tagging / watcher reconciliation / event publish contract / processMedia orchestration まで `packages/application` に寄った。未共通なのは transport と platform I/O の層
 
-## さらに厳しく見たときの未共通化ポイント（2026-05-01 更新 — #298〜#309 反映）
+## さらに厳しく見たときの未共通化ポイント（2026-05-01 更新 — #298〜#314 反映）
 
 ### 完了済み（直近 commonization wave）
 
@@ -364,23 +359,25 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 8. **Server / legacy `event-service.ts`** — #308 / PR #310。削除済み
 9. **Components / `media-card-item.tsx` / `media-grid-item.tsx`** — #309 / PR #311。adapter props で shared 化済み
 10. **Routes / `manager.tsx`** — #307 / PR #312。manager query / event wiring を shared hook 側へ集約済み
+11. **Routes / `sources/index.tsx`** — #302 / PR #313 merged。`use-sources-events.ts` に event schema parse、relevance filter、query invalidation、watcher-error toast を集約
+12. **Routes / `source-media-page.tsx`** — #306 / PR #313 merged。upload / move-copy modal JSX を `SourceMediaScreen` 側へ移動
+13. **Components / `move-copy-media-dialog.tsx`** — #314。`packages/ui/src/move-copy-media-dialog.tsx` へ抽出。app 側は `fetchMediaSources` adapter のみ
+14. **Components / `source-delete-modal.tsx`** — #314。`packages/ui/src/source-delete-modal.tsx` へ抽出。app 側は thin re-export wrapper のみ
+15. **Components / `ai-tagging-modal.tsx`** — #314。`packages/ui/src/ai-tagging-modal.tsx` へ抽出（presentational shared 化。`fetchTags` adapter は app 側に残す）
+16. **Queries / `projectsForMediaQueryOptions`** — #314。`packages/ui/src/query-options/projects-query.ts` に追加。MediaSidebar wrapper で利用
 
 ### PR中（実装済み・merge待ち）
 
-11. **Routes / `sources/index.tsx`** — #302 / PR #313。`use-sources-events.ts` に event schema parse、relevance filter、query invalidation、watcher-error toast を集約。route 側は transport injection へ縮退
-12. **Routes / `source-media-page.tsx`** — #306 / PR #313。upload / move-copy modal JSX を `SourceMediaScreen` 側へ移動。transport factory、Tauri `sourceRootPath`、`notifyThumbnailReady` は platform adapter として残る
+なし
 
 ### 残る中程度の未共通化ポイント
 
-13. **Components / `move-copy-media-dialog.tsx`** — ほぼ同一だが `packages/ui` に未配置。#306 で JSX wiring は `SourceMediaScreen` 側へ寄ったため、次は component 本体を shared 化できる
-14. **Components / `ai-tagging-modal.tsx`** — ほぼ同一だが `packages/ui` に未配置
-15. **Source-media transport factory** — `createServerTransport` / `createTauriTransport` は platform transport 差分として route に残る。完全共通化対象ではないが、型と payload normalize は shared helper に寄せる余地あり
+- **Source-media transport factory** — `createServerTransport` / `createTauriTransport` は platform transport 差分として route に残る。完全共通化対象ではないが、型と payload normalize は shared helper に寄せる余地あり
 
 ### 軽微（現状維持可）
 
 - `media-card-item.tsx` / `media-grid-item.tsx` — #309で shared化済み。差分は link adapter / thumbnail renderer / `sourceRootPath` 注入のみ
 - `nav.tsx` — Tauri 版をマスターとする例外。server 側は Tauri 版に寄せない方針
-- `move-copy-media-dialog.tsx` / `pro-search-dialog.tsx` / `ai-tagging-modal.tsx` 等 — 内容はほぼ同一だが `packages/ui` に未配置。優先度は低い
 
 ### services / jobs / repositories
 
@@ -388,17 +385,17 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - jobs: worker / runner / orchestration は shared 化済み。残るは transport / thumbnail I/O / watcher ingress。評価 ~85% は妥当
 - repositories: 主要 CRUD は shared factory 化済み。残るは app-config 等 platform 固有 repository。評価 ~90% は妥当
 
-## 再監査メモ（2026-05-01 — #298〜#309 commonization wave 後）
+## 再監査メモ（2026-05-01 — #298〜#314 commonization wave 後）
 
-- **Routes**: #301 / #307 により `search.tsx` と `manager.tsx` は thin wrapper 化済み。#302 / #306 は PR #313 で実装済み・merge待ち。PR #313 反映後の `sources/index.tsx` は event transport 注入中心、`source-media-page.tsx` は modal/dialog JSX 重複を解消し transport / `sourceRootPath` / thumbnail runtime adapter が主な差分。実態評価は **~86%**
-- **Components**: #298 / #299 / #300 / #304 / #305 / #309 により、media-sidebar、source-form-modal、upload-media-modal、thumbnail-image、media-viewer、media-card-item、media-grid-item を `packages/ui` へ抽出。残る主な未配置は move-copy / pro-search / AI tagging 等の dialog 群。実態評価は **~82%**
-- **Hooks**: #303 で parser utility 重複を core へ抽出。#302 / PR #313 で sources event parse/filter/state update を `use-sources-events.ts` へ抽出。残る差分は app 別 transport wrapper と source-media 詳細の payload normalize 層。実態評価は **~88%**
-- **Queries**: PR #297 で shared 化。双方 4-7行の thin wrapper に縮退。実態評価 **~95%** — これだけは本当にできている
+- **Routes**: #301 / #307 により `search.tsx` と `manager.tsx` は thin wrapper 化済み。#302 / #306 は PR #313 merged。`sources/index.tsx` は event transport 注入中心、`source-media-page.tsx` は modal/dialog JSX 重複を解消し transport / `sourceRootPath` / thumbnail runtime adapter が主な差分。実態評価は **~90%**
+- **Components**: #298 / #299 / #300 / #304 / #305 / #309 / #314 により、media-sidebar、source-form-modal、upload-media-modal、thumbnail-image、media-viewer、media-card-item、media-grid-item、move-copy-media-dialog、source-delete-modal、ai-tagging-modal を `packages/ui` へ抽出。残る主な未配置コンポーネントはほぼない。実態評価は **~90%**
+- **Hooks**: #303 で parser utility 重複を core へ抽出。#302 / PR #313 で sources event parse/filter/state update を `use-sources-events.ts` へ抽出。残る差分は app 別 transport wrapper と source-media 詳細の payload normalize 層。実態評価は **~90%**
+- **Queries**: PR #297 + #314 で shared 化。`authors` / `characters` / `config` / `ips` / `media-details` / `projects`（+ `projectsForMedia`）/ `sources` / `tags` の 9 クエリが thin wrapper 化。実態評価 **~96%**
 - **Repositories**: 自己評価 ~92% は概ね正しい。主要 CRUD は shared factory 化済み。実態評価 **~90%**
 - **Services**: 自己評価 ~95% はやや過大評価。CRUD / media / backup / ai tagging は shared 化されたが、tauri 側 local-api adapter は依然として大きい。実態評価 **~85%**
 - **Jobs**: 自己評価 ~85% は概ね正しい。worker / runner / orchestration は shared 化済み。実態評価 **~85%**
 
-**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#309 の wave で最大重複だった routes/components は大きく改善したが、PR #313 merge 前の記述と、周辺 dialog 群の shared 化状況は継続監視する。
+**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#314 の wave で routes / components / queries は大幅に改善し、残る主な未共通化ポイントは transport / platform I/O 層に限定された。
 
 ## 前回からの主な変更点（2026-05-01更新 — #298〜#309 commonization wave）
 
@@ -516,15 +513,15 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 | ファイル                  | 配置先                                  | 役割                                                                                                       |
 | ------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `media-sidebar.tsx`       | `packages/ui/src/`                      | media sidebar のフォーム、タグ編集、関連付け、メタデータ表示を shared 化                                  |
+| `media-sidebar.tsx`       | `packages/ui/src/`                      | media sidebar のフォーム、タグ編集、関連付け、メタデータ表示を shared 化                                   |
 | `source-form-modal.tsx`   | `packages/ui/src/`                      | source form modal 本体を shared 化。app 側は validation / submit adapter を注入                            |
 | `upload-media-modal.tsx`  | `packages/ui/src/`                      | upload modal のファイル選択、D&D、衝突解決 UI を shared 化                                                 |
-| `media-card-item.tsx`     | `packages/ui/src/`                      | media card item を shared 化。link / thumbnail / sourceRootPath は adapter 注入                             |
-| `media-grid-item.tsx`     | `packages/ui/src/`                      | media grid item を shared 化。link / thumbnail / sourceRootPath は adapter 注入                             |
+| `media-card-item.tsx`     | `packages/ui/src/`                      | media card item を shared 化。link / thumbnail / sourceRootPath は adapter 注入                            |
+| `media-grid-item.tsx`     | `packages/ui/src/`                      | media grid item を shared 化。link / thumbnail / sourceRootPath は adapter 注入                            |
 | `thumbnail-image.tsx`     | `packages/ui/src/`                      | `ThumbnailSource` adapter pattern による thumbnail rendering の shared 化                                  |
 | `media-viewer.tsx`        | `packages/ui/src/`                      | `MediaSource` adapter pattern による image/video/audio viewer の shared 化                                 |
 | `use-sources-events.ts`   | `packages/ui/src/hooks/`                | sources 一覧 event の schema parse、relevance filter、invalidate、watcher-error toast を shared 化         |
-| `event-parsers.ts`        | `packages/core/src/utils/`              | `SafeParseSchema` / JSON event payload parser の shared utility                                             |
+| `event-parsers.ts`        | `packages/core/src/utils/`              | `SafeParseSchema` / JSON event payload parser の shared utility                                            |
 | `media-upload-utils.ts`   | `packages/application/src/services/`    | upload collision resolution algorithm、path safety check、normalize                                        |
 | `backup-orchestration.ts` | `packages/application/src/services/`    | `ImportSourceZipInput` / `ImportSourceZipResult` schema、backup 引数統一                                   |
 | `tag-persistence.ts`      | `packages/application/src/services/`    | AI tagging 結果（tag / character / IP）の永続化ロジック                                                    |

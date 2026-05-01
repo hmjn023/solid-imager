@@ -14,11 +14,7 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import {
-	getSearchCondition,
-	searchState,
-	setSearchState,
-} from "~/presentation/store/search-store";
+import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
 	loader: async ({ context }) => {
@@ -77,10 +73,7 @@ function SearchRoute() {
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media) => (
-				<MediaGridItem
-					media={media}
-					sourceRootPath={page.getSourceRootPath(media.mediaSourceId)}
-				/>
+				<MediaGridItem media={media} sourceRootPath={page.getSourceRootPath(media.mediaSourceId)} />
 			)}
 			renderNavActions={({ openMobileFilters }) => (
 				<div class="md:hidden">
