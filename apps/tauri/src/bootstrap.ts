@@ -1,6 +1,9 @@
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { IFileSystem } from "@solid-imager/core/interfaces/file-system";
-import { createTauriApiClient, type TauriApiClient } from "./infrastructure/api/tauri-api-client";
+import {
+	createTauriApiClient,
+	type TauriApiClient,
+} from "./infrastructure/api/tauri-api-client";
 import { initializeTauriDb, type TauriDb } from "./infrastructure/db/client";
 import {
 	createTauriCommandClient,

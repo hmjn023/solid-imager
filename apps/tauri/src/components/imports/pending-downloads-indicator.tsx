@@ -13,12 +13,23 @@ export function PendingDownloadsIndicator() {
 			cancelPending={cancelPendingImports}
 			listPending={listPendingImports}
 			listSources={fetchMediaSources}
-			processPending={(jobIds, targetSourceId) => processPendingImports(jobIds, targetSourceId)}
+			processPending={(jobIds, targetSourceId) =>
+				processPendingImports(jobIds, targetSourceId)
+			}
 			subscribeImportEvents={async (handler) => {
 				const callbacks = await Promise.all([
-					listen("import-request:created", (event) => void handler(event.event, event.payload)),
-					listen("import-request:processed", (event) => void handler(event.event, event.payload)),
-					listen("import-request:deleted", (event) => void handler(event.event, event.payload)),
+					listen(
+						"import-request:created",
+						(event) => void handler(event.event, event.payload),
+					),
+					listen(
+						"import-request:processed",
+						(event) => void handler(event.event, event.payload),
+					),
+					listen(
+						"import-request:deleted",
+						(event) => void handler(event.event, event.payload),
+					),
 				]);
 
 				return () => {

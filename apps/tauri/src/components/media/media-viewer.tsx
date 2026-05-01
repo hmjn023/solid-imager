@@ -1,8 +1,11 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import {
+	type MediaSource,
+	MediaViewer as SharedMediaViewer,
+} from "@solid-imager/ui/media-viewer";
 import { createMemo } from "solid-js";
 import { getTauriAppServices } from "~/app-services";
 import { joinLocalPath } from "~/infrastructure/path-utils";
-import { MediaViewer as SharedMediaViewer, type MediaSource } from "@solid-imager/ui/media-viewer";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",
@@ -21,7 +24,9 @@ const MIME_BY_EXTENSION: Record<string, string> = {
 
 function resolveMimeType(fileName: string) {
 	const extension = fileName.split(".").pop()?.toLowerCase();
-	return (extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream";
+	return (
+		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
+	);
 }
 
 class LocalMediaSource implements MediaSource {
@@ -33,7 +38,11 @@ class LocalMediaSource implements MediaSource {
 		private sourceRootPath: string | null,
 	) {
 		this.type =
-			media.mediaType === "video" ? "video" : media.mediaType === "audio" ? "audio" : "image";
+			media.mediaType === "video"
+				? "video"
+				: media.mediaType === "audio"
+					? "audio"
+					: "image";
 	}
 
 	async getUrl() {
@@ -68,7 +77,9 @@ type MediaViewerProps = {
 };
 
 export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(() => new LocalMediaSource(props.media, props.sourceRootPath ?? null));
+	const source = createMemo(
+		() => new LocalMediaSource(props.media, props.sourceRootPath ?? null),
+	);
 
 	return (
 		<SharedMediaViewer

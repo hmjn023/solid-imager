@@ -5,6 +5,7 @@ import { createMemo } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
+import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
 	copyMedia,
@@ -26,7 +27,6 @@ import {
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
 import {
 	getSearchCondition,

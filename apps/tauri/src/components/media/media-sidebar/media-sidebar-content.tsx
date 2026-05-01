@@ -1,11 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
-import {
-	allProjectsQueryOptions,
-	projectsForMediaQueryOptions,
-} from "~/infrastructure/api-clients/queries/projects-query";
 import { getTauriAppServices } from "~/app-services";
 import {
 	addCharacterToMedia,
@@ -23,6 +17,12 @@ import {
 	createProject,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
+import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import {
+	allProjectsQueryOptions,
+	projectsForMediaQueryOptions,
+} from "~/infrastructure/api-clients/queries/projects-query";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 import { AiTaggingModal } from "../ai-tagging-modal";
 

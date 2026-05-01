@@ -84,7 +84,9 @@ export function initServices() {
 	});
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(serverConfigService.getConfig());
-	serverConfigService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
+	serverConfigService.onChange((newConfig) =>
+		jobWorker.updateConfig(newConfig),
+	);
 
 	services.registerJobWorker(jobWorker);
 

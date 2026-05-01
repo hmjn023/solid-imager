@@ -26,19 +26,28 @@ export function useBatchJobEvents(
 
 		const unlistenPromises = [
 			listen("job-progress", (event) => {
-				const result = parseEventPayload<JobProgressEvent>(event.payload, jobProgressEventSchema);
+				const result = parseEventPayload<JobProgressEvent>(
+					event.payload,
+					jobProgressEventSchema,
+				);
 				if (result.ok && result.data.jobId === jobId) {
 					handlers.handleJobProgress(result.data);
 				}
 			}),
 			listen("job-completed", (event) => {
-				const result = parseEventPayload<JobCompletedEvent>(event.payload, jobCompletedEventSchema);
+				const result = parseEventPayload<JobCompletedEvent>(
+					event.payload,
+					jobCompletedEventSchema,
+				);
 				if (result.ok && result.data.jobId === jobId) {
 					handlers.handleJobCompleted(result.data);
 				}
 			}),
 			listen("job-failed", (event) => {
-				const result = parseEventPayload<JobFailedEvent>(event.payload, jobFailedEventSchema);
+				const result = parseEventPayload<JobFailedEvent>(
+					event.payload,
+					jobFailedEventSchema,
+				);
 				if (result.ok && result.data.jobId === jobId) {
 					handlers.handleJobFailed(result.data);
 				}

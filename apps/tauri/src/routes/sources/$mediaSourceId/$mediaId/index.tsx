@@ -4,9 +4,9 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
+import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
-import { createTauriTransport } from "~/hooks/use-media-source-events";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {

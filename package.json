@@ -13,9 +13,9 @@
 		"build:tauri": "bun --filter @solid-imager/tauri build",
 		"start": "bun --filter @solid-imager/server start",
 		"ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
-		"lint": "vp run lint",
-		"check": "vp run check",
-		"format": "vp run format",
+		"lint": "biome lint",
+		"check": "biome check --fix --unsafe",
+		"format": "biome format --fix",
 		"test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/application test && bun run --cwd packages/ui test",
 		"typecheck": "bun --filter '*' typecheck",
 		"prepare": "vp config"

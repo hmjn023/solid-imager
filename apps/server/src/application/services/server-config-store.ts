@@ -1,9 +1,7 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { deepMerge } from "@solid-imager/application/utils/config-merge";
-import type { ConfigStore } from "@solid-imager/application/services/config-service";
 import {
 	type AppConfig,
 	AppConfigSchema,
@@ -49,10 +47,7 @@ export function createServerConfigStore(configPath: string): {
 				}
 			} else {
 				logger.info("config.json not found, creating default");
-				fs.writeFileSync(
-					configPath,
-					JSON.stringify(defaultAppConfig, null, 2),
-				);
+				fs.writeFileSync(configPath, JSON.stringify(defaultAppConfig, null, 2));
 				fileContent = defaultAppConfig;
 			}
 

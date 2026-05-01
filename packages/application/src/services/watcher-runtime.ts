@@ -15,7 +15,10 @@ export type WatcherChangeMetadata = {
 };
 
 export type WatcherDeleteDeps = {
-	findByPath(mediaSourceId: string, relativePath: string): Promise<WatcherMediaRecord | null>;
+	findByPath(
+		mediaSourceId: string,
+		relativePath: string,
+	): Promise<WatcherMediaRecord | null>;
 	deleteMedia(mediaId: string): Promise<void>;
 	deleteThumbnail?(mediaSourceId: string, mediaId: string): Promise<void>;
 	events: Pick<MediaSourceEventPublisher, "mediaDeleted">;
@@ -23,12 +26,18 @@ export type WatcherDeleteDeps = {
 };
 
 export type WatcherDeleteDirectoryDeps = {
-	deleteByPathPrefix(mediaSourceId: string, relativePath: string): Promise<WatcherMediaRecord[]>;
+	deleteByPathPrefix(
+		mediaSourceId: string,
+		relativePath: string,
+	): Promise<WatcherMediaRecord[]>;
 	events: Pick<MediaSourceEventPublisher, "mediaDeleted">;
 };
 
 export type WatcherChangeDeps = {
-	findByPath(mediaSourceId: string, relativePath: string): Promise<WatcherMediaRecord | null>;
+	findByPath(
+		mediaSourceId: string,
+		relativePath: string,
+	): Promise<WatcherMediaRecord | null>;
 	updateMedia(mediaId: string, data: WatcherChangeMetadata): Promise<void>;
 	queueProcessMedia(input: {
 		jobRepo: ProcessMediaJobRepository;
@@ -46,7 +55,8 @@ export async function deleteWatchedFile(
 	relativePath: string,
 	deps: WatcherDeleteDeps,
 ): Promise<boolean> {
-	const existing = deps.existing ?? (await deps.findByPath(mediaSourceId, relativePath));
+	const existing =
+		deps.existing ?? (await deps.findByPath(mediaSourceId, relativePath));
 	if (!existing) {
 		return false;
 	}
@@ -67,7 +77,10 @@ export async function deleteWatchedDirectory(
 	relativePath: string,
 	deps: WatcherDeleteDirectoryDeps,
 ): Promise<number> {
-	const deletedRecords = await deps.deleteByPathPrefix(mediaSourceId, relativePath);
+	const deletedRecords = await deps.deleteByPathPrefix(
+		mediaSourceId,
+		relativePath,
+	);
 	for (const record of deletedRecords) {
 		await deps.events.mediaDeleted({
 			mediaSourceId,

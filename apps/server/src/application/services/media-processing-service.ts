@@ -9,6 +9,7 @@ import path from "node:path";
 import type { JobRecord } from "@solid-imager/application/ports/job-repository";
 import { updateMediaContextMetadata } from "@solid-imager/application/services/media-context-metadata";
 import { runProcessMediaJob } from "@solid-imager/application/services/process-media-runner";
+import type { IConfigService } from "@solid-imager/core";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	Media,
@@ -24,7 +25,6 @@ import type { SourceRepository } from "@solid-imager/core/domain/repositories/so
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
-import type { IConfigService } from "@solid-imager/core";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";

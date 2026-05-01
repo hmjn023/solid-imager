@@ -2,7 +2,10 @@ import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { describe, expect, it, vi } from "vite-plus/test";
 import type { JobRecord } from "../ports/job-repository";
 import { BackgroundJobsCoordinator } from "../services/background-jobs-coordinator";
-import { createJobDispatcher, executeDeferredActions } from "../services/job-runtime";
+import {
+	createJobDispatcher,
+	executeDeferredActions,
+} from "../services/job-runtime";
 
 function makeJob(id: string, type: string): JobRecord {
 	const now = new Date();
@@ -38,10 +41,18 @@ describe("job-runtime", () => {
 		await dispatcher(makeJob("job-3", "auto_tagging"));
 		await dispatcher(makeJob("job-4", "bulk_tagging_dispatch"));
 
-		expect(processMedia).toHaveBeenCalledWith(expect.objectContaining({ id: "job-1" }));
-		expect(downloadImage).toHaveBeenCalledWith(expect.objectContaining({ id: "job-2" }));
-		expect(autoTagging).toHaveBeenCalledWith(expect.objectContaining({ id: "job-3" }));
-		expect(bulkDispatch).toHaveBeenCalledWith(expect.objectContaining({ id: "job-4" }));
+		expect(processMedia).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-1" }),
+		);
+		expect(downloadImage).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-2" }),
+		);
+		expect(autoTagging).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-3" }),
+		);
+		expect(bulkDispatch).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "job-4" }),
+		);
 	});
 
 	it("enqueues deferred jobs and publishes deferred events", async () => {

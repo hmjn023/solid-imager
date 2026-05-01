@@ -23,7 +23,9 @@ describe("media-processing-job", () => {
 
 	it("rejects payloads missing required fields", () => {
 		expect(parseMediaProcessingJobPayload({ mediaId: "media-id" })).toBeNull();
-		expect(parseMediaProcessingJobPayload({ sourcePath: "/source" })).toBeNull();
+		expect(
+			parseMediaProcessingJobPayload({ sourcePath: "/source" }),
+		).toBeNull();
 		expect(parseMediaProcessingJobPayload(null)).toBeNull();
 	});
 

@@ -46,8 +46,12 @@ export class MaintenanceService {
 	private readonly mediaRepository: MaintenanceMediaRepository;
 	private readonly sourceRepository: MaintenanceSourceRepository;
 	private readonly jobRepository: MaintenanceJobRepository;
-	private readonly listExistingThumbnailIds: (sourceId: string) => Promise<Set<string> | null>;
-	private readonly afterJobsQueued: ((sourceIds: string[]) => Promise<void> | void) | undefined;
+	private readonly listExistingThumbnailIds: (
+		sourceId: string,
+	) => Promise<Set<string> | null>;
+	private readonly afterJobsQueued:
+		| ((sourceIds: string[]) => Promise<void> | void)
+		| undefined;
 	private readonly logger: MaintenanceLogger | undefined;
 	private readonly thumbnailBatchSize: number;
 	private readonly enqueueChunkSize: number;
@@ -67,8 +71,10 @@ export class MaintenanceService {
 		this.listExistingThumbnailIds = listExistingThumbnailIds;
 		this.afterJobsQueued = afterJobsQueued;
 		this.logger = logger;
-		this.thumbnailBatchSize = options?.thumbnailBatchSize ?? DEFAULT_THUMBNAIL_BATCH_SIZE;
-		this.enqueueChunkSize = options?.enqueueChunkSize ?? DEFAULT_ENQUEUE_CHUNK_SIZE;
+		this.thumbnailBatchSize =
+			options?.thumbnailBatchSize ?? DEFAULT_THUMBNAIL_BATCH_SIZE;
+		this.enqueueChunkSize =
+			options?.enqueueChunkSize ?? DEFAULT_ENQUEUE_CHUNK_SIZE;
 	}
 
 	async performStartupChecks(): Promise<void> {
@@ -84,7 +90,8 @@ export class MaintenanceService {
 
 	private async queueMissingMetadata() {
 		try {
-			const missing = await this.mediaRepository.findIdsWithMissingGenerationInfo();
+			const missing =
+				await this.mediaRepository.findIdsWithMissingGenerationInfo();
 			if (missing.length === 0) {
 				return;
 			}
@@ -97,7 +104,10 @@ export class MaintenanceService {
 				steps: ["extractMetadata", "queueAutoTagging"],
 			});
 		} catch (error) {
-			this.logger?.error?.({ err: error }, "Failed to queue missing metadata jobs");
+			this.logger?.error?.(
+				{ err: error },
+				"Failed to queue missing metadata jobs",
+			);
 		}
 	}
 
@@ -107,10 +117,13 @@ export class MaintenanceService {
 			let hasMore = true;
 
 			while (hasMore) {
-				const batch = await this.mediaRepository.findAllMediaIndices(undefined, {
-					limit: this.thumbnailBatchSize,
-					offset,
-				});
+				const batch = await this.mediaRepository.findAllMediaIndices(
+					undefined,
+					{
+						limit: this.thumbnailBatchSize,
+						offset,
+					},
+				);
 
 				if (batch.length === 0) {
 					hasMore = false;
@@ -135,7 +148,10 @@ export class MaintenanceService {
 				}
 			}
 		} catch (error) {
-			this.logger?.error?.({ err: error }, "Failed to queue missing thumbnail jobs");
+			this.logger?.error?.(
+				{ err: error },
+				"Failed to queue missing thumbnail jobs",
+			);
 		}
 	}
 
@@ -219,7 +235,10 @@ export class MaintenanceService {
 						});
 						return created ? item.mediaSourceId : null;
 					} catch (err) {
-						this.logger?.error?.({ err, mediaId: item.id }, "Failed to queue media process job");
+						this.logger?.error?.(
+							{ err, mediaId: item.id },
+							"Failed to queue media process job",
+						);
 						return null;
 					}
 				}),

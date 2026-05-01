@@ -23,7 +23,9 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 	);
 
 	const sourceOptions = () =>
-		(sources() || []).flatMap((s) => (s.id ? [{ id: s.id, name: s.name }] : []));
+		(sources() || []).flatMap((s) =>
+			s.id ? [{ id: s.id, name: s.name }] : [],
+		);
 
 	return (
 		<SharedMoveCopyMediaDialog

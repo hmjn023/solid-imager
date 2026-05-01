@@ -1,5 +1,9 @@
 import type { UserRepository } from "@solid-imager/core/domain/repositories/user-repository";
-import type { NewUser, UpdateUser, User } from "@solid-imager/core/domain/users/schemas";
+import type {
+	NewUser,
+	UpdateUser,
+	User,
+} from "@solid-imager/core/domain/users/schemas";
 
 export type UserService = ReturnType<typeof createUserService>;
 

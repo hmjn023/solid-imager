@@ -16,6 +16,7 @@ import { emit } from "@tauri-apps/api/event";
 import { getTauriAppServices } from "~/app-services";
 import { TauriMediaRepository } from "~/infrastructure/local-api/repositories/media-repository";
 import { TauriJobRepository } from "~/infrastructure/local-api/repositories/tauri-job-repository";
+import { fetchMediaSource } from "../api-clients/sources-api";
 import {
 	basename,
 	dirname,
@@ -23,7 +24,6 @@ import {
 	joinLocalPath,
 	toRelativePath,
 } from "../path-utils";
-import { fetchMediaSource } from "../api-clients/sources-api";
 
 function resolveDownloadTarget(item: DownloadItem) {
 	if (item.targetUrl) {
@@ -51,7 +51,11 @@ export async function enqueueDownloadJobs(
 	targetSourceId: string,
 	items: DownloadItem[],
 ): Promise<number> {
-	return await queueSharedDownloadJobs(TauriJobRepository, targetSourceId, items);
+	return await queueSharedDownloadJobs(
+		TauriJobRepository,
+		targetSourceId,
+		items,
+	);
 }
 
 export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {

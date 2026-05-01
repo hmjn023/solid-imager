@@ -1,5 +1,8 @@
 import { createAuthorService } from "@solid-imager/application/services/author-service";
-import type { Author, NewAuthor } from "@solid-imager/core/domain/media/schemas";
+import type {
+	Author,
+	NewAuthor,
+} from "@solid-imager/core/domain/media/schemas";
 import { TauriAuthorRepository } from "../repositories/author-repository";
 
 const authorService = createAuthorService(TauriAuthorRepository);
@@ -17,7 +20,10 @@ export const TauriAuthorService = {
 		return await authorService.create(input);
 	},
 
-	async update(id: string, input: Partial<Pick<Author, "name" | "accountId">>): Promise<Author> {
+	async update(
+		id: string,
+		input: Partial<Pick<Author, "name" | "accountId">>,
+	): Promise<Author> {
 		return await authorService.update(id, input);
 	},
 

@@ -9,7 +9,10 @@ import { TauriSourceBackupService } from "~/infrastructure/local-api/services/so
 import { enqueueDownloadJobs } from "../jobs/download-jobs";
 import { tauriJobQueue } from "../jobs/tauri-job-queue";
 
-async function emitImportEvent(event: string, payload: Record<string, unknown>) {
+async function emitImportEvent(
+	event: string,
+	payload: Record<string, unknown>,
+) {
 	await emit(event, payload);
 }
 
@@ -28,11 +31,15 @@ const importRequestService = createImportRequestService({
 		await TauriSourceBackupService.findMediaSourceForFile(filePath),
 	restoreSource: async (sourceId, items) =>
 		await TauriSourceBackupService.restoreSource(sourceId, items),
-	executeImport: async (targetSourceId, items) => await executeImport(targetSourceId, items),
+	executeImport: async (targetSourceId, items) =>
+		await executeImport(targetSourceId, items),
 	publishImportEvent: emitImportEvent,
 });
 
-export async function bulkAddImportItems(items: DownloadItem[], targetSourceId?: string) {
+export async function bulkAddImportItems(
+	items: DownloadItem[],
+	targetSourceId?: string,
+) {
 	return await importRequestService.bulkAddImportItems(items, targetSourceId);
 }
 
@@ -40,8 +47,14 @@ export async function listPendingImports(): Promise<PendingImportJob[]> {
 	return await importRequestService.listPendingImports();
 }
 
-export async function processPendingImports(jobIds: string[], targetSourceId?: string) {
-	return await importRequestService.processPendingImports(jobIds, targetSourceId);
+export async function processPendingImports(
+	jobIds: string[],
+	targetSourceId?: string,
+) {
+	return await importRequestService.processPendingImports(
+		jobIds,
+		targetSourceId,
+	);
 }
 
 export async function cancelPendingImports(jobIds: string[]) {

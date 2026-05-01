@@ -143,7 +143,7 @@ These commands map to their corresponding tools. For example, `vp dev --port 300
 ## Common Pitfalls
 
 - **Using the package manager directly:** Do not use pnpm, npm, or Yarn directly. Vite+ can handle all package manager operations.
-- **Always use Vite commands to run tools:** Don't attempt to run `vp vitest` or `vp oxlint`. They do not exist. Use `vp test` and `vp lint` instead.
+- **Lint/Format:** This project uses **Biome** for linting and formatting, not Oxlint/Oxfmt. Do not run `vp check`, `vp lint`, or `vp fmt` directly — they invoke Oxlint/Oxfmt and will conflict with Biome. Use `bun run check` / `bun run lint` / `bun run format` instead.
 - **Running scripts:** Vite+ built-in commands (`vp dev`, `vp build`, `vp test`, etc.) always run the Vite+ built-in tool, not any `package.json` script of the same name. To run a custom script that shares a name with a built-in command, use `vp run <script>`. For example, if you have a custom `dev` script that runs multiple services concurrently, run it with `vp run dev`, not `vp dev` (which always starts Vite's dev server).
 - **Do not install Vitest, Oxlint, Oxfmt, or tsdown directly:** Vite+ wraps these tools. They must not be installed directly. You cannot upgrade these tools by installing their latest versions. Always use Vite+ commands.
 - **Use Vite+ wrappers for one-off binaries:** Use `vp dlx` instead of package-manager-specific `dlx`/`npx` commands.
@@ -158,12 +158,12 @@ For GitHub Actions, consider using [`voidzero-dev/setup-vp`](https://github.com/
 - uses: voidzero-dev/setup-vp@v1
   with:
     cache: true
-- run: vp check
-- run: vp test
+- run: bun run check
+- run: bun run test
 ```
 
 ## Review Checklist for Agents
 
 - [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to validate changes.
+- [ ] Run `bun run check` and `bun run test` to validate changes.
 <!--VITE PLUS END-->

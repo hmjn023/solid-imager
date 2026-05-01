@@ -64,7 +64,9 @@ describe("ConfigService", () => {
 
 		loadServerConfig();
 
-		expect(serverConfigService.getConfig().downloads).toEqual(defaultAppConfig.downloads);
+		expect(serverConfigService.getConfig().downloads).toEqual(
+			defaultAppConfig.downloads,
+		);
 		expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
 			"config.json",
@@ -97,7 +99,8 @@ describe("ConfigService", () => {
 		loadServerConfig();
 
 		expect(
-			serverConfigService.getConfig().media.tagExtraction.comfyui.positiveNodeTypes,
+			serverConfigService.getConfig().media.tagExtraction.comfyui
+				.positiveNodeTypes,
 		).toEqual(["TestNode"]);
 	});
 
@@ -141,7 +144,9 @@ describe("ConfigService", () => {
 
 		// Try setting invalid type (string for number)
 		await expect(
-			serverConfigService.updateConfig({ jobs: { concurrency: "invalid" } } as any),
+			serverConfigService.updateConfig({
+				jobs: { concurrency: "invalid" },
+			} as any),
 		).rejects.toThrow();
 	});
 });
