@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み）
+最終更新: 2026-05-01（#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み）
 
 ## このページの使い方
 
@@ -365,6 +365,12 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 14. **Components / `source-delete-modal.tsx`** — #314。`packages/ui/src/source-delete-modal.tsx` へ抽出。app 側は thin re-export wrapper のみ
 15. **Components / `ai-tagging-modal.tsx`** — #314。`packages/ui/src/ai-tagging-modal.tsx` へ抽出（presentational shared 化。`fetchTags` adapter は app 側に残す）
 16. **Queries / `projectsForMediaQueryOptions`** — #314。`packages/ui/src/query-options/projects-query.ts` に追加。MediaSidebar wrapper で利用
+17. **Components / `media-sidebar-content.tsx` wrapper** — #316 / PR #316。`packages/ui/src/media-sidebar-content.tsx` を新設。query wiring (projects/characters/IPs) と action handlers を shared 化。app 側は `aiTaggingModal` render prop 注入のみ
+18. **Routes / `media-detail-page.tsx`** — #316 / PR #316。`packages/ui/src/screens/media-detail-screen.tsx` を新設。`mediaDetails` query + `useMediaSourceEvents` wiring + layout を shared 化。app 側は `renderMediaViewer` / `renderMediaSidebar` prop 注入のみ
+19. **Components / `upload-media-modal-content.tsx` wrapper** — #316 / PR #316。`packages/ui/src/upload-media-modal-content.tsx` を新設。`handleUploadStart` batch mapping を shared 化。app 側は `onFetchUrl` prop 注入のみ
+20. **Routes / `source-media-page.tsx` orchestration** — #316 / PR #316。`packages/ui/src/source-media-page.tsx` を新設。`useSourceMediaPage` + query wiring + `renderActions` を shared 化。app 側は transport factory のみ
+21. **Utils / `preset-client.ts`** — #316 / PR #316。`packages/ui/src/preset-client.ts` を新設。`createPresetClient` factory で `orpc.presets.*` の passthrough を shared 化
+22. **Hooks / transport factory** — #316 / PR #316。`createServerTransport` / `createTauriTransport` を `apps/{server,tauri}/src/hooks/use-media-source-events.ts` から export し、route ファイル（4箇所）で再利用
 
 ### PR中（実装済み・merge待ち）
 
@@ -372,7 +378,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 ### 残る中程度の未共通化ポイント
 
-- **Source-media transport factory** — `createServerTransport` / `createTauriTransport` は platform transport 差分として route に残る。完全共通化対象ではないが、型と payload normalize は shared helper に寄せる余地あり
+なし
 
 ### 軽微（現状維持可）
 
@@ -385,17 +391,26 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 - jobs: worker / runner / orchestration は shared 化済み。残るは transport / thumbnail I/O / watcher ingress。評価 ~85% は妥当
 - repositories: 主要 CRUD は shared factory 化済み。残るは app-config 等 platform 固有 repository。評価 ~90% は妥当
 
-## 再監査メモ（2026-05-01 — #298〜#314 commonization wave 後）
+## 再監査メモ（2026-05-01 — #298〜#316 commonization wave 後）
 
-- **Routes**: #301 / #307 により `search.tsx` と `manager.tsx` は thin wrapper 化済み。#302 / #306 は PR #313 merged。`sources/index.tsx` は event transport 注入中心、`source-media-page.tsx` は modal/dialog JSX 重複を解消し transport / `sourceRootPath` / thumbnail runtime adapter が主な差分。実態評価は **~90%**
-- **Components**: #298 / #299 / #300 / #304 / #305 / #309 / #314 により、media-sidebar、source-form-modal、upload-media-modal、thumbnail-image、media-viewer、media-card-item、media-grid-item、move-copy-media-dialog、source-delete-modal、ai-tagging-modal を `packages/ui` へ抽出。残る主な未配置コンポーネントはほぼない。実態評価は **~90%**
-- **Hooks**: #303 で parser utility 重複を core へ抽出。#302 / PR #313 で sources event parse/filter/state update を `use-sources-events.ts` へ抽出。残る差分は app 別 transport wrapper と source-media 詳細の payload normalize 層。実態評価は **~90%**
+- **Routes**: #301 / #307 により `search.tsx` と `manager.tsx` は thin wrapper 化済み。#302 / #306 は PR #313 merged。#316 で `media-detail-page.tsx` と `source-media-page.tsx` の orchestration を shared 化。`sources/index.tsx` は event transport 注入中心、media-detail / source-media は modal/dialog JSX 重複を解消し transport / `sourceRootPath` / thumbnail runtime adapter が主な差分。実態評価は **~93%**
+- **Components**: #298 / #299 / #300 / #304 / #305 / #309 / #314 / #316 により、media-sidebar、source-form-modal、upload-media-modal、thumbnail-image、media-viewer、media-card-item、media-grid-item、move-copy-media-dialog、source-delete-modal、ai-tagging-modal、media-sidebar-content、upload-media-modal-content を `packages/ui` へ抽出。残る主な未配置コンポーネントはほぼない。実態評価は **~93%**
+- **Hooks**: #303 で parser utility 重複を core へ抽出。#302 / PR #313 で sources event parse/filter/state update を `use-sources-events.ts` へ抽出。#316 で media-detail の event handling を shared 化。残る差分は app 別 transport wrapper のみ。実態評価は **~93%**
 - **Queries**: PR #297 + #314 で shared 化。`authors` / `characters` / `config` / `ips` / `media-details` / `projects`（+ `projectsForMedia`）/ `sources` / `tags` の 9 クエリが thin wrapper 化。実態評価 **~96%**
 - **Repositories**: 自己評価 ~92% は概ね正しい。主要 CRUD は shared factory 化済み。実態評価 **~90%**
 - **Services**: 自己評価 ~95% はやや過大評価。CRUD / media / backup / ai tagging は shared 化されたが、tauri 側 local-api adapter は依然として大きい。実態評価 **~85%**
 - **Jobs**: 自己評価 ~85% は概ね正しい。worker / runner / orchestration は shared 化済み。実態評価 **~85%**
 
-**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#314 の wave で routes / components / queries は大幅に改善し、残る主な未共通化ポイントは transport / platform I/O 層に限定された。
+**総括**: wiki の対応度は「shared package を import しているファイル数」ではなく、「app 側ファイルが thin wrapper（transport / filesystem / IPC / render adapter 注入のみ）に縮退しているか」で判断する。#298〜#316 の wave で routes / components / hooks / queries は大幅に改善し、残る主な未共通化ポイントは transport / platform I/O 層に限定された。
+
+## 前回からの主な変更点（2026-05-01更新 — #316 commonization wave）
+
+- **Components / MediaSidebar Content Wrapper (#316, PR #316)**: `packages/ui/src/media-sidebar-content.tsx` を新設。`projectsForMedia` / `allProjects` / `allIps` / `allCharacters` の query wiring と `onProjectAdd/Remove/Create`、`onIpAdd/Remove/Create`、`onCharacterAdd/Remove/Create`、`onDescriptionUpdate` の action handlers を shared 化。app 側は `aiTaggingModal` render prop 注入のみ（server: `mediaId`/`mediaSourceId`、tauri: `fileName`/`loadFile`）
+- **Routes / Media Detail Screen (#316, PR #316)**: `packages/ui/src/screens/media-detail-screen.tsx` を新設。`mediaDetails` query、`useMediaSourceEvents` wiring（`onMediaAdded`/`onMediaDeleted`/`onMediaChanged`/`onThumbnailGenerated`）、`MediaViewer` + `MediaSidebar` レイアウトを shared 化。app 側は `renderMediaViewer` / `renderMediaSidebar` prop 注入 + `sourceRootPath`（tauri のみ）
+- **Components / UploadMediaModal Content Wrapper (#316, PR #316)**: `packages/ui/src/upload-media-modal-content.tsx` を新設。`handleUploadStart` の batch mapping（`Promise.all` over `options.files`）を shared 化。app 側は `onFetchUrl` prop で platform 固有の URL fetcher を注入
+- **Routes / SourceMediaPage Orchestration (#316, PR #316)**: `packages/ui/src/source-media-page.tsx` を新設。`useSourceMediaPage` + tags/projects/IPs/characters/authors query wiring + `renderActions`（`MediaListActions`）を shared 化。app 側は `createServerTransport` / `createTauriTransport` factory のみ
+- **Utils / PresetClient Factory (#316, PR #316)**: `packages/ui/src/preset-client.ts` を新設。`createPresetClient` factory で `orpc.presets.*` の passthrough を shared 化。`PresetOrpcLike` interface で型安全性を維持。app 側は `createPresetClient(orpc)` を呼ぶ thin adapter のみ
+- **Hooks / Transport Factory Export (#316, PR #316)**: `apps/server/src/hooks/use-media-source-events.ts` から `createServerTransport` を export。`apps/tauri/src/hooks/use-media-source-events.ts` から `createTauriTransport` を export。`source-media-page.tsx`（2箇所）と `media-detail-page.tsx`（2箇所）で重複していた transport ファクトリを一元化
 
 ## 前回からの主な変更点（2026-05-01更新 — #298〜#309 commonization wave）
 
@@ -528,3 +543,8 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | `media-type-utils.ts`     | `packages/core/src/domain/media/utils/` | `inferMediaType`（config-driven）、`getMediaTypeFromExtension`（hardcoded）、`getContentTypeFromExtension` |
 | `path-utils.ts`           | `packages/core/src/domain/media/utils/` | `normalizeRelativePath`、`isHiddenPath`                                                                    |
 | `query-options/*.ts`      | `packages/ui/src/query-options/`        | TanStack Query `queryOptions` builder、query key 定義、デフォルトキャッシュ設定の shared 化                |
+| `media-sidebar-content.tsx`    | `packages/ui/src/`                      | MediaSidebar の query wiring + action handlers を shared 化。app 側は `aiTaggingModal` prop 注入のみ                  |
+| `media-detail-screen.tsx`      | `packages/ui/src/screens/`              | media detail の layout + `useMediaSourceEvents` wiring + `mediaDetails` query を shared 化                             |
+| `upload-media-modal-content.tsx`| `packages/ui/src/`                     | UploadModal の `handleUploadStart` batch mapping を shared 化。app 側は `onFetchUrl` prop 注入のみ                    |
+| `source-media-page.tsx`        | `packages/ui/src/`                      | SourceMediaPage の `useSourceMediaPage` orchestration + query wiring + `renderActions` を shared 化                    |
+| `preset-client.ts`             | `packages/ui/src/`                      | `createPresetClient` factory で `orpc.presets.*` passthrough を shared 化                                              |
