@@ -130,6 +130,10 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 		registerMedia: async (artifact, context) => {
 			try {
 				const normalizedPath = artifact.filePath.replaceAll("\\", "/");
+				const existing = await TauriMediaRepository.findByPath(
+					context.mediaSourceId,
+					normalizedPath,
+				);
 				const [row] = await TauriMediaRepository.batchUpsert([
 					{
 						mediaSourceId: context.mediaSourceId,
@@ -151,17 +155,13 @@ export async function processQueuedDownloadJob(job: JobRecord): Promise<void> {
 					);
 					return;
 				}
-				const existing = await TauriMediaRepository.findByPath(
-					context.mediaSourceId,
-					normalizedPath,
-				);
 				const eventPayload = {
 					mediaSourceId: context.mediaSourceId,
 					mediaId: row.id,
 					filePath: normalizedPath,
 					timestamp: new Date().toISOString(),
 				};
-				if (existing && existing.id !== row.id) {
+				if (existing) {
 					await emit("media-changed", eventPayload);
 				} else {
 					await emit("media-added", eventPayload);
