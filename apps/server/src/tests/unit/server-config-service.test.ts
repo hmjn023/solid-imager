@@ -9,18 +9,18 @@ import {
 	it,
 	vi,
 } from "vite-plus/test";
-import { ServerConfigService } from "~/application/services/server-config-service";
+import {
+	loadServerConfig,
+	serverConfigService,
+} from "~/application/services/server-config-service";
 
 vi.mock("node:fs");
 vi.mock("node:fs/promises");
 
 describe("ConfigService", () => {
-	let service: ServerConfigService;
-
 	beforeEach(() => {
 		vi.resetAllMocks();
 		vi.unstubAllEnvs();
-		service = new ServerConfigService();
 	});
 
 	afterEach(() => {
@@ -30,10 +30,9 @@ describe("ConfigService", () => {
 
 	it("should load default config if file does not exist", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
+		loadServerConfig();
 
-		service.load();
-
-		expect(service.getConfig()).toEqual(defaultAppConfig);
+		expect(serverConfigService.getConfig()).toEqual(defaultAppConfig);
 		// Should write defaults to disk
 		expect(fs.writeFileSync).toHaveBeenCalled();
 	});
@@ -46,9 +45,9 @@ describe("ConfigService", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(true);
 		vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(fileConfig));
 
-		service.load();
+		loadServerConfig();
 
-		expect(service.getConfig().jobs.concurrency).toBe(10);
+		expect(serverConfigService.getConfig().jobs.concurrency).toBe(10);
 	});
 
 	it("should migrate existing config with new default fields", () => {
@@ -63,9 +62,9 @@ describe("ConfigService", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(true);
 		vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(legacyConfig));
 
-		service.load();
+		loadServerConfig();
 
-		expect(service.getConfig().downloads).toEqual(defaultAppConfig.downloads);
+		expect(serverConfigService.getConfig().downloads).toEqual(defaultAppConfig.downloads);
 		expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
 			"config.json",
@@ -82,9 +81,9 @@ describe("ConfigService", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
 		vi.stubEnv("CONFIG_JOBS_CONCURRENCY", "50");
 
-		service.load();
+		loadServerConfig();
 
-		expect(service.getConfig().jobs.concurrency).toBe(50);
+		expect(serverConfigService.getConfig().jobs.concurrency).toBe(50);
 	});
 
 	it("should handle nested env overrides", () => {
@@ -95,10 +94,10 @@ describe("ConfigService", () => {
 			'["TestNode"]',
 		);
 
-		service.load();
+		loadServerConfig();
 
 		expect(
-			service.getConfig().media.tagExtraction.comfyui.positiveNodeTypes,
+			serverConfigService.getConfig().media.tagExtraction.comfyui.positiveNodeTypes,
 		).toEqual(["TestNode"]);
 	});
 
@@ -106,25 +105,25 @@ describe("ConfigService", () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
 		vi.stubEnv("CONFIG_INVALID_KEY", "value");
 
-		service.load();
+		loadServerConfig();
 
 		// Should not throw and config should be default
-		expect(service.getConfig()).toEqual(defaultAppConfig);
+		expect(serverConfigService.getConfig()).toEqual(defaultAppConfig);
 	});
 
 	it("should update config and notify listeners", async () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
-		service.load();
+		loadServerConfig();
 
 		const listener = vi.fn();
-		service.onChange(listener);
+		serverConfigService.onChange(listener);
 
 		// Partial update
 		const UpdatedConcurrency = 5;
-		await service.updateConfig({
+		await serverConfigService.updateConfig({
 			jobs: { concurrency: UpdatedConcurrency },
 		} as any);
-		const newConfig = service.getConfig();
+		const newConfig = serverConfigService.getConfig();
 		expect(newConfig.jobs.concurrency).toBe(UpdatedConcurrency);
 		// Listener should receive full updated config
 		expect(listener).toHaveBeenCalledWith(
@@ -138,11 +137,11 @@ describe("ConfigService", () => {
 
 	it("should throw on invalid update", async () => {
 		vi.mocked(fs.existsSync).mockReturnValue(false);
-		service.load();
+		loadServerConfig();
 
 		// Try setting invalid type (string for number)
 		await expect(
-			service.updateConfig({ jobs: { concurrency: "invalid" } } as any),
+			serverConfigService.updateConfig({ jobs: { concurrency: "invalid" } } as any),
 		).rejects.toThrow();
 	});
 });

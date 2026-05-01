@@ -24,7 +24,7 @@ import type { SourceRepository } from "@solid-imager/core/domain/repositories/so
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import { queueMediaProcessingJob } from "~/application/services/media-processing-job";
-import type { ServerConfigService } from "~/application/services/server-config-service";
+import type { IConfigService } from "@solid-imager/core";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -41,7 +41,7 @@ export class MediaProcessingServiceImpl {
 	private readonly ipRepo: IIpRepository;
 	private readonly projectRepo: IProjectRepository;
 	private readonly jobRepo: IJobRepository;
-	private readonly configService: ServerConfigService;
+	private readonly configService: IConfigService;
 
 	constructor(
 		sourceRepo: SourceRepository,
@@ -52,7 +52,7 @@ export class MediaProcessingServiceImpl {
 		ipRepo: IIpRepository,
 		projectRepo: IProjectRepository,
 		jobRepo: IJobRepository,
-		configService: ServerConfigService,
+		configService: IConfigService,
 	) {
 		this.sourceRepo = sourceRepo;
 		this.mediaRepo = mediaRepo;

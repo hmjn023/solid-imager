@@ -4,7 +4,10 @@ import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import { ServerConfigService } from "~/application/services/server-config-service";
+import {
+	loadServerConfig,
+	serverConfigService,
+} from "~/application/services/server-config-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
@@ -37,16 +40,15 @@ export function initServices() {
 	isBootstrapped = true;
 
 	// Initialize and load configuration
-	const configService = new ServerConfigService();
-	configService.load();
-	services.registerConfigService(configService);
+	loadServerConfig();
+	services.registerConfigService(serverConfigService);
 
-	const config = configService.getConfig();
+	const config = serverConfigService.getConfig();
 
 	// Initialize log level from config and subscribe to changes
 	updateLogLevel(config.logging.level);
 	updateDownloadRateLimitConfig(config.downloads);
-	configService.onChange((newConfig) => {
+	serverConfigService.onChange((newConfig) => {
 		updateLogLevel(newConfig.logging.level);
 		updateDownloadRateLimitConfig(newConfig.downloads);
 	});
@@ -71,7 +73,7 @@ export function initServices() {
 	// Initialize PythonClient with config values
 	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
 	services.registerAiClient(pythonClient);
-	configService.onChange((newConfig) =>
+	serverConfigService.onChange((newConfig) =>
 		pythonClient.updateConfig(newConfig.ai),
 	);
 
@@ -81,8 +83,8 @@ export function initServices() {
 		logger,
 	});
 	// Initialize worker with current config and subscribe to changes
-	jobWorker.updateConfig(configService.getConfig());
-	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
+	jobWorker.updateConfig(serverConfigService.getConfig());
+	serverConfigService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
 
 	services.registerJobWorker(jobWorker);
 
@@ -105,7 +107,7 @@ export function initServices() {
 			services.getIpRepository(),
 			services.getProjectRepository(),
 			jobRepo,
-			configService,
+			serverConfigService,
 		),
 	);
 }
@@ -124,7 +126,7 @@ export function startBackgroundWorker() {
 
 	const jobWorker = services.getJobWorker();
 	const jobRepo = services.getJobRepository();
-	const configService = services.getConfigService();
+	const configService = serverConfigService;
 
 	// Singleton management for JobWorker to prevent duplicates during HMR
 	const globalAny = globalThis as any;
