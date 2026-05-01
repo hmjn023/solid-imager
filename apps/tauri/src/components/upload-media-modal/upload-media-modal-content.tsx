@@ -1,7 +1,4 @@
-import {
-	UploadMediaModalContent as SharedUploadMediaModalContent,
-	UploadMediaModal,
-} from "@solid-imager/ui/upload-media-modal-content";
+import { UploadMediaModalContent as SharedUploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
 
 type UploadMediaModalProps = {
 	isOpen: boolean;

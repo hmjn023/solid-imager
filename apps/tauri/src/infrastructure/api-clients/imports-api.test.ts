@@ -8,8 +8,8 @@ const {
 	mockDeleteImportRequests,
 	mockFindMediaSourceForFile,
 	mockRestoreSource,
-	mockFetchMediaSource,
-	mockSyncMediaSources,
+	mockEnqueueDownloadJobs,
+	mockWake,
 	mockEmit,
 	mockGetTauriAppServices,
 } = vi.hoisted(() => ({
@@ -24,8 +24,8 @@ const {
 		skipped: 0,
 		errors: [],
 	})),
-	mockFetchMediaSource: vi.fn(),
-	mockSyncMediaSources: vi.fn(async () => ({ results: [] })),
+	mockEnqueueDownloadJobs: vi.fn(async () => 0),
+	mockWake: vi.fn(),
 	mockEmit: vi.fn(async () => undefined),
 	mockGetTauriAppServices: vi.fn(),
 }));
@@ -54,9 +54,14 @@ vi.mock("~/infrastructure/local-api/services/source-backup-service", () => ({
 	},
 }));
 
-vi.mock("./sources-api", () => ({
-	fetchMediaSource: mockFetchMediaSource,
-	syncMediaSources: mockSyncMediaSources,
+vi.mock("../jobs/download-jobs", () => ({
+	enqueueDownloadJobs: mockEnqueueDownloadJobs,
+}));
+
+vi.mock("../jobs/tauri-job-queue", () => ({
+	tauriJobQueue: {
+		wake: mockWake,
+	},
 }));
 
 vi.mock("@tauri-apps/api/event", () => ({
@@ -151,7 +156,7 @@ describe("tauri imports api", () => {
 		]);
 	});
 
-	it("downloads files, syncs sources, and completes jobs during processing", async () => {
+	it("enqueues download jobs and completes import requests during processing", async () => {
 		mockFindImportRequestsByIds.mockResolvedValueOnce([
 			{
 				id: "job-1",
@@ -169,13 +174,6 @@ describe("tauri imports api", () => {
 				parentId: null,
 			},
 		]);
-		mockFetchMediaSource.mockResolvedValueOnce({
-			id: "source-1",
-			name: "Default",
-			description: null,
-			type: "local",
-			connectionInfo: { path: "/library" },
-		});
 		const mkdir = vi.fn(async () => undefined);
 		const invoke = vi.fn(async () => undefined);
 		mockGetTauriAppServices.mockReturnValue({
@@ -192,16 +190,20 @@ describe("tauri imports api", () => {
 			},
 			commandClient: { invoke },
 		});
+		mockEnqueueDownloadJobs.mockResolvedValueOnce(1);
 
 		const result = await importsApi.processPendingImports(["job-1"], "source-1");
 
 		expect(result).toEqual({ success: true, processedCount: 1 });
-		expect(mkdir).toHaveBeenCalled();
-		expect(invoke).toHaveBeenCalledWith("download_file", {
-			url: "https://example.com/image.png",
-			destPath: expect.stringContaining("image.png"),
-		});
-		expect(mockSyncMediaSources).toHaveBeenCalledWith(["source-1"]);
+		expect(mockEnqueueDownloadJobs).toHaveBeenCalledWith("source-1", [
+			expect.objectContaining({
+				targetUrl: "https://example.com/image.png",
+				fileName: "image.png",
+			}),
+		]);
+		expect(mockWake).toHaveBeenCalledOnce();
+		expect(mkdir).not.toHaveBeenCalled();
+		expect(invoke).not.toHaveBeenCalled();
 		expect(mockMarkImportRequestsCompleted).toHaveBeenCalledWith(["job-1"]);
 		expect(mockEmit).toHaveBeenCalledWith("import-request:processed", {
 			processedCount: 1,

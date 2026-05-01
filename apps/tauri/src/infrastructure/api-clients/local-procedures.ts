@@ -56,7 +56,7 @@ import { TauriSourceBackupService } from "../local-api/services/source-backup-se
 import { TauriSourceService } from "../local-api/services/source-service";
 import { TauriTagService } from "../local-api/services/tag-service";
 import { TauriUserService } from "../local-api/services/user-service";
-import { enqueueDownloadJobs } from "./imports-api";
+import { enqueueDownloadJobs } from "../jobs/download-jobs";
 
 const authorUpdateSchema = z.object({
 	name: z.string().min(1).optional(),
