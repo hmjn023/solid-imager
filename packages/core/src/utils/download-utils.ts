@@ -9,12 +9,9 @@ export function basenameFromUrl(url: string): string | undefined {
 }
 
 export function guessExtensionFromUrl(url: string): string {
-	try {
-		const parsed = new URL(url);
-		const lastDot = parsed.pathname.lastIndexOf(".");
-		if (lastDot === -1) return "";
-		return parsed.pathname.slice(lastDot);
-	} catch {
-		return "";
-	}
+	const fileName = basenameFromUrl(url);
+	if (!fileName) return "";
+	const lastDot = fileName.lastIndexOf(".");
+	if (lastDot === -1 || lastDot === 0) return "";
+	return fileName.slice(lastDot);
 }

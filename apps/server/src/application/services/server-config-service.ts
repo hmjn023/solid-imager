@@ -1,6 +1,9 @@
 import { createConfigService } from "@solid-imager/application/services/config-service";
 import type { IConfigService } from "@solid-imager/core";
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import {
+	type AppConfig,
+	defaultAppConfig,
+} from "@solid-imager/core/domain/config/config-schema";
 import { createServerConfigStore } from "./server-config-store";
 
 const configPath = require("node:path").resolve(process.cwd(), "config.json");
@@ -8,8 +11,10 @@ const configPath = require("node:path").resolve(process.cwd(), "config.json");
 const store = createServerConfigStore(configPath);
 const impl = createConfigService(store);
 
-// Sync cache for getConfig() — matches original ServerConfigService behavior
-let cachedConfig: AppConfig = store.get();
+// Default config until loadServerConfig() is called at startup.
+// Matches original ServerConfigService behavior: defaultAppConfig in constructor,
+// then overwritten by load().
+let cachedConfig: AppConfig = defaultAppConfig;
 
 // Keep cache in sync when config changes through updateConfig
 impl.onChange((config) => {
