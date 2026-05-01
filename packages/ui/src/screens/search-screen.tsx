@@ -4,27 +4,30 @@ import type { JSX } from "solid-js";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
-import type { UseSearchPageResult } from "../hooks/use-search-page";
-import type {
-	SourceMediaPageFilterData,
-	SourceMediaPagePresetClient,
-} from "../hooks/use-source-media-page";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
+import type { SearchPageFilterData, UseSearchPageResult } from "../hooks/use-search-page";
+import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
+
+export type SearchScreenNavActions = {
+	openMobileFilters: () => void;
+};
 
 export type SearchScreenProps = {
 	page: UseSearchPageResult;
-	filterData: SourceMediaPageFilterData;
+	filterData: SearchPageFilterData;
 	sources: SafeMediaSource[] | undefined;
 	selectedSource: string | null;
 	onSelectSource: (id: string) => void;
 	presetClient: SourceMediaPagePresetClient;
-	renderNavActions?: (panel: JSX.Element) => JSX.Element;
+	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
 	renderMediaItem: (media: Media) => JSX.Element;
 	ssrGuard?: boolean;
 };
 
 export function SearchScreen(props: SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
+	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 
 	onMount(() => {
 		if (!isServer) {
@@ -33,6 +36,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	});
 
 	const page = () => props.page;
+	const openMobileFilters = () => setIsMobileFilterOpen(true);
 
 	const panel = (
 		<SearchControlPanel
@@ -56,7 +60,17 @@ export function SearchScreen(props: SearchScreenProps) {
 
 	return (
 		<main class="container mx-auto p-4">
-			{props.renderNavActions?.(panel)}
+			{props.renderNavActions?.({ openMobileFilters })}
+			<Show when={!isServer}>
+				<Dialog open={isMobileFilterOpen()} onOpenChange={setIsMobileFilterOpen}>
+					<DialogContent class="max-h-[80vh] overflow-y-auto">
+						<DialogHeader>
+							<DialogTitle>検索フィルター</DialogTitle>
+						</DialogHeader>
+						<div class="space-y-4">{panel}</div>
+					</DialogContent>
+				</Dialog>
+			</Show>
 
 			<div class="mb-8 flex items-center justify-between">
 				<div>
@@ -74,10 +88,7 @@ export function SearchScreen(props: SearchScreenProps) {
 				</Card>
 
 				<div class="space-y-4">
-					<Show
-						fallback={<div class="py-8 text-center">読み込み中...</div>}
-						when={showResults()}
-					>
+					<Show fallback={<div class="py-8 text-center">読み込み中...</div>} when={showResults()}>
 						<Show
 							fallback={<div class="py-12 text-center text-gray-500" />}
 							when={page().searchResultQuery.data}
@@ -89,27 +100,17 @@ export function SearchScreen(props: SearchScreenProps) {
 							</div>
 
 							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-								<For each={page().searchResults()}>
-									{(media) => props.renderMediaItem(media)}
-								</For>
+								<For each={page().searchResults()}>{(media) => props.renderMediaItem(media)}</For>
 							</div>
 
 							<div class="h-10 w-full" ref={page().setLoadMoreRef}>
 								<Show when={page().searchResultQuery.isFetchingNextPage}>
-									<div class="py-4 text-center text-gray-500">
-										読み込み中...
-									</div>
+									<div class="py-4 text-center text-gray-500">読み込み中...</div>
 								</Show>
 							</div>
 
-							<Show
-								when={
-									(page().searchResultQuery.data?.pages[0]?.total || 0) === 0
-								}
-							>
-								<div class="py-12 text-center text-gray-500">
-									検索結果が見つかりませんでした
-								</div>
+							<Show when={(page().searchResultQuery.data?.pages[0]?.total || 0) === 0}>
+								<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
 							</Show>
 						</Show>
 					</Show>

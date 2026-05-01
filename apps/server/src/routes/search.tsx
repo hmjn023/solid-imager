@@ -19,16 +19,9 @@ export const Route = createFileRoute("/search")({
 	component: Search,
 });
 
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "@solid-imager/ui/dialog";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQueryClient } from "@tanstack/solid-query";
 import { Show } from "solid-js";
 import { isServer, Portal } from "solid-js/web";
 import { MediaGridItem } from "~/components/media/media-grid-item";
@@ -42,11 +35,7 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import {
-	getSearchCondition,
-	searchState,
-	setSearchState,
-} from "~/presentation/store/search-store";
+import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
 
 export default function Search() {
 	const queryClient = useQueryClient();
@@ -57,6 +46,14 @@ export default function Search() {
 	const page = useSearchPage({
 		searchMedia,
 		queryClient,
+		queries: {
+			tags: tagsQueryOptions,
+			sources: mediaSourcesQueryOptions,
+			projects: allProjectsQueryOptions,
+			ips: allIpsQueryOptions,
+			characters: allCharactersQueryOptions,
+			authors: allAuthorsQueryOptions,
+		},
 		selectedSource: () => searchState.selectedSource,
 		getSearchCondition,
 		sortBy: () => searchState.sortBy,
@@ -69,76 +66,48 @@ export default function Search() {
 
 	// Subscribe to real-time events
 	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
-		onMediaAdded: () => {
-			queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
-		onMediaDeleted: () => {
-			queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
-		onMediaChanged: () => {
-			queryClient.invalidateQueries({ queryKey: ["searchResults"] });
-		},
+		onMediaAdded: page.refreshSearchResults,
+		onMediaDeleted: page.refreshSearchResults,
+		onMediaChanged: page.refreshSearchResults,
 	});
-
-	// Fetch filter data
-	const tags = createQuery(() => tagsQueryOptions());
-	const sources = createQuery(() => mediaSourcesQueryOptions());
-	const allProjects = createQuery(() => allProjectsQueryOptions());
-	const allIps = createQuery(() => allIpsQueryOptions());
-	const allCharacters = createQuery(() => allCharactersQueryOptions());
-	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 
 	return (
 		<SearchScreen
-			filterData={{
-				tags: tags.data,
-				projects: allProjects.data,
-				ips: allIps.data,
-				characters: allCharacters.data,
-				authors: allAuthors.data,
-			}}
+			filterData={page.filterData}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media) => <MediaGridItem media={media} />}
-			renderNavActions={(panel) => (
+			renderNavActions={({ openMobileFilters }) => (
 				<Show when={!isServer && document.getElementById("nav-actions")}>
 					<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
-						<Dialog>
-							<DialogTrigger
-								as={Button}
-								class="border-white text-white hover:bg-sky-700 md:hidden"
-								size="icon"
-								variant="outline"
+						<Button
+							class="border-white text-white hover:bg-sky-700 md:hidden"
+							onClick={openMobileFilters}
+							size="icon"
+							variant="outline"
+						>
+							<svg
+								class="lucide lucide-filter"
+								fill="none"
+								height="24"
+								stroke="currentColor"
+								stroke-linecap="round"
+								stroke-linejoin="round"
+								stroke-width="2"
+								viewBox="0 0 24 24"
+								width="24"
+								xmlns="http://www.w3.org/2000/svg"
 							>
-								<svg
-									class="lucide lucide-filter"
-									fill="none"
-									height="24"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									viewBox="0 0 24 24"
-									width="24"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<title>Filter results</title>
-									<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-								</svg>
-							</DialogTrigger>
-							<DialogContent class="max-h-[80vh] overflow-y-auto">
-								<DialogHeader>
-									<DialogTitle>検索フィルター</DialogTitle>
-								</DialogHeader>
-								<div class="space-y-4">{panel}</div>
-							</DialogContent>
-						</Dialog>
+								<title>Filter results</title>
+								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+							</svg>
+						</Button>
 					</Portal>
 				</Show>
 			)}
 			selectedSource={searchState.selectedSource}
-			sources={sources.data}
+			sources={page.sources()}
 			ssrGuard
 		/>
 	);
