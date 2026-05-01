@@ -11,7 +11,7 @@ import {
 	DialogTitle,
 } from "../dialog";
 import { useCurrentSearchPersistence } from "../hooks/use-current-search-persistence";
-import type { UseSourceMediaPageResult } from "../hooks/use-source-media-page";
+import type { UseSourceMediaPageResult, UploadOptions } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
 import { SourceMediaGrid } from "../source-media-grid";
 
@@ -26,17 +26,25 @@ export type SourceMediaScreenProps = {
 		onRestore: () => void;
 	}) => JSX.Element;
 	/** Render a single media grid item. */
-	renderItem: (
-		media: Media,
-		options: { onContextMenu: () => void },
-	) => JSX.Element;
+	renderItem: (media: Media, options: { onContextMenu: () => void }) => JSX.Element;
 	renderJobProgress?: (props: {
-		jobProgress: () =>
-			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
-			| null;
+		jobProgress: () => import("@solid-imager/core/domain/sources/events").JobProgressEvent | null;
 	}) => JSX.Element;
-	renderUploadModal: () => JSX.Element;
-	renderMoveCopyDialog: () => JSX.Element;
+	uploadModalComponent: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+		onUpload: (options: UploadOptions) => Promise<void>;
+		initialFile: File | null;
+		onUrlFetch: (file: File) => void;
+		pastedUrl: string | null;
+	}) => JSX.Element;
+	moveCopyDialogComponent: (props: {
+		open: boolean;
+		onOpenChange: (open: boolean) => void;
+		mode: "copy" | "move";
+		onConfirm: (targetSourceId: string) => void;
+		currentSourceId: string;
+	}) => JSX.Element;
 	/** Enable virtualization for large lists. Default: false. */
 	enableVirtualization?: boolean;
 	/** Show "Open in New Tab" context menu item. Default: false. */
@@ -58,8 +66,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		>
 			{props.renderActions({
 				isSyncing: page().isSyncingMedia(),
-				isSyncDisabled:
-					page().isSyncingMedia() || !page().mediaQuery.data?.pages.length,
+				isSyncDisabled: page().isSyncingMedia() || !page().mediaQuery.data?.pages.length,
 				onDumpDownload: page().handleDumpDownload,
 				onSyncLoadedMedia: page().handleSyncLoadedMedia,
 				onAddMedia: page().handleAddButtonClick,
@@ -134,25 +141,29 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				<span class="text-3xl leading-none">＋</span>
 			</button>
 
-			{props.renderUploadModal()}
+			{props.uploadModalComponent({
+				initialFile: page().fileToUpload(),
+				isOpen: page().showUploadModal(),
+				onClose: () => {
+					page().setShowUploadModal(false);
+					page().setPastedUrl(null);
+					page().setFileToUpload(null);
+				},
+				onUpload: page().handleUpload,
+				onUrlFetch: (file) => page().setFileToUpload(file),
+				pastedUrl: page().pastedUrl(),
+			})}
 
-			<Dialog
-				onOpenChange={page().setDeleteDialogOpen}
-				open={page().deleteDialogOpen()}
-			>
+			<Dialog onOpenChange={page().setDeleteDialogOpen} open={page().deleteDialogOpen()}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Delete Media</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this media? This action cannot be
-							undone.
+							Are you sure you want to delete this media? This action cannot be undone.
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
-						<Button
-							onClick={() => page().setDeleteDialogOpen(false)}
-							variant="outline"
-						>
+						<Button onClick={() => page().setDeleteDialogOpen(false)} variant="outline">
 							Cancel
 						</Button>
 						<Button onClick={page().confirmDelete} variant="destructive">
@@ -162,7 +173,13 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				</DialogContent>
 			</Dialog>
 
-			{props.renderMoveCopyDialog()}
+			{props.moveCopyDialogComponent({
+				currentSourceId: page().mediaSourceId() || "",
+				mode: page().moveCopyMode(),
+				onConfirm: page().handleConfirmCopyMove,
+				onOpenChange: page().setMoveCopyDialogOpen,
+				open: page().moveCopyDialogOpen(),
+			})}
 		</section>
 	);
 }

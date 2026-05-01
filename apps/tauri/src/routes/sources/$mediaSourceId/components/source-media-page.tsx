@@ -175,29 +175,8 @@ export function SourceMediaPage() {
 				/>
 			)}
 			showOpenInNewTab
-			renderMoveCopyDialog={() => (
-				<MoveCopyMediaDialog
-					currentSourceId={mediaSourceId()}
-					mode={page.moveCopyMode()}
-					onConfirm={page.handleConfirmCopyMove}
-					onOpenChange={page.setMoveCopyDialogOpen}
-					open={page.moveCopyDialogOpen()}
-				/>
-			)}
-			renderUploadModal={() => (
-				<UploadMediaModal
-					initialFile={page.fileToUpload()}
-					isOpen={page.showUploadModal()}
-					onClose={() => {
-						page.setShowUploadModal(false);
-						page.setFileToUpload(null);
-						page.setPastedUrl(null);
-					}}
-					onUpload={page.handleUpload}
-					onUrlFetch={(file) => page.setFileToUpload(file)}
-					pastedUrl={page.pastedUrl()}
-				/>
-			)}
+			moveCopyDialogComponent={MoveCopyMediaDialog}
+			uploadModalComponent={UploadMediaModal}
 		/>
 	);
 }
