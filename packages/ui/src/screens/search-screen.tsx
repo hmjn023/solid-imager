@@ -5,7 +5,10 @@ import { createSignal, For, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
-import type { SearchPageFilterData, UseSearchPageResult } from "../hooks/use-search-page";
+import type {
+	SearchPageFilterData,
+	UseSearchPageResult,
+} from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
 
@@ -62,7 +65,10 @@ export function SearchScreen(props: SearchScreenProps) {
 		<main class="container mx-auto p-4">
 			{props.renderNavActions?.({ openMobileFilters })}
 			<Show when={!isServer}>
-				<Dialog open={isMobileFilterOpen()} onOpenChange={setIsMobileFilterOpen}>
+				<Dialog
+					open={isMobileFilterOpen()}
+					onOpenChange={setIsMobileFilterOpen}
+				>
 					<DialogContent class="max-h-[80vh] overflow-y-auto">
 						<DialogHeader>
 							<DialogTitle>検索フィルター</DialogTitle>
@@ -88,7 +94,10 @@ export function SearchScreen(props: SearchScreenProps) {
 				</Card>
 
 				<div class="space-y-4">
-					<Show fallback={<div class="py-8 text-center">読み込み中...</div>} when={showResults()}>
+					<Show
+						fallback={<div class="py-8 text-center">読み込み中...</div>}
+						when={showResults()}
+					>
 						<Show
 							fallback={<div class="py-12 text-center text-gray-500" />}
 							when={page().searchResultQuery.data}
@@ -100,17 +109,27 @@ export function SearchScreen(props: SearchScreenProps) {
 							</div>
 
 							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-								<For each={page().searchResults()}>{(media) => props.renderMediaItem(media)}</For>
+								<For each={page().searchResults()}>
+									{(media) => props.renderMediaItem(media)}
+								</For>
 							</div>
 
 							<div class="h-10 w-full" ref={page().setLoadMoreRef}>
 								<Show when={page().searchResultQuery.isFetchingNextPage}>
-									<div class="py-4 text-center text-gray-500">読み込み中...</div>
+									<div class="py-4 text-center text-gray-500">
+										読み込み中...
+									</div>
 								</Show>
 							</div>
 
-							<Show when={(page().searchResultQuery.data?.pages[0]?.total || 0) === 0}>
-								<div class="py-12 text-center text-gray-500">検索結果が見つかりませんでした</div>
+							<Show
+								when={
+									(page().searchResultQuery.data?.pages[0]?.total || 0) === 0
+								}
+							>
+								<div class="py-12 text-center text-gray-500">
+									検索結果が見つかりませんでした
+								</div>
 							</Show>
 						</Show>
 					</Show>

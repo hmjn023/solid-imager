@@ -35,7 +35,11 @@ import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/pr
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import { getSearchCondition, searchState, setSearchState } from "~/presentation/store/search-store";
+import {
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "~/presentation/store/search-store";
 
 export default function Search() {
 	const queryClient = useQueryClient();
