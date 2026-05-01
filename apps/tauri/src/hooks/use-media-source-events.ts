@@ -20,23 +20,11 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
-/**
- * Tauri-side thin wrapper around the shared `useMediaSourceEvents` hook.
- *
- * Creates a Tauri event-bus transport scoped to `mediaSourceId` and injects it
- * into the shared hook. Each call to `transport.listen` registers one Tauri
- * event listener per event name and fans out to the shared handler, filtering
- * events to those relevant for the current `mediaSourceId`.
- */
-export function useMediaSourceEvents(
+export function createTauriTransport(
 	mediaSourceId: Accessor<string | undefined>,
-	options: MediaSourceEventsOptions = {},
-): void {
-	const transport: MediaSourceEventTransport = {
+): MediaSourceEventTransport {
+	return {
 		listen(handler) {
-			// Reading `mediaSourceId()` synchronously here is intentional:
-			// this function is called inside the shared hook's `createEffect`,
-			// so Solid tracks it and re-runs the effect when the id changes.
 			const id = mediaSourceId();
 			if (!id) {
 				return () => {
@@ -46,9 +34,6 @@ export function useMediaSourceEvents(
 
 			let isCleanedUp = false;
 
-			// Register a Tauri listener for each event name that the shared hook
-			// understands. We fan-out to the unified `handler(event, data)` callback
-			// after filtering by `mediaSourceId` / `sourceId` relevance.
 			const EVENT_NAMES = [
 				"media-added",
 				"media-deleted",
@@ -73,15 +58,11 @@ export function useMediaSourceEvents(
 					if (isCleanedUp) return;
 
 					const payload = event.payload;
-					// Route to handler only if the event is relevant for this source.
-					// media-copied and media-moved may target either side of the operation.
 					const relevant =
 						payload?.mediaSourceId === id ||
 						payload?.sourceId === id ||
 						payload?.targetId === id ||
-						// job-progress is scoped by jobId which may equal the sourceId
 						payload?.jobId === id ||
-						// Fall back to delivering the event unfiltered when no source key present
 						(payload?.mediaSourceId === undefined &&
 							payload?.sourceId === undefined &&
 							payload?.targetId === undefined &&
@@ -103,6 +84,21 @@ export function useMediaSourceEvents(
 			};
 		},
 	};
+}
+
+/**
+ * Tauri-side thin wrapper around the shared `useMediaSourceEvents` hook.
+ *
+ * Creates a Tauri event-bus transport scoped to `mediaSourceId` and injects it
+ * into the shared hook. Each call to `transport.listen` registers one Tauri
+ * event listener per event name and fans out to the shared handler, filtering
+ * events to those relevant for the current `mediaSourceId`.
+ */
+export function useMediaSourceEvents(
+	mediaSourceId: Accessor<string | undefined>,
+	options: MediaSourceEventsOptions = {},
+): void {
+	const transport = createTauriTransport(mediaSourceId);
 
 	useMediaSourceEventsShared({
 		...options,

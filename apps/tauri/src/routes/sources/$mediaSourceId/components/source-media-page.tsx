@@ -1,13 +1,6 @@
-import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media-source-events";
-import { useSourceMediaPage } from "@solid-imager/ui/hooks/use-source-media-page";
-import { MediaListActions } from "@solid-imager/ui/media-list-actions";
-import {
-	SourceMediaScreen,
-	type SourceMediaScreenProps,
-} from "@solid-imager/ui/screens/source-media-screen";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
+import { createQuery } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
-import { listen } from "@tauri-apps/api/event";
 import { createMemo } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
@@ -33,83 +26,17 @@ import {
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
-import { getSearchCondition, searchState } from "~/presentation/store/search-store";
-
-function createTauriTransport(mediaSourceId: () => string | undefined): MediaSourceEventTransport {
-	return {
-		listen(handler) {
-			const id = mediaSourceId();
-			if (!id) {
-				return () => {
-					/* no-op */
-				};
-			}
-
-			let isCleanedUp = false;
-
-			const EVENT_NAMES = [
-				"media-added",
-				"media-deleted",
-				"media-changed",
-				"media-copied",
-				"media-moved",
-				"thumbnail-generated",
-				"all-jobs-completed",
-				"watcher-error",
-				"job-progress",
-			] as const;
-
-			type EventPayload = {
-				mediaSourceId?: string;
-				sourceId?: string;
-				targetId?: string;
-				jobId?: string;
-			};
-
-			const unlistenPromises = EVENT_NAMES.map((eventName) =>
-				listen<EventPayload>(eventName, (event) => {
-					if (isCleanedUp) return;
-
-					const payload = event.payload;
-					const relevant =
-						payload?.mediaSourceId === id ||
-						payload?.sourceId === id ||
-						payload?.targetId === id ||
-						payload?.jobId === id ||
-						(payload?.mediaSourceId === undefined &&
-							payload?.sourceId === undefined &&
-							payload?.targetId === undefined &&
-							payload?.jobId === undefined);
-
-					if (relevant) {
-						handler(eventName, payload);
-					}
-				}),
-			);
-
-			return () => {
-				isCleanedUp = true;
-				void Promise.all(unlistenPromises).then((unlistenFns) => {
-					for (const unlisten of unlistenFns) {
-						unlisten();
-					}
-				});
-			};
-		},
-	};
-}
+import {
+	getSearchCondition,
+	searchState,
+} from "~/presentation/store/search-store";
 
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const mediaSourceId = () => params().mediaSourceId;
-	const queryClient = useQueryClient();
 
-	const tags = createQuery(() => tagsQueryOptions());
-	const allProjects = createQuery(() => allProjectsQueryOptions());
-	const allIps = createQuery(() => allIpsQueryOptions());
-	const allCharacters = createQuery(() => allCharactersQueryOptions());
-	const allAuthors = createQuery(() => allAuthorsQueryOptions());
 	const sources = createQuery(() => mediaSourcesQueryOptions());
 
 	const sourceRootPath = createMemo(() => {
@@ -123,50 +50,34 @@ export function SourceMediaPage() {
 
 	const transport = createTauriTransport(mediaSourceId);
 
-	const page = useSourceMediaPage({
-		mediaSourceId,
-		queries: {
-			tags: () => tags.data,
-			projects: () => allProjects.data,
-			ips: () => allIps.data,
-			characters: () => allCharacters.data,
-			authors: () => allAuthors.data,
-		},
-		actions: {
-			searchMedia,
-			uploadMedia: (sourceId, file, opts) => uploadMedia(sourceId, file, opts),
-			deleteMedia,
-			copyMedia,
-			moveMedia,
-			syncMediaItems,
-			startDownloadJobs,
-			fetchSourceDump,
-			restoreSource,
-			importSourceZip,
-		},
-		queryClient,
-		presetClient: PresetClient,
-		transport,
-		getSearchCondition,
-		sortBy: () => searchState.sortBy,
-		sortOrder: () => searchState.sortOrder,
-		onThumbnailReady: notifyThumbnailReady,
-	});
-
-	const renderActions: SourceMediaScreenProps["renderActions"] = () => (
-		<MediaListActions
-			filterData={page.filterData()}
-			onDumpDownload={page.handleDumpDownload}
-			onSearch={page.handleSearch}
-			presetClient={PresetClient}
-		/>
-	);
-
 	return (
-		<SourceMediaScreen
+		<SourceMediaPageComponent
+			mediaSourceId={mediaSourceId}
+			transport={transport}
+			presetClient={PresetClient}
+			actions={{
+				searchMedia,
+				uploadMedia: (sourceId, file, opts) =>
+					uploadMedia(sourceId, file, opts),
+				deleteMedia,
+				copyMedia,
+				moveMedia,
+				syncMediaItems,
+				startDownloadJobs,
+				fetchSourceDump,
+				restoreSource,
+				importSourceZip,
+			}}
+			getSearchCondition={getSearchCondition}
+			sortBy={() => searchState.sortBy}
+			sortOrder={() => searchState.sortOrder}
+			onThumbnailReady={notifyThumbnailReady}
+			tagsQueryOptions={tagsQueryOptions}
+			projectsQueryOptions={allProjectsQueryOptions}
+			ipsQueryOptions={allIpsQueryOptions}
+			charactersQueryOptions={allCharactersQueryOptions}
+			authorsQueryOptions={allAuthorsQueryOptions}
 			enableVirtualization
-			page={page}
-			renderActions={renderActions}
 			renderItem={(media, { onContextMenu }) => (
 				<MediaGridItem
 					media={media}
@@ -174,9 +85,9 @@ export function SourceMediaPage() {
 					sourceRootPath={sourceRootPath()}
 				/>
 			)}
-			showOpenInNewTab
 			moveCopyDialogComponent={MoveCopyMediaDialog}
 			uploadModalComponent={UploadMediaModal}
+			showOpenInNewTab
 		/>
 	);
 }

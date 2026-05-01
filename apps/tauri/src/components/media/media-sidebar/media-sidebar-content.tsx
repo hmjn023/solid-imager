@@ -1,28 +1,28 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import { MediaSidebar as SharedMediaSidebar } from "@solid-imager/ui/media-sidebar";
-import { projectsQueryKeys } from "@solid-imager/ui/query-options";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
+import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
+import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import {
+	allProjectsQueryOptions,
+	projectsForMediaQueryOptions,
+} from "~/infrastructure/api-clients/queries/projects-query";
 import { getTauriAppServices } from "~/app-services";
 import {
 	addCharacterToMedia,
 	createCharacter,
-	fetchAllCharacters,
 	removeCharacterFromMedia,
 } from "~/infrastructure/api-clients/characters-api";
 import {
 	addIpToMedia,
 	createIp,
-	fetchAllIps,
 	removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
 import { updateMedia } from "~/infrastructure/api-clients/media-api";
 import {
 	addProjectToMedia,
 	createProject,
-	fetchAllProjects,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
-import { projectsForMediaQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
 import { joinLocalPath } from "~/infrastructure/path-utils";
 import { AiTaggingModal } from "../ai-tagging-modal";
 
@@ -34,28 +34,6 @@ type MediaSidebarProps = {
 };
 
 export function MediaSidebar(props: MediaSidebarProps) {
-	const queryClient = useQueryClient();
-	const projects = createQuery(() =>
-		projectsForMediaQueryOptions(props.media.mediaSourceId, props.media.id),
-	);
-	const allProjects = createQuery(() => ({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	}));
-	const allIps = createQuery(() => ({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	}));
-	const allCharacters = createQuery(() => ({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	}));
-
-	const invalidateProjectsForMedia = () =>
-		queryClient.invalidateQueries({
-			queryKey: projectsQueryKeys.forMedia(props.media.id),
-		});
-
 	const loadMediaFile = async () => {
 		const sourceRootPath = props.sourceRootPath;
 		if (!sourceRootPath) {
@@ -70,7 +48,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	return (
-		<SharedMediaSidebar
+		<MediaSidebarContent
+			addCharacterToMedia={addCharacterToMedia}
+			addIpToMedia={addIpToMedia}
+			addProjectToMedia={addProjectToMedia}
 			aiTaggingModal={(modalProps) => (
 				<AiTaggingModal
 					fileName={props.media.fileName}
@@ -79,59 +60,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					onClose={modalProps.onClose}
 				/>
 			)}
-			allCharacters={allCharacters.data || []}
-			allIps={allIps.data || []}
-			allProjects={allProjects.data || []}
-			isAllCharactersLoading={allCharacters.isLoading}
-			isAllIpsLoading={allIps.isLoading}
-			isProjectsLoading={projects.isLoading}
+			allCharactersQueryOptions={allCharactersQueryOptions}
+			allIpsQueryOptions={allIpsQueryOptions}
+			allProjectsQueryOptions={allProjectsQueryOptions}
+			createCharacter={createCharacter}
+			createIp={createIp}
+			createProject={createProject}
 			isUpdating={props.isUpdating}
 			media={props.media}
-			onCharacterAdd={async (characterId) => {
-				await addCharacterToMedia(props.media.mediaSourceId, props.media.id, characterId);
-			}}
-			onCharacterCreate={async (name) => {
-				const character = await createCharacter({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
-				return character;
-			}}
-			onCharacterRemove={async (characterId) => {
-				await removeCharacterFromMedia(props.media.mediaSourceId, props.media.id, characterId);
-				props.onUpdate?.();
-			}}
-			onDescriptionUpdate={async (description) => {
-				await updateMedia(props.media.mediaSourceId, props.media.id, {
-					description,
-				});
-			}}
-			onIpAdd={async (ipId) => {
-				await addIpToMedia(props.media.mediaSourceId, props.media.id, ipId);
-				props.onUpdate?.();
-			}}
-			onIpCreate={async (name) => {
-				const ip = await createIp({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allIps"] });
-				return ip;
-			}}
-			onIpRemove={async (ipId) => {
-				await removeIpFromMedia(props.media.mediaSourceId, props.media.id, ipId);
-				props.onUpdate?.();
-			}}
-			onProjectAdd={async (projectId) => {
-				await addProjectToMedia(props.media.mediaSourceId, props.media.id, projectId);
-				await invalidateProjectsForMedia();
-			}}
-			onProjectCreate={async (name) => {
-				const project = await createProject({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allProjects"] });
-				return project;
-			}}
-			onProjectRemove={async (projectId) => {
-				await removeProjectFromMedia(props.media.mediaSourceId, props.media.id, projectId);
-				await invalidateProjectsForMedia();
-			}}
 			onUpdate={props.onUpdate}
-			projects={projects.data || []}
+			projectsForMediaQueryOptions={projectsForMediaQueryOptions}
+			removeCharacterFromMedia={removeCharacterFromMedia}
+			removeIpFromMedia={removeIpFromMedia}
+			removeProjectFromMedia={removeProjectFromMedia}
+			updateMediaDescription={(mediaSourceId, mediaId, description) =>
+				updateMedia(mediaSourceId, mediaId, { description })
+			}
 		/>
 	);
 }
