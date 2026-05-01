@@ -140,29 +140,8 @@ export function SourceMediaPage() {
 			renderItem={(media, { onContextMenu }) => (
 				<MediaGridItem media={media} onContextMenu={onContextMenu} />
 			)}
-			renderMoveCopyDialog={() => (
-				<MoveCopyMediaDialog
-					currentSourceId={page.mediaSourceId() || ""}
-					mode={page.moveCopyMode()}
-					onConfirm={page.handleConfirmCopyMove}
-					onOpenChange={page.setMoveCopyDialogOpen}
-					open={page.moveCopyDialogOpen()}
-				/>
-			)}
-			renderUploadModal={() => (
-				<UploadMediaModal
-					initialFile={page.fileToUpload()}
-					isOpen={page.showUploadModal()}
-					onClose={() => {
-						page.setShowUploadModal(false);
-						page.setPastedUrl(null);
-						page.setFileToUpload(null);
-					}}
-					onUpload={page.handleUpload}
-					onUrlFetch={(file) => page.setFileToUpload(file)}
-					pastedUrl={page.pastedUrl()}
-				/>
-			)}
+			moveCopyDialogComponent={MoveCopyMediaDialog}
+			uploadModalComponent={UploadMediaModal}
 			showOpenInNewTab
 		/>
 	);

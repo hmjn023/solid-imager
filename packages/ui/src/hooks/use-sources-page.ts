@@ -2,9 +2,10 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
-import type { QueryClient } from "@tanstack/solid-query";
-import { createSignal, onCleanup } from "solid-js";
+import type { QueryClient, QueryKey } from "@tanstack/solid-query";
+import { type Accessor, createSignal } from "solid-js";
 import { toast } from "../toast";
+import { type RegisterEvents, useSourcesEvents } from "./use-sources-events";
 
 export type SourcesPageActions = {
 	createMediaSource: (data: unknown) => Promise<unknown>;
@@ -13,16 +14,12 @@ export type SourcesPageActions = {
 	syncMediaSources: (ids: string[]) => Promise<unknown>;
 };
 
-export type SourcesEventHandlers = {
-	onAllJobsCompleted: (data: { sourceId: string; processed?: number }) => void;
-	onWatcherError: (data: { sourceId: string; error?: string }) => void;
-};
-
 export type UseSourcesPageOptions = {
 	actions: SourcesPageActions;
 	queryClient: QueryClient;
-	invalidateQueryKey: string;
-	registerEvents?: (handlers: SourcesEventHandlers) => () => void;
+	invalidateQueryKey: QueryKey;
+	registerEvents?: RegisterEvents;
+	getSourceIds?: Accessor<string[]>;
 };
 
 export type UseSourcesPageResult = {
@@ -47,7 +44,13 @@ export type UseSourcesPageResult = {
 export function useSourcesPage(
 	options: UseSourcesPageOptions,
 ): UseSourcesPageResult {
-	const { actions, queryClient, invalidateQueryKey, registerEvents } = options;
+	const {
+		actions,
+		queryClient,
+		invalidateQueryKey,
+		registerEvents,
+		getSourceIds,
+	} = options;
 
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
@@ -60,21 +63,16 @@ export function useSourcesPage(
 	const [isSyncing, setIsSyncing] = createSignal(false);
 
 	const invalidate = () => {
-		void queryClient.invalidateQueries({ queryKey: [invalidateQueryKey] });
+		void queryClient.invalidateQueries({ queryKey: invalidateQueryKey });
 	};
 
-	if (registerEvents) {
-		const cleanup = registerEvents({
-			onAllJobsCompleted: () => {
-				invalidate();
-			},
-			onWatcherError: (data) => {
-				toast.error(
-					`Watcher Error for ${data.sourceId.slice(0, 4)}...: ${data.error || "Unknown error"}`,
-				);
-			},
+	if (registerEvents && getSourceIds) {
+		useSourcesEvents({
+			registerEvents,
+			sourceIds: getSourceIds,
+			queryClient,
+			queryKey: invalidateQueryKey,
 		});
-		onCleanup(cleanup);
 	}
 
 	const handleAddSource = () => {
