@@ -13,7 +13,11 @@ import {
 	deleteCharacter,
 	updateCharacter,
 } from "~/infrastructure/api-clients/characters-api";
-import { createIp, deleteIp, updateIp } from "~/infrastructure/api-clients/ips-api";
+import {
+	createIp,
+	deleteIp,
+	updateIp,
+} from "~/infrastructure/api-clients/ips-api";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createProject,
@@ -66,8 +70,17 @@ export default function ManagerPage() {
 	return (
 		<ManagerScreen
 			manager={manager}
-			renderMediaCard={(media: Media, selected: boolean, onToggle: (mediaId: string) => void) => (
-				<MediaCardItem media={media} onToggle={onToggle} selectable selected={selected} />
+			renderMediaCard={(
+				media: Media,
+				selected: boolean,
+				onToggle: (mediaId: string) => void,
+			) => (
+				<MediaCardItem
+					media={media}
+					onToggle={onToggle}
+					selectable
+					selected={selected}
+				/>
 			)}
 		/>
 	);
