@@ -24,9 +24,9 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 	);
 
 	const sourceOptions = () =>
-		(sources() ?? [])
-			.filter((s): s is SafeMediaSource & { id: string } => !!s.id)
-			.map((s) => ({ id: s.id, name: s.name }));
+		(sources() ?? []).flatMap((s) =>
+			s.id ? [{ id: s.id, name: s.name }] : [],
+		);
 
 	return (
 		<SharedMoveCopyMediaDialog

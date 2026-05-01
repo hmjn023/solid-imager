@@ -1,5 +1,5 @@
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createResource, For, Show } from "solid-js";
 import { Badge } from "./badge";
 import {
 	Dialog,
@@ -21,32 +21,13 @@ const DEFAULT_DESCRIPTION =
 	"Tags extracted from the image using the AI service.";
 
 export function AiTaggingModal(props: AiTaggingModalProps) {
-	const [isLoading, setIsLoading] = createSignal(false);
-	const [result, setResult] = createSignal<TaggingResponse | null>(null);
-	const [error, setError] = createSignal<string | null>(null);
+	const [result] = createResource(
+		() => (props.isOpen ? props.fetchTags : null),
+		async (fetcher) => await fetcher(),
+	);
 
-	createEffect(() => {
-		if (props.isOpen) {
-			void fetchTags();
-		} else {
-			setResult(null);
-			setError(null);
-			setIsLoading(false);
-		}
-	});
-
-	const fetchTags = async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const data = await props.fetchTags();
-			setResult(data);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error occurred");
-		} finally {
-			setIsLoading(false);
-		}
-	};
+	const isLoading = () => result.loading;
+	const error = () => result.error?.message ?? null;
 
 	return (
 		<Dialog

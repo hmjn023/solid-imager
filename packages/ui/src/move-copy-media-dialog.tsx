@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -30,6 +30,10 @@ export type MoveCopyMediaDialogProps = {
 export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 	const [targetSourceId, setTargetSourceId] = createSignal<string | null>(null);
 
+	createEffect(() => {
+		if (!props.open) setTargetSourceId(null);
+	});
+
 	const handleConfirm = () => {
 		const target = targetSourceId();
 		if (target) {
@@ -39,10 +43,11 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 		}
 	};
 
-	const options = () =>
-		props.sources
-			.filter((s) => s.id !== props.currentSourceId)
-			.map((s) => ({ value: s.id, label: s.name }));
+	const options = createMemo(() =>
+		props.sources.flatMap((s) =>
+			s.id !== props.currentSourceId ? [{ value: s.id, label: s.name }] : [],
+		),
+	);
 
 	return (
 		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
