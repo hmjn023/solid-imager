@@ -6,9 +6,18 @@ import type {
 /**
  * Resolves a path safely, ensuring it remains within the base path.
  * Prevents path traversal attacks. Works cross-platform (Unix/Windows).
+ *
+ * @param separator - Optional path separator. If not provided, it is inferred from the base path.
  */
-export function resolveSafePath(basePath: string, targetPath: string): string {
-	const pathSeparator = basePath.includes("\\") ? "\\" : "/";
+export function resolveSafePath(
+	basePath: string,
+	targetPath: string,
+	separator?: string,
+): string {
+	const pathSeparator =
+		(separator ?? (basePath.includes("\\") && !basePath.includes("/")))
+			? "\\"
+			: "/";
 	const normalizedBase = basePath
 		.replace(/[\\/]+$/, "")
 		.replace(/[\\/]/g, pathSeparator);
@@ -80,7 +89,7 @@ export function buildMediaStorageResult(
 	metadata: MediaMetadata,
 	relativePath: string,
 	fileName: string,
-	conflict?: { existingFile: string; suggestedName: string },
+	conflict?: MediaStorageResult["conflict"],
 ): MediaStorageResult {
 	return {
 		filePath: relativePath,
