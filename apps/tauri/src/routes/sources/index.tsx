@@ -33,41 +33,16 @@ function SourcesRoute() {
 			syncMediaSources,
 		},
 		queryClient,
-		invalidateQueryKey: "mediaSources",
-		registerEvents: (handlers) => {
-			const sources = mediaSources.data;
-			if (!sources?.length) {
-				return () => {};
-			}
-
-			const sourceIds = new Set(sources.map((s) => s.id).filter((id): id is string => Boolean(id)));
-
+		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		getSourceIds: () =>
+			mediaSources.data?.map((s) => s.id).filter((id): id is string => Boolean(id)) ?? [],
+		registerEvents: (handler) => {
 			const unlistenPromises = [
 				listen("all-jobs-completed", (event) => {
-					const payload = event.payload as {
-						mediaSourceId?: string;
-						processed?: number;
-					};
-					if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
-						return;
-					}
-					handlers.onAllJobsCompleted({
-						sourceId: payload.mediaSourceId,
-						processed: payload.processed,
-					});
+					handler("all-jobs-completed", event.payload);
 				}),
 				listen("watcher-error", (event) => {
-					const payload = event.payload as {
-						mediaSourceId?: string;
-						error?: string;
-					};
-					if (!(payload.mediaSourceId && sourceIds.has(payload.mediaSourceId))) {
-						return;
-					}
-					handlers.onWatcherError({
-						sourceId: payload.mediaSourceId,
-						error: payload.error,
-					});
+					handler("watcher-error", event.payload);
 				}),
 			];
 

@@ -26,8 +26,6 @@ export const Route = createFileRoute("/sources/")({
 	component: Sources,
 });
 
-const _UUID_PREFIX_LENGTH = 4;
-
 export default function Sources() {
 	const queryClient = useQueryClient();
 	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
@@ -35,46 +33,26 @@ export default function Sources() {
 	const page = useSourcesPage({
 		actions: {
 			createMediaSource: (data: unknown) => createMediaSource(data as any),
-			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+			updateMediaSource: (id: string, data: unknown) => updateMediaSource(id, data as any),
 			deleteMediaSource,
 			syncMediaSources,
 		},
 		queryClient,
-		invalidateQueryKey: "mediaSources",
-		registerEvents: (handlers) => {
+		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		getSourceIds: () =>
+			mediaSources.data?.map((s) => s.id).filter((id): id is string => Boolean(id)) ?? [],
+		registerEvents: (handler) => {
 			const ac = new AbortController();
 
 			const startStreamForSource = async (id: string) => {
 				try {
-					const events = await orpc.sources.events(
-						{ id },
-						{ signal: ac.signal },
-					);
+					const events = await orpc.sources.events({ id }, { signal: ac.signal });
 
 					for await (const msg of events) {
 						if (ac.signal.aborted) {
 							break;
 						}
-
-						const { event, data } = msg;
-
-						switch (event) {
-							case "all-jobs-completed":
-								handlers.onAllJobsCompleted({
-									sourceId: id,
-									processed: data?.processed,
-								});
-								break;
-							case "watcher-error":
-								handlers.onWatcherError({
-									sourceId: id,
-									error: data?.error,
-								});
-								break;
-							default:
-								break;
-						}
+						handler(msg.event, { ...msg.data, mediaSourceId: id });
 					}
 				} catch (err) {
 					if (!ac.signal.aborted) {
