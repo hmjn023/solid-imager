@@ -499,6 +499,148 @@ export async function executeMediaSearch({
 	});
 }
 
+export type SearchOptions = {
+	query?: string;
+	tags?: string[];
+	tagMode?: "and" | "or";
+	excludeTags?: string[];
+	projects?: string[];
+	ips?: string[];
+	characters?: string[];
+	sort?: "date" | "name" | "size";
+	order?: "asc" | "desc";
+	limit?: number;
+	offset?: number;
+};
+
+function buildSearchRequestFromOptions(
+	options: SearchOptions,
+): MediaSearchRequest {
+	const children: (SearchCriterion | SearchGroup)[] = [];
+
+	if (options.query) {
+		children.push({
+			type: "criterion",
+			target: "keyword",
+			operator: "contains",
+			value: options.query,
+		});
+	}
+
+	if (options.tags && options.tags.length > 0) {
+		if (options.tagMode === "and") {
+			children.push({
+				type: "group",
+				operator: "and",
+				children: options.tags.map((tag) => ({
+					type: "criterion" as const,
+					target: "tag" as const,
+					operator: "equals" as const,
+					value: tag,
+				})),
+			});
+		} else {
+			children.push({
+				type: "criterion",
+				target: "tag",
+				operator: "in",
+				value: options.tags,
+			});
+		}
+	}
+
+	if (options.excludeTags && options.excludeTags.length > 0) {
+		children.push({
+			type: "criterion",
+			target: "tag",
+			operator: "in",
+			value: options.excludeTags,
+			negate: true,
+		});
+	}
+
+	if (options.projects && options.projects.length > 0) {
+		children.push({
+			type: "criterion",
+			target: "project",
+			operator: "in",
+			value: options.projects,
+		});
+	}
+
+	if (options.ips && options.ips.length > 0) {
+		children.push({
+			type: "criterion",
+			target: "ip",
+			operator: "in",
+			value: options.ips,
+		});
+	}
+
+	if (options.characters && options.characters.length > 0) {
+		children.push({
+			type: "criterion",
+			target: "character",
+			operator: "in",
+			value: options.characters,
+		});
+	}
+
+	return {
+		condition:
+			children.length > 0
+				? { type: "group", operator: "and", children }
+				: undefined,
+		sort: options.sort,
+		order: options.order,
+		limit: options.limit,
+		offset: options.offset,
+	};
+}
+
+export const searchMedia = async (
+	mediaSourceId: string,
+	searchOptions: SearchOptions,
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearch({
+		client,
+		mediaSourceId,
+		params: buildSearchRequestFromOptions(searchOptions),
+		mapMedia: (row) => row as Media,
+		defaultLimit: searchOptions.limit,
+		defaultOffset: searchOptions.offset,
+	});
+};
+
+export const globalSearchMedia = async (
+	searchOptions: SearchOptions,
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearch({
+		client,
+		params: buildSearchRequestFromOptions(searchOptions),
+		mapMedia: (row) => row as Media,
+		defaultLimit: searchOptions.limit,
+		defaultOffset: searchOptions.offset,
+	});
+};
+
+export const searchMediaInDirectory = async (
+	mediaSourceId: string,
+	directoryPath: string,
+	searchOptions: { query?: string; tags?: string[] },
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearchInDirectory({
+		client,
+		mediaSourceId,
+		directoryPath,
+		params: searchOptions,
+		mapMedia: (row) => row as Media,
+	});
+};
+
 export async function executeMediaSearchInDirectory({
 	client,
 	mediaSourceId,

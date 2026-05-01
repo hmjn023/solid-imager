@@ -1,3 +1,8 @@
+import {
+	globalSearchMedia,
+	searchMedia,
+	searchMediaInDirectory,
+} from "@solid-imager/db/repositories/media-search";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { db } from "~/infrastructure/db";
 import {
@@ -8,11 +13,6 @@ import {
 	type NewTag,
 	tags,
 } from "~/infrastructure/db/schema";
-import {
-	globalSearchMedia,
-	searchMedia,
-	searchMediaInDirectory,
-} from "~/infrastructure/repositories/media-repository-utils";
 
 describe("search queries Integration", () => {
 	const mediaSourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
@@ -111,34 +111,50 @@ describe("search queries Integration", () => {
 	});
 
 	it("should search media by query within a source", async () => {
-		const { media: results } = await searchMedia(mediaSourceId1, {
-			query: "red",
-		});
+		const { media: results } = await searchMedia(
+			mediaSourceId1,
+			{
+				query: "red",
+			},
+			db,
+		);
 		expect(results.length).toBe(1);
 		expect(results[0].fileName).toBe("apple.jpg");
 	});
 
 	it("should search media by tag within a source", async () => {
-		const { media: results } = await searchMedia(mediaSourceId1, {
-			tags: ["fruit"],
-		});
+		const { media: results } = await searchMedia(
+			mediaSourceId1,
+			{
+				tags: ["fruit"],
+			},
+			db,
+		);
 		expect(results.length).toBe(2);
 	});
 
 	it("should search media in a specific directory", async () => {
-		const results = await searchMediaInDirectory(mediaSourceId1, "dir1", {
-			query: "fruit",
-		});
+		const results = await searchMediaInDirectory(
+			mediaSourceId1,
+			"dir1",
+			{
+				query: "fruit",
+			},
+			db,
+		);
 		expect(results.length).toBe(2);
 	});
 
 	it("should perform a global search by query", async () => {
-		const { media: results } = await globalSearchMedia({ query: "apple" });
+		const { media: results } = await globalSearchMedia({ query: "apple" }, db);
 		expect(results.length).toBe(2);
 	});
 
 	it("should perform a global search by tag", async () => {
-		const { media: results } = await globalSearchMedia({ tags: ["dessert"] });
+		const { media: results } = await globalSearchMedia(
+			{ tags: ["dessert"] },
+			db,
+		);
 		expect(results.length).toBe(1);
 		expect(results[0].fileName).toBe("apple_pie.jpg");
 	});
