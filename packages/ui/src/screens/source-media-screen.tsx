@@ -1,5 +1,5 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import type { JSX } from "solid-js";
+import type { Component, JSX } from "solid-js";
 import { Show } from "solid-js";
 import { Button } from "../button";
 import {
@@ -38,21 +38,21 @@ export type SourceMediaScreenProps = {
 			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
 			| null;
 	}) => JSX.Element;
-	uploadModalComponent: (props: {
+	uploadModalComponent: Component<{
 		isOpen: boolean;
 		onClose: () => void;
 		onUpload: (options: UploadOptions) => Promise<void>;
 		initialFile: File | null;
 		onUrlFetch: (file: File) => void;
 		pastedUrl: string | null;
-	}) => JSX.Element;
-	moveCopyDialogComponent: (props: {
+	}>;
+	moveCopyDialogComponent: Component<{
 		open: boolean;
 		onOpenChange: (open: boolean) => void;
 		mode: "copy" | "move";
 		onConfirm: (targetSourceId: string) => void;
 		currentSourceId: string;
-	}) => JSX.Element;
+	}>;
 	/** Enable virtualization for large lists. Default: false. */
 	enableVirtualization?: boolean;
 	/** Show "Open in New Tab" context menu item. Default: false. */
@@ -150,18 +150,23 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				<span class="text-3xl leading-none">＋</span>
 			</button>
 
-			{props.uploadModalComponent({
-				initialFile: page().fileToUpload(),
-				isOpen: page().showUploadModal(),
-				onClose: () => {
-					page().setShowUploadModal(false);
-					page().setPastedUrl(null);
-					page().setFileToUpload(null);
-				},
-				onUpload: page().handleUpload,
-				onUrlFetch: (file) => page().setFileToUpload(file),
-				pastedUrl: page().pastedUrl(),
-			})}
+			{(() => {
+				const UploadModal = props.uploadModalComponent;
+				return (
+					<UploadModal
+						initialFile={page().fileToUpload()}
+						isOpen={page().showUploadModal()}
+						onClose={() => {
+							page().setShowUploadModal(false);
+							page().setPastedUrl(null);
+							page().setFileToUpload(null);
+						}}
+						onUpload={page().handleUpload}
+						onUrlFetch={(file) => page().setFileToUpload(file)}
+						pastedUrl={page().pastedUrl()}
+					/>
+				);
+			})()}
 
 			<Dialog
 				onOpenChange={page().setDeleteDialogOpen}
@@ -189,13 +194,18 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				</DialogContent>
 			</Dialog>
 
-			{props.moveCopyDialogComponent({
-				currentSourceId: page().mediaSourceId() || "",
-				mode: page().moveCopyMode(),
-				onConfirm: page().handleConfirmCopyMove,
-				onOpenChange: page().setMoveCopyDialogOpen,
-				open: page().moveCopyDialogOpen(),
-			})}
+			{(() => {
+				const MoveCopyDialog = props.moveCopyDialogComponent;
+				return (
+					<MoveCopyDialog
+						currentSourceId={page().mediaSourceId() || ""}
+						mode={page().moveCopyMode()}
+						onConfirm={page().handleConfirmCopyMove}
+						onOpenChange={page().setMoveCopyDialogOpen}
+						open={page().moveCopyDialogOpen()}
+					/>
+				);
+			})()}
 		</section>
 	);
 }
