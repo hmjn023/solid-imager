@@ -70,6 +70,20 @@ function escapeLikePattern(value: string): string {
 	return value.replace(/[%_\\]/g, (char) => `\\${char}`);
 }
 
+function isUuid(value: string): boolean {
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+		value,
+	);
+}
+
+function isUuidArray(value: unknown): value is string[] {
+	return (
+		Array.isArray(value) &&
+		value.length > 0 &&
+		value.every((v) => typeof v === "string" && isUuid(v))
+	);
+}
+
 function getColumnForTarget(target: string): AnyColumn | undefined {
 	switch (target) {
 		case "fileName":
@@ -170,6 +184,28 @@ function buildKeywordCondition(
 	return node.negate ? not(condition) : condition;
 }
 
+function getRelationColumn(
+	target: "tag" | "project" | "ip" | "character" | "author",
+	value: string | number | boolean,
+): AnyColumn {
+	switch (target) {
+		case "tag":
+			return tags.name;
+		case "project":
+			return isUuid(String(value)) || isUuidArray(value)
+				? projects.id
+				: projects.name;
+		case "ip":
+			return isUuid(String(value)) || isUuidArray(value) ? ips.id : ips.name;
+		case "character":
+			return isUuid(String(value)) || isUuidArray(value)
+				? characters.id
+				: characters.name;
+		case "author":
+			return authors.name;
+	}
+}
+
 function buildRelationQuery(
 	client: DrizzleExecutor,
 	target: "tag" | "project" | "ip" | "character" | "author",
@@ -203,7 +239,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaProjects.mediaId, medias.id),
-							buildValueCondition(projects.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -217,7 +257,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaIps.mediaId, medias.id),
-							buildValueCondition(ips.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -231,7 +275,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaCharacters.mediaId, medias.id),
-							buildValueCondition(characters.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -551,9 +599,9 @@ function buildSearchRequestFromOptions(
 
 	if (options.excludeTags && options.excludeTags.length > 0) {
 		children.push({
-			type: "criterion",
-			target: "tag",
-			operator: "in",
+			type: "criterion" as const,
+			target: "tag" as const,
+			operator: "in" as const,
 			value: options.excludeTags,
 			negate: true,
 		});
@@ -561,27 +609,27 @@ function buildSearchRequestFromOptions(
 
 	if (options.projects && options.projects.length > 0) {
 		children.push({
-			type: "criterion",
-			target: "project",
-			operator: "in",
+			type: "criterion" as const,
+			target: "project" as const,
+			operator: "in" as const,
 			value: options.projects,
 		});
 	}
 
 	if (options.ips && options.ips.length > 0) {
 		children.push({
-			type: "criterion",
-			target: "ip",
-			operator: "in",
+			type: "criterion" as const,
+			target: "ip" as const,
+			operator: "in" as const,
 			value: options.ips,
 		});
 	}
 
 	if (options.characters && options.characters.length > 0) {
 		children.push({
-			type: "criterion",
-			target: "character",
-			operator: "in",
+			type: "criterion" as const,
+			target: "character" as const,
+			operator: "in" as const,
 			value: options.characters,
 		});
 	}
@@ -607,7 +655,7 @@ export const searchMedia = async (
 		client,
 		mediaSourceId,
 		params: buildSearchRequestFromOptions(searchOptions),
-		mapMedia: (row) => row as Media,
+		mapMedia: (row) => row,
 		defaultLimit: searchOptions.limit,
 		defaultOffset: searchOptions.offset,
 	});
@@ -620,7 +668,7 @@ export const globalSearchMedia = async (
 	return executeMediaSearch({
 		client,
 		params: buildSearchRequestFromOptions(searchOptions),
-		mapMedia: (row) => row as Media,
+		mapMedia: (row) => row,
 		defaultLimit: searchOptions.limit,
 		defaultOffset: searchOptions.offset,
 	});
