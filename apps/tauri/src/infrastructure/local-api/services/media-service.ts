@@ -50,12 +50,9 @@ type ProbeMediaResult = {
 };
 
 async function probeMedia(fullPath: string): Promise<ProbeMediaResult> {
-	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>(
-		"probe_media",
-		{
-			mediaPath: fullPath,
-		},
-	);
+	return await getTauriAppServices().commandClient.invoke<ProbeMediaResult>("probe_media", {
+		mediaPath: fullPath,
+	});
 }
 
 async function ensureParentDirectory(fullPath: string) {
@@ -110,10 +107,7 @@ const tauriMediaStorage: IMediaStorage = {
 		);
 		await ensureParentDirectory(target.fullPath);
 		const buffer = await file.arrayBuffer();
-		await getTauriAppServices().fileSystem.writeFile(
-			target.fullPath,
-			new Uint8Array(buffer),
-		);
+		await getTauriAppServices().fileSystem.writeFile(target.fullPath, new Uint8Array(buffer));
 
 		try {
 			const metadata = await this.getFileMetadata(target.fullPath);
@@ -136,18 +130,13 @@ const tauriMediaStorage: IMediaStorage = {
 	},
 
 	async deleteFile(basePath: string, filePath: string): Promise<void> {
-		await getTauriAppServices().fileSystem.rm(
-			joinLocalPath(basePath, filePath),
-			{
-				force: true,
-			},
-		);
+		await getTauriAppServices().fileSystem.rm(joinLocalPath(basePath, filePath), {
+			force: true,
+		});
 	},
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
-		return await getTauriAppServices().fileSystem.readFile(
-			joinLocalPath(basePath, filePath),
-		);
+		return await getTauriAppServices().fileSystem.readFile(joinLocalPath(basePath, filePath));
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
@@ -158,9 +147,7 @@ const tauriMediaStorage: IMediaStorage = {
 			if (!current) {
 				continue;
 			}
-			for (const entry of await getTauriAppServices().fileSystem.readdir(
-				current,
-			)) {
+			for (const entry of await getTauriAppServices().fileSystem.readdir(current)) {
 				const fullPath = joinLocalPath(current, entry);
 				const stat = await getTauriAppServices().fileSystem.stat(fullPath);
 				if (stat.isDirectory) {
@@ -205,10 +192,7 @@ const tauriMediaStorage: IMediaStorage = {
 			},
 		);
 		await ensureParentDirectory(target.fullPath);
-		await getTauriAppServices().fileSystem.copyFile(
-			sourcePath,
-			target.fullPath,
-		);
+		await getTauriAppServices().fileSystem.copyFile(sourcePath, target.fullPath);
 
 		try {
 			const metadata = await this.getFileMetadata(target.fullPath);
@@ -246,14 +230,10 @@ const mediaService = createMediaService({
 			);
 		},
 		async extractMetadata(mediaPath) {
-			return await getTauriAppServices().imageProcessor.extractMetadata(
-				mediaPath,
-			);
+			return await getTauriAppServices().imageProcessor.extractMetadata(mediaPath);
 		},
 		async getDimensions(mediaPath) {
-			return await getTauriAppServices().imageProcessor.getDimensions(
-				mediaPath,
-			);
+			return await getTauriAppServices().imageProcessor.getDimensions(mediaPath);
 		},
 	},
 	authorRepository: TauriAuthorRepository,
@@ -261,18 +241,14 @@ const mediaService = createMediaService({
 	characterRepository: TauriCharacterRepository,
 	ipRepository: TauriIpRepository,
 	transactionManager: {
-		async transaction<T>(
-			callback: (tx: Transaction) => Promise<T>,
-		): Promise<T> {
+		async transaction<T>(callback: (tx: Transaction) => Promise<T>): Promise<T> {
 			return await getTauriAppServices().db.transaction(callback);
 		},
 	},
 	contextMetadataUpdater: async (mediaId, context, tx) => {
 		await updateMediaContextMetadata(
 			mediaId,
-			context as Partial<
-				import("@solid-imager/core/domain/media/schemas").MediaMetadataContext
-			>,
+			context as Partial<import("@solid-imager/core/domain/media/schemas").MediaMetadataContext>,
 			{
 				mediaRepository: TauriMediaRepository,
 				authorRepository: TauriAuthorRepository,
@@ -295,10 +271,7 @@ const mediaService = createMediaService({
 	},
 });
 
-function bytesToMediaSourceFile(
-	bytes: number[],
-	filename: string,
-): MediaSourceFile {
+function bytesToMediaSourceFile(bytes: number[], filename: string): MediaSourceFile {
 	return {
 		name: filename,
 		async arrayBuffer() {
@@ -315,10 +288,7 @@ export const TauriMediaService = {
 		return await mediaService.searchMedia(sourceId, params);
 	},
 
-	async getMediaDetails(
-		sourceId: string,
-		mediaId: string,
-	): Promise<MediaDetails> {
+	async getMediaDetails(sourceId: string, mediaId: string): Promise<MediaDetails> {
 		return await mediaService.getMediaDetails(sourceId, mediaId);
 	},
 
@@ -345,11 +315,7 @@ export const TauriMediaService = {
 		);
 	},
 
-	async updateMedia(
-		sourceId: string,
-		mediaId: string,
-		updates: UpdateMediaRequest,
-	) {
+	async updateMedia(sourceId: string, mediaId: string, updates: UpdateMediaRequest) {
 		return await mediaService.updateMedia(sourceId, mediaId, updates);
 	},
 
@@ -357,19 +323,11 @@ export const TauriMediaService = {
 		await mediaService.deleteMedia(sourceId, mediaId);
 	},
 
-	async copyMedia(
-		_mediaSourceId: string,
-		mediaId: string,
-		targetSourceId: string,
-	) {
+	async copyMedia(_mediaSourceId: string, mediaId: string, targetSourceId: string) {
 		await mediaService.copyMedia(mediaId, targetSourceId);
 	},
 
-	async moveMedia(
-		_mediaSourceId: string,
-		mediaId: string,
-		targetSourceId: string,
-	) {
+	async moveMedia(_mediaSourceId: string, mediaId: string, targetSourceId: string) {
 		await mediaService.moveMedia(mediaId, targetSourceId);
 	},
 };

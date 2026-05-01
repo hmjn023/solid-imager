@@ -22,9 +22,7 @@ export function isSafeRelativeUploadPath(path: string) {
 	}
 	return path
 		.split(/[\\/]+/)
-		.every(
-			(segment) => segment.length === 0 || segment === "." || segment !== "..",
-		);
+		.every((segment) => segment.length === 0 || segment === "." || segment !== "..");
 }
 
 export async function resolveUploadTargetPath(
@@ -44,10 +42,7 @@ export async function resolveUploadTargetPath(
 	}
 
 	const normalizedRequested = normalizeRelativePath(requestedPath);
-	const requestedFullPath = deps.pathAdapter.join(
-		rootPath,
-		normalizedRequested,
-	);
+	const requestedFullPath = deps.pathAdapter.join(rootPath, normalizedRequested);
 	if (overwrite || !(await deps.exists(requestedFullPath))) {
 		if (!deps.skipIfEquals || requestedFullPath !== deps.skipIfEquals) {
 			return {
@@ -62,18 +57,13 @@ export async function resolveUploadTargetPath(
 	}
 
 	const lastSlash = normalizedRequested.lastIndexOf("/");
-	const parentDir =
-		lastSlash === -1 ? "" : normalizedRequested.substring(0, lastSlash);
+	const parentDir = lastSlash === -1 ? "" : normalizedRequested.substring(0, lastSlash);
 	const extension = deps.pathAdapter.extname(normalizedRequested);
 	const stem = deps.pathAdapter
 		.basename(normalizedRequested)
 		.slice(
 			0,
-			Math.max(
-				0,
-				deps.pathAdapter.basename(normalizedRequested).length -
-					extension.length,
-			),
+			Math.max(0, deps.pathAdapter.basename(normalizedRequested).length - extension.length),
 		);
 
 	let index = 1;
@@ -84,10 +74,7 @@ export async function resolveUploadTargetPath(
 			parentDir === "" || parentDir === "/"
 				? candidateName
 				: normalizeRelativePath(`${parentDir}/${candidateName}`);
-		const candidateFullPath = deps.pathAdapter.join(
-			rootPath,
-			candidateRelative,
-		);
+		const candidateFullPath = deps.pathAdapter.join(rootPath, candidateRelative);
 		if (
 			!(await deps.exists(candidateFullPath)) ||
 			(deps.skipIfEquals && candidateFullPath === deps.skipIfEquals)
@@ -104,7 +91,5 @@ export async function resolveUploadTargetPath(
 		index += 1;
 	}
 
-	throw new Error(
-		`Could not resolve a non-conflicting filename after ${maxAttempts} attempts`,
-	);
+	throw new Error(`Could not resolve a non-conflicting filename after ${maxAttempts} attempts`);
 }

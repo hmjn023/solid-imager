@@ -10,21 +10,15 @@ function Popup() {
 	const [sources, setSources] = createSignal<MediaSource[]>([]);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
 	const [status, setStatus] = createSignal("");
-	const [statusType, setStatusType] = createSignal<
-		"info" | "success" | "error"
-	>("info");
+	const [statusType, setStatusType] = createSignal<"info" | "success" | "error">("info");
 	const [isLoading, setIsLoading] = createSignal(false);
 	const [exportStatus, setExportStatus] = createSignal("");
 	const [uploadStatus, setUploadStatus] = createSignal("");
 
 	const loadSettings = async () => {
-		const settings = await chrome.storage.local.get([
-			"selectedSourceId",
-			"apiUrl",
-		]);
+		const settings = await chrome.storage.local.get(["selectedSourceId", "apiUrl"]);
 		if (settings.apiUrl) setApiUrl(settings.apiUrl);
-		if (settings.selectedSourceId)
-			setSelectedSourceId(settings.selectedSourceId);
+		if (settings.selectedSourceId) setSelectedSourceId(settings.selectedSourceId);
 
 		await fetchSources();
 	};
@@ -89,14 +83,10 @@ function Popup() {
 			if (!activeTabId) throw new Error("No active tab");
 
 			const metadata = await new Promise<TweetMetadata[]>((resolve, reject) => {
-				chrome.tabs.sendMessage(
-					activeTabId,
-					{ type: "GET_METADATA" },
-					(resp) => {
-						if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-						else resolve(resp || []);
-					},
-				);
+				chrome.tabs.sendMessage(activeTabId, { type: "GET_METADATA" }, (resp) => {
+					if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+					else resolve(resp || []);
+				});
 			});
 
 			if (!metadata || metadata.length === 0) {
@@ -107,9 +97,7 @@ function Popup() {
 			setUploadStatus(`Uploading ${metadata.length} items...`);
 			const client = await getClient();
 			const result = await client.imports.bulkAdd({ items: metadata });
-			setUploadStatus(
-				`Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`,
-			);
+			setUploadStatus(`Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`);
 		} catch (_err) {
 			setUploadStatus("Upload failed.");
 		}
@@ -118,9 +106,7 @@ function Popup() {
 	onMount(loadSettings);
 
 	return (
-		<div
-			style={{ width: "300px", padding: "16px", "font-family": "sans-serif" }}
-		>
+		<div style={{ width: "300px", padding: "16px", "font-family": "sans-serif" }}>
 			<h2 style={{ "margin-top": "0", "font-size": "16px" }}>Settings</h2>
 
 			<div style={{ "margin-bottom": "16px" }}>
@@ -208,11 +194,7 @@ function Popup() {
 					"font-size": "12px",
 					"text-align": "center",
 					color:
-						statusType() === "error"
-							? "red"
-							: statusType() === "success"
-								? "green"
-								: "inherit",
+						statusType() === "error" ? "red" : statusType() === "success" ? "green" : "inherit",
 				}}
 			>
 				{status()}
@@ -242,9 +224,7 @@ function Popup() {
 			>
 				Export Collected JSON
 			</button>
-			<div style={{ "font-size": "12px", "text-align": "center" }}>
-				{exportStatus()}
-			</div>
+			<div style={{ "font-size": "12px", "text-align": "center" }}>{exportStatus()}</div>
 
 			<div style={{ height: "10px" }}></div>
 
@@ -264,9 +244,7 @@ function Popup() {
 			>
 				Bulk Upload to Solid Imager
 			</button>
-			<div style={{ "font-size": "12px", "text-align": "center" }}>
-				{uploadStatus()}
-			</div>
+			<div style={{ "font-size": "12px", "text-align": "center" }}>{uploadStatus()}</div>
 		</div>
 	);
 }

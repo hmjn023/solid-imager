@@ -4,6 +4,5 @@ import { getTauriDrizzleExecutor } from "./drizzle-executor";
 
 export const TauriTagRepository = createTagRepository(getTauriDrizzleExecutor, {
 	orderByName: true,
-	transaction: (callback) =>
-		getTauriAppServices().db.transaction((tx) => callback(tx)),
+	transaction: (callback) => getTauriAppServices().db.transaction((tx) => callback(tx)),
 });

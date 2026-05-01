@@ -56,12 +56,8 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>
-						{props.mode === "copy" ? "Copy Media" : "Move Media"}
-					</DialogTitle>
-					<DialogDescription>
-						Select the destination source for this media item.
-					</DialogDescription>
+					<DialogTitle>{props.mode === "copy" ? "Copy Media" : "Move Media"}</DialogTitle>
+					<DialogDescription>Select the destination source for this media item.</DialogDescription>
 				</DialogHeader>
 				<div class="py-4">
 					<Show when={sources.loading}>
@@ -78,15 +74,11 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 							options={options()}
 							optionTextValue="label"
 							optionValue="value"
-							value={options().find(
-								(option) => option.value === targetSourceId(),
-							)}
+							value={options().find((option) => option.value === targetSourceId())}
 						>
 							<SelectTrigger>
 								<SelectValue<{ label: string; value: string }>>
-									{(state) =>
-										state.selectedOption()?.label ?? "Select a source"
-									}
+									{(state) => state.selectedOption()?.label ?? "Select a source"}
 								</SelectValue>
 							</SelectTrigger>
 							<SelectContent />

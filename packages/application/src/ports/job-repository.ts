@@ -38,13 +38,8 @@ export type JobRepositoryPort = {
 	findById(id: string): Promise<JobRecord | null>;
 	findPendingImportRequests(): Promise<JobRecord[]>;
 	findImportRequestsByIds(jobIds: string[]): Promise<JobRecord[]>;
-	findPending(
-		limit: number,
-		options?: FindPendingJobsOptions,
-	): Promise<JobRecord[]>;
-	resetInProgressToPending(options?: {
-		includeTypes?: string[];
-	}): Promise<void>;
+	findPending(limit: number, options?: FindPendingJobsOptions): Promise<JobRecord[]>;
+	resetInProgressToPending(options?: { includeTypes?: string[] }): Promise<void>;
 	markImportRequestsCompleted(jobIds: string[]): Promise<void>;
 	deleteImportRequests(jobIds: string[]): Promise<void>;
 	markAsInProgress(id: string): Promise<void>;

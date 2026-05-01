@@ -32,12 +32,7 @@ type MediaTagResult = typeof tags.$inferSelect & {
 };
 
 function isUniqueViolation(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		error.code === "23505"
-	);
+	return typeof error === "object" && error !== null && "code" in error && error.code === "23505";
 }
 
 function mapToTag(row: typeof tags.$inferSelect): Tag {
@@ -96,9 +91,7 @@ export function createTagRepository(
 		async findAll(): Promise<Tag[]> {
 			try {
 				const query = getExecutor().select().from(tags);
-				const rows = options.orderByName
-					? await query.orderBy(asc(tags.name))
-					: await query;
+				const rows = options.orderByName ? await query.orderBy(asc(tags.name)) : await query;
 				return rows.map(mapToTag);
 			} catch (error) {
 				throw new UnexpectedError("Failed to select tags", error);
@@ -107,11 +100,7 @@ export function createTagRepository(
 
 		async findById(id: string): Promise<Tag | null> {
 			try {
-				const rows = await getExecutor()
-					.select()
-					.from(tags)
-					.where(eq(tags.id, id))
-					.limit(1);
+				const rows = await getExecutor().select().from(tags).where(eq(tags.id, id)).limit(1);
 				return rows[0] ? mapToTag(rows[0]) : null;
 			} catch (error) {
 				throw new UnexpectedError(`Failed to select tag by ID: ${id}`, error);
@@ -120,17 +109,10 @@ export function createTagRepository(
 
 		async findByName(name: string): Promise<Tag | null> {
 			try {
-				const rows = await getExecutor()
-					.select()
-					.from(tags)
-					.where(eq(tags.name, name))
-					.limit(1);
+				const rows = await getExecutor().select().from(tags).where(eq(tags.name, name)).limit(1);
 				return rows[0] ? mapToTag(rows[0]) : null;
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to select tag by name: ${name}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to select tag by name: ${name}`, error);
 			}
 		},
 
@@ -149,9 +131,7 @@ export function createTagRepository(
 				return mapToTag(rows[0]);
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						`Tag with name '${input.name}' already exists`,
-					);
+					throw new ResourceConflictError(`Tag with name '${input.name}' already exists`);
 				}
 				throw new UnexpectedError("Failed to insert tag", error);
 			}
@@ -163,15 +143,9 @@ export function createTagRepository(
 					.update(tags)
 					.set({
 						...(input.name !== undefined ? { name: input.name } : {}),
-						...(input.description !== undefined
-							? { description: input.description ?? null }
-							: {}),
-						...(input.attribute !== undefined
-							? { attribute: input.attribute ?? null }
-							: {}),
-						...(input.color !== undefined
-							? { color: input.color ?? null }
-							: {}),
+						...(input.description !== undefined ? { description: input.description ?? null } : {}),
+						...(input.attribute !== undefined ? { attribute: input.attribute ?? null } : {}),
+						...(input.color !== undefined ? { color: input.color ?? null } : {}),
 						...(input.source !== undefined ? { source: input.source } : {}),
 						updatedAt: new Date(),
 					})
@@ -187,9 +161,7 @@ export function createTagRepository(
 					throw error;
 				}
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						`Tag with name '${input.name}' already exists`,
-					);
+					throw new ResourceConflictError(`Tag with name '${input.name}' already exists`);
 				}
 				throw new UnexpectedError(`Failed to update tag with ID: ${id}`, error);
 			}
@@ -197,10 +169,7 @@ export function createTagRepository(
 
 		async delete(id: string, tx?: unknown): Promise<void> {
 			try {
-				const rows = await getExecutor(tx)
-					.delete(tags)
-					.where(eq(tags.id, id))
-					.returning();
+				const rows = await getExecutor(tx).delete(tags).where(eq(tags.id, id)).returning();
 
 				if (!rows[0]) {
 					throw new ResourceNotFoundError("Tag", id);
@@ -236,10 +205,7 @@ export function createTagRepository(
 
 				return rows.map(mapToMediaTag);
 			} catch (error) {
-				throw new UnexpectedError(
-					`Failed to retrieve tags for media ID: ${mediaId}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to retrieve tags for media ID: ${mediaId}`, error);
 			}
 		},
 
@@ -257,13 +223,9 @@ export function createTagRepository(
 				const execute = async (innerTx?: unknown): Promise<void> => {
 					const client = getExecutor(innerTx);
 					const dedupedInputs = Array.from(
-						new Map(
-							tagsToInsert.map((tag) => [`${tag.name}:${tag.type}`, tag]),
-						).values(),
+						new Map(tagsToInsert.map((tag) => [`${tag.name}:${tag.type}`, tag])).values(),
 					);
-					const uniqueTagNames = Array.from(
-						new Set(dedupedInputs.map((tag) => tag.name)),
-					);
+					const uniqueTagNames = Array.from(new Set(dedupedInputs.map((tag) => tag.name)));
 					if (uniqueTagNames.length === 0) {
 						return;
 					}
@@ -282,9 +244,7 @@ export function createTagRepository(
 					const rows = dedupedInputs.flatMap((tagToInsert) => {
 						const foundTag = tagMap.get(tagToInsert.name);
 						if (!foundTag) {
-							console.error(
-								`Tag "${tagToInsert.name}" not found after insertion; skipping`,
-							);
+							console.error(`Tag "${tagToInsert.name}" not found after insertion; skipping`);
 							return [];
 						}
 						return [
@@ -322,14 +282,9 @@ export function createTagRepository(
 				await execute();
 			} catch (error) {
 				if (isUniqueViolation(error)) {
-					throw new ResourceConflictError(
-						"One or more media tags already exist",
-					);
+					throw new ResourceConflictError("One or more media tags already exist");
 				}
-				throw new UnexpectedError(
-					`Failed to insert media tags for media ID: ${mediaId}`,
-					error,
-				);
+				throw new UnexpectedError(`Failed to insert media tags for media ID: ${mediaId}`, error);
 			}
 		},
 	};

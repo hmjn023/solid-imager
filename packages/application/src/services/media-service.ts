@@ -28,21 +28,13 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type {
-	IMediaStorage,
-	MediaSourceFile,
-} from "@solid-imager/core/interfaces/media-storage";
+import type { IMediaStorage, MediaSourceFile } from "@solid-imager/core/interfaces/media-storage";
 import type { ProcessMediaJobRepository } from "../ports/job-repository";
 import type { DeferredActions, DeferredEvent } from "./job-runtime";
 import { extractAndPersistMediaMetadata } from "./media-metadata-extractor";
 import { queueMediaProcessingJob } from "./media-processing-job";
 
-export type {
-	DeferredActions,
-	DeferredEvent,
-	DeferredJob,
-	DeferredJobs,
-} from "./job-runtime";
+export type { DeferredActions, DeferredEvent, DeferredJob, DeferredJobs } from "./job-runtime";
 
 const SIGNATURES: Record<string, number[]> = {
 	png: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a],
@@ -134,29 +126,21 @@ const defaultPathAdapter: MediaPathAdapter = {
 		}
 		const separator = basePath.includes("\\") ? "\\" : "/";
 		const base = basePath.replace(/[\\/]+$/, "");
-		const relative = relativePath
-			.replace(/^[\\/]+/, "")
-			.replace(/[\\/]/g, separator);
+		const relative = relativePath.replace(/^[\\/]+/, "").replace(/[\\/]/g, separator);
 		return `${base}${separator}${relative}`;
 	},
 	relative(basePath: string, fullPath: string): string {
 		const baseSegments = splitPath(basePath);
 		const fullSegments = splitPath(fullPath);
 		let index = 0;
-		while (
-			index < baseSegments.length &&
-			baseSegments[index] === fullSegments[index]
-		) {
+		while (index < baseSegments.length && baseSegments[index] === fullSegments[index]) {
 			index += 1;
 		}
 		return fullSegments.slice(index).join("/");
 	},
 };
 
-function getMediaTypeFromFileName(
-	fileName: string,
-	pathAdapter: MediaPathAdapter,
-) {
+function getMediaTypeFromFileName(fileName: string, pathAdapter: MediaPathAdapter) {
 	const ext = pathAdapter.extname(fileName).toLowerCase();
 	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
 		return "video";
@@ -167,10 +151,7 @@ function getMediaTypeFromFileName(
 	return "image";
 }
 
-function getContentTypeFromFileName(
-	fileName: string,
-	pathAdapter: MediaPathAdapter,
-): string {
+function getContentTypeFromFileName(fileName: string, pathAdapter: MediaPathAdapter): string {
 	const ext = pathAdapter.extname(fileName).toLowerCase().replace(".", "");
 	switch (ext) {
 		case "jpg":
@@ -240,9 +221,7 @@ export async function validateFileSignature(
 
 	if (
 		ext === "webp" &&
-		!bytes
-			.slice(WEBP_OFFSET, WEBP_END)
-			.every((byte, index) => byte === WEBP_SUBTYPE[index])
+		!bytes.slice(WEBP_OFFSET, WEBP_END).every((byte, index) => byte === WEBP_SUBTYPE[index])
 	) {
 		throw new Error("Invalid WEBP signature (missing WEBP)");
 	}
@@ -265,12 +244,8 @@ export class MediaServiceImpl {
 	private readonly thumbnailCleaner:
 		| ((sourceId: string, mediaId: string) => Promise<void>)
 		| undefined;
-	private readonly eventPublisher:
-		| ((event: DeferredEvent) => Promise<void> | void)
-		| undefined;
-	private readonly afterMediaRegistered:
-		| MediaServiceDeps["afterMediaRegistered"]
-		| undefined;
+	private readonly eventPublisher: ((event: DeferredEvent) => Promise<void> | void) | undefined;
+	private readonly afterMediaRegistered: MediaServiceDeps["afterMediaRegistered"] | undefined;
 	private readonly logger: MediaServiceDeps["logger"];
 
 	constructor(deps: MediaServiceDeps) {
@@ -302,10 +277,7 @@ export class MediaServiceImpl {
 		const searchRequest = mediaSearchRequestSchema.parse(params);
 		if (mediaSourceId) {
 			const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-			return await this.mediaRepository.search(
-				validatedSourceId,
-				searchRequest,
-			);
+			return await this.mediaRepository.search(validatedSourceId, searchRequest);
 		}
 		return await this.mediaRepository.globalSearch(searchRequest);
 	}
@@ -316,11 +288,7 @@ export class MediaServiceImpl {
 		params: { query?: string; tags?: string[] },
 	): Promise<Media[]> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return await this.mediaRepository.searchInDirectory(
-			validatedSourceId,
-			directoryPath,
-			params,
-		);
+		return await this.mediaRepository.searchInDirectory(validatedSourceId, directoryPath, params);
 	}
 
 	async uploadMedia(
@@ -334,19 +302,13 @@ export class MediaServiceImpl {
 			throw new ResourceNotFoundError("Media Source", validatedSourceId);
 		}
 		if (mediaSource.type !== "local") {
-			throw new Error(
-				"Only local media sources are supported for uploads in Phase 1.",
-			);
+			throw new Error("Only local media sources are supported for uploads in Phase 1.");
 		}
 
 		const connectionInfo = mediaSource.connectionInfo as { path: string };
 		const basePath = connectionInfo.path;
 		const uploadRequest = uploadMediaRequestSchema.parse(options);
-		await validateFileSignature(
-			file,
-			uploadRequest.filename ?? file.name,
-			this.pathAdapter,
-		);
+		await validateFileSignature(file, uploadRequest.filename ?? file.name, this.pathAdapter);
 
 		const fileInfo = await this.storageService.saveFile(basePath, file, {
 			filename: uploadRequest.filename,
@@ -354,10 +316,7 @@ export class MediaServiceImpl {
 			autoIncrement: uploadRequest.autoIncrement,
 		});
 
-		const mediaType = getMediaTypeFromFileName(
-			fileInfo.fileName,
-			this.pathAdapter,
-		);
+		const mediaType = getMediaTypeFromFileName(fileInfo.fileName, this.pathAdapter);
 		const newMedia: AddMediaRequest = {
 			mediaSourceId: validatedSourceId,
 			filePath: fileInfo.filePath,
@@ -385,9 +344,7 @@ export class MediaServiceImpl {
 
 		try {
 			if (uploadRequest.sourceUrl) {
-				await this.mediaRepository.addUrls(insertedMedia.id, [
-					uploadRequest.sourceUrl,
-				]);
+				await this.mediaRepository.addUrls(insertedMedia.id, [uploadRequest.sourceUrl]);
 			}
 
 			await this.afterMediaRegistered?.({
@@ -396,17 +353,9 @@ export class MediaServiceImpl {
 				sourcePath: basePath,
 				filePath: fileInfo.filePath,
 			});
-			await this.queueProcessingJob(
-				insertedMedia.id,
-				validatedSourceId,
-				basePath,
-			);
+			await this.queueProcessingJob(insertedMedia.id, validatedSourceId, basePath);
 		} catch (error) {
-			await this.rollbackPersistedUpload(
-				insertedMedia.id,
-				basePath,
-				fileInfo.filePath,
-			);
+			await this.rollbackPersistedUpload(insertedMedia.id, basePath, fileInfo.filePath);
 			throw error;
 		}
 
@@ -419,14 +368,10 @@ export class MediaServiceImpl {
 		};
 	}
 
-	async getMediaDetails(
-		mediaSourceId: string,
-		mediaId: string,
-	): Promise<MediaDetails> {
+	async getMediaDetails(mediaSourceId: string, mediaId: string): Promise<MediaDetails> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
-		const mediaDetails =
-			await this.mediaRepository.getDetails(validatedMediaId);
+		const mediaDetails = await this.mediaRepository.getDetails(validatedMediaId);
 		if (!mediaDetails) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -436,8 +381,7 @@ export class MediaServiceImpl {
 
 		let finalGenerationInfo = mediaDetails.generationInfo;
 		if (!finalGenerationInfo) {
-			const mediaSource =
-				await this.sourceRepository.findById(validatedSourceId);
+			const mediaSource = await this.sourceRepository.findById(validatedSourceId);
 			if (mediaSource && mediaSource.type === "local") {
 				const connectionInfo = mediaSource.connectionInfo as { path: string };
 				finalGenerationInfo = await extractAndPersistMediaMetadata(
@@ -456,9 +400,7 @@ export class MediaServiceImpl {
 
 		return {
 			...mediaDetails,
-			generationInfo: finalGenerationInfo
-				? normalizeGenerationInfo(finalGenerationInfo)
-				: null,
+			generationInfo: finalGenerationInfo ? normalizeGenerationInfo(finalGenerationInfo) : null,
 		};
 	}
 
@@ -477,40 +419,25 @@ export class MediaServiceImpl {
 			throw new Error("Only local media sources is supported.");
 		}
 		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const buffer = await this.storageService.getFile(
-			connectionInfo.path,
-			media.filePath,
-		);
-		const contentType = getContentTypeFromFileName(
-			media.fileName,
-			this.pathAdapter,
-		);
+		const buffer = await this.storageService.getFile(connectionInfo.path, media.filePath);
+		const contentType = getContentTypeFromFileName(media.fileName, this.pathAdapter);
 		return { buffer, contentType };
 	}
 
-	async registerExistingMedia(
-		mediaSourceId: string,
-		directoryPath: string,
-	): Promise<void> {
+	async registerExistingMedia(mediaSourceId: string, directoryPath: string): Promise<void> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
 		if (!mediaSource) {
 			throw new ResourceNotFoundError("Media Source", validatedSourceId);
 		}
 		if (mediaSource.type !== "local") {
-			throw new Error(
-				"Only local media sources are supported for existing media registration.",
-			);
+			throw new Error("Only local media sources are supported for existing media registration.");
 		}
 
-		const sourceRootPath = (mediaSource.connectionInfo as { path: string })
-			.path;
+		const sourceRootPath = (mediaSource.connectionInfo as { path: string }).path;
 		const files = await this.storageService.scanDirectory(directoryPath);
-		const existingRecords =
-			await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
-		const existingPaths = new Set(
-			existingRecords.map((record) => record.filePath),
-		);
+		const existingRecords = await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
+		const existingPaths = new Set(existingRecords.map((record) => record.filePath));
 		const newMediaInputs: AddMediaRequest[] = [];
 
 		for (const file of files) {
@@ -548,11 +475,7 @@ export class MediaServiceImpl {
 		await Promise.all(
 			newMediaItems.map(async (item) => {
 				try {
-					await this.queueProcessingJob(
-						item.id,
-						validatedSourceId,
-						sourceRootPath,
-					);
+					await this.queueProcessingJob(item.id, validatedSourceId, sourceRootPath);
 				} catch (error) {
 					this.logger?.error?.(
 						{ err: error, mediaId: item.id, mediaSourceId: validatedSourceId },
@@ -592,20 +515,13 @@ export class MediaServiceImpl {
 		const parsedUpdates = updateMediaRequestSchema.parse(updates);
 
 		const execute = async (transaction: Transaction) => {
-			const media = await this.mediaRepository.findById(
-				validatedMediaId,
-				transaction,
-			);
+			const media = await this.mediaRepository.findById(validatedMediaId, transaction);
 			if (!media || media.mediaSourceId !== validatedSourceId) {
 				throw new ResourceNotFoundError("Media", validatedMediaId);
 			}
 
 			const [updatedMedia] = await Promise.all([
-				this.mediaRepository.update(
-					validatedMediaId,
-					parsedUpdates,
-					transaction,
-				),
+				this.mediaRepository.update(validatedMediaId, parsedUpdates, transaction),
 				this.contextMetadataUpdater(
 					validatedMediaId,
 					{
@@ -664,8 +580,7 @@ export class MediaServiceImpl {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 		await this.getMedia(validatedSourceId, validatedMediaId);
-		const generationInfo =
-			await this.mediaRepository.getGenerationInfo(validatedMediaId);
+		const generationInfo = await this.mediaRepository.getGenerationInfo(validatedMediaId);
 		return generationInfo ? normalizeGenerationInfo(generationInfo) : null;
 	}
 
@@ -676,22 +591,13 @@ export class MediaServiceImpl {
 	): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
 		const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
 		const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
-		const sourceMedia = await this.mediaRepository.findById(
-			validatedSourceMediaId,
-			tx,
-		);
+		const sourceMedia = await this.mediaRepository.findById(validatedSourceMediaId, tx);
 		if (!sourceMedia) {
 			throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
 		}
 
-		const sourceSource = await this.sourceRepository.findById(
-			sourceMedia.mediaSourceId,
-			tx,
-		);
-		const targetSource = await this.sourceRepository.findById(
-			validatedTargetSourceId,
-			tx,
-		);
+		const sourceSource = await this.sourceRepository.findById(sourceMedia.mediaSourceId, tx);
+		const targetSource = await this.sourceRepository.findById(validatedTargetSourceId, tx);
 		if (!(sourceSource && targetSource)) {
 			throw new Error("Source or target media source not found.");
 		}
@@ -701,18 +607,11 @@ export class MediaServiceImpl {
 
 		const sourceConnection = sourceSource.connectionInfo as { path: string };
 		const targetConnection = targetSource.connectionInfo as { path: string };
-		const fullSourcePath = this.pathAdapter.join(
-			sourceConnection.path,
-			sourceMedia.filePath,
-		);
-		const fileInfo = await this.storageService.copyFile(
-			fullSourcePath,
-			targetConnection.path,
-			{
-				filename: sourceMedia.fileName,
-				autoIncrement: true,
-			},
-		);
+		const fullSourcePath = this.pathAdapter.join(sourceConnection.path, sourceMedia.filePath);
+		const fileInfo = await this.storageService.copyFile(fullSourcePath, targetConnection.path, {
+			filename: sourceMedia.fileName,
+			autoIncrement: true,
+		});
 
 		const newMediaEntry = await this.mediaRepository.create(
 			{
@@ -788,19 +687,12 @@ export class MediaServiceImpl {
 				jobs: [],
 				sse: [],
 			};
-			const copyResult = await this.copyMedia(
-				sourceMediaId,
-				targetSourceId,
-				transaction,
-			);
+			const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, transaction);
 			if (copyResult.deferred) {
 				accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
 			}
 			if (copyResult.success) {
-				const sourceMedia = await this.mediaRepository.findById(
-					sourceMediaId,
-					transaction,
-				);
+				const sourceMedia = await this.mediaRepository.findById(sourceMediaId, transaction);
 				if (sourceMedia) {
 					const deleteResult = await this.deleteMedia(
 						sourceMedia.mediaSourceId,
@@ -869,17 +761,11 @@ export class MediaServiceImpl {
 		await this.thumbnailCleaner?.(validatedSourceId, validatedMediaId);
 		await this.mediaRepository.delete(validatedMediaId, tx);
 
-		const mediaSource = await this.sourceRepository.findById(
-			media.mediaSourceId,
-			tx,
-		);
+		const mediaSource = await this.sourceRepository.findById(media.mediaSourceId, tx);
 		if (mediaSource?.type === "local") {
 			const connectionInfo = mediaSource.connectionInfo as { path: string };
 			try {
-				await this.storageService.deleteFile(
-					connectionInfo.path,
-					media.filePath,
-				);
+				await this.storageService.deleteFile(connectionInfo.path, media.filePath);
 			} catch (_error) {
 				// File deletion is best-effort after DB deletion, matching old behavior.
 			}
@@ -908,19 +794,13 @@ export class MediaServiceImpl {
 		try {
 			await this.mediaRepository.delete(mediaId);
 		} catch (error) {
-			this.logger?.error?.(
-				{ err: error, mediaId },
-				"[MediaService] rollback media delete failed",
-			);
+			this.logger?.error?.({ err: error, mediaId }, "[MediaService] rollback media delete failed");
 		}
 
 		try {
 			await this.storageService.deleteFile(basePath, filePath);
 		} catch (error) {
-			this.logger?.error?.(
-				{ err: error, filePath },
-				"[MediaService] rollback file delete failed",
-			);
+			this.logger?.error?.({ err: error, filePath }, "[MediaService] rollback file delete failed");
 		}
 	}
 
@@ -973,17 +853,11 @@ export class MediaServiceImpl {
 		return results.flatMap((item) => (item ? [item] : []));
 	}
 
-	private async executeDeferredActions(
-		actions: DeferredActions,
-	): Promise<void> {
+	private async executeDeferredActions(actions: DeferredActions): Promise<void> {
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
 				if (job.type === "processMedia" && job.mediaId && job.sourcePath) {
-					await this.queueProcessingJob(
-						job.mediaId,
-						item.mediaSourceId,
-						job.sourcePath,
-					);
+					await this.queueProcessingJob(job.mediaId, item.mediaSourceId, job.sourcePath);
 				}
 			}
 		}
@@ -997,10 +871,7 @@ export class MediaServiceImpl {
 		newMediaId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const sourceAuthors = await this.mediaRepository.getAuthors(
-			sourceMediaId,
-			tx,
-		);
+		const sourceAuthors = await this.mediaRepository.getAuthors(sourceMediaId, tx);
 		if (sourceAuthors.length > 0) {
 			await this.authorRepository.addMediaBulk(
 				newMediaId,
@@ -1009,10 +880,7 @@ export class MediaServiceImpl {
 			);
 		}
 
-		const sourceProjects = await this.projectRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
+		const sourceProjects = await this.projectRepository.findByMediaId(sourceMediaId, tx);
 		if (sourceProjects.length > 0) {
 			await this.projectRepository.addMediaBulk(
 				newMediaId,
@@ -1021,10 +889,7 @@ export class MediaServiceImpl {
 			);
 		}
 
-		const sourceCharacters = await this.characterRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
+		const sourceCharacters = await this.characterRepository.findByMediaId(sourceMediaId, tx);
 		if (sourceCharacters.length > 0) {
 			await this.characterRepository.addToMediaBulk(
 				newMediaId,

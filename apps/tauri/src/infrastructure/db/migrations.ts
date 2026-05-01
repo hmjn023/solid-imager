@@ -9,14 +9,11 @@ type MigrationJournal = {
 	}>;
 };
 
-const migrationModules = import.meta.glob<string>(
-	"../../../../server/drizzle/*.sql",
-	{
-		query: "?raw",
-		import: "default",
-		eager: true,
-	},
-);
+const migrationModules = import.meta.glob<string>("../../../../server/drizzle/*.sql", {
+	query: "?raw",
+	import: "default",
+	eager: true,
+});
 
 function getMigrationSqlByTag(tag: string): string | undefined {
 	const suffix = `/${tag}.sql`;
@@ -29,13 +26,8 @@ function getMigrationSqlByTag(tag: string): string | undefined {
 }
 
 async function sha256Hex(input: string): Promise<string> {
-	const digest = await crypto.subtle.digest(
-		"SHA-256",
-		new TextEncoder().encode(input),
-	);
-	return Array.from(new Uint8Array(digest), (byte) =>
-		byte.toString(16).padStart(2, "0"),
-	).join("");
+	const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+	return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 export async function loadServerMigrations(): Promise<MigrationMeta[]> {

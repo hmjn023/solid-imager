@@ -21,21 +21,13 @@ export const AnalyticsService = {
 };
 
 export const BulkOperationService = {
-	bulkEditMedia(
-		_mediaSourceId: string,
-		_mediaIds: string[],
-		_updates: unknown,
-	) {
+	bulkEditMedia(_mediaSourceId: string, _mediaIds: string[], _updates: unknown) {
 		return notImplemented("BulkOperationService.bulkEditMedia");
 	},
 	bulkDeleteMedia(_mediaSourceId: string, _mediaIds: string[]) {
 		return notImplemented("BulkOperationService.bulkDeleteMedia");
 	},
-	bulkMoveMedia(
-		_mediaSourceId: string,
-		_mediaIds: string[],
-		_destinationPath: string,
-	) {
+	bulkMoveMedia(_mediaSourceId: string, _mediaIds: string[], _destinationPath: string) {
 		return notImplemented("BulkOperationService.bulkMoveMedia");
 	},
 	bulkTagMedia(

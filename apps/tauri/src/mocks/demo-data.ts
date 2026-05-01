@@ -227,10 +227,7 @@ export const mockCharacters: MockCharacter[] = [
 	},
 ];
 
-function associationsFromIds(
-	ids: string[],
-	items: MockEntity[],
-): MockAssociation[] {
+function associationsFromIds(ids: string[], items: MockEntity[]): MockAssociation[] {
 	return ids
 		.map((id) => items.find((item) => item.id === id))
 		.filter((item): item is MockEntity => item !== undefined)
@@ -247,16 +244,14 @@ export const mockMedia: MockMedia[] = [
 	{
 		authors: [baseAuthors[0]],
 		characters: associationsFromIds(["char-rin"], mockCharacters),
-		description:
-			"Glass reflections and ambient glow balanced well on this version.",
+		description: "Glass reflections and ambient glow balanced well on this version.",
 		favorite: true,
 		fileName: "aurora-room.png",
 		filePath: "/mnt/media/generations/aurora-room.png",
 		fileSize: 4_912_128,
 		generationInfo: {
 			negativePrompt: "blurry, noisy, distorted furniture",
-			prompt:
-				"cinematic room interior, glass reflections, teal ambient light, volumetric haze",
+			prompt: "cinematic room interior, glass reflections, teal ambient light, volumetric haze",
 			workflow: { cfg: 6.5, sampler: "dpmpp_2m", steps: 28 },
 		},
 		height: 1024,
@@ -272,14 +267,12 @@ export const mockMedia: MockMedia[] = [
 			{ name: "teal", source: "manual", type: "positive" },
 		],
 		projects: associationsFromIds(["project-starlit"], mockProjects),
-		prompt:
-			"cinematic room interior, glass reflections, teal ambient light, volumetric haze",
+		prompt: "cinematic room interior, glass reflections, teal ambient light, volumetric haze",
 		rating: 5,
 		resolution: "1536x1024",
 		sourceName: "Local Generations",
 		status: "tagged",
-		summary:
-			"Interior render with teal ambient lighting and glass reflections.",
+		summary: "Interior render with teal ambient lighting and glass reflections.",
 		tags: ["interior", "teal", "lighting"],
 		title: "Aurora Room",
 		updatedAt: "2026-04-09 09:20",
@@ -297,8 +290,7 @@ export const mockMedia: MockMedia[] = [
 		fileSize: 3_882_921,
 		generationInfo: {
 			negativePrompt: "washed out colors, crowd clutter",
-			prompt:
-				"rainy alley, anime city, neon signs, wet asphalt, moody atmosphere",
+			prompt: "rainy alley, anime city, neon signs, wet asphalt, moody atmosphere",
 			workflow: { cfg: 7, sampler: "euler_a", steps: 24 },
 		},
 		height: 832,
@@ -314,8 +306,7 @@ export const mockMedia: MockMedia[] = [
 			{ name: "neon", source: "manual", type: "positive" },
 		],
 		projects: associationsFromIds(["project-starlit"], mockProjects),
-		prompt:
-			"rainy alley, anime city, neon signs, wet asphalt, moody atmosphere",
+		prompt: "rainy alley, anime city, neon signs, wet asphalt, moody atmosphere",
 		rating: 4,
 		resolution: "1216x832",
 		sourceName: "Local Generations",
@@ -337,8 +328,7 @@ export const mockMedia: MockMedia[] = [
 		filePath: "/mnt/media/generations/botanical-study.png",
 		fileSize: 2_951_100,
 		generationInfo: {
-			prompt:
-				"botanical close-up, dewdrops, painterly brushwork, natural study",
+			prompt: "botanical close-up, dewdrops, painterly brushwork, natural study",
 			workflow: { cfg: 5.5, sampler: "heun", steps: 20 },
 		},
 		height: 1024,
@@ -370,15 +360,13 @@ export const mockMedia: MockMedia[] = [
 	{
 		authors: [baseAuthors[1]],
 		characters: associationsFromIds(["char-rin", "char-sable"], mockCharacters),
-		description:
-			"Reference sheet with enough structure to validate associations.",
+		description: "Reference sheet with enough structure to validate associations.",
 		favorite: true,
 		fileName: "hero-sheet.png",
 		filePath: "/srv/reference-board/hero-sheet.png",
 		fileSize: 6_412_000,
 		generationInfo: {
-			prompt:
-				"hero character sheet, turnaround, costume notes, polished concept art",
+			prompt: "hero character sheet, turnaround, costume notes, polished concept art",
 			workflow: { renderer: "manual import", source: "reference board" },
 		},
 		height: 1536,
@@ -394,8 +382,7 @@ export const mockMedia: MockMedia[] = [
 			{ name: "reference", source: "manual", type: "positive" },
 		],
 		projects: associationsFromIds(["project-starlit"], mockProjects),
-		prompt:
-			"hero character sheet, turnaround, costume notes, polished concept art",
+		prompt: "hero character sheet, turnaround, costume notes, polished concept art",
 		rating: 5,
 		resolution: "2048x1536",
 		sourceName: "Reference Board",
@@ -449,15 +436,13 @@ export const mockMedia: MockMedia[] = [
 	{
 		authors: [baseAuthors[2]],
 		characters: [],
-		description:
-			"Queued import pending metadata cleanup and project assignment.",
+		description: "Queued import pending metadata cleanup and project assignment.",
 		favorite: false,
 		fileName: "courtyard-dawn.png",
 		filePath: "s3://solid-imager-imports/desktop/inbox/courtyard-dawn.png",
 		fileSize: 2_106_448,
 		generationInfo: {
-			prompt:
-				"courtyard at dawn, warm fog, soft architecture, concept matte painting",
+			prompt: "courtyard at dawn, warm fog, soft architecture, concept matte painting",
 			workflow: { source: "external import", notes: "queue pending" },
 		},
 		height: 768,
@@ -473,8 +458,7 @@ export const mockMedia: MockMedia[] = [
 			{ name: "courtyard", source: "AI", type: "positive" },
 		],
 		projects: associationsFromIds(["project-orchard"], mockProjects),
-		prompt:
-			"courtyard at dawn, warm fog, soft architecture, concept matte painting",
+		prompt: "courtyard at dawn, warm fog, soft architecture, concept matte painting",
 		rating: 2,
 		resolution: "1344x768",
 		sourceName: "Import Inbox",
@@ -497,8 +481,7 @@ export const mockMedia: MockMedia[] = [
 		fileSize: 5_003_012,
 		generationInfo: {
 			negativePrompt: "muddy lighting, unreadable UI",
-			prompt:
-				"sci-fi laboratory, signal monitors, clean industrial interior, orange light",
+			prompt: "sci-fi laboratory, signal monitors, clean industrial interior, orange light",
 			workflow: { cfg: 7.5, sampler: "euler", steps: 30 },
 		},
 		height: 1024,
@@ -514,8 +497,7 @@ export const mockMedia: MockMedia[] = [
 			{ name: "environment", source: "manual", type: "positive" },
 		],
 		projects: associationsFromIds(["project-starlit"], mockProjects),
-		prompt:
-			"sci-fi laboratory, signal monitors, clean industrial interior, orange light",
+		prompt: "sci-fi laboratory, signal monitors, clean industrial interior, orange light",
 		rating: 4,
 		resolution: "1792x1024",
 		sourceName: "Import Inbox",
@@ -537,8 +519,7 @@ export const mockMedia: MockMedia[] = [
 		filePath: "/srv/reference-board/mecha-note.png",
 		fileSize: 4_220_982,
 		generationInfo: {
-			prompt:
-				"mecha silhouette sheet, annotation arrows, industrial concept sketch",
+			prompt: "mecha silhouette sheet, annotation arrows, industrial concept sketch",
 			workflow: { renderer: "manual import", source: "reference board" },
 		},
 		height: 1400,
@@ -554,8 +535,7 @@ export const mockMedia: MockMedia[] = [
 			{ name: "annotation", source: "manual", type: "positive" },
 		],
 		projects: associationsFromIds(["project-starlit"], mockProjects),
-		prompt:
-			"mecha silhouette sheet, annotation arrows, industrial concept sketch",
+		prompt: "mecha silhouette sheet, annotation arrows, industrial concept sketch",
 		rating: 5,
 		resolution: "1400x1400",
 		sourceName: "Reference Board",
@@ -614,9 +594,7 @@ export const mockConfig: MockConfig = {
 	},
 };
 
-export const mockSearchTags = Array.from(
-	new Set(mockMedia.flatMap((item) => item.tags)),
-).sort();
+export const mockSearchTags = Array.from(new Set(mockMedia.flatMap((item) => item.tags))).sort();
 
 export function getMockSource(sourceId: string) {
 	return mockSources.find((source) => source.id === sourceId);
