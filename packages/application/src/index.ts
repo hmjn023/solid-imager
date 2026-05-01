@@ -20,6 +20,7 @@ export * from "./services/project-service";
 export * from "./services/runtime-events";
 export * from "./services/search-service";
 export * from "./services/source-service";
+export * from "./services/source-sync-runtime";
 export * from "./services/stub-services";
 export * from "./services/tag-service";
 export * from "./services/tagging-job-runner";
