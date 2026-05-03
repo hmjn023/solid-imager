@@ -503,8 +503,6 @@ export class MediaServiceImpl {
 			);
 		}
 
-		const sourceRootPath = (mediaSource.connectionInfo as { path: string })
-			.path;
 		const files = await this.storageService.scanDirectory(directoryPath);
 		const existingRecords =
 			await this.mediaRepository.findAllPathsBySourceId(validatedSourceId);
@@ -515,7 +513,7 @@ export class MediaServiceImpl {
 
 		for (const file of files) {
 			try {
-				const relativePath = this.pathAdapter.relative(sourceRootPath, file);
+				const relativePath = this.pathAdapter.relative(directoryPath, file);
 				if (existingPaths.has(relativePath)) {
 					continue;
 				}
@@ -551,7 +549,7 @@ export class MediaServiceImpl {
 					await this.queueProcessingJob(
 						item.id,
 						validatedSourceId,
-						sourceRootPath,
+						directoryPath,
 					);
 				} catch (error) {
 					this.logger?.error?.(

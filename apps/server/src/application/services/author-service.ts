@@ -16,4 +16,10 @@ export const AuthorService = {
 	},
 
 	delete: authorService.delete,
+
+	listForMedia: authorService.listForMedia,
+
+	addToMedia: authorService.addToMedia,
+
+	removeFromMedia: authorService.removeFromMedia,
 };

@@ -31,7 +31,7 @@ Lint: Biome
 - `apps/cli/`: メディア管理・同期用CLIツール。
 - `packages/core/`: ドメインモデル、Zodスキーマ、ビジネスロジック、各インターフェース。
 - `packages/ui/`: 共通UIコンポーネントライブラリ (Kobalte + Tailwind CSS + solid-ui)。
-- `xtracter/`: メディア収集用ブラウザ拡張機能。
+- `apps/xtracter/`: メディア収集用ブラウザ拡張機能。
 - `src-python/`: AI解析サービス (FastAPI + dghs-imgutils)。
 
 ## セットアップ

@@ -39,9 +39,19 @@ function Popup() {
 				type: "GET_SOURCES",
 			});
 			setSources(resp || []);
-			if (resp && resp.length > 0 && !selectedSourceId()) {
-				setSelectedSourceId(resp[0].id);
+
+			const currentId = selectedSourceId();
+			const isValid = resp?.some((s) => s.id === currentId);
+
+			if (!isValid && resp && resp.length > 0) {
+				const firstId = resp[0].id;
+				setSelectedSourceId(firstId);
+				await chrome.storage.local.set({ selectedSourceId: firstId });
+			} else if (!isValid) {
+				setSelectedSourceId("");
+				await chrome.storage.local.set({ selectedSourceId: "" });
 			}
+
 			setStatus("");
 		} catch (_err) {
 			setStatus("Failed to load sources. Check API URL.");

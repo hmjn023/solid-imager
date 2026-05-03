@@ -80,4 +80,8 @@ export const db = new Proxy({} as NodePostgresDb | PgLiteDb, {
 		const value = instance[prop as keyof typeof instance];
 		return typeof value === "function" ? value.bind(instance) : value;
 	},
+	has(_target, prop) {
+		const instance = initializeDb();
+		return prop in instance;
+	},
 });
