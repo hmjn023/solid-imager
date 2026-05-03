@@ -640,9 +640,9 @@ function buildSearchRequestFromOptions(
 				? { type: "group", operator: "and", children }
 				: undefined,
 		sort: options.sort,
-		order: options.order,
+		order: options.order ?? "desc",
 		limit: options.limit,
-		offset: options.offset,
+		offset: options.offset ?? 0,
 	};
 }
 

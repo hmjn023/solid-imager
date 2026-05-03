@@ -11,6 +11,8 @@ import {
 	resolveAiInput,
 } from "../services/ai-tagging-service";
 
+type MockedFn<T extends (...args: any[]) => any> = ReturnType<typeof vi.fn<T>>;
+
 describe("ai-tagging-service", () => {
 	describe("isAiServiceLocal", () => {
 		it("returns true for localhost", () => {
@@ -41,13 +43,15 @@ describe("ai-tagging-service", () => {
 	describe("reconstructTaggingResponseFromCache", () => {
 		const mockTagRepo = {
 			findByMediaId: vi.fn(),
-		} as unknown as Pick<TagRepository, "findByMediaId">;
+		} as { findByMediaId: MockedFn<(mediaId: string, tx?: unknown) => any> };
 		const mockCharacterRepo = {
 			getMediaCharacters: vi.fn(),
-		} as unknown as Pick<CharacterRepository, "getMediaCharacters">;
+		} as {
+			getMediaCharacters: MockedFn<(mediaId: string, tx?: unknown) => any>;
+		};
 		const mockIpRepo = {
 			getMediaIps: vi.fn(),
-		} as unknown as Pick<IIpRepository, "getMediaIps">;
+		} as { getMediaIps: MockedFn<(mediaId: string, tx?: unknown) => any> };
 
 		beforeEach(() => {
 			mockTagRepo.findByMediaId.mockReset();
@@ -60,9 +64,12 @@ describe("ai-tagging-service", () => {
 				{ name: "manual-tag", source: "manual", confidence: 1.0 },
 			]);
 			const result = await reconstructTaggingResponseFromCache("media-1", {
-				tagRepository: mockTagRepo,
-				characterRepository: mockCharacterRepo,
-				ipRepository: mockIpRepo,
+				tagRepository: mockTagRepo as Pick<TagRepository, "findByMediaId">,
+				characterRepository: mockCharacterRepo as Pick<
+					CharacterRepository,
+					"getMediaCharacters"
+				>,
+				ipRepository: mockIpRepo as Pick<IIpRepository, "getMediaIps">,
 			});
 			expect(result).toBeNull();
 		});
@@ -95,9 +102,12 @@ describe("ai-tagging-service", () => {
 			]);
 
 			const result = await reconstructTaggingResponseFromCache("media-1", {
-				tagRepository: mockTagRepo,
-				characterRepository: mockCharacterRepo,
-				ipRepository: mockIpRepo,
+				tagRepository: mockTagRepo as Pick<TagRepository, "findByMediaId">,
+				characterRepository: mockCharacterRepo as Pick<
+					CharacterRepository,
+					"getMediaCharacters"
+				>,
+				ipRepository: mockIpRepo as Pick<IIpRepository, "getMediaIps">,
 			});
 
 			expect(result).toEqual({
@@ -154,7 +164,10 @@ describe("ai-tagging-service", () => {
 		const mockAiClient = {
 			tagImage: vi.fn(),
 			tagImageByPath: vi.fn(),
-		} as unknown as IAiClient;
+		} as {
+			tagImage: MockedFn<(buffer: ArrayBuffer) => any>;
+			tagImageByPath: MockedFn<(path: string) => any>;
+		};
 
 		beforeEach(() => {
 			mockAiClient.tagImage.mockReset();
@@ -166,22 +179,27 @@ describe("ai-tagging-service", () => {
 				findByMediaId: vi.fn(async () => [
 					{ name: "cached", source: "AI", confidence: 0.8 },
 				]),
-			} as unknown as Pick<TagRepository, "findByMediaId">;
+			} as { findByMediaId: MockedFn<(mediaId: string, tx?: unknown) => any> };
 			const mockCharacterRepo = {
 				getMediaCharacters: vi.fn(async () => []),
-			} as unknown as Pick<CharacterRepository, "getMediaCharacters">;
+			} as {
+				getMediaCharacters: MockedFn<(mediaId: string, tx?: unknown) => any>;
+			};
 			const mockIpRepo = {
 				getMediaIps: vi.fn(async () => []),
-			} as unknown as Pick<IIpRepository, "getMediaIps">;
+			} as { getMediaIps: MockedFn<(mediaId: string, tx?: unknown) => any> };
 
 			const persistResponse = vi.fn();
 
 			const result = await orchestrateTagging("media-1", undefined, {
-				aiClient: mockAiClient,
+				aiClient: mockAiClient as unknown as IAiClient,
 				reconstructDeps: {
-					tagRepository: mockTagRepo,
-					characterRepository: mockCharacterRepo,
-					ipRepository: mockIpRepo,
+					tagRepository: mockTagRepo as Pick<TagRepository, "findByMediaId">,
+					characterRepository: mockCharacterRepo as Pick<
+						CharacterRepository,
+						"getMediaCharacters"
+					>,
+					ipRepository: mockIpRepo as Pick<IIpRepository, "getMediaIps">,
 				},
 				getAiBaseUrl: () => "http://localhost",
 				mediaSourceType: "local",
@@ -206,13 +224,15 @@ describe("ai-tagging-service", () => {
 		it("calls tagImageByPath for local source + local AI", async () => {
 			const mockTagRepo = {
 				findByMediaId: vi.fn(async () => []),
-			} as unknown as Pick<TagRepository, "findByMediaId">;
+			} as { findByMediaId: MockedFn<(mediaId: string, tx?: unknown) => any> };
 			const mockCharacterRepo = {
 				getMediaCharacters: vi.fn(async () => []),
-			} as unknown as Pick<CharacterRepository, "getMediaCharacters">;
+			} as {
+				getMediaCharacters: MockedFn<(mediaId: string, tx?: unknown) => any>;
+			};
 			const mockIpRepo = {
 				getMediaIps: vi.fn(async () => []),
-			} as unknown as Pick<IIpRepository, "getMediaIps">;
+			} as { getMediaIps: MockedFn<(mediaId: string, tx?: unknown) => any> };
 
 			mockAiClient.tagImageByPath.mockResolvedValue({
 				general: { tag: 0.5 },
@@ -227,11 +247,14 @@ describe("ai-tagging-service", () => {
 				"media-1",
 				{ skipCache: true },
 				{
-					aiClient: mockAiClient,
+					aiClient: mockAiClient as unknown as IAiClient,
 					reconstructDeps: {
-						tagRepository: mockTagRepo,
-						characterRepository: mockCharacterRepo,
-						ipRepository: mockIpRepo,
+						tagRepository: mockTagRepo as Pick<TagRepository, "findByMediaId">,
+						characterRepository: mockCharacterRepo as Pick<
+							CharacterRepository,
+							"getMediaCharacters"
+						>,
+						ipRepository: mockIpRepo as Pick<IIpRepository, "getMediaIps">,
 					},
 					getAiBaseUrl: () => "http://localhost",
 					mediaSourceType: "local",
@@ -251,13 +274,15 @@ describe("ai-tagging-service", () => {
 		it("calls tagImage for remote AI", async () => {
 			const mockTagRepo = {
 				findByMediaId: vi.fn(async () => []),
-			} as unknown as Pick<TagRepository, "findByMediaId">;
+			} as { findByMediaId: MockedFn<(mediaId: string, tx?: unknown) => any> };
 			const mockCharacterRepo = {
 				getMediaCharacters: vi.fn(async () => []),
-			} as unknown as Pick<CharacterRepository, "getMediaCharacters">;
+			} as {
+				getMediaCharacters: MockedFn<(mediaId: string, tx?: unknown) => any>;
+			};
 			const mockIpRepo = {
 				getMediaIps: vi.fn(async () => []),
-			} as unknown as Pick<IIpRepository, "getMediaIps">;
+			} as { getMediaIps: MockedFn<(mediaId: string, tx?: unknown) => any> };
 
 			const buffer = new ArrayBuffer(8);
 			mockAiClient.tagImage.mockResolvedValue({
@@ -273,11 +298,14 @@ describe("ai-tagging-service", () => {
 				"media-1",
 				{ skipCache: true },
 				{
-					aiClient: mockAiClient,
+					aiClient: mockAiClient as unknown as IAiClient,
 					reconstructDeps: {
-						tagRepository: mockTagRepo,
-						characterRepository: mockCharacterRepo,
-						ipRepository: mockIpRepo,
+						tagRepository: mockTagRepo as Pick<TagRepository, "findByMediaId">,
+						characterRepository: mockCharacterRepo as Pick<
+							CharacterRepository,
+							"getMediaCharacters"
+						>,
+						ipRepository: mockIpRepo as Pick<IIpRepository, "getMediaIps">,
 					},
 					getAiBaseUrl: () => "http://remote.example.com",
 					mediaSourceType: "local",
@@ -299,7 +327,10 @@ describe("ai-tagging-service", () => {
 		const mockAiClient = {
 			extractCcipFeature: vi.fn(),
 			extractCcipFeatureByPath: vi.fn(),
-		} as unknown as IAiClient;
+		} as {
+			extractCcipFeature: MockedFn<(buffer: ArrayBuffer) => any>;
+			extractCcipFeatureByPath: MockedFn<(path: string) => any>;
+		};
 
 		beforeEach(() => {
 			mockAiClient.extractCcipFeature.mockReset();
@@ -312,7 +343,7 @@ describe("ai-tagging-service", () => {
 			});
 
 			const result = await orchestrateCcipExtraction({
-				aiClient: mockAiClient,
+				aiClient: mockAiClient as unknown as IAiClient,
 				getAiBaseUrl: () => "http://localhost",
 				mediaSourceType: "local",
 				mediaSourceConnectionInfo: { path: "/data" },
@@ -334,7 +365,7 @@ describe("ai-tagging-service", () => {
 			});
 
 			const result = await orchestrateCcipExtraction({
-				aiClient: mockAiClient,
+				aiClient: mockAiClient as unknown as IAiClient,
 				getAiBaseUrl: () => "http://remote.example.com",
 				mediaSourceType: "local",
 				mediaSourceConnectionInfo: { path: "/data" },

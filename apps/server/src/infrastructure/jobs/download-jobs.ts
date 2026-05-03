@@ -18,7 +18,6 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
@@ -32,8 +31,31 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
 
-// ffmpeg-static may return null on unsupported platforms
-const resolvedFfmpegPath = ffmpegPath ?? undefined;
+// Resolve ffmpeg path lazily (ffmpeg-static breaks when bundled)
+let _resolvedFfmpegPath: string | undefined;
+async function getResolvedFfmpegPath(): Promise<string | undefined> {
+	if (_resolvedFfmpegPath !== undefined)
+		return _resolvedFfmpegPath || undefined;
+	const { existsSync } = await import("node:fs");
+	try {
+		const staticPath = (await import("ffmpeg-static")).default;
+		if (staticPath && existsSync(staticPath)) {
+			_resolvedFfmpegPath = staticPath;
+			return _resolvedFfmpegPath;
+		}
+	} catch (_e) {
+		// ffmpeg-static not available
+	}
+	try {
+		const { execFileSync } = await import("node:child_process");
+		execFileSync("ffmpeg", ["-version"], { stdio: "ignore" });
+		_resolvedFfmpegPath = "ffmpeg";
+		return _resolvedFfmpegPath;
+	} catch (_e) {
+		_resolvedFfmpegPath = "";
+		return undefined;
+	}
+}
 
 type YtDlpOutput = {
 	id: string;
@@ -117,7 +139,9 @@ async function downloadWithYtDlp(
 			output: template,
 			format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
 			mergeOutputFormat: "mp4",
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...((await getResolvedFfmpegPath()) && {
+				ffmpegLocation: await getResolvedFfmpegPath(),
+			}),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
@@ -195,7 +219,9 @@ async function fetchMetadataWithYtDlp(
 		const result = await youtubedl(url, {
 			dumpSingleJson: true,
 			noDownload: true,
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...((await getResolvedFfmpegPath()) && {
+				ffmpegLocation: await getResolvedFfmpegPath(),
+			}),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
