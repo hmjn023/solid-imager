@@ -11,7 +11,6 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
@@ -21,12 +20,10 @@ import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
-
-// ffmpeg-static may return null on unsupported platforms
-const resolvedFfmpegPath = ffmpegPath ?? undefined;
 
 type YtDlpOutput = {
 	id: string;
@@ -103,6 +100,7 @@ async function downloadWithYtDlp(
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
+		const ffmpegLocation = await resolveFfmpegPath();
 		const result = await youtubedl(url, {
 			noSimulate: true,
 			printJson: true,
@@ -110,7 +108,7 @@ async function downloadWithYtDlp(
 			output: template,
 			format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
 			mergeOutputFormat: "mp4",
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
@@ -185,10 +183,11 @@ async function fetchMetadataWithYtDlp(
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
+		const ffmpegLocation = await resolveFfmpegPath();
 		const result = await youtubedl(url, {
 			dumpSingleJson: true,
 			noDownload: true,
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
