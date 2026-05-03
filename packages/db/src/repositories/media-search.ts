@@ -70,6 +70,20 @@ function escapeLikePattern(value: string): string {
 	return value.replace(/[%_\\]/g, (char) => `\\${char}`);
 }
 
+function isUuid(value: string): boolean {
+	return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+		value,
+	);
+}
+
+function isUuidArray(value: unknown): value is string[] {
+	return (
+		Array.isArray(value) &&
+		value.length > 0 &&
+		value.every((v) => typeof v === "string" && isUuid(v))
+	);
+}
+
 function getColumnForTarget(target: string): AnyColumn | undefined {
 	switch (target) {
 		case "fileName":
@@ -170,6 +184,28 @@ function buildKeywordCondition(
 	return node.negate ? not(condition) : condition;
 }
 
+function getRelationColumn(
+	target: "tag" | "project" | "ip" | "character" | "author",
+	value: string | number | boolean,
+): AnyColumn {
+	switch (target) {
+		case "tag":
+			return tags.name;
+		case "project":
+			return isUuid(String(value)) || isUuidArray(value)
+				? projects.id
+				: projects.name;
+		case "ip":
+			return isUuid(String(value)) || isUuidArray(value) ? ips.id : ips.name;
+		case "character":
+			return isUuid(String(value)) || isUuidArray(value)
+				? characters.id
+				: characters.name;
+		case "author":
+			return authors.name;
+	}
+}
+
 function buildRelationQuery(
 	client: DrizzleExecutor,
 	target: "tag" | "project" | "ip" | "character" | "author",
@@ -203,7 +239,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaProjects.mediaId, medias.id),
-							buildValueCondition(projects.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -217,7 +257,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaIps.mediaId, medias.id),
-							buildValueCondition(ips.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -231,7 +275,11 @@ function buildRelationQuery(
 					.where(
 						and(
 							eq(mediaCharacters.mediaId, medias.id),
-							buildValueCondition(characters.name, operator, value),
+							buildValueCondition(
+								getRelationColumn(target, value),
+								operator,
+								value,
+							),
 						),
 					),
 			);
@@ -498,6 +546,148 @@ export async function executeMediaSearch({
 		total: Number(countRows[0]?.count ?? 0),
 	});
 }
+
+export type SearchOptions = {
+	query?: string;
+	tags?: string[];
+	tagMode?: "and" | "or";
+	excludeTags?: string[];
+	projects?: string[];
+	ips?: string[];
+	characters?: string[];
+	sort?: "date" | "name" | "size";
+	order?: "asc" | "desc";
+	limit?: number;
+	offset?: number;
+};
+
+function buildSearchRequestFromOptions(
+	options: SearchOptions,
+): MediaSearchRequest {
+	const children: (SearchCriterion | SearchGroup)[] = [];
+
+	if (options.query) {
+		children.push({
+			type: "criterion",
+			target: "keyword",
+			operator: "contains",
+			value: options.query,
+		});
+	}
+
+	if (options.tags && options.tags.length > 0) {
+		if (options.tagMode === "and") {
+			children.push({
+				type: "group",
+				operator: "and",
+				children: options.tags.map((tag) => ({
+					type: "criterion" as const,
+					target: "tag" as const,
+					operator: "equals" as const,
+					value: tag,
+				})),
+			});
+		} else {
+			children.push({
+				type: "criterion",
+				target: "tag",
+				operator: "in",
+				value: options.tags,
+			});
+		}
+	}
+
+	if (options.excludeTags && options.excludeTags.length > 0) {
+		children.push({
+			type: "criterion" as const,
+			target: "tag" as const,
+			operator: "in" as const,
+			value: options.excludeTags,
+			negate: true,
+		});
+	}
+
+	if (options.projects && options.projects.length > 0) {
+		children.push({
+			type: "criterion" as const,
+			target: "project" as const,
+			operator: "in" as const,
+			value: options.projects,
+		});
+	}
+
+	if (options.ips && options.ips.length > 0) {
+		children.push({
+			type: "criterion" as const,
+			target: "ip" as const,
+			operator: "in" as const,
+			value: options.ips,
+		});
+	}
+
+	if (options.characters && options.characters.length > 0) {
+		children.push({
+			type: "criterion" as const,
+			target: "character" as const,
+			operator: "in" as const,
+			value: options.characters,
+		});
+	}
+
+	return {
+		condition:
+			children.length > 0
+				? { type: "group", operator: "and", children }
+				: undefined,
+		sort: options.sort,
+		order: options.order,
+		limit: options.limit,
+		offset: options.offset,
+	};
+}
+
+export const searchMedia = async (
+	mediaSourceId: string,
+	searchOptions: SearchOptions,
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearch({
+		client,
+		mediaSourceId,
+		params: buildSearchRequestFromOptions(searchOptions),
+		mapMedia: (row) => row,
+		defaultLimit: searchOptions.limit,
+		defaultOffset: searchOptions.offset,
+	});
+};
+
+export const globalSearchMedia = async (
+	searchOptions: SearchOptions,
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearch({
+		client,
+		params: buildSearchRequestFromOptions(searchOptions),
+		mapMedia: (row) => row,
+		defaultLimit: searchOptions.limit,
+		defaultOffset: searchOptions.offset,
+	});
+};
+
+export const searchMediaInDirectory = async (
+	mediaSourceId: string,
+	directoryPath: string,
+	searchOptions: { query?: string; tags?: string[] },
+	client: DrizzleExecutor,
+) => {
+	return executeMediaSearchInDirectory({
+		client,
+		mediaSourceId,
+		directoryPath,
+		params: searchOptions,
+		mapMedia: (row) => row as Media,
+	});
+};
 
 export async function executeMediaSearchInDirectory({
 	client,
