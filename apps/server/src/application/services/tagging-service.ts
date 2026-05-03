@@ -1,10 +1,13 @@
 import path from "node:path";
+import {
+	orchestrateCcipExtraction,
+	orchestrateTagging,
+} from "@solid-imager/application/services/ai-tagging-service";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
-import { DEFAULT_MANUAL_CONFIDENCE } from "@solid-imager/core/domain/tagging/constants";
 import type {
 	CcipFeatureResponse,
 	TaggingResponse,
@@ -44,6 +47,13 @@ export class TaggingService {
 		return await this.aiClient.tagImage(imageBuffer);
 	}
 
+	private getAiBaseUrl(): string | undefined {
+		const client = this.aiClient as unknown as {
+			getBaseUrl?: () => string;
+		};
+		return client.getBaseUrl?.();
+	}
+
 	async getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
@@ -55,122 +65,52 @@ export class TaggingService {
 				general: {},
 				character: {},
 				ips: [],
-
 				ips_mapping: {},
 			};
 		}
 
-		// 1. Check Cache (DB)
-		if (!options?.skipCache) {
-			const existingTags = await this.tagRepo.findByMediaId(mediaId);
-			const aiTags = existingTags.filter((t) => t.source === "AI");
-
-			if (aiTags.length > 0) {
-				const aiCharacters = (
-					await this.characterRepo.getMediaCharacters(mediaId)
-				).filter((c) => c.associationSource === "AI");
-				const aiIps = (await this.ipRepo.getMediaIps(mediaId)).filter(
-					(i) => i.associationSource === "AI",
-				);
-
-				// Reconstruct response
-				const response: TaggingResponse = {
-					general: {},
-					character: {},
-					ips: aiIps.map((i) => i.name),
-
-					ips_mapping: {},
-				};
-
-				for (const tag of aiTags) {
-					response.general[tag.name] =
-						tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
-				}
-				for (const char of aiCharacters) {
-					response.character[char.name] =
-						char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
-				}
-
-				// ips_mapping: We need to know which IP a character belongs to.
-				const ipMap = new Map<string, string>(); // id -> name
-				for (const ip of aiIps) {
-					ipMap.set(ip.id, ip.name);
-				}
-
-				for (const char of aiCharacters) {
-					const matchedIpNames: string[] = [];
-					for (const charIp of char.ips) {
-						if (ipMap.has(charIp.id)) {
-							const ipName = ipMap.get(charIp.id);
-							if (ipName) {
-								matchedIpNames.push(ipName);
-							}
-						}
-					}
-					if (matchedIpNames.length > 0) {
-						response.ips_mapping[char.name] = matchedIpNames;
-					}
-				}
-
-				return response;
-			}
-		}
-
 		const mediaSource = await this.sourceRepo.findById(mediaSourceId);
-
 		if (!mediaSource) {
 			throw new Error("Media source not found");
 		}
 
-		let response: TaggingResponse;
+		return await orchestrateTagging(mediaId, options, {
+			aiClient: this.aiClient,
+			reconstructDeps: {
+				tagRepository: this.tagRepo,
+				characterRepository: this.characterRepo,
+				ipRepository: this.ipRepo,
+			},
+			getAiBaseUrl: () => this.getAiBaseUrl(),
+			mediaSourceType: mediaSource.type,
+			mediaSourceConnectionInfo: mediaSource.connectionInfo,
+			mediaFilePath: media.filePath,
+			getBuffer: async () => {
+				const { buffer } = await MediaService.getMediaContent(
+					mediaSourceId,
+					mediaId,
+				);
+				return buffer.buffer as ArrayBuffer;
+			},
+			joinPath: path.join,
+			persistResponse: async (response) => {
+				const { persistTaggingResponse } = await import(
+					"@solid-imager/application/services/tag-persistence"
+				);
+				await persistTaggingResponse(mediaId, response, {
+					tagRepository: this.tagRepo,
+					ipRepository: this.ipRepo,
+					characterRepository: this.characterRepo,
+					source: "AI",
+				});
 
-		// Check if AI service is accessible locally (can use path-based API)
-		// If AI service is on remote host, we must send the file buffer
-		const canUsePathApi = this.isAiServiceLocal();
-
-		if (mediaSource.type === "local" && canUsePathApi) {
-			const connectionInfo = mediaSource.connectionInfo as { path: string };
-			const fullPath = path.join(connectionInfo.path, media.filePath);
-			response = await this.aiClient.tagImageByPath(fullPath);
-		} else {
-			// Send file buffer when:
-			// - AI service is remote (can't access local paths)
-			// - Media source is not local
-			const { buffer } = await MediaService.getMediaContent(
-				mediaSourceId,
-				mediaId,
-			);
-			response = await this.aiClient.tagImage(buffer.buffer as ArrayBuffer);
-		}
-
-		// Save to DB
-		await this.saveTags(mediaSourceId, mediaId, media.filePath, response);
-
-		return response;
-	}
-
-	private async saveTags(
-		mediaSourceId: string,
-		mediaId: string,
-		filePath: string,
-		response: TaggingResponse,
-	): Promise<void> {
-		const { persistTaggingResponse } = await import(
-			"@solid-imager/application/services/tag-persistence"
-		);
-		await persistTaggingResponse(mediaId, response, {
-			tagRepository: this.tagRepo,
-			ipRepository: this.ipRepo,
-			characterRepository: this.characterRepo,
-			source: "AI",
-		});
-
-		// Notify clients of the update
-		// Ensure all consumers (like use-media-source-events.ts) are updated to "media-changed"
-		SseManager.sendEvent(mediaSourceId, "media-changed", {
-			filePath,
-			mediaId,
-			timestamp: new Date().toISOString(),
+				// Notify clients of the update
+				SseManager.sendEvent(mediaSourceId, "media-changed", {
+					filePath: media.filePath,
+					mediaId,
+					timestamp: new Date().toISOString(),
+				});
+			},
 		});
 	}
 
@@ -187,24 +127,25 @@ export class TaggingService {
 			throw new Error("CCIP feature extraction is only supported for images");
 		}
 		const mediaSource = await this.sourceRepo.findById(mediaSourceId);
-
 		if (!mediaSource) {
 			throw new Error("Media source not found");
 		}
 
-		// Check if AI service is accessible locally (can use path-based API)
-		const canUsePathApi = this.isAiServiceLocal();
-
-		if (mediaSource.type === "local" && canUsePathApi) {
-			const connectionInfo = mediaSource.connectionInfo as { path: string };
-			const fullPath = path.join(connectionInfo.path, media.filePath);
-			return await this.aiClient.extractCcipFeatureByPath(fullPath);
-		}
-		const { buffer } = await MediaService.getMediaContent(
-			mediaSourceId,
-			mediaId,
-		);
-		return await this.aiClient.extractCcipFeature(buffer.buffer as ArrayBuffer);
+		return await orchestrateCcipExtraction({
+			aiClient: this.aiClient,
+			getAiBaseUrl: () => this.getAiBaseUrl(),
+			mediaSourceType: mediaSource.type,
+			mediaSourceConnectionInfo: mediaSource.connectionInfo,
+			mediaFilePath: media.filePath,
+			getBuffer: async () => {
+				const { buffer } = await MediaService.getMediaContent(
+					mediaSourceId,
+					mediaId,
+				);
+				return buffer.buffer as ArrayBuffer;
+			},
+			joinPath: path.join,
+		});
 	}
 
 	async getCcipDifference(
@@ -216,31 +157,6 @@ export class TaggingService {
 			feature2,
 		);
 		return result.difference;
-	}
-
-	/**
-	 * Check if AI service is running on localhost
-	 * Path-based API only works when AI service can access the file system
-	 */
-	private isAiServiceLocal(): boolean {
-		const client = this.aiClient as unknown as { getBaseUrl?: () => string };
-		const baseUrl = client.getBaseUrl?.();
-		if (!baseUrl) {
-			return true; // Fallback: assume local
-		}
-
-		try {
-			const url = new URL(baseUrl);
-			const host = url.hostname.toLowerCase();
-			return (
-				host === "localhost" ||
-				host === "127.0.0.1" ||
-				host === "::1" ||
-				host === "0.0.0.0"
-			);
-		} catch {
-			return true; // Fallback: assume local if URL parsing fails
-		}
 	}
 }
 

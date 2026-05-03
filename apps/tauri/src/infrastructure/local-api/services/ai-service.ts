@@ -1,4 +1,5 @@
 import type { JobRecord } from "@solid-imager/application/ports/job-repository";
+import { orchestrateTagging } from "@solid-imager/application/services/ai-tagging-service";
 import {
 	createBatchTaggingDispatchJob,
 	createBatchTaggingParentJob,
@@ -9,6 +10,7 @@ import {
 	runAutoTaggingJob,
 	runBulkTaggingDispatchJob,
 } from "@solid-imager/application/services/tagging-job-runner";
+import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	type Media,
 	mediaSchema,
@@ -46,33 +48,32 @@ type BatchTaggingWithIdsInput = BatchTaggingInput & {
 	mediaIds: string[];
 };
 
-async function resolveLocalMediaFile(
-	mediaId: string,
-): Promise<{ media: Media; fullPath: string }> {
-	const media = await TauriMediaRepository.findById(mediaId);
-	if (!media) {
-		throw new Error(`Media not found: ${mediaId}`);
-	}
-
-	const source = await TauriSourceRepository.findById(media.mediaSourceId);
-	if (!source) {
-		throw new Error(`Media source not found: ${media.mediaSourceId}`);
-	}
-	if (source.type !== "local" || !("path" in source.connectionInfo)) {
-		throw new Error("AI tagging currently supports only local Tauri sources.");
-	}
-
+function createTauriAiClient(media: Media): IAiClient {
 	return {
-		media,
-		fullPath: joinLocalPath(source.connectionInfo.path, media.filePath),
+		healthCheck: async () => true,
+		tagImage: async (buffer) => {
+			const file = new File([buffer], media.fileName);
+			return taggingResponseSchema.parse(await serverOrpc.ai.tag({ file }));
+		},
+		tagImageByPath: async (_path) => {
+			throw new Error("Path-based AI tagging is not supported in Tauri client");
+		},
+		extractCcipFeature: async (_buffer) => {
+			throw new Error(
+				"CCIP feature extraction is not supported in Tauri client",
+			);
+		},
+		extractCcipFeatureByPath: async (_path) => {
+			throw new Error(
+				"Path-based CCIP extraction is not supported in Tauri client",
+			);
+		},
+		calculateCcipDifference: async (_f1, _f2) => {
+			throw new Error(
+				"CCIP difference calculation is not supported in Tauri client",
+			);
+		},
 	};
-}
-
-async function tagMediaFromServer(mediaId: string): Promise<TaggingResponse> {
-	const { media, fullPath } = await resolveLocalMediaFile(mediaId);
-	const bytes = await getTauriAppServices().fileSystem.readFile(fullPath);
-	const file = new File([bytes.buffer as ArrayBuffer], media.fileName);
-	return taggingResponseSchema.parse(await serverOrpc.ai.tag({ file }));
 }
 
 async function persistAiTags(mediaId: string, response: TaggingResponse) {
@@ -160,10 +161,53 @@ export const TauriAiService = {
 	async processAutoTaggingJob(job: JobRecord): Promise<void> {
 		await runAutoTaggingJob(job, {
 			jobRepository: TauriJobRepository,
-			executeAutoTagging: async ({ mediaId }) => {
-				const response = await tagMediaFromServer(mediaId);
-				await persistAiTags(mediaId, response);
-				await emitMediaChanged(mediaId);
+			executeAutoTagging: async ({ mediaId, force }) => {
+				const media = await TauriMediaRepository.findById(mediaId);
+				if (!media) {
+					throw new Error(`Media not found: ${mediaId}`);
+				}
+				const source = await TauriSourceRepository.findById(
+					media.mediaSourceId,
+				);
+				if (!source) {
+					throw new Error(`Media source not found: ${media.mediaSourceId}`);
+				}
+				if (source.type !== "local" || !("path" in source.connectionInfo)) {
+					throw new Error(
+						"AI tagging currently supports only local Tauri sources.",
+					);
+				}
+
+				await orchestrateTagging(
+					mediaId,
+					{ skipCache: force },
+					{
+						aiClient: createTauriAiClient(media),
+						reconstructDeps: {
+							tagRepository: TauriTagRepository,
+							characterRepository: TauriCharacterRepository,
+							ipRepository: TauriIpRepository,
+						},
+						getAiBaseUrl: () => "http://tauri-client-proxy",
+						mediaSourceType: source.type,
+						mediaSourceConnectionInfo: source.connectionInfo,
+						mediaFilePath: media.filePath,
+						getBuffer: async () => {
+							const fullPath = joinLocalPath(
+								(source.connectionInfo as { path: string }).path,
+								media.filePath,
+							);
+							const bytes =
+								await getTauriAppServices().fileSystem.readFile(fullPath);
+							return bytes.buffer as ArrayBuffer;
+						},
+						joinPath: joinLocalPath,
+						persistResponse: async (response) => {
+							await persistAiTags(mediaId, response);
+							await emitMediaChanged(mediaId);
+						},
+					},
+				);
 			},
 			jobEvents,
 			logger: console,
