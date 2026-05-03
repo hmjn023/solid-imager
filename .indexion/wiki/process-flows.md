@@ -58,7 +58,7 @@ sequenceDiagram
     participant RPC as orpc.media.search
     participant SS as SearchService
     participant MR as MediaRepository
-    participant UT as media-repository-utils
+    participant UT as media-search
     participant DB as PostgreSQL / PGlite
 
     UI->>Route: navigate(searchState)
@@ -80,7 +80,7 @@ sequenceDiagram
 
 - スキーマ: `packages/core/src/domain/search/schema.ts`
 - モード変換: `packages/core/src/domain/search/logic.ts` (`calculateNextModeState`)
-- SQL 構築: `apps/server/src/infrastructure/repositories/media-repository-utils.ts` (`buildWhereClause`)
+- SQL 構築: `packages/db/src/repositories/media-search.ts` (`buildWhereClause`)
 - プリセット自動保存: `apps/server/src/hooks/use-current-search-persistence.ts` （1000ms デバウンス）
 
 ---

@@ -2,7 +2,7 @@
 
 `apps/server` と `apps/tauri` で同一責務を別実装しているファイルの対応関係。共通化・見直しの際の参照用。
 
-最終更新: 2026-05-01（#322 残差分監査を反映。#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization + #317 infrastructure commonization + Tauri import/download job adapter parity + thumbnail source helper commonization + Tauri ソース同期・監視ランタイムの共通化を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み。#317 batch-tagging / config-service / download-import は merged 済み）
+最終更新: 2026-05-04（#322 残差分監査完了: media-repository-utils.ts / tagging-service.ts の shared 化を反映。#298〜#309 commonization wave + #314 dialog/query parity + #316 wrapper commonization + #317 infrastructure commonization + Tauri import/download job adapter parity + thumbnail source helper commonization + Tauri ソース同期・監視ランタイムの共通化を反映。#298 media-sidebar、#299 source-form-modal、#300 upload-media-modal、#303 parser utility、#304 thumbnail-image、#305 media-viewer、#308 event-service削除、#309 media-card/grid item は merged 済み。#301 search / #307 manager は PR #312 merged 済み。#302 sources events / #306 source-media modal wiring は PR #313 merged 済み。#314 move-copy-media-dialog / source-delete-modal / ai-tagging-modal / projectsForMedia queryOptions は merged 済み。#316 media-sidebar-content / media-detail-screen / upload-media-modal-content / source-media-page / preset-client は merged 済み。#317 batch-tagging / config-service / download-import は merged 済み）
 
 ## このページの使い方
 
@@ -169,7 +169,7 @@ leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #3
 | `media-repository.ts`      | `packages/db/src/repositories/media-repository.ts`      | `MediaRepository`（thin wrapper）                             | `TauriMediaRepository`（thin wrapper + bulk helpers）     |
 | `tag-repository.ts`        | `packages/db/src/repositories/tag-repository.ts`        | 同上                                                          | 同上                                                      |
 | `user-repository.ts`       | `packages/db/src/repositories/user-repository.ts`       | `UserRepository`（thin wrapper）                              | `TauriUserRepository`（thin wrapper）                     |
-| `media-search` (util)      | `packages/db/src/repositories/media-search.ts`          | 旧 `media-repository-utils.ts` 相当の検索ロジック。ただし server 側 legacy util が残るため要 follow-up | 同上                                                      |
+| `media-search` (util)      | `packages/db/src/repositories/media-search.ts`          | 旧 `media-repository-utils.ts` 相当の検索ロジック。server 側 legacy util は #322 で統合・削除済み | 同上                                                      |
 
 > 旧 `authors-repository.ts`（server側の重複実装）は削除済み。`author-repository.ts` に一本化。
 >
@@ -188,7 +188,7 @@ leaf component（button, input, dialog 等）に加え、#298 / #299 / #300 / #3
 | `job-repository.ts`        | 完了済み              | server / tauri とも `packages/db/src/repositories/job-repository.ts` factory を使う薄い wrapper                               |
 | `tauri-job-repository.ts`  | platform I/O 例外     | shared job repository に `processMedia` payload 変換と Tauri queue 用 helper を重ねる thin wrapper。DB query logic は shared 側 |
 | `app-config-repository.ts` | platform I/O 例外     | `ConfigServiceImpl` の store adapter。Tauri は PGlite `appConfig` table、server は file/env store を使うため persistence I/O 差分 |
-| `media-repository-utils.ts` | shared 化候補         | server 側に 289 行の legacy search query util が残る。`packages/db/src/repositories/media-search.ts` へ寄せて削除する             |
+| `media-repository-utils.ts` | 完了済み              | server 側 legacy util は `packages/db/src/repositories/media-search.ts` へ統合し、ファイルは削除済み（#322）             |
 
 ## Services（対応度: ~88%）
 
@@ -267,7 +267,7 @@ CRUD系の共通 service メソッド命名は server 側の旧名（`getAll*`, 
 | `media-source-service.ts`     | 完了済み          | tauri `source-service.ts` は shared `createSourceService` と `createSourceSyncRuntime` を利用する adapter                      |
 | `search-service.ts`           | 完了済み          | search query logic は `packages/db/src/repositories/media-search.ts` と shared query options 側。tauri は API client 経由      |
 | `server-config-service.ts`    | platform I/O 例外 | server は file/env `ConfigStore`、tauri は PGlite store。両方とも shared `ConfigServiceImpl` を利用                            |
-| `tagging-service.ts`          | shared 化候補     | tag / character / IP 永続化は shared 化済みだが、AI path/buffer fallback、cache response reconstruction、CCIP path 判定が server 側に残る |
+| `tagging-service.ts`          | 完了済み          | `packages/application/src/services/ai-tagging-service.ts` へ shared 化。server / tauri とも shared contract を利用（#322） |
 | `thumbnail-service.ts`        | platform I/O 例外 | server HTTP URL / cache fs と Tauri Rust IPC / local file URL の差分。rendering helper は `thumbnail-source.ts` で shared 済み |
 | `user-service.ts`             | 完了済み          | `TauriUserService`（local-api/services/）。shared `createUserService` 利用                                                    |
 | `workflow-service.ts`         | 完了済み          | `packages/application/src/services/stub-services.ts` の re-export。未実装 stub は shared 化済み                               |
@@ -539,8 +539,8 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 
 | 分類              | 項目                                                                                          | 判断                                                                                                                  |
 | ----------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| shared 化候補     | `media-repository-utils.ts`                                                                    | server 側 legacy search query util が残る。`packages/db/src/repositories/media-search.ts` へ寄せる                         |
-| shared 化候補     | `tagging-service.ts` / `ai-service.ts` の AI tagging orchestration                              | tag persistence 以外の path/buffer fallback、cache response reconstruction、CCIP path 判定を shared service contract にできる余地 |
+| 完了済み          | `media-repository-utils.ts`                                                                    | server 側 legacy util は `packages/db/src/repositories/media-search.ts` へ統合・削除済み（#322）                         |
+| 完了済み          | `tagging-service.ts` / `ai-service.ts` の AI tagging orchestration                              | `packages/application/src/services/ai-tagging-service.ts` へ shared 化。path/buffer fallback、cache response reconstruction、CCIP path 判定を shared contract に集約（#322） |
 | 要監視            | `ServerMediaStorage` / `tauriMediaStorage`                                                     | `IMediaStorage` adapter として説明可能だが、scan / metadata / safe path / copy の重複が再増殖しないか追跡する               |
 | platform I/O 例外 | zip stream / byte array / local fs adapter、thumbnail I/O、SSE / Tauri event、Rust IPC         | shared contract は存在し、差分は transport / filesystem / command invocation に閉じる                                |
 | platform I/O 例外 | watcher ingress（chokidar / Rust watcher）                                                     | change/delete reconciliation と source sync runtime は shared 化済み。ingress は OS / runtime integration             |
@@ -549,7 +549,7 @@ server も `DB_HOST=pglite` で PGlite に切替可能なため、PGlite は DB 
 | 完了済み          | analytics / bulk-operation / data-migration / filter-preset / integration / workflow services | `packages/application/src/services/stub-services.ts` の re-export。未実装 stub を app ごとに二重実装していない        |
 | 完了済み          | CRUD / media / source / backup DB logic / tagging persistence / job worker / runners           | `packages/application` / `packages/db` に共有化済み。app 側は executor、storage、transport、queue wake の注入が中心 |
 
-#322 の初回監査では追加の個別 follow-up issue を作成しない判断にしたが、strict gate で再確認すると一部の「完了」判定は甘い。特に server 側 legacy search util と AI tagging orchestration は shared 化候補として個別 issue 化する。media storage adapter は現時点では platform I/O 例外に留めるが、重複が増えやすいため要監視 issue として追跡する。
+#322 の初回監査で残っていた shared 化候補（server 側 legacy search util、AI tagging orchestration）は 2026-05-04 に完了。`media-repository-utils.ts` は `packages/db/src/repositories/media-search.ts` へ統合・削除、`tagging-service.ts` の AI path/buffer fallback・cache response reconstruction・CCIP path 判定は `packages/application/src/services/ai-tagging-service.ts` へ集約。media storage adapter は引き続き platform I/O 例外に留め、重複増殖を監視する。
 
 ## 前回からの主な変更点（2026-04-30更新 — Phase 5: directory-sync / media-processing / job-dispatch 残差分整理）
 
