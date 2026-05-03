@@ -31,7 +31,7 @@ solid-imager/
 │   │   ├── src/                 # SolidJSフロントエンド
 │   │   └── src-tauri/           # Rustバックエンド
 │   ├── cli/             # CLIツール
-│   └── xtracter/        # ブラウザ拡張機能
+│       └── apps/xtracter/   # ブラウザ拡張機能
 ├── packages/
 │   ├── core/            # 共有ドメインモデル
 │   └── ui/              # 共有UIコンポーネント
