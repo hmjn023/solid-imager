@@ -65,7 +65,7 @@ sequenceDiagram
     Route->>RPC: .query({ sourceId, params })
     RPC->>SS: searchMedia(params)
     SS->>MR: search(params)
-    MR->>UT: buildWhereClause(params)
+    MR->>UT: buildSearchQuery(client, params)
     UT-->>MR: SQL<Drizzle>
     MR->>DB: SELECT ... WHERE ... LIMIT/OFFSET
     DB-->>MR: rows
@@ -80,7 +80,7 @@ sequenceDiagram
 
 - スキーマ: `packages/core/src/domain/search/schema.ts`
 - モード変換: `packages/core/src/domain/search/logic.ts` (`calculateNextModeState`)
-- SQL 構築: `packages/db/src/repositories/media-search.ts` (`buildWhereClause`)
+- SQL 構築: `packages/db/src/repositories/media-search.ts` (`buildSearchQuery`)
 - プリセット自動保存: `apps/server/src/hooks/use-current-search-persistence.ts` （1000ms デバウンス）
 
 ---

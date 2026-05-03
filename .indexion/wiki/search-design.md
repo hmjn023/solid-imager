@@ -67,7 +67,7 @@ type SearchCriterion = {
 
 ## 検索クエリの構築（`packages/db/src/repositories/media-search.ts`）
 
-`buildWhereClause()` がDrizzle ORMのSQL条件を動的構築:
+`buildSearchQuery()` がDrizzle ORMのSQL条件を動的構築:
 
 | フィルター        | SQL                                                                                     |
 | ----------------- | --------------------------------------------------------------------------------------- |
@@ -98,7 +98,7 @@ MediaService.searchMedia()
     ↓
 DrizzleMediaRepository.search()
     ↓
-buildWhereClause() → Drizzle SQL
+buildSearchQuery() → Drizzle SQL
     ↓
 PostgreSQL / PGlite
     ↓
