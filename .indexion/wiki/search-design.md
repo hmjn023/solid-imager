@@ -65,9 +65,9 @@ type SearchCriterion = {
 - **Simple → Pro**: 現在のSimpleフィルターを `advancedCondition` に変換
 - **Pro → Simple**: `advancedCondition` をSimpleフィルターに逆変換。変換不可能な複雑な条件の場合はSimpleをリセット
 
-## 検索クエリの構築（`apps/server/src/infrastructure/repositories/media-repository-utils.ts`）
+## 検索クエリの構築（`packages/db/src/repositories/media-search.ts`）
 
-`buildWhereClause()` がDrizzle ORMのSQL条件を動的構築:
+`buildSearchQuery()` がDrizzle ORMのSQL条件を動的構築:
 
 | フィルター        | SQL                                                                                     |
 | ----------------- | --------------------------------------------------------------------------------------- |
@@ -98,7 +98,7 @@ MediaService.searchMedia()
     ↓
 DrizzleMediaRepository.search()
     ↓
-buildWhereClause() → Drizzle SQL
+buildSearchQuery() → Drizzle SQL
     ↓
 PostgreSQL / PGlite
     ↓
