@@ -51,22 +51,6 @@ function Popup() {
 		}
 	};
 
-	const handleSave = async () => {
-		try {
-			await chrome.storage.local.set({
-				selectedSourceId: selectedSourceId(),
-				apiUrl: apiUrl(),
-			});
-			setStatus("Saved!");
-			setStatusType("success");
-			setTimeout(() => setStatus(""), 2000);
-			await fetchSources();
-		} catch (_err) {
-			setStatus("Failed to save settings.");
-			setStatusType("error");
-		}
-	};
-
 	const handleExport = async () => {
 		setExportStatus("Requesting data...");
 		try {
@@ -138,7 +122,12 @@ function Popup() {
 					id="api-url"
 					type="text"
 					value={apiUrl()}
-					onInput={(e) => setApiUrl(e.currentTarget.value)}
+					onInput={async (e) => {
+						const url = e.currentTarget.value;
+						setApiUrl(url);
+						await chrome.storage.local.set({ apiUrl: url });
+						await fetchSources();
+					}}
 					style={{
 						width: "100%",
 						padding: "8px",
@@ -163,7 +152,11 @@ function Popup() {
 				<select
 					id="source-select"
 					value={selectedSourceId()}
-					onChange={(e) => setSelectedSourceId(e.currentTarget.value)}
+					onChange={async (e) => {
+						const id = e.currentTarget.value;
+						setSelectedSourceId(id);
+						await chrome.storage.local.set({ selectedSourceId: id });
+					}}
 					disabled={isLoading() || sources().length === 0}
 					style={{
 						width: "100%",
@@ -184,23 +177,6 @@ function Popup() {
 					</For>
 				</select>
 			</div>
-
-			<button
-				type="button"
-				onClick={handleSave}
-				style={{
-					width: "100%",
-					padding: "8px",
-					"background-color": "#1d9bf0",
-					color: "white",
-					border: "none",
-					"border-radius": "4px",
-					"font-weight": "bold",
-					cursor: "pointer",
-				}}
-			>
-				Save
-			</button>
 
 			<div
 				style={{
