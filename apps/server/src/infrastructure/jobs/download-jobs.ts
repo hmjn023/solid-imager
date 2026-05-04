@@ -2,7 +2,7 @@
  * Download Jobs - Handles downloading images from URLs
  */
 
-import fs from "node:fs/promises";
+import fs, { open } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -18,7 +18,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import youtubedl from "youtube-dl-exec";
+import { create as createYtDlp } from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
@@ -31,6 +31,65 @@ import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
+
+const JPEG_EOI = Buffer.from([0xff, 0xd9]);
+const PNG_SIGNATURE = Buffer.from([
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+]);
+const PNG_IEND = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
+
+async function validateImageIntegrity(filePath: string): Promise<void> {
+	const fd = await open(filePath, "r");
+	try {
+		const { size } = await fd.stat();
+		if (size === 0) {
+			throw new Error(`Downloaded file is empty: ${filePath}`);
+		}
+
+		const header = Buffer.allocUnsafe(Math.min(16, size));
+		await fd.read(header, 0, header.length, 0);
+
+		const isJpeg = header[0] === 0xff && header[1] === 0xd8;
+		const isPng = size >= 8 && header.subarray(0, 8).equals(PNG_SIGNATURE);
+
+		if (isJpeg) {
+			const tail = Buffer.allocUnsafe(2);
+			await fd.read(tail, 0, 2, size - 2);
+			if (!tail.equals(JPEG_EOI)) {
+				throw new Error(
+					`Truncated JPEG file (missing end marker FFD9): ${filePath} (${size} bytes)`,
+				);
+			}
+		} else if (isPng) {
+			const tail = Buffer.allocUnsafe(8);
+			await fd.read(tail, 0, 8, size - 8);
+			if (!tail.equals(PNG_IEND)) {
+				throw new Error(
+					`Truncated PNG file (missing IEND chunk): ${filePath} (${size} bytes)`,
+				);
+			}
+		}
+	} finally {
+		await fd.close();
+	}
+}
+
+const CONTENT_TYPE_TO_EXT: Record<string, string> = {
+	"image/jpeg": ".jpg",
+	"image/png": ".png",
+	"image/webp": ".webp",
+	"image/gif": ".gif",
+	"image/avif": ".avif",
+};
+
+function resolveExtensionFromContentType(
+	contentType: string | null,
+	fallback: string,
+): string {
+	if (!contentType) return fallback;
+	const mime = contentType.split(";")[0].trim().toLowerCase();
+	return CONTENT_TYPE_TO_EXT[mime] ?? fallback;
+}
 
 type YtDlpOutput = {
 	id: string;
@@ -92,6 +151,50 @@ async function createNetscapeCookieFile(
 	}
 }
 
+let ytDlpPathCache: string | null = null;
+
+async function resolveYtDlpPath(): Promise<string> {
+	if (ytDlpPathCache) return ytDlpPathCache;
+
+	const { existsSync } = await import("node:fs");
+
+	// 1. Check built output location first (for production builds)
+	const outputBin = path.join(process.cwd(), "yt-dlp");
+	if (existsSync(outputBin)) {
+		ytDlpPathCache = outputBin;
+		return ytDlpPathCache;
+	}
+
+	// 2. Check node_modules in current working directory
+	const nodeModulesBin = path.join(
+		process.cwd(),
+		"node_modules/youtube-dl-exec/bin/yt-dlp",
+	);
+	if (existsSync(nodeModulesBin)) {
+		ytDlpPathCache = nodeModulesBin;
+		return ytDlpPathCache;
+	}
+
+	// 3. Walk up from current file to find workspace root
+	const { fileURLToPath } = await import("node:url");
+	const { dirname } = await import("node:path");
+	let dir = dirname(fileURLToPath(new URL(import.meta.url)));
+	for (let i = 0; i < 10; i++) {
+		const candidate = path.join(dir, "node_modules/youtube-dl-exec/bin/yt-dlp");
+		if (existsSync(candidate)) {
+			ytDlpPathCache = candidate;
+			return ytDlpPathCache;
+		}
+		const parent = dirname(dir);
+		if (parent === dir) break;
+		dir = parent;
+	}
+
+	// 4. Fallback to PATH
+	ytDlpPathCache = "yt-dlp";
+	return ytDlpPathCache;
+}
+
 /**
  * Downloads video/media using yt-dlp via youtube-dl-exec
  */
@@ -108,7 +211,9 @@ async function downloadWithYtDlp(
 
 	try {
 		const ffmpegLocation = await resolveFfmpegPath();
-		const result = await youtubedl(url, {
+		const ytDlpPath = await resolveYtDlpPath();
+		const ytdlp = createYtDlp(ytDlpPath);
+		const result = await ytdlp(url, {
 			noSimulate: true,
 			printJson: true,
 			paths: outputDir,
@@ -140,7 +245,8 @@ async function downloadWithYtDlp(
 		} else {
 			logger.error({ err: error }, "yt-dlp execution failed");
 		}
-		throw new Error(`yt-dlp failed: ${error}`);
+		const msg = error instanceof Error ? error.message : String(error);
+		throw new Error(`yt-dlp failed: ${msg}`);
 	} finally {
 		if (cookieFilePath) {
 			fs.unlink(cookieFilePath).catch((err) =>
@@ -191,7 +297,9 @@ async function fetchMetadataWithYtDlp(
 
 	try {
 		const ffmpegLocation = await resolveFfmpegPath();
-		const result = await youtubedl(url, {
+		const ytDlpPath = await resolveYtDlpPath();
+		const ytdlp = createYtDlp(ytDlpPath);
+		const result = await ytdlp(url, {
 			dumpSingleJson: true,
 			noDownload: true,
 			...(ffmpegLocation && { ffmpegLocation }),
@@ -243,6 +351,44 @@ function resolveCreatedAt(
 }
 
 // Update helper to determine media type from extension
+
+async function downloadAndSaveImage(
+	targetUrl: string,
+	item: DownloadItem,
+	context: { basePath: string },
+	headers: Record<string, string>,
+	fallbackExt: string,
+): Promise<Awaited<ReturnType<typeof ServerMediaStorage.saveFile>>> {
+	await waitForDownloadRateLimit();
+	const response = await fetch(targetUrl, {
+		headers,
+		signal: AbortSignal.timeout(30000),
+	});
+	if (!response.ok) {
+		throw new Error(
+			`Failed to download image: ${response.status} ${response.statusText}`,
+		);
+	}
+	const extension = resolveExtensionFromContentType(
+		response.headers.get("content-type"),
+		fallbackExt,
+	);
+	const filename = generateMediaFilename(item, extension);
+	const arrayBuffer = await response.arrayBuffer();
+	const fileInfo = await ServerMediaStorage.saveFile(
+		context.basePath,
+		{
+			name: filename,
+			arrayBuffer: async () => arrayBuffer,
+		},
+		{
+			filename,
+			overwrite: false,
+			autoIncrement: true,
+		},
+	);
+	return fileInfo;
+}
 
 function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	const isDanbooru = item.targetUrl?.includes("donmai.us");
@@ -367,32 +513,41 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			}
 
 			const urlPath = new URL(item.targetUrl).pathname;
-			const extension = path.extname(urlPath) || ".png";
-			const filename = generateMediaFilename(item, extension);
+			const fallbackExt = path.extname(urlPath) || ".png";
 			const headers = buildFetchHeaders(item);
-			await waitForDownloadRateLimit();
-			const response = await fetch(item.targetUrl, {
+
+			let fileInfo = await downloadAndSaveImage(
+				item.targetUrl,
+				item,
+				context,
 				headers,
-				signal: AbortSignal.timeout(30000),
-			});
-			if (!response.ok) {
-				throw new Error(
-					`Failed to download image: ${response.status} ${response.statusText}`,
-				);
-			}
-			const arrayBuffer = await response.arrayBuffer();
-			const fileInfo = await ServerMediaStorage.saveFile(
-				context.basePath,
-				{
-					name: filename,
-					arrayBuffer: async () => arrayBuffer,
-				},
-				{
-					filename,
-					overwrite: false,
-					autoIncrement: true,
-				},
+				fallbackExt,
 			);
+
+			// Validate integrity, retry once on failure
+			try {
+				const fullPath = path.join(context.basePath, fileInfo.filePath);
+				await validateImageIntegrity(fullPath);
+			} catch (validationError) {
+				logger.warn(
+					{ err: validationError, url: item.targetUrl },
+					"Image validation failed, retrying download",
+				);
+				await fs
+					.unlink(path.join(context.basePath, fileInfo.filePath))
+					.catch(() => {});
+
+				fileInfo = await downloadAndSaveImage(
+					item.targetUrl,
+					item,
+					context,
+					headers,
+					fallbackExt,
+				);
+
+				const retryFullPath = path.join(context.basePath, fileInfo.filePath);
+				await validateImageIntegrity(retryFullPath);
+			}
 			let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 			if (createdAt && Number.isNaN(createdAt.getTime())) {
 				createdAt = undefined;

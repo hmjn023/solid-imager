@@ -16,6 +16,7 @@ const {
 	mockAuthorCreate,
 	mockAuthorAddMedia,
 	mockSaveFile,
+	mockOpen,
 } = vi.hoisted(() => ({
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
@@ -28,6 +29,27 @@ const {
 	mockAuthorCreate: vi.fn(),
 	mockAuthorAddMedia: vi.fn(),
 	mockSaveFile: vi.fn(),
+	mockOpen: vi.fn(() =>
+		Promise.resolve({
+			stat: () => Promise.resolve({ size: 100 }),
+			read: (
+				buffer: Buffer,
+				_offset: number,
+				length: number,
+				position: number | null,
+			) => {
+				if (position === 0) {
+					buffer[0] = 0xff;
+					buffer[1] = 0xd8;
+				} else if (position === 98) {
+					buffer[0] = 0xff;
+					buffer[1] = 0xd9;
+				}
+				return Promise.resolve({ bytesRead: length, buffer });
+			},
+			close: () => Promise.resolve(),
+		}),
+	),
 }));
 
 // Mocks
@@ -70,20 +92,23 @@ vi.mock("~/application/services/media-processing-service", () => ({
 
 	MediaProcessingServiceImpl: class {},
 }));
-vi.mock("node:fs/promises", () => ({
-	default: {
+vi.mock("node:fs/promises", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("node:fs/promises")>();
+	return {
+		...actual,
+		open: mockOpen,
 		mkdir: vi.fn(),
 		writeFile: vi.fn(),
-		unlink: vi.fn(),
-	},
-}));
+		unlink: vi.fn(() => Promise.resolve()),
+	};
+});
 vi.mock("node:child_process", () => ({
 	execFile: vi.fn((_cmd, _args, _opts, cb) =>
 		cb(null, { stdout: "", stderr: "" }),
 	),
 }));
 vi.mock("youtube-dl-exec", () => ({
-	default: vi.fn(() => Promise.resolve({})),
+	create: vi.fn(() => vi.fn(() => Promise.resolve({}))),
 }));
 vi.mock("~/infrastructure/utils/ffmpeg", () => ({
 	resolveFfmpegPath: vi.fn(() => Promise.resolve(null)),
@@ -101,6 +126,9 @@ describe("processDownloadJob", () => {
 		vi.resetAllMocks();
 		fetchMock.mockResolvedValue({
 			ok: true,
+			headers: {
+				get: vi.fn(() => null),
+			},
 			arrayBuffer: async () => new ArrayBuffer(10),
 		});
 

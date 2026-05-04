@@ -4,7 +4,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vp dev",
-		"build": "vp build",
+		"build": "vp build && bun run build:post",
+		"build:post": "cp ../node_modules/youtube-dl-exec/bin/yt-dlp .output/server/yt-dlp 2>/dev/null || cp node_modules/youtube-dl-exec/bin/yt-dlp .output/server/yt-dlp 2>/dev/null; chmod +x .output/server/yt-dlp 2>/dev/null || true",
 		"preview": "vp preview",
 		"start": "bun run db:migrate:pglite && bun .output/server/index.mjs",
 		"db:generate": "drizzle-kit generate",
