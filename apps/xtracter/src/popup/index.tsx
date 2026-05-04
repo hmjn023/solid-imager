@@ -40,7 +40,9 @@ function Popup() {
 			});
 			setSources(resp || []);
 			if (resp && resp.length > 0 && !selectedSourceId()) {
-				setSelectedSourceId(resp[0].id);
+				const firstId = resp[0].id;
+				setSelectedSourceId(firstId);
+				await chrome.storage.local.set({ selectedSourceId: firstId });
 			}
 			setStatus("");
 		} catch (_err) {
@@ -122,7 +124,7 @@ function Popup() {
 					id="api-url"
 					type="text"
 					value={apiUrl()}
-					onInput={async (e) => {
+					onChange={async (e) => {
 						const url = e.currentTarget.value;
 						setApiUrl(url);
 						await chrome.storage.local.set({ apiUrl: url });
