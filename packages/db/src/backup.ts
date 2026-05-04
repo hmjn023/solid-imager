@@ -623,27 +623,6 @@ async function restoreRelations(
 		}
 	}
 
-	const mediaIds = Array.from(params.mediaPathToId.values());
-	const deleteChunkSize = 1000;
-	for (let index = 0; index < mediaIds.length; index += deleteChunkSize) {
-		const chunk = mediaIds.slice(index, index + deleteChunkSize);
-		await executor.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
-		await executor
-			.delete(mediaAuthors)
-			.where(inArray(mediaAuthors.mediaId, chunk));
-		await executor
-			.delete(mediaProjects)
-			.where(inArray(mediaProjects.mediaId, chunk));
-		await executor
-			.delete(mediaCharacters)
-			.where(inArray(mediaCharacters.mediaId, chunk));
-		await executor.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
-		await executor.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-		await executor
-			.delete(mediaGenerationInfo)
-			.where(inArray(mediaGenerationInfo.mediaId, chunk));
-	}
-
 	const chunkSize = 1000;
 	for (let index = 0; index < mediaTagsData.length; index += chunkSize) {
 		await executor

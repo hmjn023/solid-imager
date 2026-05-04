@@ -63,12 +63,26 @@ export type MediaRepository = IMediaRepository & {
 	batchUpsert(
 		inputs: UpsertMediaInput[],
 		tx?: unknown,
-	): Promise<Array<{ id: string; filePath: string }>>;
+	): Promise<
+		Array<{
+			id: string;
+			filePath: string;
+			fileSize: number | null;
+			modifiedAt: Date | null;
+		}>
+	>;
 	deleteBySourceIdAndPathPrefix(
 		sourceId: string,
 		folderPath: string,
 		tx?: unknown,
-	): Promise<Array<{ id: string; filePath: string }>>;
+	): Promise<
+		Array<{
+			id: string;
+			filePath: string;
+			fileSize: number | null;
+			modifiedAt: Date | null;
+		}>
+	>;
 };
 
 function mapToMedia(row: typeof medias.$inferSelect): Media {
@@ -652,12 +666,21 @@ export function createMediaRepository(
 		async findAllPathsBySourceId(
 			mediaSourceId: string,
 			tx?: unknown,
-		): Promise<Array<{ id: string; filePath: string }>> {
+		): Promise<
+			Array<{
+				id: string;
+				filePath: string;
+				fileSize: number | null;
+				modifiedAt: Date | null;
+			}>
+		> {
 			try {
 				return await getExecutor(getExecutorFn, tx)
 					.select({
 						id: medias.id,
 						filePath: medias.filePath,
+						fileSize: medias.fileSize,
+						modifiedAt: medias.modifiedAt,
 					})
 					.from(medias)
 					.where(eq(medias.mediaSourceId, mediaSourceId));
@@ -672,7 +695,14 @@ export function createMediaRepository(
 		async batchUpsert(
 			inputs: UpsertMediaInput[],
 			tx?: unknown,
-		): Promise<Array<{ id: string; filePath: string }>> {
+		): Promise<
+			Array<{
+				id: string;
+				filePath: string;
+				fileSize: number | null;
+				modifiedAt: Date | null;
+			}>
+		> {
 			if (inputs.length === 0) {
 				return [];
 			}
@@ -705,6 +735,8 @@ export function createMediaRepository(
 							width: sql`excluded.width`,
 							height: sql`excluded.height`,
 							fileSize: sql`excluded.file_size`,
+							description: sql`excluded.description`,
+							createdAt: sql`excluded.created_at`,
 							modifiedAt: sql`excluded.modified_at`,
 							indexedAt: sql`${now}`,
 							status: sql`excluded.status`,
@@ -714,6 +746,8 @@ export function createMediaRepository(
 				return rows.map((row) => ({
 					id: row.id,
 					filePath: row.filePath,
+					fileSize: row.fileSize,
+					modifiedAt: row.modifiedAt,
 				}));
 			} catch (error) {
 				throw new UnexpectedError("Failed to batch upsert media", error);
@@ -724,7 +758,14 @@ export function createMediaRepository(
 			sourceId: string,
 			folderPath: string,
 			tx?: unknown,
-		): Promise<Array<{ id: string; filePath: string }>> {
+		): Promise<
+			Array<{
+				id: string;
+				filePath: string;
+				fileSize: number | null;
+				modifiedAt: Date | null;
+			}>
+		> {
 			const normalizedFolderPath = folderPath.replace(/[\\/]+$/, "");
 			if (!normalizedFolderPath) {
 				return [];
@@ -747,6 +788,8 @@ export function createMediaRepository(
 				return rows.map((row) => ({
 					id: row.id,
 					filePath: row.filePath,
+					fileSize: row.fileSize,
+					modifiedAt: row.modifiedAt,
 				}));
 			} catch (error) {
 				throw new UnexpectedError(

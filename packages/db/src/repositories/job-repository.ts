@@ -311,6 +311,24 @@ export function createJobRepository(
 				.where(and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")));
 		},
 
+		async markImportRequestsFailed(
+			jobIds: string[],
+			error: string,
+		): Promise<void> {
+			if (jobIds.length === 0) {
+				return;
+			}
+
+			await getExecutor()
+				.update(jobs)
+				.set({
+					status: "failed",
+					error,
+					updatedAt: new Date(),
+				})
+				.where(and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")));
+		},
+
 		async deleteImportRequests(jobIds: string[]): Promise<void> {
 			if (jobIds.length === 0) {
 				return;

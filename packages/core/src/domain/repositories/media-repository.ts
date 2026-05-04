@@ -89,5 +89,12 @@ export type IMediaRepository = {
 	findAllPathsBySourceId(
 		sourceId: string,
 		tx?: Transaction,
-	): Promise<{ id: string; filePath: string }[]>;
+	): Promise<
+		{
+			id: string;
+			filePath: string;
+			fileSize: number | null;
+			modifiedAt: Date | null;
+		}[]
+	>;
 };

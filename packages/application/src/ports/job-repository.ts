@@ -46,6 +46,7 @@ export type JobRepositoryPort = {
 		includeTypes?: string[];
 	}): Promise<void>;
 	markImportRequestsCompleted(jobIds: string[]): Promise<void>;
+	markImportRequestsFailed(jobIds: string[], error: string): Promise<void>;
 	deleteImportRequests(jobIds: string[]): Promise<void>;
 	markAsInProgress(id: string): Promise<void>;
 	markAsCompleted(id: string, result?: unknown): Promise<void>;

@@ -14,6 +14,7 @@ export class JobRepository implements IJobRepository {
 	findPending = this.delegate.findPending;
 	resetInProgressToPending = this.delegate.resetInProgressToPending;
 	markImportRequestsCompleted = this.delegate.markImportRequestsCompleted;
+	markImportRequestsFailed = this.delegate.markImportRequestsFailed;
 	deleteImportRequests = this.delegate.deleteImportRequests;
 	markAsInProgress = this.delegate.markAsInProgress;
 	markAsCompleted = this.delegate.markAsCompleted;

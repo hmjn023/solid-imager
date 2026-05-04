@@ -40,6 +40,8 @@ export type SourceSyncUpsertInput = {
 export type SourceSyncMediaRecord = {
 	id: string;
 	filePath: string;
+	fileSize: number | null;
+	modifiedAt: Date | null;
 };
 
 export type SourceSyncResult = {
@@ -351,6 +353,16 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 					record.id,
 				]),
 			);
+			const preSyncSnapshot = new Map(
+				existingRecords.map((record) => [
+					normalizeRelativePath(record.filePath),
+					{
+						id: record.id,
+						fileSize: record.fileSize,
+						modifiedAt: record.modifiedAt,
+					},
+				]),
+			);
 
 			const scannedFiles = await scanDirectoryRecursive(rootPath);
 			deps.logger?.debug("[sync] scanned files", {
@@ -396,6 +408,9 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 			};
 
 			const probed = await probeAndCollect(source.id, filesToIndex);
+			const probedDataMap = new Map(
+				probed.map((item) => [item.normalizedRelPath, item]),
+			);
 			for (const { normalizedRelPath, ...input } of probed) {
 				if (!dbPathMap.has(normalizedRelPath)) {
 					added += 1;
@@ -435,6 +450,43 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 					sourceId: source.id,
 					count: newMediaJobs.length,
 				});
+			}
+
+			const changedMediaJobs: Array<{
+				sourceId: string;
+				mediaId: string;
+				sourcePath: string;
+			}> = [];
+			for (const [normalizedRelPath, probedItem] of probedDataMap) {
+				const preSync = preSyncSnapshot.get(normalizedRelPath);
+				if (!preSync) continue;
+				if (
+					preSync.fileSize !== probedItem.fileSize ||
+					preSync.modifiedAt?.getTime() !== probedItem.modifiedAt?.getTime()
+				) {
+					await deps.events.mediaChanged({
+						mediaSourceId: source.id,
+						mediaId: preSync.id,
+						filePath: normalizedRelPath,
+						timestamp: now,
+					});
+					changedMediaJobs.push({
+						sourceId: source.id,
+						mediaId: preSync.id,
+						sourcePath: rootPath,
+					});
+				}
+			}
+
+			if (changedMediaJobs.length > 0) {
+				await deps.enqueueProcessMediaJobs(changedMediaJobs);
+				deps.logger?.debug(
+					"[sync] enqueued media processing jobs for changed files",
+					{
+						sourceId: source.id,
+						count: changedMediaJobs.length,
+					},
+				);
 			}
 
 			let deleted = 0;
