@@ -82,6 +82,12 @@ vi.mock("node:child_process", () => ({
 		cb(null, { stdout: "", stderr: "" }),
 	),
 }));
+vi.mock("youtube-dl-exec", () => ({
+	default: vi.fn(() => Promise.resolve({})),
+}));
+vi.mock("~/infrastructure/utils/ffmpeg", () => ({
+	resolveFfmpegPath: vi.fn(() => Promise.resolve(null)),
+}));
 
 // Mock fetch
 const fetchMock = vi.fn();
