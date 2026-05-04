@@ -7,9 +7,9 @@ beforeAll(async () => {
 	// 1. Ensure DB migration is completed first
 	await mockDbFactory();
 
-	// 2. Then bootstrap the application (without background worker to avoid noisy DB errors)
-	const { initServicesForTest } = await import("~/infrastructure/bootstrap");
-	initServicesForTest();
+	// 2. Then bootstrap services only (without background worker to avoid noisy DB errors)
+	const { initServices } = await import("~/infrastructure/bootstrap");
+	initServices();
 });
 
 config({ path: path.resolve(process.cwd(), ".env") });

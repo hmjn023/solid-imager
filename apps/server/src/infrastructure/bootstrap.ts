@@ -32,6 +32,7 @@ export let isWorkerStarted = false;
 /**
  * Initializes all services and repositories.
  * This should be called early in the server-side lifecycle (including SSR).
+ * Also used in tests to bootstrap services without starting background workers.
  */
 export function initServices() {
 	if (isBootstrapped) {
@@ -203,12 +204,4 @@ export function startBackgroundWorker() {
 export function bootstrap() {
 	initServices();
 	startBackgroundWorker();
-}
-
-/**
- * Test-only bootstrap that initializes services without starting the background worker.
- * Prevents noisy DB errors from startup checks running against test databases.
- */
-export function initServicesForTest() {
-	initServices();
 }
