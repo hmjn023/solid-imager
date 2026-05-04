@@ -1,4 +1,5 @@
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -83,12 +84,17 @@ describe("TaggingService", () => {
 			getMediaCharacters: vi.fn(() => Promise.resolve([])),
 		} as unknown as CharacterRepository;
 
+		const mockTransactionManager: TransactionManager = {
+			transaction: async <T>(cb: (tx: unknown) => Promise<T>) => cb(undefined),
+		};
+
 		taggingService = new TaggingService(
 			mockAiClient,
 			mockSourceRepo,
 			mockTagRepo,
 			mockCharacterRepo,
 			mockIpRepo,
+			mockTransactionManager,
 		);
 	});
 

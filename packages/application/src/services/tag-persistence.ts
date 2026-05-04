@@ -78,6 +78,66 @@ export async function persistTaggingResponse(
 		}
 	}
 
+	// 3.5. Create IPs referenced in ips_mapping but missing from response.ips
+	const missingIpNames = new Set<string>();
+	for (const linkedIpNames of Object.values(response.ips_mapping)) {
+		for (const ipName of linkedIpNames) {
+			if (!ipNameIdMap.has(ipName)) {
+				missingIpNames.add(ipName);
+			}
+		}
+	}
+
+	if (missingIpNames.size > 0) {
+		console.warn(
+			`[tag-persistence] Creating ${missingIpNames.size} IP(s) referenced in ips_mapping but missing from response.ips: ${[...missingIpNames].join(", ")}`,
+		);
+
+		const newIpIds: { id: string; confidence?: number }[] = [];
+
+		for (const ipName of missingIpNames) {
+			let ip = await deps.ipRepository.findByName(ipName, tx);
+			if (!ip) {
+				try {
+					ip = await deps.ipRepository.create({ name: ipName, source }, tx);
+				} catch (e) {
+					if (e instanceof ResourceConflictError) {
+						ip = await deps.ipRepository.findByName(ipName, tx);
+					} else {
+						throw e;
+					}
+				}
+			}
+			if (ip) {
+				ipNameIdMap.set(ipName, ip.id);
+				newIpIds.push({ id: ip.id });
+			}
+		}
+
+		if (newIpIds.length > 0) {
+			await deps.ipRepository.addMediaBulk(mediaId, newIpIds, source, tx);
+		}
+
+		// Rebuild charToIpIdsMap to include newly created IPs
+		for (const [charName, linkedIpNames] of Object.entries(
+			response.ips_mapping,
+		)) {
+			for (const linkedIpName of linkedIpNames) {
+				const ipId = ipNameIdMap.get(linkedIpName);
+				if (ipId) {
+					const existing = charToIpIdsMap.get(charName);
+					if (existing) {
+						if (!existing.includes(ipId)) {
+							existing.push(ipId);
+						}
+					} else {
+						charToIpIdsMap.set(charName, [ipId]);
+					}
+				}
+			}
+		}
+	}
+
 	const charsToLink: { id: string; confidence: number }[] = [];
 
 	for (const [charName, confidence] of Object.entries(response.character)) {

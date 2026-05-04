@@ -342,6 +342,7 @@ export const projects = pgTable(
 		archivedAt: timestamp("archived_at"),
 	},
 	(table) => ({
+		nameUnique: unique("projects_name_unique").on(table.name),
 		nameIndex: index("idx_projects_name").on(table.name),
 	}),
 );
