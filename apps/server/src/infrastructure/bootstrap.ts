@@ -204,3 +204,11 @@ export function bootstrap() {
 	initServices();
 	startBackgroundWorker();
 }
+
+/**
+ * Test-only bootstrap that initializes services without starting the background worker.
+ * Prevents noisy DB errors from startup checks running against test databases.
+ */
+export function initServicesForTest() {
+	initServices();
+}
