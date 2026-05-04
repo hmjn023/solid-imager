@@ -1,5 +1,5 @@
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Badge } from "./badge";
 import {
 	Dialog,
@@ -27,26 +27,41 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 
 	createEffect(() => {
 		if (props.isOpen) {
+			let isCancelled = false;
+
+			const fetchTags = async () => {
+				setIsLoading(true);
+				setResult(null);
+				setError(null);
+				try {
+					const data = await props.fetchTags();
+					if (!isCancelled) {
+						setResult(data);
+					}
+				} catch (err) {
+					if (!isCancelled) {
+						setError(
+							err instanceof Error ? err.message : "Unknown error occurred",
+						);
+					}
+				} finally {
+					if (!isCancelled) {
+						setIsLoading(false);
+					}
+				}
+			};
+
 			fetchTags();
+
+			onCleanup(() => {
+				isCancelled = true;
+			});
 		} else {
 			setResult(null);
 			setError(null);
 			setIsLoading(false);
 		}
 	});
-
-	const fetchTags = async () => {
-		setIsLoading(true);
-		setError(null);
-		try {
-			const data = await props.fetchTags();
-			setResult(data);
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error occurred");
-		} finally {
-			setIsLoading(false);
-		}
-	};
 
 	return (
 		<Dialog
