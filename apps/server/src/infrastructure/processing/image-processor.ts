@@ -111,18 +111,25 @@ export class LocalImageProcessor implements IImageProcessor {
 		// Default image processing
 		try {
 			// Validate JPEG integrity before processing
-			const { readFileSync } = await import("node:fs");
-			const content = readFileSync(mediaPath);
-			if (content.length >= 2 && content[0] === 0xff && content[1] === 0xd8) {
-				if (
-					content.length < 2 ||
-					content[content.length - 2] !== 0xff ||
-					content[content.length - 1] !== 0xd9
-				) {
-					throw new Error(
-						`Cannot generate thumbnail: truncated JPEG file (missing FFD9 end marker): ${mediaPath}`,
-					);
+			const { open } = await import("node:fs/promises");
+			const fd = await open(mediaPath, "r");
+			try {
+				const { size } = await fd.stat();
+				if (size >= 2) {
+					const header = Buffer.allocUnsafe(2);
+					await fd.read(header, 0, 2, 0);
+					if (header[0] === 0xff && header[1] === 0xd8) {
+						const tail = Buffer.allocUnsafe(2);
+						await fd.read(tail, 0, 2, size - 2);
+						if (tail[0] !== 0xff || tail[1] !== 0xd9) {
+							throw new Error(
+								`Cannot generate thumbnail: truncated JPEG file (missing FFD9 end marker): ${mediaPath}`,
+							);
+						}
+					}
 				}
+			} finally {
+				await fd.close();
 			}
 
 			await sharp(mediaPath)

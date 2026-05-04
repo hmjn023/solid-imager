@@ -2,7 +2,7 @@
  * Download Jobs - Handles downloading images from URLs
  */
 
-import fs from "node:fs/promises";
+import fs, { open } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -38,28 +38,39 @@ const PNG_SIGNATURE = Buffer.from([
 ]);
 const PNG_IEND = Buffer.from([0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82]);
 
-function validateImageIntegrity(filePath: string): void {
-	const content = require("node:fs").readFileSync(filePath);
-	if (content.length === 0) {
-		throw new Error(`Downloaded file is empty: ${filePath}`);
-	}
-
-	const isJpeg = content[0] === 0xff && content[1] === 0xd8;
-	const isPng =
-		content.length >= 8 && content.subarray(0, 8).equals(PNG_SIGNATURE);
-
-	if (isJpeg) {
-		if (content.length < 2 || !content.subarray(-2).equals(JPEG_EOI)) {
-			throw new Error(
-				`Truncated JPEG file (missing end marker FFD9): ${filePath} (${content.length} bytes)`,
-			);
+async function validateImageIntegrity(filePath: string): Promise<void> {
+	const fd = await open(filePath, "r");
+	try {
+		const { size } = await fd.stat();
+		if (size === 0) {
+			throw new Error(`Downloaded file is empty: ${filePath}`);
 		}
-	} else if (isPng) {
-		if (content.length < 8 || !content.subarray(-8).equals(PNG_IEND)) {
-			throw new Error(
-				`Truncated PNG file (missing IEND chunk): ${filePath} (${content.length} bytes)`,
-			);
+
+		const header = Buffer.allocUnsafe(Math.min(16, size));
+		await fd.read(header, 0, header.length, 0);
+
+		const isJpeg = header[0] === 0xff && header[1] === 0xd8;
+		const isPng = size >= 8 && header.subarray(0, 8).equals(PNG_SIGNATURE);
+
+		if (isJpeg) {
+			const tail = Buffer.allocUnsafe(2);
+			await fd.read(tail, 0, 2, size - 2);
+			if (!tail.equals(JPEG_EOI)) {
+				throw new Error(
+					`Truncated JPEG file (missing end marker FFD9): ${filePath} (${size} bytes)`,
+				);
+			}
+		} else if (isPng) {
+			const tail = Buffer.allocUnsafe(8);
+			await fd.read(tail, 0, 8, size - 8);
+			if (!tail.equals(PNG_IEND)) {
+				throw new Error(
+					`Truncated PNG file (missing IEND chunk): ${filePath} (${size} bytes)`,
+				);
+			}
 		}
+	} finally {
+		await fd.close();
 	}
 }
 
@@ -165,8 +176,9 @@ async function resolveYtDlpPath(): Promise<string> {
 	}
 
 	// 3. Walk up from current file to find workspace root
+	const { fileURLToPath } = await import("node:url");
 	const { dirname } = await import("node:path");
-	let dir = dirname(new URL(import.meta.url).pathname);
+	let dir = dirname(fileURLToPath(new URL(import.meta.url)));
 	for (let i = 0; i < 10; i++) {
 		const candidate = path.join(dir, "node_modules/youtube-dl-exec/bin/yt-dlp");
 		if (existsSync(candidate)) {
@@ -340,6 +352,44 @@ function resolveCreatedAt(
 
 // Update helper to determine media type from extension
 
+async function downloadAndSaveImage(
+	targetUrl: string,
+	item: DownloadItem,
+	context: { basePath: string },
+	headers: Record<string, string>,
+	fallbackExt: string,
+): Promise<Awaited<ReturnType<typeof ServerMediaStorage.saveFile>>> {
+	await waitForDownloadRateLimit();
+	const response = await fetch(targetUrl, {
+		headers,
+		signal: AbortSignal.timeout(30000),
+	});
+	if (!response.ok) {
+		throw new Error(
+			`Failed to download image: ${response.status} ${response.statusText}`,
+		);
+	}
+	const extension = resolveExtensionFromContentType(
+		response.headers.get("content-type"),
+		fallbackExt,
+	);
+	const filename = generateMediaFilename(item, extension);
+	const arrayBuffer = await response.arrayBuffer();
+	const fileInfo = await ServerMediaStorage.saveFile(
+		context.basePath,
+		{
+			name: filename,
+			arrayBuffer: async () => arrayBuffer,
+		},
+		{
+			filename,
+			overwrite: false,
+			autoIncrement: true,
+		},
+	);
+	return fileInfo;
+}
+
 function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	const isDanbooru = item.targetUrl?.includes("donmai.us");
 
@@ -466,46 +516,18 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			const fallbackExt = path.extname(urlPath) || ".png";
 			const headers = buildFetchHeaders(item);
 
-			let response: Response;
-			let extension: string;
-			let filename: string;
-			let arrayBuffer: ArrayBuffer;
-			let fileInfo: Awaited<ReturnType<typeof ServerMediaStorage.saveFile>>;
-
-			// First attempt
-			await waitForDownloadRateLimit();
-			response = await fetch(item.targetUrl, {
+			let fileInfo = await downloadAndSaveImage(
+				item.targetUrl,
+				item,
+				context,
 				headers,
-				signal: AbortSignal.timeout(30000),
-			});
-			if (!response.ok) {
-				throw new Error(
-					`Failed to download image: ${response.status} ${response.statusText}`,
-				);
-			}
-			extension = resolveExtensionFromContentType(
-				response.headers.get("content-type"),
 				fallbackExt,
-			);
-			filename = generateMediaFilename(item, extension);
-			arrayBuffer = await response.arrayBuffer();
-			fileInfo = await ServerMediaStorage.saveFile(
-				context.basePath,
-				{
-					name: filename,
-					arrayBuffer: async () => arrayBuffer,
-				},
-				{
-					filename,
-					overwrite: false,
-					autoIncrement: true,
-				},
 			);
 
 			// Validate integrity, retry once on failure
 			try {
 				const fullPath = path.join(context.basePath, fileInfo.filePath);
-				validateImageIntegrity(fullPath);
+				await validateImageIntegrity(fullPath);
 			} catch (validationError) {
 				logger.warn(
 					{ err: validationError, url: item.targetUrl },
@@ -515,37 +537,16 @@ export async function processDownloadJob(job: Job): Promise<void> {
 					.unlink(path.join(context.basePath, fileInfo.filePath))
 					.catch(() => {});
 
-				await waitForDownloadRateLimit();
-				response = await fetch(item.targetUrl, {
+				fileInfo = await downloadAndSaveImage(
+					item.targetUrl,
+					item,
+					context,
 					headers,
-					signal: AbortSignal.timeout(30000),
-				});
-				if (!response.ok) {
-					throw new Error(
-						`Retry download failed: ${response.status} ${response.statusText}`,
-					);
-				}
-				extension = resolveExtensionFromContentType(
-					response.headers.get("content-type"),
 					fallbackExt,
-				);
-				filename = generateMediaFilename(item, extension);
-				arrayBuffer = await response.arrayBuffer();
-				fileInfo = await ServerMediaStorage.saveFile(
-					context.basePath,
-					{
-						name: filename,
-						arrayBuffer: async () => arrayBuffer,
-					},
-					{
-						filename,
-						overwrite: false,
-						autoIncrement: true,
-					},
 				);
 
 				const retryFullPath = path.join(context.basePath, fileInfo.filePath);
-				validateImageIntegrity(retryFullPath);
+				await validateImageIntegrity(retryFullPath);
 			}
 			let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 			if (createdAt && Number.isNaN(createdAt.getTime())) {
