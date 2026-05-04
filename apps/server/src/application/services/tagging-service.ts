@@ -4,6 +4,7 @@ import {
 	orchestrateTagging,
 } from "@solid-imager/application/services/ai-tagging-service";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -13,6 +14,7 @@ import type {
 	TaggingResponse,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { services } from "~/application/registry";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { MediaService } from "./media-service";
 
@@ -24,6 +26,7 @@ export class TaggingService {
 	private readonly tagRepo: TagRepositoryDef;
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
+	private readonly transactionManager: TransactionManager;
 
 	constructor(
 		aiClient: IAiClient,
@@ -31,12 +34,14 @@ export class TaggingService {
 		tagRepo: TagRepositoryDef,
 		characterRepo: CharacterRepository,
 		ipRepo: IIpRepository,
+		transactionManager: TransactionManager,
 	) {
 		this.aiClient = aiClient;
 		this.sourceRepo = sourceRepo;
 		this.tagRepo = tagRepo;
 		this.characterRepo = characterRepo;
 		this.ipRepo = ipRepo;
+		this.transactionManager = transactionManager;
 	}
 
 	async isServiceAvailable(): Promise<boolean> {
@@ -97,11 +102,14 @@ export class TaggingService {
 				const { persistTaggingResponse } = await import(
 					"@solid-imager/application/services/tag-persistence"
 				);
-				await persistTaggingResponse(mediaId, response, {
-					tagRepository: this.tagRepo,
-					ipRepository: this.ipRepo,
-					characterRepository: this.characterRepo,
-					source: "AI",
+				await this.transactionManager.transaction(async (tx) => {
+					await persistTaggingResponse(mediaId, response, {
+						tagRepository: this.tagRepo,
+						ipRepository: this.ipRepo,
+						characterRepository: this.characterRepo,
+						source: "AI",
+						tx,
+					});
 				});
 
 				// Notify clients of the update
@@ -170,6 +178,7 @@ const getTaggingService = () => {
 			services.getTagRepository(),
 			services.getCharacterRepository(),
 			services.getIpRepository(),
+			DrizzleTransactionManager,
 		);
 	}
 	return _taggingService;

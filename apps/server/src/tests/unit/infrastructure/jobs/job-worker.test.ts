@@ -46,6 +46,7 @@ describe("JobWorker", () => {
 			findPending: vi.fn().mockResolvedValue([]),
 			resetInProgressToPending: vi.fn(),
 			markImportRequestsCompleted: vi.fn().mockResolvedValue(undefined),
+			markImportRequestsFailed: vi.fn().mockResolvedValue(undefined),
 			deleteImportRequests: vi.fn().mockResolvedValue(undefined),
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
 			markAsCompleted: vi.fn().mockResolvedValue(undefined),

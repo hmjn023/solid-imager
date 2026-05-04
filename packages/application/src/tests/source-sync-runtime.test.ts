@@ -87,7 +87,12 @@ function createTestRuntime(options: TestRuntimeOptions = {}) {
 					if (existing) {
 						return existing;
 					}
-					const record = { id: `media-${nextId++}`, filePath: input.filePath };
+					const record = {
+						id: `media-${nextId++}`,
+						filePath: input.filePath,
+						fileSize: input.fileSize,
+						modifiedAt: input.modifiedAt,
+					};
 					records.set(input.filePath, record);
 					return record;
 				});
@@ -200,9 +205,15 @@ describe("source-sync-runtime", () => {
 		const { runtime, addedEvents, enqueuedJobs } = createTestRuntime({
 			files: new Set(["/library/image.png"]),
 			directories: new Map([["/library", ["image.png"]]]),
-			existing: [{ id: "media-existing", filePath: "image.png" }],
+			existing: [
+				{
+					id: "media-existing",
+					filePath: "image.png",
+					fileSize: 1234,
+					modifiedAt: new Date("2026-01-02T00:00:00Z"),
+				},
+			],
 		});
-
 		const result = await runtime.syncLocalSource(source);
 
 		expect(result.added).toBe(0);
@@ -214,9 +225,15 @@ describe("source-sync-runtime", () => {
 		const { runtime, deletedIds, deletedEvents } = createTestRuntime({
 			files: new Set(),
 			directories: new Map([["/library", []]]),
-			existing: [{ id: "media-stale", filePath: "stale.png" }],
+			existing: [
+				{
+					id: "media-stale",
+					filePath: "stale.png",
+					fileSize: 0,
+					modifiedAt: null,
+				},
+			],
 		});
-
 		const result = await runtime.syncLocalSource(source);
 
 		expect(result.deleted).toBe(1);
@@ -235,8 +252,18 @@ describe("source-sync-runtime", () => {
 			files: new Set(),
 			directories: new Map([["/library", []]]),
 			existing: [
-				{ id: "media-nested", filePath: "folder/nested.png" },
-				{ id: "media-other", filePath: "other.png" },
+				{
+					id: "media-nested",
+					filePath: "folder/nested.png",
+					fileSize: 0,
+					modifiedAt: null,
+				},
+				{
+					id: "media-other",
+					filePath: "other.png",
+					fileSize: 0,
+					modifiedAt: null,
+				},
 			],
 		});
 

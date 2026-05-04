@@ -14,6 +14,7 @@ export const IMPORT_REQUEST_EVENTS = [
 	"import-request:created",
 	"import-request:processed",
 	"import-request:deleted",
+	"import-request:failed",
 ] as const;
 export type ImportRequestEventName = (typeof IMPORT_REQUEST_EVENTS)[number];
 
@@ -34,6 +35,7 @@ type ImportRequestJobRepository = Pick<
 	| "findPendingImportRequests"
 	| "findImportRequestsByIds"
 	| "markImportRequestsCompleted"
+	| "markImportRequestsFailed"
 	| "deleteImportRequests"
 >;
 
@@ -228,14 +230,28 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 			const resolvedTargetSourceId =
 				targetSourceId ?? pendingJobs[0]?.targetSourceId;
 
-			if (!resolvedTargetSourceId) {
-				throw new Error("Target source is required");
-			}
+			let result: { processedCount: number };
+			try {
+				if (!resolvedTargetSourceId) {
+					throw new Error("Target source is required");
+				}
 
-			const result =
-				items.length > 0
-					? await deps.executeImport(resolvedTargetSourceId, items)
-					: { processedCount: 0 };
+				result =
+					items.length > 0
+						? await deps.executeImport(resolvedTargetSourceId, items)
+						: { processedCount: 0 };
+			} catch (error) {
+				const message = error instanceof Error ? error.message : String(error);
+				await deps.jobRepository.markImportRequestsFailed(
+					pendingJobs.map((job) => job.id),
+					message,
+				);
+				await deps.publishImportEvent("import-request:failed", {
+					jobIds: pendingJobs.map((job) => job.id),
+					error: message,
+				});
+				throw error;
+			}
 
 			await deps.jobRepository.markImportRequestsCompleted(
 				pendingJobs.map((job) => job.id),

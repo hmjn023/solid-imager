@@ -36,6 +36,7 @@ function makeRepository(): JobRepositoryPort {
 		findPending: vi.fn(async () => []),
 		resetInProgressToPending: vi.fn(),
 		markImportRequestsCompleted: vi.fn(),
+		markImportRequestsFailed: vi.fn(),
 		deleteImportRequests: vi.fn(),
 		markAsInProgress: vi.fn(),
 		markAsCompleted: vi.fn(),
