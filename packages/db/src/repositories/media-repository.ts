@@ -735,7 +735,7 @@ export function createMediaRepository(
 							width: sql`excluded.width`,
 							height: sql`excluded.height`,
 							fileSize: sql`excluded.file_size`,
-							description: sql`excluded.description`,
+							description: sql`COALESCE(excluded.description, ${medias.description})`,
 							createdAt: sql`excluded.created_at`,
 							modifiedAt: sql`excluded.modified_at`,
 							indexedAt: sql`${now}`,

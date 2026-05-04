@@ -462,7 +462,8 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 				if (!preSync) continue;
 				if (
 					preSync.fileSize !== probedItem.fileSize ||
-					preSync.modifiedAt?.getTime() !== probedItem.modifiedAt?.getTime()
+					Math.floor((preSync.modifiedAt?.getTime() ?? 0) / 1000) !==
+						Math.floor((probedItem.modifiedAt?.getTime() ?? 0) / 1000)
 				) {
 					await deps.events.mediaChanged({
 						mediaSourceId: source.id,

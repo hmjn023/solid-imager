@@ -230,12 +230,12 @@ export function createImportRequestService(deps: ImportRequestServiceDeps) {
 			const resolvedTargetSourceId =
 				targetSourceId ?? pendingJobs[0]?.targetSourceId;
 
-			if (!resolvedTargetSourceId) {
-				throw new Error("Target source is required");
-			}
-
 			let result: { processedCount: number };
 			try {
+				if (!resolvedTargetSourceId) {
+					throw new Error("Target source is required");
+				}
+
 				result =
 					items.length > 0
 						? await deps.executeImport(resolvedTargetSourceId, items)
