@@ -29,6 +29,7 @@ fn main() {
             commands::fs::fs_write_file,
             commands::fs::fs_mkdir,
             commands::fs::fs_readdir,
+            commands::fs::fs_scan_recursive,
             commands::fs::fs_stat,
             commands::fs::fs_unlink,
             commands::fs::fs_rm,

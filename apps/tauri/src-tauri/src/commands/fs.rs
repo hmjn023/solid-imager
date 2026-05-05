@@ -1,8 +1,16 @@
 use super::utils::*;
 use futures_util::StreamExt;
+use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FsScanEntry {
+    pub full_path: String,
+    pub is_directory: bool,
+}
 
 #[tauri::command(async)]
 pub fn fs_exists(path: String) -> bool {
@@ -55,6 +63,46 @@ pub fn fs_readdir(path: String) -> Result<Vec<String>, String> {
     }
 
     Ok(names)
+}
+
+#[tauri::command(async)]
+pub fn fs_scan_recursive(path: String) -> Result<Vec<FsScanEntry>, String> {
+    let root = Path::new(&path);
+    if !root.is_dir() {
+        return Err(format!("Path is not a directory: {path}"));
+    }
+
+    let mut entries = Vec::new();
+    let mut stack = vec![root.to_path_buf()];
+
+    while let Some(dir) = stack.pop() {
+        let read_dir =
+            fs::read_dir(&dir).map_err(|error| with_path_context("Reading directory", &dir.to_string_lossy(), error))?;
+
+        for entry in read_dir {
+            let entry =
+                entry.map_err(|error| with_path_context("Reading directory entry", &dir.to_string_lossy(), error))?;
+            let file_name = entry.file_name().to_string_lossy().into_owned();
+
+            if file_name.starts_with('.') {
+                continue;
+            }
+
+            let entry_path = entry.path();
+            let is_directory = entry_path.is_dir();
+
+            if is_directory {
+                stack.push(entry_path.clone());
+            }
+
+            entries.push(FsScanEntry {
+                full_path: entry_path.to_string_lossy().into_owned(),
+                is_directory,
+            });
+        }
+    }
+
+    Ok(entries)
 }
 
 #[tauri::command(async)]
