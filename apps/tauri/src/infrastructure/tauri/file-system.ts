@@ -8,6 +8,11 @@ type TauriFileStat = {
 	isDirectory: boolean;
 };
 
+type TauriFsScanEntry = {
+	fullPath: string;
+	isDirectory: boolean;
+};
+
 function toUint8Array(data: Uint8Array | number[]): Uint8Array {
 	return data instanceof Uint8Array ? data : new Uint8Array(data);
 }
@@ -48,6 +53,12 @@ export class TauriFileSystem implements IFileSystem {
 
 	async readdir(path: string) {
 		return this.commandClient.invoke<string[]>("fs_readdir", { path });
+	}
+
+	async scanDirectoryRecursive(path: string) {
+		return this.commandClient.invoke<TauriFsScanEntry[]>("fs_scan_recursive", {
+			path,
+		});
 	}
 
 	async stat(path: string) {

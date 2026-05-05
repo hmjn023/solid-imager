@@ -19,4 +19,7 @@ export type IFileSystem = {
 	copyFile(src: string, dest: string): Promise<void>;
 	rename(oldPath: string, newPath: string): Promise<void>;
 	mkdtemp(prefix: string): Promise<string>;
+	scanDirectoryRecursive?(
+		path: string,
+	): Promise<Array<{ fullPath: string; isDirectory: boolean }>>;
 };
