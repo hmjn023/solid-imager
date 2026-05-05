@@ -119,11 +119,8 @@ const sourceSyncRuntime = createSourceSyncRuntime({
 		stat: async (path) => await getTauriAppServices().fileSystem.stat(path),
 		readdir: async (path) =>
 			await getTauriAppServices().fileSystem.readdir(path),
-		scanDirectoryRecursive: async (path) => {
-			const fn = getTauriAppServices().fileSystem.scanDirectoryRecursive;
-			if (!fn) throw new Error("scanDirectoryRecursive not available");
-			return await fn(path);
-		},
+		scanDirectoryRecursive: async (path) =>
+			await getTauriAppServices().fileSystem.scanDirectoryRecursive(path),
 	},
 	config: {
 		getSupportedExtensions: async () =>
