@@ -42,6 +42,7 @@ fn main() {
             commands::media::image_extract_metadata,
             commands::media::image_get_dimensions,
             commands::media::probe_media,
+            commands::media::probe_media_batch,
             watcher::source_watch_start,
             watcher::source_watch_stop
         ])
