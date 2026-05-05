@@ -1,10 +1,17 @@
-import path from "node:path";
-
 export type SupportedExtensions = {
 	image: string[];
 	video: string[];
 	audio: string[];
 };
+
+function extname(filePath: string): string {
+	const lastDot = filePath.lastIndexOf(".");
+	const lastSlash = Math.max(
+		filePath.lastIndexOf("/"),
+		filePath.lastIndexOf("\\"),
+	);
+	return lastDot > lastSlash ? filePath.slice(lastDot) : "";
+}
 
 /**
  * Determines the media type based on the file extension and a config-driven
@@ -14,7 +21,7 @@ export function inferMediaType(
 	filePath: string,
 	supportedExtensions: SupportedExtensions,
 ): "image" | "video" | "audio" | null {
-	const ext = path.extname(filePath).toLowerCase();
+	const ext = extname(filePath).toLowerCase();
 	if (supportedExtensions.image.includes(ext)) return "image";
 	if (supportedExtensions.video.includes(ext)) return "video";
 	if (supportedExtensions.audio.includes(ext)) return "audio";
@@ -29,7 +36,7 @@ export function inferMediaType(
 export function getMediaTypeFromExtension(
 	fileName: string,
 ): "video" | "audio" | "image" {
-	const ext = path.extname(fileName).toLowerCase();
+	const ext = extname(fileName).toLowerCase();
 	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
 		return "video";
 	}
@@ -45,7 +52,7 @@ export function getMediaTypeFromExtension(
  * @returns The MIME type string, defaulting to 'application/octet-stream'
  */
 export function getContentTypeFromExtension(fileName: string): string {
-	const ext = path.extname(fileName).toLowerCase().replace(".", "");
+	const ext = extname(fileName).toLowerCase().replace(".", "");
 	switch (ext) {
 		case "jpg":
 		case "jpeg":
