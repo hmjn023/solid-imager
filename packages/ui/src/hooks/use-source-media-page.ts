@@ -91,7 +91,16 @@ export type SourceMediaPageActions = {
 	restoreSource: (
 		sourceId: string,
 		data: unknown,
-	) => Promise<{ processed: number; skipped: number; errors: string[] }>;
+		opts?: {
+			signal?: AbortSignal;
+			onProgress?: (done: number, total: number) => void;
+		},
+	) => Promise<{
+		processed: number;
+		skipped: number;
+		errors: string[];
+		cancelled?: boolean;
+	}>;
 	importSourceZip: (
 		sourceId: string,
 		file: File,
@@ -102,6 +111,7 @@ export type SourceMediaPageActions = {
 		errors: string[];
 		message: string;
 	}>;
+	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
 export type SourceMediaPagePresetClient = PresetManagerClient &
@@ -396,6 +406,13 @@ export function useSourceMediaPage(
 		}
 	});
 
+	onCleanup(() => {
+		if (restoreAbortController) {
+			restoreAbortController.abort();
+			restoreAbortController = null;
+		}
+	});
+
 	// --- Media source events ---
 	useMediaSourceEvents({
 		transport,
@@ -581,6 +598,8 @@ export function useSourceMediaPage(
 		}
 	};
 
+	let restoreAbortController: AbortController | null = null;
+
 	const handleRestoreSelect = async (e: Event) => {
 		const target = e.target as HTMLInputElement;
 		if (!target.files || target.files.length === 0) {
@@ -592,6 +611,8 @@ export function useSourceMediaPage(
 		if (!sourceId) {
 			return;
 		}
+
+		restoreAbortController = new AbortController();
 
 		try {
 			if (
@@ -608,25 +629,57 @@ export function useSourceMediaPage(
 					},
 				);
 				refreshMediaQuery();
-				target.value = "";
 				return;
 			}
 
-			const data = JSON.parse(await file.text());
-			toast.loading("Restoring metadata...", { id: "restore-toast" });
-			const result = await actions.restoreSource(sourceId, data);
-			toast.success(
-				`Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
-				{
-					id: "restore-toast",
+			const data = actions.parseRestoreFile
+				? await actions.parseRestoreFile(file)
+				: JSON.parse(await file.text());
+
+			const showCancel = typeof actions.parseRestoreFile === "function";
+			const cancelAction = showCancel
+				? {
+						label: "Cancel",
+						onClick: () => restoreAbortController?.abort(),
+					}
+				: undefined;
+
+			toast.loading("Restoring metadata...", {
+				id: "restore-toast",
+				cancel: cancelAction,
+			});
+
+			const total = Array.isArray(data) ? data.length : 0;
+
+			const result = await actions.restoreSource(sourceId, data, {
+				signal: restoreAbortController.signal,
+				onProgress: (done) => {
+					toast.loading(`Restoring metadata... ${done}/${total} items`, {
+						id: "restore-toast",
+						cancel: cancelAction,
+					});
 				},
-			);
+			});
+
+			if (result.cancelled) {
+				toast.info(`Restore cancelled: ${result.processed} items restored.`, {
+					id: "restore-toast",
+				});
+			} else {
+				toast.success(
+					`Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
+					{
+						id: "restore-toast",
+					},
+				);
+			}
 			refreshMediaQuery();
 		} catch (error) {
 			toast.error(`Restore failed: ${(error as Error).message}`, {
 				id: "restore-toast",
 			});
 		} finally {
+			restoreAbortController = null;
 			target.value = "";
 		}
 	};

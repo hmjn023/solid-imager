@@ -9,7 +9,6 @@ import type { TauriDbExecutor } from "~/infrastructure/db/client";
 import { joinLocalPath } from "../../path-utils";
 import { TauriSourceRepository } from "../repositories/source-repository";
 import { TauriJobRepository } from "../repositories/tauri-job-repository";
-import { TauriSourceService } from "./source-service";
 
 type BinaryFilePayload = {
 	fileName: string;
@@ -17,10 +16,16 @@ type BinaryFilePayload = {
 	data: number[];
 };
 
+type RestoreSourceOpts = {
+	signal?: AbortSignal;
+	onProgress?: (done: number, total: number) => void;
+};
+
 type RestoreSourceResult = {
 	processed: number;
 	skipped: number;
 	errors: string[];
+	cancelled?: boolean;
 };
 
 function toLocalSourcePath(
@@ -98,8 +103,9 @@ export const TauriSourceBackupService = {
 	async restoreSource(
 		mediaSourceId: string,
 		items: unknown[],
+		opts?: RestoreSourceOpts,
 	): Promise<RestoreSourceResult> {
-		return await backupService.restoreSource(mediaSourceId, items);
+		return await backupService.restoreSource(mediaSourceId, items, opts);
 	},
 
 	async importSourceZip(
@@ -120,7 +126,6 @@ export const TauriSourceBackupService = {
 			bytes,
 		});
 
-		await TauriSourceService.sync([mediaSourceId]);
 		const restoreResult = await backupService.restoreSource(
 			mediaSourceId,
 			dumpData,

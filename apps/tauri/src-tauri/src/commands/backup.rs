@@ -146,3 +146,9 @@ pub fn backup_extract_zip(input: BackupExtractZipInput) -> Result<Value, String>
 
     dump_data.ok_or_else(|| "dump.json not found in ZIP".to_string())
 }
+
+#[tauri::command(async)]
+pub fn parse_restore_json(bytes: Vec<u8>) -> Result<Value, String> {
+    serde_json::from_slice::<Value>(&bytes)
+        .map_err(|error| format!("Parsing JSON failed: {error}"))
+}
