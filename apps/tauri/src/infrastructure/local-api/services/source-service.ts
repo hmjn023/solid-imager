@@ -32,6 +32,12 @@ type ProbeMediaResult = {
 	codec?: string | null;
 };
 
+type ProbeMediaBatchItemResult = {
+	mediaPath: string;
+	result: ProbeMediaResult | null;
+	error: string | null;
+};
+
 const sourceWatchers = new Map<string, true>();
 const WATCH_START_RETRY_DELAY_MS = 5_000;
 const watchRetryTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -113,6 +119,8 @@ const sourceSyncRuntime = createSourceSyncRuntime({
 		stat: async (path) => await getTauriAppServices().fileSystem.stat(path),
 		readdir: async (path) =>
 			await getTauriAppServices().fileSystem.readdir(path),
+		scanDirectoryRecursive: async (path) =>
+			await getTauriAppServices().fileSystem.scanDirectoryRecursive(path),
 	},
 	config: {
 		getSupportedExtensions: async () =>
@@ -125,6 +133,27 @@ const sourceSyncRuntime = createSourceSyncRuntime({
 			"probe_media",
 			{ mediaPath: fullPath },
 		),
+	batchProbeMedia: async (paths) => {
+		const results = await getTauriAppServices().commandClient.invoke<
+			ProbeMediaBatchItemResult[]
+		>("probe_media_batch", { mediaPaths: paths });
+		return results.map((item) => ({
+			mediaPath: item.mediaPath,
+			result: item.result
+				? {
+						width: item.result.width,
+						height: item.result.height,
+						size: item.result.size,
+						createdAt: item.result.createdAt,
+						modifiedAt: item.result.modifiedAt,
+						duration: item.result.duration ?? null,
+						mimeType: item.result.mimeType ?? null,
+						codec: item.result.codec ?? null,
+					}
+				: null,
+			error: item.error,
+		}));
+	},
 	mediaRepository: {
 		findByPath: TauriMediaRepository.findByPath,
 		findAllPathsBySourceId: TauriMediaRepository.findAllPathsBySourceId,

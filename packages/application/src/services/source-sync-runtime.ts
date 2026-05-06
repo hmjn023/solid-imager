@@ -69,6 +69,17 @@ type FileToIndex = {
 	mediaType: SourceSyncMediaType;
 };
 
+export type SourceSyncScanEntry = {
+	fullPath: string;
+	isDirectory: boolean;
+};
+
+export type SourceSyncBatchProbeItem = {
+	mediaPath: string;
+	result: SourceSyncProbeResult | null;
+	error: string | null;
+};
+
 export type SourceSyncRuntimeDeps = {
 	resolveSourceRootPath(
 		source: Pick<MediaSource, "type" | "connectionInfo">,
@@ -80,6 +91,7 @@ export type SourceSyncRuntimeDeps = {
 		exists(path: string): Promise<boolean>;
 		stat(path: string): Promise<FileSystemEntryStat>;
 		readdir(path: string): Promise<string[]>;
+		scanDirectoryRecursive?(path: string): Promise<SourceSyncScanEntry[]>;
 	};
 	config: {
 		getSupportedExtensions():
@@ -88,6 +100,7 @@ export type SourceSyncRuntimeDeps = {
 		getProbeConcurrency(): Promise<number> | number;
 	};
 	probeMedia(fullPath: string): Promise<SourceSyncProbeResult>;
+	batchProbeMedia?(paths: string[]): Promise<SourceSyncBatchProbeItem[]>;
 	mediaRepository: {
 		findByPath(
 			mediaSourceId: string,
@@ -168,6 +181,13 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 	const sleepForRetry = deps.retry?.sleep ?? sleep;
 
 	async function scanDirectoryRecursive(rootPath: string): Promise<string[]> {
+		if (deps.fileSystem.scanDirectoryRecursive) {
+			const entries = await deps.fileSystem.scanDirectoryRecursive(rootPath);
+			return entries.flatMap((entry) =>
+				!entry.isDirectory ? [entry.fullPath] : [],
+			);
+		}
+
 		const entries = await deps.fileSystem.readdir(rootPath);
 		const files: string[] = [];
 
@@ -212,6 +232,54 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 	}
 
 	async function probeAndCollect(
+		sourceId: string,
+		files: FileToIndex[],
+	): Promise<Array<SourceSyncUpsertInput & { normalizedRelPath: string }>> {
+		if (deps.batchProbeMedia) {
+			return probeAndCollectBatch(sourceId, files);
+		}
+		return probeAndCollectSequential(sourceId, files);
+	}
+
+	async function probeAndCollectBatch(
+		sourceId: string,
+		files: FileToIndex[],
+	): Promise<Array<SourceSyncUpsertInput & { normalizedRelPath: string }>> {
+		const paths = files.map((f) => f.fullPath);
+		const fileMap = new Map(files.map((f) => [f.fullPath, f]));
+		const batchResults = (await deps.batchProbeMedia?.(paths)) ?? [];
+		const results: Array<
+			SourceSyncUpsertInput & { normalizedRelPath: string }
+		> = [];
+
+		for (const item of batchResults) {
+			if (item.error || !item.result) {
+				deps.logger?.error("[sync] probe failed", item.error);
+				continue;
+			}
+			const file = fileMap.get(item.mediaPath);
+			if (!file) {
+				continue;
+			}
+			results.push({
+				mediaSourceId: sourceId,
+				filePath: file.relativePath,
+				fileName: deps.basename(item.mediaPath),
+				mediaType: file.mediaType,
+				width: item.result.width,
+				height: item.result.height,
+				fileSize: item.result.size,
+				description: null,
+				createdAt: new Date(item.result.createdAt),
+				modifiedAt: new Date(item.result.modifiedAt),
+				normalizedRelPath: file.normalizedRelPath,
+			});
+		}
+
+		return results;
+	}
+
+	async function probeAndCollectSequential(
 		sourceId: string,
 		files: FileToIndex[],
 	): Promise<Array<SourceSyncUpsertInput & { normalizedRelPath: string }>> {

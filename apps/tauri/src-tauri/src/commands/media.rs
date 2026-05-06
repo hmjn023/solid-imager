@@ -13,11 +13,10 @@ pub fn image_get_dimensions(media_path: String) -> Result<MediaDimensions, Strin
     Ok(inspect_image_header(&media_path)?.dimensions)
 }
 
-#[tauri::command(async)]
-pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
-    let metadata = fs::metadata(&media_path)
-        .map_err(|error| with_path_context("Reading file metadata", &media_path, error))?;
-    let header = inspect_image_header(&media_path).ok();
+fn probe_single_media(media_path: &str) -> Result<ProbeMediaResult, String> {
+    let metadata = fs::metadata(media_path)
+        .map_err(|error| with_path_context("Reading file metadata", media_path, error))?;
+    let header = inspect_image_header(media_path).ok();
     let dimensions = header
         .as_ref()
         .map(|value| value.dimensions)
@@ -26,7 +25,7 @@ pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
             height: 0,
         });
     let mime_type = header.and_then(|value| value.mime_type).or_else(|| {
-        mime_guess::from_path(&media_path)
+        mime_guess::from_path(media_path)
             .first_raw()
             .map(|value| value.to_string())
     });
@@ -35,12 +34,51 @@ pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
         width: dimensions.width,
         height: dimensions.height,
         size: metadata.len(),
-        created_at: metadata_created_or_modified(&media_path, &metadata)?,
-        modified_at: metadata_modified(&media_path, &metadata)?,
+        created_at: metadata_created_or_modified(media_path, &metadata)?,
+        modified_at: metadata_modified(media_path, &metadata)?,
         duration: None,
         mime_type,
         codec: None,
     })
+}
+
+#[tauri::command(async)]
+pub fn probe_media(media_path: String) -> Result<ProbeMediaResult, String> {
+    probe_single_media(&media_path)
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProbeMediaBatchItemResult {
+    pub media_path: String,
+    pub result: Option<ProbeMediaResult>,
+    pub error: Option<String>,
+}
+
+#[tauri::command(async)]
+pub async fn probe_media_batch(media_paths: Vec<String>) -> Result<Vec<ProbeMediaBatchItemResult>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        use rayon::prelude::*;
+        media_paths
+            .into_par_iter()
+            .map(|path| {
+                match probe_single_media(&path) {
+                    Ok(result) => ProbeMediaBatchItemResult {
+                        media_path: path,
+                        result: Some(result),
+                        error: None,
+                    },
+                    Err(error) => ProbeMediaBatchItemResult {
+                        media_path: path,
+                        result: None,
+                        error: Some(error),
+                    },
+                }
+            })
+            .collect()
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 #[tauri::command(async)]
