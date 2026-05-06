@@ -183,9 +183,9 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 	async function scanDirectoryRecursive(rootPath: string): Promise<string[]> {
 		if (deps.fileSystem.scanDirectoryRecursive) {
 			const entries = await deps.fileSystem.scanDirectoryRecursive(rootPath);
-			return entries
-				.filter((entry) => !entry.isDirectory)
-				.map((entry) => entry.fullPath);
+			return entries.flatMap((entry) =>
+				!entry.isDirectory ? [entry.fullPath] : [],
+			);
 		}
 
 		const entries = await deps.fileSystem.readdir(rootPath);
@@ -247,7 +247,7 @@ export function createSourceSyncRuntime(deps: SourceSyncRuntimeDeps) {
 	): Promise<Array<SourceSyncUpsertInput & { normalizedRelPath: string }>> {
 		const paths = files.map((f) => f.fullPath);
 		const fileMap = new Map(files.map((f) => [f.fullPath, f]));
-		const batchResults = await deps.batchProbeMedia?.(paths);
+		const batchResults = (await deps.batchProbeMedia?.(paths)) ?? [];
 		const results: Array<
 			SourceSyncUpsertInput & { normalizedRelPath: string }
 		> = [];
