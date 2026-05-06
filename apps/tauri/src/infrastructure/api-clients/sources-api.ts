@@ -10,5 +10,6 @@ export const updateMediaSource = sourcesApi.updateMediaSource;
 export const deleteMediaSource = sourcesApi.deleteMediaSource;
 export const syncMediaSources = sourcesApi.syncMediaSources;
 export const fetchSourceDump = sourcesApi.fetchSourceDump;
-export const restoreSource = sourcesApi.restoreSource;
+export const restoreSource = tauriSourcesApiContract.restoreSource;
 export const importSourceZip = sourcesApi.importSourceZip;
+export const parseRestoreFile = tauriSourcesApiContract.parseRestoreFile;

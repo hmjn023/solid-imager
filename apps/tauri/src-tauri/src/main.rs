@@ -23,6 +23,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::backup::backup_create_zip,
             commands::backup::backup_extract_zip,
+            commands::backup::parse_restore_json,
             commands::fs::fs_exists,
             commands::fs::fs_read_file,
             commands::fs::fs_read_text_file,

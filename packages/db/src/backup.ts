@@ -74,6 +74,8 @@ type SimpleMasterDataNameColumn =
 const MASTER_DATA_CHUNK_SIZE = 1000;
 const AUTHOR_UPDATE_CHUNK_SIZE = 500;
 const MEDIA_QUERY_CHUNK_SIZE = 1000;
+const RESTORE_BATCH_SIZE = 500;
+const PATH_EXISTS_CONCURRENCY = 50;
 
 function isMediaSourcePath(pathValue: string): boolean {
 	return /^(?:[A-Za-z]:[\\/]|\/)/.test(pathValue);
@@ -678,6 +680,34 @@ async function restoreRelations(
 	}
 }
 
+async function pathExistsParallel(
+	checks: Array<{ item: MediaDumpItem; fullPath: string }>,
+	pathExists: (fullPath: string) => Promise<boolean>,
+): Promise<{ existing: MediaDumpItem[]; skipped: number }> {
+	const existing: MediaDumpItem[] = [];
+	let skipped = 0;
+
+	for (let index = 0; index < checks.length; index += PATH_EXISTS_CONCURRENCY) {
+		const chunk = checks.slice(index, index + PATH_EXISTS_CONCURRENCY);
+		const results = await Promise.allSettled(
+			chunk.map(async ({ item, fullPath }) => {
+				const exists = await pathExists(fullPath);
+				return { item, exists };
+			}),
+		);
+
+		for (const result of results) {
+			if (result.status === "fulfilled" && result.value.exists) {
+				existing.push(result.value.item);
+			} else {
+				skipped += 1;
+			}
+		}
+	}
+
+	return { existing, skipped };
+}
+
 export async function filterValidItems(
 	items: unknown[],
 	mediaSource: BackupSource,
@@ -688,7 +718,8 @@ export async function filterValidItems(
 	const basePath = connectionInfo.path ?? "";
 	const isLocal = mediaSource.type === "local";
 
-	const validItems: MediaDumpItem[] = [];
+	const preValidated: MediaDumpItem[] = [];
+	const pathChecks: Array<{ item: MediaDumpItem; fullPath: string }> = [];
 	const errorMessages: string[] = [];
 	let skippedCount = 0;
 
@@ -716,22 +747,22 @@ export async function filterValidItems(
 
 		if (isLocal) {
 			const fullPath = resolvePath(basePath, validItem.filePath);
-			try {
-				const exists = await pathExists(fullPath);
-				if (!exists) {
-					skippedCount += 1;
-					continue;
-				}
-			} catch {
-				skippedCount += 1;
-				continue;
-			}
+			pathChecks.push({ item: validItem, fullPath });
+		} else {
+			preValidated.push(validItem);
 		}
-
-		validItems.push(validItem);
 	}
 
-	return { validItems, skippedCount, errorMessages };
+	if (pathChecks.length > 0) {
+		const { existing, skipped } = await pathExistsParallel(
+			pathChecks,
+			pathExists,
+		);
+		preValidated.push(...existing);
+		skippedCount += skipped;
+	}
+
+	return { validItems: preValidated, skippedCount, errorMessages };
 }
 
 export function createBackupService(deps: BackupServiceDeps) {
@@ -789,71 +820,100 @@ export function createBackupService(deps: BackupServiceDeps) {
 	async function restoreSource(
 		mediaSourceId: string,
 		items: unknown[],
-	): Promise<{ processed: number; skipped: number; errors: string[] }> {
+		opts?: {
+			signal?: AbortSignal;
+			onProgress?: (done: number, total: number) => void;
+		},
+	): Promise<{
+		processed: number;
+		skipped: number;
+		errors: string[];
+		cancelled?: boolean;
+	}> {
 		const source = await deps.sourceRepository.findById(mediaSourceId);
 		if (!source) {
 			throw new Error("Media source not found");
 		}
 
-		const { validItems, skippedCount, errorMessages } = await filterValidItems(
-			items,
-			source,
-			deps.pathExists,
-			deps.resolvePath,
-		);
-
-		if (validItems.length === 0) {
-			return {
-				processed: 0,
-				skipped: skippedCount,
-				errors: errorMessages,
-			};
-		}
+		const totalItems = items.length;
+		let totalProcessed = 0;
+		let totalSkipped = 0;
+		const allErrors: string[] = [];
 
 		const runTransaction =
 			deps.runTransaction ??
 			(async <T>(callback: (executor: DrizzleExecutor) => Promise<T>) =>
 				await callback(deps.getExecutor()));
 
-		const { mediaPathToId } = await runTransaction(async (executor) => {
-			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await restoreMasterData(executor, validItems);
+		const rootPath = (source.connectionInfo as { path?: string }).path ?? "";
 
-			await restoreMediaRecords(executor, mediaSourceId, validItems);
-			const nextMediaPathToId = await mapMediaPathsToIds(
-				() => executor,
-				mediaSourceId,
-				validItems,
-			);
+		for (let offset = 0; offset < items.length; offset += RESTORE_BATCH_SIZE) {
+			if (opts?.signal?.aborted) {
+				return {
+					processed: totalProcessed,
+					skipped: totalSkipped,
+					errors: allErrors,
+					cancelled: true,
+				};
+			}
 
-			await restoreRelations(executor, {
-				items: validItems,
-				mediaPathToId: nextMediaPathToId,
-				tagMap,
-				authorMap,
-				projectMap,
-				ipMap,
-				charMap,
-			});
+			const batch = items.slice(offset, offset + RESTORE_BATCH_SIZE);
+			const { validItems, skippedCount, errorMessages } =
+				await filterValidItems(
+					batch,
+					source,
+					deps.pathExists,
+					deps.resolvePath,
+				);
+			totalSkipped += skippedCount;
+			allErrors.push(...errorMessages);
 
-			return {
-				mediaPathToId: nextMediaPathToId,
-			};
-		});
+			if (validItems.length > 0) {
+				const { mediaPathToId } = await runTransaction(async (executor) => {
+					const { tagMap, authorMap, projectMap, ipMap, charMap } =
+						await restoreMasterData(executor, validItems);
 
-		const mediaIds = Array.from(mediaPathToId.values());
-		if (deps.onRestoreComplete && mediaIds.length > 0) {
-			await deps.onRestoreComplete({
-				source,
-				mediaIds,
-				rootPath: (source.connectionInfo as { path?: string }).path ?? "",
-			});
+					await restoreMediaRecords(executor, mediaSourceId, validItems);
+					const nextMediaPathToId = await mapMediaPathsToIds(
+						() => executor,
+						mediaSourceId,
+						validItems,
+					);
+
+					await restoreRelations(executor, {
+						items: validItems,
+						mediaPathToId: nextMediaPathToId,
+						tagMap,
+						authorMap,
+						projectMap,
+						ipMap,
+						charMap,
+					});
+
+					return {
+						mediaPathToId: nextMediaPathToId,
+					};
+				});
+
+				totalProcessed += validItems.length;
+
+				const mediaIds = Array.from(mediaPathToId.values());
+				if (deps.onRestoreComplete && mediaIds.length > 0) {
+					await deps.onRestoreComplete({
+						source,
+						mediaIds,
+						rootPath,
+					});
+				}
+			}
+
+			opts?.onProgress?.(totalProcessed + totalSkipped, totalItems);
 		}
 
 		return {
-			processed: validItems.length,
-			skipped: skippedCount,
-			errors: errorMessages,
+			processed: totalProcessed,
+			skipped: totalSkipped,
+			errors: allErrors,
 		};
 	}
 

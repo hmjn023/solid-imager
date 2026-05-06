@@ -25,6 +25,7 @@ import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
 	importSourceZip,
+	parseRestoreFile,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
@@ -67,6 +68,7 @@ export function SourceMediaPage() {
 				fetchSourceDump,
 				restoreSource,
 				importSourceZip,
+				parseRestoreFile,
 			}}
 			getSearchCondition={getSearchCondition}
 			sortBy={() => searchState.sortBy}

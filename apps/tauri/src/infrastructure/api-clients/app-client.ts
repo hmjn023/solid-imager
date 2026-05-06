@@ -4,6 +4,8 @@ import type {
 	SyncMediaItemsResponse,
 	UploadMediaRequest,
 } from "@solid-imager/core/interfaces/media-manager-client";
+import { getTauriAppServices } from "~/app-services";
+import { TauriSourceBackupService } from "~/infrastructure/local-api/services/source-backup-service";
 import { orpc } from "./orpc-client";
 
 function toBooleanString(value: boolean | undefined) {
@@ -76,7 +78,7 @@ export const tauriSourcesApiContract: SourcesApiContract = {
 			type: "application/json",
 		});
 	},
-	restoreSource: (id, data) => {
+	restoreSource: (id, data, opts) => {
 		const payload = data as
 			| {
 					media?: unknown[];
@@ -87,10 +89,17 @@ export const tauriSourcesApiContract: SourcesApiContract = {
 			: Array.isArray(payload.media)
 				? payload.media
 				: [];
-		return orpc.sources.restore({ id, data: items });
+		return TauriSourceBackupService.restoreSource(id, items, opts);
 	},
 	async importSourceZip(id, file) {
 		const bytes = new Uint8Array(await file.arrayBuffer());
 		return orpc.sources.importZip({ id, bytes: Array.from(bytes) });
+	},
+	parseRestoreFile: async (file: File) => {
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		return await getTauriAppServices().commandClient.invoke<unknown>(
+			"parse_restore_json",
+			{ bytes },
+		);
 	},
 };

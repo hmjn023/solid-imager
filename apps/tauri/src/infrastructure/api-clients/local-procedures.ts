@@ -267,7 +267,6 @@ const localProcedureHandlers = {
 				data: z.array(z.unknown()),
 			})
 			.parse(input);
-		await TauriSourceService.sync([id]);
 		return await TauriSourceBackupService.restoreSource(id, data);
 	},
 	"sources.importZip": async (input: unknown) => {

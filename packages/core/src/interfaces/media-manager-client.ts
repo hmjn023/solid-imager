@@ -112,7 +112,16 @@ export type SourcesApiContract = {
 	restoreSource: (
 		id: string,
 		data: unknown,
-	) => Promise<{ processed: number; skipped: number; errors: string[] }>;
+		opts?: {
+			signal?: AbortSignal;
+			onProgress?: (done: number, total: number) => void;
+		},
+	) => Promise<{
+		processed: number;
+		skipped: number;
+		errors: string[];
+		cancelled?: boolean;
+	}>;
 	importSourceZip: (
 		id: string,
 		file: File,
@@ -123,6 +132,7 @@ export type SourcesApiContract = {
 		errors: string[];
 		message: string;
 	}>;
+	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
 export function createMediaApi(contract: MediaApiContract) {
@@ -198,11 +208,21 @@ export function createSourcesApi(contract: SourcesApiContract) {
 		fetchSourceDump(id: string, mode: "json" | "zip" = "json") {
 			return contract.fetchSourceDump(id, mode);
 		},
-		restoreSource(id: string, data: unknown) {
-			return contract.restoreSource(id, data);
+		restoreSource(
+			id: string,
+			data: unknown,
+			opts?: {
+				signal?: AbortSignal;
+				onProgress?: (done: number, total: number) => void;
+			},
+		) {
+			return contract.restoreSource(id, data, opts);
 		},
 		importSourceZip(id: string, file: File) {
 			return contract.importSourceZip(id, file);
+		},
+		parseRestoreFile(file: File) {
+			return contract.parseRestoreFile?.(file);
 		},
 	};
 }

@@ -49,6 +49,7 @@ const restoreSourceResultSchema = z.object({
 	processed: z.number(),
 	skipped: z.number(),
 	errors: z.array(z.string()),
+	cancelled: z.boolean().optional(),
 });
 const importSourceZipResultSchema = z.object({
 	success: z.boolean(),
