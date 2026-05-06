@@ -96,7 +96,7 @@ export const tauriSourcesApiContract: SourcesApiContract = {
 		return orpc.sources.importZip({ id, bytes: Array.from(bytes) });
 	},
 	parseRestoreFile: async (file: File) => {
-		const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+		const bytes = new Uint8Array(await file.arrayBuffer());
 		return await getTauriAppServices().commandClient.invoke<unknown>(
 			"parse_restore_json",
 			{ bytes },

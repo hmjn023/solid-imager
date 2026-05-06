@@ -649,7 +649,9 @@ export function useSourceMediaPage(
 				cancel: cancelAction,
 			});
 
-			const total = Array.isArray(data) ? data.length : 0;
+			const total = Array.isArray(data)
+				? data.length
+				: ((data as { media?: unknown[] })?.media?.length ?? 0);
 
 			const result = await actions.restoreSource(sourceId, data, {
 				signal: restoreAbortController.signal,

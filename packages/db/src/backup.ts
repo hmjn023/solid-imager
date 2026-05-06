@@ -868,48 +868,46 @@ export function createBackupService(deps: BackupServiceDeps) {
 			totalSkipped += skippedCount;
 			allErrors.push(...errorMessages);
 
-			if (validItems.length === 0) {
-				continue;
-			}
+			if (validItems.length > 0) {
+				const { mediaPathToId } = await runTransaction(async (executor) => {
+					const { tagMap, authorMap, projectMap, ipMap, charMap } =
+						await restoreMasterData(executor, validItems);
 
-			const { mediaPathToId } = await runTransaction(async (executor) => {
-				const { tagMap, authorMap, projectMap, ipMap, charMap } =
-					await restoreMasterData(executor, validItems);
+					await restoreMediaRecords(executor, mediaSourceId, validItems);
+					const nextMediaPathToId = await mapMediaPathsToIds(
+						() => executor,
+						mediaSourceId,
+						validItems,
+					);
 
-				await restoreMediaRecords(executor, mediaSourceId, validItems);
-				const nextMediaPathToId = await mapMediaPathsToIds(
-					() => executor,
-					mediaSourceId,
-					validItems,
-				);
+					await restoreRelations(executor, {
+						items: validItems,
+						mediaPathToId: nextMediaPathToId,
+						tagMap,
+						authorMap,
+						projectMap,
+						ipMap,
+						charMap,
+					});
 
-				await restoreRelations(executor, {
-					items: validItems,
-					mediaPathToId: nextMediaPathToId,
-					tagMap,
-					authorMap,
-					projectMap,
-					ipMap,
-					charMap,
+					return {
+						mediaPathToId: nextMediaPathToId,
+					};
 				});
 
-				return {
-					mediaPathToId: nextMediaPathToId,
-				};
-			});
+				totalProcessed += validItems.length;
 
-			totalProcessed += validItems.length;
-
-			const mediaIds = Array.from(mediaPathToId.values());
-			if (deps.onRestoreComplete && mediaIds.length > 0) {
-				await deps.onRestoreComplete({
-					source,
-					mediaIds,
-					rootPath,
-				});
+				const mediaIds = Array.from(mediaPathToId.values());
+				if (deps.onRestoreComplete && mediaIds.length > 0) {
+					await deps.onRestoreComplete({
+						source,
+						mediaIds,
+						rootPath,
+					});
+				}
 			}
 
-			opts?.onProgress?.(totalProcessed, totalItems);
+			opts?.onProgress?.(totalProcessed + totalSkipped, totalItems);
 		}
 
 		return {
