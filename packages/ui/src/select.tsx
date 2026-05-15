@@ -72,7 +72,9 @@ const SelectTrigger = <T extends ValidComponent = "button">(
 };
 
 type SelectContentProps<T extends ValidComponent = "div"> =
-	SelectPrimitiveContentProps<T> & { class?: string | undefined };
+	SelectPrimitiveContentProps<T> & {
+		class?: string | undefined;
+	};
 
 const SelectContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, SelectContentProps<T>>,
