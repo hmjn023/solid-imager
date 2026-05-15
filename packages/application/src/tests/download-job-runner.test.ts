@@ -37,9 +37,9 @@ describe("download-job-runner", () => {
 				},
 			}),
 		);
-		expect(item.targetUrl).toBe("https://example.com/image.png");
-		expect(item.sourceUrls).toEqual(["https://example.com/post"]);
-		expect(item.description).toBe("hello");
+		expect(item!.targetUrl).toBe("https://example.com/image.png");
+		expect(item!.sourceUrls).toEqual(["https://example.com/post"]);
+		expect(item!.description).toBe("hello");
 	});
 
 	it("queues canonical download jobs", async () => {

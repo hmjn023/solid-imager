@@ -13,6 +13,7 @@ export type TagPersistenceDeps = {
 	>;
 	source?: string;
 	tx?: unknown;
+	logger?: { warn?(data: unknown, message?: string): void };
 };
 
 export async function persistTaggingResponse(
@@ -89,8 +90,9 @@ export async function persistTaggingResponse(
 	}
 
 	if (missingIpNames.size > 0) {
-		console.warn(
-			`[tag-persistence] Creating ${missingIpNames.size} IP(s) referenced in ips_mapping but missing from response.ips: ${[...missingIpNames].join(", ")}`,
+		deps.logger?.warn?.(
+			{ missingIpNames: [...missingIpNames] },
+			`[tag-persistence] Creating ${missingIpNames.size} IP(s) referenced in ips_mapping but missing from response.ips`,
 		);
 
 		const newIpIds: { id: string; confidence?: number }[] = [];

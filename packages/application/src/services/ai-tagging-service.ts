@@ -102,11 +102,13 @@ export async function resolveAiInput(
 	deps: ResolveAiInputDeps,
 ): Promise<AiInput> {
 	if (deps.mediaSourceType === "local" && deps.isAiServiceLocal) {
-		const info = deps.mediaSourceConnectionInfo as { path: string };
-		return {
-			type: "path",
-			fullPath: deps.joinPath(info.path, deps.mediaFilePath),
-		};
+		const info = deps.mediaSourceConnectionInfo as { path?: string };
+		if (typeof info?.path === "string") {
+			return {
+				type: "path",
+				fullPath: deps.joinPath(info.path, deps.mediaFilePath),
+			};
+		}
 	}
 	return { type: "buffer", buffer: await deps.getBuffer() };
 }

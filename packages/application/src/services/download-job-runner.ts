@@ -49,9 +49,9 @@ export type DownloadRunnerDeps = {
 
 export function getDownloadItemFromJob(
 	job: Pick<JobRecord, "payload">,
-): DownloadItem {
+): DownloadItem | null {
 	if (!job.payload || typeof job.payload !== "object") {
-		return {} as DownloadItem;
+		return null;
 	}
 
 	const payload = job.payload as Record<string, unknown>;
@@ -108,7 +108,7 @@ export async function runDownloadImageJob(
 	}
 
 	const item = getDownloadItemFromJob(job);
-	if (!item.targetUrl) {
+	if (!item?.targetUrl) {
 		throw new Error("Job payload missing targetUrl");
 	}
 

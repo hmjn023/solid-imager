@@ -18,7 +18,7 @@ export async function enqueueThumbnailJobsAfterRestore(
 		return;
 	}
 
-	const sourceId = source.id ?? "";
+	const sourceId = source.id ?? null;
 	await deps.jobRepository.createMany(
 		mediaIds.map((mediaId) => ({
 			type: "processMedia" as const,

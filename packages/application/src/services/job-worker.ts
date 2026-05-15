@@ -43,9 +43,8 @@ function mergeExcludeTypes(
 	excludedJobTypes: string[],
 ): FindPendingJobsOptions {
 	const excludeTypes = [
-		...(options.excludeTypes ?? []),
-		...excludedJobTypes,
-	].filter((value, index, values) => values.indexOf(value) === index);
+		...new Set([...(options.excludeTypes ?? []), ...excludedJobTypes]),
+	];
 	return { ...options, excludeTypes };
 }
 
