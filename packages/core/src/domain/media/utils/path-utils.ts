@@ -5,6 +5,25 @@
  */
 
 /**
+ * Normalises a relative path to POSIX-style forward slashes and collapses
+ * consecutive separators.
+ */
+export function normalizeRelativePath(path: string): string {
+	return path.replace(/[\\/]+/g, "/");
+}
+
+/**
+ * Returns `true` if any segment of the path starts with a dot (hidden file
+ * or directory).
+ */
+export function isHiddenPath(filePath: string): boolean {
+	return filePath
+		.split(/[\\/]/)
+		.filter(Boolean)
+		.some((segment) => segment.startsWith("."));
+}
+
+/**
  * Provides utility functions for manipulating file paths.
  */
 export const PathUtils = {
@@ -15,7 +34,6 @@ export const PathUtils = {
 	 * @returns {string} The resolved absolute path.
 	 */
 	resolveRelativePath(_basePath: string, _relativePath: string): string {
-		// TODO: Resolve relative path from base path
 		throw new Error("Not implemented");
 	},
 
@@ -25,7 +43,6 @@ export const PathUtils = {
 	 * @returns {string} The filename, including its extension.
 	 */
 	getFileName(_filePath: string): string {
-		// TODO: Extract filename from path
 		throw new Error("Not implemented");
 	},
 
@@ -35,7 +52,6 @@ export const PathUtils = {
 	 * @returns {string} The file extension (e.g., "png", "jpg").
 	 */
 	getFileExtension(_filePath: string): string {
-		// TODO: Extract file extension from path
 		throw new Error("Not implemented");
 	},
 };

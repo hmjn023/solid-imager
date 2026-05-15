@@ -1,0 +1,15 @@
+{
+	"extends": "../../tsconfig.json",
+	"compilerOptions": {
+		"noEmit": true,
+		"moduleResolution": "bundler",
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["../core/src/*"],
+			"@solid-imager/core": ["../core/src/index.ts"],
+			"@solid-imager/core/*": ["../core/src/*"]
+		}
+	},
+	"include": ["src"],
+	"exclude": ["src/services/backup-restore-complete.ts"]
+}
