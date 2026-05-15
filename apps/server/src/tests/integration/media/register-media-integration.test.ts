@@ -1,17 +1,16 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import {
+	type MediaSource,
+	mediaSources,
+	medias,
+} from "@solid-imager/db/schema";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { MediaService } from "~/application/services/media-service";
-
 import { db } from "~/infrastructure/db/index";
-import {
-	type MediaSource,
-	mediaSources,
-	medias,
-} from "~/infrastructure/db/schema";
 
 const TEST_TIMEOUT = 15_000;
 

@@ -3,17 +3,6 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
-import { BackupService } from "~/application/services/backup-service";
-import { db } from "~/infrastructure/db";
 import {
 	authors,
 	characters,
@@ -27,7 +16,18 @@ import {
 	mediaTags,
 	projects,
 	tags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { eq } from "drizzle-orm";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
+import { BackupService } from "~/application/services/backup-service";
+import { db } from "~/infrastructure/db";
 
 describe("BackupService ZIP Integration", () => {
 	const sourceId1 = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";

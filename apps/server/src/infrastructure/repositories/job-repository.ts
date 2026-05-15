@@ -1,7 +1,7 @@
+import { type Job, jobs, type NewJob } from "@solid-imager/db/schema";
 import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import { db } from "~/infrastructure/db";
-import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 
 export class JobRepository implements IJobRepository {
 	async create(job: NewJob): Promise<Job> {

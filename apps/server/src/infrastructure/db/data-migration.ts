@@ -1,11 +1,11 @@
-import { and, eq, inArray } from "drizzle-orm";
-import { db } from "~/infrastructure/db/index";
 import {
 	type MediaSource,
 	mediaSources,
 	medias,
 	type NewMedia,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { db } from "~/infrastructure/db/index";
 import { NotFoundError, UnknownDbError } from "./errors";
 
 /**

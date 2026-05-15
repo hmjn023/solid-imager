@@ -5,9 +5,9 @@ import type {
 	UpdatePresetRequest,
 } from "@solid-imager/core/domain/media/schemas";
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
+import { presets } from "@solid-imager/db/schema";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
-import { presets } from "~/infrastructure/db/schema";
 
 export class DrizzlePresetRepository implements PresetRepository {
 	async list(): Promise<Preset[]> {

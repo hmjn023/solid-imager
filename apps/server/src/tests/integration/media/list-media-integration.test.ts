@@ -1,11 +1,11 @@
+import type { NewMedia } from "@solid-imager/db/schema";
+import { mediaSources, medias } from "@solid-imager/db/schema";
 import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { db } from "~/infrastructure/db/index";
-import type { NewMedia } from "~/infrastructure/db/schema";
-import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";

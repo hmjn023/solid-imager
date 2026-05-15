@@ -17,6 +17,24 @@ import {
 	type UpdateMediaRequest,
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import { getClient } from "@solid-imager/db";
+import {
+	authors,
+	characters,
+	ips,
+	mediaAuthors,
+	mediaCharacters,
+	mediaDetails,
+	mediaGenerationInfo,
+	mediaIps,
+	mediaProjects,
+	medias,
+	mediaTags,
+	mediaUrls,
+	type NewMedia,
+	projects,
+	tags,
+} from "@solid-imager/db/schema";
 import {
 	and,
 	asc,
@@ -39,24 +57,7 @@ import {
 	sql,
 } from "drizzle-orm";
 import type { z } from "zod";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
-import {
-	authors,
-	characters,
-	ips,
-	mediaAuthors,
-	mediaCharacters,
-	mediaDetails,
-	mediaGenerationInfo,
-	mediaIps,
-	mediaProjects,
-	medias,
-	mediaTags,
-	mediaUrls,
-	type NewMedia,
-	projects,
-	tags,
-} from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 import { logger } from "~/infrastructure/logger";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 
@@ -156,7 +157,7 @@ export const MediaRepository: IMediaRepository = {
 	 */
 	async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select()
 				.from(medias)
@@ -182,7 +183,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<Media | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select()
 				.from(medias)
@@ -209,7 +210,7 @@ export const MediaRepository: IMediaRepository = {
 	 */
 	async create(media: AddMediaRequest, tx?: Transaction): Promise<Media> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const newMedia: NewMedia = {
 				...media,
 				status: "active",
@@ -227,7 +228,7 @@ export const MediaRepository: IMediaRepository = {
 	 */
 	async upsert(media: AddMediaRequest, tx?: Transaction): Promise<Media> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const newMedia: NewMedia = {
 				...media,
 				status: "active",
@@ -267,7 +268,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<Media> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const dbUpdates: Partial<NewMedia> = {};
 
 			if (updates.filePath !== undefined) {
@@ -323,7 +324,7 @@ export const MediaRepository: IMediaRepository = {
 	 */
 	async delete(mediaId: string, tx?: Transaction): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.delete(medias)
 				.where(eq(medias.id, mediaId))
@@ -372,7 +373,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<MediaDetails | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client.query.medias.findFirst({
 				where: eq(medias.id, mediaId),
 				with: {
@@ -423,7 +424,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<MediaGenerationInfo | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select()
 				.from(mediaGenerationInfo)
@@ -454,7 +455,7 @@ export const MediaRepository: IMediaRepository = {
 
 	async getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const results = await client
 				.select()
 				.from(mediaUrls)
@@ -477,7 +478,7 @@ export const MediaRepository: IMediaRepository = {
 			return [];
 		}
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const values = urls.map((url) => ({
 				mediaId,
 				url,
@@ -502,7 +503,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<MediaGenerationInfo> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const values = {
 				mediaId,
 				prompt,
@@ -543,7 +544,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<Media[]> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const query = client
 				.select()
 				.from(medias)
@@ -566,7 +567,7 @@ export const MediaRepository: IMediaRepository = {
 		params: { query?: string; tags?: string[] },
 		tx?: Transaction,
 	): Promise<Media[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		// searchMediaInDirectory internally uses searchMediaQuery structure so it returns formatted results,
 		// hopefully compatible with Media. But let's check media-repository-utils.ts for that.
 		const results = await searchMediaInDirectory(
@@ -584,7 +585,7 @@ export const MediaRepository: IMediaRepository = {
 		if (urls.length === 0) {
 			return [];
 		}
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		try {
 			const results = await client
 				.select({ url: mediaUrls.url })
@@ -599,7 +600,7 @@ export const MediaRepository: IMediaRepository = {
 	async findIdsWithMissingGenerationInfo(
 		tx?: Transaction,
 	): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		return await client
 			.select({
 				id: medias.id,
@@ -617,7 +618,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 		options?: { limit: number; offset: number },
 	): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		let query = client
 			.select({
 				id: medias.id,
@@ -640,7 +641,7 @@ export const MediaRepository: IMediaRepository = {
 		tx?: Transaction,
 	): Promise<{ id: string; filePath: string }[]> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			return await client
 				.select({
 					id: medias.id,
@@ -1076,7 +1077,7 @@ async function executeSearch(
 	mediaSourceId?: string,
 	tx?: Transaction,
 ): Promise<MediaSearchResponse> {
-	const client = (tx as unknown as TransactionClient) || db;
+	const client = getClient(db, tx);
 
 	const conditions: SQL[] = [];
 	if (mediaSourceId) {

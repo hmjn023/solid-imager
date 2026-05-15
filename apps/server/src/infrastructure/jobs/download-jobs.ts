@@ -11,10 +11,10 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import type { Job } from "@solid-imager/db/schema";
 import ffmpegPath from "ffmpeg-static";
 import youtubedl from "youtube-dl-exec";
 import { services } from "~/application/registry";
-import type { Job } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";

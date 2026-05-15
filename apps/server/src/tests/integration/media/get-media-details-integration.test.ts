@@ -30,7 +30,7 @@ let testDb: any, db: any;
 vi.mock("~/infrastructure/db/index", async () => {
 	const { PGlite: PgLiteClass } = await import("@electric-sql/pglite");
 	const { drizzle: drizzleFunc } = await import("drizzle-orm/pglite");
-	const schemaModule = await import("~/infrastructure/db/schema");
+	const schemaModule = await import("@solid-imager/db/schema");
 
 	const pg = new PgLiteClass();
 	const dbInstance = drizzleFunc(pg, { schema: schemaModule });
@@ -68,7 +68,7 @@ describe("getMediaDetails", () => {
 		_eq = drizzleOrm.eq;
 		const migratorModule = await import("drizzle-orm/pglite/migrator");
 		migrate = migratorModule.migrate;
-		schema = await import("~/infrastructure/db/schema");
+		schema = await import("@solid-imager/db/schema");
 
 		testDb = (global as any).vitestTestDb;
 		db = drizzle(testDb, { schema });

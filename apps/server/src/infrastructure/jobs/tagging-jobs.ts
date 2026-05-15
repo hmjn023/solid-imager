@@ -1,15 +1,15 @@
-import { and, asc, eq, notExists } from "drizzle-orm";
-import { z } from "zod";
-import { services } from "~/application/registry";
-import { taggingService } from "~/application/services/tagging-service";
-import { db } from "~/infrastructure/db";
 import {
 	type Job,
 	mediaCharacters,
 	mediaIps,
 	medias,
 	mediaTags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, asc, eq, notExists } from "drizzle-orm";
+import { z } from "zod";
+import { services } from "~/application/registry";
+import { taggingService } from "~/application/services/tagging-service";
+import { db } from "~/infrastructure/db";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 

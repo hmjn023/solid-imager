@@ -1,8 +1,8 @@
+import { authors } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeAll, describe, expect, it } from "vite-plus/test";
 import { db } from "~/infrastructure/db";
-import { authors } from "~/infrastructure/db/schema";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 
 describe("AuthorRepository Deduplication", () => {

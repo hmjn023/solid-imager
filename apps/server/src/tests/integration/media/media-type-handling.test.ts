@@ -65,7 +65,7 @@ let migrate: any;
 let schema: any;
 let db: any;
 
-import type { MediaSource } from "~/infrastructure/db/schema";
+import type { MediaSource } from "@solid-imager/db/schema";
 
 describe("Media Type Handling Integration", () => {
 	let mediaSource: MediaSource;
@@ -88,7 +88,7 @@ describe("Media Type Handling Integration", () => {
 		try {
 			const migratorModule = await import("drizzle-orm/pglite/migrator");
 			migrate = migratorModule.migrate;
-			schema = await import("~/infrastructure/db/schema");
+			schema = await import("@solid-imager/db/schema");
 			const dbModule = await import("~/infrastructure/db/index");
 			db = dbModule.db;
 

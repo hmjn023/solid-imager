@@ -1,4 +1,13 @@
 import { UnexpectedError } from "@solid-imager/core/domain/errors";
+import type { TransactionClient } from "@solid-imager/db";
+import {
+	mediaCharacters,
+	mediaIps,
+	mediaProjects,
+	medias,
+	mediaTags,
+	tags,
+} from "@solid-imager/db/schema";
 import {
 	and,
 	asc,
@@ -14,15 +23,7 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
-import {
-	mediaCharacters,
-	mediaIps,
-	mediaProjects,
-	medias,
-	mediaTags,
-	tags,
-} from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 /**
  * Escapes special characters ...

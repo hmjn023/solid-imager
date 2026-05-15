@@ -5,17 +5,17 @@ import {
 	ccipFeatureRequestSchema,
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
-import { z } from "zod";
-import { services } from "~/application/registry";
-import { taggingService } from "~/application/services/tagging-service";
-import { db } from "~/infrastructure/db";
 import {
 	mediaCharacters,
 	mediaIps,
 	medias,
 	mediaTags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
+import { z } from "zod";
+import { services } from "~/application/registry";
+import { taggingService } from "~/application/services/tagging-service";
+import { db } from "~/infrastructure/db";
 import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {

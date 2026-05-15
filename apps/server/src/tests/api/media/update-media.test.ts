@@ -3,9 +3,9 @@ import {
 	mediaSourceIdSchema,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/db/schema"; // Assuming Media type will be exported from schema
 import { describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
-import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("updateMedia Contract", () => {
 	it("should return an updated Media object on successful update", () => {

@@ -1,3 +1,17 @@
+import {
+	authors,
+	characterIps,
+	characters,
+	ips,
+	jobs,
+	mediaAuthors,
+	mediaCharacters,
+	mediaIps,
+	mediaProjects,
+	mediaSources,
+	medias,
+	projects,
+} from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import {
 	afterEach,
@@ -12,20 +26,6 @@ import { CharacterServiceImpl } from "~/application/services/character-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
-import {
-	authors,
-	characterIps,
-	characters,
-	ips,
-	jobs,
-	mediaAuthors,
-	mediaCharacters,
-	mediaIps,
-	mediaProjects,
-	mediaSources,
-	medias,
-	projects,
-} from "~/infrastructure/db/schema";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";

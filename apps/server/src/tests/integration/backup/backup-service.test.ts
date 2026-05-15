@@ -1,14 +1,3 @@
-import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
-import { BackupService } from "~/application/services/backup-service";
-import { db } from "~/infrastructure/db";
 import {
 	authors,
 	characterIps,
@@ -24,7 +13,18 @@ import {
 	mediaUrls,
 	projects,
 	tags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { eq } from "drizzle-orm";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
+import { BackupService } from "~/application/services/backup-service";
+import { db } from "~/infrastructure/db";
 
 // Mock external modules if necessary (e.g. storage driver, archiver)
 vi.mock("~/infrastructure/storage/factory", () => ({

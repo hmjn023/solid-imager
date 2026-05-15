@@ -1,5 +1,5 @@
+import type { Category } from "@solid-imager/db/schema";
 import { describe, expect, it } from "vite-plus/test";
-import type { Category } from "~/infrastructure/db/schema";
 
 describe("GET /api/categories", () => {
 	it("should return an array of categories", () => {

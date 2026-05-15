@@ -9,9 +9,10 @@ import type {
 	NewMediaSource,
 	SourceRepository,
 } from "@solid-imager/core/domain/repositories/source-repository";
+import { getClient } from "@solid-imager/db";
+import { mediaSources } from "@solid-imager/db/schema";
 import { eq, type InferSelectModel } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { mediaSources } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 type DbMediaSource = InferSelectModel<typeof mediaSources>;
 
@@ -39,7 +40,7 @@ export class DrizzleSourceRepository implements SourceRepository {
 
 	async findById(id: string, tx?: Transaction): Promise<MediaSource | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select()
 				.from(mediaSources)
@@ -59,7 +60,7 @@ export class DrizzleSourceRepository implements SourceRepository {
 
 	async create(source: NewMediaSource, tx?: Transaction): Promise<MediaSource> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			// Drizzle insert expects values matching the schema.
 			const result = await client
 				.insert(mediaSources)
@@ -87,7 +88,7 @@ export class DrizzleSourceRepository implements SourceRepository {
 		tx?: Transaction,
 	): Promise<MediaSource> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.update(mediaSources)
 				.set(source as typeof mediaSources.$inferInsert)
@@ -121,7 +122,7 @@ export class DrizzleSourceRepository implements SourceRepository {
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.delete(mediaSources)
 				.where(eq(mediaSources.id, id))

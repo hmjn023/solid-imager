@@ -10,13 +10,14 @@ import {
 } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import { and, eq, sql } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
+import { getClient, type TransactionClient } from "@solid-imager/db";
 import {
 	characterIps,
 	characters,
 	mediaCharacters,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import { db } from "~/infrastructure/db/index";
 
 export class DrizzleCharacterRepository implements CharacterRepository {
 	async findAll(): Promise<Character[]> {
@@ -41,7 +42,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
 	async findById(id: string, tx?: Transaction): Promise<Character | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client.query.characters.findFirst({
 				where: eq(characters.id, id),
 				with: {
@@ -69,7 +70,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
 	async findByName(name: string, tx?: Transaction): Promise<Character | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client.query.characters.findFirst({
 				where: eq(characters.name, name),
 				with: {
@@ -97,7 +98,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
 	async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const { ipIds, ...charData } = character;
 
 			const [insertedChar] = await client
@@ -160,10 +161,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			};
 
 			if (tx) {
-				return await operation(tx as unknown as TransactionClient);
+				return await operation(getClient(db, tx));
 			}
 			return await db.transaction((innerTx) =>
-				operation(innerTx as unknown as TransactionClient),
+				operation(getClient(db, innerTx)),
 			);
 		} catch (error) {
 			if (error instanceof ResourceNotFoundError) {
@@ -242,7 +243,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.delete(characters)
 				.where(eq(characters.id, id))
@@ -264,7 +265,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 
 	async findByMediaId(mediaId: string, tx?: Transaction): Promise<Character[]> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			// Use query builder to get relations
 			const results = await client.query.mediaCharacters.findMany({
 				where: eq(mediaCharacters.mediaId, mediaId),
@@ -300,7 +301,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		(Character & { confidence: number | null; associationSource: string })[]
 	> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const results = await client.query.mediaCharacters.findMany({
 				where: eq(mediaCharacters.mediaId, mediaId),
 				with: {
@@ -338,7 +339,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		tx?: Transaction,
 	): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 
 			let sourceUpdateSql = sql`excluded.source`;
 			let confidenceUpdateSql = sql`excluded.confidence`;
@@ -382,7 +383,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		tx?: Transaction,
 	): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			await client
 				.delete(mediaCharacters)
 				.where(
@@ -404,7 +405,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		source = "manual",
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		if (charactersData.length === 0) {
 			return;
 		}

@@ -1,5 +1,5 @@
+import type { Job as DbJob } from "@solid-imager/db/schema";
 import { services } from "~/application/registry";
-import type { Job as DbJob } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import {
 	processAutoTaggingJob,

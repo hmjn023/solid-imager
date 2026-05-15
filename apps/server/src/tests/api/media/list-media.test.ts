@@ -1,8 +1,8 @@
 import { directoryPathSchema } from "@solid-imager/core/domain/media/schemas";
 import { mediaSourceIdSchema } from "@solid-imager/core/domain/sources/schemas";
+import type { Media } from "@solid-imager/db/schema"; // Assuming Media type will be exported from schema
 import { describe, expect, it } from "vite-plus/test";
 import { ZodError } from "zod";
-import type { Media } from "~/infrastructure/db/schema"; // Assuming Media type will be exported from schema
 
 describe("listMedia Contract", () => {
 	it("should return an array of Media objects for a valid directoryPath", () => {

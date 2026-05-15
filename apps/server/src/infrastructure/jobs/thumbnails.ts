@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { services } from "~/application/registry";
 // import {
 //   selectMediaById,
 //   selectMediaBySourceId,
 // } from "~/infrastructure/db/queries/media"; // Removed
-import type { Media } from "~/infrastructure/db/schema";
+import type { Media } from "@solid-imager/db/schema";
+import { services } from "~/application/registry";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";

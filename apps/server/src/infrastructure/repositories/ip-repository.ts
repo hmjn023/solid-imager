@@ -10,9 +10,10 @@ import type {
 	UpdateIp,
 } from "@solid-imager/core/domain/ips/schemas";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import { getClient } from "@solid-imager/db";
+import { ips, mediaIps } from "@solid-imager/db/schema";
 import { and, eq, sql } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db";
-import { ips, mediaIps } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 const mapToDomain = (dbIp: typeof ips.$inferSelect): Ip => ({
 	id: dbIp.id,
@@ -30,13 +31,13 @@ export const IpRepository: IIpRepository = {
 	},
 
 	async findById(id: string, tx?: Transaction): Promise<Ip | null> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client.select().from(ips).where(eq(ips.id, id));
 		return result[0] ? mapToDomain(result[0]) : null;
 	},
 
 	async findByName(name: string, tx?: Transaction): Promise<Ip | null> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client.select().from(ips).where(eq(ips.name, name));
 		return result[0] ? mapToDomain(result[0]) : null;
 	},
@@ -45,7 +46,7 @@ export const IpRepository: IIpRepository = {
 			return [];
 		}
 		const { inArray } = await import("drizzle-orm");
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select()
 			.from(ips)
@@ -55,7 +56,7 @@ export const IpRepository: IIpRepository = {
 
 	async create(ip: NewIp, tx?: Transaction): Promise<Ip> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client.insert(ips).values(ip).returning();
 			return mapToDomain(result[0]);
 		} catch (error: unknown) {
@@ -68,7 +69,7 @@ export const IpRepository: IIpRepository = {
 
 	async update(id: string, ip: UpdateIp, tx?: Transaction): Promise<Ip> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.update(ips)
 				.set({ ...ip, updatedAt: new Date() })
@@ -91,7 +92,7 @@ export const IpRepository: IIpRepository = {
 	},
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client.delete(ips).where(eq(ips.id, id)).returning();
 		if (result.length === 0) {
 			throw new ResourceNotFoundError("IP", id);
@@ -99,7 +100,7 @@ export const IpRepository: IIpRepository = {
 	},
 
 	async findByMediaId(mediaId: string, tx?: Transaction): Promise<Ip[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select({
 				id: ips.id,
@@ -126,7 +127,7 @@ export const IpRepository: IIpRepository = {
 	): Promise<
 		(Ip & { confidence: number | null; associationSource: string })[]
 	> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select({
 				id: ips.id,
@@ -156,7 +157,7 @@ export const IpRepository: IIpRepository = {
 		source = "manual",
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 
 		let sourceUpdateSql = sql`excluded.source`;
 		let confidenceUpdateSql = sql`excluded.confidence`;
@@ -191,7 +192,7 @@ export const IpRepository: IIpRepository = {
 		ipId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.delete(mediaIps)
 			.where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.ipId, ipId)))
@@ -207,7 +208,7 @@ export const IpRepository: IIpRepository = {
 		source = "manual",
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		if (ipsData.length === 0) {
 			return;
 		}

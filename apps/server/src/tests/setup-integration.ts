@@ -30,7 +30,7 @@ const { mockDbFactory } = vi.hoisted(() => {
 			const { PGlite } = await import("@electric-sql/pglite");
 			const { drizzle } = await import("drizzle-orm/pglite");
 			const { migrate } = await import("drizzle-orm/pglite/migrator");
-			const schema = await import("~/infrastructure/db/schema");
+			const schema = await import("@solid-imager/db/schema");
 			const nodePath = await import("node:path");
 
 			const client = new PGlite();

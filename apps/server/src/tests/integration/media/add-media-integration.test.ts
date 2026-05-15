@@ -1,8 +1,8 @@
+import type { NewMedia } from "@solid-imager/db/schema";
+import { mediaSources, medias } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { db } from "~/infrastructure/db/index";
-import type { NewMedia } from "~/infrastructure/db/schema";
-import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 const TEST_FILE_SIZE = 1024 * 1024;

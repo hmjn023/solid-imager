@@ -1,5 +1,5 @@
+import type { Character } from "@solid-imager/db/schema";
 import { describe, expect, it } from "vite-plus/test";
-import type { Character } from "~/infrastructure/db/schema";
 
 describe("GET /api/characters/:id", () => {
 	it("should return character by id", () => {

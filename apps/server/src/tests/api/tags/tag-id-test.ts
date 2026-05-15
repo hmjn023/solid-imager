@@ -1,5 +1,5 @@
+import type { Tag } from "@solid-imager/db/schema";
 import { describe, expect, it } from "vite-plus/test";
-import type { Tag } from "~/infrastructure/db/schema";
 
 describe("GET /api/tags/:id", () => {
 	it("should return tag by id", () => {

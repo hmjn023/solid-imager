@@ -1,5 +1,5 @@
+import type { Ip } from "@solid-imager/db/schema";
 import { describe, expect, it } from "vite-plus/test";
-import type { Ip } from "~/infrastructure/db/schema";
 
 describe("GET /api/ips/:id", () => {
 	it("should return IP by id", () => {

@@ -19,10 +19,10 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import type { Job } from "@solid-imager/db/schema";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { ServerConfigService } from "~/application/services/server-config-service";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";

@@ -1,4 +1,4 @@
-import type { Job, NewJob } from "~/infrastructure/db/schema";
+import type { Job, NewJob } from "@solid-imager/db/schema";
 
 export type IJobRepository = {
 	/**

@@ -1,3 +1,4 @@
+import { mediaSources, medias } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import {
 	afterEach,
@@ -12,7 +13,6 @@ import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { PythonClient } from "~/infrastructure/ai/python-client";
 import { db } from "~/infrastructure/db/index";
-import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";

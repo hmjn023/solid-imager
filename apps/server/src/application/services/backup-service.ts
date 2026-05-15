@@ -4,9 +4,6 @@ import {
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import { and, eq, inArray, sql } from "drizzle-orm";
-import yauzl from "yauzl";
-import { db } from "~/infrastructure/db";
 import {
 	authors,
 	characterIps,
@@ -23,7 +20,10 @@ import {
 	mediaUrls,
 	projects,
 	tags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, eq, inArray, sql } from "drizzle-orm";
+import yauzl from "yauzl";
+import { db } from "~/infrastructure/db";
 import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 

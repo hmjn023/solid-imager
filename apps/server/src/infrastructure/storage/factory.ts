@@ -4,7 +4,7 @@
  */
 
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import type { MediaSource } from "~/infrastructure/db/schema";
+import type { MediaSource } from "@solid-imager/db/schema";
 import { LocalDriver } from "./local";
 import type { MediaSourceDriver } from "./schema";
 

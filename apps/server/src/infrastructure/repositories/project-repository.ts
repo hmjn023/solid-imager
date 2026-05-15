@@ -6,9 +6,10 @@ import type {
 	UpdateProject,
 } from "@solid-imager/core/domain/projects/schemas";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+import { getClient } from "@solid-imager/db";
+import { mediaProjects, projects } from "@solid-imager/db/schema";
 import { and, eq } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db";
-import { mediaProjects, projects } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 const mapToDomain = (dbProject: typeof projects.$inferSelect): Project => ({
 	id: dbProject.id,
@@ -26,7 +27,7 @@ export const ProjectRepository: IProjectRepository = {
 	},
 
 	async findById(id: string, tx?: Transaction): Promise<Project | null> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select()
 			.from(projects)
@@ -35,7 +36,7 @@ export const ProjectRepository: IProjectRepository = {
 	},
 
 	async findByName(name: string, tx?: Transaction): Promise<Project | null> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select()
 			.from(projects)
@@ -44,7 +45,7 @@ export const ProjectRepository: IProjectRepository = {
 	},
 
 	async create(project: NewProject, tx?: Transaction): Promise<Project> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client.insert(projects).values(project).returning();
 		return mapToDomain(result[0]);
 	},
@@ -54,7 +55,7 @@ export const ProjectRepository: IProjectRepository = {
 		project: UpdateProject,
 		tx?: Transaction,
 	): Promise<Project> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const { archivedAt, ...rest } = project;
 		const updateData: Partial<typeof projects.$inferInsert> = {
 			...rest,
@@ -79,7 +80,7 @@ export const ProjectRepository: IProjectRepository = {
 	},
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.delete(projects)
 			.where(eq(projects.id, id))
@@ -91,7 +92,7 @@ export const ProjectRepository: IProjectRepository = {
 	},
 
 	async findByMediaId(mediaId: string, tx?: Transaction): Promise<Project[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select({
 				id: projects.id,
@@ -117,7 +118,7 @@ export const ProjectRepository: IProjectRepository = {
 		projectId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		await client
 			.insert(mediaProjects)
 			.values({ mediaId, projectId })
@@ -129,7 +130,7 @@ export const ProjectRepository: IProjectRepository = {
 		projectId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.delete(mediaProjects)
 			.where(
@@ -149,7 +150,7 @@ export const ProjectRepository: IProjectRepository = {
 		projectIds: string[],
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		if (projectIds.length === 0) {
 			return;
 		}

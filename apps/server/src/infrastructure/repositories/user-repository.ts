@@ -9,9 +9,9 @@ import type {
 	User,
 	UserRepository as UserRepositoryDef,
 } from "@solid-imager/core/domain/repositories/user-repository";
+import { users } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db/index";
-import { users } from "~/infrastructure/db/schema";
 
 export class DrizzleUserRepository implements UserRepositoryDef {
 	async findAll(): Promise<User[]> {

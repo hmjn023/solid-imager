@@ -1,7 +1,7 @@
 import { authorSchema } from "@solid-imager/core/domain/authors/schemas";
+import { authors } from "@solid-imager/db/schema";
 import { desc, like, or } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
-import { authors } from "~/infrastructure/db/schema";
 
 export const AuthorsRepository = {
 	list: async () => {

@@ -1,14 +1,15 @@
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
+import { getClient } from "@solid-imager/db";
 import {
 	type Author,
 	authors,
 	mediaAuthors,
 	type NewAuthor,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { and, eq } from "drizzle-orm";
+import { db } from "~/infrastructure/db/index";
 
 export const AuthorRepository: IAuthorRepository = {
 	async findAll(): Promise<Author[]> {
@@ -25,7 +26,7 @@ export const AuthorRepository: IAuthorRepository = {
 	},
 
 	async findByName(name: string, tx?: Transaction): Promise<Author | null> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select()
 			.from(authors)
@@ -35,7 +36,7 @@ export const AuthorRepository: IAuthorRepository = {
 	},
 
 	async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		// Check duplication
 		// If accountId exists, check by accountId.
 		// If not, check by name (fallback for local files/legacy data)
@@ -62,7 +63,7 @@ export const AuthorRepository: IAuthorRepository = {
 		updates: Partial<Author>,
 		tx?: Transaction,
 	): Promise<Author> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.update(authors)
 			.set(updates)
@@ -76,12 +77,12 @@ export const AuthorRepository: IAuthorRepository = {
 	},
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		await client.delete(authors).where(eq(authors.id, id));
 	},
 
 	async findByMediaId(mediaId: string, tx?: Transaction): Promise<Author[]> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		const result = await client
 			.select({
 				id: authors.id,
@@ -101,7 +102,7 @@ export const AuthorRepository: IAuthorRepository = {
 		authorId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		await client
 			.insert(mediaAuthors)
 			.values({
@@ -116,7 +117,7 @@ export const AuthorRepository: IAuthorRepository = {
 		authorId: string,
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		await client
 			.delete(mediaAuthors)
 			.where(
@@ -131,7 +132,7 @@ export const AuthorRepository: IAuthorRepository = {
 		authorIds: string[],
 		tx?: Transaction,
 	): Promise<void> {
-		const client = (tx as unknown as TransactionClient) || db;
+		const client = getClient(db, tx);
 		if (authorIds.length === 0) {
 			return;
 		}

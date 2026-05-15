@@ -1,14 +1,3 @@
-import { eq } from "drizzle-orm";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
-import { BackupService } from "~/application/services/backup-service";
-import { db } from "~/infrastructure/db";
 import {
 	authors,
 	characters,
@@ -21,7 +10,18 @@ import {
 	medias,
 	projects,
 	tags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { eq } from "drizzle-orm";
+import {
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vite-plus/test";
+import { BackupService } from "~/application/services/backup-service";
+import { db } from "~/infrastructure/db";
 
 describe("BackupService Performance", () => {
 	const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";

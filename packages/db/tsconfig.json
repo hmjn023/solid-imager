@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["../core/src/*"],
+      "@solid-imager/core": ["../core/src/index.ts"],
+      "@solid-imager/core/*": ["../core/src/*"],
+      "@solid-imager/db": ["./src/index.ts"],
+      "@solid-imager/db/*": ["./src/*"]
+    }
+  },
+  "include": ["src"]
+}

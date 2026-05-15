@@ -1,9 +1,9 @@
 import { os } from "@orpc/server";
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import { jobs } from "@solid-imager/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import { jobs } from "~/infrastructure/db/schema";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 

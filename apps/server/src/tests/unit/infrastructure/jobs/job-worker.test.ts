@@ -1,4 +1,5 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import type { Job } from "@solid-imager/db/schema";
 import {
 	afterEach,
 	beforeEach,
@@ -8,7 +9,6 @@ import {
 	vi,
 } from "vite-plus/test";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 // Mock logger to avoid noise

@@ -11,9 +11,10 @@ import type {
 	TagRepository as TagRepositoryDef,
 } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
+import { getClient, type TransactionClient } from "@solid-imager/db";
+import { mediaTags, tags } from "@solid-imager/db/schema";
 import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { mediaTags, tags } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 type DbTag = InferSelectModel<typeof tags>;
 
@@ -98,7 +99,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
 	async create(tag: NewTag, tx?: Transaction): Promise<Tag> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client.insert(tags).values(tag).returning();
 			return mapToDomain(result[0]);
 		} catch (error: unknown) {
@@ -118,7 +119,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
 	async update(id: string, tag: UpdateTag, tx?: Transaction): Promise<Tag> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.update(tags)
 				.set(tag)
@@ -149,7 +150,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.delete(tags)
 				.where(eq(tags.id, id))
@@ -168,7 +169,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 
 	async findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select({
 					id: tags.id,
@@ -207,7 +208,7 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 		tx?: Transaction,
 	): Promise<void> {
 		try {
-			// const _client = (tx as unknown as TransactionClient) || db;
+			// const _client = getClient(db, tx);
 			const execute = async (t: Transaction) => {
 				const uniqueTagNames = Array.from(
 					new Set(tagsToInsert.map((tag) => tag.name)),

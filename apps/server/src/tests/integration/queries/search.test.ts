@@ -1,5 +1,3 @@
-import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
-import { db } from "~/infrastructure/db";
 import {
 	mediaSources,
 	medias,
@@ -7,7 +5,9 @@ import {
 	type NewMedia,
 	type NewTag,
 	tags,
-} from "~/infrastructure/db/schema";
+} from "@solid-imager/db/schema";
+import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { db } from "~/infrastructure/db";
 import {
 	globalSearchMedia,
 	searchMedia,

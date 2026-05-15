@@ -11,9 +11,10 @@ import type {
 	Category,
 	CategoryRepository,
 } from "@solid-imager/core/domain/repositories/category-repository";
+import { getClient } from "@solid-imager/db";
+import { categories } from "@solid-imager/db/schema";
 import { eq } from "drizzle-orm";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
-import { categories } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db/index";
 
 export class DrizzleCategoryRepository implements CategoryRepository {
 	async findAll(): Promise<Category[]> {
@@ -27,7 +28,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
 	async findById(id: string, tx?: Transaction): Promise<Category | null> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.select()
 				.from(categories)
@@ -46,7 +47,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
 	async create(category: NewCategory, tx?: Transaction): Promise<Category> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.insert(categories)
 				.values({
@@ -67,7 +68,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 		tx?: Transaction,
 	): Promise<Category> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.update(categories)
 				.set(category)
@@ -91,7 +92,7 @@ export class DrizzleCategoryRepository implements CategoryRepository {
 
 	async delete(id: string, tx?: Transaction): Promise<void> {
 		try {
-			const client = (tx as unknown as TransactionClient) || db;
+			const client = getClient(db, tx);
 			const result = await client
 				.delete(categories)
 				.where(eq(categories.id, id))
