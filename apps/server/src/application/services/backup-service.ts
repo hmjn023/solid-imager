@@ -106,27 +106,33 @@ export const BackupService = {
 			};
 		}
 
-		// Master Data Handling
-		const { tagMap, authorMap, projectMap, ipMap, charMap } =
-			await this._restoreMasterData(validItems);
+		// Execute all data operations atomically
+		let mediaPathToId!: Map<string, string>;
 
-		// Media Handling
-		await this._restoreMediaRecords(mediaSourceId, validItems);
+		await db.transaction(async (tx) => {
+			const { tagMap, authorMap, projectMap, ipMap, charMap } =
+				await this._restoreMasterData(validItems, tx);
 
-		const mediaPathToId = await this._mapMediaPathsToIds(
-			mediaSourceId,
-			validItems,
-		);
+			await this._restoreMediaRecords(mediaSourceId, validItems, tx);
 
-		// Relations Handling
-		await this._restoreRelations({
-			validItems,
-			mediaPathToId,
-			tagMap,
-			authorMap,
-			projectMap,
-			ipMap,
-			charMap,
+			mediaPathToId = await this._mapMediaPathsToIds(
+				mediaSourceId,
+				validItems,
+				tx,
+			);
+
+			await this._restoreRelations(
+				{
+					validItems,
+					mediaPathToId,
+					tagMap,
+					authorMap,
+					projectMap,
+					ipMap,
+					charMap,
+				},
+				tx,
+			);
 		});
 
 		// Trigger thumbnail generation (skip metadata extraction to preserve restored data)
@@ -218,7 +224,8 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	async _restoreMasterData(validItems: MediaDumpItem[]) {
+	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: any) {
+		const d = _tx ?? db;
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, { accountId?: string | null }>();
 		const projectNames = new Set<string>();
@@ -273,27 +280,30 @@ export const BackupService = {
 
 		const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
 			source: "restored",
-		});
+		}, _tx);
 		const authorMap = await this._ensureMasterDataWithExtras(
 			authors,
 			authors.name,
 			authorData,
+			_tx,
 		);
 		const projectMap = await this._ensureMasterData(
 			projects,
 			projects.name,
 			projectNames,
 			{ description: "" },
+			_tx,
 		);
 		const ipMap = await this._ensureMasterData(ips, ips.name, ipNames, {
 			description: "",
 			source: "restored",
-		});
+		}, _tx);
 		const charMap = await this._ensureMasterData(
 			characters,
 			characters.name,
 			charNames,
 			{ description: "", source: "restored" },
+			_tx,
 		);
 
 		return { tagMap, authorMap, projectMap, ipMap, charMap };
@@ -302,7 +312,9 @@ export const BackupService = {
 	async _restoreMediaRecords(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
+		_tx?: any,
 	) {
+		const d = _tx ?? db;
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
 			filePath: item.filePath ?? "",
@@ -325,7 +337,7 @@ export const BackupService = {
 		const ChunkSize = 1000;
 		for (let i = 0; i < mediaValues.length; i += ChunkSize) {
 			const chunk = mediaValues.slice(i, i + ChunkSize);
-			await db
+			await d
 				.insert(medias)
 				.values(chunk)
 				.onConflictDoUpdate({
@@ -345,7 +357,9 @@ export const BackupService = {
 	async _mapMediaPathsToIds(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
+		_tx?: any,
 	) {
+		const d = _tx ?? db;
 		const ChunkSize = 1_000;
 		const storedMedias: { id: string; filePath: string }[] = [];
 
@@ -359,7 +373,7 @@ export const BackupService = {
 				continue;
 			}
 
-			const chunkResults = await db.query.medias.findMany({
+			const chunkResults = await d.query.medias.findMany({
 				where: and(
 					eq(medias.mediaSourceId, mediaSourceId),
 					inArray(medias.filePath, filePaths),
@@ -379,23 +393,27 @@ export const BackupService = {
 		return new Map(storedMedias.map((m) => [m.filePath, m.id]));
 	},
 
-	async _restoreRelations({
-		validItems,
-		mediaPathToId,
-		tagMap,
-		authorMap,
-		projectMap,
-		ipMap,
-		charMap,
-	}: {
-		validItems: MediaDumpItem[];
-		mediaPathToId: Map<string, string>;
-		tagMap: Map<string, string>;
-		authorMap: Map<string, string>;
-		projectMap: Map<string, string>;
-		ipMap: Map<string, string>;
-		charMap: Map<string, string>;
-	}) {
+	async _restoreRelations(
+		{
+			validItems,
+			mediaPathToId,
+			tagMap,
+			authorMap,
+			projectMap,
+			ipMap,
+			charMap,
+		}: {
+			validItems: MediaDumpItem[];
+			mediaPathToId: Map<string, string>;
+			tagMap: Map<string, string>;
+			authorMap: Map<string, string>;
+			projectMap: Map<string, string>;
+			ipMap: Map<string, string>;
+			charMap: Map<string, string>;
+		},
+		_tx?: any,
+	) {
+		const d = _tx ?? db;
 		const mediaTagsData: any[] = [];
 		const mediaAuthorsData: any[] = [];
 		const mediaProjectsData: any[] = [];
@@ -536,66 +554,70 @@ export const BackupService = {
 
 		const mediaIds = Array.from(mediaPathToId.values());
 
-		await db.transaction(async (tx) => {
-			// Delete existing relations in chunks to avoid PGlite parameter limits
-			if (mediaIds.length > 0) {
-				const DeleteChunkSize = 1_000;
-				for (let i = 0; i < mediaIds.length; i += DeleteChunkSize) {
-					const chunk = mediaIds.slice(i, i + DeleteChunkSize);
-					await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
-					await tx
-						.delete(mediaAuthors)
-						.where(inArray(mediaAuthors.mediaId, chunk));
-					await tx
-						.delete(mediaProjects)
-						.where(inArray(mediaProjects.mediaId, chunk));
-					await tx
-						.delete(mediaCharacters)
-						.where(inArray(mediaCharacters.mediaId, chunk));
-					await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
-					await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
-					await tx
-						.delete(mediaGenerationInfo)
-						.where(inArray(mediaGenerationInfo.mediaId, chunk));
-				}
+		// Delete existing relations in chunks to avoid PGlite parameter limits
+		if (mediaIds.length > 0) {
+			const DeleteChunkSize = 1_000;
+			for (let i = 0; i < mediaIds.length; i += DeleteChunkSize) {
+				const chunk = mediaIds.slice(i, i + DeleteChunkSize);
+				await d
+					.delete(mediaTags)
+					.where(inArray(mediaTags.mediaId, chunk));
+				await d
+					.delete(mediaAuthors)
+					.where(inArray(mediaAuthors.mediaId, chunk));
+				await d
+					.delete(mediaProjects)
+					.where(inArray(mediaProjects.mediaId, chunk));
+				await d
+					.delete(mediaCharacters)
+					.where(inArray(mediaCharacters.mediaId, chunk));
+				await d
+					.delete(mediaIps)
+					.where(inArray(mediaIps.mediaId, chunk));
+				await d
+					.delete(mediaUrls)
+					.where(inArray(mediaUrls.mediaId, chunk));
+				await d
+					.delete(mediaGenerationInfo)
+					.where(inArray(mediaGenerationInfo.mediaId, chunk));
 			}
+		}
 
-			// Insert new relations in chunks
-			const insertChunked = async (table: any, data: any[]) => {
-				const BatchSize = 1_000;
-				for (let i = 0; i < data.length; i += BatchSize) {
-					await tx
-						.insert(table)
-						.values(data.slice(i, i + BatchSize))
-						.onConflictDoNothing();
-				}
-			};
+		// Insert new relations in chunks
+		const insertChunked = async (table: any, data: any[]) => {
+			const BatchSize = 1_000;
+			for (let i = 0; i < data.length; i += BatchSize) {
+				await d
+					.insert(table)
+					.values(data.slice(i, i + BatchSize))
+					.onConflictDoNothing();
+			}
+		};
 
-			if (mediaTagsData.length) {
-				await insertChunked(mediaTags, mediaTagsData);
-			}
-			if (mediaAuthorsData.length) {
-				await insertChunked(mediaAuthors, mediaAuthorsData);
-			}
-			if (mediaProjectsData.length) {
-				await insertChunked(mediaProjects, mediaProjectsData);
-			}
-			if (mediaCharsData.length) {
-				await insertChunked(mediaCharacters, mediaCharsData);
-			}
-			if (characterIpsData.length) {
-				await insertChunked(characterIps, characterIpsData);
-			}
-			if (mediaIpsData.length) {
-				await insertChunked(mediaIps, mediaIpsData);
-			}
-			if (mediaUrlsData.length) {
-				await insertChunked(mediaUrls, mediaUrlsData);
-			}
-			if (mediaGenInfoData.length) {
-				await insertChunked(mediaGenerationInfo, mediaGenInfoData);
-			}
-		});
+		if (mediaTagsData.length) {
+			await insertChunked(mediaTags, mediaTagsData);
+		}
+		if (mediaAuthorsData.length) {
+			await insertChunked(mediaAuthors, mediaAuthorsData);
+		}
+		if (mediaProjectsData.length) {
+			await insertChunked(mediaProjects, mediaProjectsData);
+		}
+		if (mediaCharsData.length) {
+			await insertChunked(mediaCharacters, mediaCharsData);
+		}
+		if (characterIpsData.length) {
+			await insertChunked(characterIps, characterIpsData);
+		}
+		if (mediaIpsData.length) {
+			await insertChunked(mediaIps, mediaIpsData);
+		}
+		if (mediaUrlsData.length) {
+			await insertChunked(mediaUrls, mediaUrlsData);
+		}
+		if (mediaGenInfoData.length) {
+			await insertChunked(mediaGenerationInfo, mediaGenInfoData);
+		}
 	},
 
 	async _ensureMasterData(
@@ -603,20 +625,22 @@ export const BackupService = {
 		nameColumn: any,
 		names: Set<string>,
 		defaults: any,
+		_tx?: any,
 	): Promise<Map<string, string>> {
+		const d = _tx ?? db;
 		const nameList = Array.from(names);
 		if (nameList.length === 0) {
 			return new Map();
 		}
 
 		// Bulk Insert
-		await db
+		await d
 			.insert(table)
 			.values(nameList.map((name) => ({ name, ...defaults })))
 			.onConflictDoNothing();
 
 		// Fetch IDs
-		const records = await db
+		const records = await d
 			.select({ id: table.id, name: nameColumn })
 			.from(table)
 			.where(inArray(nameColumn, nameList));
@@ -632,7 +656,9 @@ export const BackupService = {
 		table: any,
 		nameColumn: any,
 		dataMap: Map<string, { accountId?: string | null }>,
+		_tx?: any,
 	): Promise<Map<string, string>> {
+		const d = _tx ?? db;
 		if (dataMap.size === 0) {
 			return new Map();
 		}
@@ -641,7 +667,7 @@ export const BackupService = {
 		const nameList = entries.map(([name]) => name);
 
 		// First, find existing authors by name
-		const existingRecords = await db
+		const existingRecords = await d
 			.select({ id: table.id, name: nameColumn, accountId: table.accountId })
 			.from(table)
 			.where(inArray(nameColumn, nameList));
@@ -663,7 +689,7 @@ export const BackupService = {
 		for (const [name, data] of entries) {
 			const existing = existingByName.get(name);
 			if (existing && data.accountId && existing.accountId !== data.accountId) {
-				await db
+				await d
 					.update(table)
 					.set({ accountId: data.accountId })
 					.where(eq(nameColumn, name));
@@ -673,7 +699,7 @@ export const BackupService = {
 		// Insert new authors that don't exist
 		const newEntries = entries.filter(([name]) => !existingByName.has(name));
 		if (newEntries.length > 0) {
-			await db.insert(table).values(
+			await d.insert(table).values(
 				newEntries.map(([name, data]) => ({
 					name,
 					accountId: data.accountId || null,
@@ -681,7 +707,7 @@ export const BackupService = {
 			);
 
 			// Fetch the newly inserted records
-			const newRecords = await db
+			const newRecords = await d
 				.select({ id: table.id, name: nameColumn, accountId: table.accountId })
 				.from(table)
 				.where(

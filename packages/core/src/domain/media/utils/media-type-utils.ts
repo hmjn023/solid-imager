@@ -1,6 +1,8 @@
 function getExtension(fileName: string): string {
-	const dot = fileName.lastIndexOf(".");
-	return dot >= 0 ? fileName.slice(dot) : "";
+	const lastSlash = Math.max(fileName.lastIndexOf("/"), fileName.lastIndexOf("\\"));
+	const baseName = lastSlash >= 0 ? fileName.slice(lastSlash + 1) : fileName;
+	const dot = baseName.lastIndexOf(".");
+	return dot > 0 ? baseName.slice(dot) : "";
 }
 
 /**
