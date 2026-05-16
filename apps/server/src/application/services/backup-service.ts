@@ -110,15 +110,16 @@ export const BackupService = {
 		let mediaPathToId = new Map<string, string>();
 
 		await db.transaction(async (tx) => {
+			const c = tx as unknown as TransactionClient;
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await this._restoreMasterData(validItems, tx);
+				await this._restoreMasterData(validItems, c);
 
-			await this._restoreMediaRecords(mediaSourceId, validItems, tx);
+			await this._restoreMediaRecords(mediaSourceId, validItems, c);
 
 			mediaPathToId = await this._mapMediaPathsToIds(
 				mediaSourceId,
 				validItems,
-				tx,
+				c,
 			);
 
 			await this._restoreRelations(
@@ -131,7 +132,7 @@ export const BackupService = {
 					ipMap,
 					charMap,
 				},
-				tx,
+				c,
 			);
 		});
 

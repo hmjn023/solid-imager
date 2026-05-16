@@ -8,8 +8,8 @@ import {
 	mediaTags,
 } from "~/infrastructure/db/schema";
 
-const { mockValues, mockDelete, mockFindMany, mockTxDelete } =
-	vi.hoisted(() => {
+const { mockValues, mockDelete, mockFindMany, mockTxDelete } = vi.hoisted(
+	() => {
 		const mkTxDelete = vi.fn(() => ({
 			where: vi.fn(),
 		}));
@@ -24,9 +24,10 @@ const { mockValues, mockDelete, mockFindMany, mockTxDelete } =
 			mockFindMany: vi.fn(),
 			mockTxDelete: mkTxDelete,
 		};
-	});
+	},
+);
 
-	vi.mock("~/infrastructure/db", () => ({
+vi.mock("~/infrastructure/db", () => ({
 	db: {
 		query: {
 			medias: {
@@ -209,21 +210,21 @@ describe("BackupService", () => {
 				charMap,
 			});
 
-		// Helper to extract values for a specific table in a robust way
-		const getValuesForTable = (tableSchema: any) => {
-			const values: any[] = [];
-			(db.insert as any).mock.calls.forEach(
-				(insertArgs: any[], index: number) => {
-					if (insertArgs[0] === tableSchema) {
-						const valuesCall = mockValues.mock.calls[index] as any[];
-						if (valuesCall?.[0]) {
-							values.push(...(valuesCall[0] as any[]));
+			// Helper to extract values for a specific table in a robust way
+			const getValuesForTable = (tableSchema: any) => {
+				const values: any[] = [];
+				(db.insert as any).mock.calls.forEach(
+					(insertArgs: any[], index: number) => {
+						if (insertArgs[0] === tableSchema) {
+							const valuesCall = mockValues.mock.calls[index] as any[];
+							if (valuesCall?.[0]) {
+								values.push(...(valuesCall[0] as any[]));
+							}
 						}
-					}
-				},
-			);
-			return values;
-		};
+					},
+				);
+				return values;
+			};
 
 			const tagsData = getValuesForTable(mediaTags);
 			const charsData = getValuesForTable(mediaCharacters);
