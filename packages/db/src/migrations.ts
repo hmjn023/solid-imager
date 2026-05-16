@@ -1,8 +1,9 @@
 import { PGlite } from "@electric-sql/pglite";
-import type { PgliteDatabase } from "drizzle-orm/pglite";
+import type { PgLiteDb } from "./types";
+import * as schema from "./schema";
 
 export async function runPgliteMigrations(
-	db: PgliteDatabase<Record<string, never>>,
+	db: PgLiteDb,
 	migrationsFolder: string,
 ): Promise<void> {
 	const { migrate } = await import("drizzle-orm/pglite/migrator");
@@ -11,9 +12,9 @@ export async function runPgliteMigrations(
 
 export async function createPgliteClient(
 	dataDir: string,
-): Promise<{ db: PgliteDatabase<Record<string, never>>; client: PGlite }> {
+): Promise<{ db: PgLiteDb; client: PGlite }> {
 	const { drizzle } = await import("drizzle-orm/pglite");
 	const client = new PGlite(dataDir);
-	const db = drizzle(client);
+	const db = drizzle(client, { schema });
 	return { db, client };
 }

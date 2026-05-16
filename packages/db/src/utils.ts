@@ -2,15 +2,16 @@ export function escapeLikeString(str: string): string {
 	return str.replace(/[%_]/g, "\\$&");
 }
 
-export function paginatedQuery(
-	query: { limit: (n: number) => { offset: (n: number) => unknown } } & { offset: (n: number) => unknown },
+export function paginatedQuery<T>(
+	query: T,
 	options: { limit?: number; offset?: number },
-): unknown {
+): T {
+	const q = query as any;
 	if (options.limit !== undefined) {
-		return query.limit(options.limit).offset(options.offset || 0);
+		return q.limit(options.limit).offset(options.offset || 0) as T;
 	}
 	if (options.offset !== undefined && options.offset > 0) {
-		return query.offset(options.offset);
+		return q.offset(options.offset) as T;
 	}
 	return query;
 }

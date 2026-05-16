@@ -146,7 +146,6 @@ export const medias = pgTable(
 		fileSizeIndex: index("idx_media_file_size").on(table.fileSize),
 		fileNameIndex: index("idx_media_file_name").on(table.fileName),
 		createdAtIndex: index("idx_media_created_at").on(table.createdAt),
-		descriptionIndex: index("idx_media_description").on(table.description),
 	}),
 );
 
@@ -273,7 +272,7 @@ export const mediaGenerationInfo = pgTable(
 		aiGenerated: boolean("ai_generated").default(false),
 		/** 使用されたモデル名 */
 		modelName: text("model_name").default(""),
-		/** シード値 */
+		/** シード値 (AI seeds are well within JS safe integer range, so mode: "number" is acceptable) */
 		seed: bigint("seed", { mode: "number" }).default(-1),
 		/** CFGスケール */
 		cfgScale: real("cfg_scale").default(0),
@@ -281,7 +280,8 @@ export const mediaGenerationInfo = pgTable(
 		steps: integer("steps").default(0),
 	},
 	(table) => ({
-		metadataIndex: index("idx_media_generation_info_metadata").on(
+		metadataIndex: index("idx_media_generation_info_metadata").using(
+			"gin",
 			table.metadata,
 		),
 		aiGeneratedIndex: index("idx_media_generation_info_ai_generated").on(
