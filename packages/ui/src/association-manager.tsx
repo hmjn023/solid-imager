@@ -44,7 +44,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			await props.onRemove(id);
 		} catch (error) {
 			toast.error(
-				`${props.title} の削除に失敗しました: ${(error as Error).message}`,
+				`Failed to remove ${props.title.toLowerCase()}: ${(error as Error).message}`,
 			);
 		} finally {
 			setIsMutating(false);
@@ -59,7 +59,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の追加に失敗しました: ${(error as Error).message}`,
+				`Failed to add ${props.title.toLowerCase()}: ${(error as Error).message}`,
 			);
 		} finally {
 			setIsMutating(false);
@@ -79,7 +79,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の作成に失敗しました: ${(error as Error).message}`,
+				`Failed to create ${props.title.toLowerCase()}: ${(error as Error).message}`,
 			);
 		} finally {
 			setIsMutating(false);

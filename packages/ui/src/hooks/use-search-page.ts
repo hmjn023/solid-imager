@@ -104,9 +104,13 @@ export function useSearchPage(
 	const allCharacters = createQuery(() => queries.characters());
 	const allAuthors = createQuery(() => queries.authors());
 
-	const conditionKey = createMemo(() =>
-		JSON.stringify(getSearchCondition() ?? null),
-	);
+	const conditionKey = createMemo(() => {
+		const val = getSearchCondition() ?? null;
+		if (val === null || typeof val !== "object") {
+			return JSON.stringify(val);
+		}
+		return JSON.stringify(val, Object.keys(val).sort());
+	});
 
 	const buildSearchParams = (): Pick<
 		MediaSearchRequest,

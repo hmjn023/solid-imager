@@ -27,6 +27,7 @@ export function useCurrentSearchPersistence(
 	presetClient: PresetClientLike,
 ) {
 	const [isInitialLoad, setIsInitialLoad] = createSignal(true);
+	const [cachedPresetId, setCachedPresetId] = createSignal<number | null>(null);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const getCurrentPresetName = () => {
@@ -56,6 +57,7 @@ export function useCurrentSearchPersistence(
 			try {
 				const current = await presetClient.getByName(presetName);
 				if (current) {
+					setCachedPresetId(current.id);
 					const allPresets = await presetClient.list();
 
 					const matchingPreset = allPresets.find(
@@ -144,14 +146,20 @@ export function useCurrentSearchPersistence(
 		};
 
 		try {
-			const current = await presetClient.getByName(presetName);
-			if (current) {
-				await presetClient.update(current.id, presetData);
+			const presetId = cachedPresetId();
+			if (presetId !== null) {
+				await presetClient.update(presetId, presetData);
 			} else {
-				await presetClient.create({
-					name: presetName,
-					...presetData,
-				});
+				const current = await presetClient.getByName(presetName);
+				if (current) {
+					setCachedPresetId(current.id);
+					await presetClient.update(current.id, presetData);
+				} else {
+					await presetClient.create({
+						name: presetName,
+						...presetData,
+					});
+				}
 			}
 		} catch {
 			// silent — persistence errors should not disrupt the UI

@@ -224,6 +224,7 @@ export function useSourceMediaPage(
 				offset: pageParam as number,
 			});
 		},
+		enabled: !!id(),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
 			const loadedCount = allPages.reduce(

@@ -16,6 +16,10 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		return false;
 	}
 
+	if (Array.isArray(a) !== Array.isArray(b)) {
+		return false;
+	}
+
 	const keysA = Object.keys(a as object);
 	const keysB = Object.keys(b as object);
 
@@ -24,7 +28,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 	}
 
 	for (const key of keysA) {
-		if (!keysB.includes(key)) {
+		if (!Object.hasOwn(b, key)) {
 			return false;
 		}
 		if (
