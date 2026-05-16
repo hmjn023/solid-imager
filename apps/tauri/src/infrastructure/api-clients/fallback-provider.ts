@@ -63,21 +63,24 @@ export function updateFallbackConfig(patch: unknown) {
 	return config;
 }
 
-const sourcesArrayValidator = {
-	safeParse: (data: unknown) => {
-		if (!Array.isArray(data)) return { success: false as const, error: new Error("Expected array") };
-		const items: SafeMediaSource[] = [];
-		for (const item of data) {
+function readFallbackSourcesRaw(): SafeMediaSource[] {
+	if (typeof localStorage === "undefined") return [];
+	const raw = localStorage.getItem(FALLBACK_SOURCES_KEY);
+	if (!raw) return [];
+	try {
+		const data: unknown = JSON.parse(raw);
+		if (!Array.isArray(data)) return [];
+		return data.flatMap((item: unknown) => {
 			const parsed = safeMediaSourceSchema.safeParse(item);
-			if (!parsed.success) return { success: false as const, error: parsed.error };
-			items.push(parsed.data);
-		}
-		return { success: true as const, data: items };
-	},
-};
+			return parsed.success ? [parsed.data] : [];
+		});
+	} catch {
+		return [];
+	}
+}
 
 export function readFallbackSources(): SafeMediaSource[] {
-	return readStorage<SafeMediaSource[]>(FALLBACK_SOURCES_KEY, sourcesArrayValidator) ?? [];
+	return readFallbackSourcesRaw();
 }
 
 function writeFallbackSources(sources: SafeMediaSource[]) {
