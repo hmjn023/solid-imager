@@ -346,13 +346,11 @@ export const BackupService = {
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
 	) {
-		// Parameter limit avoidance: Split validItems into chunks
-		const ChunkSize = 10_000;
+		const ChunkSize = 1_000;
 		const storedMedias: { id: string; filePath: string }[] = [];
 
 		for (let i = 0; i < validItems.length; i += ChunkSize) {
 			const chunk = validItems.slice(i, i + ChunkSize);
-			// We need to filter out items with undefined filePath (though filtered before)
 			const filePaths = chunk
 				.map((item) => item.filePath)
 				.filter((p): p is string => !!p);
@@ -369,6 +367,13 @@ export const BackupService = {
 				columns: { id: true, filePath: true },
 			});
 			storedMedias.push(...chunkResults);
+		}
+
+		if (validItems.length > 0 && storedMedias.length === 0) {
+			logger.warn(
+				{ mediaSourceId, validItemCount: validItems.length },
+				"_mapMediaPathsToIds returned no results — relations will be skipped",
+			);
 		}
 
 		return new Map(storedMedias.map((m) => [m.filePath, m.id]));
@@ -530,58 +535,67 @@ export const BackupService = {
 		}
 
 		const mediaIds = Array.from(mediaPathToId.values());
-		if (mediaIds.length > 0) {
-			await db.delete(mediaTags).where(inArray(mediaTags.mediaId, mediaIds));
-			await db
-				.delete(mediaAuthors)
-				.where(inArray(mediaAuthors.mediaId, mediaIds));
-			await db
-				.delete(mediaProjects)
-				.where(inArray(mediaProjects.mediaId, mediaIds));
-			await db
-				.delete(mediaCharacters)
-				.where(inArray(mediaCharacters.mediaId, mediaIds));
-			await db.delete(mediaIps).where(inArray(mediaIps.mediaId, mediaIds));
-			await db.delete(mediaUrls).where(inArray(mediaUrls.mediaId, mediaIds));
-			await db
-				.delete(mediaGenerationInfo)
-				.where(inArray(mediaGenerationInfo.mediaId, mediaIds));
-		}
 
-		const insertChunked = async (table: any, data: any[]) => {
-			const BatchSize = 1000;
-			for (let i = 0; i < data.length; i += BatchSize) {
-				await db
-					.insert(table)
-					.values(data.slice(i, i + BatchSize))
-					.onConflictDoNothing();
+		await db.transaction(async (tx) => {
+			// Delete existing relations in chunks to avoid PGlite parameter limits
+			if (mediaIds.length > 0) {
+				const DeleteChunkSize = 1_000;
+				for (let i = 0; i < mediaIds.length; i += DeleteChunkSize) {
+					const chunk = mediaIds.slice(i, i + DeleteChunkSize);
+					await tx.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
+					await tx
+						.delete(mediaAuthors)
+						.where(inArray(mediaAuthors.mediaId, chunk));
+					await tx
+						.delete(mediaProjects)
+						.where(inArray(mediaProjects.mediaId, chunk));
+					await tx
+						.delete(mediaCharacters)
+						.where(inArray(mediaCharacters.mediaId, chunk));
+					await tx.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
+					await tx.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
+					await tx
+						.delete(mediaGenerationInfo)
+						.where(inArray(mediaGenerationInfo.mediaId, chunk));
+				}
 			}
-		};
 
-		if (mediaTagsData.length) {
-			await insertChunked(mediaTags, mediaTagsData);
-		}
-		if (mediaAuthorsData.length) {
-			await insertChunked(mediaAuthors, mediaAuthorsData);
-		}
-		if (mediaProjectsData.length) {
-			await insertChunked(mediaProjects, mediaProjectsData);
-		}
-		if (mediaCharsData.length) {
-			await insertChunked(mediaCharacters, mediaCharsData);
-		}
-		if (characterIpsData.length) {
-			await insertChunked(characterIps, characterIpsData);
-		}
-		if (mediaIpsData.length) {
-			await insertChunked(mediaIps, mediaIpsData);
-		}
-		if (mediaUrlsData.length) {
-			await insertChunked(mediaUrls, mediaUrlsData);
-		}
-		if (mediaGenInfoData.length) {
-			await insertChunked(mediaGenerationInfo, mediaGenInfoData);
-		}
+			// Insert new relations in chunks
+			const insertChunked = async (table: any, data: any[]) => {
+				const BatchSize = 1_000;
+				for (let i = 0; i < data.length; i += BatchSize) {
+					await tx
+						.insert(table)
+						.values(data.slice(i, i + BatchSize))
+						.onConflictDoNothing();
+				}
+			};
+
+			if (mediaTagsData.length) {
+				await insertChunked(mediaTags, mediaTagsData);
+			}
+			if (mediaAuthorsData.length) {
+				await insertChunked(mediaAuthors, mediaAuthorsData);
+			}
+			if (mediaProjectsData.length) {
+				await insertChunked(mediaProjects, mediaProjectsData);
+			}
+			if (mediaCharsData.length) {
+				await insertChunked(mediaCharacters, mediaCharsData);
+			}
+			if (characterIpsData.length) {
+				await insertChunked(characterIps, characterIpsData);
+			}
+			if (mediaIpsData.length) {
+				await insertChunked(mediaIps, mediaIpsData);
+			}
+			if (mediaUrlsData.length) {
+				await insertChunked(mediaUrls, mediaUrlsData);
+			}
+			if (mediaGenInfoData.length) {
+				await insertChunked(mediaGenerationInfo, mediaGenInfoData);
+			}
+		});
 	},
 
 	async _ensureMasterData(

@@ -421,6 +421,9 @@ function MediaListPage() {
 				queryClient.invalidateQueries({
 					queryKey: ["media", id],
 				});
+				queryClient.invalidateQueries({
+					queryKey: ["mediaSources"],
+				});
 				target.value = ""; // Reset input
 				return;
 			}
@@ -443,6 +446,9 @@ function MediaListPage() {
 					// Refresh view
 					queryClient.invalidateQueries({
 						queryKey: ["media", id],
+					});
+					queryClient.invalidateQueries({
+						queryKey: ["mediaSources"],
 					});
 				} catch (error) {
 					logger.error({ err: error }, "Restore from JSON failed");
