@@ -58,3 +58,5 @@ dev.log
 
 .playwright-cli/
 apps/tauri/src-tauri/target/
+apps/server/src/routeTree.gen.ts
+.worktree/
