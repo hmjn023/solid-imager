@@ -20,7 +20,6 @@ Drizzle ORM で定義されたテーブル一覧と関係図。定義元: `apps/
 | `collections`   | ユーザー作成コレクション                   | UUID    |
 | `presets`       | 検索フィルタープリセット                   | serial  |
 | `jobs`          | バックグラウンドジョブ                     | UUID    |
-| `app_config`    | アプリ設定（単一行）                       | integer |
 
 ### メディア詳細テーブル（media との 1:1）
 
@@ -124,7 +123,7 @@ erDiagram
 
 ## 設計上の重要な決まり
 
-- **全テーブルUUID v4** (`gen_random_uuid()`)。ただし `presets` は serial、`app_config` は integer
+- **全テーブルUUID v4** (`gen_random_uuid()`)。ただし `presets` は serial
 - **cascade delete**: メディアソース削除 → メディア削除 → 全関連レコード削除
 - **中間テーブル命名**: `media_{entity}` で統一（`media_tags`, `media_characters` 等）
 - **confidence フィールド**: AI由来の関連付けには `real(0.0-1.0)` の信頼度を保存。手動の場合は NULL

@@ -52,7 +52,13 @@ export const safeS3ConnectionSchema = z.object({
   // secretAccessKey・accessKeyId は除外
 });
 
-export type SafeMediaSource = ...; // 機密なし版
+export type SafeMediaSource = {
+  id: string;
+  name: string;
+  type: "local" | "sftp" | "s3";
+  connectionInfo: SafeLocalConnection | SafeSftpConnection | SafeS3Connection;
+  organizationStatus: "active" | "archived" | "deleted";
+};
 ```
 
 ### 2. ルーターで変換関数を定義・適用
