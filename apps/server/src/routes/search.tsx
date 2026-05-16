@@ -85,7 +85,7 @@ const useStableConditionKey = () =>
 
 const QUERY_GC_TIME = 1000 * 60 * 5;
 
-export default function Search() {
+function Search() {
 	const queryClient = useQueryClient();
 
 	// Enable search persistence for global search

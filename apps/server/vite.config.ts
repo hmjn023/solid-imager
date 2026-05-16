@@ -1,7 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
-import viteTsConfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
@@ -21,13 +20,11 @@ export default defineConfig({
       "@": path.resolve(__dirname, "../../packages/core/src"),
       "~": path.resolve(__dirname, "./src"),
     },
+    tsconfigPaths: true,
   },
   plugins: [
     devtools(),
     nitro(),
-    viteTsConfigPaths({
-      projects: ["./tsconfig.json"],
-    }),
     tanstackRouter({
       target: "solid",
       autoCodeSplitting: true,
@@ -36,6 +33,17 @@ export default defineConfig({
     tanstackStart(),
     solidPlugin({ ssr: true }),
   ],
+  customLogger: {
+    warn(msg, options) {
+      if (typeof msg === "string" && msg.includes("externalized for browser compatibility")) return;
+      console.warn(msg, options);
+    },
+    warnOnce(msg, options) { this.warn(msg, options); },
+    info: console.info,
+    error: console.error,
+    clearScreen: () => {},
+    hasWarned: false,
+  },
   ssr: {
     noExternal: [
       "@tanstack/solid-router",

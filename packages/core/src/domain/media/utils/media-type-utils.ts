@@ -1,4 +1,7 @@
-import path from "node:path";
+function getExtension(fileName: string): string {
+	const dot = fileName.lastIndexOf(".");
+	return dot >= 0 ? fileName.slice(dot) : "";
+}
 
 /**
  * Determines the media type based on the file extension.
@@ -8,7 +11,7 @@ import path from "node:path";
 export function getMediaTypeFromExtension(
 	fileName: string,
 ): "video" | "audio" | "image" {
-	const ext = path.extname(fileName).toLowerCase();
+	const ext = getExtension(fileName).toLowerCase();
 	if ([".mp4", ".webm", ".mov", ".mkv", ".avi"].includes(ext)) {
 		return "video";
 	}
@@ -24,7 +27,7 @@ export function getMediaTypeFromExtension(
  * @returns The MIME type string, defaulting to 'application/octet-stream'
  */
 export function getContentTypeFromExtension(fileName: string): string {
-	const ext = path.extname(fileName).toLowerCase().replace(".", "");
+	const ext = getExtension(fileName).toLowerCase().replace(".", "");
 	switch (ext) {
 		case "jpg":
 		case "jpeg":
