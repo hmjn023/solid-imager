@@ -1,35 +1,5 @@
 import path from "node:path";
 
-export type SupportedExtensions = {
-	image: string[];
-	video: string[];
-	audio: string[];
-};
-
-function extname(filePath: string): string {
-	const lastDot = filePath.lastIndexOf(".");
-	const lastSlash = Math.max(
-		filePath.lastIndexOf("/"),
-		filePath.lastIndexOf("\\"),
-	);
-	return lastDot > lastSlash ? filePath.slice(lastDot) : "";
-}
-
-/**
- * Determines the media type based on the file extension and a config-driven
- * supported-extensions map. Returns `null` if the extension is not recognised.
- */
-export function inferMediaType(
-	filePath: string,
-	supportedExtensions: SupportedExtensions,
-): "image" | "video" | "audio" | null {
-	const ext = extname(filePath).toLowerCase();
-	if (supportedExtensions.image.includes(ext)) return "image";
-	if (supportedExtensions.video.includes(ext)) return "video";
-	if (supportedExtensions.audio.includes(ext)) return "audio";
-	return null;
-}
-
 /**
  * Determines the media type based on the file extension.
  * @param fileName The name of the file

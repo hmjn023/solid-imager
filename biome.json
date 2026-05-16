@@ -28,8 +28,7 @@
 			"!apps/server/public/docs",
 			"!apps/server/scripts",
 			"!apps/server/playwright.config.ts",
-			"!apps/server/get-media-ids.ts",
-			"!apps/server/src/routeTree.gen.ts"
+			"!apps/server/get-media-ids.ts"
 		]
 	},
 	"overrides": [
