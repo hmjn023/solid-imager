@@ -97,7 +97,7 @@ const MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 
-export default function MediaListPage() {
+function MediaListPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const queryClient = useQueryClient();
 
@@ -421,6 +421,9 @@ export default function MediaListPage() {
 				queryClient.invalidateQueries({
 					queryKey: ["media", id],
 				});
+				queryClient.invalidateQueries({
+					queryKey: ["mediaSources"],
+				});
 				target.value = ""; // Reset input
 				return;
 			}
@@ -443,6 +446,9 @@ export default function MediaListPage() {
 					// Refresh view
 					queryClient.invalidateQueries({
 						queryKey: ["media", id],
+					});
+					queryClient.invalidateQueries({
+						queryKey: ["mediaSources"],
 					});
 				} catch (error) {
 					logger.error({ err: error }, "Restore from JSON failed");

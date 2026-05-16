@@ -8,16 +8,24 @@ import {
 	mediaTags,
 } from "~/infrastructure/db/schema";
 
-const { mockValues, mockDelete, mockFindMany } = vi.hoisted(() => ({
-	mockValues: vi.fn(() => ({
-		onConflictDoNothing: vi.fn(),
-		onConflictDoUpdate: vi.fn(),
-	})),
-	mockDelete: vi.fn(() => ({
-		where: vi.fn(),
-	})),
-	mockFindMany: vi.fn(),
-}));
+const { mockValues, mockDelete, mockFindMany, mockTxDelete } = vi.hoisted(
+	() => {
+		const mkTxDelete = vi.fn(() => ({
+			where: vi.fn(),
+		}));
+		return {
+			mockValues: vi.fn(() => ({
+				onConflictDoNothing: vi.fn(),
+				onConflictDoUpdate: vi.fn(),
+			})),
+			mockDelete: vi.fn(() => ({
+				where: vi.fn(),
+			})),
+			mockFindMany: vi.fn(),
+			mockTxDelete: mkTxDelete,
+		};
+	},
+);
 
 vi.mock("~/infrastructure/db", () => ({
 	db: {
@@ -35,6 +43,33 @@ vi.mock("~/infrastructure/db", () => ({
 		})),
 		delete: mockDelete,
 		select: vi.fn(),
+		transaction: vi.fn(async (cb: any) =>
+			cb({
+				query: {
+					medias: {
+						findMany: mockFindMany,
+						findFirst: vi.fn(),
+					},
+					mediaSources: {
+						findFirst: vi.fn(),
+					},
+				},
+				insert: vi.fn(() => ({
+					values: mockValues,
+				})),
+				delete: mockTxDelete,
+				select: vi.fn(() => ({
+					from: vi.fn(() => ({
+						where: vi.fn(),
+					})),
+				})),
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(),
+					})),
+				})),
+			}),
+		),
 	},
 }));
 

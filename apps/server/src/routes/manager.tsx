@@ -100,7 +100,7 @@ import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/s
 type EntityType = "projects" | "ips" | "characters" | "tagging";
 type Entity = Project | Ip | Character;
 
-export default function ManagerPage() {
+function ManagerPage() {
 	const [activeTab, setActiveTab] = createSignal<EntityType>("projects");
 	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);

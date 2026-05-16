@@ -548,7 +548,7 @@ function ConfigForm(props: { data: AppConfig }) {
 	);
 }
 
-export default function ConfigPage() {
+function ConfigPage() {
 	const configQuery = createQuery(() => configQueryOptions());
 
 	return (

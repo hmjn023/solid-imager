@@ -174,3 +174,27 @@ export class NodeFileSystem implements IFileSystem {
 - `pnpm --filter tauri dev` で SPA 起動確認 (Vite dev server、Tauri はそれを wrap)
 - `pnpm --filter server dev` で SSR 動作が壊れていないことを確認
 - `grep -r "isServer" packages/` が 0 件になること
+
+---
+
+## 実装手順 (issue 分割)
+
+親 issue: #165 / 旧失敗 issue: #168 (closed) #169 (方針転換でクローズ)
+
+### Phase 1 — 境界を整える
+- **#214** packages/ から isServer を除去
+- **#215** packages/ui に AppShell レイアウト抽出
+
+### Phase 2 — 独立 SPA の土台
+- **#216** apps/tauri/src SPA スケルトン新設 (Vite + SolidJS + `@tanstack/solid-router`、`tanstackStart` / Nitro なし)
+- **#217** Tauri プラットフォーム実装 (`IFileSystem` / `IImageProcessor` / API client)
+- **#218** apps/tauri/src-tauri (Rust) — 旧 #169 の Rust 実装をサルベージ
+
+### Phase 3 — ルート/画面の移植
+- **#219** UI ページを apps/server から apps/tauri/src/routes へ移植
+
+### Phase 4 — 検証
+- **#220** Tauri for Linux 実機動作確認 (旧 #169 の本来の目的)
+
+### 後続
+- **#170** Tauri for Android スタンドアロン対応
