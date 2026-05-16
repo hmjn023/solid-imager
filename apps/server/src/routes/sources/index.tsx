@@ -39,7 +39,7 @@ const UUID_PREFIX_LENGTH = 4;
  * It displays a list of media sources, and provides functionality to add, edit, and delete them.
  * @returns {JSX.Element} The rendered media sources management page.
  */
-export default function Sources() {
+function Sources() {
 	const [showFormModal, setShowFormModal] = createSignal(false);
 	const [showDeleteModal, setShowDeleteModal] = createSignal(false);
 	const [editingSource, setEditingSource] = createSignal<
