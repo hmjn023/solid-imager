@@ -44,10 +44,29 @@ const { mockValues, mockDelete, mockFindMany, mockTxDelete } =
 		select: vi.fn(),
 		transaction: vi.fn(async (cb: any) =>
 			cb({
+				query: {
+					medias: {
+						findMany: mockFindMany,
+						findFirst: vi.fn(),
+					},
+					mediaSources: {
+						findFirst: vi.fn(),
+					},
+				},
 				insert: vi.fn(() => ({
 					values: mockValues,
 				})),
 				delete: mockTxDelete,
+				select: vi.fn(() => ({
+					from: vi.fn(() => ({
+						where: vi.fn(),
+					})),
+				})),
+				update: vi.fn(() => ({
+					set: vi.fn(() => ({
+						where: vi.fn(),
+					})),
+				})),
 			}),
 		),
 	},

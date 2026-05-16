@@ -6,7 +6,7 @@ import {
 } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import yauzl from "yauzl";
-import { db } from "~/infrastructure/db";
+import { db, type TransactionClient } from "~/infrastructure/db";
 import {
 	authors,
 	characterIps,
@@ -224,7 +224,7 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: any) {
+	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: TransactionClient) {
 		const d = _tx ?? db;
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, { accountId?: string | null }>();
@@ -312,7 +312,7 @@ export const BackupService = {
 	async _restoreMediaRecords(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
-		_tx?: any,
+		_tx?: TransactionClient,
 	) {
 		const d = _tx ?? db;
 		const mediaValues = validItems.map((item) => ({
@@ -357,7 +357,7 @@ export const BackupService = {
 	async _mapMediaPathsToIds(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
-		_tx?: any,
+		_tx?: TransactionClient,
 	) {
 		const d = _tx ?? db;
 		const ChunkSize = 1_000;
@@ -365,9 +365,9 @@ export const BackupService = {
 
 		for (let i = 0; i < validItems.length; i += ChunkSize) {
 			const chunk = validItems.slice(i, i + ChunkSize);
-			const filePaths = chunk
-				.map((item) => item.filePath)
-				.filter((p): p is string => !!p);
+			const filePaths = chunk.flatMap(
+				(item) => (item.filePath ? [item.filePath] : []),
+			);
 
 			if (filePaths.length === 0) {
 				continue;
@@ -411,7 +411,7 @@ export const BackupService = {
 			ipMap: Map<string, string>;
 			charMap: Map<string, string>;
 		},
-		_tx?: any,
+		_tx?: TransactionClient,
 	) {
 		const d = _tx ?? db;
 		const mediaTagsData: any[] = [];
@@ -625,7 +625,7 @@ export const BackupService = {
 		nameColumn: any,
 		names: Set<string>,
 		defaults: any,
-		_tx?: any,
+		_tx?: TransactionClient,
 	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		const nameList = Array.from(names);
@@ -656,7 +656,7 @@ export const BackupService = {
 		table: any,
 		nameColumn: any,
 		dataMap: Map<string, { accountId?: string | null }>,
-		_tx?: any,
+		_tx?: TransactionClient,
 	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		if (dataMap.size === 0) {
