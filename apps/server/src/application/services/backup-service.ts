@@ -107,7 +107,7 @@ export const BackupService = {
 		}
 
 		// Execute all data operations atomically
-		let mediaPathToId!: Map<string, string>;
+		let mediaPathToId = new Map<string, string>();
 
 		await db.transaction(async (tx) => {
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
@@ -224,8 +224,10 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: TransactionClient) {
-		const d = _tx ?? db;
+	async _restoreMasterData(
+		validItems: MediaDumpItem[],
+		_tx?: TransactionClient,
+	) {
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, { accountId?: string | null }>();
 		const projectNames = new Set<string>();
@@ -278,9 +280,15 @@ export const BackupService = {
 			}
 		}
 
-		const tagMap = await this._ensureMasterData(tags, tags.name, tagNames, {
-			source: "restored",
-		}, _tx);
+		const tagMap = await this._ensureMasterData(
+			tags,
+			tags.name,
+			tagNames,
+			{
+				source: "restored",
+			},
+			_tx,
+		);
 		const authorMap = await this._ensureMasterDataWithExtras(
 			authors,
 			authors.name,
@@ -294,10 +302,16 @@ export const BackupService = {
 			{ description: "" },
 			_tx,
 		);
-		const ipMap = await this._ensureMasterData(ips, ips.name, ipNames, {
-			description: "",
-			source: "restored",
-		}, _tx);
+		const ipMap = await this._ensureMasterData(
+			ips,
+			ips.name,
+			ipNames,
+			{
+				description: "",
+				source: "restored",
+			},
+			_tx,
+		);
 		const charMap = await this._ensureMasterData(
 			characters,
 			characters.name,
@@ -365,8 +379,8 @@ export const BackupService = {
 
 		for (let i = 0; i < validItems.length; i += ChunkSize) {
 			const chunk = validItems.slice(i, i + ChunkSize);
-			const filePaths = chunk.flatMap(
-				(item) => (item.filePath ? [item.filePath] : []),
+			const filePaths = chunk.flatMap((item) =>
+				item.filePath ? [item.filePath] : [],
 			);
 
 			if (filePaths.length === 0) {
@@ -559,9 +573,7 @@ export const BackupService = {
 			const DeleteChunkSize = 1_000;
 			for (let i = 0; i < mediaIds.length; i += DeleteChunkSize) {
 				const chunk = mediaIds.slice(i, i + DeleteChunkSize);
-				await d
-					.delete(mediaTags)
-					.where(inArray(mediaTags.mediaId, chunk));
+				await d.delete(mediaTags).where(inArray(mediaTags.mediaId, chunk));
 				await d
 					.delete(mediaAuthors)
 					.where(inArray(mediaAuthors.mediaId, chunk));
@@ -571,12 +583,8 @@ export const BackupService = {
 				await d
 					.delete(mediaCharacters)
 					.where(inArray(mediaCharacters.mediaId, chunk));
-				await d
-					.delete(mediaIps)
-					.where(inArray(mediaIps.mediaId, chunk));
-				await d
-					.delete(mediaUrls)
-					.where(inArray(mediaUrls.mediaId, chunk));
+				await d.delete(mediaIps).where(inArray(mediaIps.mediaId, chunk));
+				await d.delete(mediaUrls).where(inArray(mediaUrls.mediaId, chunk));
 				await d
 					.delete(mediaGenerationInfo)
 					.where(inArray(mediaGenerationInfo.mediaId, chunk));
