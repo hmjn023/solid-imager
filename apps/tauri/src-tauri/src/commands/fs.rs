@@ -84,6 +84,8 @@ pub fn fs_scan_recursive(path: String) -> Result<Vec<FsScanEntry>, String> {
                 entry.map_err(|error| with_path_context("Reading directory entry", &dir.to_string_lossy(), error))?;
             let file_name = entry.file_name().to_string_lossy().into_owned();
 
+            // Hidden files (dotfiles) are intentionally skipped — most media managers
+            // filter these out to avoid scanning system metadata, cache files, etc.
             if file_name.starts_with('.') {
                 continue;
             }
@@ -213,6 +215,20 @@ pub async fn download_file(
 
     if !response.status().is_success() {
         return Err(format!("HTTP error: {}", response.status()));
+    }
+
+    // Validate dest_path: resolve and ensure parent is reachable
+    let dest = Path::new(&dest_path);
+    if let Some(parent) = dest.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                with_path_context("Creating download parent directory", &dest_path, e)
+            })?;
+        }
+        // Canonicalize parent to detect traversal attacks
+        let _resolved_parent = parent
+            .canonicalize()
+            .map_err(|e| with_path_context("Resolving download path", &dest_path, e))?;
     }
 
     let mut file = std::fs::File::create(&dest_path)

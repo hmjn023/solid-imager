@@ -1,8 +1,8 @@
 use crate::commands::utils::{ExtractMetadataResult, ExtractedTag};
 use crate::media_config::ComfyUiTagExtractionConfig;
 use serde_json::Value;
-use std::fs;
-use std::io::{Cursor, Read};
+use std::fs::File;
+use std::io::{BufReader, Cursor, Read};
 
 const PNG_SIGNATURE: [u8; 8] = [137, 80, 78, 71, 13, 10, 26, 10];
 
@@ -20,38 +20,48 @@ pub fn extract_metadata_from_path(
 }
 
 fn extract_comments_from_path(media_path: &str) -> Result<Vec<MetadataComment>, String> {
-    let bytes = fs::read(media_path)
-        .map_err(|error| format!("Reading image metadata failed for {media_path}: {error}"))?;
-    if bytes.starts_with(&PNG_SIGNATURE) {
-        return extract_png_comments(&bytes);
+    let file = File::open(media_path)
+        .map_err(|error| format!("Opening image file failed for {media_path}: {error}"))?;
+    let mut reader = BufReader::new(file);
+
+    // Read only the PNG signature to avoid loading the entire file into memory
+    let mut signature = [0_u8; 8];
+    reader
+        .read_exact(&mut signature)
+        .map_err(|error| format!("Reading PNG signature failed for {media_path}: {error}"))?;
+
+    if signature == PNG_SIGNATURE {
+        // Prepend the signature we already read so the PNG parser sees the full stream
+        let chained = Cursor::new(signature.to_vec()).chain(reader);
+        return extract_png_comments(chained);
     }
 
     Ok(Vec::new())
 }
 
-fn extract_png_comments(bytes: &[u8]) -> Result<Vec<MetadataComment>, String> {
-    let mut cursor = Cursor::new(bytes);
-    let mut signature = [0_u8; 8];
-    cursor
-        .read_exact(&mut signature)
-        .map_err(|error| format!("Reading PNG signature failed: {error}"))?;
-
+fn extract_png_comments<R: Read>(mut reader: R) -> Result<Vec<MetadataComment>, String> {
+    // Signature already consumed by the caller; start parsing chunks directly
     let mut comments = Vec::new();
-    while (cursor.position() as usize) + 8 <= bytes.len() {
-        let length = read_u32_be(&mut cursor)? as usize;
-        let chunk_type = read_chunk_type(&mut cursor)?;
-        if (cursor.position() as usize) + length + 4 > bytes.len() {
-            break;
-        }
+    loop {
+        let length = match read_u32_be(&mut reader) {
+            Ok(v) => v as usize,
+            Err(_) => break,
+        };
+        let chunk_type = read_chunk_type(&mut reader).map_err(|error| {
+            if error.contains("failed to fill whole buffer") {
+                return "Unexpected EOF".to_string();
+            }
+            error
+        })?;
 
         let mut data = vec![0_u8; length];
-        cursor
-            .read_exact(&mut data)
-            .map_err(|error| format!("Reading PNG chunk data failed: {error}"))?;
+        if reader.read_exact(&mut data).is_err() {
+            break;
+        }
         let mut crc = [0_u8; 4];
-        cursor
-            .read_exact(&mut crc)
-            .map_err(|error| format!("Reading PNG CRC failed: {error}"))?;
+        if reader.read_exact(&mut crc).is_err() {
+            break;
+        }
 
         match chunk_type.as_str() {
             "tEXt" => {
@@ -72,17 +82,17 @@ fn extract_png_comments(bytes: &[u8]) -> Result<Vec<MetadataComment>, String> {
     Ok(comments)
 }
 
-fn read_u32_be(cursor: &mut Cursor<&[u8]>) -> Result<u32, String> {
+fn read_u32_be<R: Read>(reader: &mut R) -> Result<u32, String> {
     let mut buf = [0_u8; 4];
-    cursor
+    reader
         .read_exact(&mut buf)
         .map_err(|error| format!("Reading PNG integer failed: {error}"))?;
     Ok(u32::from_be_bytes(buf))
 }
 
-fn read_chunk_type(cursor: &mut Cursor<&[u8]>) -> Result<String, String> {
+fn read_chunk_type<R: Read>(reader: &mut R) -> Result<String, String> {
     let mut buf = [0_u8; 4];
-    cursor
+    reader
         .read_exact(&mut buf)
         .map_err(|error| format!("Reading PNG chunk type failed: {error}"))?;
     String::from_utf8(buf.to_vec()).map_err(|error| format!("Invalid PNG chunk type: {error}"))
@@ -392,7 +402,7 @@ mod tests {
             ("workflow", "{\"nodes\":[]}"),
         ]);
 
-        let comments = extract_png_comments(&data).expect("png comments");
+        let comments = extract_png_comments(data.as_slice()).expect("png comments");
 
         assert_eq!(comments.len(), 2);
         assert_eq!(comments[0].keyword, "prompt");

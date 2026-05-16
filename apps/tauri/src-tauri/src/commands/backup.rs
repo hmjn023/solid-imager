@@ -99,6 +99,18 @@ pub fn backup_extract_zip(input: BackupExtractZipInput) -> Result<Value, String>
     let mut archive =
         ZipArchive::new(cursor).map_err(|error| format!("Opening ZIP failed: {error}"))?;
     let root = PathBuf::from(&input.root_path);
+
+    // Resolve root_path to guard against traversal attacks
+    let resolved_root = root
+        .canonicalize()
+        .map_err(|error| format!("Resolving restore root path failed: {error}"))?;
+    if !resolved_root.is_dir() {
+        return Err(format!(
+            "Restore root is not a directory: {}",
+            resolved_root.display()
+        ));
+    }
+
     let mut dump_data: Option<Value> = None;
 
     for index in 0..archive.len() {
@@ -133,6 +145,17 @@ pub fn backup_extract_zip(input: BackupExtractZipInput) -> Result<Value, String>
         }
 
         let destination = root.join(Path::new(&relative_path));
+
+        // Guard against symlink/TOCTOU escapes by checking canonical path
+        if let Ok(canonical) = destination.canonicalize() {
+            if !canonical.starts_with(&resolved_root) {
+                return Err(format!(
+                    "ZIP entry escapes restore root: {}",
+                    relative_path
+                ));
+            }
+        }
+
         if let Some(parent) = destination.parent() {
             fs::create_dir_all(parent)
                 .map_err(|error| format!("Creating ZIP restore directory failed: {error}"))?;
