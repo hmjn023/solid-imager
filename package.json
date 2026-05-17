@@ -9,8 +9,6 @@
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
     "build": "bun --filter '*' build",
-    "dev:tauri": "bun --filter @solid-imager/tauri dev",
-    "build:tauri": "bun --filter @solid-imager/tauri build",
     "start": "bun --filter @solid-imager/server start",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
     "lint": "vp run lint",
@@ -27,7 +25,6 @@
     "vite-plus": "latest"
   },
   "trustedDependencies": [
-    "@tauri-apps/cli",
     "youtube-dl-exec",
     "ffmpeg-static"
   ],
@@ -35,37 +32,6 @@
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
-  },
-  "dependencies": {
-    "@electric-sql/pglite": "^0.4.5",
-    "@orpc/client": "^1.14.3",
-    "@orpc/contract": "^1.14.3",
-    "@orpc/experimental-pino": "^1.14.3",
-    "@orpc/openapi": "^1.14.3",
-    "@orpc/server": "^1.14.3",
-    "@orpc/solid-query": "^1.14.3",
-    "@orpc/tanstack-query": "^1.14.3",
-    "@orpc/zod": "^1.14.3",
-    "@playwright/test": "^1.60.0",
-    "@solidjs/router": "^0.16.1",
-    "@tailwindcss/vite": "^4.3.0",
-    "@tanstack/solid-virtual": "^3.13.24",
-    "@types/chrome": "^0.1.42",
-    "@types/node": "^25.8.0",
-    "archiver": "^8.0.0",
-    "baseline-browser-mapping": "^2.10.30",
-    "dotenv": "^17.4.2",
-    "drizzle-orm": "^0.45.2",
-    "lucide-solid": "^1.16.0",
-    "playwright": "^1.60.0",
-    "swagger-ui-dist": "^5.32.6",
-    "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.0",
-    "tsx": "^4.22.0",
-    "typedoc": "^0.28.19",
-    "uuid": "^14.0.0",
-    "vite-plugin-solid": "^2.11.12",
-    "yauzl": "^3.3.0",
-    "youtube-dl-exec": "^3.1.7"
   }
 }
+
