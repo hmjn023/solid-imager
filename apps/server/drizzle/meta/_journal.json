@@ -99,13 +99,6 @@
       "when": 1779014591610,
       "tag": "0013_absurd_dreadnoughts",
       "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1779018261409,
-      "tag": "0014_plain_ken_ellis",
-      "breakpoints": true
     }
   ]
 }
