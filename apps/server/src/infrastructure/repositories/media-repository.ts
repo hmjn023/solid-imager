@@ -1117,7 +1117,15 @@ async function executeSearch(
 		.offset(params.offset ?? DEFAULT_OFFSET)
 		.orderBy(orderBy);
 
-	const total = result.length > 0 ? Number(result[0].totalCount) : 0;
+	const total =
+		result.length > 0
+			? Number(result[0].totalCount)
+			: (
+					await client
+						.select({ count: sql<number>`count(*)` })
+						.from(medias)
+						.where(whereClause)
+				)[0].count;
 
 	return mediaSearchResponseSchema.parse({
 		media: result.map((row) => mapToMedia(row.media)),
