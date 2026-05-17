@@ -5,7 +5,8 @@ import { services } from "~/application/registry";
 //   selectMediaById,
 //   selectMediaBySourceId,
 // } from "~/infrastructure/db/queries/media"; // Removed
-import type { Media } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db";
+import { jobs, type Media, type NewJob } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -144,20 +145,18 @@ export async function generateThumbnailsForSource(
 	}
 
 	// Use processMedia job type for unified processing
-	const jobRepo = services.getJobRepository();
 	const basePath = (mediaSource.connectionInfo as { path: string }).path;
 
-	for (const media of mediaItems) {
-		await jobRepo.create({
+	const jobRows: NewJob[] = mediaItems.map((media) => ({
+		type: "processMedia",
+		mediaSourceId,
+		payload: {
+			mediaId: media.id,
+			sourcePath: basePath,
 			type: "processMedia",
-			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
-		});
-	}
+		},
+	}));
+	await db.insert(jobs).values(jobRows);
 
 	// Jobs start automatically via worker
 	return mediaItems.length;
