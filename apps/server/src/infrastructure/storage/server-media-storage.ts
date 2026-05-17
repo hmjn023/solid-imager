@@ -211,20 +211,76 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats
-		const metadata = await sharp(fullPath).metadata();
+		// Image formats (try sharp first, fall back to ffprobe for misidentified videos)
+		try {
+			const metadata = await sharp(fullPath).metadata();
 
-		if (!(metadata.width && metadata.height)) {
-			throw new Error(`Could not extract media dimensions for ${fullPath}`);
+			if (metadata.width && metadata.height) {
+				return {
+					width: metadata.width,
+					height: metadata.height,
+					size: stats.size,
+					createdAt: stats.birthtime,
+					modifiedAt: stats.mtime,
+				};
+			}
+		} catch {
+			// sharp failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
-		return {
-			width: metadata.width,
-			height: metadata.height,
-			size: stats.size,
-			createdAt: stats.birthtime,
-			modifiedAt: stats.mtime,
-		};
+		// Fallback: try ffprobe for video files that were misidentified as images
+		try {
+			const { getFfmpeg, resolveFfmpegPath } = await import(
+				"~/infrastructure/utils/ffmpeg"
+			);
+			await resolveFfmpegPath();
+			const ffmpeg = getFfmpeg();
+
+			return new Promise<MediaMetadata>((resolve, reject) => {
+				ffmpeg.ffprobe(fullPath, (err, probeData) => {
+					if (err) {
+						reject(
+							new Error(
+								`Could not extract media metadata for ${fullPath}: ${err.message}`,
+							),
+						);
+						return;
+					}
+
+					const videoStream = probeData.streams.find(
+						(s) => s.codec_type === "video",
+					);
+					if (videoStream?.width && videoStream?.height) {
+						resolve({
+							width: videoStream.width,
+							height: videoStream.height,
+							size: stats.size,
+							createdAt: stats.birthtime,
+							modifiedAt: stats.mtime,
+						});
+						return;
+					}
+
+					// No video stream found — maybe it's audio
+					if (probeData.streams.length > 0) {
+						resolve({
+							width: 0,
+							height: 0,
+							size: stats.size,
+							createdAt: stats.birthtime,
+							modifiedAt: stats.mtime,
+						});
+						return;
+					}
+
+					reject(
+						new Error(`Could not extract media dimensions for ${fullPath}`),
+					);
+				});
+			});
+		} catch {
+			throw new Error(`Could not extract media dimensions for ${fullPath}`);
+		}
 	},
 
 	async copyFile(

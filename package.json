@@ -9,8 +9,6 @@
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
     "build": "bun --filter '*' build",
-    "dev:tauri": "bun --filter @solid-imager/tauri dev",
-    "build:tauri": "bun --filter @solid-imager/tauri build",
     "start": "bun --filter @solid-imager/server start",
     "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
     "lint": "vp run lint",
@@ -21,13 +19,12 @@
     "prepare": "vp config"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.10",
-    "@tanstack/cli": "^0.62.5",
+    "@biomejs/biome": "^2.4.15",
+    "@tanstack/cli": "^0.68.0",
     "typescript": "^5.9.3",
     "vite-plus": "latest"
   },
   "trustedDependencies": [
-    "@tauri-apps/cli",
     "youtube-dl-exec",
     "ffmpeg-static"
   ],
@@ -37,3 +34,4 @@
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   }
 }
+
