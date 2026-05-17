@@ -1,13 +1,17 @@
-from contextlib import asynccontextmanager
-from typing import Dict, List, Tuple, Any, Optional
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form, Body
-from pydantic import BaseModel
-from imgutils.tagging import get_pixai_tags
-from imgutils.metrics import ccip_extract_feature, ccip_difference
-from PIL import Image
+import asyncio
+import base64
 import io
 import logging
 import os
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
+from imgutils.metrics import ccip_difference, ccip_extract_feature
+from imgutils.tagging import get_pixai_tags
+from pydantic import BaseModel
+from PIL import Image
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +19,7 @@ logger = logging.getLogger(__name__)
 
 # Global model warm-up state
 MODELS_WARMED_UP = False
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -24,30 +29,34 @@ async def lifespan(app: FastAPI):
     """
     global MODELS_WARMED_UP
     logger.info("Starting up AI Service...")
-    
+
     try:
         # Warm up PixAI tagging model
         logger.info("Warming up PixAI tagging model...")
         # Create a small dummy image for warm-up
         dummy_image = Image.new('RGB', (448, 448), color='white')
         get_pixai_tags(dummy_image)
-        
+
         # Warm up CCIP model
         logger.info("Warming up CCIP model...")
         ccip_extract_feature(dummy_image)
-        
+
         MODELS_WARMED_UP = True
         logger.info("All models warmed up successfully!")
     except Exception as e:
         logger.error(f"Error during model warm-up: {e}")
         # We don't raise here to allow the service to start even if warm-up fails,
         # but requests might be slower or fail later.
-    
+
     yield
-    
+
     logger.info("Shutting down AI Service...")
 
+
 app = FastAPI(lifespan=lifespan)
+
+
+# ─── Response Models ───────────────────────────────────────────────────────────
 
 class TaggingResponse(BaseModel):
     general: Dict[str, float]
@@ -55,54 +64,88 @@ class TaggingResponse(BaseModel):
     ips: List[str]
     ips_mapping: Dict[str, List[str]]
 
+
 class CCIPFeatureResponse(BaseModel):
     feature: List[float]
+
+
+class CCIPBatchFeatureResponse(BaseModel):
+    features: List[List[float]]
+
 
 class CCIPDifferenceRequest(BaseModel):
     feature1: List[float]
     feature2: List[float]
 
+
 class CCIPDifferenceResponse(BaseModel):
     difference: float
 
+
+class SimilarityRequest(BaseModel):
+    query_feature: List[float]
+    candidates: List[List[float]]
+    top_k: Optional[int] = None
+
+
+class SimilarityResponse(BaseModel):
+    results: List[Dict[str, Any]]
+
+
 class PathRequest(BaseModel):
     path: str
+
+
+# ─── Helpers ───────────────────────────────────────────────────────────────────
+
+async def load_image(file: Optional[UploadFile], path: Optional[str]) -> Image.Image:
+    if file:
+        contents = await file.read()
+        return await asyncio.to_thread(
+            lambda: Image.open(io.BytesIO(contents)).convert("RGB")
+        )
+    elif path:
+        if not os.path.exists(path):
+            raise HTTPException(status_code=404, detail=f"File not found: {path}")
+        return await asyncio.to_thread(lambda: Image.open(path).convert("RGB"))
+    else:
+        raise HTTPException(status_code=400, detail="Either file or path must be provided")
+
+
+def encode_feature(feature: np.ndarray, encoding: str) -> Any:
+    """Encode a feature vector to the requested format."""
+    if encoding == "base64":
+        return base64.b64encode(feature.astype(np.float32).tobytes()).decode("ascii")
+    return feature.tolist()
+
+
+# ─── Endpoints ─────────────────────────────────────────────────────────────────
 
 @app.get("/health")
 def health_check():
     return {"status": "ok", "models_warmed_up": MODELS_WARMED_UP}
 
-def load_image(file: Optional[UploadFile], path: Optional[str]) -> Image.Image:
-    if file:
-        contents = file.file.read()
-        return Image.open(io.BytesIO(contents)).convert("RGB")
-    elif path:
-        if not os.path.exists(path):
-            raise HTTPException(status_code=404, detail=f"File not found: {path}")
-        return Image.open(path).convert("RGB")
-    else:
-        raise HTTPException(status_code=400, detail="Either file or path must be provided")
 
 @app.post("/tag", response_model=TaggingResponse)
 async def tag_image(
     file: Optional[UploadFile] = File(None),
-    path: Optional[str] = Form(None)
+    path: Optional[str] = Form(None),
 ):
     try:
-        image = load_image(file, path)
-        
+        image = await load_image(file, path)
+
         # Run tagging
         # fmt=('general', 'character', 'ips', 'ips_mapping')
         general, character, ips, ips_mapping = get_pixai_tags(
-            image, 
-            fmt=('general', 'character', 'ips', 'ips_mapping')
+            image,
+            fmt=('general', 'character', 'ips', 'ips_mapping'),
         )
-        
+
         return {
             "general": general,
             "character": character,
             "ips": ips,
-            "ips_mapping": ips_mapping
+            "ips_mapping": ips_mapping,
         }
     except HTTPException:
         raise
@@ -110,22 +153,98 @@ async def tag_image(
         logger.error(f"Error processing tagging request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/tag/batch", response_model=List[TaggingResponse])
+async def tag_image_batch(
+    files: List[UploadFile] = File(...),
+):
+    """Batch tagging: process multiple images and return tags for each."""
+    results: List[Dict] = []
+    for f in files:
+        try:
+            image = await load_image(f, None)
+            general, character, ips, ips_mapping = get_pixai_tags(
+                image,
+                fmt=('general', 'character', 'ips', 'ips_mapping'),
+            )
+            results.append({
+                "general": general,
+                "character": character,
+                "ips": ips,
+                "ips_mapping": ips_mapping,
+            })
+        except Exception as e:
+            logger.error(f"Error processing file {f.filename}: {e}")
+            results.append({
+                "general": {},
+                "character": {},
+                "ips": [],
+                "ips_mapping": {},
+                "error": str(e),
+            })
+    return results
+
+
 @app.post("/ccip/feature", response_model=CCIPFeatureResponse)
 async def extract_ccip_feature(
     file: Optional[UploadFile] = File(None),
-    path: Optional[str] = Form(None)
+    path: Optional[str] = Form(None),
+    encoding: str = Query("json", description="Response encoding: 'json' (list) or 'base64'"),
 ):
     try:
-        image = load_image(file, path)
-        
+        image = await load_image(file, path)
         feature = ccip_extract_feature(image)
-        # feature is a numpy array, convert to list
-        return {"feature": feature.tolist()}
+        return {"feature": encode_feature(feature, encoding)}
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error processing CCIP feature request: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/ccip/feature/batch")
+async def extract_ccip_feature_batch(
+    files: List[UploadFile] = File(...),
+    encoding: str = Query("json", description="Response encoding: 'json' (list) or 'base64'"),
+):
+    """Batch CCIP feature extraction: return a list of feature vectors."""
+    features: List[Any] = []
+    for f in files:
+        try:
+            image = await load_image(f, None)
+            feature = ccip_extract_feature(image)
+            features.append(encode_feature(feature, encoding))
+        except Exception as e:
+            logger.error(f"Error processing file {f.filename}: {e}")
+            features.append({"error": str(e)})
+    return {"features": features}
+
+
+@app.post("/ccip/similarity", response_model=SimilarityResponse)
+async def calculate_similarity(request: SimilarityRequest):
+    """Compute top-k closest candidates to a query feature vector."""
+    try:
+        query = np.array(request.query_feature, dtype=np.float32)
+        candidates = [
+            np.array(c, dtype=np.float32) for c in request.candidates
+        ]
+
+        # Compute differences and sort
+        scored: List[Dict[str, Any]] = []
+        for idx, cand in enumerate(candidates):
+            diff = float(ccip_difference(query, cand))
+            scored.append({"index": idx, "difference": diff})
+
+        scored.sort(key=lambda x: x["difference"])
+
+        if request.top_k is not None and request.top_k > 0:
+            scored = scored[: request.top_k]
+
+        return {"results": scored}
+    except Exception as e:
+        logger.error(f"Error processing similarity request: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.post("/ccip/difference", response_model=CCIPDifferenceResponse)
 async def calculate_ccip_difference(request: CCIPDifferenceRequest):
