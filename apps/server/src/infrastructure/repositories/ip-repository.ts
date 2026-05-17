@@ -10,7 +10,7 @@ import type {
 	UpdateIp,
 } from "@solid-imager/core/domain/ips/schemas";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import { ips, mediaIps } from "~/infrastructure/db/schema";
 
@@ -44,12 +44,43 @@ export const IpRepository: IIpRepository = {
 		if (names.length === 0) {
 			return [];
 		}
-		const { inArray } = await import("drizzle-orm");
 		const client = (tx as unknown as TransactionClient) || db;
 		const result = await client
 			.select()
 			.from(ips)
 			.where(inArray(ips.name, names));
+		return result.map(mapToDomain);
+	},
+
+	async findOrCreateBulk(
+		names: string[],
+		source?: string,
+		tx?: Transaction,
+	): Promise<Ip[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
+		const client = (tx as unknown as TransactionClient) || db;
+
+		// Insert missing IPs (ON CONFLICT DO NOTHING skips existing ones via unique constraint)
+		await client
+			.insert(ips)
+			.values(
+				uniqueNames.map((name) => ({
+					name,
+					source: source || "manual",
+					description: "",
+				})),
+			)
+			.onConflictDoNothing({ target: [ips.name] });
+
+		// Fetch all IPs (both pre-existing and newly created)
+		const result = await client
+			.select()
+			.from(ips)
+			.where(inArray(ips.name, uniqueNames));
+
 		return result.map(mapToDomain);
 	},
 

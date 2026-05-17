@@ -273,22 +273,16 @@ export class MediaProcessingServiceImpl {
 		authors: NonNullable<MediaMetadataContext["authors"]>,
 		tx?: Transaction,
 	): Promise<void> {
-		for (const author of authors) {
-			try {
-				let createdAuthor = await this.authorRepo.findByName(author.name, tx);
-				if (!createdAuthor) {
-					createdAuthor = await this.authorRepo.create(
-						{
-							name: author.name,
-							accountId: author.accountId ?? null,
-						},
-						tx,
-					);
-				}
-				await this.authorRepo.addMedia(mediaId, createdAuthor.id, tx);
-			} catch (e) {
-				logger.warn({ err: e, author }, "Failed to register author");
-			}
+		if (authors.length === 0) {
+			return;
+		}
+		const names = authors.map((a) => a.name);
+		try {
+			const allAuthors = await this.authorRepo.findOrCreateBulk(names, tx);
+			const authorIds = allAuthors.map((a) => a.id);
+			await this.authorRepo.addMediaBulk(mediaId, authorIds, tx);
+		} catch (e) {
+			logger.warn({ err: e }, "Failed to register authors");
 		}
 	}
 
@@ -298,93 +292,129 @@ export class MediaProcessingServiceImpl {
 		currentIpNames?: string[],
 		tx?: Transaction,
 	): Promise<void> {
-		for (const charData of characters) {
-			try {
-				await this._registerSingleCharacter(
-					mediaId,
-					charData,
-					currentIpNames,
-					tx,
-				);
-			} catch (e) {
-				logger.warn(
-					{ err: e, character: charData },
-					"Failed to register character",
-				);
-			}
-		}
-	}
-
-	private async _registerSingleCharacter(
-		mediaId: string,
-		charData: NonNullable<MediaMetadataContext["characters"]>[number],
-		currentIpNames?: string[],
-		tx?: Transaction,
-	): Promise<void> {
-		let character: Character | null = await this.characterService.findByName(
-			charData.name,
-		);
-
-		// Determine which IPs to link to this character
-		// Priority: 1) linkedIps from metadata, 2) infer from media's current IPs
-		const ipNamesToLink =
-			charData.linkedIps && charData.linkedIps.length > 0
-				? charData.linkedIps
-				: currentIpNames;
-
-		const ipIdsToLink = await this._resolveIpIds(ipNamesToLink, tx);
-
-		if (!character) {
-			character = await this.characterService.createCharacter({
-				name: charData.name,
-				description: charData.description ?? "",
-				ipIds: ipIdsToLink,
-			});
-		} else if (ipIdsToLink.length > 0) {
-			character = await this._updateCharacterIps(character, ipIdsToLink);
-		}
-
-		if (!character) {
+		if (characters.length === 0) {
 			return;
 		}
 
-		// Re-link character to media if necessary
-		// We can use characterService.addCharacterToMedia(mediaId, character.id) but it will call linkCharacterIps again.
-		// That's actually fine/safe.
-		// NOTE: CharacterService.addCharacterToMedia now uses internal transactionManager, so we might want to call repo directly if we already have a tx?
-		// But for simplicity and consistent auto-link logic, service call is safer.
-		// If tx is provided, we should probably prefer repo call or update service to accept tx.
-		const charRepo = this.characterService.characterRepo;
-		const confidence = charData.confidence ?? 1;
-		await charRepo.addToMedia(mediaId, character.id, confidence, "manual", tx);
-		await this.characterService.linkCharacterIps(mediaId, character, tx);
-	}
+		try {
+			// Step 1: Collect all unique IP names from character data (linkedIps priority, fallback to currentIpNames)
+			const allIpNamesSet = new Set<string>();
+			for (const charData of characters) {
+				const ipNames =
+					charData.linkedIps && charData.linkedIps.length > 0
+						? charData.linkedIps
+						: (currentIpNames ?? []);
+				for (const name of ipNames) {
+					allIpNamesSet.add(name);
+				}
+			}
 
-	private async _resolveIpIds(
-		currentIpNames?: string[],
-		tx?: Transaction,
-	): Promise<string[]> {
-		if (!currentIpNames?.length) {
-			return [];
+			// Resolve all IP IDs in one query
+			const allIpNames = [...allIpNamesSet];
+			const allIpNameIdMap = new Map<string, string>();
+			if (allIpNames.length > 0) {
+				const foundIps = await this.ipRepo.findByNames(allIpNames, tx);
+				for (const ip of foundIps) {
+					allIpNameIdMap.set(ip.name, ip.id);
+				}
+			}
+
+			// Step 2: Map character data to IP IDs and find existing characters
+			const charNameIpIdsMap = new Map<string, string[]>();
+			for (const charData of characters) {
+				const ipNames =
+					charData.linkedIps && charData.linkedIps.length > 0
+						? charData.linkedIps
+						: (currentIpNames ?? []);
+				const ipIds: string[] = [];
+				for (const name of ipNames) {
+					const ipId = allIpNameIdMap.get(name);
+					if (ipId) {
+						ipIds.push(ipId);
+					}
+				}
+				charNameIpIdsMap.set(charData.name, ipIds);
+			}
+
+			const charNames = characters.map((c) => c.name);
+			const charRepo = this.characterService.characterRepo;
+			const existingChars: Character[] = await charRepo.findByNames(
+				charNames,
+				tx,
+			);
+			const existingCharMap = new Map(existingChars.map((c) => [c.name, c]));
+
+			// Step 3: Build data for bulk findOrCreateBulk and IP updates
+			const bulkCharData: Array<{ name: string; ipIds: string[] }> = [];
+			const charsToUpdateIps: Array<{
+				id: string;
+				ipIds: string[];
+			}> = [];
+
+			for (const charData of characters) {
+				const ipIds = charNameIpIdsMap.get(charData.name) ?? [];
+				const existing = existingCharMap.get(charData.name);
+
+				if (!existing) {
+					bulkCharData.push({ name: charData.name, ipIds });
+				} else if (ipIds.length > 0) {
+					const existingIpIds = existing.ips?.map((i) => i.id) || [];
+					const mergedIpIds = [...new Set([...existingIpIds, ...ipIds])];
+					if (mergedIpIds.length > existingIpIds.length) {
+						charsToUpdateIps.push({
+							id: existing.id,
+							ipIds: mergedIpIds,
+						});
+					}
+				}
+			}
+
+			// Step 4: Bulk create new characters
+			const newChars = await charRepo.findOrCreateBulk(
+				bulkCharData,
+				"manual",
+				tx,
+			);
+
+			// Step 5: Bulk update IPs for existing characters
+			if (charsToUpdateIps.length > 0) {
+				await charRepo.updateIpsBulk(charsToUpdateIps, "manual", tx);
+			}
+
+			// Step 6: Bulk add characters to media
+			const allChars = [...existingChars, ...newChars];
+			const confidenceMap = new Map(
+				characters.map((c) => [c.name, c.confidence]),
+			);
+			const charsToAddMedia = allChars.map((char) => ({
+				id: char.id,
+				confidence: confidenceMap.get(char.name) ?? 1,
+			}));
+
+			await charRepo.addToMediaBulk(mediaId, charsToAddMedia, "manual", tx);
+
+			// Step 7: Bulk link character IPs to media
+			const ipIdsSeen = new Set<string>();
+			for (const char of allChars) {
+				if (char.ips) {
+					for (const ip of char.ips) {
+						ipIdsSeen.add(ip.id);
+					}
+				}
+			}
+			const allIpIdsToLink = [...ipIdsSeen].map((id) => ({ id }));
+
+			if (allIpIdsToLink.length > 0) {
+				await this.ipRepo.addMediaBulk(
+					mediaId,
+					allIpIdsToLink,
+					"character_link",
+					tx,
+				);
+			}
+		} catch (e) {
+			logger.warn({ err: e }, "Failed to register characters");
 		}
-
-		const foundIps = await this.ipRepo.findByNames(currentIpNames, tx);
-		return foundIps.map((ip) => ip.id);
-	}
-
-	private async _updateCharacterIps(
-		character: Character,
-		ipIdsToLink: string[],
-	): Promise<Character> {
-		const existingIpIds = character.ips?.map((i) => i.id) || [];
-		const newIpIds = [...new Set([...existingIpIds, ...ipIdsToLink])];
-
-		if (newIpIds.length > existingIpIds.length) {
-			return await this.characterService.updateCharacter(character.id, {
-				ipIds: newIpIds,
-			});
-		}
-		return character;
 	}
 
 	private async registerIps(
@@ -392,40 +422,36 @@ export class MediaProcessingServiceImpl {
 		ipsData: NonNullable<MediaMetadataContext["ips"]>,
 		tx?: Transaction,
 	): Promise<void> {
-		// Normalize names and remove duplicates to avoid redundant creation attempts
+		// Normalize names and remove duplicates
 		const normalizedIpsMap = new Map<
 			string,
 			NonNullable<MediaMetadataContext["ips"]>[number]
 		>();
 		for (const ip of ipsData) {
 			const normalizedName = ip.name.trim();
+			if (!normalizedName) continue;
 			if (!normalizedIpsMap.has(normalizedName)) {
 				normalizedIpsMap.set(normalizedName, ip);
 			}
 		}
 
-		for (const [name, ipData] of normalizedIpsMap) {
-			try {
-				let created = await this.ipRepo.findByName(name, tx);
-				if (!created) {
-					created = await this.ipRepo.create(
-						{
-							name,
-							description: ipData.description ?? "",
-						},
-						tx,
-					);
-				}
-				await this.ipRepo.addMedia(
-					mediaId,
-					created.id,
-					ipData.confidence ?? undefined,
-					"manual",
-					tx,
-				);
-			} catch (e) {
-				logger.warn({ err: e, ip: ipData }, "Failed to register IP");
-			}
+		if (normalizedIpsMap.size === 0) {
+			return;
+		}
+
+		try {
+			const names = [...normalizedIpsMap.keys()];
+			const allIps = await this.ipRepo.findOrCreateBulk(names, "manual", tx);
+
+			// Build bulk media linkage with confidence from original data
+			const ipsToLink = allIps.map((ip) => ({
+				id: ip.id,
+				confidence: normalizedIpsMap.get(ip.name)?.confidence ?? undefined,
+			}));
+
+			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "manual", tx);
+		} catch (e) {
+			logger.warn({ err: e }, "Failed to register IPs");
 		}
 	}
 
@@ -434,25 +460,16 @@ export class MediaProcessingServiceImpl {
 		projectsData: NonNullable<MediaMetadataContext["projects"]>,
 		tx?: Transaction,
 	): Promise<void> {
-		for (const projData of projectsData) {
-			try {
-				let created = await this.projectRepo.findByName(projData.name, tx);
-				if (!created) {
-					created = await this.projectRepo.create(
-						{
-							name: projData.name,
-							description: projData.description ?? "",
-						},
-						tx,
-					);
-				}
-				await this.projectRepo.addMedia(mediaId, created.id, tx);
-			} catch (e) {
-				logger.warn(
-					{ err: e, project: projData },
-					"Failed to register project",
-				);
-			}
+		if (projectsData.length === 0) {
+			return;
+		}
+		const names = projectsData.map((p) => p.name);
+		try {
+			const allProjects = await this.projectRepo.findOrCreateBulk(names, tx);
+			const projectIds = allProjects.map((p) => p.id);
+			await this.projectRepo.addMediaBulk(mediaId, projectIds, tx);
+		} catch (e) {
+			logger.warn({ err: e }, "Failed to register projects");
 		}
 	}
 

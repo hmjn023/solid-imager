@@ -342,6 +342,7 @@ export const projects = pgTable(
 	},
 	(table) => ({
 		nameIndex: index("idx_projects_name").on(table.name),
+		nameUnique: unique("projects_name_unique").on(table.name),
 	}),
 );
 
@@ -707,6 +708,7 @@ export const authors = pgTable(
 	(table) => ({
 		accountIdIndex: index("idx_authors_account_id").on(table.accountId),
 		nameIndex: index("idx_authors_name").on(table.name),
+		nameUnique: unique("authors_name_unique").on(table.name),
 	}),
 );
 

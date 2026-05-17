@@ -57,6 +57,7 @@
 | `ui-components` | solid-ui (shadcn/ui ポート) コンポーネント開発 | UIコンポーネント変更時 |
 | `vite-plus` | Vite+ CLI操作（既存） | Vite+関連タスク時 |
 | `cli` | imager-cli コマンド開発 | CLIコマンド追加・変更時 |
+| `git-worktree` | git worktree を用いた並列開発ワークフロー | 複数PRの同時進行時 |
 | `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
 
 <!--VITE PLUS START-->

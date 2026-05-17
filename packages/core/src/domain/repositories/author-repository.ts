@@ -5,6 +5,7 @@ export type IAuthorRepository = {
 	findAll(): Promise<Author[]>;
 	findById(id: string): Promise<Author | null>;
 	findByName(name: string, tx?: Transaction): Promise<Author | null>;
+	findByNames(names: string[], tx?: Transaction): Promise<Author[]>;
 	// findByAccountId is implementation detail or specific query, usually usually findBy(criteria).
 	// But keeping it simple for now if needed.
 	// Actually, standard repo usually has specific finders.
@@ -35,4 +36,7 @@ export type IAuthorRepository = {
 		authorId: string,
 		tx?: Transaction,
 	): Promise<void>;
+
+	/** Bulk find-or-create authors by name (uses ON CONFLICT DO NOTHING with unique constraint on name). */
+	findOrCreateBulk(names: string[], tx?: Transaction): Promise<Author[]>;
 };

@@ -12,8 +12,8 @@ import type {
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { create as createYtDlp } from "youtube-dl-exec";
-import { services } from "~/application/registry";
-import type { Job } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db";
+import { jobs, type Job, type NewJob } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
@@ -802,21 +802,23 @@ export async function queueDownloadJobs(
 		throw new Error("Media source not found or not a local source");
 	}
 
-	const repo = services.getJobRepository();
-
-	for (const item of items) {
-		await repo.create({
-			type: "downloadImage",
-			mediaSourceId,
-			payload: {
-				...item,
-				// Backward compatibility fields
-				imageUrl: item.targetUrl,
-				sourceUrl: item.targetUrl,
-				description: item.description ?? formatMetadataAsMarkdown(item),
-				createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
-			},
-		});
+	const jobRows: NewJob[] = items.map((item) => ({
+		type: "downloadImage",
+		mediaSourceId,
+		payload: {
+			...item,
+			// Backward compatibility fields
+			imageUrl: item.targetUrl,
+			sourceUrl: item.targetUrl,
+			description: item.description ?? formatMetadataAsMarkdown(item),
+			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
+		},
+	}));
+	if (jobRows.length === 0) return 0;
+	const BATCH_SIZE = 500;
+	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
+		const chunk = jobRows.slice(i, i + BATCH_SIZE);
+		await db.insert(jobs).values(chunk);
 	}
 
 	// Jobs are picked up by the worker automatically.

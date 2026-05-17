@@ -6,7 +6,7 @@ import type {
 	UpdateProject,
 } from "@solid-imager/core/domain/projects/schemas";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";
 
@@ -41,6 +41,18 @@ export const ProjectRepository: IProjectRepository = {
 			.from(projects)
 			.where(eq(projects.name, name));
 		return result[0] ? mapToDomain(result[0]) : null;
+	},
+
+	async findByNames(names: string[], tx?: Transaction): Promise<Project[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		const result = await client
+			.select()
+			.from(projects)
+			.where(inArray(projects.name, names));
+		return result.map(mapToDomain);
 	},
 
 	async create(project: NewProject, tx?: Transaction): Promise<Project> {
@@ -121,6 +133,7 @@ export const ProjectRepository: IProjectRepository = {
 		await client
 			.insert(mediaProjects)
 			.values({ mediaId, projectId })
+			.onConflictDoNothing()
 			.returning();
 	},
 
@@ -163,5 +176,30 @@ export const ProjectRepository: IProjectRepository = {
 				})),
 			)
 			.onConflictDoNothing();
+	},
+
+	async findOrCreateBulk(
+		names: string[],
+		tx?: Transaction,
+	): Promise<Project[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
+		const client = (tx as unknown as TransactionClient) || db;
+
+		// Insert missing projects (unique constraint on name)
+		await client
+			.insert(projects)
+			.values(uniqueNames.map((name) => ({ name, description: "" })))
+			.onConflictDoNothing({ target: [projects.name] });
+
+		// Fetch all projects (both pre-existing and newly created)
+		const result = await client
+			.select()
+			.from(projects)
+			.where(inArray(projects.name, uniqueNames));
+
+		return result.map(mapToDomain);
 	},
 };

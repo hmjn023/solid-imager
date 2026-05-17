@@ -6,6 +6,7 @@ import {
 } from "@solid-imager/core/domain/media/schemas";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
+import { asyncPool } from "~/utils/async-pool";
 
 /**
  * Media Router Implementation
@@ -133,14 +134,26 @@ export const mediaRouter = {
 		)
 		.handler(async ({ input }) => {
 			const results: { id: string; success: boolean; error?: string }[] = [];
-			for (const mediaId of input.mediaIds) {
-				try {
-					await MediaService.reprocessMetadata(input.sourceId, mediaId);
+
+			async function processMedia(mediaId: string) {
+				await MediaService.reprocessMetadata(input.sourceId, mediaId);
+			}
+
+			const poolResults = await asyncPool(input.mediaIds, 5, processMedia);
+
+			for (const [index, pr] of poolResults.entries()) {
+				const mediaId = input.mediaIds[index];
+				if (pr.status === "fulfilled") {
 					results.push({ id: mediaId, success: true });
-				} catch (error) {
-					results.push({ id: mediaId, success: false, error: String(error) });
+				} else {
+					results.push({
+						id: mediaId,
+						success: false,
+						error: String(pr.reason),
+					});
 				}
 			}
+
 			return { results };
 		}),
 

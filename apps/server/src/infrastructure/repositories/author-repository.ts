@@ -1,7 +1,7 @@
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
 	type Author,
@@ -34,6 +34,17 @@ export const AuthorRepository: IAuthorRepository = {
 		return result[0] || null;
 	},
 
+	async findByNames(names: string[], tx?: Transaction): Promise<Author[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		return await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.name, names));
+	},
+
 	async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
 		const client = (tx as unknown as TransactionClient) || db;
 		// Check duplication
@@ -59,7 +70,7 @@ export const AuthorRepository: IAuthorRepository = {
 
 	async update(
 		id: string,
-		updates: Partial<Author>,
+		updates: Partial<NewAuthor>,
 		tx?: Transaction,
 	): Promise<Author> {
 		const client = (tx as unknown as TransactionClient) || db;
@@ -145,5 +156,25 @@ export const AuthorRepository: IAuthorRepository = {
 				})),
 			)
 			.onConflictDoNothing();
+	},
+
+	async findOrCreateBulk(names: string[], tx?: Transaction): Promise<Author[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
+		const client = (tx as unknown as TransactionClient) || db;
+
+		// Insert missing authors (unique constraint on name)
+		await client
+			.insert(authors)
+			.values(uniqueNames.map((name) => ({ name })))
+			.onConflictDoNothing({ target: [authors.name] });
+
+		// Fetch all authors (both pre-existing and newly created)
+		return await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.name, uniqueNames));
 	},
 };
