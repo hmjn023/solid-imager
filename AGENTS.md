@@ -40,6 +40,37 @@
 - **データベース:** 全テーブルUUID (v4)。中間テーブルは `media_{entity}` 命名。
 - **API:** oRPCを使用。スキーマ駆動開発を徹底する。
 
+### git worktree 運用（並列開発）
+
+複数の独立した変更を並列実行する際は `./.worktree/` 以下に git worktree を作成する。
+
+```bash
+# worktree 作成（すべて統合ブランチから派生）
+git worktree add ./.worktree/<番号>-<slug> <統合ブランチ>
+
+# 例: 372-fix-performance-issue から派生
+git worktree add ./.worktree/373-quick-wins 372-fix-performance-issue
+
+# worktree 内で feature ブランチを作成
+cd ./.worktree/373-quick-wins
+git checkout -b fix/issue-373-quick-wins
+
+# 実装後、PR は統合ブランチに向ける
+gh pr create --base 372-fix-performance-issue
+
+# クリーンアップ
+git worktree remove ./.worktree/<番号>-<slug>
+git branch -d fix/issue-<番号>-<slug>
+
+# worktree 一覧
+git worktree list
+```
+
+**注意:**
+- `.worktree/` は `.gitignore` に追加済み（なければ追加）
+- 作業中は各 worktree が独立した `node_modules/` を持つため、最初に `bun install` が必要
+- 統合ブランチに変更があった場合は各 worktree で `git merge <統合ブランチ>` で同期
+
 ## スキル一覧
 
 | スキル名 | 説明 | ロード条件 |
