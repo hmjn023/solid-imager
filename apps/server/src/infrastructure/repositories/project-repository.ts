@@ -133,6 +133,7 @@ export const ProjectRepository: IProjectRepository = {
 		await client
 			.insert(mediaProjects)
 			.values({ mediaId, projectId })
+			.onConflictDoNothing()
 			.returning();
 	},
 
@@ -187,24 +188,18 @@ export const ProjectRepository: IProjectRepository = {
 		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
-		// Find existing projects (projects table has no unique constraint on name)
-		const existing = await client
+		// Insert missing projects (unique constraint on name)
+		await client
+			.insert(projects)
+			.values(uniqueNames.map((name) => ({ name, description: "" })))
+			.onConflictDoNothing({ target: [projects.name] });
+
+		// Fetch all projects (both pre-existing and newly created)
+		const result = await client
 			.select()
 			.from(projects)
 			.where(inArray(projects.name, uniqueNames));
 
-		const existingNameSet = new Set(existing.map((p) => p.name));
-		const missingNames = uniqueNames.filter((n) => !existingNameSet.has(n));
-
-		// Insert missing projects
-		if (missingNames.length > 0) {
-			const inserted = await client
-				.insert(projects)
-				.values(missingNames.map((name) => ({ name, description: "" })))
-				.returning();
-			existing.push(...inserted);
-		}
-
-		return existing.map(mapToDomain);
+		return result.map(mapToDomain);
 	},
 };

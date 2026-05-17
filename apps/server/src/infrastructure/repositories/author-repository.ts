@@ -70,7 +70,7 @@ export const AuthorRepository: IAuthorRepository = {
 
 	async update(
 		id: string,
-		updates: Partial<Author>,
+		updates: Partial<NewAuthor>,
 		tx?: Transaction,
 	): Promise<Author> {
 		const client = (tx as unknown as TransactionClient) || db;
@@ -165,24 +165,16 @@ export const AuthorRepository: IAuthorRepository = {
 		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
-		// Find existing authors (authors table has no unique constraint on name)
-		const existing = await client
+		// Insert missing authors (unique constraint on name)
+		await client
+			.insert(authors)
+			.values(uniqueNames.map((name) => ({ name })))
+			.onConflictDoNothing({ target: [authors.name] });
+
+		// Fetch all authors (both pre-existing and newly created)
+		return await client
 			.select()
 			.from(authors)
 			.where(inArray(authors.name, uniqueNames));
-
-		const existingNameSet = new Set(existing.map((a) => a.name));
-		const missingNames = uniqueNames.filter((n) => !existingNameSet.has(n));
-
-		// Insert missing authors
-		if (missingNames.length > 0) {
-			const inserted = await client
-				.insert(authors)
-				.values(missingNames.map((name) => ({ name })))
-				.returning();
-			existing.push(...inserted);
-		}
-
-		return existing;
 	},
 };
