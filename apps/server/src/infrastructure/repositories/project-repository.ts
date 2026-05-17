@@ -6,7 +6,7 @@ import type {
 	UpdateProject,
 } from "@solid-imager/core/domain/projects/schemas";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import { mediaProjects, projects } from "~/infrastructure/db/schema";
 
@@ -41,6 +41,18 @@ export const ProjectRepository: IProjectRepository = {
 			.from(projects)
 			.where(eq(projects.name, name));
 		return result[0] ? mapToDomain(result[0]) : null;
+	},
+
+	async findByNames(names: string[], tx?: Transaction): Promise<Project[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		const result = await client
+			.select()
+			.from(projects)
+			.where(inArray(projects.name, names));
+		return result.map(mapToDomain);
 	},
 
 	async create(project: NewProject, tx?: Transaction): Promise<Project> {
@@ -163,5 +175,36 @@ export const ProjectRepository: IProjectRepository = {
 				})),
 			)
 			.onConflictDoNothing();
+	},
+
+	async findOrCreateBulk(
+		names: string[],
+		tx?: Transaction,
+	): Promise<Project[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const uniqueNames = [...new Set(names)];
+		const client = (tx as unknown as TransactionClient) || db;
+
+		// Find existing projects (projects table has no unique constraint on name)
+		const existing = await client
+			.select()
+			.from(projects)
+			.where(inArray(projects.name, uniqueNames));
+
+		const existingNameSet = new Set(existing.map((p) => p.name));
+		const missingNames = uniqueNames.filter((n) => !existingNameSet.has(n));
+
+		// Insert missing projects
+		if (missingNames.length > 0) {
+			const inserted = await client
+				.insert(projects)
+				.values(missingNames.map((name) => ({ name, description: "" })))
+				.returning();
+			existing.push(...inserted);
+		}
+
+		return existing.map(mapToDomain);
 	},
 };

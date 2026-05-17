@@ -91,15 +91,12 @@ export class CharacterServiceImpl {
 		tx?: Transaction,
 	): Promise<void> {
 		if (character.ips && character.ips.length > 0) {
-			for (const ip of character.ips) {
-				await this.ipRepo.addMedia(
-					mediaId,
-					ip.id,
-					undefined,
-					"character_link",
-					tx,
-				);
-			}
+			await this.ipRepo.addMediaBulk(
+				mediaId,
+				character.ips.map((ip) => ({ id: ip.id })),
+				"character_link",
+				tx,
+			);
 		}
 	}
 
