@@ -4,7 +4,7 @@ import io
 import logging
 import os
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile
@@ -66,11 +66,17 @@ class TaggingResponse(BaseModel):
 
 
 class CCIPFeatureResponse(BaseModel):
-    feature: List[float]
+    feature: Union[str, List[float]]
+
+
+class CCIPBatchFeatureItem(BaseModel):
+    """Per-file result for batch CCIP feature extraction."""
+    feature: Optional[Union[str, List[float]]] = None
+    error: Optional[str] = None
 
 
 class CCIPBatchFeatureResponse(BaseModel):
-    features: List[List[float]]
+    features: List[CCIPBatchFeatureItem]
 
 
 class CCIPDifferenceRequest(BaseModel):
@@ -90,6 +96,12 @@ class SimilarityRequest(BaseModel):
 
 class SimilarityResponse(BaseModel):
     results: List[Dict[str, Any]]
+
+
+class TaggingBatchItem(BaseModel):
+    """Per-file result for batch tagging."""
+    result: Optional[TaggingResponse] = None
+    error: Optional[str] = None
 
 
 class PathRequest(BaseModel):
@@ -134,9 +146,9 @@ async def tag_image(
     try:
         image = await load_image(file, path)
 
-        # Run tagging
-        # fmt=('general', 'character', 'ips', 'ips_mapping')
-        general, character, ips, ips_mapping = get_pixai_tags(
+        # Run tagging offloaded to thread pool (CPU-bound)
+        general, character, ips, ips_mapping = await asyncio.to_thread(
+            get_pixai_tags,
             image,
             fmt=('general', 'character', 'ips', 'ips_mapping'),
         )
@@ -154,35 +166,35 @@ async def tag_image(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/tag/batch", response_model=List[TaggingResponse])
+@app.post("/tag/batch", response_model=List[TaggingBatchItem])
 async def tag_image_batch(
     files: List[UploadFile] = File(...),
 ):
     """Batch tagging: process multiple images and return tags for each."""
-    results: List[Dict] = []
-    for f in files:
+    async def process_one(f: UploadFile) -> TaggingBatchItem:
         try:
             image = await load_image(f, None)
-            general, character, ips, ips_mapping = get_pixai_tags(
+            # Offload CPU-bound tagging to thread pool
+            general, character, ips, ips_mapping = await asyncio.to_thread(
+                get_pixai_tags,
                 image,
                 fmt=('general', 'character', 'ips', 'ips_mapping'),
             )
-            results.append({
-                "general": general,
-                "character": character,
-                "ips": ips,
-                "ips_mapping": ips_mapping,
-            })
+            return TaggingBatchItem(
+                result=TaggingResponse(
+                    general=general,
+                    character=character,
+                    ips=ips,
+                    ips_mapping=ips_mapping,
+                )
+            )
         except Exception as e:
             logger.error(f"Error processing file {f.filename}: {e}")
-            results.append({
-                "general": {},
-                "character": {},
-                "ips": [],
-                "ips_mapping": {},
-                "error": str(e),
-            })
-    return results
+            return TaggingBatchItem(error=str(e))
+
+    # Load and process all images concurrently
+    results = await asyncio.gather(*[process_one(f) for f in files])
+    return list(results)
 
 
 @app.post("/ccip/feature", response_model=CCIPFeatureResponse)
@@ -193,7 +205,8 @@ async def extract_ccip_feature(
 ):
     try:
         image = await load_image(file, path)
-        feature = ccip_extract_feature(image)
+        # Offload CPU-bound feature extraction to thread pool
+        feature = await asyncio.to_thread(ccip_extract_feature, image)
         return {"feature": encode_feature(feature, encoding)}
     except HTTPException:
         raise
@@ -202,22 +215,25 @@ async def extract_ccip_feature(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("/ccip/feature/batch")
+@app.post("/ccip/feature/batch", response_model=CCIPBatchFeatureResponse)
 async def extract_ccip_feature_batch(
     files: List[UploadFile] = File(...),
     encoding: str = Query("json", description="Response encoding: 'json' (list) or 'base64'"),
 ):
     """Batch CCIP feature extraction: return a list of feature vectors."""
-    features: List[Any] = []
-    for f in files:
+    async def process_one(f: UploadFile) -> CCIPBatchFeatureItem:
         try:
             image = await load_image(f, None)
-            feature = ccip_extract_feature(image)
-            features.append(encode_feature(feature, encoding))
+            # Offload CPU-bound feature extraction to thread pool
+            feature = await asyncio.to_thread(ccip_extract_feature, image)
+            return CCIPBatchFeatureItem(feature=encode_feature(feature, encoding))
         except Exception as e:
             logger.error(f"Error processing file {f.filename}: {e}")
-            features.append({"error": str(e)})
-    return {"features": features}
+            return CCIPBatchFeatureItem(error=str(e))
+
+    # Load and process all images concurrently
+    items = await asyncio.gather(*[process_one(f) for f in files])
+    return {"features": list(items)}
 
 
 @app.post("/ccip/similarity", response_model=SimilarityResponse)
