@@ -133,14 +133,26 @@ export const mediaRouter = {
 		)
 		.handler(async ({ input }) => {
 			const results: { id: string; success: boolean; error?: string }[] = [];
-			for (const mediaId of input.mediaIds) {
-				try {
-					await MediaService.reprocessMetadata(input.sourceId, mediaId);
+
+			async function processMedia(mediaId: string) {
+				await MediaService.reprocessMetadata(input.sourceId, mediaId);
+			}
+
+			const poolResults = await asyncPool(input.mediaIds, 5, processMedia);
+
+			for (const [index, pr] of poolResults.entries()) {
+				const mediaId = input.mediaIds[index];
+				if (pr.status === "fulfilled") {
 					results.push({ id: mediaId, success: true });
-				} catch (error) {
-					results.push({ id: mediaId, success: false, error: String(error) });
+				} else {
+					results.push({
+						id: mediaId,
+						success: false,
+						error: String(pr.reason),
+					});
 				}
 			}
+
 			return { results };
 		}),
 
@@ -218,3 +230,35 @@ export const mediaRouter = {
 				}),
 		),
 };
+
+/**
+ * Process items with a concurrency limit.
+ * Returns per-item results via Promise.allSettled-style entries.
+ */
+async function asyncPool<T, R = void>(
+	items: T[],
+	limit: number,
+	fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+	const results: PromiseSettledResult<R>[] = new Array(items.length);
+	let index = 0;
+
+	async function worker() {
+		while (true) {
+			const i = index++;
+			if (i >= items.length) break;
+			try {
+				const value = await fn(items[i]);
+				results[i] = { status: "fulfilled" as const, value };
+			} catch (reason) {
+				results[i] = { status: "rejected" as const, reason };
+			}
+		}
+	}
+
+	const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+		worker(),
+	);
+	await Promise.all(workers);
+	return results;
+}

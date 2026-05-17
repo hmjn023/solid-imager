@@ -222,16 +222,23 @@ export const sourcesRouter = {
 		)
 		.handler(async ({ input }) => {
 			const results: Record<string, unknown>[] = [];
-			for (const id of input.ids) {
-				try {
-					const result = await DirectorySyncService.syncMediaSource(id);
-					results.push({ id, success: true, ...result });
-				} catch (error) {
+			const poolResults = await asyncPool(input.ids, 3, (id: string) =>
+				DirectorySyncService.syncMediaSource(id),
+			);
+			for (const [index, pr] of poolResults.entries()) {
+				const id = input.ids[index];
+				if (pr.status === "fulfilled") {
+					results.push({
+						id,
+						success: true,
+						...(pr.value as Record<string, unknown>),
+					});
+				} else {
 					logger.error(
-						{ err: error, sourceId: id },
+						{ err: pr.reason, sourceId: id },
 						"Failed to sync media source",
 					);
-					results.push({ id, success: false, error: String(error) });
+					results.push({ id, success: false, error: String(pr.reason) });
 				}
 			}
 			return { results };
@@ -370,8 +377,9 @@ export const sourcesRouter = {
 			// Yield initial connection event
 			yield { event: "connected", data: "connected" };
 
-			// Queue for events
+			// Queue for events — use pointer index instead of shift()
 			const queue: { event: string; data: any }[] = [];
+			let head = 0;
 			let resolve: (() => void) | null = null;
 
 			const onEvent = (payload: { event: string; data: any }) => {
@@ -387,7 +395,7 @@ export const sourcesRouter = {
 
 			try {
 				while (!signal?.aborted) {
-					if (queue.length === 0) {
+					if (head >= queue.length) {
 						await new Promise<void>((r) => {
 							const onAbort = () => {
 								r();
@@ -404,11 +412,8 @@ export const sourcesRouter = {
 						});
 					}
 
-					while (queue.length > 0) {
-						const item = queue.shift();
-						if (item) {
-							yield item;
-						}
+					while (head < queue.length) {
+						yield queue[head++];
 					}
 				}
 			} finally {
@@ -416,3 +421,35 @@ export const sourcesRouter = {
 			}
 		}),
 };
+
+/**
+ * Process items with a concurrency limit.
+ * Returns per-item results via Promise.allSettled-style entries.
+ */
+async function asyncPool<T, R = void>(
+	items: T[],
+	limit: number,
+	fn: (item: T) => Promise<R>,
+): Promise<PromiseSettledResult<R>[]> {
+	const results: PromiseSettledResult<R>[] = new Array(items.length);
+	let index = 0;
+
+	async function worker() {
+		while (true) {
+			const i = index++;
+			if (i >= items.length) break;
+			try {
+				const value = await fn(items[i]);
+				results[i] = { status: "fulfilled" as const, value };
+			} catch (reason) {
+				results[i] = { status: "rejected" as const, reason };
+			}
+		}
+	}
+
+	const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
+		worker(),
+	);
+	await Promise.all(workers);
+	return results;
+}
