@@ -10,11 +10,12 @@ import {
 } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql, type InferSelectModel } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
 	characterIps,
 	characters,
+	ips,
 	mediaCharacters,
 } from "~/infrastructure/db/schema";
 
@@ -118,8 +119,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				);
 			}
 
-			// Re-fetch to return full object with IPs
-			return (await this.findById(insertedChar.id, tx)) as Character;
+		// Build result from returned row + IP fetch (avoiding re-fetch)
+		let ipsResult: Array<{ id: string; name: string }> = [];
+		if (ipIds && ipIds.length > 0) {
+			ipsResult = await client
+				.select({ id: ips.id, name: ips.name })
+				.from(ips)
+				.where(inArray(ips.id, ipIds));
+		}
+
+		return { ...insertedChar, ips: ipsResult } as Character;
 		} catch (error: unknown) {
 			if (
 				error &&
@@ -144,7 +153,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			const operation = async (client: TransactionClient) => {
 				const { ipIds, ...charData } = character;
 
-				await this._validateAndUpdateCharacter({
+				const updatedData = await this._validateAndUpdateCharacter({
 					id,
 					charData,
 					ipIds,
@@ -153,10 +162,36 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				});
 				await this._updateCharacterIps(id, ipIds, character.source, client);
 
-				return (await this.findById(
-					id,
-					tx ?? (client as unknown as Transaction),
-				)) as Character;
+				if (!updatedData) {
+					// No character data changed — fetch existing
+					const existing = await this.findById(
+						id,
+						tx ?? (client as unknown as Transaction),
+					);
+					if (!existing) {
+						throw new ResourceNotFoundError("Character", id);
+					}
+					return existing as Character;
+				}
+
+				// Build result from returned row + IP fetch (avoiding re-fetch)
+				let ipsResult: Array<{ id: string; name: string }> = [];
+				if (ipIds && ipIds.length > 0) {
+					ipsResult = await client
+						.select({ id: ips.id, name: ips.name })
+						.from(ips)
+						.where(inArray(ips.id, ipIds));
+				} else if (ipIds === undefined) {
+					// IPs not specified — fetch existing associations
+					const existingIps = await client
+						.select({ id: ips.id, name: ips.name })
+						.from(ips)
+						.innerJoin(characterIps, eq(characterIps.ipId, ips.id))
+						.where(eq(characterIps.characterId, id));
+					ipsResult = existingIps;
+				}
+
+				return { ...updatedData, ips: ipsResult } as Character;
 			};
 
 			if (tx) {
@@ -192,14 +227,20 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		ipIds: string[] | undefined;
 		client: TransactionClient;
 		tx?: Transaction;
-	}): Promise<void> {
+	}): Promise<InferSelectModel<typeof characters> | null> {
 		const { id, charData, ipIds, client, tx } = options;
 		if (Object.keys(charData).length > 0 || ipIds !== undefined) {
 			if (Object.keys(charData).length === 0) {
-				const exists = await this.findById(id, tx);
-				if (!exists) {
+				// Only IPs changing — simple existence check
+				const [existing] = await client
+					.select()
+					.from(characters)
+					.where(eq(characters.id, id))
+					.limit(1);
+				if (!existing) {
 					throw new ResourceNotFoundError("Character", id);
 				}
+				return existing;
 			}
 
 			if (Object.keys(charData).length > 0) {
@@ -215,8 +256,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				if (result.length === 0) {
 					throw new ResourceNotFoundError("Character", id);
 				}
+				return result[0];
 			}
 		}
+		return null;
 	}
 
 	private async _updateCharacterIps(

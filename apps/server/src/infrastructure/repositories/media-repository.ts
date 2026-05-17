@@ -1098,6 +1098,7 @@ async function executeSearch(
 	let query = client
 		.select({
 			media: medias,
+			totalCount: sql<number>`count(*) over()`,
 		})
 		.from(medias);
 
@@ -1116,13 +1117,15 @@ async function executeSearch(
 		.offset(params.offset ?? DEFAULT_OFFSET)
 		.orderBy(orderBy);
 
-	// Total count query
-	const countResult = await client
-		.select({ count: sql<number>`count(*)` })
-		.from(medias)
-		.where(whereClause);
-
-	const total = Number(countResult[0]?.count ?? 0);
+	const total =
+		result.length > 0
+			? Number(result[0].totalCount)
+			: (
+					await client
+						.select({ count: sql<number>`count(*)` })
+						.from(medias)
+						.where(whereClause)
+				)[0].count;
 
 	return mediaSearchResponseSchema.parse({
 		media: result.map((row) => mapToMedia(row.media)),
