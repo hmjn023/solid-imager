@@ -156,7 +156,12 @@ export async function generateThumbnailsForSource(
 			type: "processMedia",
 		},
 	}));
-	await db.insert(jobs).values(jobRows);
+	if (jobRows.length === 0) return 0;
+	const BATCH_SIZE = 500;
+	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
+		const chunk = jobRows.slice(i, i + BATCH_SIZE);
+		await db.insert(jobs).values(chunk);
+	}
 
 	// Jobs start automatically via worker
 	return mediaItems.length;

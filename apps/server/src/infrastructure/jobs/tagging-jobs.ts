@@ -166,7 +166,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 			break;
 		}
 
-		// Create jobs (bulk insert)
+		// Create jobs (bulk insert with batch chunking)
 		const jobRows: NewJob[] = results.map((row) => ({
 			type: "auto_tagging",
 			mediaSourceId: row.mediaSourceId,
@@ -176,7 +176,12 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 				force,
 			},
 		}));
-		await db.insert(jobs).values(jobRows);
+		if (jobRows.length === 0) continue;
+		const BATCH_SIZE = 500;
+		for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
+			const chunk = jobRows.slice(i, i + BATCH_SIZE);
+			await db.insert(jobs).values(chunk);
+		}
 
 		processedCount += results.length;
 		offset += batchSize;

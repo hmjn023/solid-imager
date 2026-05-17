@@ -814,7 +814,12 @@ export async function queueDownloadJobs(
 			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
 		},
 	}));
-	await db.insert(jobs).values(jobRows);
+	if (jobRows.length === 0) return 0;
+	const BATCH_SIZE = 500;
+	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
+		const chunk = jobRows.slice(i, i + BATCH_SIZE);
+		await db.insert(jobs).values(chunk);
+	}
 
 	// Jobs are picked up by the worker automatically.
 
