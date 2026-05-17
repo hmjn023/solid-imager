@@ -1,7 +1,7 @@
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
 	type Author,
@@ -32,6 +32,17 @@ export const AuthorRepository: IAuthorRepository = {
 			.where(eq(authors.name, name))
 			.limit(1);
 		return result[0] || null;
+	},
+
+	async findByNames(names: string[], tx?: Transaction): Promise<Author[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		return await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.name, names));
 	},
 
 	async create(author: NewAuthor, tx?: Transaction): Promise<Author> {
@@ -145,5 +156,36 @@ export const AuthorRepository: IAuthorRepository = {
 				})),
 			)
 			.onConflictDoNothing();
+	},
+
+	async findOrCreateBulk(
+		names: string[],
+		tx?: Transaction,
+	): Promise<Author[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		const uniqueNames = [...new Set(names)];
+		const client = (tx as unknown as TransactionClient) || db;
+
+		// Find existing authors (authors table has no unique constraint on name)
+		const existing = await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.name, uniqueNames));
+
+		const existingNameSet = new Set(existing.map((a) => a.name));
+		const missingNames = uniqueNames.filter((n) => !existingNameSet.has(n));
+
+		// Insert missing authors
+		if (missingNames.length > 0) {
+			const inserted = await client
+				.insert(authors)
+				.values(missingNames.map((name) => ({ name })))
+				.returning();
+			existing.push(...inserted);
+		}
+
+		return existing;
 	},
 };

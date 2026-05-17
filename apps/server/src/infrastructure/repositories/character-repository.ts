@@ -96,6 +96,37 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		}
 	}
 
+	async findByNames(
+		names: string[],
+		tx?: Transaction,
+	): Promise<Character[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		try {
+			const client = (tx as unknown as TransactionClient) || db;
+			const results = await client.query.characters.findMany({
+				where: inArray(characters.name, names),
+				with: {
+					ips: {
+						with: {
+							ip: true,
+						},
+					},
+				},
+			});
+			return results.map((r) => ({
+				...r,
+				ips: r.ips.map((i) => i.ip),
+			}));
+		} catch (error) {
+			throw new UnexpectedError(
+				"Failed to select characters by names",
+				error,
+			);
+		}
+	}
+
 	async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
@@ -487,5 +518,74 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				error,
 			);
 		}
+	}
+
+	async findOrCreateBulk(
+		charactersData: Array<{ name: string; ipIds?: string[] }>,
+		source?: string,
+		tx?: Transaction,
+	): Promise<Character[]> {
+		if (charactersData.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		const names = [...new Set(charactersData.map((c) => c.name))];
+
+		// Insert missing characters (ON CONFLICT DO NOTHING skips existing ones via unique constraint)
+		await client
+			.insert(characters)
+			.values(
+				names.map((name) => ({
+					name,
+					source: source || "manual",
+					description: "",
+				})),
+			)
+			.onConflictDoNothing({ target: [characters.name] });
+
+		// Fetch all characters with their IPs
+		const results = await client.query.characters.findMany({
+			where: inArray(characters.name, names),
+			with: {
+				ips: {
+					with: {
+						ip: true,
+					},
+				},
+			},
+		});
+
+		// Build IP link insertions in bulk
+		const ipLinks: Array<{
+			characterId: string;
+			ipId: string;
+			source: string;
+		}> = [];
+		for (const charData of charactersData) {
+			if (charData.ipIds && charData.ipIds.length > 0) {
+				const char = results.find((c) => c.name === charData.name);
+				if (char) {
+					for (const ipId of charData.ipIds) {
+						ipLinks.push({
+							characterId: char.id,
+							ipId,
+							source: source || "manual",
+						});
+					}
+				}
+			}
+		}
+
+		if (ipLinks.length > 0) {
+			await client
+				.insert(characterIps)
+				.values(ipLinks)
+				.onConflictDoNothing();
+		}
+
+		return results.map((r) => ({
+			...r,
+			ips: r.ips.map((i) => i.ip),
+		}));
 	}
 }

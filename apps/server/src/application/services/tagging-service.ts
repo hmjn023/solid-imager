@@ -167,29 +167,22 @@ export class TaggingService {
 		);
 		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
 
-		// 2. IPs
+		// 2. IPs — bulk find-or-create
 		const ipNames = response.ips;
 		const ipNameIdMap = new Map<string, string>();
-		const ipsToLink: { id: string; confidence?: number }[] = [];
 
-		// Process IPs sequentially to handle potential creations (bulk create/find not fully supported by repo yet without refactor)
-		// TODO: Refactor IpRepository to support findOrCreateBulk for true bulk performance
-		for (const ipName of ipNames) {
-			let ip = await this.ipRepo.findByName(ipName);
-			if (!ip) {
-				try {
-					ip = await this.ipRepo.create({ name: ipName, source: "AI" });
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						ip = await this.ipRepo.findByName(ipName);
-					} else {
-						throw e;
-					}
-				}
+		if (ipNames.length > 0) {
+			const allIps = await this.ipRepo.findOrCreateBulk(ipNames, "AI");
+			for (const ip of allIps) {
+				ipNameIdMap.set(ip.name, ip.id);
 			}
-			if (ip) {
-				ipNameIdMap.set(ipName, ip.id);
-				ipsToLink.push({ id: ip.id });
+		}
+
+		const ipsToLink: { id: string; confidence?: number }[] = [];
+		for (const ipName of ipNames) {
+			const ipId = ipNameIdMap.get(ipName);
+			if (ipId) {
+				ipsToLink.push({ id: ipId });
 			}
 		}
 
@@ -198,8 +191,8 @@ export class TaggingService {
 		}
 
 		// 3. Characters
-		// ips_mapping: { charName: [ipName] } - Note: The key is character name, value is list of IP names
-		const charToIpIdsMap = new Map<string, string[]>(); // charName -> ipIds[]
+		// ips_mapping: { charName: [ipName] }
+		const charToIpIdsMap = new Map<string, string[]>();
 
 		for (const [charName, linkedIpNames] of Object.entries(
 			response.ips_mapping,
@@ -216,57 +209,75 @@ export class TaggingService {
 			}
 		}
 
-		const charsToLink: { id: string; confidence: number }[] = [];
+		const charNames = Object.keys(response.character);
 
-		// Process Characters sequentially for creation/update
-		// TODO: Refactor CharacterRepository to support bulk operations
-		for (const [charName, confidence] of Object.entries(response.character)) {
-			const ipIds = charToIpIdsMap.get(charName) ?? [];
-			let char = await this.characterRepo.findByName(charName);
+		// Fetch existing characters in one query
+		const existingChars = await this.characterRepo.findByNames(charNames);
+		const existingCharMap = new Map(existingChars.map((c) => [c.name, c]));
 
-			if (!char) {
-				try {
-					char = await this.characterRepo.create({
-						name: charName,
-						ipIds, // Link to IPs if known
-						source: "AI",
+		// Build full character data for findOrCreateBulk:
+		// For existing chars, merge existing IPs with newly detected IPs
+		const bulkCharData: Array<{ name: string; ipIds: string[] }> = [];
+		const charsNeedingUpdate: Array<{
+			id: string;
+			ipIds: string[];
+		}> = [];
+
+		for (const charName of charNames) {
+			const newIpIds = charToIpIdsMap.get(charName) ?? [];
+			const existing = existingCharMap.get(charName);
+
+			if (!existing) {
+				// New character — will be created by findOrCreateBulk
+				bulkCharData.push({ name: charName, ipIds: newIpIds });
+			} else if (
+				existing.ips.length === 0 &&
+				newIpIds.length > 0
+			) {
+				// Existing character with no IPs — need to link IPs
+				charsNeedingUpdate.push({ id: existing.id, ipIds: newIpIds });
+			} else if (newIpIds.length > 0) {
+				// Existing character with some IPs — append only new ones
+				const existingIpIds = new Set(existing.ips.map((i) => i.id));
+				const appendedIds = newIpIds.filter(
+					(id) => !existingIpIds.has(id),
+				);
+				if (appendedIds.length > 0) {
+					charsNeedingUpdate.push({
+						id: existing.id,
+						ipIds: [...existingIpIds, ...appendedIds],
 					});
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						char = await this.characterRepo.findByName(charName);
-					} else {
-						throw e;
-					}
-				}
-			} else if (char.ips.length === 0 && ipIds.length > 0) {
-				// Link orphaned character (no IPs) to detected IPs
-				try {
-					await this.characterRepo.update(char.id, { ipIds });
-				} catch (e) {
-					if (e instanceof ResourceConflictError) {
-						// Ignore conflict during update
-					} else {
-						throw e;
-					}
-				}
-			} else if (ipIds.length > 0) {
-				// Character has existing IPs. We should check if we need to append new ones.
-				// We only append new ones, never remove existing ones for AI updates on existing chars
-				const existingIpIds = new Set(char.ips.map((i) => i.id));
-				const newIpIds = ipIds.filter((id) => !existingIpIds.has(id));
-
-				if (newIpIds.length > 0) {
-					try {
-						await this.characterRepo.update(char.id, {
-							ipIds: [...existingIpIds, ...newIpIds],
-						});
-					} catch (_e) {
-						// Ignore conflict
-					}
 				}
 			}
+		}
 
-			if (char) {
+		// Bulk create new characters with IP links
+		const newChars = await this.characterRepo.findOrCreateBulk(
+			bulkCharData,
+			"AI",
+		);
+
+		// Bulk IP updates for existing characters
+		for (const { id, ipIds } of charsNeedingUpdate) {
+			try {
+				await this.characterRepo.update(id, { ipIds });
+			} catch (e) {
+				if (!(e instanceof ResourceConflictError)) {
+					throw e;
+				}
+			}
+		}
+
+		// Build character link list for addToMediaBulk
+		const charsToLink: { id: string; confidence: number }[] = [];
+
+		for (const char of existingChars) {
+			const confidence = response.character[char.name];
+			charsToLink.push({ id: char.id, confidence });
+		}
+		for (const char of newChars) {
+			const confidence = response.character[char.name];
+			if (confidence !== undefined) {
 				charsToLink.push({ id: char.id, confidence });
 			}
 		}
@@ -276,7 +287,6 @@ export class TaggingService {
 		}
 
 		// Notify clients of the update
-		// Ensure all consumers (like use-media-source-events.ts) are updated to "media-changed"
 		SseManager.sendEvent(mediaSourceId, "media-changed", {
 			filePath,
 			mediaId,

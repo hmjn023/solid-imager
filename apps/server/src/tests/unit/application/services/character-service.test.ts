@@ -26,6 +26,7 @@ const mockCharacterRepo = {
 
 const mockIpRepo = {
 	addMedia: vi.fn(),
+	addMediaBulk: vi.fn(),
 	findByNames: vi.fn(),
 	findByName: vi.fn(),
 	create: vi.fn(),
@@ -73,10 +74,9 @@ describe("CharacterService", () => {
 				undefined,
 				"mock-tx",
 			);
-			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
+			expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
 				mediaId,
-				ipId,
-				undefined,
+				[{ id: ipId }],
 				"character_link",
 				"mock-tx",
 			);

@@ -66,6 +66,9 @@ describe("TaggingService", () => {
 					name === "ExistingIP" ? { id: "ip-1", name: "ExistingIP" } : null,
 				),
 			),
+			findOrCreateBulk: vi.fn(() =>
+				Promise.resolve([{ id: "ip-vocaloid", name: "Vocaloid" }]),
+			),
 			create: vi.fn((data: { name: string }) =>
 				Promise.resolve({ id: "ip-new", name: data.name }),
 			),
@@ -75,6 +78,19 @@ describe("TaggingService", () => {
 
 		mockCharacterRepo = {
 			findByName: vi.fn(() => Promise.resolve(null)),
+			findByNames: vi.fn(() => Promise.resolve([])),
+			findOrCreateBulk: vi.fn((data: Array<{ name: string; ipIds?: string[] }>) =>
+				Promise.resolve(
+					data.map((d) => ({
+						id: `char-${d.name}`,
+						name: d.name,
+						ips: (d.ipIds ?? []).map((ipId: string) => ({
+							id: ipId,
+							name: ipId,
+						})),
+					})),
+				),
+			),
 			create: vi.fn((data: { name: string; ipId?: string }) =>
 				Promise.resolve({ id: "char-new", name: data.name, ipId: data.ipId }),
 			),
@@ -107,37 +123,37 @@ describe("TaggingService", () => {
 			},
 		});
 
-		// Mock IP repo to return an IP for "Vocaloid"
-		(mockIpRepo.findByName as any).mockImplementation((name: string) => {
-			if (name === "Vocaloid") {
-				return Promise.resolve({ id: "ip-vocaloid", name: "Vocaloid" });
-			}
-			return Promise.resolve(null);
-		});
-
 		await taggingService.getTagsForMedia("source-1", "media-1");
 
-		// Verify IP was looked up/created and linked to media
+		// Verify IPs were bulk-created via findOrCreateBulk
+		expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
+			["Vocaloid"],
+			"AI",
+		);
+
+		// Verify IP was linked to media
 		expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
 			"media-1",
 			expect.arrayContaining([expect.objectContaining({ id: "ip-vocaloid" })]),
 			"AI",
 		);
 
-		// Verify character creation included the ipIds
-		expect(mockCharacterRepo.create).toHaveBeenCalledWith(
-			expect.objectContaining({
-				name: "HatsuneMiku",
-				ipIds: ["ip-vocaloid"], // Crucial: Character should be linked to IP
-				source: "AI",
-			}),
+		// Verify characters were bulk-created via findOrCreateBulk with IP ids
+		expect(mockCharacterRepo.findOrCreateBulk).toHaveBeenCalledWith(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: "HatsuneMiku",
+					ipIds: ["ip-vocaloid"],
+				}),
+			]),
+			"AI",
 		);
 
 		// Verify character was linked to media
 		expect(mockCharacterRepo.addToMediaBulk).toHaveBeenCalledWith(
 			"media-1",
 			expect.arrayContaining([
-				expect.objectContaining({ id: "char-new", confidence: 0.95 }),
+				expect.objectContaining({ id: "char-HatsuneMiku", confidence: 0.95 }),
 			]),
 			"AI",
 		);
