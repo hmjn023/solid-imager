@@ -11,8 +11,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import ffmpegPath from "ffmpeg-static";
-import youtubedl from "youtube-dl-exec";
+import { create as createYtDlp } from "youtube-dl-exec";
 import { services } from "~/application/registry";
 import type { Job } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
@@ -21,12 +20,64 @@ import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
 
-// ffmpeg-static may return null on unsupported platforms
-const resolvedFfmpegPath = ffmpegPath ?? undefined;
+let ytDlpPathCache: string | null = null;
+let ytDlpResolvePromise: Promise<string> | null = null;
+
+async function resolveYtDlpPath(): Promise<string> {
+	if (ytDlpResolvePromise) return ytDlpResolvePromise;
+
+	ytDlpResolvePromise = (async () => {
+		if (ytDlpPathCache) return ytDlpPathCache;
+
+		const { existsSync } = await import("node:fs");
+
+		// 1. Check built output location first (for production builds)
+		const outputBin = path.join(process.cwd(), "yt-dlp");
+		if (existsSync(outputBin)) {
+			ytDlpPathCache = outputBin;
+			return ytDlpPathCache;
+		}
+
+		// 2. Check node_modules in current working directory
+		const nodeModulesBin = path.join(
+			process.cwd(),
+			"node_modules/youtube-dl-exec/bin/yt-dlp",
+		);
+		if (existsSync(nodeModulesBin)) {
+			ytDlpPathCache = nodeModulesBin;
+			return ytDlpPathCache;
+		}
+
+		// 3. Walk up from current file to find workspace root
+		const { fileURLToPath } = await import("node:url");
+		const { dirname } = await import("node:path");
+		let dir = dirname(fileURLToPath(new URL(import.meta.url)));
+		for (let i = 0; i < 10; i++) {
+			const candidate = path.join(
+				dir,
+				"node_modules/youtube-dl-exec/bin/yt-dlp",
+			);
+			if (existsSync(candidate)) {
+				ytDlpPathCache = candidate;
+				return ytDlpPathCache;
+			}
+			const parent = dirname(dir);
+			if (parent === dir) break;
+			dir = parent;
+		}
+
+		// 4. Fallback to PATH
+		ytDlpPathCache = "yt-dlp";
+		return ytDlpPathCache;
+	})();
+
+	return ytDlpResolvePromise;
+}
 
 type YtDlpOutput = {
 	id: string;
@@ -103,14 +154,17 @@ async function downloadWithYtDlp(
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
-		const result = await youtubedl(url, {
+		const ffmpegLocation = await resolveFfmpegPath();
+		const ytDlpPath = await resolveYtDlpPath();
+		const ytdlp = createYtDlp(ytDlpPath);
+		const result = await ytdlp(url, {
 			noSimulate: true,
 			printJson: true,
 			paths: outputDir,
 			output: template,
 			format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
 			mergeOutputFormat: "mp4",
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
@@ -135,7 +189,8 @@ async function downloadWithYtDlp(
 		} else {
 			logger.error({ err: error }, "yt-dlp execution failed");
 		}
-		throw new Error(`yt-dlp failed: ${error}`);
+		const msg = error instanceof Error ? error.message : String(error);
+		throw new Error(`yt-dlp failed: ${msg}`);
 	} finally {
 		if (cookieFilePath) {
 			fs.unlink(cookieFilePath).catch((err) =>
@@ -185,10 +240,13 @@ async function fetchMetadataWithYtDlp(
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
-		const result = await youtubedl(url, {
+		const ffmpegLocation = await resolveFfmpegPath();
+		const ytDlpPath = await resolveYtDlpPath();
+		const ytdlp = createYtDlp(ytDlpPath);
+		const result = await ytdlp(url, {
 			dumpSingleJson: true,
 			noDownload: true,
-			...(resolvedFfmpegPath && { ffmpegLocation: resolvedFfmpegPath }),
+			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		} as any);
@@ -222,10 +280,16 @@ function resolveCreatedAt(
 	fileMeta: { createdAt: Date },
 ): Date {
 	if (item.createdAt) {
-		return new Date(item.createdAt);
+		const d = new Date(item.createdAt);
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	if (metadata.upload_date) {
-		return new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		const d = new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
+		if (!Number.isNaN(d.getTime())) {
+			return d;
+		}
 	}
 	return fileMeta.createdAt;
 }

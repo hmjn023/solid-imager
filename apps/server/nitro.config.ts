@@ -15,7 +15,7 @@ export default defineNitroConfig({
       const libsDir = path.join(serverDir, "_libs");
       
       // Resolve the source directory of pglite assets from node_modules
-      const pglitePkgPath = path.dirname(path.resolve(__dirname, "../../node_modules/@electric-sql/pglite/package.json"));
+      const pglitePkgPath = path.dirname(path.resolve(__dirname, "node_modules/@electric-sql/pglite/package.json"));
       const pgliteDistPath = path.join(pglitePkgPath, "dist");
       
       const assetsToCopy = ["pglite.data", "pglite.wasm"];
