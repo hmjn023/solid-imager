@@ -37,29 +37,36 @@ export function processWidgetValueTags(
 ): { positiveTags: string[]; negativeTags: string[] } {
 	const negativeKeywords =
 		options?.negativeKeywords ?? DEFAULT_OPTIONS.negativeKeywords;
-	const negativeTags = options?.negativeTags ?? DEFAULT_OPTIONS.negativeTags;
+	const negativeTagSet = new Set(
+		options?.negativeTags ?? DEFAULT_OPTIONS.negativeTags,
+	);
 
 	const newPositiveTags: string[] = [];
 	const newNegativeTags: string[] = [];
 
 	if (typeof widgetValue === "string") {
-		const tags = widgetValue
-			.split(",")
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0)
-			.map((s) => s.replace(/ /g, "_"))
-			.map((s) => s.replace(/"/g, ""));
+		const parts = widgetValue.split(",");
+		const processedTags: string[] = [];
 
-		if (tags.length > 0) {
+		for (const part of parts) {
+			const s = part.trim();
+			if (s.length === 0) continue;
+			// Combine replace(/ /g, "_") and replace(/"/g, "") in a single pass
+			processedTags.push(s.replace(/[ "]/g, (ch) => (ch === " " ? "_" : "")));
+		}
+
+		if (processedTags.length > 0) {
 			const isNegativeByTitle = negativeKeywords.some((keyword) =>
 				nodeTitle?.toLowerCase().includes(keyword.toLowerCase()),
 			);
-			const isNegativeByTag = tags.some((tag) => negativeTags.includes(tag));
+			const isNegativeByTag = processedTags.some((tag) =>
+				negativeTagSet.has(tag),
+			);
 
 			if (isNegativeByTitle || isNegativeByTag) {
-				newNegativeTags.push(...tags);
+				newNegativeTags.push(...processedTags);
 			} else {
-				newPositiveTags.push(...tags);
+				newPositiveTags.push(...processedTags);
 			}
 		}
 	}

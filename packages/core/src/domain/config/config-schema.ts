@@ -18,7 +18,13 @@ export const JobsConfigSchema = z.object({
 		.default(DEFAULT_JOBS_POLL_INTERVAL),
 	enableAutoTagging: z.boolean().default(DEFAULT_AUTO_TAGGING),
 });
-const defaultJobsConfig = JobsConfigSchema.parse({});
+
+const DEFAULT_JOBS_CONFIG = {
+	concurrency: DEFAULT_JOBS_CONCURRENCY,
+	aiConcurrency: 1,
+	pollIntervalMs: DEFAULT_JOBS_POLL_INTERVAL,
+	enableAutoTagging: DEFAULT_AUTO_TAGGING,
+} as const;
 
 const DEFAULT_AI_BASE_URL = "http://localhost:8000";
 const DEFAULT_AI_TIMEOUT = 120_000;
@@ -28,7 +34,11 @@ export const AiConfigSchema = z.object({
 	baseUrl: z.string().default(DEFAULT_AI_BASE_URL),
 	timeoutMs: z.number().min(MIN_AI_TIMEOUT).default(DEFAULT_AI_TIMEOUT),
 });
-const defaultAiConfig = AiConfigSchema.parse({});
+
+const DEFAULT_AI_CONFIG = {
+	baseUrl: DEFAULT_AI_BASE_URL,
+	timeoutMs: DEFAULT_AI_TIMEOUT,
+} as const;
 
 const DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED = true;
 const DEFAULT_DOWNLOAD_REQUEST_INTERVAL_MS = 1_000;
@@ -42,7 +52,11 @@ export const DownloadsConfigSchema = z.object({
 		.max(MAX_DOWNLOAD_REQUEST_INTERVAL_MS)
 		.default(DEFAULT_DOWNLOAD_REQUEST_INTERVAL_MS),
 });
-const defaultDownloadsConfig = DownloadsConfigSchema.parse({});
+
+const DEFAULT_DOWNLOADS_CONFIG = {
+	rateLimitEnabled: DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED,
+	requestIntervalMs: DEFAULT_DOWNLOAD_REQUEST_INTERVAL_MS,
+} as const;
 
 const DEFAULT_THUMB_DIR = ".cache/thumbnails";
 const DEFAULT_THUMB_SIZE = 512;
@@ -65,7 +79,12 @@ export const StorageConfigSchema = z.object({
 		.max(MAX_THUMB_QUALITY)
 		.default(DEFAULT_THUMB_QUALITY),
 });
-const defaultStorageConfig = StorageConfigSchema.parse({});
+
+const DEFAULT_STORAGE_CONFIG = {
+	thumbnailDir: DEFAULT_THUMB_DIR,
+	thumbnailSize: DEFAULT_THUMB_SIZE,
+	thumbnailQuality: DEFAULT_THUMB_QUALITY,
+} as const;
 
 export const ComfyUiTagExtractionSchema = z.object({
 	positiveNodeTypes: z
@@ -74,17 +93,29 @@ export const ComfyUiTagExtractionSchema = z.object({
 	negativeKeywords: z.array(z.string()).default(["negative"]),
 	negativeTags: z.array(z.string()).default(["lowres"]),
 });
-const defaultComfyUiTagExtraction = ComfyUiTagExtractionSchema.parse({});
+
+const DEFAULT_COMFYUI_TAG_EXTRACTION = {
+	positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
+	negativeKeywords: ["negative"],
+	negativeTags: ["lowres"],
+};
 
 export const TagExtractionConfigSchema = z.object({
-	comfyui: ComfyUiTagExtractionSchema.default(defaultComfyUiTagExtraction),
+	comfyui: ComfyUiTagExtractionSchema.default(DEFAULT_COMFYUI_TAG_EXTRACTION),
 });
-const defaultTagExtractionConfig = TagExtractionConfigSchema.parse({});
 
 const DEFAULT_EXTENSIONS = {
 	image: [".jpg", ".jpeg", ".png", ".webp"],
 	video: [".mp4", ".webm", ".mov"],
 	audio: [".mp3", ".wav"],
+};
+
+const DEFAULT_TAG_EXTRACTION_CONFIG = {
+	comfyui: {
+		positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
+		negativeKeywords: ["negative"],
+		negativeTags: ["lowres"],
+	},
 };
 
 export const MediaConfigSchema = z.object({
@@ -95,25 +126,44 @@ export const MediaConfigSchema = z.object({
 			audio: z.array(z.string()).default(DEFAULT_EXTENSIONS.audio),
 		})
 		.default(DEFAULT_EXTENSIONS),
-	tagExtraction: TagExtractionConfigSchema.default(defaultTagExtractionConfig),
+	tagExtraction: TagExtractionConfigSchema.default(
+		DEFAULT_TAG_EXTRACTION_CONFIG,
+	),
 });
-const defaultMediaConfig = MediaConfigSchema.parse({});
+
+const DEFAULT_MEDIA_CONFIG = {
+	supportedExtensions: {
+		image: [".jpg", ".jpeg", ".png", ".webp"] as string[],
+		video: [".mp4", ".webm", ".mov"] as string[],
+		audio: [".mp3", ".wav"] as string[],
+	},
+	tagExtraction: {
+		comfyui: {
+			positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"] as string[],
+			negativeKeywords: ["negative"] as string[],
+			negativeTags: ["lowres"] as string[],
+		},
+	},
+};
 
 export const LoggingConfigSchema = z.object({
 	level: z
 		.enum(["trace", "debug", "info", "warn", "error", "fatal"])
 		.default("info"),
 });
-const defaultLoggingConfig = LoggingConfigSchema.parse({});
+
+const DEFAULT_LOGGING_CONFIG = {
+	level: "info",
+} as const;
 
 export const AppConfigSchema = z.object({
 	version: z.string().default("1.0.0"),
-	jobs: JobsConfigSchema.default(defaultJobsConfig),
-	ai: AiConfigSchema.default(defaultAiConfig),
-	downloads: DownloadsConfigSchema.default(defaultDownloadsConfig),
-	storage: StorageConfigSchema.default(defaultStorageConfig),
-	media: MediaConfigSchema.default(defaultMediaConfig),
-	logging: LoggingConfigSchema.default(defaultLoggingConfig),
+	jobs: JobsConfigSchema.default(DEFAULT_JOBS_CONFIG),
+	ai: AiConfigSchema.default(DEFAULT_AI_CONFIG),
+	downloads: DownloadsConfigSchema.default(DEFAULT_DOWNLOADS_CONFIG),
+	storage: StorageConfigSchema.default(DEFAULT_STORAGE_CONFIG),
+	media: MediaConfigSchema.default(DEFAULT_MEDIA_CONFIG),
+	logging: LoggingConfigSchema.default(DEFAULT_LOGGING_CONFIG),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
