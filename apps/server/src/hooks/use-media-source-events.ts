@@ -86,7 +86,11 @@ function isValidMediaCopied(data: unknown): data is MediaCopiedEvent {
 }
 
 function isValidMediaMoved(data: unknown): data is MediaMovedEvent {
-	return isRecord(data) && typeof data.timestamp === "string";
+	return (
+		isRecord(data) &&
+		(data.type === "source" || data.type === "target") &&
+		typeof data.timestamp === "string"
+	);
 }
 
 function isValidThumbnailGenerated(
@@ -100,7 +104,7 @@ function isValidAllJobsCompleted(data: unknown): data is AllJobsCompletedEvent {
 }
 
 function isValidWatcherError(data: unknown): data is WatcherErrorEvent {
-	return isRecord(data);
+	return isRecord(data) && typeof data.error === "string";
 }
 
 type TypeGuard<T> = (data: unknown) => data is T;
