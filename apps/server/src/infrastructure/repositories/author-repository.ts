@@ -165,13 +165,19 @@ export const AuthorRepository: IAuthorRepository = {
 		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
-		// Insert missing authors (unique constraint on name)
-		await client
-			.insert(authors)
-			.values(uniqueNames.map((name) => ({ name })))
-			.onConflictDoNothing({ target: [authors.name] });
+		// Find existing authors
+		const existing = await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.name, uniqueNames));
+		const existingNames = new Set(existing.map((a) => a.name));
 
-		// Fetch all authors (both pre-existing and newly created)
+		// Insert only new names
+		const newNames = uniqueNames.filter((n) => !existingNames.has(n));
+		if (newNames.length > 0) {
+			await client.insert(authors).values(newNames.map((name) => ({ name })));
+		}
+
 		return await client
 			.select()
 			.from(authors)

@@ -659,7 +659,8 @@ export const BackupService = {
 
 	/**
 	 * Ensures master data with extra fields (specifically for authors with accountId).
-	 * Authors table does NOT have unique constraint on name, so we need to handle this carefully.
+	 * Authors table has no unique constraint on name (display names can overlap),
+	 * so we use manual dedup by name and update accountId when available.
 	 */
 	async _ensureMasterDataWithExtras(
 		table: any,
