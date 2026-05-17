@@ -111,11 +111,7 @@ const DEFAULT_EXTENSIONS = {
 };
 
 const DEFAULT_TAG_EXTRACTION_CONFIG = {
-	comfyui: {
-		positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"],
-		negativeKeywords: ["negative"],
-		negativeTags: ["lowres"],
-	},
+	comfyui: DEFAULT_COMFYUI_TAG_EXTRACTION,
 };
 
 export const MediaConfigSchema = z.object({
@@ -133,16 +129,12 @@ export const MediaConfigSchema = z.object({
 
 const DEFAULT_MEDIA_CONFIG = {
 	supportedExtensions: {
-		image: [".jpg", ".jpeg", ".png", ".webp"] as string[],
-		video: [".mp4", ".webm", ".mov"] as string[],
-		audio: [".mp3", ".wav"] as string[],
+		image: DEFAULT_EXTENSIONS.image,
+		video: DEFAULT_EXTENSIONS.video,
+		audio: DEFAULT_EXTENSIONS.audio,
 	},
 	tagExtraction: {
-		comfyui: {
-			positiveNodeTypes: ["CLIPTextEncode", "CR Combine Prompt"] as string[],
-			negativeKeywords: ["negative"] as string[],
-			negativeTags: ["lowres"] as string[],
-		},
+		comfyui: DEFAULT_COMFYUI_TAG_EXTRACTION,
 	},
 };
 

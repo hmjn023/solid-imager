@@ -33,13 +33,11 @@ function _extractTagsFromWidgetValue(
 export function processWidgetValueTags(
 	widgetValue: unknown,
 	nodeTitle: string | undefined,
+	negativeTagSet: Set<string>,
 	options?: TagExtractionOptions,
 ): { positiveTags: string[]; negativeTags: string[] } {
 	const negativeKeywords =
 		options?.negativeKeywords ?? DEFAULT_OPTIONS.negativeKeywords;
-	const negativeTagSet = new Set(
-		options?.negativeTags ?? DEFAULT_OPTIONS.negativeTags,
-	);
 
 	const newPositiveTags: string[] = [];
 	const newNegativeTags: string[] = [];
@@ -107,9 +105,12 @@ function processWorkflowNode({
 			valuesToProcess.push(...Object.values(nodeRecord.inputs));
 		}
 
+		const negativeTagSet = new Set(
+			options?.negativeTags ?? DEFAULT_OPTIONS.negativeTags,
+		);
 		for (const widgetValue of valuesToProcess) {
 			const { positiveTags: newPosTags, negativeTags: newNegTags } =
-				processWidgetValueTags(widgetValue, nodeTitle, options);
+				processWidgetValueTags(widgetValue, nodeTitle, negativeTagSet, options);
 			positiveTags.push(
 				...newPosTags.map((tag) => ({
 					name: tag,
