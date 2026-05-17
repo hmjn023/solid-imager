@@ -4,6 +4,7 @@ import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
+// Zod schemas kept for type inference (used via z.infer<>)
 export const MediaAddedEventSchema = z.object({
 	filePath: z.string(),
 	mediaId: z.string().optional(),
@@ -58,6 +59,52 @@ export const WatcherErrorEventSchema = z.object({
 });
 export type WatcherErrorEvent = z.infer<typeof WatcherErrorEventSchema>;
 
+// ── Fast type guards (avoid Zod safeParse overhead in hot SSE loop) ──
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isValidMediaAdded(data: unknown): data is MediaAddedEvent {
+	return isRecord(data) && typeof data.filePath === "string";
+}
+
+function isValidMediaDeleted(data: unknown): data is MediaDeletedEvent {
+	return isRecord(data) && typeof data.filePath === "string";
+}
+
+function isValidMediaChanged(data: unknown): data is MediaChangedEvent {
+	return isRecord(data) && typeof data.filePath === "string";
+}
+
+function isValidMediaCopied(data: unknown): data is MediaCopiedEvent {
+	return (
+		isRecord(data) &&
+		typeof data.sourceId === "string" &&
+		typeof data.timestamp === "string"
+	);
+}
+
+function isValidMediaMoved(data: unknown): data is MediaMovedEvent {
+	return isRecord(data) && typeof data.timestamp === "string";
+}
+
+function isValidThumbnailGenerated(
+	data: unknown,
+): data is ThumbnailGeneratedEvent {
+	return isRecord(data) && typeof data.mediaId === "string";
+}
+
+function isValidAllJobsCompleted(data: unknown): data is AllJobsCompletedEvent {
+	return isRecord(data) && typeof data.processed === "number";
+}
+
+function isValidWatcherError(data: unknown): data is WatcherErrorEvent {
+	return isRecord(data);
+}
+
+type TypeGuard<T> = (data: unknown) => data is T;
+
 type MediaSourceEventsOptions = {
 	enabled?: boolean | Accessor<boolean>;
 	onMediaAdded?: (data: MediaAddedEvent) => void;
@@ -96,17 +143,16 @@ export function useMediaSourceEvents(
 		const ac = new AbortController();
 
 		const validateAndDispatch = <T>(
-			schema: z.ZodSchema<T>,
+			guard: TypeGuard<T>,
 			rawData: unknown,
 			callback?: (data: T) => void,
 			eventName?: string,
 		) => {
-			const result = schema.safeParse(rawData);
-			if (result.success) {
-				callback?.(result.data);
+			if (guard(rawData)) {
+				callback?.(rawData);
 			} else {
 				logger.warn(
-					{ event: eventName, error: result.error, data: rawData },
+					{ event: eventName, data: rawData },
 					"Received invalid event data",
 				);
 			}
@@ -116,7 +162,7 @@ export function useMediaSourceEvents(
 			switch (event) {
 				case "media-added":
 					validateAndDispatch(
-						MediaAddedEventSchema,
+						isValidMediaAdded,
 						data,
 						options.onMediaAdded,
 						event,
@@ -124,7 +170,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-deleted":
 					validateAndDispatch(
-						MediaDeletedEventSchema,
+						isValidMediaDeleted,
 						data,
 						options.onMediaDeleted,
 						event,
@@ -132,7 +178,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-changed":
 					validateAndDispatch(
-						MediaChangedEventSchema,
+						isValidMediaChanged,
 						data,
 						options.onMediaChanged,
 						event,
@@ -140,7 +186,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-copied":
 					validateAndDispatch(
-						MediaCopiedEventSchema,
+						isValidMediaCopied,
 						data,
 						options.onMediaCopied,
 						event,
@@ -148,7 +194,7 @@ export function useMediaSourceEvents(
 					break;
 				case "media-moved":
 					validateAndDispatch(
-						MediaMovedEventSchema,
+						isValidMediaMoved,
 						data,
 						options.onMediaMoved,
 						event,
@@ -156,7 +202,7 @@ export function useMediaSourceEvents(
 					break;
 				case "thumbnail-generated":
 					validateAndDispatch(
-						ThumbnailGeneratedEventSchema,
+						isValidThumbnailGenerated,
 						data,
 						options.onThumbnailGenerated,
 						event,
@@ -164,7 +210,7 @@ export function useMediaSourceEvents(
 					break;
 				case "all-jobs-completed":
 					validateAndDispatch(
-						AllJobsCompletedEventSchema,
+						isValidAllJobsCompleted,
 						data,
 						options.onAllJobsCompleted,
 						event,
@@ -172,7 +218,7 @@ export function useMediaSourceEvents(
 					break;
 				case "watcher-error":
 					validateAndDispatch(
-						WatcherErrorEventSchema,
+						isValidWatcherError,
 						data,
 						options.onWatcherError,
 						event,
