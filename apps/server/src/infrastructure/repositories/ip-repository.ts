@@ -60,7 +60,7 @@ export const IpRepository: IIpRepository = {
 		if (names.length === 0) {
 			return [];
 		}
-		const uniqueNames = [...new Set(names)];
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
 		// Insert missing IPs (ON CONFLICT DO NOTHING skips existing ones via unique constraint)

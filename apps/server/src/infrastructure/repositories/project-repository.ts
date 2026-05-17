@@ -184,7 +184,7 @@ export const ProjectRepository: IProjectRepository = {
 		if (names.length === 0) {
 			return [];
 		}
-		const uniqueNames = [...new Set(names)];
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
 		// Find existing projects (projects table has no unique constraint on name)

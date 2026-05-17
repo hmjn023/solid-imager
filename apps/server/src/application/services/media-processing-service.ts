@@ -383,25 +383,26 @@ export class MediaProcessingServiceImpl {
 
 			// Step 6: Bulk add characters to media
 			const allChars = [...existingChars, ...newChars];
+			const confidenceMap = new Map(
+				characters.map((c) => [c.name, c.confidence]),
+			);
 			const charsToAddMedia = allChars.map((char) => ({
 				id: char.id,
-				confidence:
-					characters.find((c) => c.name === char.name)?.confidence ?? 1,
+				confidence: confidenceMap.get(char.name) ?? 1,
 			}));
 
 			await charRepo.addToMediaBulk(mediaId, charsToAddMedia, "manual", tx);
 
 			// Step 7: Bulk link character IPs to media
-			const allIpIdsToLink: { id: string; confidence?: number }[] = [];
+			const ipIdsSeen = new Set<string>();
 			for (const char of allChars) {
-				if (char.ips && char.ips.length > 0) {
+				if (char.ips) {
 					for (const ip of char.ips) {
-						if (!allIpIdsToLink.some((i) => i.id === ip.id)) {
-							allIpIdsToLink.push({ id: ip.id });
-						}
+						ipIdsSeen.add(ip.id);
 					}
 				}
 			}
+			const allIpIdsToLink = [...ipIdsSeen].map((id) => ({ id }));
 
 			if (allIpIdsToLink.length > 0) {
 				await this.ipRepo.addMediaBulk(
@@ -428,6 +429,7 @@ export class MediaProcessingServiceImpl {
 		>();
 		for (const ip of ipsData) {
 			const normalizedName = ip.name.trim();
+			if (!normalizedName) continue;
 			if (!normalizedIpsMap.has(normalizedName)) {
 				normalizedIpsMap.set(normalizedName, ip);
 			}

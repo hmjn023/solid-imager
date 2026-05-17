@@ -158,14 +158,11 @@ export const AuthorRepository: IAuthorRepository = {
 			.onConflictDoNothing();
 	},
 
-	async findOrCreateBulk(
-		names: string[],
-		tx?: Transaction,
-	): Promise<Author[]> {
+	async findOrCreateBulk(names: string[], tx?: Transaction): Promise<Author[]> {
 		if (names.length === 0) {
 			return [];
 		}
-		const uniqueNames = [...new Set(names)];
+		const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
 		const client = (tx as unknown as TransactionClient) || db;
 
 		// Find existing authors (authors table has no unique constraint on name)

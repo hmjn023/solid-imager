@@ -567,7 +567,11 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			return [];
 		}
 		const client = (tx as unknown as TransactionClient) || db;
-		const names = [...new Set(charactersData.map((c) => c.name))];
+		const names = [
+			...new Set(
+				charactersData.map((c) => c.name.trim()).filter((n) => n.length > 0),
+			),
+		];
 
 		// Insert/update characters — ON CONFLICT DO UPDATE ensures RETURNING
 		// gets both new and existing records in one query.
@@ -606,9 +610,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			ipId: string;
 			source: string;
 		}> = [];
+		const resultsByName = new Map(results.map((c) => [c.name, c]));
 		for (const charData of charactersData) {
 			if (charData.ipIds && charData.ipIds.length > 0) {
-				const char = results.find((c) => c.name === charData.name);
+				const char = resultsByName.get(charData.name);
 				if (char) {
 					for (const ipId of charData.ipIds) {
 						ipLinks.push({

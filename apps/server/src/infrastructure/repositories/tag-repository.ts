@@ -228,8 +228,9 @@ export class DrizzleTagRepository implements TagRepositoryDef {
 					.from(tags)
 					.where(inArray(tags.name, uniqueTagNames));
 
+				const allTagsMap = new Map(allTags.map((t) => [t.name, t]));
 				const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
-					const foundTag = allTags.find((tag) => tag.name === tagToInsert.name);
+					const foundTag = allTagsMap.get(tagToInsert.name);
 					if (!foundTag) {
 						throw new Error(
 							`Tag ${tagToInsert.name} not found after insertion`,
