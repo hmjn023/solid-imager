@@ -303,7 +303,7 @@ export class MediaProcessingServiceImpl {
 				const ipNames =
 					charData.linkedIps && charData.linkedIps.length > 0
 						? charData.linkedIps
-						: currentIpNames ?? [];
+						: (currentIpNames ?? []);
 				for (const name of ipNames) {
 					allIpNamesSet.add(name);
 				}
@@ -325,7 +325,7 @@ export class MediaProcessingServiceImpl {
 				const ipNames =
 					charData.linkedIps && charData.linkedIps.length > 0
 						? charData.linkedIps
-						: currentIpNames ?? [];
+						: (currentIpNames ?? []);
 				const ipIds: string[] = [];
 				for (const name of ipNames) {
 					const ipId = allIpNameIdMap.get(name);
@@ -359,9 +359,7 @@ export class MediaProcessingServiceImpl {
 					bulkCharData.push({ name: charData.name, ipIds });
 				} else if (ipIds.length > 0) {
 					const existingIpIds = existing.ips?.map((i) => i.id) || [];
-					const mergedIpIds = [
-						...new Set([...existingIpIds, ...ipIds]),
-					];
+					const mergedIpIds = [...new Set([...existingIpIds, ...ipIds])];
 					if (mergedIpIds.length > existingIpIds.length) {
 						charsToUpdateIps.push({
 							id: existing.id,
@@ -378,9 +376,9 @@ export class MediaProcessingServiceImpl {
 				tx,
 			);
 
-			// Step 5: Update IPs for existing characters
-			for (const { id, ipIds } of charsToUpdateIps) {
-				await this.characterService.updateCharacter(id, { ipIds });
+			// Step 5: Bulk update IPs for existing characters
+			if (charsToUpdateIps.length > 0) {
+				await charRepo.updateIpsBulk(charsToUpdateIps, "manual", tx);
 			}
 
 			// Step 6: Bulk add characters to media
@@ -391,12 +389,7 @@ export class MediaProcessingServiceImpl {
 					characters.find((c) => c.name === char.name)?.confidence ?? 1,
 			}));
 
-			await charRepo.addToMediaBulk(
-				mediaId,
-				charsToAddMedia,
-				"manual",
-				tx,
-			);
+			await charRepo.addToMediaBulk(mediaId, charsToAddMedia, "manual", tx);
 
 			// Step 7: Bulk link character IPs to media
 			const allIpIdsToLink: { id: string; confidence?: number }[] = [];

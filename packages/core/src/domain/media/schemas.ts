@@ -367,10 +367,10 @@ export const mediaMetadataContextSchema = z.object({
 		.preprocess(
 			(val) =>
 				Array.isArray(val)
-					? val.filter(
-							(v): v is string =>
-								typeof v === "string" && /^https?:\/\/.+/.test(v),
-						)
+					? val.flatMap((v: unknown) => {
+							if (typeof v === "string" && /^https?:\/\/.+/.test(v)) return [v];
+							return [];
+						})
 					: val,
 			z.array(z.string().url()),
 		)

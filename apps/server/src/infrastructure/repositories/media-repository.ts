@@ -1120,12 +1120,14 @@ async function executeSearch(
 	const total =
 		result.length > 0
 			? Number(result[0].totalCount)
-			: (
-					await client
-						.select({ count: sql<number>`count(*)` })
-						.from(medias)
-						.where(whereClause)
-				)[0].count;
+			: Number(
+					(
+						await client
+							.select({ count: sql<number>`count(*)` })
+							.from(medias)
+							.where(whereClause)
+					)[0].count,
+				);
 
 	return mediaSearchResponseSchema.parse({
 		media: result.map((row) => mapToMedia(row.media)),

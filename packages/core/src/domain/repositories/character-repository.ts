@@ -59,4 +59,14 @@ export type CharacterRepository = {
 		source?: string,
 		tx?: Transaction,
 	): Promise<Character[]>;
+
+	/**
+	 * Bulk update IP associations for multiple characters.
+	 * Replaces all existing IP links for each character with the provided ipIds.
+	 */
+	updateIpsBulk(
+		updates: Array<{ id: string; ipIds: string[] }>,
+		source?: string,
+		tx?: Transaction,
+	): Promise<void>;
 };

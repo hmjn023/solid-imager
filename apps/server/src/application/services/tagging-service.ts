@@ -15,8 +15,6 @@ import { MediaService } from "./media-service";
 
 // DI登録は bootstrap.ts で一括管理されるため、ここでは行わない
 
-import { ResourceConflictError } from "@solid-imager/core/domain/errors";
-
 export class TaggingService {
 	private readonly aiClient: IAiClient;
 	private readonly sourceRepo: SourceRepository;
@@ -230,18 +228,13 @@ export class TaggingService {
 			if (!existing) {
 				// New character — will be created by findOrCreateBulk
 				bulkCharData.push({ name: charName, ipIds: newIpIds });
-			} else if (
-				existing.ips.length === 0 &&
-				newIpIds.length > 0
-			) {
+			} else if (existing.ips.length === 0 && newIpIds.length > 0) {
 				// Existing character with no IPs — need to link IPs
 				charsNeedingUpdate.push({ id: existing.id, ipIds: newIpIds });
 			} else if (newIpIds.length > 0) {
 				// Existing character with some IPs — append only new ones
 				const existingIpIds = new Set(existing.ips.map((i) => i.id));
-				const appendedIds = newIpIds.filter(
-					(id) => !existingIpIds.has(id),
-				);
+				const appendedIds = newIpIds.filter((id) => !existingIpIds.has(id));
 				if (appendedIds.length > 0) {
 					charsNeedingUpdate.push({
 						id: existing.id,
@@ -258,14 +251,8 @@ export class TaggingService {
 		);
 
 		// Bulk IP updates for existing characters
-		for (const { id, ipIds } of charsNeedingUpdate) {
-			try {
-				await this.characterRepo.update(id, { ipIds });
-			} catch (e) {
-				if (!(e instanceof ResourceConflictError)) {
-					throw e;
-				}
-			}
+		if (charsNeedingUpdate.length > 0) {
+			await this.characterRepo.updateIpsBulk(charsNeedingUpdate, "AI");
 		}
 
 		// Build character link list for addToMediaBulk
