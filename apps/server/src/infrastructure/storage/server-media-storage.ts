@@ -128,12 +128,10 @@ export const ServerMediaStorage: IMediaStorage = {
 	async scanDirectory(basePath: string): Promise<string[]> {
 		const files: string[] = [];
 		const queue: string[] = [basePath];
+		let head = 0;
 
-		while (queue.length > 0) {
-			const dir = queue.shift();
-			if (!dir) {
-				continue;
-			}
+		while (head < queue.length) {
+			const dir = queue[head++];
 
 			try {
 				const dirents = await fs.readdir(dir, { withFileTypes: true });

@@ -27,8 +27,10 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		return false;
 	}
 
+	const keysBSet = new Set(keysB);
+
 	for (const key of keysA) {
-		if (!keysB.includes(key)) {
+		if (!keysBSet.has(key)) {
 			return false;
 		}
 		if (
