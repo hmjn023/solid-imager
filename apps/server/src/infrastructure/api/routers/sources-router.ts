@@ -12,6 +12,7 @@ import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
+import { asyncPool } from "~/utils/async-pool";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
@@ -222,16 +223,23 @@ export const sourcesRouter = {
 		)
 		.handler(async ({ input }) => {
 			const results: Record<string, unknown>[] = [];
-			for (const id of input.ids) {
-				try {
-					const result = await DirectorySyncService.syncMediaSource(id);
-					results.push({ id, success: true, ...result });
-				} catch (error) {
+			const poolResults = await asyncPool(input.ids, 3, (id: string) =>
+				DirectorySyncService.syncMediaSource(id),
+			);
+			for (const [index, pr] of poolResults.entries()) {
+				const id = input.ids[index];
+				if (pr.status === "fulfilled") {
+					results.push({
+						id,
+						success: true,
+						...(pr.value as Record<string, unknown>),
+					});
+				} else {
 					logger.error(
-						{ err: error, sourceId: id },
+						{ err: pr.reason, sourceId: id },
 						"Failed to sync media source",
 					);
-					results.push({ id, success: false, error: String(error) });
+					results.push({ id, success: false, error: String(pr.reason) });
 				}
 			}
 			return { results };
@@ -370,8 +378,9 @@ export const sourcesRouter = {
 			// Yield initial connection event
 			yield { event: "connected", data: "connected" };
 
-			// Queue for events
+			// Queue for events — use pointer index instead of shift()
 			const queue: { event: string; data: any }[] = [];
+			let head = 0;
 			let resolve: (() => void) | null = null;
 
 			const onEvent = (payload: { event: string; data: any }) => {
@@ -387,7 +396,7 @@ export const sourcesRouter = {
 
 			try {
 				while (!signal?.aborted) {
-					if (queue.length === 0) {
+					if (head >= queue.length) {
 						await new Promise<void>((r) => {
 							const onAbort = () => {
 								r();
@@ -404,11 +413,14 @@ export const sourcesRouter = {
 						});
 					}
 
-					while (queue.length > 0) {
-						const item = queue.shift();
-						if (item) {
-							yield item;
-						}
+					while (head < queue.length) {
+						yield queue[head++];
+					}
+
+					// Periodically trim stale entries to prevent memory leak
+					if (head > 1000) {
+						queue.splice(0, head);
+						head = 0;
 					}
 				}
 			} finally {
