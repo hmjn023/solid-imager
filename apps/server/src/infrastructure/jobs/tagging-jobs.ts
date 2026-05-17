@@ -5,10 +5,12 @@ import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
 import {
 	type Job,
+	jobs,
 	mediaCharacters,
 	mediaIps,
 	medias,
 	mediaTags,
+	type NewJob,
 } from "~/infrastructure/db/schema";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
@@ -98,8 +100,6 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		"Starting bulk tagging dispatch job",
 	);
 
-	const jobRepo = services.getJobRepository();
-
 	// Find images
 	// Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
 	const whereClause = and(
@@ -166,17 +166,21 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 			break;
 		}
 
-		// Create jobs
-		for (const row of results) {
-			await jobRepo.create({
-				type: "auto_tagging",
+		// Create jobs (bulk insert with batch chunking)
+		const jobRows: NewJob[] = results.map((row) => ({
+			type: "auto_tagging",
+			mediaSourceId: row.mediaSourceId,
+			payload: {
+				mediaId: row.id,
 				mediaSourceId: row.mediaSourceId,
-				payload: {
-					mediaId: row.id,
-					mediaSourceId: row.mediaSourceId,
-					force,
-				},
-			});
+				force,
+			},
+		}));
+		if (jobRows.length === 0) continue;
+		const BATCH_SIZE = 500;
+		for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
+			const chunk = jobRows.slice(i, i + BATCH_SIZE);
+			await db.insert(jobs).values(chunk);
 		}
 
 		processedCount += results.length;

@@ -30,4 +30,11 @@ export type IIpRepository = {
 		source?: string,
 		tx?: Transaction,
 	): Promise<void>;
+
+	/** Bulk find-or-create: ensures all named IPs exist and returns all of them. */
+	findOrCreateBulk(
+		names: string[],
+		source?: string,
+		tx?: Transaction,
+	): Promise<Ip[]>;
 };

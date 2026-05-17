@@ -90,10 +90,19 @@ export function extractDataFromComments(
 		workflow: null,
 	};
 
+	// Deduplicate during iteration instead of a separate pass
+	const seenTags = new Set<string>();
+
 	for (const chunk of comments) {
 		const processedChunk = processCommentChunk(chunk, options);
 		if (processedChunk.tags) {
-			finalData.tags.push(...processedChunk.tags);
+			for (const tag of processedChunk.tags) {
+				const tagIdentifier = `${tag.name}:${tag.type}`;
+				if (!seenTags.has(tagIdentifier)) {
+					seenTags.add(tagIdentifier);
+					finalData.tags.push(tag);
+				}
+			}
 		}
 		if (processedChunk.prompt) {
 			finalData.prompt = processedChunk.prompt;
@@ -102,18 +111,6 @@ export function extractDataFromComments(
 			finalData.workflow = processedChunk.workflow;
 		}
 	}
-
-	// Deduplicate tags
-	const uniqueTags: ExtractedData["tags"] = [];
-	const seenTags = new Set<string>();
-	for (const tag of finalData.tags) {
-		const tagIdentifier = `${tag.name}:${tag.type}`;
-		if (!seenTags.has(tagIdentifier)) {
-			uniqueTags.push(tag);
-			seenTags.add(tagIdentifier);
-		}
-	}
-	finalData.tags = uniqueTags;
 
 	return finalData;
 }

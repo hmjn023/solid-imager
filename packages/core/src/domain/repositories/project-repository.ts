@@ -9,6 +9,7 @@ export type IProjectRepository = {
 	findAll(): Promise<Project[]>;
 	findById(id: string, tx?: Transaction): Promise<Project | null>;
 	findByName(name: string, tx?: Transaction): Promise<Project | null>;
+	findByNames(names: string[], tx?: Transaction): Promise<Project[]>;
 	create(project: NewProject, tx?: Transaction): Promise<Project>;
 	update(
 		id: string,
@@ -30,4 +31,10 @@ export type IProjectRepository = {
 		projectIds: string[],
 		tx?: Transaction,
 	): Promise<void>;
+
+	/** Bulk find-or-create projects by name. */
+	findOrCreateBulk(
+		names: string[],
+		tx?: Transaction,
+	): Promise<Project[]>;
 };

@@ -15,6 +15,7 @@ export type CharacterRepository = {
 	findAll(): Promise<Character[]>;
 	findById(id: string, tx?: Transaction): Promise<Character | null>;
 	findByName(name: string, tx?: Transaction): Promise<Character | null>;
+	findByNames(names: string[], tx?: Transaction): Promise<Character[]>;
 	create(character: NewCharacter, tx?: Transaction): Promise<Character>;
 	update(
 		id: string,
@@ -44,6 +45,27 @@ export type CharacterRepository = {
 	addToMediaBulk(
 		mediaId: string,
 		characters: { id: string; confidence?: number }[],
+		source?: string,
+		tx?: Transaction,
+	): Promise<void>;
+
+	/**
+	 * Bulk find-or-create: ensures all named characters exist,
+	 * links provided IP IDs via characterIps, and returns all characters
+	 * (existing + newly created) with their current IPs.
+	 */
+	findOrCreateBulk(
+		characters: Array<{ name: string; ipIds?: string[] }>,
+		source?: string,
+		tx?: Transaction,
+	): Promise<Character[]>;
+
+	/**
+	 * Bulk update IP associations for multiple characters.
+	 * Replaces all existing IP links for each character with the provided ipIds.
+	 */
+	updateIpsBulk(
+		updates: Array<{ id: string; ipIds: string[] }>,
 		source?: string,
 		tx?: Transaction,
 	): Promise<void>;

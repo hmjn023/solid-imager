@@ -1,6 +1,7 @@
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { logger } from "~/infrastructure/logger";
+import { deepEqual } from "~/utils/deep-equal";
 import {
 	getSearchCondition,
 	loadPreset,
@@ -10,6 +11,9 @@ import {
 } from "~/presentation/store/search-store";
 
 const DEBOUNCE_MS = 1000;
+
+/** Cache preset IDs by name to avoid read-before-write in saveCurrentState. */
+const presetIdCache = new Map<string, number>();
 
 export function useCurrentSearchPersistence(
 	sourceId: string | Accessor<string | null | undefined> = "current",
@@ -44,10 +48,10 @@ export function useCurrentSearchPersistence(
 			try {
 				const current = await PresetClient.getByName(presetName);
 				if (current) {
+					presetIdCache.set(presetName, current.id);
 					logger.info(`[AutoSave] Loaded current state for: ${presetName}`);
 
 					const allPresets = await PresetClient.list();
-					const { deepEqual } = await import("~/utils/deep-equal");
 
 					const matchingPreset = allPresets.find(
 						(p) => p.name !== presetName && deepEqual(p.value, current.value),
@@ -70,11 +74,12 @@ export function useCurrentSearchPersistence(
 				} else {
 					logger.info(`[AutoSave] No current state found for ${presetName}`);
 					resetSearchState();
-					await PresetClient.create({
+					const created = await PresetClient.create({
 						name: presetName,
 						value: { type: "group", operator: "and", children: [] },
 						mode: "simple",
 					});
+					presetIdCache.set(presetName, created.id);
 				}
 			} catch (e) {
 				logger.error(
@@ -142,17 +147,23 @@ export function useCurrentSearchPersistence(
 		};
 
 		try {
-			// We need ID to update.
-			// Optimization: Cache ID? Or just getByName every time?
-			// getByName is safer for race conditions across tabs (though minimal risk for "current").
+			const cachedId = presetIdCache.get(presetName);
+			if (cachedId !== undefined) {
+				await PresetClient.update(cachedId, presetData);
+				return;
+			}
+
+			// Cache miss: look up by name (first save after load, or cross-tab create)
 			const current = await PresetClient.getByName(presetName);
 			if (current) {
+				presetIdCache.set(presetName, current.id);
 				await PresetClient.update(current.id, presetData);
 			} else {
-				await PresetClient.create({
+				const created = await PresetClient.create({
 					name: presetName,
 					...presetData,
 				});
+				presetIdCache.set(presetName, created.id);
 			}
 		} catch (e) {
 			logger.warn(

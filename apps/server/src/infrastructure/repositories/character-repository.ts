@@ -10,11 +10,12 @@ import {
 } from "@solid-imager/core/domain/errors";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 import {
 	characterIps,
 	characters,
+	ips,
 	mediaCharacters,
 } from "~/infrastructure/db/schema";
 
@@ -95,6 +96,31 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		}
 	}
 
+	async findByNames(names: string[], tx?: Transaction): Promise<Character[]> {
+		if (names.length === 0) {
+			return [];
+		}
+		try {
+			const client = (tx as unknown as TransactionClient) || db;
+			const results = await client.query.characters.findMany({
+				where: inArray(characters.name, names),
+				with: {
+					ips: {
+						with: {
+							ip: true,
+						},
+					},
+				},
+			});
+			return results.map((r) => ({
+				...r,
+				ips: r.ips.map((i) => i.ip),
+			}));
+		} catch (error) {
+			throw new UnexpectedError("Failed to select characters by names", error);
+		}
+	}
+
 	async create(character: NewCharacter, tx?: Transaction): Promise<Character> {
 		try {
 			const client = (tx as unknown as TransactionClient) || db;
@@ -118,8 +144,16 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				);
 			}
 
-			// Re-fetch to return full object with IPs
-			return (await this.findById(insertedChar.id, tx)) as Character;
+			// Build result from returned row + IP fetch (avoiding re-fetch)
+			let ipsResult: Array<typeof ips.$inferSelect> = [];
+			if (ipIds && ipIds.length > 0) {
+				ipsResult = await client
+					.select()
+					.from(ips)
+					.where(inArray(ips.id, ipIds));
+			}
+
+			return { ...insertedChar, ips: ipsResult } as Character;
 		} catch (error: unknown) {
 			if (
 				error &&
@@ -144,7 +178,7 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 			const operation = async (client: TransactionClient) => {
 				const { ipIds, ...charData } = character;
 
-				await this._validateAndUpdateCharacter({
+				const updatedData = await this._validateAndUpdateCharacter({
 					id,
 					charData,
 					ipIds,
@@ -153,10 +187,39 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				});
 				await this._updateCharacterIps(id, ipIds, character.source, client);
 
-				return (await this.findById(
-					id,
-					tx ?? (client as unknown as Transaction),
-				)) as Character;
+				if (!updatedData) {
+					// No character data changed — fetch existing
+					const existing = await this.findById(
+						id,
+						tx ?? (client as unknown as Transaction),
+					);
+					if (!existing) {
+						throw new ResourceNotFoundError("Character", id);
+					}
+					return existing as Character;
+				}
+
+				// Build result from returned row + IP fetch (avoiding re-fetch)
+				let ipsResult: Array<typeof ips.$inferSelect> = [];
+				if (ipIds && ipIds.length > 0) {
+					ipsResult = await client
+						.select()
+						.from(ips)
+						.where(inArray(ips.id, ipIds));
+				} else if (ipIds === undefined) {
+					// IPs not specified — fetch existing associations via subquery
+					const ipIdsSubquery = client
+						.select({ ipId: characterIps.ipId })
+						.from(characterIps)
+						.where(eq(characterIps.characterId, id));
+					const existingIps = await client
+						.select()
+						.from(ips)
+						.where(inArray(ips.id, ipIdsSubquery));
+					ipsResult = existingIps;
+				}
+
+				return { ...updatedData, ips: ipsResult } as Character;
 			};
 
 			if (tx) {
@@ -192,14 +255,20 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 		ipIds: string[] | undefined;
 		client: TransactionClient;
 		tx?: Transaction;
-	}): Promise<void> {
+	}): Promise<InferSelectModel<typeof characters> | null> {
 		const { id, charData, ipIds, client, tx } = options;
 		if (Object.keys(charData).length > 0 || ipIds !== undefined) {
 			if (Object.keys(charData).length === 0) {
-				const exists = await this.findById(id, tx);
-				if (!exists) {
+				// Only IPs changing — simple existence check
+				const [existing] = await client
+					.select()
+					.from(characters)
+					.where(eq(characters.id, id))
+					.limit(1);
+				if (!existing) {
 					throw new ResourceNotFoundError("Character", id);
 				}
+				return existing;
 			}
 
 			if (Object.keys(charData).length > 0) {
@@ -215,8 +284,10 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				if (result.length === 0) {
 					throw new ResourceNotFoundError("Character", id);
 				}
+				return result[0];
 			}
 		}
+		return null;
 	}
 
 	private async _updateCharacterIps(
@@ -237,6 +308,47 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 					})),
 				);
 			}
+		}
+	}
+
+	async updateIpsBulk(
+		updates: Array<{ id: string; ipIds: string[] }>,
+		source?: string,
+		tx?: Transaction,
+	): Promise<void> {
+		if (updates.length === 0) {
+			return;
+		}
+		try {
+			const client = (tx as unknown as TransactionClient) || db;
+			const characterIds = updates.map((u) => u.id);
+
+			// Delete all existing IP links for these characters
+			await client
+				.delete(characterIps)
+				.where(inArray(characterIps.characterId, characterIds));
+
+			// Build and insert all new IP links in bulk
+			const allIpLinks: Array<{
+				characterId: string;
+				ipId: string;
+				source: string;
+			}> = [];
+			for (const { id, ipIds } of updates) {
+				for (const ipId of ipIds) {
+					allIpLinks.push({
+						characterId: id,
+						ipId,
+						source: source || "manual",
+					});
+				}
+			}
+
+			if (allIpLinks.length > 0) {
+				await client.insert(characterIps).values(allIpLinks);
+			}
+		} catch (error) {
+			throw new UnexpectedError("Failed to bulk update character IPs", error);
 		}
 	}
 
@@ -444,5 +556,78 @@ export class DrizzleCharacterRepository implements CharacterRepository {
 				error,
 			);
 		}
+	}
+
+	async findOrCreateBulk(
+		charactersData: Array<{ name: string; ipIds?: string[] }>,
+		source?: string,
+		tx?: Transaction,
+	): Promise<Character[]> {
+		if (charactersData.length === 0) {
+			return [];
+		}
+		const client = (tx as unknown as TransactionClient) || db;
+		const names = [...new Set(charactersData.map((c) => c.name))];
+
+		// Insert/update characters — ON CONFLICT DO UPDATE ensures RETURNING
+		// gets both new and existing records in one query.
+		const insertedRows = await client
+			.insert(characters)
+			.values(
+				names.map((name) => ({
+					name,
+					source: source || "manual",
+					description: "",
+				})),
+			)
+			.onConflictDoUpdate({
+				target: [characters.name],
+				set: { name: sql`excluded.name` },
+			})
+			.returning();
+
+		const characterIds = insertedRows.map((r) => r.id);
+
+		// Fetch all characters with their IPs using the returned IDs
+		const results = await client.query.characters.findMany({
+			where: inArray(characters.id, characterIds),
+			with: {
+				ips: {
+					with: {
+						ip: true,
+					},
+				},
+			},
+		});
+
+		// Build IP link insertions in bulk
+		const ipLinks: Array<{
+			characterId: string;
+			ipId: string;
+			source: string;
+		}> = [];
+		for (const charData of charactersData) {
+			if (charData.ipIds && charData.ipIds.length > 0) {
+				const char = results.find((c) => c.name === charData.name);
+				if (char) {
+					for (const ipId of charData.ipIds) {
+						ipLinks.push({
+							characterId: char.id,
+							ipId,
+							source: source || "manual",
+						});
+					}
+				}
+			}
+		}
+
+		if (ipLinks.length > 0) {
+			await client.insert(characterIps).values(ipLinks).onConflictDoNothing();
+		}
+
+		return results.map((r) => ({
+			...r,
+			ips: r.ips.map((i) => i.ip),
+		}));
 	}
 }
