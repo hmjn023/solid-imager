@@ -13,7 +13,7 @@ import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/fil
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { create as createYtDlp } from "youtube-dl-exec";
 import { db } from "~/infrastructure/db";
-import { jobs, type Job, type NewJob } from "~/infrastructure/db/schema";
+import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";

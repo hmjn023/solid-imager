@@ -79,17 +79,18 @@ describe("TaggingService", () => {
 		mockCharacterRepo = {
 			findByName: vi.fn(() => Promise.resolve(null)),
 			findByNames: vi.fn(() => Promise.resolve([])),
-			findOrCreateBulk: vi.fn((data: Array<{ name: string; ipIds?: string[] }>) =>
-				Promise.resolve(
-					data.map((d) => ({
-						id: `char-${d.name}`,
-						name: d.name,
-						ips: (d.ipIds ?? []).map((ipId: string) => ({
-							id: ipId,
-							name: ipId,
+			findOrCreateBulk: vi.fn(
+				(data: Array<{ name: string; ipIds?: string[] }>) =>
+					Promise.resolve(
+						data.map((d) => ({
+							id: `char-${d.name}`,
+							name: d.name,
+							ips: (d.ipIds ?? []).map((ipId: string) => ({
+								id: ipId,
+								name: ipId,
+							})),
 						})),
-					})),
-				),
+					),
 			),
 			create: vi.fn((data: { name: string; ipId?: string }) =>
 				Promise.resolve({ id: "char-new", name: data.name, ipId: data.ipId }),

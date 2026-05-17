@@ -1,7 +1,6 @@
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { logger } from "~/infrastructure/logger";
-import { deepEqual } from "~/utils/deep-equal";
 import {
 	getSearchCondition,
 	loadPreset,
@@ -9,6 +8,7 @@ import {
 	searchState,
 	setSearchState,
 } from "~/presentation/store/search-store";
+import { deepEqual } from "~/utils/deep-equal";
 
 const DEBOUNCE_MS = 1000;
 
