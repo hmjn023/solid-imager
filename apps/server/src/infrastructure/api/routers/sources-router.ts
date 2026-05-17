@@ -12,6 +12,7 @@ import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
+import { asyncPool } from "~/utils/async-pool";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
@@ -415,41 +416,15 @@ export const sourcesRouter = {
 					while (head < queue.length) {
 						yield queue[head++];
 					}
+
+					// Periodically trim stale entries to prevent memory leak
+					if (head > 1000) {
+						queue.splice(0, head);
+						head = 0;
+					}
 				}
 			} finally {
 				SseManager.emitter.off(eventName, onEvent);
 			}
 		}),
 };
-
-/**
- * Process items with a concurrency limit.
- * Returns per-item results via Promise.allSettled-style entries.
- */
-async function asyncPool<T, R = void>(
-	items: T[],
-	limit: number,
-	fn: (item: T) => Promise<R>,
-): Promise<PromiseSettledResult<R>[]> {
-	const results: PromiseSettledResult<R>[] = new Array(items.length);
-	let index = 0;
-
-	async function worker() {
-		while (true) {
-			const i = index++;
-			if (i >= items.length) break;
-			try {
-				const value = await fn(items[i]);
-				results[i] = { status: "fulfilled" as const, value };
-			} catch (reason) {
-				results[i] = { status: "rejected" as const, reason };
-			}
-		}
-	}
-
-	const workers = Array.from({ length: Math.min(limit, items.length) }, () =>
-		worker(),
-	);
-	await Promise.all(workers);
-	return results;
-}
