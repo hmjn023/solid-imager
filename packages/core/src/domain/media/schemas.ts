@@ -360,8 +360,25 @@ export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
  */
 export const mediaMetadataContextSchema = z.object({
 	description: z.string().nullable().optional(),
-	createdAt: z.coerce.date().optional(), // Original creation date (e.g., from social media post)
-	sourceUrls: z.array(z.string().url()).optional(),
+	createdAt: z
+		.union([z.literal("").transform(() => undefined), z.coerce.date()])
+		.optional(), // Original creation date (e.g., from social media post)
+	sourceUrls: z
+		.preprocess(
+			(val) =>
+				Array.isArray(val)
+					? val.filter((v) => {
+							try {
+								new URL(v);
+								return true;
+							} catch {
+								return false;
+							}
+						})
+					: val,
+			z.array(z.string().url()),
+		)
+		.optional(),
 	authors: z
 		.array(
 			z.object({
