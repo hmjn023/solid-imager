@@ -708,7 +708,6 @@ export const authors = pgTable(
 	(table) => ({
 		accountIdIndex: index("idx_authors_account_id").on(table.accountId),
 		nameIndex: index("idx_authors_name").on(table.name),
-		nameUnique: unique("authors_name_unique").on(table.name),
 	}),
 );
 
