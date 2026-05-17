@@ -26,47 +26,57 @@ const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
 
 let ytDlpPathCache: string | null = null;
+let ytDlpResolvePromise: Promise<string> | null = null;
 
 async function resolveYtDlpPath(): Promise<string> {
-	if (ytDlpPathCache) return ytDlpPathCache;
+	if (ytDlpResolvePromise) return ytDlpResolvePromise;
 
-	const { existsSync } = await import("node:fs");
+	ytDlpResolvePromise = (async () => {
+		if (ytDlpPathCache) return ytDlpPathCache;
 
-	// 1. Check built output location first (for production builds)
-	const outputBin = path.join(process.cwd(), "yt-dlp");
-	if (existsSync(outputBin)) {
-		ytDlpPathCache = outputBin;
-		return ytDlpPathCache;
-	}
+		const { existsSync } = await import("node:fs");
 
-	// 2. Check node_modules in current working directory
-	const nodeModulesBin = path.join(
-		process.cwd(),
-		"node_modules/youtube-dl-exec/bin/yt-dlp",
-	);
-	if (existsSync(nodeModulesBin)) {
-		ytDlpPathCache = nodeModulesBin;
-		return ytDlpPathCache;
-	}
-
-	// 3. Walk up from current file to find workspace root
-	const { fileURLToPath } = await import("node:url");
-	const { dirname } = await import("node:path");
-	let dir = dirname(fileURLToPath(new URL(import.meta.url)));
-	for (let i = 0; i < 10; i++) {
-		const candidate = path.join(dir, "node_modules/youtube-dl-exec/bin/yt-dlp");
-		if (existsSync(candidate)) {
-			ytDlpPathCache = candidate;
+		// 1. Check built output location first (for production builds)
+		const outputBin = path.join(process.cwd(), "yt-dlp");
+		if (existsSync(outputBin)) {
+			ytDlpPathCache = outputBin;
 			return ytDlpPathCache;
 		}
-		const parent = dirname(dir);
-		if (parent === dir) break;
-		dir = parent;
-	}
 
-	// 4. Fallback to PATH
-	ytDlpPathCache = "yt-dlp";
-	return ytDlpPathCache;
+		// 2. Check node_modules in current working directory
+		const nodeModulesBin = path.join(
+			process.cwd(),
+			"node_modules/youtube-dl-exec/bin/yt-dlp",
+		);
+		if (existsSync(nodeModulesBin)) {
+			ytDlpPathCache = nodeModulesBin;
+			return ytDlpPathCache;
+		}
+
+		// 3. Walk up from current file to find workspace root
+		const { fileURLToPath } = await import("node:url");
+		const { dirname } = await import("node:path");
+		let dir = dirname(fileURLToPath(new URL(import.meta.url)));
+		for (let i = 0; i < 10; i++) {
+			const candidate = path.join(
+				dir,
+				"node_modules/youtube-dl-exec/bin/yt-dlp",
+			);
+			if (existsSync(candidate)) {
+				ytDlpPathCache = candidate;
+				return ytDlpPathCache;
+			}
+			const parent = dirname(dir);
+			if (parent === dir) break;
+			dir = parent;
+		}
+
+		// 4. Fallback to PATH
+		ytDlpPathCache = "yt-dlp";
+		return ytDlpPathCache;
+	})();
+
+	return ytDlpResolvePromise;
 }
 
 type YtDlpOutput = {
