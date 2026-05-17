@@ -1,0 +1,1 @@
+ALTER TABLE "authors" DROP CONSTRAINT IF EXISTS "authors_name_unique";
