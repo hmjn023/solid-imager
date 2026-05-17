@@ -27,10 +27,11 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		return false;
 	}
 
-	const keysBSet = new Set(keysB);
+	// Only create a Set for larger objects to avoid overhead on small objects
+	const keysBSet = keysB.length > 5 ? new Set(keysB) : null;
 
 	for (const key of keysA) {
-		if (!keysBSet.has(key)) {
+		if (keysBSet ? !keysBSet.has(key) : !keysB.includes(key)) {
 			return false;
 		}
 		if (

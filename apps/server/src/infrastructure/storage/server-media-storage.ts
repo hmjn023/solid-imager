@@ -133,6 +133,12 @@ export const ServerMediaStorage: IMediaStorage = {
 		while (head < queue.length) {
 			const dir = queue[head++];
 
+			// Periodically clear processed entries to prevent unbounded memory growth
+			if (head > 100) {
+				queue.splice(0, head);
+				head = 0;
+			}
+
 			try {
 				const dirents = await fs.readdir(dir, { withFileTypes: true });
 				for (const dirent of dirents) {
