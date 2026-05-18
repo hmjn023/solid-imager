@@ -10,13 +10,14 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 
 				const { randomUUID } = await import("node:crypto");
 				const fs = await import("node:fs");
-				const nodeOs = await import("node:os");
 				const path = await import("node:path");
 				const { Readable } = await import("node:stream");
 				const { pipeline } = await import("node:stream/promises");
 
+				const tempDir = path.join(process.cwd(), ".cache", "import");
+				await fs.promises.mkdir(tempDir, { recursive: true });
 				const tempFilePath = path.join(
-					nodeOs.tmpdir(),
+					tempDir,
 					`import-route-${randomUUID()}.zip`,
 				);
 
