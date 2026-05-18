@@ -375,13 +375,14 @@ export const sourcesRouter = {
 		.handler(async ({ input }) => {
 			const { randomUUID } = await import("node:crypto");
 			const pathMod = await import("node:path");
-			const nodeOs = await import("node:os");
 			const fsSync = await import("node:fs");
 			const { pipeline } = await import("node:stream/promises");
 			const { Readable } = await import("node:stream");
 
+			const tempDir = pathMod.join(process.cwd(), ".cache", "lancedb-restore");
+			await fsSync.promises.mkdir(tempDir, { recursive: true });
 			const tempFilePath = pathMod.join(
-				nodeOs.tmpdir(),
+				tempDir,
 				`import-lancedb-${randomUUID()}.tar.gz`,
 			);
 

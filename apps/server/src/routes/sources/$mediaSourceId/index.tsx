@@ -1131,7 +1131,7 @@ function MediaListPage() {
 
 			{/* Hidden file input */}
 			<input
-				accept=".json,.zip"
+				accept=".json,.zip,.tar.gz"
 				class="hidden"
 				id="restore-input"
 				onChange={handleRestoreSelect}

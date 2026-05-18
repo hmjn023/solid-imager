@@ -1,5 +1,4 @@
 import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import {
 	type MediaDumpItem,
@@ -921,8 +920,10 @@ export const BackupService = {
 		const pathMod = await import("node:path");
 
 		const extractDir = pathMod.join(
-			os.tmpdir(),
-			`lancedb-restore-${Date.now()}`,
+			process.cwd(),
+			".cache",
+			"lancedb-restore",
+			`restore-${Date.now()}`,
 		);
 		await fs.mkdir(extractDir, { recursive: true });
 
@@ -1095,7 +1096,11 @@ export const BackupService = {
 		(async () => {
 			let jsonStream: import("node:fs").WriteStream | undefined;
 			try {
-				tempJsonPath = path.join(os.tmpdir(), `dump-${randomUUID()}.json`);
+				tempJsonPath = path.join(
+					process.cwd(),
+					".cache",
+					`dump-${randomUUID()}.json`,
+				);
 				jsonStream = fsSync.createWriteStream(tempJsonPath);
 
 				jsonStream.write("[\n");
