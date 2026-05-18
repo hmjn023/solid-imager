@@ -76,10 +76,10 @@ export function syncMediaSources(ids: string[]) {
  */
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" = "json",
+	mode: "json" | "zip" | "lancedb" = "json",
+	includeImages: boolean = false,
 ): Promise<Blob> {
-	// Use the dedicated download endpoint to avoid oRPC wrapper issues with streams
-	const url = `/api/sources/${id}/dump?mode=${mode}`;
+	const url = `/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
 	const response = await fetch(url, {
 		method: "GET",
 	});
@@ -103,7 +103,6 @@ export function restoreSource(id: string, data: any) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-	// Send raw file body to avoid FormData parsing issues in Vinxi/Node environment
 	const url = `/api/sources/${id}/import`;
 	const response = await fetch(url, {
 		method: "POST",
@@ -116,6 +115,26 @@ export async function importSourceZip(id: string, file: File) {
 	if (!response.ok) {
 		const errorText = await response.text();
 		throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
+	}
+
+	return await response.json();
+}
+
+export async function importSourceLanceDB(id: string, file: File) {
+	const url = `/api/sources/${id}/import-lancedb`;
+	const response = await fetch(url, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/gzip",
+		},
+		body: file,
+	});
+
+	if (!response.ok) {
+		const errorText = await response.text();
+		throw new Error(
+			`Failed to import LanceDB: ${response.status} ${errorText}`,
+		);
 	}
 
 	return await response.json();

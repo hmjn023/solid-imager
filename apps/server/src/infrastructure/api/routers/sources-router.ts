@@ -259,17 +259,29 @@ export const sourcesRouter = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]).default("json"),
+				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				includeImages: z.boolean().optional().default(false),
 			}),
 		)
 		.handler(async ({ input }) => {
-			const result = await BackupService.createDump(input.id, input.mode);
+			const result = await BackupService.createDump(input.id, input.mode, {
+				includeImages: input.includeImages,
+			});
 
 			if (input.mode === "zip") {
 				return new Response(result as ReadableStream, {
 					headers: {
 						"Content-Type": "application/zip",
 						"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+					},
+				});
+			}
+
+			if (input.mode === "lancedb") {
+				return new Response(result as ReadableStream, {
+					headers: {
+						"Content-Type": "application/gzip",
+						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
 					},
 				});
 			}
@@ -337,6 +349,53 @@ export const sourcesRouter = {
 			} finally {
 				try {
 					await fs.promises.unlink(tempFilePath);
+				} catch {
+					// ignore
+				}
+			}
+		}),
+
+	/**
+	 * Imports a media source from a LanceDB tar.gz archive
+	 */
+	importLanceDB: os
+		.meta({
+			openapi: {
+				tags: ["Media Sources"],
+				summary: "Import media source from LanceDB archive",
+				description: "Import media source data from a LanceDB tar.gz archive",
+			},
+		})
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				file: z.instanceof(File),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const { randomUUID } = await import("node:crypto");
+			const pathMod = await import("node:path");
+			const nodeOs = await import("node:os");
+			const fsSync = await import("node:fs");
+			const { pipeline } = await import("node:stream/promises");
+			const { Readable } = await import("node:stream");
+
+			const tempFilePath = pathMod.join(
+				nodeOs.tmpdir(),
+				`import-lancedb-${randomUUID()}.tar.gz`,
+			);
+
+			try {
+				const fileStream = input.file.stream();
+				await pipeline(
+					Readable.fromWeb(fileStream as any),
+					fsSync.createWriteStream(tempFilePath),
+				);
+
+				return await BackupService.importLanceDB(input.id, tempFilePath);
+			} finally {
+				try {
+					await fsSync.promises.unlink(tempFilePath);
 				} catch {
 					// ignore
 				}

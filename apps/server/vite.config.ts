@@ -61,7 +61,9 @@ export default defineConfig({
       "ffmpeg-static",
       "ffmpeg-static-static",
       "fluent-ffmpeg",
-      "archiver"
+      "archiver",
+      "@lancedb/lancedb",
+      "apache-arrow"
     ],
   },
 });
