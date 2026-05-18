@@ -322,7 +322,8 @@ export async function writeToLanceDB(
 			const chunk = items.slice(i, i + CHUNK_SIZE);
 			const rows: Record<string, unknown>[] = [];
 
-			for (const item of chunk) {
+			// Concurrently fetch all image buffers for the chunk
+			const imagePromises = chunk.map(async (item) => {
 				let imageData: Buffer | undefined;
 				if (options.includeImages && options.getImageBuffer && item.filePath) {
 					const buf = await options.getImageBuffer(item.filePath);
@@ -330,7 +331,13 @@ export async function writeToLanceDB(
 						imageData = buf;
 					}
 				}
-				rows.push(itemToRow(item, imageData));
+				return imageData;
+			});
+
+			const imageDatas = await Promise.all(imagePromises);
+
+			for (let j = 0; j < chunk.length; j++) {
+				rows.push(itemToRow(chunk[j], imageDatas[j]));
 			}
 
 			if (table === null) {
@@ -385,17 +392,24 @@ export async function readFromLanceDB(
 
 		const chunk: MediaDumpItem[] = [];
 
+		// Concurrently save all image buffers for the chunk
+		const savePromises: Promise<void>[] = [];
 		for (const row of rows as Record<string, unknown>[]) {
 			const item = rowToItem(row);
+			chunk.push(item);
 
 			if (options.extractImages && options.saveImageBuffer && row.imageData) {
 				const imageData = row.imageData as Uint8Array;
 				if (imageData && item.filePath) {
-					await options.saveImageBuffer(item.filePath, Buffer.from(imageData));
+					savePromises.push(
+						options.saveImageBuffer(item.filePath, Buffer.from(imageData)),
+					);
 				}
 			}
+		}
 
-			chunk.push(item);
+		if (savePromises.length > 0) {
+			await Promise.all(savePromises);
 		}
 
 		if (options.onChunk) {

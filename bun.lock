@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "solid-imager-monorepo",
@@ -823,7 +822,7 @@
 
     "@tanstack/solid-form": ["@tanstack/solid-form@1.32.0", "", { "dependencies": { "@tanstack/form-core": "1.32.0", "@tanstack/solid-store": "^0.9.1" }, "peerDependencies": { "solid-js": ">=1.9.9" } }, "sha512-ItsbNHjCsti+idxQ+7x8grj4f8qSfR4PdSzTBgeUD8wy5X9Acz9q5liYSJ8WaU3om8b+kRyeBGswB0A+eI0ZdA=="],
 
-    "@tanstack/solid-query": ["@tanstack/solid-query@5.100.10", "", { "dependencies": { "@tanstack/query-core": "5.100.10" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-4uUqc+l9f7wNfL9/fxU9P+/RyA0wXh67jrl8EeNYsXHo5Xcy31uiSBq5wZ80NHBCbyw+eLtrkZZMW2ZXNe1ViQ=="],
+    "@tanstack/solid-query": ["@tanstack/solid-query@5.100.11", "", { "dependencies": { "@tanstack/query-core": "5.100.11" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-T6elzjzSwzc0hr5Se+WlQHjBilxHA5q6w1XWYz72XhlUR66fQtcQdH/rtoJR/SOmRuwyHowR7IvsO/6JhraBxg=="],
 
     "@tanstack/solid-router": ["@tanstack/solid-router@1.170.4", "", { "dependencies": { "@solid-devtools/logger": "^0.9.4", "@solid-primitives/refs": "^1.0.8", "@solidjs/meta": "^0.29.4", "@tanstack/history": "1.162.0", "@tanstack/router-core": "1.171.2", "isbot": "^5.1.22" }, "peerDependencies": { "solid-js": "^1.9.10" } }, "sha512-KWSsrkqTOKdyUo0ssN8Z7GuqMYRg1PWr6xJwPomsl8WRui2WE6Xi0Iyd9o6HvlaMm4Jl4kS7GL2KODCYZGi3DA=="],
 
@@ -1493,7 +1492,7 @@
 
     "nf3": ["nf3@0.3.17", "", {}, "sha512-N9zEWySuJFw+gR0lhS5863YsvNeudOdqRyFvNb+jMXbeTJOdrjDqkCpDginIZfUm0LzT1t1nCRiDeqQm/8kirQ=="],
 
-    "nitro": ["nitro-nightly@3.0.1-20260512-093145-0498ce70", "", { "dependencies": { "consola": "^3.4.2", "crossws": "^0.4.5", "db0": "^0.3.4", "env-runner": "^0.1.7", "h3": "^2.0.1-rc.22", "hookable": "^6.1.1", "nf3": "^0.3.17", "ocache": "^0.1.4", "ofetch": "^2.0.0-alpha.3", "ohash": "^2.0.11", "rolldown": "^1.0.0", "srvx": "^0.11.15", "unenv": "^2.0.0-rc.24", "unstorage": "^2.0.0-alpha.7" }, "peerDependencies": { "@vercel/queue": "^0.1.6", "dotenv": "*", "giget": "*", "jiti": "^2.6.1", "rollup": "^4.60.3", "vite": "^7 || ^8", "xml2js": "^0.6.2", "zephyr-agent": "^0.2.0" }, "optionalPeers": ["@vercel/queue", "dotenv", "giget", "jiti", "rollup", "vite", "xml2js", "zephyr-agent"], "bin": { "nitro": "dist/cli/index.mjs" } }, "sha512-5vIbEn1ORiNIymy9RtRx3AavX4CAQqWNnsh1vOLag/fzsEQRD2wLBhR+ZcMeVTUbQb0mo8fIbMH2NkSeiGu6fw=="],
+    "nitro": ["nitro-nightly@3.0.1-20260518-130639-31265391", "", { "dependencies": { "consola": "^3.4.2", "crossws": "^0.4.5", "db0": "^0.3.4", "env-runner": "^0.1.7", "h3": "^2.0.1-rc.22", "hookable": "^6.1.1", "nf3": "^0.3.17", "ocache": "^0.1.4", "ofetch": "^2.0.0-alpha.3", "ohash": "^2.0.11", "rolldown": "^1.0.0", "srvx": "^0.11.15", "unenv": "^2.0.0-rc.24", "unstorage": "^2.0.0-alpha.7" }, "peerDependencies": { "@vercel/queue": "^0.1.6", "dotenv": "*", "giget": "*", "jiti": "^2.6.1", "rollup": "^4.60.3", "vite": "^7 || ^8", "xml2js": "^0.6.2", "zephyr-agent": "^0.2.0" }, "optionalPeers": ["@vercel/queue", "dotenv", "giget", "jiti", "rollup", "vite", "xml2js", "zephyr-agent"], "bin": { "nitro": "dist/cli/index.mjs" } }, "sha512-JhmqcyNdah1zLNeHzAIeNcTqNT1GW5UveEdK39hGB776K4ydPlijTsm821MTDNZjdEmSTs8Pzxzr+xmi7lBgdw=="],
 
     "node-releases": ["node-releases@2.0.36", "", {}, "sha512-TdC8FSgHz8Mwtw9g5L4gR/Sh9XhSP/0DEkQxfEFXOpiul5IiHgHan2VhYYb6agDSfp4KuvltmGApc8HMgUrIkA=="],
 
@@ -1990,6 +1989,8 @@
     "@tanstack/router-plugin/chokidar": ["chokidar@3.6.0", "", { "dependencies": { "anymatch": "~3.1.2", "braces": "~3.0.2", "glob-parent": "~5.1.2", "is-binary-path": "~2.1.0", "is-glob": "~4.0.1", "normalize-path": "~3.0.0", "readdirp": "~3.6.0" }, "optionalDependencies": { "fsevents": "~2.3.2" } }, "sha512-7VT13fmjotKpGipCW9JEQAusEPE+Ei8nl6/g4FBAmIm0GOOLMua9NDDo/DWp0ZAxCr3cPq5ZpBqmPAQgDda2Pw=="],
 
     "@tanstack/router-utils/diff": ["diff@8.0.3", "", {}, "sha512-qejHi7bcSD4hQAZE0tNAawRK1ZtafHDmMTMkrrIGgSLl7hTnQHmKCeB45xAcbfTqK2zowkM3j3bHt/4b/ARbYQ=="],
+
+    "@tanstack/solid-query/@tanstack/query-core": ["@tanstack/query-core@5.100.11", "", {}, "sha512-lmE0994apShXPj8CUxgx4ch5yUJhE9k/+tVwihBvPOyerACWdBocfFg24t8+0RhtlTd7tEgchDkhlCxNssvDxw=="],
 
     "@tanstack/start-client-core/seroval": ["seroval@1.5.4", "", {}, "sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw=="],
 
