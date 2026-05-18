@@ -942,12 +942,26 @@ export const BackupService = {
 					}
 				: undefined;
 
-			const items = await readFromLanceDB(extractDir, {
+			let totalProcessed = 0;
+			let totalSkipped = 0;
+			const allErrors: string[] = [];
+
+			await readFromLanceDB(extractDir, {
 				extractImages,
 				saveImageBuffer,
+				onChunk: async (chunk) => {
+					const result = await this.restoreSource(mediaSourceId, chunk);
+					totalProcessed += result.processed;
+					totalSkipped += result.skipped;
+					allErrors.push(...result.errors);
+				},
 			});
 
-			const restoreResult = await this.restoreSource(mediaSourceId, items);
+			const restoreResult = {
+				processed: totalProcessed,
+				skipped: totalSkipped,
+				errors: allErrors,
+			};
 
 			return {
 				success: true,

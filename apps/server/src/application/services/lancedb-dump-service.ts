@@ -331,30 +331,63 @@ export async function readFromLanceDB(
 	options: {
 		extractImages?: boolean;
 		saveImageBuffer?: (filePath: string, buffer: Buffer) => Promise<void>;
+		onChunk?: (chunk: MediaDumpItem[]) => Promise<void>;
 	} = {},
 ): Promise<MediaDumpItem[]> {
 	const lancedb = await import("@lancedb/lancedb");
 	const db = await lancedb.connect(lanceDbDir);
 	const table = await db.openTable("media");
-	const rows = await table.query().toArray();
 
-	const items: MediaDumpItem[] = [];
+	const allItems: MediaDumpItem[] = [];
+	let offset = 0;
+	let chunkIndex = 0;
 
-	for (const row of rows as Record<string, unknown>[]) {
-		const item = rowToItem(row);
+	while (true) {
+		const rows = await table.query().limit(CHUNK_SIZE).offset(offset).toArray();
 
-		if (options.extractImages && options.saveImageBuffer && row.imageData) {
-			const imageData = row.imageData as Uint8Array;
-			if (imageData && item.filePath) {
-				await options.saveImageBuffer(item.filePath, Buffer.from(imageData));
-			}
+		if (rows.length === 0) {
+			break;
 		}
 
-		items.push(item);
+		const chunk: MediaDumpItem[] = [];
+
+		for (const row of rows as Record<string, unknown>[]) {
+			const item = rowToItem(row);
+
+			if (options.extractImages && options.saveImageBuffer && row.imageData) {
+				const imageData = row.imageData as Uint8Array;
+				if (imageData && item.filePath) {
+					await options.saveImageBuffer(item.filePath, Buffer.from(imageData));
+				}
+			}
+
+			chunk.push(item);
+		}
+
+		if (options.onChunk) {
+			await options.onChunk(chunk);
+		} else {
+			allItems.push(...chunk);
+		}
+
+		chunkIndex++;
+		logger.info(
+			{ chunk: chunkIndex, count: rows.length },
+			"LanceDB chunk read",
+		);
+
+		if (rows.length < CHUNK_SIZE) {
+			break;
+		}
+
+		offset += rows.length;
 	}
 
-	logger.info({ path: lanceDbDir, count: items.length }, "LanceDB dump read");
-	return items;
+	logger.info(
+		{ path: lanceDbDir, count: allItems.length },
+		"LanceDB dump read",
+	);
+	return allItems;
 }
 
 export async function cleanupLanceDBDir(dir: string): Promise<void> {
