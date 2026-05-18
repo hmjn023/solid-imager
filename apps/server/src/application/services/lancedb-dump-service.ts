@@ -191,6 +191,19 @@ function itemToRow(
 	};
 }
 
+function toArray(value: unknown): unknown[] | undefined {
+	if (Array.isArray(value)) {
+		return value;
+	}
+	if (value && typeof value === "object" && "toArray" in value) {
+		return (value as { toArray: () => unknown[] }).toArray();
+	}
+	if (value && typeof value === "object" && Symbol.iterator in value) {
+		return Array.from(value as Iterable<unknown>);
+	}
+	return undefined;
+}
+
 function rowToItem(row: Record<string, unknown>): MediaDumpItem {
 	const generationInfoRaw = row.generationInfo as Record<
 		string,
@@ -215,6 +228,13 @@ function rowToItem(row: Record<string, unknown>): MediaDumpItem {
 			}
 		: undefined;
 
+	const tagsArr = toArray(row.tags);
+	const authorsArr = toArray(row.authors);
+	const charactersArr = toArray(row.characters);
+	const ipsArr = toArray(row.ips);
+	const projectsArr = toArray(row.projects);
+	const sourceUrlsArr = toArray(row.sourceUrls);
+
 	return {
 		id: (row.id as string) ?? undefined,
 		filePath: (row.filePath as string) ?? undefined,
@@ -230,36 +250,50 @@ function rowToItem(row: Record<string, unknown>): MediaDumpItem {
 		modifiedAt: row.modifiedAt
 			? new Date(row.modifiedAt as string | number)
 			: undefined,
-		tags: (row.tags as Array<Record<string, unknown>>)?.map((t) => ({
-			name: t.name as string,
-			type: (t.type as "positive" | "negative") ?? undefined,
-			confidence: (t.confidence as number) ?? undefined,
-			source: (t.source as string) ?? undefined,
+		tags: tagsArr?.map((t) => ({
+			name: (t as Record<string, unknown>).name as string,
+			type:
+				((t as Record<string, unknown>).type as "positive" | "negative") ??
+				undefined,
+			confidence: (t as Record<string, unknown>).confidence as
+				| number
+				| undefined,
+			source: (t as Record<string, unknown>).source as string | undefined,
 		})),
-		authors: (row.authors as Array<Record<string, unknown>>)?.map((a) => ({
-			name: a.name as string,
-			accountId: (a.accountId as string) ?? undefined,
+		authors: authorsArr?.map((a) => ({
+			name: (a as Record<string, unknown>).name as string,
+			accountId: (a as Record<string, unknown>).accountId as string | undefined,
 		})),
-		characters: (row.characters as Array<Record<string, unknown>>)?.map(
-			(c) => ({
-				name: c.name as string,
-				description: (c.description as string) ?? undefined,
-				confidence: (c.confidence as number) ?? undefined,
-				linkedIps: (c.linkedIps as string[]) ?? undefined,
-				source: (c.source as string) ?? undefined,
-			}),
-		),
-		ips: (row.ips as Array<Record<string, unknown>>)?.map((i) => ({
-			name: i.name as string,
-			description: (i.description as string) ?? undefined,
-			confidence: (i.confidence as number) ?? undefined,
-			source: (i.source as string) ?? undefined,
+		characters: charactersArr?.map((c) => ({
+			name: (c as Record<string, unknown>).name as string,
+			description: (c as Record<string, unknown>).description as
+				| string
+				| undefined,
+			confidence: (c as Record<string, unknown>).confidence as
+				| number
+				| undefined,
+			linkedIps: toArray((c as Record<string, unknown>).linkedIps) as
+				| string[]
+				| undefined,
+			source: (c as Record<string, unknown>).source as string | undefined,
 		})),
-		projects: (row.projects as Array<Record<string, unknown>>)?.map((p) => ({
-			name: p.name as string,
-			description: (p.description as string) ?? undefined,
+		ips: ipsArr?.map((i) => ({
+			name: (i as Record<string, unknown>).name as string,
+			description: (i as Record<string, unknown>).description as
+				| string
+				| undefined,
+			confidence: (i as Record<string, unknown>).confidence as
+				| number
+				| undefined,
+			source: (i as Record<string, unknown>).source as string | undefined,
 		})),
-		sourceUrls: (row.sourceUrls as string[]) ?? undefined,
+		projects: projectsArr?.map((p) => ({
+			name: (p as Record<string, unknown>).name as string,
+			description: (p as Record<string, unknown>).description as
+				| string
+				| undefined,
+		})),
+		sourceUrls: sourceUrlsArr as string[] | undefined,
 		generationInfo,
 	};
 }
