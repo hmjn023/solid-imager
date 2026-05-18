@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import {
 	type MediaDumpItem,
@@ -900,11 +901,74 @@ export const BackupService = {
 		};
 	},
 
+	async importLanceDB(
+		mediaSourceId: string,
+		tarGzPath: string,
+		options?: { extractImages?: boolean },
+	) {
+		const mediaSource = await db.query.mediaSources.findFirst({
+			where: eq(mediaSources.id, mediaSourceId),
+		});
+
+		if (!mediaSource) {
+			throw new Error("Media source not found");
+		}
+
+		const { readFromLanceDB, cleanupLanceDBDir } = await import(
+			"~/application/services/lancedb-dump-service"
+		);
+		const { execSync } = await import("node:child_process");
+		const pathMod = await import("node:path");
+
+		const extractDir = pathMod.join(
+			os.tmpdir(),
+			`lancedb-restore-${Date.now()}`,
+		);
+		await fs.mkdir(extractDir, { recursive: true });
+
+		const extractImages = options?.extractImages ?? true;
+
+		try {
+			execSync(`tar -xzf "${tarGzPath}" -C "${extractDir}"`, {
+				stdio: "ignore",
+			});
+
+			const driver = getDriver(mediaSource);
+
+			const saveImageBuffer = extractImages
+				? async (filePath: string, buffer: Buffer) => {
+						await driver.put(filePath, buffer);
+					}
+				: undefined;
+
+			const items = await readFromLanceDB(extractDir, {
+				extractImages,
+				saveImageBuffer,
+			});
+
+			const restoreResult = await this.restoreSource(mediaSourceId, items);
+
+			return {
+				success: true,
+				importedCount: restoreResult.processed,
+				skippedCount: restoreResult.skipped,
+				errors: restoreResult.errors,
+				message: `Successfully imported ${restoreResult.processed} items (Skipped: ${restoreResult.skipped})`,
+			};
+		} finally {
+			await cleanupLanceDBDir(extractDir);
+		}
+	},
+
 	/**
 	 * Generates a dump of the media source.
 	 * Returns a JSON object or a ReadableStream for ZIP download.
 	 */
-	async createDump(mediaSourceId: string, mode: "json" | "zip" = "json") {
+	async createDump(
+		mediaSourceId: string,
+		mode: "json" | "zip" | "lancedb" = "json",
+		options?: { includeImages: boolean },
+	) {
 		// 1. Fetch Media Source Info (needed for Driver)
 		const mediaSource = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
@@ -932,12 +996,78 @@ export const BackupService = {
 			return this._transformMediaList(mediaList);
 		}
 
+		if (mode === "lancedb") {
+			const driver = getDriver(mediaSource);
+			const { PassThrough, Readable } = await import("node:stream");
+			const { spawn } = await import("node:child_process");
+
+			const { writeToLanceDB, cleanupLanceDBDir } = await import(
+				"~/application/services/lancedb-dump-service"
+			);
+
+			const includeImages = options?.includeImages ?? false;
+
+			const mediaList = await db.query.medias.findMany({
+				where: eq(medias.mediaSourceId, mediaSourceId),
+				with: {
+					generationInfo: true,
+					urls: true,
+					tags: { with: { tag: true } },
+					authors: { with: { author: true } },
+					characters: {
+						with: { character: { with: { ips: { with: { ip: true } } } } },
+					},
+					ips: { with: { ip: true } },
+					projects: { with: { project: true } },
+				},
+			});
+
+			const items = this._transformMediaList(mediaList);
+
+			const lanceDbDir = await writeToLanceDB(items, {
+				includeImages,
+				getImageBuffer: includeImages
+					? async (filePath: string) => {
+							try {
+								return await driver.get(filePath);
+							} catch {
+								return null;
+							}
+						}
+					: undefined,
+			});
+
+			const passThrough = new PassThrough();
+
+			const tarProc = spawn("tar", ["-czf", "-", "-C", lanceDbDir, "."], {
+				stdio: ["ignore", "pipe", "ignore"],
+			});
+
+			tarProc.stdout.pipe(passThrough);
+
+			tarProc.on("error", (err: Error) => {
+				logger.error({ err }, "Failed to spawn tar for LanceDB dump");
+				passThrough.destroy(err);
+			});
+
+			tarProc.on("close", async (code: number | null) => {
+				if (code !== 0) {
+					logger.error({ code }, "tar process exited with non-zero code");
+					passThrough.destroy(new Error(`tar exited with code ${code}`));
+				} else {
+					passThrough.end();
+				}
+				await cleanupLanceDBDir(lanceDbDir);
+			});
+
+			return Readable.toWeb(passThrough) as unknown as ReadableStream;
+		}
+
 		// ZIP Mode: Streaming Implementation
 		const driver = getDriver(mediaSource);
 		const archiver = (await import("archiver")).default;
 		const { PassThrough, Readable } = await import("node:stream");
 		const fsSync = await import("node:fs");
-		const os = await import("node:os");
 		const { randomUUID } = await import("node:crypto");
 
 		const passThrough = new PassThrough();
