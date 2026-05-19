@@ -936,19 +936,19 @@ export const BackupService = {
 
 			const driver = getDriver(mediaSource);
 
-			const saveImageBuffer = extractImages
-				? async (filePath: string, buffer: Buffer) => {
-						await driver.put(filePath, buffer);
-					}
-				: undefined;
-
 			let totalProcessed = 0;
 			let totalSkipped = 0;
 			const allErrors: string[] = [];
 
+			// Process each chunk: restore metadata first, then images
+			// This prevents race condition with file watcher
 			await readFromLanceDB(extractDir, {
 				extractImages,
-				saveImageBuffer,
+				saveImageBuffer: extractImages
+					? async (filePath: string, buffer: Buffer) => {
+							await driver.put(filePath, buffer);
+						}
+					: undefined,
 				onChunk: async (chunk) => {
 					const result = await this.restoreSource(mediaSourceId, chunk);
 					totalProcessed += result.processed;
@@ -957,18 +957,12 @@ export const BackupService = {
 				},
 			});
 
-			const restoreResult = {
-				processed: totalProcessed,
-				skipped: totalSkipped,
-				errors: allErrors,
-			};
-
 			return {
 				success: true,
-				importedCount: restoreResult.processed,
-				skippedCount: restoreResult.skipped,
-				errors: restoreResult.errors,
-				message: `Successfully imported ${restoreResult.processed} items (Skipped: ${restoreResult.skipped})`,
+				importedCount: totalProcessed,
+				skippedCount: totalSkipped,
+				errors: allErrors,
+				message: `Successfully imported ${totalProcessed} items (Skipped: ${totalSkipped})`,
 			};
 		} finally {
 			await cleanupLanceDBDir(extractDir);

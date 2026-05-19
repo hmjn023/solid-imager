@@ -204,7 +204,14 @@ function toArray(value: unknown): unknown[] | undefined {
 	return undefined;
 }
 
-function rowToItem(row: Record<string, unknown>): MediaDumpItem {
+export type MediaDumpItemWithImageData = MediaDumpItem & {
+	_imageData?: Uint8Array;
+};
+
+function rowToItem(
+	row: Record<string, unknown>,
+	includeImageData: boolean,
+): MediaDumpItemWithImageData {
 	const generationInfoRaw = row.generationInfo as Record<
 		string,
 		unknown
@@ -235,7 +242,7 @@ function rowToItem(row: Record<string, unknown>): MediaDumpItem {
 	const projectsArr = toArray(row.projects);
 	const sourceUrlsArr = toArray(row.sourceUrls);
 
-	return {
+	const item: MediaDumpItemWithImageData = {
 		id: (row.id as string) ?? undefined,
 		filePath: (row.filePath as string) ?? undefined,
 		fileName: (row.fileName as string) ?? undefined,
@@ -296,6 +303,13 @@ function rowToItem(row: Record<string, unknown>): MediaDumpItem {
 		sourceUrls: sourceUrlsArr as string[] | undefined,
 		generationInfo,
 	};
+
+	// Store image data only when needed
+	if (includeImageData && row.imageData) {
+		item._imageData = row.imageData as Uint8Array;
+	}
+
+	return item;
 }
 
 export async function writeToLanceDB(
@@ -318,19 +332,13 @@ export async function writeToLanceDB(
 
 		let table: import("@lancedb/lancedb").Table | null = null;
 
+		// Phase 1: Write metadata only (without imageData)
 		for (let i = 0; i < items.length; i += CHUNK_SIZE) {
 			const chunk = items.slice(i, i + CHUNK_SIZE);
 			const rows: Record<string, unknown>[] = [];
 
 			for (const item of chunk) {
-				let imageData: Buffer | undefined;
-				if (options.includeImages && options.getImageBuffer && item.filePath) {
-					const buf = await options.getImageBuffer(item.filePath);
-					if (buf) {
-						imageData = buf;
-					}
-				}
-				rows.push(itemToRow(item, imageData));
+				rows.push(itemToRow(item));
 			}
 
 			if (table === null) {
@@ -344,8 +352,42 @@ export async function writeToLanceDB(
 
 			logger.info(
 				{ chunk: Math.floor(i / CHUNK_SIZE) + 1, total: items.length },
-				"LanceDB chunk written",
+				"LanceDB metadata chunk written",
 			);
+		}
+
+		// Phase 2: Fetch images concurrently and update via mergeInsert
+		if (options.includeImages && options.getImageBuffer && table) {
+			for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+				const chunk = items.slice(i, i + CHUNK_SIZE);
+
+				const imagePromises = chunk.map(async (item) => {
+					if (!item.filePath) return null;
+					try {
+						return await options.getImageBuffer?.(item.filePath);
+					} catch {
+						return null;
+					}
+				});
+
+				const imageDatas = await Promise.all(imagePromises);
+
+				const imageRows = imageDatas.flatMap((data, j) =>
+					data ? [{ id: chunk[j].id, imageData: data }] : [],
+				);
+
+				if (imageRows.length > 0) {
+					await table
+						.mergeInsert("id")
+						.whenMatchedUpdateAll()
+						.execute(imageRows);
+				}
+
+				logger.info(
+					{ chunk: Math.floor(i / CHUNK_SIZE) + 1, total: items.length },
+					"LanceDB image chunk updated",
+				);
+			}
 		}
 
 		if (table) {
@@ -365,16 +407,17 @@ export async function readFromLanceDB(
 	options: {
 		extractImages?: boolean;
 		saveImageBuffer?: (filePath: string, buffer: Buffer) => Promise<void>;
-		onChunk?: (chunk: MediaDumpItem[]) => Promise<void>;
+		onChunk?: (chunk: MediaDumpItemWithImageData[]) => Promise<void>;
 	} = {},
-): Promise<MediaDumpItem[]> {
+): Promise<MediaDumpItemWithImageData[]> {
 	const lancedb = await import("@lancedb/lancedb");
 	const db = await lancedb.connect(lanceDbDir);
 	const table = await db.openTable("media");
 
-	const allItems: MediaDumpItem[] = [];
+	const allItems: MediaDumpItemWithImageData[] = [];
 	let offset = 0;
 	let chunkIndex = 0;
+	const includeImageData = options.extractImages ?? false;
 
 	while (true) {
 		const rows = await table.query().limit(CHUNK_SIZE).offset(offset).toArray();
@@ -383,19 +426,27 @@ export async function readFromLanceDB(
 			break;
 		}
 
-		const chunk: MediaDumpItem[] = [];
+		const chunk: MediaDumpItemWithImageData[] = [];
 
+		const savePromises: Promise<void>[] = [];
 		for (const row of rows as Record<string, unknown>[]) {
-			const item = rowToItem(row);
+			const item = rowToItem(row, includeImageData);
+			chunk.push(item);
 
-			if (options.extractImages && options.saveImageBuffer && row.imageData) {
-				const imageData = row.imageData as Uint8Array;
-				if (imageData && item.filePath) {
-					await options.saveImageBuffer(item.filePath, Buffer.from(imageData));
+			if (options.extractImages && options.saveImageBuffer && item._imageData) {
+				if (item.filePath) {
+					savePromises.push(
+						options.saveImageBuffer(
+							item.filePath,
+							Buffer.from(item._imageData),
+						),
+					);
 				}
 			}
+		}
 
-			chunk.push(item);
+		if (savePromises.length > 0) {
+			await Promise.all(savePromises);
 		}
 
 		if (options.onChunk) {
