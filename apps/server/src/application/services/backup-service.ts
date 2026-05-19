@@ -6,7 +6,6 @@ import {
 } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import yauzl from "yauzl";
-import type { MediaDumpItemWithImageData } from "~/application/services/lancedb-dump-service";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
 	authors,
@@ -937,41 +936,33 @@ export const BackupService = {
 
 			const driver = getDriver(mediaSource);
 
-			// Phase 1: Restore metadata only (without extracting images)
-			// This prevents race condition with file watcher
-			const allItems: MediaDumpItemWithImageData[] = [];
+			let totalProcessed = 0;
+			let totalSkipped = 0;
+			const allErrors: string[] = [];
 
+			// Process each chunk: restore metadata first, then images
+			// This prevents race condition with file watcher
 			await readFromLanceDB(extractDir, {
-				extractImages: false,
+				extractImages,
+				saveImageBuffer: extractImages
+					? async (filePath: string, buffer: Buffer) => {
+							await driver.put(filePath, buffer);
+						}
+					: undefined,
 				onChunk: async (chunk) => {
-					const _result = await this.restoreSource(mediaSourceId, chunk);
-					allItems.push(...chunk);
+					const result = await this.restoreSource(mediaSourceId, chunk);
+					totalProcessed += result.processed;
+					totalSkipped += result.skipped;
+					allErrors.push(...result.errors);
 				},
 			});
 
-			// Phase 2: Restore images after metadata is fully restored
-			if (extractImages) {
-				const imagePromises: Promise<void>[] = [];
-
-				for (const item of allItems) {
-					if (item.filePath && item._imageData) {
-						imagePromises.push(
-							driver.put(item.filePath, Buffer.from(item._imageData)),
-						);
-					}
-				}
-
-				if (imagePromises.length > 0) {
-					await Promise.all(imagePromises);
-				}
-			}
-
 			return {
 				success: true,
-				importedCount: allItems.length,
-				skippedCount: 0,
-				errors: [],
-				message: `Successfully imported ${allItems.length} items`,
+				importedCount: totalProcessed,
+				skippedCount: totalSkipped,
+				errors: allErrors,
+				message: `Successfully imported ${totalProcessed} items (Skipped: ${totalSkipped})`,
 			};
 		} finally {
 			await cleanupLanceDBDir(extractDir);

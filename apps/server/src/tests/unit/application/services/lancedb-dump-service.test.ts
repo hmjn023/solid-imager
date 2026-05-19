@@ -214,7 +214,7 @@ describe("LanceDB Dump Service", () => {
 	});
 
 	describe("readFromLanceDB", () => {
-		it("should read items with _imageData preserved", async () => {
+		it("should NOT include _imageData when extractImages is false", async () => {
 			const { readFromLanceDB } = await import(
 				"~/application/services/lancedb-dump-service"
 			);
@@ -241,6 +241,35 @@ describe("LanceDB Dump Service", () => {
 			const item = result[0] as MediaDumpItemWithImageData;
 			expect(item.id).toBe("item-1");
 			expect(item.filePath).toBe("test/image1.png");
+			expect(item._imageData).toBeUndefined();
+		});
+
+		it("should include _imageData when extractImages is true", async () => {
+			const { readFromLanceDB } = await import(
+				"~/application/services/lancedb-dump-service"
+			);
+
+			const mockImageData = new Uint8Array([1, 2, 3, 4]);
+			mockToArray.mockResolvedValue([
+				{
+					id: "item-1",
+					filePath: "test/image1.png",
+					fileName: "image1.png",
+					mediaType: "image",
+					width: 100,
+					height: 100,
+					fileSize: 1024,
+					imageData: mockImageData,
+				},
+			]);
+
+			const result = await readFromLanceDB("/path/to/lancedb", {
+				extractImages: true,
+			});
+
+			expect(result).toHaveLength(1);
+			const item = result[0] as MediaDumpItemWithImageData;
+			expect(item.id).toBe("item-1");
 			expect(item._imageData).toBe(mockImageData);
 		});
 

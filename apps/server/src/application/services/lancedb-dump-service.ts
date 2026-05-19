@@ -208,7 +208,10 @@ export type MediaDumpItemWithImageData = MediaDumpItem & {
 	_imageData?: Uint8Array;
 };
 
-function rowToItem(row: Record<string, unknown>): MediaDumpItemWithImageData {
+function rowToItem(
+	row: Record<string, unknown>,
+	includeImageData: boolean,
+): MediaDumpItemWithImageData {
 	const generationInfoRaw = row.generationInfo as Record<
 		string,
 		unknown
@@ -301,8 +304,8 @@ function rowToItem(row: Record<string, unknown>): MediaDumpItemWithImageData {
 		generationInfo,
 	};
 
-	// Store image data temporarily for later extraction
-	if (row.imageData) {
+	// Store image data only when needed
+	if (includeImageData && row.imageData) {
 		item._imageData = row.imageData as Uint8Array;
 	}
 
@@ -369,15 +372,9 @@ export async function writeToLanceDB(
 
 				const imageDatas = await Promise.all(imagePromises);
 
-				const imageRows: Record<string, unknown>[] = [];
-				for (let j = 0; j < chunk.length; j++) {
-					if (imageDatas[j]) {
-						imageRows.push({
-							id: chunk[j].id,
-							imageData: imageDatas[j],
-						});
-					}
-				}
+				const imageRows = imageDatas.flatMap((data, j) =>
+					data ? [{ id: chunk[j].id, imageData: data }] : [],
+				);
 
 				if (imageRows.length > 0) {
 					await table
@@ -420,6 +417,7 @@ export async function readFromLanceDB(
 	const allItems: MediaDumpItemWithImageData[] = [];
 	let offset = 0;
 	let chunkIndex = 0;
+	const includeImageData = options.extractImages ?? false;
 
 	while (true) {
 		const rows = await table.query().limit(CHUNK_SIZE).offset(offset).toArray();
@@ -430,11 +428,9 @@ export async function readFromLanceDB(
 
 		const chunk: MediaDumpItemWithImageData[] = [];
 
-		// Phase 1: Read metadata and convert to items
-		// Phase 2: Concurrently save all image buffers for the chunk
 		const savePromises: Promise<void>[] = [];
 		for (const row of rows as Record<string, unknown>[]) {
-			const item = rowToItem(row);
+			const item = rowToItem(row, includeImageData);
 			chunk.push(item);
 
 			if (options.extractImages && options.saveImageBuffer && item._imageData) {
