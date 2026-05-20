@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.16",
+    "@lancedb/lancedb": "^0.27.2",
     "@orpc/client": "^1.13.13",
     "@orpc/contract": "^1.13.13",
     "@orpc/experimental-pino": "^1.13.13",
@@ -45,6 +46,7 @@
     "@tanstack/solid-router-ssr-query": "latest",
     "@tanstack/solid-start": "latest",
     "@tanstack/zod-form-adapter": "^0.42.1",
+    "apache-arrow": "^21.1.0",
     "archiver": "^7.0.1",
     "chokidar": "^4.0.3",
     "drizzle-orm": "^0.44.7",

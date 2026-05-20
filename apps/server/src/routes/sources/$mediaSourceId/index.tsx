@@ -84,6 +84,7 @@ import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-quer
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
+	importSourceLanceDB,
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
@@ -367,7 +368,17 @@ function MediaListPage() {
 		}
 	};
 
-	const handleDumpDownload = async (mode: "json" | "zip" = "json") => {
+	const [showLanceDBModal, setShowLanceDBModal] = createSignal(false);
+
+	const handleDumpDownload = async (
+		mode: "json" | "zip" | "lancedb" = "json",
+		_includeImages: boolean = false,
+	) => {
+		if (mode === "lancedb") {
+			setShowLanceDBModal(true);
+			return;
+		}
+
 		const id = mediaSourceId();
 		if (!id) {
 			return;
@@ -393,6 +404,33 @@ function MediaListPage() {
 		}
 	};
 
+	const handleLanceDBDump = async (includeImages: boolean) => {
+		setShowLanceDBModal(false);
+		const id = mediaSourceId();
+		if (!id) {
+			return;
+		}
+
+		try {
+			const blob = await fetchSourceDump(id, "lancedb", includeImages);
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `source-${id}-dump.tar.gz`;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+			toast.success("LanceDB dump downloaded successfully");
+		} catch (error) {
+			logger.error(
+				{ err: error, mediaSourceId: id },
+				"Failed to download LanceDB dump",
+			);
+			toast.error("Failed to download LanceDB dump");
+		}
+	};
+
 	const handleRestoreSelect = async (e: Event) => {
 		const target = e.target as HTMLInputElement;
 		if (!target.files || target.files.length === 0) {
@@ -414,6 +452,30 @@ function MediaListPage() {
 			) {
 				toast.loading("Importing ZIP dump...", { id: "restore-toast" });
 				const result = await importSourceZip(id, file);
+				toast.success(
+					`Import complete: ${result.importedCount} items imported.`,
+					{ id: "restore-toast" },
+				);
+				queryClient.invalidateQueries({
+					queryKey: ["media", id],
+				});
+				queryClient.invalidateQueries({
+					queryKey: ["mediaSources"],
+				});
+				target.value = ""; // Reset input
+				return;
+			}
+
+			// Check for LanceDB tar.gz file
+			if (
+				file.name.endsWith(".tar.gz") ||
+				file.type === "application/gzip" ||
+				file.type === "application/x-gzip"
+			) {
+				toast.loading("Importing LanceDB dump...", {
+					id: "restore-toast",
+				});
+				const result = await importSourceLanceDB(id, file);
 				toast.success(
 					`Import complete: ${result.importedCount} items imported.`,
 					{ id: "restore-toast" },
@@ -805,6 +867,31 @@ function MediaListPage() {
 					</Button>
 					<Button
 						class="mr-2 border-white text-white hover:bg-sky-700"
+						onClick={() => handleDumpDownload("lancedb")}
+						size="icon"
+						title="Download LanceDB Dump"
+						variant="outline"
+					>
+						<svg
+							class="lucide lucide-database"
+							fill="none"
+							height="20"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							viewBox="0 0 24 24"
+							width="20"
+							xmlns="http://www.w3.org/2000/svg"
+						>
+							<title>Download LanceDB</title>
+							<ellipse cx="12" cy="5" rx="9" ry="3" />
+							<path d="M3 5V19A9 3 0 0 0 21 19V5" />
+							<path d="M3 12A9 3 0 0 0 21 12" />
+						</svg>
+					</Button>
+					<Button
+						class="mr-2 border-white text-white hover:bg-sky-700"
 						onClick={() => document.getElementById("restore-input")?.click()}
 						size="icon"
 						title="Restore Metadata from Dump"
@@ -1044,7 +1131,7 @@ function MediaListPage() {
 
 			{/* Hidden file input */}
 			<input
-				accept=".json,.zip"
+				accept=".json,.zip,.tar.gz"
 				class="hidden"
 				id="restore-input"
 				onChange={handleRestoreSelect}
@@ -1112,6 +1199,30 @@ function MediaListPage() {
 				onOpenChange={setMoveCopyDialogOpen}
 				open={moveCopyDialogOpen()}
 			/>
+
+			<Dialog
+				onOpenChange={(open) => !open && setShowLanceDBModal(false)}
+				open={showLanceDBModal()}
+			>
+				<DialogContent>
+					<DialogHeader>
+						<DialogTitle>LanceDB Dump</DialogTitle>
+						<DialogDescription>
+							Include media file data in the LanceDB dump? Media files will be
+							stored as binary data within the LanceDB table. Excluding them
+							will produce a smaller dump containing only metadata.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button onClick={() => handleLanceDBDump(false)} variant="outline">
+							Metadata only
+						</Button>
+						<Button onClick={() => handleLanceDBDump(true)}>
+							Include media files
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</section>
 	);
 }
