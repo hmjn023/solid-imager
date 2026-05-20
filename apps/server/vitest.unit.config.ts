@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     alias: {
       "~": path.resolve(__dirname, "./src"),
+      "@": path.resolve(__dirname, "../../packages/core/src"),
+      "@solid-imager/ui": path.resolve(__dirname, "../../packages/ui/src"),
     },
     environment: "node",
     globals: true,

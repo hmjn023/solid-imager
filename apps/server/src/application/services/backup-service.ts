@@ -930,9 +930,27 @@ export const BackupService = {
 		const extractImages = options?.extractImages ?? true;
 
 		try {
-			execSync(`tar -xzf "${tarGzPath}" -C "${extractDir}"`, {
-				stdio: "ignore",
+			const listOutput = execSync(`tar -tzf "${tarGzPath}"`, {
+				encoding: "utf-8",
 			});
+			const entries = listOutput.split("\n").filter(Boolean);
+			for (const entry of entries) {
+				const normalized = pathMod.normalize(entry);
+				if (
+					pathMod.isAbsolute(entry) ||
+					entry.startsWith("/") ||
+					normalized.includes("..")
+				) {
+					throw new Error(
+						`Invalid path in archive: ${entry}. Path traversal detected.`,
+					);
+				}
+			}
+
+			execSync(
+				`tar -xzf "${tarGzPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
+				{ stdio: "ignore" },
+			);
 
 			const driver = getDriver(mediaSource);
 
@@ -1016,24 +1034,42 @@ export const BackupService = {
 
 			const includeImages = options?.includeImages ?? false;
 
-			const mediaList = await db.query.medias.findMany({
-				where: eq(medias.mediaSourceId, mediaSourceId),
-				with: {
-					generationInfo: true,
-					urls: true,
-					tags: { with: { tag: true } },
-					authors: { with: { author: true } },
-					characters: {
-						with: { character: { with: { ips: { with: { ip: true } } } } },
+			const allItems: MediaDumpItem[] = [];
+			const limit = 500;
+			let offset = 0;
+			let hasMore = true;
+
+			while (hasMore) {
+				const mediaList = await db.query.medias.findMany({
+					where: eq(medias.mediaSourceId, mediaSourceId),
+					limit,
+					offset,
+					with: {
+						generationInfo: true,
+						urls: true,
+						tags: { with: { tag: true } },
+						authors: { with: { author: true } },
+						characters: {
+							with: { character: { with: { ips: { with: { ip: true } } } } },
+						},
+						ips: { with: { ip: true } },
+						projects: { with: { project: true } },
 					},
-					ips: { with: { ip: true } },
-					projects: { with: { project: true } },
-				},
-			});
+					orderBy: medias.id,
+				});
 
-			const items = this._transformMediaList(mediaList);
+				if (mediaList.length < limit) {
+					hasMore = false;
+				}
+				offset += limit;
 
-			const lanceDbDir = await writeToLanceDB(items, {
+				if (mediaList.length > 0) {
+					const transformedItems = this._transformMediaList(mediaList);
+					allItems.push(...transformedItems);
+				}
+			}
+
+			const lanceDbDir = await writeToLanceDB(allItems, {
 				includeImages,
 				getImageBuffer: includeImages
 					? async (filePath: string) => {

@@ -208,6 +208,17 @@ export type MediaDumpItemWithImageData = MediaDumpItem & {
 	_imageData?: Uint8Array;
 };
 
+function safeJsonParse(value: unknown): unknown {
+	if (typeof value !== "string") {
+		return value;
+	}
+	try {
+		return JSON.parse(value);
+	} catch {
+		return value;
+	}
+}
+
 function rowToItem(
 	row: Record<string, unknown>,
 	includeImageData: boolean,
@@ -218,19 +229,26 @@ function rowToItem(
 	> | null;
 	const generationInfo = generationInfoRaw
 		? {
-				prompt: (generationInfoRaw.prompt as string) ?? undefined,
+				prompt: (generationInfoRaw.prompt as string | undefined) ?? undefined,
 				negativePrompt:
-					(generationInfoRaw.negativePrompt as string) ?? undefined,
-				modelName: (generationInfoRaw.modelName as string) ?? undefined,
-				seed: (generationInfoRaw.seed as number) ?? undefined,
-				steps: (generationInfoRaw.steps as number) ?? undefined,
-				cfgScale: (generationInfoRaw.cfgScale as number) ?? undefined,
-				aiGenerated: (generationInfoRaw.aiGenerated as boolean) ?? undefined,
+					(generationInfoRaw.negativePrompt as string | undefined) ?? undefined,
+				modelName:
+					(generationInfoRaw.modelName as string | undefined) ?? undefined,
+				seed: (generationInfoRaw.seed as number | undefined) ?? undefined,
+				steps: (generationInfoRaw.steps as number | undefined) ?? undefined,
+				cfgScale:
+					(generationInfoRaw.cfgScale as number | undefined) ?? undefined,
+				aiGenerated:
+					(generationInfoRaw.aiGenerated as boolean | undefined) ?? undefined,
 				workflow: generationInfoRaw.workflow
-					? JSON.parse(generationInfoRaw.workflow as string)
+					? (safeJsonParse(generationInfoRaw.workflow) as
+							| Record<string, unknown>
+							| undefined)
 					: undefined,
 				metadata: generationInfoRaw.metadata
-					? JSON.parse(generationInfoRaw.metadata as string)
+					? (safeJsonParse(generationInfoRaw.metadata) as
+							| Record<string, unknown>
+							| undefined)
 					: undefined,
 			}
 		: undefined;
@@ -242,65 +260,76 @@ function rowToItem(
 	const projectsArr = toArray(row.projects);
 	const sourceUrlsArr = toArray(row.sourceUrls);
 
+	const safeString = (v: unknown): string | undefined =>
+		typeof v === "string" ? v : undefined;
+	const safeNumber = (v: unknown): number | undefined =>
+		typeof v === "number" ? v : undefined;
+
 	const item: MediaDumpItemWithImageData = {
-		id: (row.id as string) ?? undefined,
-		filePath: (row.filePath as string) ?? undefined,
-		fileName: (row.fileName as string) ?? undefined,
-		description: (row.description as string) ?? undefined,
-		width: (row.width as number) ?? undefined,
-		height: (row.height as number) ?? undefined,
-		fileSize: (row.fileSize as number) ?? undefined,
-		mediaType: (row.mediaType as "image" | "video" | "audio") ?? undefined,
+		id: safeString(row.id),
+		filePath: safeString(row.filePath),
+		fileName: safeString(row.fileName),
+		description: safeString(row.description),
+		width: safeNumber(row.width),
+		height: safeNumber(row.height),
+		fileSize: safeNumber(row.fileSize),
+		mediaType:
+			row.mediaType === "image" ||
+			row.mediaType === "video" ||
+			row.mediaType === "audio"
+				? row.mediaType
+				: undefined,
 		createdAt: row.createdAt
 			? new Date(row.createdAt as string | number)
 			: undefined,
 		modifiedAt: row.modifiedAt
 			? new Date(row.modifiedAt as string | number)
 			: undefined,
-		tags: tagsArr?.map((t) => ({
-			name: (t as Record<string, unknown>).name as string,
-			type:
-				((t as Record<string, unknown>).type as "positive" | "negative") ??
-				undefined,
-			confidence: (t as Record<string, unknown>).confidence as
-				| number
-				| undefined,
-			source: (t as Record<string, unknown>).source as string | undefined,
-		})),
-		authors: authorsArr?.map((a) => ({
-			name: (a as Record<string, unknown>).name as string,
-			accountId: (a as Record<string, unknown>).accountId as string | undefined,
-		})),
-		characters: charactersArr?.map((c) => ({
-			name: (c as Record<string, unknown>).name as string,
-			description: (c as Record<string, unknown>).description as
-				| string
-				| undefined,
-			confidence: (c as Record<string, unknown>).confidence as
-				| number
-				| undefined,
-			linkedIps: toArray((c as Record<string, unknown>).linkedIps) as
-				| string[]
-				| undefined,
-			source: (c as Record<string, unknown>).source as string | undefined,
-		})),
-		ips: ipsArr?.map((i) => ({
-			name: (i as Record<string, unknown>).name as string,
-			description: (i as Record<string, unknown>).description as
-				| string
-				| undefined,
-			confidence: (i as Record<string, unknown>).confidence as
-				| number
-				| undefined,
-			source: (i as Record<string, unknown>).source as string | undefined,
-		})),
-		projects: projectsArr?.map((p) => ({
-			name: (p as Record<string, unknown>).name as string,
-			description: (p as Record<string, unknown>).description as
-				| string
-				| undefined,
-		})),
-		sourceUrls: sourceUrlsArr as string[] | undefined,
+		tags: tagsArr?.map((t) => {
+			const obj = t as Record<string, unknown>;
+			return {
+				name: safeString(obj.name) ?? "",
+				type: (obj.type as "positive" | "negative" | undefined) ?? undefined,
+				confidence: safeNumber(obj.confidence),
+				source: safeString(obj.source),
+			};
+		}),
+		authors: authorsArr?.map((a) => {
+			const obj = a as Record<string, unknown>;
+			return {
+				name: safeString(obj.name) ?? "",
+				accountId: safeString(obj.accountId),
+			};
+		}),
+		characters: charactersArr?.map((c) => {
+			const obj = c as Record<string, unknown>;
+			return {
+				name: safeString(obj.name) ?? "",
+				description: safeString(obj.description),
+				confidence: safeNumber(obj.confidence),
+				linkedIps: toArray(obj.linkedIps) as string[] | undefined,
+				source: safeString(obj.source),
+			};
+		}),
+		ips: ipsArr?.map((i) => {
+			const obj = i as Record<string, unknown>;
+			return {
+				name: safeString(obj.name) ?? "",
+				description: safeString(obj.description),
+				confidence: safeNumber(obj.confidence),
+				source: safeString(obj.source),
+			};
+		}),
+		projects: projectsArr?.map((p) => {
+			const obj = p as Record<string, unknown>;
+			return {
+				name: safeString(obj.name) ?? "",
+				description: safeString(obj.description),
+			};
+		}),
+		sourceUrls: sourceUrlsArr?.filter(
+			(u): u is string => typeof u === "string",
+		),
 		generationInfo,
 	};
 

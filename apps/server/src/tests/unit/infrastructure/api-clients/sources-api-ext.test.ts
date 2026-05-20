@@ -52,7 +52,7 @@ describe("Sources API Client Extensions", () => {
 		const result = await fetchSourceDump(id, "json");
 
 		expect(global.fetch).toHaveBeenCalledWith(
-			`/api/sources/${id}/dump?mode=json`,
+			`/api/sources/${id}/dump?mode=json&includeImages=false`,
 			{
 				method: "GET",
 			},
@@ -72,7 +72,7 @@ describe("Sources API Client Extensions", () => {
 		const result = await fetchSourceDump(id, "zip");
 
 		expect(global.fetch).toHaveBeenCalledWith(
-			`/api/sources/${id}/dump?mode=zip`,
+			`/api/sources/${id}/dump?mode=zip&includeImages=false`,
 			{
 				method: "GET",
 			},
