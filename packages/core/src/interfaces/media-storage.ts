@@ -15,6 +15,10 @@ export type MediaStorageResult = {
 export type MediaSourceFile = {
 	name: string;
 	arrayBuffer(): Promise<ArrayBuffer | Uint8Array>;
+	slice?(
+		start?: number,
+		end?: number,
+	): { arrayBuffer(): Promise<ArrayBuffer | Uint8Array> };
 };
 
 export type MediaMetadata = {
