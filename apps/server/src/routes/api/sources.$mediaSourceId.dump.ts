@@ -10,14 +10,28 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 
 				const { mediaSourceId } = params;
 				const { searchParams } = new URL(request.url);
-				const mode = searchParams.get("mode") === "zip" ? "zip" : "json";
-				const result = await BackupService.createDump(mediaSourceId, mode);
+				const rawMode = searchParams.get("mode");
+				const mode =
+					rawMode === "zip" || rawMode === "lancedb" ? rawMode : "json";
+				const includeImages = searchParams.get("includeImages") === "true";
+				const result = await BackupService.createDump(mediaSourceId, mode, {
+					includeImages,
+				});
 
 				if (mode === "zip") {
 					return new Response(result as ReadableStream, {
 						headers: {
 							"Content-Type": "application/zip",
 							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.zip"`,
+						},
+					});
+				}
+
+				if (mode === "lancedb") {
+					return new Response(result as ReadableStream, {
+						headers: {
+							"Content-Type": "application/gzip",
+							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.tar.gz"`,
 						},
 					});
 				}

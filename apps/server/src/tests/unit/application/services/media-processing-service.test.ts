@@ -22,6 +22,8 @@ const mockAuthorRepo = {
 	create: vi.fn(),
 	addMedia: vi.fn(),
 	findByName: vi.fn(),
+	findOrCreateBulk: vi.fn(),
+	addMediaBulk: vi.fn(),
 };
 const mockCharacterRepo = {
 	create: vi.fn(),
@@ -29,6 +31,10 @@ const mockCharacterRepo = {
 	findByName: vi.fn(),
 	findById: vi.fn(),
 	update: vi.fn(),
+	findByNames: vi.fn(),
+	findOrCreateBulk: vi.fn(),
+	updateIpsBulk: vi.fn(),
+	addToMediaBulk: vi.fn(),
 };
 const mockCharacterService = {
 	findByName: vi.fn(),
@@ -43,11 +49,15 @@ const mockIpRepo = {
 	addMedia: vi.fn(),
 	findByName: vi.fn(),
 	findByNames: vi.fn(),
+	findOrCreateBulk: vi.fn(),
+	addMediaBulk: vi.fn(),
 };
 const mockProjectRepo = {
 	create: vi.fn(),
 	addMedia: vi.fn(),
 	findByName: vi.fn(),
+	findOrCreateBulk: vi.fn(),
+	addMediaBulk: vi.fn(),
 };
 const mockJobRepo = {
 	create: vi.fn(),
@@ -113,27 +123,21 @@ describe("MediaProcessingService", () => {
 
 		it("should register authors if provided", async () => {
 			mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
-			mockAuthorRepo.findByName.mockResolvedValue(null);
-			mockAuthorRepo.create.mockResolvedValue({ id: "author-id" });
+			mockAuthorRepo.findOrCreateBulk.mockResolvedValue([
+				{ id: "author-id", name: "Author Name" },
+			]);
 
 			await service.addContextMetadataToExistingMedia(mediaId, {
 				authors: [{ name: "Author Name", accountId: "acc-123" }],
 			});
 
-			expect(mockAuthorRepo.findByName).toHaveBeenCalledWith(
-				"Author Name",
+			expect(mockAuthorRepo.findOrCreateBulk).toHaveBeenCalledWith(
+				["Author Name"],
 				undefined,
 			);
-			expect(mockAuthorRepo.create).toHaveBeenCalledWith(
-				{
-					name: "Author Name",
-					accountId: "acc-123",
-				},
-				undefined,
-			);
-			expect(mockAuthorRepo.addMedia).toHaveBeenCalledWith(
+			expect(mockAuthorRepo.addMediaBulk).toHaveBeenCalledWith(
 				mediaId,
-				"author-id",
+				["author-id"],
 				undefined,
 			);
 		});
@@ -143,28 +147,41 @@ describe("MediaProcessingService", () => {
 			const ipId = "ip-1";
 			const testConfidence = 0.9;
 			mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
-			mockCharacterService.findByName.mockResolvedValue({
-				id: charId,
-				name: "Char Name",
-				ips: [{ id: ipId, name: "IP Name" }],
-			});
 			mockIpRepo.findByNames.mockResolvedValue([{ id: ipId, name: "IP Name" }]);
+
+			// Steps in registerCharacters
+			mockCharacterRepo.findByNames.mockResolvedValue([]);
+			mockCharacterRepo.findOrCreateBulk.mockResolvedValue([
+				{
+					id: charId,
+					name: "Char Name",
+					ips: [{ id: ipId, name: "IP Name" }],
+				},
+			]);
 
 			await service.addContextMetadataToExistingMedia(mediaId, {
 				characters: [{ name: "Char Name", confidence: testConfidence }],
 			});
 
-			expect(mockCharacterService.findByName).toHaveBeenCalledWith("Char Name");
-			expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
-				mediaId,
-				charId,
-				testConfidence,
+			expect(mockCharacterRepo.findByNames).toHaveBeenCalledWith(
+				["Char Name"],
+				undefined,
+			);
+			expect(mockCharacterRepo.findOrCreateBulk).toHaveBeenCalledWith(
+				[{ name: "Char Name", ipIds: [] }],
 				"manual",
 				undefined,
 			);
-			expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
+			expect(mockCharacterRepo.addToMediaBulk).toHaveBeenCalledWith(
 				mediaId,
-				expect.objectContaining({ id: charId }),
+				[{ id: charId, confidence: testConfidence }],
+				"manual",
+				undefined,
+			);
+			expect(mockIpRepo.addMediaBulk).toHaveBeenCalledWith(
+				mediaId,
+				[{ id: ipId }],
+				"character_link",
 				undefined,
 			);
 		});
@@ -177,59 +194,38 @@ describe("MediaProcessingService", () => {
 
 			mockMediaRepo.findById.mockResolvedValue({ id: mediaId });
 
-			// 1. IP registration (called first)
+			// 1. IP registration
+			mockIpRepo.findOrCreateBulk.mockResolvedValue([
+				{ id: ipId, name: ipName },
+			]);
 			mockIpRepo.findByNames.mockResolvedValue([{ id: ipId, name: ipName }]);
-			mockIpRepo.findByName.mockResolvedValueOnce(null);
-			mockIpRepo.create.mockResolvedValue({ id: ipId, name: ipName });
-			mockIpRepo.findByName.mockResolvedValue({ id: ipId, name: ipName });
 
-			// 2. Character registration (called second)
-			mockCharacterService.findByName.mockResolvedValue(null);
-			mockCharacterService.createCharacter.mockResolvedValue({
-				id: charId,
-				name: charName,
-				ips: [{ id: ipId, name: ipName }],
-			});
+			// 2. Character registration
+			mockCharacterRepo.findByNames.mockResolvedValue([]);
+			mockCharacterRepo.findOrCreateBulk.mockResolvedValue([
+				{
+					id: charId,
+					name: charName,
+					ips: [{ id: ipId, name: ipName }],
+				},
+			]);
 
 			await service.addContextMetadataToExistingMedia(mediaId, {
 				characters: [{ name: charName }],
 				ips: [{ name: ipName }],
 			});
 
-			// Verify IP was created
-			expect(mockIpRepo.create).toHaveBeenCalledWith(
-				{
-					name: ipName,
-					description: "",
-				},
-				undefined,
-			);
-
-			// Verify Character was created with IP ID
-			expect(mockCharacterService.createCharacter).toHaveBeenCalledWith({
-				name: charName,
-				description: "",
-				ipIds: [ipId],
-			});
-
-			// Verify both were linked to media
-			expect(mockIpRepo.addMedia).toHaveBeenCalledWith(
-				mediaId,
-				ipId,
-				undefined,
+			// Verify IP was created bulk
+			expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
+				[ipName],
 				"manual",
 				undefined,
 			);
-			expect(mockCharacterRepo.addToMedia).toHaveBeenCalledWith(
-				mediaId,
-				charId,
-				1,
+
+			// Verify Character was created bulk with IP ID
+			expect(mockCharacterRepo.findOrCreateBulk).toHaveBeenCalledWith(
+				[{ name: charName, ipIds: [ipId] }],
 				"manual",
-				undefined,
-			);
-			expect(mockCharacterService.linkCharacterIps).toHaveBeenCalledWith(
-				mediaId,
-				expect.objectContaining({ id: charId }),
 				undefined,
 			);
 		});

@@ -2,7 +2,9 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { BackupService } from "~/application/services/backup-service";
 import { initServices } from "~/infrastructure/bootstrap";
 
-export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
+export const Route = createFileRoute(
+	"/api/sources/$mediaSourceId/import-lancedb",
+)({
 	server: {
 		handlers: {
 			POST: async ({ params, request }) => {
@@ -14,11 +16,11 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 				const { Readable } = await import("node:stream");
 				const { pipeline } = await import("node:stream/promises");
 
-				const tempDir = path.join(process.cwd(), ".cache", "import");
+				const tempDir = path.join(process.cwd(), ".cache", "lancedb-restore");
 				await fs.promises.mkdir(tempDir, { recursive: true });
 				const tempFilePath = path.join(
 					tempDir,
-					`import-route-${randomUUID()}.zip`,
+					`import-lancedb-route-${randomUUID()}.tar.gz`,
 				);
 
 				try {
@@ -32,7 +34,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 					);
 
 					return Response.json(
-						await BackupService.importSourceZip(
+						await BackupService.importLanceDB(
 							params.mediaSourceId,
 							tempFilePath,
 						),

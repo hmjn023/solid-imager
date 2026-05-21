@@ -6,8 +6,8 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineNitroConfig({
-  externals: {
-    external: ["@electric-sql/pglite"],
+  rollupConfig: {
+    external: ["@lancedb/lancedb", "apache-arrow", /^@lancedb\/lancedb-/],
   },
   hooks: {
     compiled: (nitro) => {
@@ -15,7 +15,11 @@ export default defineNitroConfig({
       const libsDir = path.join(serverDir, "_libs");
       
       // Resolve the source directory of pglite assets from node_modules
-      const pglitePkgPath = path.dirname(path.resolve(__dirname, "node_modules/@electric-sql/pglite/package.json"));
+      const pgliteLocalPath = path.resolve(__dirname, "node_modules/@electric-sql/pglite/package.json");
+      const pgliteRootPath = path.resolve(__dirname, "../../node_modules/@electric-sql/pglite/package.json");
+      const pglitePkgPath = path.dirname(
+        fs.existsSync(pgliteLocalPath) ? pgliteLocalPath : pgliteRootPath
+      );
       const pgliteDistPath = path.join(pglitePkgPath, "dist");
       
       const assetsToCopy = ["pglite.data", "pglite.wasm"];
