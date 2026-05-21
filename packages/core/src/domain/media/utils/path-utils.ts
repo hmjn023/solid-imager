@@ -5,6 +5,25 @@
  */
 
 /**
+ * Normalises a relative path to POSIX-style forward slashes and collapses
+ * consecutive separators.
+ */
+export function normalizeRelativePath(path: string): string {
+	return path.replace(/[\\/]+/g, "/");
+}
+
+/**
+ * Returns `true` if any segment of the path starts with a dot (hidden file
+ * or directory).
+ */
+export function isHiddenPath(filePath: string): boolean {
+	return filePath
+		.split(/[\\/]/)
+		.filter(Boolean)
+		.some((segment) => segment.startsWith("."));
+}
+
+/**
  * Provides utility functions for manipulating file paths.
  */
 export const PathUtils = {
