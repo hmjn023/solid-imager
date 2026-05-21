@@ -1,0 +1,43 @@
+{
+	"name": "@solid-imager/db",
+	"version": "0.0.0",
+	"type": "module",
+	"main": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./schema": "./src/schema.ts",
+		"./migrations": "./src/migrations.ts",
+		"./types": "./src/types.ts",
+		"./sqlite/schema": "./src/sqlite/schema.ts",
+		"./sqlite/client": "./src/sqlite/client.ts",
+		"./sqlite/client.mock": "./src/sqlite/client.mock.ts",
+		"./sqlite/migrations": "./src/sqlite/migrations.ts",
+		"./repositories/author-repository": "./src/repositories/author-repository.ts",
+		"./repositories/character-repository": "./src/repositories/character-repository.ts",
+		"./repositories/ip-repository": "./src/repositories/ip-repository.ts",
+		"./repositories/preset-repository": "./src/repositories/preset-repository.ts",
+		"./repositories/project-repository": "./src/repositories/project-repository.ts",
+		"./repositories/source-repository": "./src/repositories/source-repository.ts",
+		"./repositories/tag-repository": "./src/repositories/tag-repository.ts",
+		"./repositories/*": "./src/repositories/*.ts",
+		"./backup": "./src/backup.ts"
+	},
+	"scripts": {
+		"lint": "biome lint ./src",
+		"format": "biome format --fix ./src",
+		"check": "biome check --fix --unsafe ./src",
+		"typecheck": "sh -c 'tsc --noEmit'"
+	},
+	"dependencies": {
+		"@solid-imager/core": "workspace:*",
+		"@tauri-apps/plugin-sql": "^2.2.0",
+		"better-sqlite3": "^11.8.0",
+		"drizzle-orm": "^0.44.7"
+	},
+	"devDependencies": {
+		"@types/better-sqlite3": "^7.6.12",
+		"typescript": "^5.9.3",
+		"vite-plus": "latest",
+		"vite-tsconfig-paths": "^5.1.4"
+	}
+}
