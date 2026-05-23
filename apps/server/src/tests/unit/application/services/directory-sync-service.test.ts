@@ -40,7 +40,7 @@ vi.mock("~/infrastructure/repositories/source-repository", () => ({
 			type: "local",
 			connectionInfo: { path: "/fake/path" },
 		}),
-		findAll: vi.fn(),
+		findAll: vi.fn().mockResolvedValue([]),
 	},
 }));
 vi.mock("~/application/services/media-processing-service", () => ({
