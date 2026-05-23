@@ -566,14 +566,14 @@ function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
 }
 
 function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
-	const buildSearchQuery = makeBuildSearchQuery(getExecutor);
-
 	return async (
 		params: MediaSearchRequest,
 		mediaSourceId?: string,
 		tx?: Transaction,
 	): Promise<MediaSearchResponse> => {
 		const client = getExecutor(tx);
+		const getExecutorWithTx = (innerTx?: unknown) => getExecutor(innerTx ?? tx);
+		const buildSearchQuery = makeBuildSearchQuery(getExecutorWithTx);
 
 		const conditions: SQL[] = [];
 		if (mediaSourceId) {

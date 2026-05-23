@@ -10,7 +10,7 @@ import type {
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
 import { DrizzlePresetRepository } from "~/infrastructure/repositories/preset-repository";
 
-let repository: PresetRepository = new DrizzlePresetRepository();
+let repository: PresetRepository = DrizzlePresetRepository;
 
 // For testing IDI (dependency injection)
 export const setPresetRepository = (repo: PresetRepository) => {
