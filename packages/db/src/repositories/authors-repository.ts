@@ -14,13 +14,21 @@ export type AuthorListEntry = {
 export function createAuthorsRepository(
   getExecutor: (tx?: unknown) => DrizzleExecutor,
 ) {
+  const parseAuthor = (row: unknown): AuthorListEntry | null => {
+    const result = authorSchema.safeParse(row);
+    if (!result.success) {
+      return null;
+    }
+    return result.data as AuthorListEntry;
+  };
+
   return {
     list: async (): Promise<AuthorListEntry[]> => {
       const rows = await getExecutor()
         .select()
         .from(authors)
         .orderBy(desc(authors.name));
-      return rows.map((row) => authorSchema.parse(row));
+      return rows.map(parseAuthor).filter((a): a is AuthorListEntry => a !== null);
     },
     search: async (query: string): Promise<AuthorListEntry[]> => {
       const rows = await getExecutor()
@@ -33,7 +41,7 @@ export function createAuthorsRepository(
           ),
         )
         .orderBy(desc(authors.name));
-      return rows.map((row) => authorSchema.parse(row));
+      return rows.map(parseAuthor).filter((a): a is AuthorListEntry => a !== null);
     },
   };
 }
