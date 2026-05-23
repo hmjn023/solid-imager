@@ -416,8 +416,8 @@ export async function writeToLanceDB(
 				}
 
 				logger.info(
-				{ chunk: Math.floor(i / IMAGE_CHUNK_SIZE) + 1, total: items.length },
-				"LanceDB image chunk updated",
+					{ chunk: Math.floor(i / IMAGE_CHUNK_SIZE) + 1, total: items.length },
+					"LanceDB image chunk updated",
 				);
 			}
 		}
@@ -453,7 +453,11 @@ export async function readFromLanceDB(
 	const includeImageData = options.extractImages ?? false;
 
 	while (true) {
-		const rows = await table.query().limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE).offset(offset).toArray();
+		const rows = await table
+			.query()
+			.limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)
+			.offset(offset)
+			.toArray();
 
 		if (rows.length === 0) {
 			break;
@@ -494,7 +498,9 @@ export async function readFromLanceDB(
 			"LanceDB chunk read",
 		);
 
-		if (rows.length < (includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)) {
+		if (
+			rows.length < (includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)
+		) {
 			break;
 		}
 
