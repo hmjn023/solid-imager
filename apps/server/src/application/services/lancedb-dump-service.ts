@@ -452,7 +452,7 @@ export async function readFromLanceDB(
 	const includeImageData = options.extractImages ?? false;
 
 	while (true) {
-		const rows = await table.query().limit(METADATA_CHUNK_SIZE).offset(offset).toArray();
+		const rows = await table.query().limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE).offset(offset).toArray();
 
 		if (rows.length === 0) {
 			break;
