@@ -357,7 +357,7 @@ export async function writeToLanceDB(
 	await fs.mkdir(tempDir, { recursive: true });
 
 	try {
-		process.env.LANCE_MEM_POOL_SIZE = "2147483648";
+		process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 		const lancedb = await import("@lancedb/lancedb");
 		const db = await lancedb.connect(tempDir);
 		const schema = await createMediaSchema();
