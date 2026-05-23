@@ -8,8 +8,7 @@ import type {
 } from "@solid-imager/core/domain/repositories/category-repository";
 import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
 
-// Initialize repository
-const categoryRepo: CategoryRepository = new DrizzleCategoryRepository();
+const categoryRepo: CategoryRepository = DrizzleCategoryRepository;
 
 const getAllCategoriesServer = async (): Promise<Category[]> =>
 	await categoryRepo.findAll();
