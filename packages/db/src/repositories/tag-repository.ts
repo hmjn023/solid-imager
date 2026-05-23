@@ -292,8 +292,9 @@ export function createTagRepository(
         if (tx) {
           await execute(getExecutor(tx));
         } else {
-          const executor = getExecutor();
-          await execute(executor);
+          await getExecutor().transaction((innerTx) =>
+            execute(innerTx),
+          );
         }
       } catch (error) {
         if (
