@@ -8,7 +8,7 @@ import type {
 export interface IUserService {
   getAllUsers(): Promise<User[]>;
   createUser(userData: NewUser): Promise<User>;
-  getUserById(userId: string): Promise<User | undefined>;
+  getUserDetails(userId: string): Promise<User | undefined>;
   updateUser(userId: string, userData: UpdateUser): Promise<User>;
-  deleteUser(userId: string): Promise<void>;
+  deleteUser(userId: string): Promise<{ success: true }>;
 }

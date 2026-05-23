@@ -1,0 +1,15 @@
+import type { ICollectionService } from "../ports/collection-service";
+import type { ICollectionRepository } from "@solid-imager/core/domain/repositories/collection-repository";
+import type { NewCollection, NewCollectionItem, UpdateCollection } from "@solid-imager/core/domain/collections/schemas";
+
+export function createCollectionService(repo: ICollectionRepository): ICollectionService {
+  return {
+    getAll: () => repo.findAll(),
+    getById: (id: string) => repo.findById(id),
+    create: (data: NewCollection) => repo.create(data),
+    update: (id: string, data: UpdateCollection) => repo.update(id, data),
+    delete: (id: string) => repo.delete(id),
+    addItem: (id: string, item: NewCollectionItem) => repo.addItem(id, item),
+    removeItem: (id: string, mediaId: string) => repo.removeItem(id, mediaId),
+  };
+}
