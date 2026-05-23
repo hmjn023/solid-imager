@@ -8,11 +8,11 @@ import {
 	type NewTag,
 	tags,
 } from "~/infrastructure/db/schema";
-import {
-	globalSearchMedia,
-	searchMedia,
-	searchMediaInDirectory,
-} from "~/infrastructure/repositories/media-repository-utils";
+import { createMediaSearchFunctions } from "@solid-imager/db/repositories/media-repository-utils";
+import { getExecutor } from "~/infrastructure/db/executor";
+
+const { globalSearchMedia, searchMedia, searchMediaInDirectory } =
+	createMediaSearchFunctions(getExecutor);
 
 describe("search queries Integration", () => {
 	const mediaSourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
