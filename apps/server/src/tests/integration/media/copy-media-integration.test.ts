@@ -73,13 +73,13 @@ describe("MediaService - Copy Media Integration", () => {
 		// Reset registry and register services
 		services.reset();
 		services.registerMediaRepository(MediaRepository);
-		services.registerSourceRepository(new DrizzleSourceRepository());
+		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerTagRepository(TagRepository);
 		services.registerAuthorRepository(AuthorRepository);
 		services.registerProjectRepository(ProjectRepository);
-		services.registerCharacterRepository(new DrizzleCharacterRepository());
+		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerJobRepository(new JobRepository());
+		services.registerJobRepository(JobRepository);
 		services.registerMediaStorage(mockStorageService as any);
 		services.registerImageProcessor(mockImageProcessor as any);
 		services.registerAiClient(mockAiClient as any);

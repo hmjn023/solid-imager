@@ -6,7 +6,7 @@ import { characterIps, characters, ips } from "~/infrastructure/db/schema";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 
 describe("CharacterRepository Multi-IP Support", () => {
-	const repo = new DrizzleCharacterRepository();
+	const repo = DrizzleCharacterRepository;
 
 	beforeAll(async () => {
 		try {

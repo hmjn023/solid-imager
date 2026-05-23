@@ -51,14 +51,14 @@ export function initServices() {
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);
-	services.registerSourceRepository(new ActualSourceRepo());
+	services.registerSourceRepository(ActualSourceRepo);
 	services.registerTagRepository(TagRepository);
 	services.registerAuthorRepository(AuthorRepository);
 	services.registerProjectRepository(ProjectRepository);
-	services.registerCharacterRepository(new DrizzleCharacterRepository());
+	services.registerCharacterRepository(DrizzleCharacterRepository);
 	services.registerIpRepository(IpRepository);
 
-	const jobRepo = new JobRepository();
+	const jobRepo = JobRepository;
 	services.registerJobRepository(jobRepo);
 
 	// Register Services

@@ -22,7 +22,7 @@ const HTTP_STATUS_NOT_FOUND = 404;
 const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 
 // Initialize repository
-const sourceRepo = new DrizzleSourceRepository();
+const sourceRepo = DrizzleSourceRepository;
 
 const fetchSourcesServer = async (): Promise<MediaSource[]> =>
 	await sourceRepo.findAll();
