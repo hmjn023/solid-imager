@@ -3,7 +3,9 @@ import * as path from "node:path";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { logger } from "~/infrastructure/logger";
 
-const CHUNK_SIZE = 1000;
+const METADATA_CHUNK_SIZE = 1000;
+const IMAGE_CHUNK_SIZE = 100;
+const LANCE_MEM_POOL_SIZE = "2147483648"; // 2GB
 
 async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
 	const arrow = await import("apache-arrow");
@@ -355,6 +357,7 @@ export async function writeToLanceDB(
 	await fs.mkdir(tempDir, { recursive: true });
 
 	try {
+		process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 		const lancedb = await import("@lancedb/lancedb");
 		const db = await lancedb.connect(tempDir);
 		const schema = await createMediaSchema();
@@ -362,8 +365,8 @@ export async function writeToLanceDB(
 		let table: import("@lancedb/lancedb").Table | null = null;
 
 		// Phase 1: Write metadata only (without imageData)
-		for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-			const chunk = items.slice(i, i + CHUNK_SIZE);
+		for (let i = 0; i < items.length; i += METADATA_CHUNK_SIZE) {
+			const chunk = items.slice(i, i + METADATA_CHUNK_SIZE);
 			const rows: Record<string, unknown>[] = [];
 
 			for (const item of chunk) {
@@ -380,15 +383,15 @@ export async function writeToLanceDB(
 			}
 
 			logger.info(
-				{ chunk: Math.floor(i / CHUNK_SIZE) + 1, total: items.length },
+				{ chunk: Math.floor(i / METADATA_CHUNK_SIZE) + 1, total: items.length },
 				"LanceDB metadata chunk written",
 			);
 		}
 
 		// Phase 2: Fetch images concurrently and update via mergeInsert
 		if (options.includeImages && options.getImageBuffer && table) {
-			for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-				const chunk = items.slice(i, i + CHUNK_SIZE);
+			for (let i = 0; i < items.length; i += IMAGE_CHUNK_SIZE) {
+				const chunk = items.slice(i, i + IMAGE_CHUNK_SIZE);
 
 				const imagePromises = chunk.map(async (item) => {
 					if (!item.filePath) return null;
@@ -413,8 +416,8 @@ export async function writeToLanceDB(
 				}
 
 				logger.info(
-					{ chunk: Math.floor(i / CHUNK_SIZE) + 1, total: items.length },
-					"LanceDB image chunk updated",
+				{ chunk: Math.floor(i / IMAGE_CHUNK_SIZE) + 1, total: items.length },
+				"LanceDB image chunk updated",
 				);
 			}
 		}
@@ -439,6 +442,7 @@ export async function readFromLanceDB(
 		onChunk?: (chunk: MediaDumpItemWithImageData[]) => Promise<void>;
 	} = {},
 ): Promise<MediaDumpItemWithImageData[]> {
+	process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 	const lancedb = await import("@lancedb/lancedb");
 	const db = await lancedb.connect(lanceDbDir);
 	const table = await db.openTable("media");
@@ -449,7 +453,7 @@ export async function readFromLanceDB(
 	const includeImageData = options.extractImages ?? false;
 
 	while (true) {
-		const rows = await table.query().limit(CHUNK_SIZE).offset(offset).toArray();
+		const rows = await table.query().limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE).offset(offset).toArray();
 
 		if (rows.length === 0) {
 			break;
@@ -490,7 +494,7 @@ export async function readFromLanceDB(
 			"LanceDB chunk read",
 		);
 
-		if (rows.length < CHUNK_SIZE) {
+		if (rows.length < (includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)) {
 			break;
 		}
 
