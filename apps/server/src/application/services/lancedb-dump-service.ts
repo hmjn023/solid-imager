@@ -5,6 +5,7 @@ import { logger } from "~/infrastructure/logger";
 
 const METADATA_CHUNK_SIZE = 1000;
 const IMAGE_CHUNK_SIZE = 100;
+const LANCE_MEM_POOL_SIZE = "2147483648"; // 2GB
 
 async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
 	const arrow = await import("apache-arrow");
