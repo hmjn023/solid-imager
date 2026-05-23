@@ -1,14 +1,9 @@
 import type { IUserService } from "../ports/user-service";
-import type { User, NewUser, UpdateUser } from "@solid-imager/core/domain/repositories/user-repository";
+import type { User, NewUser, UpdateUser } from "@solid-imager/core/domain/users/schemas";
+import type { UserRepository } from "@solid-imager/core/domain/repositories/user-repository";
 
 export function createUserService(
-  repo: {
-    findAll(): Promise<User[]>;
-    create(data: NewUser): Promise<User>;
-    findById(id: string): Promise<User | null>;
-    update(id: string, data: UpdateUser): Promise<User>;
-    delete(id: string): Promise<void>;
-  },
+  repo: UserRepository,
 ): IUserService {
   return {
     getAllUsers: () => repo.findAll(),

@@ -2,8 +2,7 @@ import type {
   NewUser,
   User,
   UpdateUser,
-  User as UserDef,
-} from "@solid-imager/core/domain/repositories/user-repository";
+} from "@solid-imager/core/domain/users/schemas";
 
 export interface IUserService {
   getAllUsers(): Promise<User[]>;

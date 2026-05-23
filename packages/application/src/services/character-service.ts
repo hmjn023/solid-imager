@@ -2,8 +2,10 @@ import type { Character, NewCharacter, UpdateCharacter } from "@solid-imager/cor
 import type { Transaction, TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { ICharacterService } from "../ports/character-service";
+import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 
-export class CharacterServiceImpl {
+export class CharacterServiceImpl implements ICharacterService {
   readonly characterRepo: CharacterRepository;
   private readonly ipRepo: IIpRepository;
   private readonly transactionManager: TransactionManager;
@@ -56,7 +58,7 @@ export class CharacterServiceImpl {
       async (tx: Transaction) => {
         const character = await this.characterRepo.findById(characterId, tx);
         if (!character) {
-          throw new Error(`Character not found: ${characterId}`);
+          throw new ResourceNotFoundError("Character", characterId);
         }
 
         await this.characterRepo.addToMedia(
