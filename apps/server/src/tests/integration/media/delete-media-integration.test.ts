@@ -25,13 +25,13 @@ describe("deleteMedia Integration", () => {
 
 	beforeAll(async () => {
 		services.registerMediaRepository(MediaRepository);
-		services.registerSourceRepository(new DrizzleSourceRepository());
+		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerMediaStorage(ServerMediaStorage);
 		services.registerTagRepository(TagRepository);
 		services.registerImageProcessor(ImageProcessor);
 		services.registerAuthorRepository(AuthorRepository);
 		services.registerProjectRepository(ProjectRepository);
-		services.registerCharacterRepository(new DrizzleCharacterRepository());
+		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
 		services.registerAiClient(new PythonClient());
 

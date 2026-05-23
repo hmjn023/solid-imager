@@ -32,8 +32,8 @@ const {
 
 // Mocks
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
-	DrizzleSourceRepository: class {
-		findById = mockFindById;
+	DrizzleSourceRepository: {
+		findById: mockFindById,
 	},
 }));
 vi.mock("~/infrastructure/repositories/media-repository", () => ({

@@ -15,7 +15,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
-const sourceRepo = new DrizzleSourceRepository();
+const sourceRepo = DrizzleSourceRepository;
 
 // Supported file extensions for media detection
 const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"];
