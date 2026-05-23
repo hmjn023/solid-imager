@@ -441,7 +441,7 @@ export async function readFromLanceDB(
 		onChunk?: (chunk: MediaDumpItemWithImageData[]) => Promise<void>;
 	} = {},
 ): Promise<MediaDumpItemWithImageData[]> {
-	process.env.LANCE_MEM_POOL_SIZE = "2147483648";
+	process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 	const lancedb = await import("@lancedb/lancedb");
 	const db = await lancedb.connect(lanceDbDir);
 	const table = await db.openTable("media");
