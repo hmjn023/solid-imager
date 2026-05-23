@@ -128,6 +128,73 @@ pub fn inspect_image_header(path: &str) -> Result<ImageHeaderInfo, String> {
     })
 }
 
+/// Returns a list of directories the application is allowed to access.
+/// Used to scope file-system commands to safe locations.
+fn allowed_dirs() -> Vec<std::path::PathBuf> {
+    let mut dirs = Vec::new();
+
+    // System temp directory
+    dirs.push(std::env::temp_dir());
+
+    // User home directory
+    if let Some(home) = std::env::var_os("HOME") {
+        dirs.push(std::path::PathBuf::from(home));
+    }
+
+    // Fallback on macOS and Linux
+    if let Some(user) = std::env::var_os("USER") {
+        let fallback = std::path::PathBuf::from("/home").join(user);
+        if fallback.exists() {
+            dirs.push(fallback);
+        }
+    }
+
+    dirs
+}
+
+/// Validates that a path is within one of the allowed directories.
+/// Returns `Ok(())` if the path is safe, or an error description otherwise.
+pub fn validate_path_scope(path: &str) -> Result<(), String> {
+    let path = std::path::Path::new(path);
+
+    // Reject paths containing `..` to prevent directory traversal
+    if path.components().any(|c| c == std::path::Component::ParentDir) {
+        return Err(format!(
+            "Path contains parent directory traversal: {path}",
+            path = path.display()
+        ));
+    }
+
+    let allowed = allowed_dirs();
+
+    // Try canonical path first (works when the path exists)
+    if let Ok(canonical) = path.canonicalize() {
+        for dir in &allowed {
+            if let Ok(canonical_dir) = dir.canonicalize() {
+                if canonical.starts_with(&canonical_dir) {
+                    return Ok(());
+                }
+            }
+        }
+    } else {
+        // For non-existent paths, check against allowed dirs by prefix
+        for dir in &allowed {
+            if let Ok(canonical_dir) = dir.canonicalize() {
+                let dir_str = canonical_dir.to_string_lossy();
+                let path_str = path.to_string_lossy();
+                if path_str.starts_with(dir_str.as_ref()) {
+                    return Ok(());
+                }
+            }
+        }
+    }
+
+    Err(format!(
+        "Access denied: path is outside allowed directories: {path}",
+        path = path.display()
+    ))
+}
+
 pub fn mime_type_from_format(format: Option<ImageFormat>) -> Option<String> {
     match format {
         Some(ImageFormat::Jpeg) => Some("image/jpeg".to_string()),

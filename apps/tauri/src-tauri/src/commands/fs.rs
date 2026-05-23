@@ -34,12 +34,14 @@ pub fn fs_read_text_file(path: String, encoding: Option<String>) -> Result<Strin
 
 #[tauri::command(async)]
 pub fn fs_write_file(path: String, data: WriteFileData) -> Result<(), String> {
+    validate_path_scope(&path)?;
     fs::write(&path, data.into_bytes())
         .map_err(|error| with_path_context("Writing file", &path, error))
 }
 
 #[tauri::command(async)]
 pub fn fs_mkdir(path: String, options: Option<MkdirOptions>) -> Result<(), String> {
+    validate_path_scope(&path)?;
     let recursive = options.and_then(|value| value.recursive).unwrap_or(false);
 
     if recursive {
@@ -120,11 +122,13 @@ pub fn fs_stat(path: String) -> Result<TauriFileStat, String> {
 
 #[tauri::command(async)]
 pub fn fs_unlink(path: String) -> Result<(), String> {
+    validate_path_scope(&path)?;
     fs::remove_file(&path).map_err(|error| with_path_context("Removing file", &path, error))
 }
 
 #[tauri::command(async)]
 pub fn fs_rm(path: String, options: Option<RmOptions>) -> Result<(), String> {
+    validate_path_scope(&path)?;
     let recursive = options
         .as_ref()
         .and_then(|value| value.recursive)
@@ -158,6 +162,8 @@ pub fn fs_rm(path: String, options: Option<RmOptions>) -> Result<(), String> {
 
 #[tauri::command(async)]
 pub fn fs_copy_file(src: String, dest: String) -> Result<(), String> {
+    validate_path_scope(&src)?;
+    validate_path_scope(&dest)?;
     fs::copy(&src, &dest)
         .map(|_| ())
         .map_err(|error| with_path_context("Copying file", &src, error))
@@ -165,6 +171,8 @@ pub fn fs_copy_file(src: String, dest: String) -> Result<(), String> {
 
 #[tauri::command(async)]
 pub fn fs_rename(old_path: String, new_path: String) -> Result<(), String> {
+    validate_path_scope(&old_path)?;
+    validate_path_scope(&new_path)?;
     fs::rename(&old_path, &new_path)
         .map_err(|error| with_path_context("Renaming path", &old_path, error))
 }
@@ -194,6 +202,7 @@ pub async fn download_file(
     dest_path: String,
     headers: Option<Vec<(String, String)>>,
 ) -> Result<(), String> {
+    validate_path_scope(&dest_path)?;
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(300))
         .build()

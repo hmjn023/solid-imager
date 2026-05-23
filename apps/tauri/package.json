@@ -18,7 +18,7 @@
 		"test": "vp test run --config ./vitest.config.ts"
 	},
 	"dependencies": {
-		"@electric-sql/pglite": "^0.3.16",
+		"@tauri-apps/plugin-sql": "^2.2.0",
 		"@solid-imager/application": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"@solid-imager/db": "workspace:*",

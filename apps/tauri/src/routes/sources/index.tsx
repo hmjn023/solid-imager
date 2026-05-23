@@ -6,6 +6,7 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { listen } from "@tauri-apps/api/event";
 import { SourceDeleteModal } from "~/components/source-delete-modal";
 import { SourceFormModal } from "~/components/source-form-modal";
+import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
@@ -27,9 +28,9 @@ function SourcesRoute() {
 
 	const page = useSourcesPage({
 		actions: {
-			createMediaSource: (data: unknown) => createMediaSource(data as any),
+			createMediaSource: (data: unknown) => createMediaSource(mediaSourceInfoSchema.parse(data)),
 			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+				updateMediaSource(id, mediaSourceInfoSchema.partial().parse(data)),
 			deleteMediaSource,
 			syncMediaSources,
 		},

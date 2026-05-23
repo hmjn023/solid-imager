@@ -43,7 +43,7 @@ export class TauriFileSystem implements IFileSystem {
 	async writeFile(path: string, data: string | Uint8Array) {
 		await this.commandClient.invoke("fs_write_file", {
 			path,
-			data: data instanceof Uint8Array ? Array.from(data) : data,
+			data,
 		});
 	}
 

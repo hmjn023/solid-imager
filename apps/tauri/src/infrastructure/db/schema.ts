@@ -1,1 +1,1 @@
-export * from "@solid-imager/db/schema";
+export * from "@solid-imager/db/sqlite/schema";

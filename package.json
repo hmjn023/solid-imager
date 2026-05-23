@@ -14,7 +14,7 @@
     "lint": "vp run lint",
     "check": "vp run check",
     "format": "vp run format",
-    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
+    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test && bun run --cwd packages/application test && bun run --cwd apps/tauri test",
     "typecheck": "bun --filter '*' typecheck",
     "prepare": "vp config"
   },

@@ -1,5 +1,5 @@
 import { updateMediaContextMetadata } from "@solid-imager/application/services/media-context-metadata";
-import { extractAndPersistMediaMetadata } from "@solid-imager/application/services/media-metadata-extractor";
+
 import {
 	createMediaService,
 	type MediaPathAdapter,
@@ -151,26 +151,10 @@ const tauriMediaStorage: IMediaStorage = {
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
-		const files: string[] = [];
-		const queue = [basePath];
-		while (queue.length > 0) {
-			const current = queue.shift();
-			if (!current) {
-				continue;
-			}
-			for (const entry of await getTauriAppServices().fileSystem.readdir(
-				current,
-			)) {
-				const fullPath = joinLocalPath(current, entry);
-				const stat = await getTauriAppServices().fileSystem.stat(fullPath);
-				if (stat.isDirectory) {
-					queue.push(fullPath);
-				} else {
-					files.push(fullPath);
-				}
-			}
-		}
-		return files;
+		const entries = await getTauriAppServices().fileSystem.scanDirectoryRecursive(basePath);
+		return entries
+			.filter((entry) => !entry.isDirectory)
+			.map((entry) => entry.fullPath);
 	},
 
 	async getFileMetadata(fullPath: string): Promise<MediaMetadata> {
@@ -283,14 +267,6 @@ const mediaService = createMediaService({
 		);
 	},
 	pathAdapter: tauriPathAdapter,
-	afterMediaRegistered: async ({ media, sourcePath }) => {
-		await extractAndPersistMediaMetadata(media, sourcePath, {
-			mediaRepository: TauriMediaRepository,
-			tagRepository: TauriTagRepository,
-			imageProcessor: getTauriAppServices().imageProcessor,
-			pathAdapter: tauriPathAdapter,
-		});
-	},
 });
 
 function bytesToMediaSourceFile(

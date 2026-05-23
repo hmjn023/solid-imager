@@ -13,6 +13,7 @@ import {
 	mediaSearchResponseSchema,
 	type Preset,
 	presetSchema,
+	searchGroupSchema,
 	type UpdateMediaRequest,
 	uploadResponseSchema,
 } from "@solid-imager/core/domain/media/schemas";
@@ -135,7 +136,7 @@ export const orpc = {
 			return syncSourcesResponseSchema.parse(res);
 		},
 		restore: async (input: { id: string; data: unknown[] }) => {
-			const res = await getTauriAppServices().sourceBackupService.restoreSource(input.id, input.data as any);
+			const res = await getTauriAppServices().sourceBackupService.restoreSource(input.id, input.data);
 			return restoreSourceResultSchema.parse(res);
 		},
 		dump: async (input: { id: string }) => {
@@ -396,7 +397,7 @@ export const orpc = {
 		}) => {
 			const res = await getTauriAppServices().presetService.create({
 				...input,
-				value: input.value as any,
+				value: searchGroupSchema.parse(input.value),
 			});
 			return presetSchema.parse(res);
 		},
@@ -412,7 +413,7 @@ export const orpc = {
 		}) => {
 			const res = await getTauriAppServices().presetService.update(input.id, {
 				...input.data,
-				value: input.data.value as any,
+				value: input.data.value !== undefined ? searchGroupSchema.parse(input.data.value) : undefined,
 			});
 			return presetSchema.parse(res);
 		},

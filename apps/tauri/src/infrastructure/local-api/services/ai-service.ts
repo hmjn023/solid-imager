@@ -116,12 +116,21 @@ export const TauriAiService = {
 			{ medias, mediaTags, mediaCharacters, mediaIps },
 		);
 
-		const uniqueRows = new Map<string, (typeof rows)[number]>();
+		const uniqueRows = new Map<string, unknown>();
 		for (const row of rows) {
-			uniqueRows.set((row as any).id, row);
+			const rowRecord = row as Record<string, unknown>;
+			const id = typeof rowRecord.id === "string" ? rowRecord.id : crypto.randomUUID();
+			uniqueRows.set(id, row);
 		}
 
-		return Array.from(uniqueRows.values()).map((row) => mediaSchema.parse(row));
+		return Array.from(uniqueRows.values()).flatMap((row) => {
+			const parsed = mediaSchema.safeParse(row);
+			if (!parsed.success) {
+				console.error("[AI Service] Failed to parse media record", parsed.error);
+				return [];
+			}
+			return [parsed.data];
+		});
 	},
 
 	async batchTagging(input: BatchTaggingInput) {
