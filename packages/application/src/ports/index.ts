@@ -3,3 +3,8 @@ export type { ITagService } from "./tag-service";
 export type { IPresetService } from "./preset-service";
 export type { IUserService } from "./user-service";
 export type { ICollectionService } from "./collection-service";
+export type { IProjectService } from "./project-service";
+export type { IIpService } from "./ip-service";
+export type { IAuthorService } from "./author-service";
+export type { ICharacterService } from "./character-service";
+export type { ISearchService, SearchOptions } from "./search-service";
