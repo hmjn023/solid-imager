@@ -180,7 +180,10 @@ export function createAuthorRepository(
 
 			const newNames = uniqueNames.filter((n) => !existingNames.has(n));
 			if (newNames.length > 0) {
-				await client.insert(authors).values(newNames.map((name) => ({ name })));
+				await client
+					.insert(authors)
+					.values(newNames.map((name) => ({ name })))
+					.onConflictDoNothing();
 			}
 
 			const all = await client

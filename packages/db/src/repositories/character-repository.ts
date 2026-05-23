@@ -136,13 +136,16 @@ export function createCharacterRepository(
 					.returning();
 
 				if (ipIds && ipIds.length > 0) {
-					await client.insert(characterIps).values(
-						ipIds.map((ipId) => ({
-							characterId: insertedChar.id,
-							ipId,
-							source: character.source || "manual",
-						})),
-					);
+					await client
+						.insert(characterIps)
+						.values(
+							ipIds.map((ipId) => ({
+								characterId: insertedChar.id,
+								ipId,
+								source: character.source || "manual",
+							})),
+						)
+						.onConflictDoNothing();
 				}
 
 				// Build result from returned row + IP fetch (avoiding re-fetch)
@@ -284,7 +287,7 @@ export function createCharacterRepository(
 				}
 
 				if (allIpLinks.length > 0) {
-					await client.insert(characterIps).values(allIpLinks);
+					await client.insert(characterIps).values(allIpLinks).onConflictDoNothing();
 				}
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk update character IPs", error);
