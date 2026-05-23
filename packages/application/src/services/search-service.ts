@@ -1,13 +1,6 @@
 import type { MediaSearchRequest, MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-
-export type SearchOptions = {
-  tags?: string[];
-  sortBy?: string;
-  order?: "asc" | "desc";
-  page?: number;
-  limit?: number;
-};
+import type { SearchOptions } from "../ports/search-service";
 
 const DEFAULT_PAGE_LIMIT = 20;
 

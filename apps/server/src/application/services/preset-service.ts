@@ -11,6 +11,7 @@ export const setPresetRepository = (repo: PresetRepository) => {
 
 export const PresetService = new Proxy({} as IPresetService, {
   get(_, prop) {
-    return _service[prop as keyof IPresetService];
+    const value = _service[prop as keyof IPresetService];
+    return typeof value === "function" ? value.bind(_service) : value;
   },
 });

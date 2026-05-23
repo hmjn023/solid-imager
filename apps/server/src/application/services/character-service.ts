@@ -1,4 +1,3 @@
-import { CharacterServiceImpl as AppCharacterServiceImpl } from "@solid-imager/application/services/character-service";
 import type { NewCharacter, UpdateCharacter } from "@solid-imager/core/domain/characters/schemas";
 import { services } from "~/application/registry";
 

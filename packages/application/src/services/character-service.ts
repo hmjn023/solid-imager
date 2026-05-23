@@ -62,8 +62,8 @@ export class CharacterServiceImpl {
         await this.characterRepo.addToMedia(
           mediaId,
           character.id,
-          undefined as number | undefined,
-          undefined as string | undefined,
+          undefined,
+          undefined,
           tx,
         );
 
