@@ -493,7 +493,7 @@ export async function readFromLanceDB(
 			"LanceDB chunk read",
 		);
 
-		if (rows.length < METADATA_CHUNK_SIZE) {
+		if (rows.length < (includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)) {
 			break;
 		}
 
