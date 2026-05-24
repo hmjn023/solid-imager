@@ -21,6 +21,10 @@ export type {
   IMediaContextProcessor,
   ISseNotifier,
   IThumbnailManager,
+  ILanceDbDumpService,
+  MediaDumpItemWithImageData,
+  WriteOptions,
+  ReadOptions,
 } from "./ports";
 export {
   createTagService,
@@ -38,4 +42,5 @@ export {
   SearchServiceImpl,
   MediaServiceImpl,
   validateFileSignature,
+  createLanceDbDumpService,
 } from "./services";
