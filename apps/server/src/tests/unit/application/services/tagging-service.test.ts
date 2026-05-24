@@ -1,39 +1,25 @@
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { TaggingService } from "~/application/services/tagging-service";
+import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
+import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
 
 const MOCK_BUFFER_DATA = [1, 2, 3];
-const _NON_EXISTENT_ID = 999;
 
-// Mock MediaService
-vi.mock("~/application/services/media-service", () => ({
-	MediaService: {
-		getMedia: vi.fn(() =>
-			Promise.resolve({
-				id: "media-1",
-				mediaType: "image",
-				filePath: "remote/path.jpg",
-			}),
-		),
-		getMediaContent: vi.fn(() =>
-			Promise.resolve({
-				buffer: new Uint8Array(MOCK_BUFFER_DATA),
-			}),
-		),
-	},
-}));
-
-describe("TaggingService", () => {
-	let taggingService: TaggingService;
+describe("TaggingServiceImpl", () => {
+	let taggingService: TaggingServiceImpl;
 	let mockAiClient: IAiClient;
 	let mockSourceRepo: SourceRepository;
+	let mockMediaRepo: IMediaRepository;
 	let mockTagRepo: TagRepository;
 	let mockCharacterRepo: CharacterRepository;
 	let mockIpRepo: IIpRepository;
+	let mockSseSendEvent: ReturnType<typeof vi.fn>;
+	let mockReadFileBuffer: ReturnType<typeof vi.fn>;
 
 	beforeEach(() => {
 		mockAiClient = {
@@ -49,11 +35,22 @@ describe("TaggingService", () => {
 			findById: vi.fn((id: string) =>
 				Promise.resolve({
 					id,
-					type: "s3", // remote source to trigger buffer flow
-					connectionInfo: {},
+					type: "local",
+					connectionInfo: { path: "/mock" },
 				}),
 			),
 		} as unknown as SourceRepository;
+
+		mockMediaRepo = {
+			findById: vi.fn(() =>
+				Promise.resolve({
+					id: "media-1",
+					mediaSourceId: "source-1",
+					mediaType: "image",
+					filePath: "remote/path.jpg",
+				}),
+			),
+		} as unknown as IMediaRepository;
 
 		mockTagRepo = {
 			findByMediaId: vi.fn(() => Promise.resolve([])),
@@ -100,13 +97,23 @@ describe("TaggingService", () => {
 			getMediaCharacters: vi.fn(() => Promise.resolve([])),
 		} as unknown as CharacterRepository;
 
-		taggingService = new TaggingService(
-			mockAiClient,
-			mockSourceRepo,
-			mockTagRepo,
-			mockCharacterRepo,
-			mockIpRepo,
+		mockSseSendEvent = vi.fn();
+		mockReadFileBuffer = vi.fn(() =>
+			Promise.resolve(new Uint8Array(MOCK_BUFFER_DATA).buffer as ArrayBuffer),
 		);
+
+		const deps: TaggingServiceDeps = {
+			aiClient: mockAiClient,
+			sourceRepo: mockSourceRepo,
+			mediaRepo: mockMediaRepo,
+			tagRepo: mockTagRepo,
+			characterRepo: mockCharacterRepo,
+			ipRepo: mockIpRepo,
+			sseSendEvent: mockSseSendEvent as any,
+			readFileBuffer: mockReadFileBuffer as any,
+		};
+
+		taggingService = new TaggingServiceImpl(deps);
 	});
 
 	it("should correctly link characters to IPs based on ips_mapping", async () => {
@@ -120,6 +127,17 @@ describe("TaggingService", () => {
 			ips_mapping: {
 				// Character Name -> List of IP Names
 
+				HatsuneMiku: ["Vocaloid"],
+			},
+		});
+
+		(mockAiClient.tagImageByPath as any).mockResolvedValue({
+			general: { "1girl": 0.9 },
+
+			character: { HatsuneMiku: 0.95 },
+			ips: ["Vocaloid"],
+
+			ips_mapping: {
 				HatsuneMiku: ["Vocaloid"],
 			},
 		});

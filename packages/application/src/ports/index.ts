@@ -7,4 +7,7 @@ export type { IProjectService } from "./project-service";
 export type { IIpService } from "./ip-service";
 export type { IAuthorService } from "./author-service";
 export type { ICharacterService } from "./character-service";
+export type { IMediaProcessingService } from "./media-processing-service";
+export type { IThumbnailService } from "./thumbnail-service";
+export type { ITaggingService } from "./tagging-service";
 export type { ISearchService, SearchOptions } from "./search-service";

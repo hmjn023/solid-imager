@@ -9,6 +9,9 @@ export type {
   IIpService,
   IAuthorService,
   ICharacterService,
+  IMediaProcessingService,
+  IThumbnailService,
+  ITaggingService,
   ISearchService,
   SearchOptions,
 } from "./ports";
@@ -22,5 +25,8 @@ export {
   createIpService,
   createAuthorService,
   CharacterServiceImpl,
+  MediaProcessingServiceImpl,
+  ThumbnailServiceImpl,
+  TaggingServiceImpl,
   SearchServiceImpl,
 } from "./services";

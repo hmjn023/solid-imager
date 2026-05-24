@@ -7,5 +7,8 @@ export { createProjectService } from "./project-service";
 export { createIpService } from "./ip-service";
 export { createAuthorService } from "./author-service";
 export { CharacterServiceImpl } from "./character-service";
+export { MediaProcessingServiceImpl } from "./media-processing-service";
+export { ThumbnailServiceImpl } from "./thumbnail-service";
+export { TaggingServiceImpl } from "./tagging-service";
 export { SearchServiceImpl } from "./search-service";
 export type { SearchOptions } from "../ports/search-service";
