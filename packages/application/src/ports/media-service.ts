@@ -48,7 +48,7 @@ export interface ISseNotifier {
 	notifyMediaCopied(
 		sourceId: string,
 		targetId: string,
-		media: unknown,
+		media: Media,
 	): void;
 }
 

@@ -6,6 +6,7 @@
 
 import path from "node:path";
 import type { IMediaStorage } from "@solid-imager/core";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	Transaction,
@@ -96,17 +97,17 @@ export async function validateFileSignature(
 }
 
 export class MediaServiceImpl implements IMediaService {
-	private readonly mediaRepository: any;
-	private readonly sourceRepository: any;
-	private readonly storageService: any;
-	private readonly tagRepository: any;
-	private readonly imageProcessor: any;
-	private readonly authorRepository: any;
-	private readonly projectRepository: any;
-	private readonly characterRepository: any;
-	private readonly ipRepository: any;
+	private readonly mediaRepository: IMediaRepository;
+	private readonly sourceRepository: SourceRepository;
+	private readonly storageService: IMediaStorage;
+	private readonly tagRepository: TagRepository;
+	private readonly imageProcessor: IImageProcessor;
+	private readonly authorRepository: IAuthorRepository;
+	private readonly projectRepository: IProjectRepository;
+	private readonly characterRepository: CharacterRepository;
+	private readonly ipRepository: IIpRepository;
 	private readonly transactionManager: TransactionManager;
-	private readonly jobRepo: { create(job: { type: string; mediaSourceId: string; payload: unknown }): Promise<unknown> };
+	private readonly jobRepo: IJobRepository;
 	private readonly sseNotifier: ISseNotifier;
 	private readonly thumbnailManager: IThumbnailManager;
 	private readonly logger: ILogger;
@@ -124,7 +125,7 @@ export class MediaServiceImpl implements IMediaService {
 		characterRepository: CharacterRepository,
 		ipRepository: IIpRepository,
 		transactionManager: TransactionManager,
-		jobRepo: { create(job: { type: string; mediaSourceId: string; payload: unknown }): Promise<unknown> },
+		jobRepo: IJobRepository,
 		sseNotifier: ISseNotifier,
 		thumbnailManager: IThumbnailManager,
 		logger: ILogger,
@@ -743,58 +744,91 @@ export class MediaServiceImpl implements IMediaService {
 				sse: [],
 			};
 
-			// 1. Copy
-			const copyResult = await this.copyMedia(sourceMediaId, targetSourceId, t);
-			if (copyResult.deferred) {
-				accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
-				// We omit individual media-copied event for move context
-			}
+			// Track copied file for cleanup on DB failure
+			let copiedFileCleanup: { targetPath: string; filePath: string } | null =
+				null;
 
-			// 2. Delete Original if Copy Successful
-			if (copyResult.success) {
-				const sourceMedia = await this.mediaRepository.findById(
+			try {
+				// 1. Copy
+				const copyResult = await this.copyMedia(
 					sourceMediaId,
+					targetSourceId,
 					t,
 				);
-				if (sourceMedia) {
-					const deleteResult = await this.deleteMedia(
-						sourceMedia.mediaSourceId,
+				if (copyResult.deferred) {
+					accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
+				}
+
+				// 2. Delete Original if Copy Successful
+				if (copyResult.success) {
+					// Record file info for potential cleanup
+					const targetSource = await this.sourceRepository.findById(
+						targetSourceId,
+						t,
+					);
+					if (targetSource?.type === "local") {
+						const conn = targetSource.connectionInfo as { path: string };
+						copiedFileCleanup = {
+							targetPath: conn.path,
+							filePath: copyResult.media.filePath,
+						};
+					}
+
+					const sourceMedia = await this.mediaRepository.findById(
 						sourceMediaId,
 						t,
 					);
-					if (deleteResult) {
-						accumulatedDeferred.jobs.push(...deleteResult.jobs);
-						// We omit individual media-deleted event for move context
-					}
+					if (sourceMedia) {
+						const deleteResult = await this.deleteMedia(
+							sourceMedia.mediaSourceId,
+							sourceMediaId,
+							t,
+						);
+						if (deleteResult) {
+							accumulatedDeferred.jobs.push(...deleteResult.jobs);
+						}
 
-					// Replicate SseManager.notifyMediaMoved logic but deferred
-					const sseEventSource: DeferredSse = {
-						mediaSourceId: sourceMedia.mediaSourceId,
-						event: "media-moved",
-						payload: {
-							type: "source",
-							mediaId: sourceMediaId,
-							targetId: targetSourceId,
-							timestamp: new Date().toISOString(),
-						},
-					};
-					const sseEventTarget: DeferredSse = {
-						mediaSourceId: targetSourceId,
-						event: "media-moved",
-						payload: {
-							type: "target",
-							media: copyResult.media,
-							sourceId: sourceMedia.mediaSourceId,
-							timestamp: new Date().toISOString(),
-						},
-					};
-					accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
+						const sseEventSource: DeferredSse = {
+							mediaSourceId: sourceMedia.mediaSourceId,
+							event: "media-moved",
+							payload: {
+								type: "source",
+								mediaId: sourceMediaId,
+								targetId: targetSourceId,
+								timestamp: new Date().toISOString(),
+							},
+						};
+						const sseEventTarget: DeferredSse = {
+							mediaSourceId: targetSourceId,
+							event: "media-moved",
+							payload: {
+								type: "target",
+								media: copyResult.media,
+								sourceId: sourceMedia.mediaSourceId,
+								timestamp: new Date().toISOString(),
+							},
+						};
+						accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
+					}
 				}
+				return {
+					...copyResult,
+					deferred: accumulatedDeferred,
+				};
+			} catch (error) {
+				// Clean up copied file if DB transaction fails
+				if (copiedFileCleanup) {
+					try {
+						await this.storageService.deleteFile(
+							copiedFileCleanup.targetPath,
+							copiedFileCleanup.filePath,
+						);
+					} catch {
+						// Ignore cleanup errors
+					}
+				}
+				throw error;
 			}
-			return {
-				...copyResult,
-				deferred: accumulatedDeferred,
-			};
 		};
 
 		if (tx) {
