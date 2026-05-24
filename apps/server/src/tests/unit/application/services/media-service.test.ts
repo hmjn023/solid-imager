@@ -180,7 +180,24 @@ describe("MediaService Unit Tests", () => {
 			mockProjectRepository,
 			mockCharacterRepository,
 			mockIpRepository,
+			DrizzleTransactionManager,
+			mockJobRepository,
+			{
+				sendEvent: vi.fn(),
+				notifyMediaCopied: vi.fn(),
+			},
+			{
+				deleteThumbnail: vi.fn(),
+			},
+			{
+				info: vi.fn(),
+				error: vi.fn(),
+				warn: vi.fn(),
+			},
 			localMockMediaProcessingService,
+			{
+				execute: vi.fn(),
+			},
 		);
 	});
 

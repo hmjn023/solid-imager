@@ -11,6 +11,13 @@ export type {
   ICharacterService,
   ISearchService,
   SearchOptions,
+  IMediaService,
+  DeferredActions,
+  IDeferredActionExecutor,
+  ILogger,
+  IMediaContextProcessor,
+  ISseNotifier,
+  IThumbnailManager,
 } from "./ports";
 export {
   createTagService,
@@ -23,4 +30,6 @@ export {
   createAuthorService,
   CharacterServiceImpl,
   SearchServiceImpl,
+  MediaServiceImpl,
+  validateFileSignature,
 } from "./services";
