@@ -87,7 +87,9 @@ describe("CharacterService", () => {
 
 			await expect(
 				CharacterService.addCharacterToMedia(mediaId, charId),
-			).rejects.toThrow(`Character not found: ${charId}`);
+			).rejects.toThrow(
+				`Character with identifier ${charId} was not found.`,
+			);
 		});
 	});
 });
