@@ -16,6 +16,7 @@
   "dependencies": {
     "incur": "^0.2.2",
     "zod": "^3.23.8",
+    "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/server": "workspace:*",
     "@orpc/client": "^1.13.2"
