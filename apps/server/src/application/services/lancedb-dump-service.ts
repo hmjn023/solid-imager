@@ -2,6 +2,9 @@ import { createLanceDbDumpService } from "@solid-imager/application/services/lan
 export type { MediaDumpItemWithImageData } from "@solid-imager/application/ports/lancedb-dump-service";
 import { logger } from "~/infrastructure/logger";
 
+// LanceDB メモリプールサイズはアプリケーションエントリポイントで設定
+process.env.LANCE_MEM_POOL_SIZE ??= "2147483648";
+
 const service = createLanceDbDumpService({
 	logger: {
 		info: (msg: string, data?: unknown) => logger.info(data, msg),

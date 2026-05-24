@@ -10,7 +10,6 @@ import type {
 
 const METADATA_CHUNK_SIZE = 1000;
 const IMAGE_CHUNK_SIZE = 100;
-const LANCE_MEM_POOL_SIZE = "2147483648";
 
 async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
 	const arrow = await import("apache-arrow");
@@ -357,11 +356,13 @@ export function createLanceDbDumpService(deps?: {
 	): Promise<string> {
 		const baseDir =
 			options.tempDir ?? path.join(process.cwd(), ".cache", "lancedb-dump");
-		const tempDir = path.join(baseDir, `dump-${Date.now()}`);
+		const tempDir = path.join(
+			baseDir,
+			`dump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+		);
 		await fs.mkdir(tempDir, { recursive: true });
 
 		try {
-			process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 			const lancedb = await import("@lancedb/lancedb");
 			const db = await lancedb.connect(tempDir);
 			const schema = await createMediaSchema();
@@ -427,7 +428,7 @@ export function createLanceDbDumpService(deps?: {
 			}
 
 			if (table) {
-				await table.optimize({ cleanupOlderThan: new Date() });
+				await table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
 			}
 
 			log.info("LanceDB dump created", {
@@ -445,7 +446,6 @@ export function createLanceDbDumpService(deps?: {
 		lanceDbDir: string,
 		options: ReadOptions = {},
 	): Promise<MediaDumpItemWithImageData[]> {
-		process.env.LANCE_MEM_POOL_SIZE = LANCE_MEM_POOL_SIZE;
 		const lancedb = await import("@lancedb/lancedb");
 		const db = await lancedb.connect(lanceDbDir);
 		const table = await db.openTable("media");
