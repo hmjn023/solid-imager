@@ -2,4 +2,5 @@ import type { PresetRepository } from "@solid-imager/core/domain/repositories/pr
 import { createPresetRepository } from "@solid-imager/db/repositories/preset-repository";
 import { getExecutor } from "~/infrastructure/db/executor";
 
-export const DrizzlePresetRepository: PresetRepository = createPresetRepository(getExecutor);
+export const DrizzlePresetRepository: PresetRepository =
+	createPresetRepository(getExecutor);

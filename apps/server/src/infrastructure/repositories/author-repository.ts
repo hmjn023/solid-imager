@@ -2,4 +2,5 @@ import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/a
 import { createAuthorRepository } from "@solid-imager/db/repositories/author-repository";
 import { getExecutor } from "~/infrastructure/db/executor";
 
-export const AuthorRepository: IAuthorRepository = createAuthorRepository(getExecutor);
+export const AuthorRepository: IAuthorRepository =
+	createAuthorRepository(getExecutor);

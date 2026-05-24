@@ -3,12 +3,12 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import {
 	beforeEach,
 	describe,

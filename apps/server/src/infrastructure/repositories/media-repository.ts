@@ -8,12 +8,19 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 
 const mediaSearch = createMediaSearchFunctions(getExecutor);
 
-export const MediaRepository: IMediaRepository = createMediaRepository(getExecutor, {
-  logger: {
-    info: (data: unknown, msg?: string) => { logger.info(data, msg); },
-    error: (data: unknown, msg?: string) => { logger.error(data, msg); },
-  },
-  authorRepository: AuthorRepository,
-  tagRepository: TagRepository,
-  mediaSearch,
-});
+export const MediaRepository: IMediaRepository = createMediaRepository(
+	getExecutor,
+	{
+		logger: {
+			info: (data: unknown, msg?: string) => {
+				logger.info(data, msg);
+			},
+			error: (data: unknown, msg?: string) => {
+				logger.error(data, msg);
+			},
+		},
+		authorRepository: AuthorRepository,
+		tagRepository: TagRepository,
+		mediaSearch,
+	},
+);

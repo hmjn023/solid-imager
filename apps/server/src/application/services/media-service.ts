@@ -3,20 +3,6 @@
  * Thin wrapper that delegates to the extracted MediaServiceImpl in @solid-imager/application.
  */
 
-import type { IMediaStorage } from "@solid-imager/core";
-import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import {
-	MediaServiceImpl,
-	validateFileSignature,
-} from "@solid-imager/application/services/media-service";
 import type {
 	DeferredActions,
 	IDeferredActionExecutor,
@@ -25,6 +11,11 @@ import type {
 	ISseNotifier,
 	IThumbnailManager,
 } from "@solid-imager/application/ports/media-service";
+import {
+	MediaServiceImpl,
+	validateFileSignature,
+} from "@solid-imager/application/services/media-service";
+import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import { services } from "~/application/registry";
 import { executeDeferredActions } from "~/application/services/job-dispatch-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
@@ -33,8 +24,7 @@ import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 // Re-export for backward compatibility
-export { validateFileSignature };
-export { MediaServiceImpl };
+export { MediaServiceImpl, validateFileSignature };
 
 // Infrastructure adapters that wrap server-specific implementations
 const sseNotifier: ISseNotifier = {
