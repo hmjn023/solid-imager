@@ -9,3 +9,4 @@ export { createAuthorService } from "./author-service";
 export { CharacterServiceImpl } from "./character-service";
 export { SearchServiceImpl } from "./search-service";
 export type { SearchOptions } from "../ports/search-service";
+export { MediaServiceImpl, validateFileSignature } from "./media-service";

@@ -8,3 +8,15 @@ export type { IIpService } from "./ip-service";
 export type { IAuthorService } from "./author-service";
 export type { ICharacterService } from "./character-service";
 export type { ISearchService, SearchOptions } from "./search-service";
+export type { IMediaService } from "./media-service";
+export type {
+  DeferredActions,
+  DeferredJob,
+  DeferredJobs,
+  DeferredSse,
+  IDeferredActionExecutor,
+  ILogger,
+  IMediaContextProcessor,
+  ISseNotifier,
+  IThumbnailManager,
+} from "./media-service";
