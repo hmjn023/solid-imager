@@ -23,3 +23,5 @@ export type {
   ISseNotifier,
   IThumbnailManager,
 } from "./media-service";
+export type { ILanceDbDumpService, MediaDumpItemWithImageData, WriteOptions, ReadOptions } from "./lancedb-dump-service";
+

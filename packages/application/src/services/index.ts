@@ -13,3 +13,4 @@ export { TaggingServiceImpl } from "./tagging-service";
 export { SearchServiceImpl } from "./search-service";
 export type { SearchOptions } from "../ports/search-service";
 export { MediaServiceImpl, validateFileSignature } from "./media-service";
+export { createLanceDbDumpService } from "./lancedb-dump-service";
