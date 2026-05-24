@@ -1,6 +1,6 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
-import type { AppRouter } from "@solid-imager/server/src/domain/shared/api-contract";
+import type { AppRouter } from "@solid-imager/server/api-contract";
 
 export function getClient(url: string) {
 	const remoteUrl = url || "http://localhost:3000";
