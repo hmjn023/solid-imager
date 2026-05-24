@@ -8,6 +8,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import {
 	beforeEach,
 	describe,
@@ -87,7 +88,7 @@ describe("MediaService Unit Tests", () => {
 	let mockProjectRepository: IProjectRepository;
 	let mockCharacterRepository: CharacterRepository;
 	let mockIpRepository: IIpRepository;
-	let mockJobRepository: { create: Mock };
+	let mockJobRepository: IJobRepository;
 	let localMockMediaProcessingService: any;
 
 	beforeEach(async () => {
@@ -98,7 +99,17 @@ describe("MediaService Unit Tests", () => {
 
 		// Mock registry
 		const { services } = await import("~/application/registry");
-		mockJobRepository = { create: vi.fn() };
+		mockJobRepository = {
+			create: vi.fn(),
+			createIfUnique: vi.fn(),
+			findById: vi.fn(),
+			findPending: vi.fn(),
+			markAsInProgress: vi.fn(),
+			markAsCompleted: vi.fn(),
+			markAsFailed: vi.fn(),
+			update: vi.fn(),
+			incrementProgress: vi.fn(),
+		};
 		services.getJobRepository = vi.fn().mockReturnValue(mockJobRepository);
 
 		// Create mocks for all dependencies

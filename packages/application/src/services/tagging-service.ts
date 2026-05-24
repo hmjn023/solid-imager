@@ -56,7 +56,7 @@ export class TaggingServiceImpl implements ITaggingService {
     mediaSourceId: string,
     mediaId: string,
     options?: { skipCache?: boolean },
-  ): Promise<TaggingResponse> {
+  ): Promise<TaggingResponse | null> {
     const media = await this.mediaRepo.findById(mediaId);
     if (!media) {
       throw new Error(`Media not found: ${mediaId}`);

@@ -10,7 +10,7 @@ export interface ITaggingService {
     mediaSourceId: string,
     mediaId: string,
     options?: { skipCache?: boolean },
-  ): Promise<TaggingResponse>;
+  ): Promise<TaggingResponse | null>;
   getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
   getCcipFeatureForMedia(
     mediaSourceId: string,
