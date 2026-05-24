@@ -187,17 +187,26 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const { MediaProcessingServiceImpl } = await import(
 			"~/application/services/media-processing-service"
 		);
-		const mediaProcessingService = new MediaProcessingServiceImpl(
-			mockSourceRepository as any,
-			MediaRepository, // This is the class/static mock wrapper? Let's check imports. It's imported as class/object.
-			mockTagRepo,
-			mockAuthorRepo,
-			mockCharRepo,
-			mockIpRepo,
-			mockProjectRepo,
-			mockJobRepo as any,
-			mockConfigService as any,
-		);
+		const mediaProcessingService = new MediaProcessingServiceImpl({
+			sourceRepo: mockSourceRepository as any,
+			mediaRepo: MediaRepository as any,
+			tagRepo: mockTagRepo,
+			authorRepo: mockAuthorRepo,
+			characterRepo: mockCharRepo,
+			ipRepo: mockIpRepo,
+			projectRepo: mockProjectRepo,
+			jobRepo: mockJobRepo as any,
+			imageProcessor: {} as any,
+			mediaStorage: {} as any,
+			enableAutoTagging: false,
+			supportedExtensions: {
+				image: [".jpg", ".jpeg", ".png", ".webp"],
+				video: [".mp4", ".webm", ".mov"],
+				audio: [".mp3", ".wav"],
+			},
+			generateThumbnail: vi.fn() as any,
+			sseSendEvent: vi.fn() as any,
+		});
 		services.registerMediaProcessingService(mediaProcessingService);
 	});
 

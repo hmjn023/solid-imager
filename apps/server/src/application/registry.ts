@@ -14,7 +14,7 @@ import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domai
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 export class ServiceRegistry {

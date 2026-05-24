@@ -73,13 +73,13 @@ describe("MediaService - Copy Media Integration", () => {
 		// Reset registry and register services
 		services.reset();
 		services.registerMediaRepository(MediaRepository);
-		services.registerSourceRepository(new DrizzleSourceRepository());
+		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerTagRepository(TagRepository);
 		services.registerAuthorRepository(AuthorRepository);
 		services.registerProjectRepository(ProjectRepository);
-		services.registerCharacterRepository(new DrizzleCharacterRepository());
+		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerJobRepository(new JobRepository());
+		services.registerJobRepository(JobRepository);
 		services.registerMediaStorage(mockStorageService as any);
 		services.registerImageProcessor(mockImageProcessor as any);
 		services.registerAiClient(mockAiClient as any);
@@ -131,17 +131,26 @@ describe("MediaService - Copy Media Integration", () => {
 		);
 
 		services.registerMediaProcessingService(
-			new MediaProcessingServiceImpl(
-				services.getSourceRepository(),
-				services.getMediaRepository(),
-				services.getTagRepository(),
-				services.getAuthorRepository(),
-				services.getCharacterService(),
-				services.getIpRepository(),
-				services.getProjectRepository(),
-				services.getJobRepository() as any,
-				mockConfigService as any,
-			),
+			new MediaProcessingServiceImpl({
+				sourceRepo: services.getSourceRepository(),
+				mediaRepo: services.getMediaRepository(),
+				tagRepo: services.getTagRepository(),
+				authorRepo: services.getAuthorRepository(),
+				characterRepo: services.getCharacterRepository(),
+				ipRepo: services.getIpRepository(),
+				projectRepo: services.getProjectRepository(),
+				jobRepo: services.getJobRepository() as any,
+				imageProcessor: {} as any,
+				mediaStorage: {} as any,
+				enableAutoTagging: false,
+				supportedExtensions: {
+					image: [".jpg", ".jpeg", ".png", ".webp"],
+					video: [".mp4", ".webm", ".mov"],
+					audio: [".mp3", ".wav"],
+				},
+				generateThumbnail: vi.fn() as any,
+				sseSendEvent: vi.fn() as any,
+			}),
 		);
 
 		// Clean DB

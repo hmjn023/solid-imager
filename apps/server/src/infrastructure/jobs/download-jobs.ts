@@ -655,7 +655,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
 
-	const sourceRepo = new DrizzleSourceRepository();
+	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
 	if (!mediaSource || mediaSource.type !== "local") {
 		const error = "Media source not found or not a local source";
@@ -796,7 +796,7 @@ export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
 ): Promise<number> {
-	const sourceRepo = new DrizzleSourceRepository();
+	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
 	if (!mediaSource || mediaSource.type !== "local") {
 		throw new Error("Media source not found or not a local source");

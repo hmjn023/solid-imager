@@ -13,6 +13,8 @@
     "paths": {
       "~/*": ["./src/*"],
       "@solid-imager/ui/*": ["../../packages/ui/src/*"],
+      "@solid-imager/application": ["../../packages/application/src"],
+      "@solid-imager/application/*": ["../../packages/application/src/*"],
       "@/*": ["../../packages/core/src/*"]
     }
   },

@@ -20,6 +20,8 @@ import { ProjectRepository } from "~/infrastructure/repositories/project-reposit
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
+import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 export let isBootstrapped = false;
 export let isWorkerStarted = false;
@@ -51,14 +53,14 @@ export function initServices() {
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);
-	services.registerSourceRepository(new ActualSourceRepo());
+	services.registerSourceRepository(ActualSourceRepo);
 	services.registerTagRepository(TagRepository);
 	services.registerAuthorRepository(AuthorRepository);
 	services.registerProjectRepository(ProjectRepository);
-	services.registerCharacterRepository(new DrizzleCharacterRepository());
+	services.registerCharacterRepository(DrizzleCharacterRepository);
 	services.registerIpRepository(IpRepository);
 
-	const jobRepo = new JobRepository();
+	const jobRepo = JobRepository;
 	services.registerJobRepository(jobRepo);
 
 	// Register Services
@@ -90,17 +92,30 @@ export function initServices() {
 
 	// Register MediaProcessingService (Implementation)
 	services.registerMediaProcessingService(
-		new MediaProcessingServiceImpl(
-			services.getSourceRepository(),
-			services.getMediaRepository(),
-			services.getTagRepository(),
-			services.getAuthorRepository(),
-			services.getCharacterService(),
-			services.getIpRepository(),
-			services.getProjectRepository(),
+		new MediaProcessingServiceImpl({
+			sourceRepo: services.getSourceRepository(),
+			mediaRepo: services.getMediaRepository(),
+			tagRepo: services.getTagRepository(),
+			authorRepo: services.getAuthorRepository(),
+			characterRepo: services.getCharacterRepository(),
+			ipRepo: services.getIpRepository(),
+			projectRepo: services.getProjectRepository(),
 			jobRepo,
-			configService,
-		),
+			imageProcessor: services.getImageProcessor(),
+			mediaStorage: services.getMediaStorage(),
+			enableAutoTagging: config.jobs.enableAutoTagging,
+			supportedExtensions: config.media.supportedExtensions,
+			generateThumbnail: (
+				media: { id: string; filePath: string },
+				sourcePath: string,
+				mediaSourceId: string,
+			) => generateThumbnail(media as any, sourcePath, mediaSourceId),
+			sseSendEvent: (
+				mediaSourceId: string,
+				event: string,
+				data: unknown,
+			) => SseManager.sendEvent(mediaSourceId, event, data),
+		}),
 	);
 }
 

@@ -1,0 +1,29 @@
+{
+  "name": "@solid-imager/application",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./services/*": "./src/services/*.ts",
+    "./ports/*": "./src/ports/*.ts",
+    "./utils/*": "./src/utils/*.ts"
+  },
+  "scripts": {
+    "check": "biome check --fix --unsafe ./src",
+    "typecheck": "sh -c 'tsc --noEmit'",
+    "lint": "biome lint ./src",
+    "test": "vp test run",
+    "test:unit": "vp test run"
+  },
+  "dependencies": {
+    "@solid-imager/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.4",
+    "typescript": "^5.9.3",
+    "vite-plus": "latest",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
+  }
+}

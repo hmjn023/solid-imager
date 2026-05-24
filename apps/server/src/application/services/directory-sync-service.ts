@@ -9,7 +9,7 @@ import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
-const sourceRepo = new DrizzleSourceRepository();
+const sourceRepo = DrizzleSourceRepository;
 
 type SyncResult = {
 	sourceId: string;

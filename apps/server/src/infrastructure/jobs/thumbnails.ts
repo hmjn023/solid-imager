@@ -11,7 +11,7 @@ import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
-const sourceRepo = new DrizzleSourceRepository();
+const sourceRepo = DrizzleSourceRepository;
 
 const DEFAULT_THUMBNAIL_DIR = ".cache/thumbnails";
 const DEFAULT_THUMBNAIL_SIZE = 512;

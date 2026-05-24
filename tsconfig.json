@@ -11,7 +11,9 @@
     "baseUrl": ".",
     "paths": {
       "@solid-imager/core": ["./packages/core/src"],
-      "@solid-imager/core/*": ["./packages/core/src/*"]
+      "@solid-imager/core/*": ["./packages/core/src/*"],
+      "@solid-imager/application": ["./packages/application/src"],
+      "@solid-imager/application/*": ["./packages/application/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", ".vinxi", ".output"]
