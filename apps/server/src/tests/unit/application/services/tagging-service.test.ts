@@ -1,3 +1,5 @@
+import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
+import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -5,8 +7,6 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
-import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
 
 const MOCK_BUFFER_DATA = [1, 2, 3];
 

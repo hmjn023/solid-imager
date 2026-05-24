@@ -1,3 +1,4 @@
+import { deepEqual } from "@solid-imager/core/utils/deep-equal";
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { PresetClient } from "~/infrastructure/api/clients/preset-client";
 import { logger } from "~/infrastructure/logger";
@@ -8,7 +9,6 @@ import {
 	searchState,
 	setSearchState,
 } from "~/presentation/store/search-store";
-import { deepEqual } from "~/utils/deep-equal";
 
 const DEBOUNCE_MS = 1000;
 

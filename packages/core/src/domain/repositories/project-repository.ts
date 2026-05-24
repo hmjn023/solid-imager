@@ -33,8 +33,5 @@ export type IProjectRepository = {
 	): Promise<void>;
 
 	/** Bulk find-or-create projects by name. */
-	findOrCreateBulk(
-		names: string[],
-		tx?: Transaction,
-	): Promise<Project[]>;
+	findOrCreateBulk(names: string[], tx?: Transaction): Promise<Project[]>;
 };
