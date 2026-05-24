@@ -85,17 +85,26 @@ describe("MediaProcessingService", () => {
 	let service: MediaProcessingServiceImpl;
 
 	beforeEach(() => {
-		service = new MediaProcessingServiceImpl(
-			{} as any, // SourceRepo
-			mockMediaRepo as any,
-			mockTagRepo as any,
-			mockAuthorRepo as any,
-			mockCharacterService as any,
-			mockIpRepo as any,
-			mockProjectRepo as any,
-			mockJobRepo as any,
-			mockConfigService as any,
-		);
+		service = new MediaProcessingServiceImpl({
+			sourceRepo: {} as any,
+			mediaRepo: mockMediaRepo as any,
+			tagRepo: mockTagRepo as any,
+			authorRepo: mockAuthorRepo as any,
+			characterRepo: mockCharacterRepo as any,
+			ipRepo: mockIpRepo as any,
+			projectRepo: mockProjectRepo as any,
+			jobRepo: mockJobRepo as any,
+			imageProcessor: {} as any,
+			mediaStorage: {} as any,
+			enableAutoTagging: false,
+			supportedExtensions: {
+				image: [".jpg", ".jpeg", ".png", ".webp"],
+				video: [".mp4", ".webm", ".mov"],
+				audio: [".mp3", ".wav"],
+			},
+			generateThumbnail: vi.fn() as any,
+			sseSendEvent: vi.fn() as any,
+		});
 	});
 
 	afterEach(() => {
