@@ -147,7 +147,8 @@ export class TaggingServiceImpl implements ITaggingService {
     } else {
       // Send file buffer when AI service is remote or media source is not local
       if (mediaSource.type !== "local") {
-        throw new Error("Only local media sources is supported.");
+			console.error("Only local media sources are supported.");
+			return null;
       }
       const connectionInfo = mediaSource.connectionInfo as { path: string };
       const fullPath = path.join(connectionInfo.path, media.filePath);

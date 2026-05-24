@@ -28,6 +28,7 @@ export type MediaProcessingServiceDeps = {
 	jobRepo: IJobRepository;
 	imageProcessor: IImageProcessor;
 	mediaStorage: IMediaStorage;
+	logger?: { warn(msg: string, data?: unknown): void };
 	enableAutoTagging: boolean;
 	supportedExtensions: {
 		image: string[];
@@ -57,6 +58,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
 	private readonly sseSendEvent: MediaProcessingServiceDeps["sseSendEvent"];
+	private readonly logger?: { warn(msg: string, data?: unknown): void };
 
 	constructor(deps: MediaProcessingServiceDeps) {
 		this.sourceRepo = deps.sourceRepo;
@@ -73,6 +75,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.supportedExtensions = deps.supportedExtensions;
 		this.generateThumbnail = deps.generateThumbnail;
 		this.sseSendEvent = deps.sseSendEvent;
+		this.logger = deps.logger;
 	}
 
 	async registerAndProcess(
@@ -151,13 +154,13 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		const mediaId = payload?.mediaId;
 
 		if (!mediaId) {
-			console.warn({ jobId: job.id }, "Missing mediaId in job payload");
+			this.logger?.warn("Missing mediaId in job payload", { jobId: job.id });
 			return;
 		}
 
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
-			console.warn({ mediaId }, "Media not found for processMedia job");
+			this.logger?.warn("Media not found for processMedia job", { mediaId });
 			return;
 		}
 
@@ -165,7 +168,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const mediaSourceId = job.mediaSourceId;
 		if (!mediaSourceId) {
-			console.error({ jobId: job.id }, "Missing mediaSourceId in job");
+			this.logger?.warn("Missing mediaSourceId in job", { jobId: job.id });
 			return;
 		}
 
