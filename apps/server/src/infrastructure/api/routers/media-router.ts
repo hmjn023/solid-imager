@@ -4,9 +4,9 @@ import {
 	mediaSearchRequestSchema,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { z } from "zod";
 import { MediaService } from "~/application/services/media-service";
-import { asyncPool } from "~/utils/async-pool";
 
 /**
  * Media Router Implementation

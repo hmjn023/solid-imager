@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { HashUtils } from "@solid-imager/application";
 import { describe, expect, it } from "vite-plus/test";
-import { HashUtils } from "~/application/utils/hash-utils";
 
 describe("HashUtils", () => {
 	describe("generateMd5", () => {

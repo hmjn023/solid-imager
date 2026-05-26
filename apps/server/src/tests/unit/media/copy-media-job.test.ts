@@ -204,7 +204,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: vi.fn() as any,
+			generateThumbnail: generateThumbnail as any,
 			sseSendEvent: vi.fn() as any,
 		});
 		services.registerMediaProcessingService(mediaProcessingService);
