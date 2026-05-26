@@ -2,4 +2,5 @@ import type { ICollectionRepository } from "@solid-imager/core/domain/repositori
 import { createCollectionRepository } from "@solid-imager/db/repositories/collection-repository";
 import { getExecutor } from "~/infrastructure/db/executor";
 
-export const CollectionRepository: ICollectionRepository = createCollectionRepository(getExecutor);
+export const CollectionRepository: ICollectionRepository =
+	createCollectionRepository(getExecutor);

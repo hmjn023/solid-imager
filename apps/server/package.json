@@ -2,6 +2,9 @@
   "name": "@solid-imager/server",
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./api-contract": "./src/domain/shared/api-contract.ts"
+  },
   "scripts": {
     "dev": "vp dev",
     "build": "vp build",

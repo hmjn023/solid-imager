@@ -1,5 +1,8 @@
 import { services } from "~/application/registry";
-import { generateThumbnailsForSource, getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
+import {
+	generateThumbnailsForSource,
+	getSourceCacheDir,
+} from "~/infrastructure/jobs/thumbnails";
 
 export { ThumbnailServiceImpl } from "@solid-imager/application/services/thumbnail-service";
 

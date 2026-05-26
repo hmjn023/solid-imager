@@ -36,7 +36,7 @@ const mockCharacterRepo = {
 	updateIpsBulk: vi.fn(),
 	addToMediaBulk: vi.fn(),
 };
-const mockCharacterService = {
+const _mockCharacterService = {
 	findByName: vi.fn(),
 	createCharacter: vi.fn(),
 	updateCharacter: vi.fn(),
@@ -63,7 +63,7 @@ const mockJobRepo = {
 	create: vi.fn(),
 };
 
-const mockConfigService = {
+const _mockConfigService = {
 	getConfig: vi.fn().mockReturnValue({
 		jobs: {
 			concurrency: 3,

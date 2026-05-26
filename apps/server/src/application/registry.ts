@@ -7,6 +7,7 @@ import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -14,7 +15,6 @@ import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domai
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { CharacterServiceImpl } from "~/application/services/character-service";
 import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 export class ServiceRegistry {

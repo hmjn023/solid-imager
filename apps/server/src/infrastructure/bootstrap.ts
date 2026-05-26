@@ -9,6 +9,8 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
@@ -20,8 +22,6 @@ import { ProjectRepository } from "~/infrastructure/repositories/project-reposit
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
-import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 export let isBootstrapped = false;
 export let isWorkerStarted = false;
@@ -110,11 +110,8 @@ export function initServices() {
 				sourcePath: string,
 				mediaSourceId: string,
 			) => generateThumbnail(media as any, sourcePath, mediaSourceId),
-			sseSendEvent: (
-				mediaSourceId: string,
-				event: string,
-				data: unknown,
-			) => SseManager.sendEvent(mediaSourceId, event, data),
+			sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
+				SseManager.sendEvent(mediaSourceId, event, data),
 		}),
 	);
 }

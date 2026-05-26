@@ -24,6 +24,7 @@
     "zod": "^4.3.5",
     "@orpc/client": "^1.13.2",
     "@orpc/server": "^1.13.2",
+    "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*"
   }
 }
