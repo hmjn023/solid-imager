@@ -9,6 +9,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import {
 	beforeEach,
 	describe,
