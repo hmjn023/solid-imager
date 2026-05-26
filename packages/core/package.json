@@ -6,6 +6,7 @@
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
+    "./domain/events/*": "./src/domain/events/*.ts",
     "./domain/errors": "./src/domain/errors/index.ts",
     "./domain/*/schemas": "./src/domain/*/schemas.ts",
     "./domain/repositories/*": "./src/domain/repositories/*.ts",
@@ -19,7 +20,8 @@
     "./domain/media/utils/*": "./src/domain/media/utils/*.ts",
     "./domain/shared/*": "./src/domain/shared/*.ts",
     "./domain/config/*": "./src/domain/config/*.ts",
-    "./interfaces/*": "./src/interfaces/*.ts"
+    "./interfaces/*": "./src/interfaces/*.ts",
+    "./utils/*": "./src/utils/*.ts"
   },
   "scripts": {
     "check": "biome check --fix --unsafe ./src",

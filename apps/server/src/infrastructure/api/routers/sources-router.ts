@@ -5,6 +5,7 @@ import {
 	mediaSourceStatusSchema,
 	type SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { z } from "zod";
 import { BackupService } from "~/application/services/backup-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
@@ -12,7 +13,6 @@ import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
-import { asyncPool } from "~/utils/async-pool";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
