@@ -1,7 +1,7 @@
+import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
+import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 import { services } from "~/application/registry";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
-import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
-import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
 
 export { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 

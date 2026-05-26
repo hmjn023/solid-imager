@@ -1,42 +1,15 @@
-import { createORPCClient } from "@orpc/client";
-import { RPCLink } from "@orpc/client/fetch";
-import type { RouterClient } from "@orpc/server";
-import type { AppRouter } from "@solid-imager/server/domain/shared/api-contract";
+import { APIError, createClient } from "@solid-imager/client";
+
+export { APIError };
 
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
-
-export class APIError extends Error {
-	readonly code:
-		| "NETWORK_ERROR"
-		| "TIMEOUT"
-		| "CORS_ERROR"
-		| "SERVER_ERROR"
-		| "UNKNOWN";
-	readonly originalError?: unknown;
-
-	constructor(
-		message: string,
-		code:
-			| "NETWORK_ERROR"
-			| "TIMEOUT"
-			| "CORS_ERROR"
-			| "SERVER_ERROR"
-			| "UNKNOWN",
-		originalError?: unknown,
-	) {
-		super(message);
-		this.name = "APIError";
-		this.code = code;
-		this.originalError = originalError;
-	}
-}
 
 export const getClient = async () => {
 	const result = await chrome.storage.local.get(["apiUrl"]);
 	const url = result.apiUrl || DEFAULT_API_URL;
 
-	const link = new RPCLink({
+	return createClient({
 		url,
 		fetch: async (input, init) => {
 			try {
@@ -50,8 +23,6 @@ export const getClient = async () => {
 			}
 		},
 	});
-
-	return createORPCClient(link) as RouterClient<AppRouter>;
 };
 
 function handleFetchError(error: unknown, url: string): APIError {

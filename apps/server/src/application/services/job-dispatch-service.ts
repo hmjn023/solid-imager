@@ -5,6 +5,7 @@ import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
+import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 export type DeferredJob = {
@@ -26,9 +27,21 @@ export type DeferredSse = {
 	payload: any;
 };
 
+export type FileToDelete = {
+	basePath: string;
+	filePath: string;
+};
+
+export type ThumbnailToDelete = {
+	mediaSourceId: string;
+	mediaId: string;
+};
+
 export type DeferredActions = {
 	jobs: DeferredJobs[];
 	sse: DeferredSse[];
+	filesToDelete?: FileToDelete[];
+	thumbnailsToDelete?: ThumbnailToDelete[];
 };
 
 // Helper for unified job processing (Called by JobWorker)
@@ -77,6 +90,25 @@ export async function executeDeferredActions(actions: DeferredActions) {
 	if (actions.sse.length > 0) {
 		for (const item of actions.sse) {
 			SseManager.sendEvent(item.mediaSourceId, item.event, item.payload);
+		}
+	}
+	if (actions.filesToDelete && actions.filesToDelete.length > 0) {
+		const storageService = services.getMediaStorage();
+		for (const file of actions.filesToDelete) {
+			try {
+				await storageService.deleteFile(file.basePath, file.filePath);
+			} catch (e) {
+				logger.error({ err: e, basePath: file.basePath, filePath: file.filePath }, "Failed to delete file during deferred actions");
+			}
+		}
+	}
+	if (actions.thumbnailsToDelete && actions.thumbnailsToDelete.length > 0) {
+		for (const thumb of actions.thumbnailsToDelete) {
+			try {
+				await deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);
+			} catch (e) {
+				logger.error({ err: e, mediaSourceId: thumb.mediaSourceId, mediaId: thumb.mediaId }, "Failed to delete thumbnail during deferred actions");
+			}
 		}
 	}
 }

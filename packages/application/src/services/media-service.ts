@@ -491,19 +491,17 @@ export class MediaServiceImpl implements IMediaService {
 				throw new ResourceNotFoundError("Media", validatedMediaId);
 			}
 
-			const [updatedMedia] = await Promise.all([
-				this.mediaRepository.update(validatedMediaId, parsedUpdates, t),
-				this.mediaContextProcessor.addContextMetadataToExistingMedia(
-					validatedMediaId,
-					{
-						sourceUrls: parsedUpdates.sourceUrls,
-						authors: parsedUpdates.authors,
-						characters: parsedUpdates.characters,
-						ips: parsedUpdates.ips,
-					},
-					t,
-				),
-			]);
+			const updatedMedia = await this.mediaRepository.update(validatedMediaId, parsedUpdates, t);
+			await this.mediaContextProcessor.addContextMetadataToExistingMedia(
+				validatedMediaId,
+				{
+					sourceUrls: parsedUpdates.sourceUrls,
+					authors: parsedUpdates.authors,
+					characters: parsedUpdates.characters,
+					ips: parsedUpdates.ips,
+				},
+				t,
+			);
 
 			return updatedMedia as Media;
 		};
@@ -659,10 +657,18 @@ export class MediaServiceImpl implements IMediaService {
 			modifiedAt: sourceMedia.modifiedAt,
 		};
 
-		const newMediaEntry = await this.mediaRepository.create(newMedia, tx);
-
-		// 4. Copy Metadata
-		await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
+		let newMediaEntry: Media;
+		try {
+			newMediaEntry = await this.mediaRepository.create(newMedia, tx);
+			await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
+		} catch (error) {
+			try {
+				await this.storageService.deleteFile(targetConnection.path, fileInfo.filePath);
+			} catch (_deleteError) {
+				this.logger.error({ err: _deleteError, filePath: fileInfo.filePath }, "Failed to clean up copied file after DB failure");
+			}
+			throw error;
+		}
 
 		// 5. Prepare Deferred Actions (Jobs + Notifications)
 		const sourcePath = targetConnection.path;
@@ -784,9 +790,21 @@ export class MediaServiceImpl implements IMediaService {
 							sourceMediaId,
 							t,
 						);
-						if (deleteResult) {
-							accumulatedDeferred.jobs.push(...deleteResult.jobs);
-						}
+				if (deleteResult) {
+					accumulatedDeferred.jobs.push(...deleteResult.jobs);
+					if (deleteResult.filesToDelete) {
+						accumulatedDeferred.filesToDelete = [
+							...(accumulatedDeferred.filesToDelete ?? []),
+							...deleteResult.filesToDelete,
+						];
+					}
+					if (deleteResult.thumbnailsToDelete) {
+						accumulatedDeferred.thumbnailsToDelete = [
+							...(accumulatedDeferred.thumbnailsToDelete ?? []),
+							...deleteResult.thumbnailsToDelete,
+						];
+					}
+				}
 
 						const sseEventSource: DeferredSse = {
 							mediaSourceId: sourceMedia.mediaSourceId,
@@ -865,13 +883,11 @@ export class MediaServiceImpl implements IMediaService {
 			throw new Error("Media not in specified source");
 		}
 
-		// 1. Delete thumbnail
-		await this.thumbnailManager.deleteThumbnail(validatedSourceId, validatedMediaId);
-
-		// 2. Delete from database
+		// 1. Delete from database
 		await this.mediaRepository.delete(validatedMediaId, tx);
 
-		// 3. Delete file from filesystem
+		// 2. Collect file paths for deferred deletion
+		let filesToDelete: DeferredActions["filesToDelete"];
 		if (media.mediaSourceId) {
 			const mediaSource = await this.sourceRepository.findById(
 				media.mediaSourceId,
@@ -879,16 +895,15 @@ export class MediaServiceImpl implements IMediaService {
 			);
 			if (mediaSource && mediaSource.type === "local") {
 				const connectionInfo = mediaSource.connectionInfo as { path: string };
-				try {
-					await this.storageService.deleteFile(
-						connectionInfo.path,
-						media.filePath,
-					);
-				} catch (_e) {
-					// Log error
-				}
+				filesToDelete = [
+					{ basePath: connectionInfo.path, filePath: media.filePath },
+				];
 			}
 		}
+
+		const thumbnailsToDelete: DeferredActions["thumbnailsToDelete"] = [
+			{ mediaSourceId: validatedSourceId, mediaId: validatedMediaId },
+		];
 
 		// Prepare Deferred Notification
 		const sseEvent: DeferredSse = {
@@ -904,7 +919,29 @@ export class MediaServiceImpl implements IMediaService {
 			return {
 				jobs: [],
 				sse: [sseEvent],
+				filesToDelete,
+				thumbnailsToDelete,
 			};
+		}
+
+		// Non-transactional path: delete files immediately
+		if (thumbnailsToDelete) {
+			for (const thumb of thumbnailsToDelete) {
+				try {
+					await this.thumbnailManager.deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);
+				} catch (_e) {
+					// Log error
+				}
+			}
+		}
+		if (filesToDelete) {
+			for (const file of filesToDelete) {
+				try {
+					await this.storageService.deleteFile(file.basePath, file.filePath);
+				} catch (_e) {
+					// Log error
+				}
+			}
 		}
 
 		// Notify via SSE immediately
