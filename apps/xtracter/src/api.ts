@@ -1,5 +1,7 @@
 import { APIError, createClient } from "@solid-imager/client";
 
+export { APIError };
+
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
