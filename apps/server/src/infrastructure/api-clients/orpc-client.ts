@@ -13,7 +13,7 @@ const getORPCClient = createIsomorphicFn()
 		}) as any;
 	})
 	.client(() => {
-		return createClient({ url: `${window.location.origin}/api/rpc` }) as any;
+		return createClient({ url: window.location.origin }) as any;
 	});
 
 export const client = getORPCClient();

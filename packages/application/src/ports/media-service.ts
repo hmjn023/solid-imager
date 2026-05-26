@@ -34,9 +34,21 @@ export type DeferredSse = {
 	payload: unknown;
 };
 
+export type FileToDelete = {
+	basePath: string;
+	filePath: string;
+};
+
+export type ThumbnailToDelete = {
+	mediaSourceId: string;
+	mediaId: string;
+};
+
 export type DeferredActions = {
 	jobs: DeferredJobs[];
 	sse: DeferredSse[];
+	filesToDelete?: FileToDelete[];
+	thumbnailsToDelete?: ThumbnailToDelete[];
 };
 
 // ============================================================================
