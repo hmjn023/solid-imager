@@ -4,7 +4,6 @@ import { RPCLink } from "@orpc/client/fetch";
 export type ClientOptions = {
 	url?: string;
 	fetch?: typeof fetch;
-	timeout?: number;
 };
 
 export function createClient(options: ClientOptions = {}) {
