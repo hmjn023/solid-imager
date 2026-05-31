@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
-import { getTauriAppServices } from "~/app-services";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -23,7 +23,7 @@ import {
 	allProjectsQueryOptions,
 	projectsForMediaQueryOptions,
 } from "~/infrastructure/api-clients/queries/projects-query";
-import { joinLocalPath } from "~/infrastructure/path-utils";
+import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { AiTaggingModal } from "../ai-tagging-modal";
 
 type MediaSidebarProps = {
@@ -35,16 +35,13 @@ type MediaSidebarProps = {
 
 export function MediaSidebar(props: MediaSidebarProps) {
 	const loadMediaFile = async () => {
-		const sourceRootPath = props.sourceRootPath;
-		if (!sourceRootPath) {
-			throw new Error("Source root path is not available.");
+		const url = buildMediaContentUrl(props.media.mediaSourceId, props.media.id);
+		const response = await tauriFetch(url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch media: ${response.status}`);
 		}
-		const bytes = await getTauriAppServices().fileSystem.readFile(
-			joinLocalPath(sourceRootPath, props.media.filePath),
-		);
-		const buffer = new ArrayBuffer(bytes.byteLength);
-		new Uint8Array(buffer).set(bytes);
-		return new File([buffer], props.media.fileName);
+		const blob = await response.blob();
+		return new File([blob], props.media.fileName);
 	};
 
 	return (

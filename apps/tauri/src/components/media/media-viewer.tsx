@@ -3,9 +3,9 @@ import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { createMemo } from "solid-js";
-import { getTauriAppServices } from "~/app-services";
-import { joinLocalPath } from "~/infrastructure/path-utils";
+import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",
@@ -29,14 +29,11 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
-class LocalMediaSource implements MediaSource {
+class ApiMediaSource implements MediaSource {
 	type: "image" | "video" | "audio";
 	private urls: string[] = [];
 
-	constructor(
-		private media: MediaDetails,
-		private sourceRootPath: string | null,
-	) {
+	constructor(private media: MediaDetails) {
 		this.type =
 			media.mediaType === "video"
 				? "video"
@@ -46,20 +43,18 @@ class LocalMediaSource implements MediaSource {
 	}
 
 	async getUrl() {
-		const rootPath = this.sourceRootPath;
-		if (!rootPath) {
-			throw new Error("No root path");
+		const url = buildMediaContentUrl(this.media.mediaSourceId, this.media.id);
+		const response = await tauriFetch(url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch media: ${response.status}`);
 		}
-		const bytes = await getTauriAppServices().fileSystem.readFile(
-			joinLocalPath(rootPath, this.media.filePath),
-		);
-		const buffer = new ArrayBuffer(bytes.byteLength);
-		new Uint8Array(buffer).set(bytes);
-		const url = URL.createObjectURL(
-			new Blob([buffer], { type: resolveMimeType(this.media.fileName) }),
-		);
-		this.urls.push(url);
-		return url;
+		const blob = await response.blob();
+		const typedBlob = new Blob([blob], {
+			type: resolveMimeType(this.media.fileName),
+		});
+		const blobUrl = URL.createObjectURL(typedBlob);
+		this.urls.push(blobUrl);
+		return blobUrl;
 	}
 
 	revokeUrl(url: string) {
@@ -77,9 +72,7 @@ type MediaViewerProps = {
 };
 
 export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(
-		() => new LocalMediaSource(props.media, props.sourceRootPath ?? null),
-	);
+	const source = createMemo(() => new ApiMediaSource(props.media));
 
 	return (
 		<SharedMediaViewer

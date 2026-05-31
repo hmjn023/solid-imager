@@ -1,17 +1,31 @@
-export function getThumbnailResource(mediaSourceId: string, mediaId: string): string {
-	return `/api/sources/${mediaSourceId}/${mediaId}/thumbnail`;
-}
+import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
 
-export function subscribeToThumbnailReady(
+export function getThumbnailResource(
 	mediaSourceId: string,
 	mediaId: string,
-	callback: (url: string) => void,
-): () => void {
-	// No-op for remote server mode
-	return () => {};
+): string {
+	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}/thumbnail`);
 }
 
-export function notifyThumbnailReady(mediaSourceId: string, mediaId: string) {
+export function buildThumbnailUrl(args: {
+	cacheKey: number;
+	mediaId: string;
+	mediaSourceId: string;
+}): string {
+	const base = buildAbsoluteUrl(
+		`/api/sources/${args.mediaSourceId}/${args.mediaId}/thumbnail`,
+	);
+	return args.cacheKey ? `${base}?t=${args.cacheKey}` : base;
+}
+
+export function buildMediaContentUrl(
+	mediaSourceId: string,
+	mediaId: string,
+): string {
+	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}`);
+}
+
+export function notifyThumbnailReady(_mediaSourceId: string, _mediaId: string) {
 	// No-op for remote server mode
 }
 
