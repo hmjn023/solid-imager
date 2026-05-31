@@ -4,7 +4,10 @@ import type { ContractRouterClient } from "@orpc/contract";
 
 export type ClientOptions = {
 	url?: string;
-	fetch?: typeof fetch;
+	fetch?: (
+		request: Request,
+		init?: RequestInit & { redirect?: Request["redirect"] },
+	) => Promise<Response>;
 };
 
 export function createClient<C extends Record<string, any>>(

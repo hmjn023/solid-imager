@@ -22,9 +22,10 @@
 		"@solid-imager/client": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"@solid-imager/ui": "workspace:*",
-		"@tauri-apps/api": "^2.10.1",
 		"@tanstack/solid-query": "latest",
 		"@tanstack/solid-router": "latest",
+		"@tauri-apps/api": "^2.10.1",
+		"@tauri-apps/plugin-http": "^2.5.9",
 		"solid-js": "^1.9.12",
 		"zod": "^4.3.6"
 	},

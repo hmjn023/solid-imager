@@ -2,6 +2,7 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import {
 	createResource,
 	createSignal,
+	ErrorBoundary,
 	onCleanup,
 	onMount,
 	Show,
@@ -82,7 +83,17 @@ export function PendingDownloadsIndicator(
 	});
 
 	return (
-		<>
+		<ErrorBoundary
+			fallback={() => (
+				<button
+					class="cursor-default rounded bg-gray-700 px-3 py-1.5 font-bold text-gray-400 text-xs"
+					disabled
+					type="button"
+				>
+					Inbox
+				</button>
+			)}
+		>
 			<button
 				class={`flex items-center gap-1 rounded px-3 py-1.5 font-bold text-xs transition-colors ${
 					(pendingCount() ?? 0) > 0
@@ -111,6 +122,6 @@ export function PendingDownloadsIndicator(
 				}}
 				processPending={props.processPending}
 			/>
-		</>
+		</ErrorBoundary>
 	);
 }

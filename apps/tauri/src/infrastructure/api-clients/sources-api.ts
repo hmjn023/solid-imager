@@ -1,21 +1,29 @@
 export {
-	fetchMediaSources,
-	fetchMediaSource,
 	createMediaSource,
-	updateMediaSource,
 	deleteMediaSource,
+	fetchMediaSource,
+	fetchMediaSources,
 	syncMediaSources,
+	updateMediaSource,
 } from "~/api/sources-api";
 
+import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { client } from "~/orpc-client";
+
+const isDev = import.meta.env.DEV;
+const API_BASE = isDev
+	? window.location.origin
+	: import.meta.env.VITE_API_URL || "http://192.168.1.150:3000";
+
+const apiFetch = isDev ? fetch : tauriFetch;
 
 export async function fetchSourceDump(
 	id: string,
 	mode: "json" | "zip" | "lancedb" = "json",
 	_includeImages = false,
 ): Promise<Blob> {
-	const url = `/api/sources/${id}/dump?mode=${mode}`;
-	const response = await fetch(url, { method: "GET" });
+	const url = `${API_BASE}/api/sources/${id}/dump?mode=${mode}`;
+	const response = await apiFetch(url, { method: "GET" });
 	if (!response.ok) {
 		throw new Error(`Failed to download dump: ${response.status}`);
 	}
@@ -27,8 +35,8 @@ export function restoreSource(id: string, data: unknown[]) {
 }
 
 export async function importSourceZip(id: string, file: File) {
-	const url = `/api/sources/${id}/import`;
-	const response = await fetch(url, {
+	const url = `${API_BASE}/api/sources/${id}/import`;
+	const response = await apiFetch(url, {
 		method: "POST",
 		body: file,
 	});
