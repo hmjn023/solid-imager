@@ -14,7 +14,8 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@orpc/client": "^1.13.2"
+    "@orpc/client": "^1.13.2",
+    "@orpc/contract": "^1.13.13"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
