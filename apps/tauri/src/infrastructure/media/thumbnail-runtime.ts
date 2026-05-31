@@ -25,7 +25,7 @@ export function buildMediaContentUrl(
 	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}`);
 }
 
-export function notifyThumbnailReady(_mediaSourceId: string, _mediaId: string) {
+export function notifyThumbnailReady(_mediaId: string) {
 	// No-op for remote server mode
 }
 

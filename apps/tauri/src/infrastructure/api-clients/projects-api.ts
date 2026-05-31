@@ -2,12 +2,12 @@ export { fetchAllProjects } from "~/api/entities-api";
 
 import { client } from "~/orpc-client";
 
-export function createProject(data: { name: string; description?: string }) {
-	return client.projects.create(data);
+export function createProject(data: { name: string; description?: string }): Promise<{ id: string }> {
+	return client.projects.create(data) as unknown as Promise<{ id: string }>;
 }
 
-export function updateProject(id: string, data: { name?: string; description?: string }) {
-	return client.projects.update({ id, data });
+export function updateProject(id: string, data: { name?: string; description?: string }): Promise<{ id: string }> {
+	return client.projects.update({ id, data }) as unknown as Promise<{ id: string }>;
 }
 
 export async function deleteProject(id: string) {

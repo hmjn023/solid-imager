@@ -30,8 +30,17 @@ export async function fetchSourceDump(
 	return response.blob();
 }
 
-export function restoreSource(id: string, data: unknown[]) {
-	return client.sources.restore({ id, data });
+export async function restoreSource(
+	sourceId: string,
+	data: unknown,
+	opts?: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void },
+): Promise<{ processed: number; skipped: number; errors: string[]; cancelled?: boolean }> {
+	return client.sources.restore({ id: sourceId, data: data as unknown[] }) as unknown as Promise<{
+		processed: number;
+		skipped: number;
+		errors: string[];
+		cancelled?: boolean;
+	}>;
 }
 
 export async function importSourceZip(id: string, file: File) {

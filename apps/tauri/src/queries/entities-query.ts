@@ -1,4 +1,8 @@
 import { queryOptions } from "@tanstack/solid-query";
+import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import {
 	fetchAllAuthors,
 	fetchAllCharacters,
@@ -8,24 +12,24 @@ import {
 
 export const allProjectsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allProjects"],
+		queryKey: ["allProjects"] as const,
 		queryFn: fetchAllProjects,
 	});
 
 export const allIpsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allIps"],
+		queryKey: ["allIps"] as const,
 		queryFn: fetchAllIps,
 	});
 
 export const allCharactersQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allCharacters"],
+		queryKey: ["allCharacters"] as const,
 		queryFn: fetchAllCharacters,
 	});
 
 export const allAuthorsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allAuthors"],
+		queryKey: ["allAuthors"] as const,
 		queryFn: fetchAllAuthors,
 	});

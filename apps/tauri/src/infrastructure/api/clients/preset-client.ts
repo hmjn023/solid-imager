@@ -1,10 +1,13 @@
+import type { PresetOrpcLike } from "@solid-imager/ui/preset-client";
 import { client } from "~/orpc-client";
 
-export const PresetClient = {
-	list: () => client.presets.list(),
-	get: (id: number) => client.presets.get({ id }),
-	getByName: (name: string) => client.presets.getByName({ name }),
-	create: (data: unknown) => client.presets.create(data as any),
-	update: (id: number, data: unknown) => client.presets.update({ id, data: data as any }),
-	delete: (id: number) => client.presets.delete({ id }),
+export const PresetClient: PresetOrpcLike = {
+	presets: {
+		list: () => client.presets.list() as any,
+		get: (input) => client.presets.get(input) as any,
+		getByName: (input) => client.presets.getByName(input) as any,
+		create: (data) => client.presets.create(data) as any,
+		update: (input) => client.presets.update(input) as any,
+		delete: (input) => client.presets.delete(input) as any,
+	},
 };

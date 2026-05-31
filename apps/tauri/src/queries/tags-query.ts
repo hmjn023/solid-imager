@@ -3,6 +3,6 @@ import { fetchTags } from "~/api/tags-api";
 
 export const tagsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["tags"],
+		queryKey: ["tags"] as const,
 		queryFn: fetchTags,
 	});

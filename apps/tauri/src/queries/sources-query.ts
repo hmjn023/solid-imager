@@ -3,6 +3,6 @@ import { fetchMediaSources } from "~/api/sources-api";
 
 export const mediaSourcesQueryOptions = () =>
 	queryOptions({
-		queryKey: ["mediaSources"],
+		queryKey: ["mediaSources"] as const,
 		queryFn: fetchMediaSources,
 	});

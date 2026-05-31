@@ -3,6 +3,6 @@ import { fetchConfig } from "~/api/config-api";
 
 export const configQueryOptions = () =>
 	queryOptions({
-		queryKey: ["config"],
+		queryKey: ["config"] as const,
 		queryFn: fetchConfig,
 	});
