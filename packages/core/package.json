@@ -20,6 +20,8 @@
     "./domain/media/utils/*": "./src/domain/media/utils/*.ts",
     "./domain/shared/*": "./src/domain/shared/*.ts",
     "./domain/config/*": "./src/domain/config/*.ts",
+    "./domain/contract": "./src/domain/contract/index.ts",
+    "./domain/contract/*": "./src/domain/contract/*.ts",
     "./interfaces/*": "./src/interfaces/*.ts",
     "./utils/*": "./src/utils/*.ts"
   },
@@ -29,6 +31,9 @@
     "lint": "biome lint ./src",
     "test": "vp test run",
     "test:unit": "vp test run"
+  },
+  "dependencies": {
+    "@orpc/contract": "^1.13.13"
   },
   "peerDependencies": {
     "zod": "^4.3.5",
