@@ -33,9 +33,20 @@ export async function fetchSourceDump(
 export async function restoreSource(
 	sourceId: string,
 	data: unknown,
-	opts?: { signal?: AbortSignal; onProgress?: (done: number, total: number) => void },
-): Promise<{ processed: number; skipped: number; errors: string[]; cancelled?: boolean }> {
-	return client.sources.restore({ id: sourceId, data: data as unknown[] }) as unknown as Promise<{
+	_opts?: {
+		signal?: AbortSignal;
+		onProgress?: (done: number, total: number) => void;
+	},
+): Promise<{
+	processed: number;
+	skipped: number;
+	errors: string[];
+	cancelled?: boolean;
+}> {
+	return client.sources.restore({
+		id: sourceId,
+		data: data as unknown[],
+	}) as unknown as Promise<{
 		processed: number;
 		skipped: number;
 		errors: string[];

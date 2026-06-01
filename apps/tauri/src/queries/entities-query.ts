@@ -1,8 +1,4 @@
 import { queryOptions } from "@tanstack/solid-query";
-import type { Author } from "@solid-imager/core/domain/authors/schemas";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import {
 	fetchAllAuthors,
 	fetchAllCharacters,

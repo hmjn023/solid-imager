@@ -15,7 +15,7 @@ export function PendingDownloadsIndicator() {
 			processPending={(jobIds, targetSourceId) =>
 				processPendingImports(jobIds, targetSourceId)
 			}
-			subscribeImportEvents={(handler) => {
+			subscribeImportEvents={(_handler) => {
 				// No-op for remote server mode - events come from SSE
 				return () => {};
 			}}

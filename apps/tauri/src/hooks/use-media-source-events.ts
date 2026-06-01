@@ -31,9 +31,7 @@ export function createSseTransport(
 				};
 			}
 
-			const eventSource = new EventSource(
-				`/api/sources/${id}/events`,
-			);
+			const eventSource = new EventSource(`/api/sources/${id}/events`);
 
 			const EVENT_NAMES = [
 				"media-added",

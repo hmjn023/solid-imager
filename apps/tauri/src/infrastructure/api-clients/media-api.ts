@@ -1,9 +1,9 @@
 export {
-	searchMedia,
-	fetchMediaDetails,
-	deleteMedia,
 	copyMedia,
+	deleteMedia,
+	fetchMediaDetails,
 	moveMedia,
+	searchMedia,
 	syncMediaItems,
 } from "~/api/media-api";
 

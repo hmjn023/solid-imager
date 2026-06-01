@@ -1,7 +1,7 @@
-import { createSignal, onCleanup } from "solid-js";
+import { createSignal } from "solid-js";
 
 export function useBatchJobEvents() {
-	const [activeJobs, setActiveJobs] = createSignal<
+	const [activeJobs, _setActiveJobs] = createSignal<
 		{ id: string; type: string; progress: number; total: number }[]
 	>([]);
 

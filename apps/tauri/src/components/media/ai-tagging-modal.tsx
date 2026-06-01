@@ -15,7 +15,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			description={`Tags extracted from ${props.fileName} using the AI service.`}
 			fetchTags={async () => {
 				const file = await props.loadFile();
-				return serverOrpc.ai.tag({ file }) as unknown as Promise<TaggingResponse>;
+				return serverOrpc.ai.tag({
+					file,
+				}) as unknown as Promise<TaggingResponse>;
 			}}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
