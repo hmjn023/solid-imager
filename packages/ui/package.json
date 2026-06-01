@@ -16,7 +16,10 @@
   "dependencies": {
     "@kobalte/core": "^0.13.11",
     "@solidjs/router": "^0.15.4",
+    "@tanstack/solid-form": "latest",
+    "@tanstack/solid-query": "latest",
     "@tanstack/solid-virtual": "^3.13.16",
+    "@tanstack/zod-form-adapter": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk-solid": "^1.1.2",
@@ -24,7 +27,8 @@
     "solid-js": "^1.9.12",
     "solid-sonner": "^0.3.1",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
