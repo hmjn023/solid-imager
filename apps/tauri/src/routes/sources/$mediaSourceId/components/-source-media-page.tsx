@@ -1,3 +1,4 @@
+import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { createQuery } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
@@ -6,7 +7,7 @@ import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
-import { PresetClient } from "~/infrastructure/api/clients/preset-client";
+import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
 	copyMedia,
 	deleteMedia,
@@ -40,6 +41,8 @@ export function SourceMediaPage() {
 
 	const sources = createQuery(() => mediaSourcesQueryOptions());
 
+	const presetClient = createPresetClient(rawPresetClient);
+
 	const sourceRootPath = createMemo(() => {
 		const current = sources.data?.find((item) => item.id === mediaSourceId());
 		if (current?.type !== "local") {
@@ -55,7 +58,7 @@ export function SourceMediaPage() {
 		<SourceMediaPageComponent
 			mediaSourceId={mediaSourceId}
 			transport={transport}
-			presetClient={PresetClient}
+			presetClient={presetClient}
 			actions={{
 				searchMedia,
 				uploadMedia: (sourceId, file, opts) =>
