@@ -30,11 +30,11 @@ type SourceMediaGridProps = {
 	isError: boolean;
 	isFetchingNextPage: boolean;
 	queryError: Error | null;
-	contextMenuMediaId: Accessor<string | null>;
-	setContextMenuMediaId: Setter<string | null>;
-	onDelete: (mediaId: string) => void;
-	onCopyMove: (mediaId: string, mode: "copy" | "move") => void;
-	onSyncSingleMedia: (mediaId: string) => void;
+	contextMenuMediaId?: Accessor<string | null>;
+	setContextMenuMediaId?: Setter<string | null>;
+	onDelete?: (mediaId: string) => void;
+	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
+	onSyncSingleMedia?: (mediaId: string) => void;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	/** Render a single media grid item. */
 	renderItem: (
@@ -43,6 +43,8 @@ type SourceMediaGridProps = {
 	) => JSX.Element;
 	/** Enable virtualization for large lists. Default: false. */
 	enableVirtualization?: boolean;
+	/** Disable right-click context menu. Default: false. */
+	disableContextMenu?: boolean;
 	/** Show result count above grid. Default: true. */
 	showResultCount?: boolean;
 	/** Show empty state message. Default: true. */
@@ -58,6 +60,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const showEmptyState = () => props.showEmptyState ?? true;
 	const showOpenInNewTab = () => props.showOpenInNewTab ?? false;
 	const enableVirtualization = () => props.enableVirtualization ?? false;
+	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
 
 	// --- Virtual grid setup ---
@@ -150,6 +153,71 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		mediaRowVirtualizer.measure();
 	});
 
+	const contextMenuMediaId = () => props.contextMenuMediaId?.() ?? null;
+
+	const onContextMenuHandler = (mediaId: string) => {
+		return () => {
+			props.setContextMenuMediaId?.(mediaId);
+		};
+	};
+
+	const gridContent = (
+		<div
+			class="relative w-full"
+			ref={(element) => {
+				mediaGridRef = element;
+				requestAnimationFrame(() => {
+					updateMediaGridMetrics();
+				});
+			}}
+			style={{
+				height: shouldVirtualize()
+					? `${mediaRowVirtualizer.getTotalSize()}px`
+					: undefined,
+			}}
+		>
+			<Show
+				fallback={
+					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+						<For each={props.mediaResults()}>
+							{(media) =>
+								props.renderItem(media, {
+									onContextMenu: onContextMenuHandler(media.id),
+								})
+							}
+						</For>
+					</div>
+				}
+				when={shouldVirtualize()}
+			>
+				<For each={mediaRowVirtualizer.getVirtualItems()}>
+					{(virtualRow) => {
+						const rowMedia = () => mediaRows()[virtualRow.index] || [];
+						return (
+							<div
+								class="absolute left-0 top-0 grid gap-4"
+								style={{
+									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
+									height: `${virtualRow.size}px`,
+									transform: `translateY(${virtualRow.start}px)`,
+									width: "100%",
+								}}
+							>
+								<For each={rowMedia()}>
+									{(media) =>
+										props.renderItem(media, {
+											onContextMenu: onContextMenuHandler(media.id),
+										})
+									}
+								</For>
+							</div>
+						);
+					}}
+				</For>
+			</Show>
+		</div>
+	);
+
 	return (
 		<div class="min-h-0 space-y-4">
 			{/* Loading state */}
@@ -173,131 +241,79 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				</div>
 			</Show>
 
-			{/* Grid with context menu */}
-			<ContextMenu>
-				<ContextMenuTrigger class="block w-full">
-					<div
-						class="relative w-full"
-						ref={(element) => {
-							mediaGridRef = element;
-							requestAnimationFrame(() => {
-								updateMediaGridMetrics();
-							});
-						}}
-						style={{
-							height: shouldVirtualize()
-								? `${mediaRowVirtualizer.getTotalSize()}px`
-								: undefined,
-						}}
-					>
+			{/* Grid with optional context menu */}
+			<Show
+				fallback={gridContent}
+				when={!disableContextMenu()}
+			>
+				<ContextMenu>
+					<ContextMenuTrigger class="block w-full">
+						{gridContent}
+					</ContextMenuTrigger>
+					<ContextMenuContent>
 						<Show
 							fallback={
-								<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-									<For each={props.mediaResults()}>
-										{(media) =>
-											props.renderItem(media, {
-												onContextMenu: () =>
-													props.setContextMenuMediaId(media.id),
-											})
-										}
-									</For>
-								</div>
+								<ContextMenuItem disabled>No media selected</ContextMenuItem>
 							}
-							when={shouldVirtualize()}
+							when={contextMenuMediaId()}
 						>
-							<For each={mediaRowVirtualizer.getVirtualItems()}>
-								{(virtualRow) => {
-									const rowMedia = () => mediaRows()[virtualRow.index] || [];
-									return (
-										<div
-											class="absolute left-0 top-0 grid gap-4"
-											style={{
-												"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
-												height: `${virtualRow.size}px`,
-												transform: `translateY(${virtualRow.start}px)`,
-												width: "100%",
-											}}
-										>
-											<For each={rowMedia()}>
-												{(media) =>
-													props.renderItem(media, {
-														onContextMenu: () =>
-															props.setContextMenuMediaId(media.id),
-													})
-												}
-											</For>
-										</div>
-									);
-								}}
-							</For>
-						</Show>
-					</div>
-				</ContextMenuTrigger>
+							<Show when={showOpenInNewTab()}>
+								<ContextMenuItem
+									onSelect={() => {
+										const id = contextMenuMediaId();
+										const sourceId = props.mediaSourceId();
+										if (id && sourceId) {
+											window.open(`/sources/${sourceId}/${id}`, "_blank");
+										}
+									}}
+								>
+									Open in New Tab
+								</ContextMenuItem>
+							</Show>
 
-				{/* Context menu content */}
-				<ContextMenuContent>
-					<Show
-						fallback={
-							<ContextMenuItem disabled>No media selected</ContextMenuItem>
-						}
-						when={props.contextMenuMediaId()}
-					>
-						<Show when={showOpenInNewTab()}>
 							<ContextMenuItem
+								class="text-red-600 focus:text-red-600"
 								onSelect={() => {
-									const id = props.contextMenuMediaId();
-									const sourceId = props.mediaSourceId();
-									if (id && sourceId) {
-										window.open(`/sources/${sourceId}/${id}`, "_blank");
-									}
+									const id = contextMenuMediaId();
+									if (id) props.onDelete?.(id);
 								}}
 							>
-								Open in New Tab
+								Delete
+							</ContextMenuItem>
+
+							<ContextMenuSeparator />
+
+							<ContextMenuItem
+								onSelect={() => {
+									const id = contextMenuMediaId();
+									if (id) props.onCopyMove?.(id, "copy");
+								}}
+							>
+								Copy to Source
+							</ContextMenuItem>
+							<ContextMenuItem
+								onSelect={() => {
+									const id = contextMenuMediaId();
+									if (id) props.onCopyMove?.(id, "move");
+								}}
+							>
+								Move to Source
+							</ContextMenuItem>
+
+							<ContextMenuSeparator />
+
+							<ContextMenuItem
+								onSelect={() => {
+									const id = contextMenuMediaId();
+									if (id) props.onSyncSingleMedia?.(id);
+								}}
+							>
+								Sync Metadata
 							</ContextMenuItem>
 						</Show>
-
-						<ContextMenuItem
-							class="text-red-600 focus:text-red-600"
-							onSelect={() => {
-								const id = props.contextMenuMediaId();
-								if (id) props.onDelete(id);
-							}}
-						>
-							Delete
-						</ContextMenuItem>
-
-						<ContextMenuSeparator />
-
-						<ContextMenuItem
-							onSelect={() => {
-								const id = props.contextMenuMediaId();
-								if (id) props.onCopyMove(id, "copy");
-							}}
-						>
-							Copy to Source
-						</ContextMenuItem>
-						<ContextMenuItem
-							onSelect={() => {
-								const id = props.contextMenuMediaId();
-								if (id) props.onCopyMove(id, "move");
-							}}
-						>
-							Move to Source
-						</ContextMenuItem>
-
-						<ContextMenuSeparator />
-
-						<ContextMenuItem
-							onSelect={() => {
-								const id = props.contextMenuMediaId();
-								if (id) props.onSyncSingleMedia(id);
-							}}
-						>
-							Sync Metadata
-						</ContextMenuItem>
-					</Show>
-				</ContextMenuContent>
-			</ContextMenu>
+					</ContextMenuContent>
+				</ContextMenu>
+			</Show>
 
 			{/* Empty state */}
 			<Show

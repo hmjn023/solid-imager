@@ -1,7 +1,7 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { JSX } from "solid-js";
-import { createSignal, For, onMount, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
@@ -11,6 +11,7 @@ import type {
 } from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
+import { SourceMediaGrid } from "../source-media-grid";
 
 export type SearchScreenNavActions = {
 	openMobileFilters: () => void;
@@ -26,6 +27,7 @@ export type SearchScreenProps = {
 	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
 	renderMediaItem: (media: Media) => JSX.Element;
 	ssrGuard?: boolean;
+	enableVirtualization?: boolean;
 };
 
 export function SearchScreen(props: SearchScreenProps) {
@@ -98,40 +100,29 @@ export function SearchScreen(props: SearchScreenProps) {
 						fallback={<div class="py-8 text-center">読み込み中...</div>}
 						when={showResults()}
 					>
-						<Show
-							fallback={<div class="py-12 text-center text-gray-500" />}
-							when={page().searchResultQuery.data}
-						>
-							<div class="mb-4 flex items-center justify-between">
-								<p class="text-gray-600 text-sm">
-									{page().searchResultQuery.data?.pages[0]?.total || 0} 件の結果
-								</p>
-							</div>
-
-							<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
-								<For each={page().searchResults()}>
-									{(media) => props.renderMediaItem(media)}
-								</For>
-							</div>
-
-							<div class="h-10 w-full" ref={page().setLoadMoreRef}>
-								<Show when={page().searchResultQuery.isFetchingNextPage}>
-									<div class="py-4 text-center text-gray-500">
-										読み込み中...
-									</div>
-								</Show>
-							</div>
-
-							<Show
-								when={
-									(page().searchResultQuery.data?.pages[0]?.total || 0) === 0
-								}
-							>
-								<div class="py-12 text-center text-gray-500">
-									検索結果が見つかりませんでした
-								</div>
-							</Show>
-						</Show>
+						<SourceMediaGrid
+							disableContextMenu
+							enableVirtualization={props.enableVirtualization}
+							isError={page().searchResultQuery.isError}
+							isFetchingNextPage={
+								page().searchResultQuery.isFetchingNextPage
+							}
+							isPending={page().searchResultQuery.isLoading}
+							mediaResults={page().searchResults}
+							mediaSourceId={() => undefined}
+							queryError={
+								(page().searchResultQuery.error as Error) ?? null
+							}
+							renderItem={(media, _options) =>
+								props.renderMediaItem(media)
+							}
+							setLoadMoreRef={page().setLoadMoreRef}
+							showEmptyState
+							showResultCount
+							totalCount={
+								page().searchResultQuery.data?.pages[0]?.total
+							}
+						/>
 					</Show>
 				</div>
 			</div>
