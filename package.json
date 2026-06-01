@@ -20,7 +20,7 @@
     "prepare": "vp config"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
+    "@biomejs/biome": "^2.4.16",
     "@tanstack/cli": "^0.68.0",
     "typescript": "^5.9.3",
     "vite-plus": "latest"
@@ -35,4 +35,3 @@
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest"
   }
 }
-

@@ -1,0 +1,22 @@
+import { AppShell } from "@solid-imager/ui/layouts/app-shell";
+import { Toaster } from "@solid-imager/ui/toast";
+import { createRootRouteWithContext, Outlet } from "@tanstack/solid-router";
+import { Nav } from "~/components/nav";
+import type { AppRouterContext } from "~/router";
+
+export const Route = createRootRouteWithContext<AppRouterContext>()({
+	component: RootRouteComponent,
+});
+
+function RootRouteComponent() {
+	return (
+		<>
+			<Toaster />
+			<AppShell nav={<Nav />}>
+				<div class="container py-10">
+					<Outlet />
+				</div>
+			</AppShell>
+		</>
+	);
+}

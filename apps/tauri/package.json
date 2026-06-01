@@ -1,0 +1,44 @@
+{
+	"name": "@solid-imager/tauri",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"dev": "bun run tauri:dev",
+		"build": "bun run tauri:build",
+		"dev:web": "vp dev --host 0.0.0.0 --port 1420",
+		"build:web": "vp build",
+		"preview": "vp preview",
+		"tauri:dev": "WEBKIT_DISABLE_DMABUF_RENDERER=1 bun x tauri dev",
+		"tauri:build": "bun x tauri build",
+		"lint": "biome lint ./src",
+		"format": "biome format --fix ./src",
+		"check": "biome check --fix --unsafe ./src",
+		"typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
+	},
+	"dependencies": {
+		"@orpc/client": "^1.13.13",
+		"@orpc/solid-query": "^1.13.13",
+		"@solid-imager/client": "workspace:*",
+		"@solid-imager/core": "workspace:*",
+		"@solid-imager/ui": "workspace:*",
+		"@tanstack/solid-query": "latest",
+		"@tanstack/solid-router": "latest",
+		"@tauri-apps/api": "^2.10.1",
+		"@tauri-apps/plugin-http": "^2.5.9",
+		"solid-js": "^1.9.12",
+		"zod": "^4.3.6"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.9",
+		"@tauri-apps/cli": "^2.10.1",
+		"@tailwindcss/vite": "^4.2.2",
+		"@tanstack/router-plugin": "latest",
+		"@types/node": "^24.12.0",
+		"tailwindcss": "^4.2.2",
+		"typescript": "^5.9.3",
+		"vite": "^8.0.0",
+		"vite-plugin-solid": "^2.11.11",
+		"vite-plus": "latest"
+	}
+}
