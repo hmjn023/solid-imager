@@ -137,7 +137,7 @@ export type UseSourceMediaPageResult = {
 	mediaResults: () => MediaSearchResponse["media"];
 	filterData: () => SourceMediaPageFilterData;
 	handleSearch: () => void;
-	loadMoreRef: HTMLDivElement | undefined;
+	loadMoreRef: () => HTMLDivElement | undefined;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	showUploadModal: () => boolean;
 	setShowUploadModal: Setter<boolean>;
@@ -308,15 +308,21 @@ export function useSourceMediaPage(
 	});
 
 	// --- Infinite scroll ---
-	let loadMoreRef: HTMLDivElement | undefined;
-	const setLoadMoreRef = (el: HTMLDivElement) => {
-		loadMoreRef = el;
-	};
+	const [loadMoreRef, setLoadMoreRef] = createSignal<
+		HTMLDivElement | undefined
+	>(undefined);
 
-	onMount(() => {
+	createEffect(() => {
 		if (isServer) {
 			return;
 		}
+		const el = loadMoreRef();
+		if (!el) {
+			return;
+		}
+
+		const hasNext = mediaQuery.hasNextPage;
+		void hasNext;
 
 		const observer = new IntersectionObserver(
 			(entries) => {
@@ -327,10 +333,7 @@ export function useSourceMediaPage(
 			{ threshold: 0.5, rootMargin: "1000px" },
 		);
 
-		if (loadMoreRef) {
-			observer.observe(loadMoreRef);
-		}
-
+		observer.observe(el);
 		onCleanup(() => observer.disconnect());
 	});
 

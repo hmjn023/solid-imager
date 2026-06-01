@@ -212,6 +212,9 @@ function Search() {
 			return;
 		}
 
+		const hasNext = searchResultQuery.hasNextPage;
+		void hasNext;
+
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (
