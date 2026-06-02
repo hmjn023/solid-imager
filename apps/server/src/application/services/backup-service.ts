@@ -1116,7 +1116,13 @@ export const BackupService = {
 		const { randomUUID } = await import("node:crypto");
 
 		const passThrough = new PassThrough();
-		const archive = archiverMod.default.create("zip", {
+		const archive = new (
+			archiverMod as unknown as {
+				ZipArchive: new (
+					opts?: Record<string, unknown>,
+				) => import("archiver").Archiver;
+			}
+		).ZipArchive({
 			zlib: { level: 9 },
 		});
 
