@@ -199,9 +199,9 @@ describe("Media Type Handling Integration", () => {
 		);
 
 		expect(result).toBeDefined();
-		expect(result.general).toEqual({});
-		expect(result.character).toEqual({});
-		expect(result.ips).toEqual([]);
+		expect(result?.general).toEqual({});
+		expect(result?.character).toEqual({});
+		expect(result?.ips).toEqual([]);
 	});
 
 	it("should throw error for non-image media types in CCIP feature extraction", async () => {

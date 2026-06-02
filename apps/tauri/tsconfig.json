@@ -7,7 +7,6 @@
 		"isolatedModules": true,
 		"skipLibCheck": true,
 		"moduleResolution": "bundler",
-		"baseUrl": ".",
 		"paths": {
 			"~/*": ["./src/*"],
 			"@solid-imager/core": ["../../packages/core/src"],

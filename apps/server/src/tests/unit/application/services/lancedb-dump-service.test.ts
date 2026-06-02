@@ -1,73 +1,82 @@
+import type { MediaDumpItemWithImageData } from "@solid-imager/application/ports/lancedb-dump-service";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import type { MediaDumpItemWithImageData } from "~/application/services/lancedb-dump-service";
 
-// Mock LanceDB module
-const mockCreateTable = vi.fn();
-const mockAdd = vi.fn();
-const mockMergeInsert = vi.fn();
-const mockWhenMatchedUpdateAll = vi.fn();
-const mockExecute = vi.fn();
-const mockConnect = vi.fn();
-const mockOpenTable = vi.fn();
-const mockQuery = vi.fn();
-const mockLimit = vi.fn();
-const mockOffset = vi.fn();
-const mockToArray = vi.fn();
-const mockOptimize = vi.fn();
-
-vi.mock("@lancedb/lancedb", () => ({
-	connect: mockConnect,
+const {
+	mockCreateTable,
+	mockMergeInsert,
+	mockWhenMatchedUpdateAll,
+	mockExecute,
+	mockOpenTable,
+	mockQuery,
+	mockLimit,
+	mockOffset,
+	mockToArray,
+	mockOptimize,
+} = vi.hoisted(() => ({
+	mockCreateTable: vi.fn(),
+	mockMergeInsert: vi.fn(),
+	mockWhenMatchedUpdateAll: vi.fn(),
+	mockExecute: vi.fn(),
+	mockOpenTable: vi.fn(),
+	mockQuery: vi.fn(),
+	mockLimit: vi.fn(),
+	mockOffset: vi.fn(),
+	mockToArray: vi.fn(),
+	mockOptimize: vi.fn(),
 }));
 
-vi.mock("node:fs/promises", () => ({
-	default: {
-		mkdir: vi.fn().mockResolvedValue(undefined),
-		rm: vi.fn().mockResolvedValue(undefined),
-	},
-	mkdir: vi.fn().mockResolvedValue(undefined),
-	rm: vi.fn().mockResolvedValue(undefined),
-}));
+function createMockTable() {
+	const table = {
+		add: vi.fn(),
+		mergeInsert: mockMergeInsert,
+		optimize: mockOptimize,
+		query: mockQuery,
+	};
+
+	mockMergeInsert.mockReturnValue({
+		whenMatchedUpdateAll: mockWhenMatchedUpdateAll,
+	});
+	mockWhenMatchedUpdateAll.mockReturnValue({
+		execute: mockExecute,
+	});
+
+	mockQuery.mockReturnValue({
+		limit: mockLimit,
+	});
+	mockLimit.mockReturnValue({
+		offset: mockOffset,
+	});
+	mockOffset.mockReturnValue({
+		toArray: mockToArray,
+	});
+
+	return table;
+}
+
+function createMockConnect(mockTable: ReturnType<typeof createMockTable>) {
+	return vi.fn().mockResolvedValue({
+		createTable: mockCreateTable.mockResolvedValue(mockTable),
+		openTable: mockOpenTable.mockResolvedValue(mockTable),
+	});
+}
 
 describe("LanceDB Dump Service", () => {
+	let mockTable: ReturnType<typeof createMockTable>;
+	let mockConnect: ReturnType<typeof createMockConnect>;
+
 	beforeEach(() => {
 		vi.clearAllMocks();
-
-		const mockTable = {
-			add: mockAdd,
-			mergeInsert: mockMergeInsert,
-			optimize: mockOptimize,
-			query: mockQuery,
-		};
-
-		mockMergeInsert.mockReturnValue({
-			whenMatchedUpdateAll: mockWhenMatchedUpdateAll,
-		});
-		mockWhenMatchedUpdateAll.mockReturnValue({
-			execute: mockExecute,
-		});
-
-		mockQuery.mockReturnValue({
-			limit: mockLimit,
-		});
-		mockLimit.mockReturnValue({
-			offset: mockOffset,
-		});
-		mockOffset.mockReturnValue({
-			toArray: mockToArray,
-		});
-
-		mockConnect.mockResolvedValue({
-			createTable: mockCreateTable.mockResolvedValue(mockTable),
-			openTable: mockOpenTable.mockResolvedValue(mockTable),
-		});
+		mockTable = createMockTable();
+		mockConnect = createMockConnect(mockTable);
 	});
 
 	describe("writeToLanceDB", () => {
 		it("should write metadata in Phase 1 and images in Phase 2", async () => {
-			const { writeToLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const items: MediaDumpItem[] = [
 				{
@@ -101,7 +110,7 @@ describe("LanceDB Dump Service", () => {
 					return null;
 				});
 
-			await writeToLanceDB(items, {
+			await service.writeToLanceDB(items, {
 				includeImages: true,
 				getImageBuffer,
 			});
@@ -133,9 +142,10 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		it("should skip Phase 2 when includeImages is false", async () => {
-			const { writeToLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const items: MediaDumpItem[] = [
 				{
@@ -151,7 +161,7 @@ describe("LanceDB Dump Service", () => {
 
 			const getImageBuffer = vi.fn();
 
-			await writeToLanceDB(items, {
+			await service.writeToLanceDB(items, {
 				includeImages: false,
 				getImageBuffer,
 			});
@@ -165,9 +175,10 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		it("should handle getImageBuffer errors gracefully", async () => {
-			const { writeToLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const items: MediaDumpItem[] = [
 				{
@@ -199,7 +210,7 @@ describe("LanceDB Dump Service", () => {
 					return Buffer.from("image-data-2");
 				});
 
-			await writeToLanceDB(items, {
+			await service.writeToLanceDB(items, {
 				includeImages: true,
 				getImageBuffer,
 			});
@@ -215,9 +226,10 @@ describe("LanceDB Dump Service", () => {
 
 	describe("readFromLanceDB", () => {
 		it("should NOT include _imageData when extractImages is false", async () => {
-			const { readFromLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const mockImageData = new Uint8Array([1, 2, 3, 4]);
 			mockToArray.mockResolvedValue([
@@ -233,7 +245,7 @@ describe("LanceDB Dump Service", () => {
 				},
 			]);
 
-			const result = await readFromLanceDB("/path/to/lancedb", {
+			const result = await service.readFromLanceDB("/path/to/lancedb", {
 				extractImages: false,
 			});
 
@@ -245,9 +257,10 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		it("should include _imageData when extractImages is true", async () => {
-			const { readFromLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const mockImageData = new Uint8Array([1, 2, 3, 4]);
 			mockToArray.mockResolvedValue([
@@ -263,7 +276,7 @@ describe("LanceDB Dump Service", () => {
 				},
 			]);
 
-			const result = await readFromLanceDB("/path/to/lancedb", {
+			const result = await service.readFromLanceDB("/path/to/lancedb", {
 				extractImages: true,
 			});
 
@@ -274,9 +287,10 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		it("should call saveImageBuffer when extractImages is true", async () => {
-			const { readFromLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			const mockImageData = new Uint8Array([1, 2, 3, 4]);
 			mockToArray.mockResolvedValue([
@@ -294,7 +308,7 @@ describe("LanceDB Dump Service", () => {
 
 			const saveImageBuffer = vi.fn().mockResolvedValue(undefined);
 
-			await readFromLanceDB("/path/to/lancedb", {
+			await service.readFromLanceDB("/path/to/lancedb", {
 				extractImages: true,
 				saveImageBuffer,
 			});
@@ -307,9 +321,10 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		it("should handle multiple chunks correctly", async () => {
-			const { readFromLanceDB } = await import(
-				"~/application/services/lancedb-dump-service"
+			const { createLanceDbDumpService } = await import(
+				"@solid-imager/application/services/lancedb-dump-service"
 			);
+			const service = createLanceDbDumpService({ connect: mockConnect });
 
 			let callCount = 0;
 			mockToArray.mockImplementation(async () => {
@@ -333,7 +348,7 @@ describe("LanceDB Dump Service", () => {
 
 			const onChunk = vi.fn().mockResolvedValue(undefined);
 
-			await readFromLanceDB("/path/to/lancedb", {
+			await service.readFromLanceDB("/path/to/lancedb", {
 				extractImages: false,
 				onChunk,
 			});

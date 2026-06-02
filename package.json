@@ -22,8 +22,8 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@tanstack/cli": "^0.68.0",
-    "typescript": "^5.9.3",
-    "vite-plus": "latest"
+    "typescript": "^6.0.3",
+    "vite-plus": "^0.1.24"
   },
   "trustedDependencies": [
     "youtube-dl-exec",

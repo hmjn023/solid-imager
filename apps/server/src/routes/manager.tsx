@@ -356,7 +356,9 @@ function ManagerPage() {
 				mediaSourceId: selectedSourceId(),
 			});
 			setScannedMedia(result);
-			setSelectedMedia(new Set(result.map((m) => m.id))); // Initially select all
+			setSelectedMedia(
+				new Set(result.map((m: { id: string }) => m.id)) as Set<string>,
+			); // Initially select all
 			setTaggingStatus(`${result.length} items found.`);
 		} catch (e) {
 			toast.error(`Error: ${(e as Error).message}`);
