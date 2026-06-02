@@ -342,13 +342,51 @@ function rowToItem(
 	return item;
 }
 
+type TableLike = {
+	add(rows: Record<string, unknown>[]): Promise<void>;
+	mergeInsert(key: string): {
+		whenMatchedUpdateAll(): {
+			execute(rows: Record<string, unknown>[]): Promise<void>;
+		};
+	};
+	optimize(opts?: Record<string, unknown>): Promise<void>;
+	query(): {
+		limit(n: number): {
+			offset(n: number): {
+				toArray(): Promise<Record<string, unknown>[]>;
+			};
+		};
+	};
+};
+
+type LanceDbLike = {
+	createTable: (
+		name: string,
+		data: Record<string, unknown>[],
+		opts?: Record<string, unknown>,
+	) => Promise<TableLike>;
+	openTable: (name: string) => Promise<TableLike>;
+};
+
+type LanceConnectFn = (
+	uri: string,
+	opts?: Record<string, unknown>,
+) => Promise<LanceDbLike>;
+
 export function createLanceDbDumpService(deps?: {
 	logger?: {
 		info(msg: string, data?: unknown): void;
 		error(msg: string, data?: unknown): void;
 	};
+	connect?: LanceConnectFn;
 }): ILanceDbDumpService {
 	const log = deps?.logger ?? { info() {}, error() {} };
+
+	async function getConnect(): Promise<LanceConnectFn> {
+		if (deps?.connect) return deps.connect;
+		const lancedb = await import("@lancedb/lancedb");
+		return lancedb.connect as unknown as LanceConnectFn;
+	}
 
 	async function writeToLanceDB(
 		items: MediaDumpItem[],
@@ -363,11 +401,11 @@ export function createLanceDbDumpService(deps?: {
 		await fs.mkdir(tempDir, { recursive: true });
 
 		try {
-			const lancedb = await import("@lancedb/lancedb");
-			const db = await lancedb.connect(tempDir);
+			const connect = await getConnect();
+			const db = await connect(tempDir);
 			const schema = await createMediaSchema();
 
-			let table: import("@lancedb/lancedb").Table | null = null;
+			let table: TableLike | null = null;
 
 			// Phase 1: Write metadata only (without imageData)
 			for (let i = 0; i < items.length; i += METADATA_CHUNK_SIZE) {
@@ -446,8 +484,8 @@ export function createLanceDbDumpService(deps?: {
 		lanceDbDir: string,
 		options: ReadOptions = {},
 	): Promise<MediaDumpItemWithImageData[]> {
-		const lancedb = await import("@lancedb/lancedb");
-		const db = await lancedb.connect(lanceDbDir);
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
 		const table = await db.openTable("media");
 
 		const allItems: MediaDumpItemWithImageData[] = [];

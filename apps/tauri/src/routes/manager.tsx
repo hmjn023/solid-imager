@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
+	type StartBatchTaggingResult,
 	prefetchManagerPageQueries,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
@@ -46,8 +47,15 @@ const managerActions = {
 	createCharacter,
 	updateCharacter,
 	deleteCharacter,
-	scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets,
-	startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds,
+	scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets as (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<Media[]>,
+	startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds as (input: {
+		force: boolean;
+		mediaSourceId?: string;
+		mediaIds: string[];
+	}) => Promise<StartBatchTaggingResult>,
 };
 
 export const Route = createFileRoute("/manager")({

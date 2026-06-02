@@ -1,4 +1,5 @@
 import { APIError, createClient } from "@solid-imager/client";
+import type { AppContract } from "@solid-imager/core/domain/contract";
 
 export { APIError };
 
@@ -9,7 +10,7 @@ export const getClient = async () => {
 	const result = await chrome.storage.local.get(["apiUrl"]);
 	const url = result.apiUrl || DEFAULT_API_URL;
 
-	return createClient({
+	return createClient<AppContract>({
 		url,
 		fetch: async (input, init) => {
 			try {

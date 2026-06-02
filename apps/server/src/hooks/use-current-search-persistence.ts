@@ -54,7 +54,8 @@ export function useCurrentSearchPersistence(
 					const allPresets = await PresetClient.list();
 
 					const matchingPreset = allPresets.find(
-						(p) => p.name !== presetName && deepEqual(p.value, current.value),
+						(p: { name: string; value: unknown }) =>
+							p.name !== presetName && deepEqual(p.value, current.value),
 					);
 
 					if (matchingPreset) {

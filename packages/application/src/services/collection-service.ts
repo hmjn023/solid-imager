@@ -5,7 +5,7 @@ import type { NewCollection, NewCollectionItem, UpdateCollection } from "@solid-
 export function createCollectionService(repo: ICollectionRepository): ICollectionService {
   return {
     getAll: () => repo.findAll(),
-    getById: (id: string) => repo.findById(id),
+    getById: async (id: string) => (await repo.findById(id)) ?? undefined,
     create: (data: NewCollection) => repo.create(data),
     update: (id: string, data: UpdateCollection) => repo.update(id, data),
     delete: (id: string) => repo.delete(id),

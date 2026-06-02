@@ -128,7 +128,7 @@ function Sources() {
 		setIsSyncing(true);
 		toast.info("Starting sync for all sources...");
 		try {
-			const ids = sources.map((s) => s.id).filter(Boolean) as string[];
+			const ids = sources.flatMap((s: { id: string }) => (s.id ? [s.id] : []));
 			await syncMediaSources(ids);
 			toast.success("Sync finished for all sources");
 		} catch (error) {

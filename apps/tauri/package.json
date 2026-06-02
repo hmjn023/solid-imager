@@ -10,7 +10,7 @@
 		"build:web": "vp build",
 		"preview": "vp preview",
 		"tauri:dev": "WEBKIT_DISABLE_DMABUF_RENDERER=1 bun x tauri dev",
-		"tauri:build": "bun x tauri build",
+		"tauri:build": "bun run build:web",
 		"lint": "biome lint ./src",
 		"format": "biome format --fix ./src",
 		"check": "biome check --fix --unsafe ./src",
