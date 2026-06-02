@@ -1110,13 +1110,13 @@ export const BackupService = {
 
 		// ZIP Mode: Streaming Implementation
 		const driver = getDriver(mediaSource);
-		const { ZipArchive } = await import("archiver");
+		const archiverMod = await import("archiver");
 		const { PassThrough, Readable } = await import("node:stream");
 		const fsSync = await import("node:fs");
 		const { randomUUID } = await import("node:crypto");
 
 		const passThrough = new PassThrough();
-		const archive = new ZipArchive({
+		const archive = archiverMod.default.create("zip", {
 			zlib: { level: 9 },
 		});
 

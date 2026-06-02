@@ -92,7 +92,7 @@ function Popup() {
 
 			setUploadStatus(`Uploading ${metadata.length} items...`);
 			const client = await getClient();
-			const result = await client.imports.bulkAdd({ items: metadata });
+			const result = await client.imports.bulkAdd({ items: metadata }) as { addedCount: number; skippedCount: number };
 			setUploadStatus(
 				`Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`,
 			);

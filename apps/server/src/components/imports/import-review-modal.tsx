@@ -75,7 +75,9 @@ export default function ImportReviewModal(props: Props) {
 	createEffect(() => {
 		const jobs = pendingJobs();
 		if (jobs && jobs.length > 0) {
-			const allIds = new Set(jobs.map((j) => j.id));
+			const allIds = new Set(
+				jobs.map((j: { id: string }) => j.id),
+			) as Set<string>;
 			setSelectedJobIds(allIds);
 		}
 	});
@@ -86,7 +88,9 @@ export default function ImportReviewModal(props: Props) {
 		if (s && s.length > 0 && !selectedSourceId()) {
 			// Prefer 'Local' source if possible or just first
 			const defaultSource =
-				s.find((src) => src.name.toLowerCase() === "default") || s[0];
+				s.find(
+					(src: { name: string }) => src.name.toLowerCase() === "default",
+				) || s[0];
 			setSelectedSourceId(defaultSource?.id || "");
 		}
 	});

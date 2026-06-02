@@ -47,7 +47,8 @@ export function PresetManager(props: {
 
 	// existing "current" preset should be hidden from UI
 	// Hide any internal presets starting with "current" (e.g. current, current-all, and current-{sourceId})
-	const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
+	const presets = () =>
+		data()?.filter((p: { name: string }) => !p.name.startsWith("current"));
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 
