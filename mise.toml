@@ -3,10 +3,13 @@ run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
 
 [env]
 _.file = '.env'
+ANDROID_SDK_ROOT = "/home/hmjn/Android/Sdk"
+ANDROID_NDK_HOME = "/home/hmjn/Android/Sdk/ndk/27.3.13750724"
+JAVA_HOME = "/home/hmjn/.local/share/mise/installs/java/21.0.2"
 
 [tools]
 bun = "latest"
-"npm:@upstash/context7-mcp" = "latest"
+java = "21.0.2"
+rust = "latest"
 "npm:chrome-devtools-mcp" = "latest"
-"npm:ultracite" = "latest"
-"pipx:git+https://github.com/oraios/serena.git" = "latest"
+android-sdk = "latest"
