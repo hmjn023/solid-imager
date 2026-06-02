@@ -13,7 +13,6 @@ type MediaCardItemProps = {
 export function MediaCardItem(props: MediaCardItemProps) {
 	return (
 		<SharedMediaCardItem
-			canRenderThumbnail={(media) => media.mediaType === "image"}
 			checkboxContainerClass="rounded bg-background/90 p-1"
 			isSelected={props.selected}
 			media={props.media}

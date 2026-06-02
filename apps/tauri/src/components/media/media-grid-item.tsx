@@ -14,7 +14,6 @@ type MediaGridItemProps = {
 export function MediaGridItem(props: MediaGridItemProps) {
 	return (
 		<SharedMediaGridItem
-			canRenderThumbnail={(media) => media.mediaType === "image"}
 			linkComponent={(linkProps) => (
 				<Link
 					class={linkProps.class}
