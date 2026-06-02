@@ -342,13 +342,30 @@ function rowToItem(
 	return item;
 }
 
+type TableLike = {
+	add(rows: Record<string, unknown>[]): Promise<void>;
+	mergeInsert(key: string): {
+		whenMatchedUpdateAll(): {
+			execute(rows: Record<string, unknown>[]): Promise<void>;
+		};
+	};
+	optimize(opts?: Record<string, unknown>): Promise<void>;
+	query(): {
+		limit(n: number): {
+			offset(n: number): {
+				toArray(): Promise<Record<string, unknown>[]>;
+			};
+		};
+	};
+};
+
 type LanceDbLike = {
 	createTable: (
 		name: string,
 		data: Record<string, unknown>[],
 		opts?: Record<string, unknown>,
-	) => Promise<Record<string, unknown>>;
-	openTable: (name: string) => Promise<Record<string, unknown>>;
+	) => Promise<TableLike>;
+	openTable: (name: string) => Promise<TableLike>;
 };
 
 type LanceConnectFn = (
@@ -388,7 +405,7 @@ export function createLanceDbDumpService(deps?: {
 			const db = await connect(tempDir);
 			const schema = await createMediaSchema();
 
-			let table: Record<string, unknown> | null = null;
+			let table: TableLike | null = null;
 
 			// Phase 1: Write metadata only (without imageData)
 			for (let i = 0; i < items.length; i += METADATA_CHUNK_SIZE) {
@@ -405,7 +422,7 @@ export function createLanceDbDumpService(deps?: {
 						schema,
 					});
 				} else {
-					await (table as { add: (rows: Record<string, unknown>[]) => Promise<void> }).add(rows);
+					await table.add(rows);
 				}
 
 				log.info("LanceDB metadata chunk written", {
@@ -435,14 +452,7 @@ export function createLanceDbDumpService(deps?: {
 					);
 
 					if (imageRows.length > 0) {
-						const t = table as unknown as {
-							mergeInsert: (key: string) => {
-								whenMatchedUpdateAll: () => {
-									execute: (rows: Record<string, unknown>[]) => Promise<void>;
-								};
-							};
-						};
-						await t
+						await table
 							.mergeInsert("id")
 							.whenMatchedUpdateAll()
 							.execute(imageRows);
@@ -456,7 +466,7 @@ export function createLanceDbDumpService(deps?: {
 			}
 
 			if (table) {
-				await (table as { optimize: (opts?: Record<string, unknown>) => Promise<void> }).optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
+				await table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
 			}
 
 			log.info("LanceDB dump created", {
@@ -484,16 +494,7 @@ export function createLanceDbDumpService(deps?: {
 		const includeImageData = options.extractImages ?? false;
 
 		while (true) {
-			const t = table as unknown as {
-				query: () => {
-					limit: (n: number) => {
-						offset: (n: number) => {
-							toArray: () => Promise<Record<string, unknown>[]>;
-						};
-					};
-				};
-			};
-			const rows = await t
+			const rows = await table
 				.query()
 				.limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)
 				.offset(offset)
