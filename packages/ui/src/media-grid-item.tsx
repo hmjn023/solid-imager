@@ -42,7 +42,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			: `/sources/${props.media.mediaSourceId}/${props.media.id}`;
 	const canRenderThumbnail = () =>
 		props.canRenderThumbnail?.(props.media) ??
-		props.media.mediaType !== "audio";
+		props.media.mediaType === "image";
 
 	return props.linkComponent({
 		class: cn(
