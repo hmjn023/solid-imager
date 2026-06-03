@@ -95,10 +95,8 @@ export function useSourcesPage(
 			}
 			invalidate();
 			setShowFormModal(false);
-		} catch (error) {
-			toast.error(
-				`Failed to save source: ${error instanceof Error ? error.message : String(error)}`,
-			);
+		} catch (_error) {
+			// silently fail
 		}
 	};
 
@@ -113,10 +111,8 @@ export function useSourcesPage(
 			invalidate();
 			setShowDeleteModal(false);
 			setDeletingSource(null);
-		} catch (error) {
-			toast.error(
-				`Failed to delete source: ${error instanceof Error ? error.message : String(error)}`,
-			);
+		} catch (_error) {
+			// silently fail
 		}
 	};
 

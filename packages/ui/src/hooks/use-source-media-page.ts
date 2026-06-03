@@ -87,7 +87,8 @@ export type SourceMediaPageActions = {
 		sourceId: string,
 		items: DownloadItem[],
 	) => Promise<unknown>;
-	fetchSourceDump: (sourceId: string, mode: "json" | "zip") => Promise<Blob>;
+	fetchSourceDump: (sourceId: string, mode: "json" | "zip" | "lancedb") => Promise<Blob>;
+	lanceDBDump?: (sourceId: string, includeMedia: boolean) => Promise<Blob>;
 	restoreSource: (
 		sourceId: string,
 		data: unknown,
@@ -160,6 +161,7 @@ export type UseSourceMediaPageResult = {
 	handleUpload: (options: UploadOptions) => Promise<void>;
 	handleFileSelect: (e: Event) => Promise<void>;
 	handleDumpDownload: (mode?: "json" | "zip") => Promise<void>;
+	handleLanceDBDump: (includeMedia: boolean) => Promise<void>;
 	handleRestoreSelect: (e: Event) => Promise<void>;
 	handleAddButtonClick: () => void;
 	handleDrop: (e: DragEvent) => void;
@@ -601,6 +603,30 @@ export function useSourceMediaPage(
 		}
 	};
 
+	const handleLanceDBDump = async (includeMedia: boolean) => {
+		const sourceId = id();
+		if (!sourceId) {
+			return;
+		}
+
+		try {
+			const blob = actions.lanceDBDump
+				? await actions.lanceDBDump(sourceId, includeMedia)
+				: await actions.fetchSourceDump(sourceId, "lancedb");
+			const url = window.URL.createObjectURL(blob);
+			const a = document.createElement("a");
+			a.href = url;
+			a.download = `source-${sourceId}-lancedb.tar.gz`;
+			document.body.appendChild(a);
+			a.click();
+			window.URL.revokeObjectURL(url);
+			document.body.removeChild(a);
+			toast.success("LanceDB dump downloaded successfully");
+		} catch (_error) {
+			toast.error("Failed to download LanceDB dump");
+		}
+	};
+
 	let restoreAbortController: AbortController | null = null;
 
 	const handleRestoreSelect = async (e: Event) => {
@@ -899,6 +925,7 @@ export function useSourceMediaPage(
 		handleUpload,
 		handleFileSelect,
 		handleDumpDownload,
+		handleLanceDBDump,
 		handleRestoreSelect,
 		handleAddButtonClick,
 		handleDrop,

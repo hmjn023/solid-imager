@@ -50,6 +50,7 @@ type SourceMediaGridProps = {
 	/** Show empty state message. Default: true. */
 	showEmptyState?: boolean;
 	/** Show "Open in New Tab" context menu item. Default: false. */
+	/** Show "Open in New Tab" context menu item. Default: true. */
 	showOpenInNewTab?: boolean;
 	/** Total result count. If omitted, uses mediaResults().length (may not reflect total). */
 	totalCount?: number;
@@ -58,7 +59,7 @@ type SourceMediaGridProps = {
 export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const showResultCount = () => props.showResultCount ?? true;
 	const showEmptyState = () => props.showEmptyState ?? true;
-	const showOpenInNewTab = () => props.showOpenInNewTab ?? false;
+	const showOpenInNewTab = () => props.showOpenInNewTab ?? true;
 	const enableVirtualization = () => props.enableVirtualization ?? false;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
@@ -308,7 +309,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									if (id) props.onSyncSingleMedia?.(id);
 								}}
 							>
-								Sync Metadata
+								Sync Metadata (Reprocess)
 							</ContextMenuItem>
 						</Show>
 					</ContextMenuContent>
