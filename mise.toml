@@ -6,7 +6,7 @@ _.file = '.env'
 
 [tools]
 bun = "latest"
-"npm:@upstash/context7-mcp" = "latest"
+java = "21.0.2"
+rust = "latest"
 "npm:chrome-devtools-mcp" = "latest"
-"npm:ultracite" = "latest"
-"pipx:git+https://github.com/oraios/serena.git" = "latest"
+android-sdk = "latest"

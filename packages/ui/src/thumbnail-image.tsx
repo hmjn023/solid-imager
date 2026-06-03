@@ -60,16 +60,6 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	const handleError = () => {
 		setError(true);
 		props.source.onError?.();
-		// Re-evaluate URL in case onError updated internal fallback state
-		void (async () => {
-			try {
-				const resolved = await props.source.getUrl();
-				setUrl(resolved);
-				setError(false);
-			} catch {
-				// keep error state
-			}
-		})();
 	};
 
 	return (
