@@ -55,7 +55,7 @@ function formatDimensions(media: Media, separator: string) {
 export function MediaCardItem(props: MediaCardItemProps) {
 	const canRenderThumbnail = () =>
 		props.canRenderThumbnail?.(props.media) ??
-		props.media.mediaType !== "audio";
+		props.media.mediaType === "image";
 	const selected = () => props.isSelected ?? false;
 	const href = () => `/sources/${props.media.mediaSourceId}/${props.media.id}`;
 
@@ -131,7 +131,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				</p>
 				<div class="flex justify-between pt-1 text-muted-foreground text-xs">
 					<span>
-						{formatDimensions(props.media, props.dimensionSeparator ?? "x")}
+						{formatDimensions(props.media, props.dimensionSeparator ?? "\u00d7")}
 					</span>
 					<span>{formatFileSize(props.media.fileSize)}</span>
 				</div>
