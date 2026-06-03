@@ -1,7 +1,7 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
-	type StartBatchTaggingResult,
 	prefetchManagerPageQueries,
+	type StartBatchTaggingResult,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
