@@ -20,9 +20,10 @@ const apiFetch = isDev ? fetch : tauriFetch;
 export async function fetchSourceDump(
 	id: string,
 	mode: "json" | "zip" | "lancedb" = "json",
-	_includeImages = false,
+	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
-	const url = `${API_BASE}/api/sources/${id}/dump?mode=${mode}`;
+	const includeImages = opts?.includeImages ?? false;
+	const url = `${API_BASE}/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
 	const response = await apiFetch(url, { method: "GET" });
 	if (!response.ok) {
 		throw new Error(`Failed to download dump: ${response.status}`);

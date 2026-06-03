@@ -412,7 +412,7 @@ function MediaListPage() {
 		}
 
 		try {
-			const blob = await fetchSourceDump(id, "lancedb", includeImages);
+			const blob = await fetchSourceDump(id, "lancedb", { includeImages });
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;

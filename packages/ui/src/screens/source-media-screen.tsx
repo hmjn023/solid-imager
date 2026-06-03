@@ -2,6 +2,7 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
 import { Show } from "solid-js";
 import { Button } from "../button";
+import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import {
 	Dialog,
 	DialogContent,
@@ -88,10 +89,25 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				})}
 			</Show>
 
+			<div class="mb-4 flex items-center justify-between">
+				<h1 class="font-bold text-2xl">Media in Source: {page().mediaSourceId()}</h1>
+				<Button
+					disabled={
+						page().isSyncingMedia() || !page().mediaQuery.data?.pages.length
+					}
+					onClick={page().handleSyncLoadedMedia}
+					variant="outline"
+				>
+					{page().isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
+				</Button>
+			</div>
+
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
-				<div class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto rounded-lg border bg-card p-4 md:block">
-					<h3 class="mb-4 font-semibold text-lg">検索フィルター</h3>
-					<div class="space-y-4">
+				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+					<CardHeader>
+						<CardTitle>検索フィルター</CardTitle>
+					</CardHeader>
+					<CardContent class="space-y-4">
 						<SearchControlPanel
 							class="w-full"
 							context="source"
@@ -100,8 +116,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							presetClient={page().presetClient}
 							usePopover={false}
 						/>
-					</div>
-				</div>
+					</CardContent>
+				</Card>
 
 				<SourceMediaGrid
 					contextMenuMediaId={page().contextMenuMediaId}
@@ -125,7 +141,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 
 			{/* Hidden file inputs */}
 			<input
-				accept=".json,.zip"
+				accept=".json,.zip,.tar.gz"
 				class="hidden"
 				id="restore-input"
 				onChange={page().handleRestoreSelect}
