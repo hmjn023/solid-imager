@@ -77,8 +77,9 @@ export function syncMediaSources(ids: string[]) {
 export async function fetchSourceDump(
 	id: string,
 	mode: "json" | "zip" | "lancedb" = "json",
-	includeImages: boolean = false,
+	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
+	const includeImages = opts?.includeImages ?? false;
 	const url = `/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
 	const response = await fetch(url, {
 		method: "GET",

@@ -49,7 +49,6 @@ type SourceMediaGridProps = {
 	showResultCount?: boolean;
 	/** Show empty state message. Default: true. */
 	showEmptyState?: boolean;
-	/** Show "Open in New Tab" context menu item. Default: false. */
 	/** Show "Open in New Tab" context menu item. Default: true. */
 	showOpenInNewTab?: boolean;
 	/** Total result count. If omitted, uses mediaResults().length (may not reflect total). */

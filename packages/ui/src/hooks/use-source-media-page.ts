@@ -87,7 +87,11 @@ export type SourceMediaPageActions = {
 		sourceId: string,
 		items: DownloadItem[],
 	) => Promise<unknown>;
-	fetchSourceDump: (sourceId: string, mode: "json" | "zip" | "lancedb") => Promise<Blob>;
+	fetchSourceDump: (
+		sourceId: string,
+		mode: "json" | "zip" | "lancedb",
+		opts?: { includeImages?: boolean },
+	) => Promise<Blob>;
 	lanceDBDump?: (sourceId: string, includeMedia: boolean) => Promise<Blob>;
 	restoreSource: (
 		sourceId: string,
@@ -612,7 +616,9 @@ export function useSourceMediaPage(
 		try {
 			const blob = actions.lanceDBDump
 				? await actions.lanceDBDump(sourceId, includeMedia)
-				: await actions.fetchSourceDump(sourceId, "lancedb");
+				: await actions.fetchSourceDump(sourceId, "lancedb", {
+						includeImages: includeMedia,
+					});
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;

@@ -95,8 +95,10 @@ export function useSourcesPage(
 			}
 			invalidate();
 			setShowFormModal(false);
-		} catch (_error) {
-			// silently fail
+		} catch (error) {
+			toast.error(
+				`Failed to save source: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	};
 
@@ -111,8 +113,10 @@ export function useSourcesPage(
 			invalidate();
 			setShowDeleteModal(false);
 			setDeletingSource(null);
-		} catch (_error) {
-			// silently fail
+		} catch (error) {
+			toast.error(
+				`Failed to delete source: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	};
 
