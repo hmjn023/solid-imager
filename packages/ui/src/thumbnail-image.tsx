@@ -60,6 +60,15 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	const handleError = () => {
 		setError(true);
 		props.source.onError?.();
+		void (async () => {
+			try {
+				const resolved = await props.source.getUrl();
+				setUrl(resolved);
+				setError(false);
+			} catch {
+				// keep error state
+			}
+		})();
 	};
 
 	return (
