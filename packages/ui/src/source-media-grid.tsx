@@ -242,10 +242,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			</Show>
 
 			{/* Grid with optional context menu */}
-			<Show
-				fallback={gridContent}
-				when={!disableContextMenu()}
-			>
+			<Show fallback={gridContent} when={!disableContextMenu()}>
 				<ContextMenu>
 					<ContextMenuTrigger class="block w-full">
 						{gridContent}

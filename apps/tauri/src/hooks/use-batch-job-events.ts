@@ -1,6 +1,6 @@
+import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
-import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
 
 const isDev = import.meta.env.DEV;
 const API_BASE = isDev

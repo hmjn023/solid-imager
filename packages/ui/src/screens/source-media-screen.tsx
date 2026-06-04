@@ -90,7 +90,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			</Show>
 
 			<div class="mb-4 flex items-center justify-between">
-				<h1 class="font-bold text-2xl">Media in Source: {page().mediaSourceId()}</h1>
+				<h1 class="font-bold text-2xl">
+					Media in Source: {page().mediaSourceId()}
+				</h1>
 				<Button
 					disabled={
 						page().isSyncingMedia() || !page().mediaQuery.data?.pages.length

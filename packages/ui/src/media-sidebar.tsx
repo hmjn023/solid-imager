@@ -12,7 +12,6 @@ import {
 } from "solid-js";
 import { AssociationManager } from "./association-manager";
 import { Badge } from "./badge";
-import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
 import { toast } from "./toast";
@@ -210,17 +209,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							value={descriptionValue()}
 						/>
 						<div class="flex gap-2">
-							<Button
+							<button
+								class="rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700"
 								onClick={() => {
 									void handleSaveDescription();
 								}}
-								size="sm"
+								type="button"
 							>
 								Save
-							</Button>
-							<Button onClick={handleCancelEdit} size="sm" variant="outline">
+							</button>
+							<button
+								class="rounded-md bg-gray-300 px-3 py-1 text-gray-700 text-sm hover:bg-gray-400"
+								onClick={handleCancelEdit}
+								type="button"
+							>
 								Cancel
-							</Button>
+							</button>
 						</div>
 					</Show>
 				</Show>

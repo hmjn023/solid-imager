@@ -72,7 +72,7 @@ export function createOrpcTransport(
 
 							handler(msg.event, msg.data);
 						}
-					} catch (err) {
+					} catch (_err) {
 						if (ac.signal.aborted) {
 							break;
 						}
