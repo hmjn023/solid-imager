@@ -92,6 +92,7 @@ export function SourceCard(props: SourceCardProps) {
 					{props.onSync && (
 						<button
 							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+							data-testid="sync-source-btn"
 							onClick={handleSyncClick}
 							type="button"
 						>
@@ -101,6 +102,7 @@ export function SourceCard(props: SourceCardProps) {
 					{props.onEdit && (
 						<button
 							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+							data-testid="edit-source-btn"
 							onClick={handleEditClick}
 							type="button"
 						>
@@ -110,6 +112,7 @@ export function SourceCard(props: SourceCardProps) {
 					{props.onDelete && (
 						<button
 							class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
+							data-testid="delete-source-btn"
 							onClick={handleDeleteClick}
 							type="button"
 						>

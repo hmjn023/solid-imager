@@ -68,7 +68,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 	return (
 		<Card
 			class={cn(
-				"overflow-hidden transition-shadow hover:shadow-lg",
+				"overflow-hidden shadow shadow-lg transition-shadow hover:shadow-lg",
 				selected() && "ring-2 ring-primary",
 				props.class,
 			)}
@@ -77,12 +77,12 @@ export function MediaCardItem(props: MediaCardItemProps) {
 			<div class="group relative">
 				<div
 					class={cn(
-						"flex aspect-video w-full items-center justify-center overflow-hidden bg-gray-100 text-gray-400 text-sm",
+						"flex aspect-video w-full items-center justify-center overflow-hidden bg-gray-100",
 						props.thumbnailContainerClass,
 					)}
 				>
 					<Show
-						fallback={<div>{props.media.mediaType}</div>}
+						fallback={<div class="text-gray-400">{props.media.mediaType}</div>}
 						when={canRenderThumbnail()}
 					>
 						{props.renderThumbnail({
@@ -131,19 +131,37 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				</p>
 				<div class="flex justify-between pt-1 text-muted-foreground text-xs">
 					<span>
-						{formatDimensions(props.media, props.dimensionSeparator ?? "\u00d7")}
+						{formatDimensions(
+							props.media,
+							props.dimensionSeparator ?? "\u00d7",
+						)}
 					</span>
 					<span>{formatFileSize(props.media.fileSize)}</span>
 				</div>
 
-				<Show when={!props.selectable && props.linkComponent}>
-					{props.linkComponent?.({
-						children: "Check Details",
-						class:
-							"mt-2 block text-center text-primary text-sm hover:underline",
-						href: href(),
-						onClick: (event) => event.stopPropagation(),
-					})}
+				<Show when={!props.selectable}>
+					<Show
+						fallback={
+							<a
+								class="mt-2 block text-center text-primary text-sm hover:underline"
+								href={href()}
+								onClick={(event) => event.stopPropagation()}
+							>
+								Check Details
+							</a>
+						}
+						when={props.linkComponent}
+					>
+						{(linkComponent) =>
+							linkComponent()({
+								children: "Check Details",
+								class:
+									"mt-2 block text-center text-primary text-sm hover:underline",
+								href: href(),
+								onClick: (event) => event.stopPropagation(),
+							})
+						}
+					</Show>
 				</Show>
 			</div>
 		</Card>

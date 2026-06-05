@@ -104,24 +104,16 @@ export function SearchScreen(props: SearchScreenProps) {
 							disableContextMenu
 							enableVirtualization={props.enableVirtualization}
 							isError={page().searchResultQuery.isError}
-							isFetchingNextPage={
-								page().searchResultQuery.isFetchingNextPage
-							}
+							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
 							isPending={page().searchResultQuery.isLoading}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
-							queryError={
-								(page().searchResultQuery.error as Error) ?? null
-							}
-							renderItem={(media, _options) =>
-								props.renderMediaItem(media)
-							}
+							queryError={(page().searchResultQuery.error as Error) ?? null}
+							renderItem={(media, _options) => props.renderMediaItem(media)}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState
 							showResultCount
-							totalCount={
-								page().searchResultQuery.data?.pages[0]?.total
-							}
+							totalCount={page().searchResultQuery.data?.pages[0]?.total}
 						/>
 					</Show>
 				</div>

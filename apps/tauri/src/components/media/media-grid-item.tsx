@@ -31,7 +31,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			linkPrefix={props.linkPrefix}
 			media={props.media}
 			onContextMenu={props.onContextMenu}
-			overlayClass="from-black/70"
 			priority={props.priority}
 			renderThumbnail={(thumbnailProps) => (
 				<ThumbnailImage
