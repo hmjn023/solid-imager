@@ -75,7 +75,6 @@ function SearchRoute() {
 
 	return (
 		<SearchScreen
-			enableVirtualization
 			filterData={page.filterData}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
@@ -87,11 +86,28 @@ function SearchRoute() {
 				/>
 			)}
 			renderNavActions={({ openMobileFilters }) => (
-				<div class="md:hidden">
-					<Button onClick={openMobileFilters} variant="outline">
-						Filters
-					</Button>
-				</div>
+				<Button
+					class="border-white text-white hover:bg-sky-700 md:hidden"
+					onClick={openMobileFilters}
+					size="icon"
+					variant="outline"
+				>
+					<svg
+						class="lucide lucide-filter"
+						fill="none"
+						height="24"
+						stroke="currentColor"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						viewBox="0 0 24 24"
+						width="24"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<title>Filter results</title>
+						<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+					</svg>
+				</Button>
 			)}
 			selectedSource={searchState.selectedSource}
 			sources={page.sources()}

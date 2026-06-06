@@ -16,8 +16,7 @@
     "check": "vp run check",
     "format": "vp run format",
     "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
-    "typecheck": "bun --filter '*' typecheck",
-    "prepare": "vp config"
+    "typecheck": "bun --filter '*' typecheck"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
@@ -33,6 +32,6 @@
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-    "nitro": "npm:nitro-nightly@latest"
+    "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363"
   }
 }

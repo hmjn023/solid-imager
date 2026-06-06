@@ -13,9 +13,7 @@ function RootRouteComponent() {
 		<>
 			<Toaster />
 			<AppShell nav={<Nav />}>
-				<div class="container py-10">
-					<Outlet />
-				</div>
+				<Outlet />
 			</AppShell>
 		</>
 	);

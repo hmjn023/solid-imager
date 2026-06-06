@@ -5,7 +5,7 @@ import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-que
 import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
-import { SourceMediaPage } from "./components/-source-media-page";
+import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	loader: async ({ context }) => {

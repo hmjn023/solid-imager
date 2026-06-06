@@ -657,7 +657,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (!mediaSource || mediaSource.type !== "local") {
+	if (mediaSource?.type !== "local") {
 		const error = "Media source not found or not a local source";
 		logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
 		SseManager.sendEvent(mediaSourceId, "download-error", {
@@ -798,7 +798,7 @@ export async function queueDownloadJobs(
 ): Promise<number> {
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (!mediaSource || mediaSource.type !== "local") {
+	if (mediaSource?.type !== "local") {
 		throw new Error("Media source not found or not a local source");
 	}
 

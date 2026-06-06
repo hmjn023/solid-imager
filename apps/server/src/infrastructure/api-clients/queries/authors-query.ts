@@ -3,6 +3,6 @@ import { fetchAllAuthors } from "../authors-api";
 
 export const allAuthorsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allAuthors"],
+		queryKey: ["allAuthors"] as const,
 		queryFn: fetchAllAuthors,
 	});

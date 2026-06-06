@@ -79,6 +79,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		<MediaListActions
 			filterData={page.filterData()}
 			onDumpDownload={page.handleDumpDownload}
+			onLanceDBDump={page.handleLanceDBDump}
 			onSearch={page.handleSearch}
 			presetClient={props.presetClient}
 		/>

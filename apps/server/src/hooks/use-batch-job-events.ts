@@ -1,23 +1,23 @@
 import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
-
-const isDev = import.meta.env.DEV;
-const API_BASE = isDev
-	? window.location.origin
-	: import.meta.env.VITE_API_URL || "http://192.168.1.150:3000";
+import { isServer } from "solid-js/web";
 
 export function useBatchJobEvents(
 	activeJobId: Accessor<string | null>,
 	handlers: ManagerJobHandlers,
 ) {
 	createEffect(() => {
+		if (isServer) {
+			return;
+		}
+
 		const jobId = activeJobId();
 		if (!jobId) {
 			return;
 		}
 
-		const eventSource = new EventSource(`${API_BASE}/api/events`);
+		const eventSource = new EventSource("/api/events");
 
 		const onProgress = (event: MessageEvent) => {
 			try {

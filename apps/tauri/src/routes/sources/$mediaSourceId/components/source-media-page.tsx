@@ -82,7 +82,6 @@ export function SourceMediaPage() {
 			ipsQueryOptions={allIpsQueryOptions}
 			charactersQueryOptions={allCharactersQueryOptions}
 			authorsQueryOptions={allAuthorsQueryOptions}
-			enableVirtualization
 			renderItem={(media, { onContextMenu }) => (
 				<MediaGridItem
 					media={media}

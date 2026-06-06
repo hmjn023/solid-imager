@@ -239,8 +239,6 @@ export function useSearchPage(
 		if (!el) {
 			return;
 		}
-		const hasNext = searchResultQuery.hasNextPage;
-		void hasNext;
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (

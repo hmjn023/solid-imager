@@ -40,7 +40,9 @@ export default defineNitroConfig({
       }
 
       // Copy yt-dlp binary for bundled youtube-dl-exec
-      const ytDlpSource = path.resolve(__dirname, "../../node_modules/youtube-dl-exec/bin/yt-dlp");
+      const ytDlpLocalPath = path.resolve(__dirname, "node_modules/youtube-dl-exec/bin/yt-dlp");
+      const ytDlpRootPath = path.resolve(__dirname, "../../node_modules/youtube-dl-exec/bin/yt-dlp");
+      const ytDlpSource = fs.existsSync(ytDlpLocalPath) ? ytDlpLocalPath : ytDlpRootPath;
       const binDir = path.join(serverDir, "bin");
       const ytDlpDest = path.join(binDir, "yt-dlp");
       if (fs.existsSync(ytDlpSource)) {
@@ -55,7 +57,9 @@ export default defineNitroConfig({
       }
 
       // Copy ffmpeg binary for bundled ffmpeg-static
-      const ffmpegSource = path.resolve(__dirname, "../../node_modules/ffmpeg-static/ffmpeg");
+      const ffmpegLocalPath = path.resolve(__dirname, "node_modules/ffmpeg-static/ffmpeg");
+      const ffmpegRootPath = path.resolve(__dirname, "../../node_modules/ffmpeg-static/ffmpeg");
+      const ffmpegSource = fs.existsSync(ffmpegLocalPath) ? ffmpegLocalPath : ffmpegRootPath;
       const ffmpegDest = path.join(libsDir, "ffmpeg");
       if (fs.existsSync(ffmpegSource)) {
         fs.copyFileSync(ffmpegSource, ffmpegDest);

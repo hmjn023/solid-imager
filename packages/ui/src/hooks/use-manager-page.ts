@@ -286,7 +286,6 @@ export function useManagerPage(
 			}
 
 			invalidateActive();
-			toast.success("Created successfully");
 			setIsDialogOpen(false);
 			setEditingItem(null);
 			resetForm(setFormData);
@@ -312,7 +311,6 @@ export function useManagerPage(
 			}
 
 			invalidateActive();
-			toast.success("Updated successfully");
 			setIsDialogOpen(false);
 			setEditingItem(null);
 			resetForm(setFormData);
