@@ -45,8 +45,12 @@ export const aiRouter = {
 					);
 				}
 
-				const connectionInfo = mediaSource.connectionInfo as { path: string };
-				const fullPath = path.join(connectionInfo.path, media.filePath);
+const connectionInfo = mediaSource.connectionInfo as Record<string, unknown> | null | undefined;
+if (!connectionInfo || typeof connectionInfo.path !== "string") {
+	console.error("Media source connection path is missing or invalid");
+	return null;
+}
+const fullPath = path.join(connectionInfo.path, media.filePath);
 
 				const { getPixaiTags } = await import("dghs-imgutils-rs");
 				const result = await getPixaiTags(fullPath);
