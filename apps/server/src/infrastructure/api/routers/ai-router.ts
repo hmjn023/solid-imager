@@ -1,4 +1,5 @@
-import { os } from "@orpc/server";
+import path from "node:path";
+import { ORPCError, os } from "@orpc/server";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
@@ -19,6 +20,57 @@ import {
 import { logger } from "~/infrastructure/logger";
 
 export const aiRouter = {
+	tagRustExperimental: os
+		.input(
+			z.object({
+				mediaId: z.string().uuid(),
+			}),
+		)
+		.handler(async ({ input }) => {
+			try {
+				const { mediaId } = input;
+				const media = await services.getMediaRepository().findById(mediaId);
+				if (!media) {
+					throw new Error("Media not found");
+				}
+				const mediaSource = await services
+					.getSourceRepository()
+					.findById(media.mediaSourceId);
+				if (!mediaSource) {
+					throw new Error("Media source not found");
+				}
+				if (mediaSource.type !== "local") {
+					throw new Error(
+						"Only local media sources are supported for Rust tagging",
+					);
+				}
+
+const connectionInfo = mediaSource.connectionInfo as Record<string, unknown> | null | undefined;
+if (!connectionInfo || typeof connectionInfo.path !== "string") {
+	console.error("Media source connection path is missing or invalid");
+	return null;
+}
+const fullPath = path.join(connectionInfo.path, media.filePath);
+
+				const { getPixaiTags } = await import("dghs-imgutils-rs");
+				const result = await getPixaiTags(fullPath);
+
+				return {
+					general: result.general,
+					character: result.character,
+					ips: result.ips,
+					ips_mapping: result.ipsMapping,
+				};
+			} catch (error) {
+				logger.error({ err: error, input }, "Rust AI tagging failed");
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `Rust AI tagging failed: ${message}`,
+				});
+			}
+		}),
+
 	tag: os
 		.input(
 			z.union([
@@ -41,7 +93,11 @@ export const aiRouter = {
 				return await taggingService.getTagsForMedia(mediaSourceId, mediaId);
 			} catch (error) {
 				logger.error({ err: error, input }, "AI tagging failed");
-				throw error;
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `AI tagging failed: ${message}`,
+				});
 			}
 		}),
 
