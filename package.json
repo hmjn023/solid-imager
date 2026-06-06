@@ -17,7 +17,8 @@
     "format": "vp run format",
     "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
     "typecheck": "bun --filter '*' typecheck",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "postinstall": "sh -c '[ -L node_modules/nitro ] || { NITRO_DIR=$(ls -d node_modules/.bun/nitro-nightly@3.0.1-20260601-173724-a2597363+*/node_modules/nitro-nightly 2>/dev/null | head -1) && [ -n \"$NITRO_DIR\" ] && ln -sfn \"$(realpath \"$NITRO_DIR\")\" node_modules/nitro; }'"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
@@ -33,6 +34,6 @@
   "overrides": {
     "vite": "npm:@voidzero-dev/vite-plus-core@latest",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
-    "nitro": "3.0.0"
+    "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363"
   }
 }
