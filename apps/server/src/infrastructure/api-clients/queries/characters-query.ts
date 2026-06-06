@@ -3,6 +3,6 @@ import { fetchAllCharacters } from "../characters-api";
 
 export const allCharactersQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allCharacters"],
+		queryKey: ["allCharacters"] as const,
 		queryFn: fetchAllCharacters,
 	});

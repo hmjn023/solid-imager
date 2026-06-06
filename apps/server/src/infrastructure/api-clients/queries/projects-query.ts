@@ -3,6 +3,6 @@ import { fetchAllProjects } from "../projects-api";
 
 export const allProjectsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allProjects"],
+		queryKey: ["allProjects"] as const,
 		queryFn: fetchAllProjects,
 	});
