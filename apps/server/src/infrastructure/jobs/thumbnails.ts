@@ -135,7 +135,7 @@ export async function generateThumbnailsForSource(
 	mediaSourceId: string,
 ): Promise<number> {
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (!mediaSource || mediaSource.type !== "local") {
+	if (mediaSource?.type !== "local") {
 		throw new Error("Source not found or not a local source");
 	}
 
