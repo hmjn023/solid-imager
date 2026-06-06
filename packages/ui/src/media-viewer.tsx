@@ -57,7 +57,11 @@ export function MediaViewer(props: MediaViewerProps) {
 			<Switch>
 				<Match when={props.source.type === "video"}>
 					<Show
-						fallback={<div class="h-full max-h-full w-full" />}
+						fallback={
+							<div class="flex h-full max-h-full w-full items-center justify-center rounded-lg bg-slate-900 text-white">
+								Video preview unavailable
+							</div>
+						}
 						when={mediaUrl()}
 					>
 						{(url) => (
@@ -68,7 +72,14 @@ export function MediaViewer(props: MediaViewerProps) {
 					</Show>
 				</Match>
 				<Match when={props.source.type === "audio"}>
-					<Show fallback={<div />} when={mediaUrl()}>
+					<Show
+						fallback={
+							<div class="rounded-lg bg-slate-900 px-8 py-6 text-white">
+								Audio preview unavailable
+							</div>
+						}
+						when={mediaUrl()}
+					>
 						{(url) => (
 							<audio controls src={url()}>
 								<track kind="captions" />
@@ -77,7 +88,22 @@ export function MediaViewer(props: MediaViewerProps) {
 					</Show>
 				</Match>
 				<Match when={true}>
-					<Show fallback={<div />} when={mediaUrl()}>
+					<Show
+						fallback={
+							<div
+								class="flex h-full w-full items-center justify-center rounded-lg border text-white"
+								style={{
+									background:
+										"linear-gradient(135deg, rgba(15,23,42,0.18), rgba(15,23,42,0.02)), linear-gradient(135deg, #0f766e, #60a5fa)",
+								}}
+							>
+								<div class="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm uppercase tracking-[0.35em]">
+									{props.fileName}
+								</div>
+							</div>
+						}
+						when={mediaUrl()}
+					>
 						{(url) => (
 							<img
 								alt={props.fileName}

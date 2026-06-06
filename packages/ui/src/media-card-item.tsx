@@ -55,7 +55,7 @@ function formatDimensions(media: Media, separator: string) {
 export function MediaCardItem(props: MediaCardItemProps) {
 	const canRenderThumbnail = () =>
 		props.canRenderThumbnail?.(props.media) ??
-		props.media.mediaType === "image";
+		props.media.mediaType !== "audio";
 	const selected = () => props.isSelected ?? false;
 	const href = () => `/sources/${props.media.mediaSourceId}/${props.media.id}`;
 

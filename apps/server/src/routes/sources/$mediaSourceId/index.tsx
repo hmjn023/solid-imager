@@ -2,6 +2,7 @@ import type { MediaSourceEventTransport } from "@solid-imager/ui/hooks/use-media
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage } from "@solid-imager/ui/source-media-page";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
+import { createEffect, onCleanup } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -60,67 +61,76 @@ function createServerTransport(
 ): MediaSourceEventTransport {
 	return {
 		listen(handler) {
-			const ac = new AbortController();
+			let activeAc: AbortController | null = null;
 
-			const startListening = async () => {
+			createEffect(() => {
 				const id = mediaSourceId();
 				if (!id) {
 					return;
 				}
 
-				let retryCount = 0;
-				const maxRetryDelay = 30_000;
-				const initialRetryDelay = 1_000;
+				const ac = new AbortController();
+				activeAc = ac;
 
-				while (!ac.signal.aborted) {
-					try {
-						const events = await orpcWithEvents.sources.events(
-							{ id },
-							{ signal: ac.signal },
-						);
+				const startListening = async () => {
+					let retryCount = 0;
+					const maxRetryDelay = 30_000;
+					const initialRetryDelay = 1_000;
 
-						retryCount = 0;
+					while (!ac.signal.aborted) {
+						try {
+							const events = await orpcWithEvents.sources.events(
+								{ id },
+								{ signal: ac.signal },
+							);
 
-						for await (const msg of events) {
+							retryCount = 0;
+
+							for await (const msg of events) {
+								if (ac.signal.aborted) {
+									break;
+								}
+
+								if (msg.event === "connected") {
+									continue;
+								}
+
+								handler(msg.event, msg.data);
+							}
+						} catch (_err) {
 							if (ac.signal.aborted) {
 								break;
 							}
 
-							if (msg.event === "connected") {
-								continue;
-							}
-
-							handler(msg.event, msg.data);
-						}
-					} catch (_err) {
-						if (ac.signal.aborted) {
-							break;
-						}
-
-						retryCount++;
-						const delay = Math.min(
-							initialRetryDelay * 2 ** (retryCount - 1),
-							maxRetryDelay,
-						);
-						await new Promise<void>((resolve) => {
-							const timer = setTimeout(resolve, delay);
-							ac.signal.addEventListener(
-								"abort",
-								() => {
-									clearTimeout(timer);
-									resolve();
-								},
-								{ once: true },
+							retryCount++;
+							const delay = Math.min(
+								initialRetryDelay * 2 ** (retryCount - 1),
+								maxRetryDelay,
 							);
-						});
+							await new Promise<void>((resolve) => {
+								const timer = setTimeout(resolve, delay);
+								ac.signal.addEventListener(
+									"abort",
+									() => {
+										clearTimeout(timer);
+										resolve();
+									},
+									{ once: true },
+								);
+							});
+						}
 					}
-				}
-			};
+				};
 
-			startListening();
+				startListening();
+
+				onCleanup(() => {
+					ac.abort();
+				});
+			});
 
 			return () => {
-				ac.abort();
+				activeAc?.abort();
 			};
 		},
 	};

@@ -3,7 +3,7 @@ import {
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/hooks/use-media-source-events";
-import type { Accessor } from "solid-js";
+import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { orpc as rawOrpc } from "~/infrastructure/api-clients/orpc-client";
 
 export type {
@@ -42,65 +42,74 @@ export function createOrpcTransport(
 ): MediaSourceEventTransport {
 	return {
 		listen(handler) {
-			const ac = new AbortController();
+			let activeAc: AbortController | null = null;
 
-			const startListening = async () => {
+			createEffect(() => {
 				const id = mediaSourceId();
 				if (!id) {
 					return;
 				}
 
-				let retryCount = 0;
+				const ac = new AbortController();
+				activeAc = ac;
 
-				while (!ac.signal.aborted) {
-					try {
-						const events = await orpc.sources.events(
-							{ id },
-							{ signal: ac.signal },
-						);
+				const startListening = async () => {
+					let retryCount = 0;
 
-						retryCount = 0;
+					while (!ac.signal.aborted) {
+						try {
+							const events = await orpc.sources.events(
+								{ id },
+								{ signal: ac.signal },
+							);
 
-						for await (const msg of events) {
+							retryCount = 0;
+
+							for await (const msg of events) {
+								if (ac.signal.aborted) {
+									break;
+								}
+
+								if (msg.event === "connected") {
+									continue;
+								}
+
+								handler(msg.event, msg.data);
+							}
+						} catch (_err) {
 							if (ac.signal.aborted) {
 								break;
 							}
 
-							if (msg.event === "connected") {
-								continue;
-							}
-
-							handler(msg.event, msg.data);
-						}
-					} catch (_err) {
-						if (ac.signal.aborted) {
-							break;
-						}
-
-						retryCount++;
-						const delay = Math.min(
-							INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
-							MAX_RETRY_DELAY,
-						);
-						await new Promise<void>((resolve) => {
-							const timer = setTimeout(resolve, delay);
-							ac.signal.addEventListener(
-								"abort",
-								() => {
-									clearTimeout(timer);
-									resolve();
-								},
-								{ once: true },
+							retryCount++;
+							const delay = Math.min(
+								INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
+								MAX_RETRY_DELAY,
 							);
-						});
+							await new Promise<void>((resolve) => {
+								const timer = setTimeout(resolve, delay);
+								ac.signal.addEventListener(
+									"abort",
+									() => {
+										clearTimeout(timer);
+										resolve();
+									},
+									{ once: true },
+								);
+							});
+						}
 					}
-				}
-			};
+				};
 
-			startListening();
+				startListening();
+
+				onCleanup(() => {
+					ac.abort();
+				});
+			});
 
 			return () => {
-				ac.abort();
+				activeAc?.abort();
 			};
 		},
 	};
