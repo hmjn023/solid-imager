@@ -110,7 +110,7 @@ async function handleFileChanged(
 ): Promise<void> {
 	try {
 		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source || source.type !== "local") {
+		if (source?.type !== "local") {
 			return;
 		}
 

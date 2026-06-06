@@ -3,6 +3,6 @@ import { fetchAllIps } from "../ips-api";
 
 export const allIpsQueryOptions = () =>
 	queryOptions({
-		queryKey: ["allIps"],
+		queryKey: ["allIps"] as const,
 		queryFn: fetchAllIps,
 	});

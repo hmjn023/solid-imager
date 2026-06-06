@@ -92,7 +92,7 @@ export const DirectorySyncService = {
 		};
 		try {
 			const source = await sourceRepo.findById(mediaSourceId);
-			if (!source || source.type !== "local") {
+			if (source?.type !== "local") {
 				logger.info(
 					{ mediaSourceId },
 					"Skipping sync for non-local or missing source",

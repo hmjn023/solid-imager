@@ -4,10 +4,6 @@ import { Button } from "@solid-imager/ui/button";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/config")({
-	ssr: true,
-	beforeLoad: ({ context }) => {
-		void context;
-	},
 	loader: async ({ context }) => {
 		await context.queryClient.ensureQueryData(configQueryOptions());
 	},

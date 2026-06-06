@@ -98,7 +98,10 @@ export async function executeDeferredActions(actions: DeferredActions) {
 			try {
 				await storageService.deleteFile(file.basePath, file.filePath);
 			} catch (e) {
-				logger.error({ err: e, basePath: file.basePath, filePath: file.filePath }, "Failed to delete file during deferred actions");
+				logger.error(
+					{ err: e, basePath: file.basePath, filePath: file.filePath },
+					"Failed to delete file during deferred actions",
+				);
 			}
 		}
 	}
@@ -107,7 +110,14 @@ export async function executeDeferredActions(actions: DeferredActions) {
 			try {
 				await deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);
 			} catch (e) {
-				logger.error({ err: e, mediaSourceId: thumb.mediaSourceId, mediaId: thumb.mediaId }, "Failed to delete thumbnail during deferred actions");
+				logger.error(
+					{
+						err: e,
+						mediaSourceId: thumb.mediaSourceId,
+						mediaId: thumb.mediaId,
+					},
+					"Failed to delete thumbnail during deferred actions",
+				);
 			}
 		}
 	}
