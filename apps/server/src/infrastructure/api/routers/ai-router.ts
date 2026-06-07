@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
@@ -88,7 +89,10 @@ export const aiRouter = {
 			try {
 				if ("file" in input) {
 					const buffer = Buffer.from(await input.file.arrayBuffer());
-					const tmpPath = `/tmp/rust-tag-${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+					const tmpPath = path.join(
+						tmpdir(),
+						`rust-tag-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+					);
 					await fs.promises.writeFile(tmpPath, buffer);
 					try {
 						const { getPixaiTags } = await import("dghs-imgutils-rs");
