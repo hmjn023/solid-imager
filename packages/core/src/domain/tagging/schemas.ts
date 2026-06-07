@@ -44,3 +44,34 @@ export const batchTaggingRequestSchema = z.object({
 	batchSize: z.number().optional(),
 	mediaSourceId: z.string().optional(),
 });
+
+export const napiBBoxSchema = z.object({
+	x1: z.number(),
+	y1: z.number(),
+	x2: z.number(),
+	y2: z.number(),
+});
+
+export type NapiBBox = z.infer<typeof napiBBoxSchema>;
+
+export const characterCropSchema = z.object({
+	index: z.number(),
+	bbox: napiBBoxSchema,
+	label: z.string(),
+	score: z.number(),
+	imageBase64: z.string(),
+	width: z.number(),
+	height: z.number(),
+});
+
+export type CharacterCrop = z.infer<typeof characterCropSchema>;
+
+export const detectAndCropRequestSchema = z.object({
+	mediaId: z.string().uuid(),
+});
+
+export const detectAndCropResponseSchema = z.object({
+	detections: z.array(characterCropSchema),
+});
+
+export type DetectAndCropResponse = z.infer<typeof detectAndCropResponseSchema>;

@@ -35,6 +35,10 @@ type MediaSidebarProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	characterCropModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	onUpdate?: () => void;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
@@ -63,6 +67,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isRustExperimentalModalOpen, setIsRustExperimentalModalOpen] =
+		createSignal(false);
+	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
@@ -168,6 +174,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							Extract Tags (Rust Experimental)
 						</button>
 					</Show>
+					<Show when={props.characterCropModal}>
+						<button
+							class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
+							onClick={() => setIsCharacterCropModalOpen(true)}
+							type="button"
+						>
+							<span class="i-lucide-scan" />
+							Detect &amp; Crop Characters
+						</button>
+					</Show>
 				</div>
 			</Show>
 			{props.aiTaggingModal?.({
@@ -177,6 +193,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			{props.rustExperimentalModal?.({
 				isOpen: isRustExperimentalModalOpen(),
 				onClose: () => setIsRustExperimentalModalOpen(false),
+			})}
+			{props.characterCropModal?.({
+				isOpen: isCharacterCropModalOpen(),
+				onClose: () => setIsCharacterCropModalOpen(false),
 			})}
 
 			<div class="space-y-2">
