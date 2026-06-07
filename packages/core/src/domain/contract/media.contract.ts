@@ -1,6 +1,8 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	findDuplicatesRequestSchema,
+	findDuplicatesResponseSchema,
 	mediaDetailsSchema,
 	mediaSchema,
 	mediaSearchRequestSchema,
@@ -117,4 +119,8 @@ export const mediaContract = {
 				autoIncrement: z.string().optional(),
 			}),
 		),
+
+	findDuplicates: oc
+		.input(findDuplicatesRequestSchema.optional())
+		.output(findDuplicatesResponseSchema),
 };

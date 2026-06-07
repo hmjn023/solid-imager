@@ -2,6 +2,7 @@ export {
 	copyMedia,
 	deleteMedia,
 	fetchMediaDetails,
+	findDuplicateMedia,
 	moveMedia,
 	searchMedia,
 	syncMediaItems,

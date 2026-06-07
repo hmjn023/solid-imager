@@ -11,6 +11,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { create as createYtDlp } from "youtube-dl-exec";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -791,18 +792,47 @@ async function registerMedia(
 
 /**
  * Queues multiple download jobs from a list of download items.
+ * Filters out items whose source URLs already exist in the database.
  */
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
-): Promise<number> {
+): Promise<{ jobCount: number; skippedCount: number }> {
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
 	if (mediaSource?.type !== "local") {
 		throw new Error("Media source not found or not a local source");
 	}
 
-	const jobRows: NewJob[] = items.map((item) => ({
+	// Filter out items whose complete source URL set already exists (parallel)
+	const poolResults = await asyncPool(items, 5, async (item) => {
+		const urls = item.sourceUrls || [];
+		if (urls.length < 2) return { item, skip: false };
+		const existingMediaId =
+			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
+		if (existingMediaId) {
+			logger.info(
+				{ urls, existingMediaId, fileName: item.fileName },
+				"Skipping duplicate download item (source URLs already exist)",
+			);
+			return { item, skip: true };
+		}
+		return { item, skip: false };
+	});
+
+	const newItems: DownloadItem[] = [];
+	let skippedCount = 0;
+	for (const result of poolResults) {
+		if (result.status === "rejected") {
+			newItems.push(result.reason.item);
+		} else if (result.value.skip) {
+			skippedCount++;
+		} else {
+			newItems.push(result.value.item);
+		}
+	}
+
+	const jobRows: NewJob[] = newItems.map((item) => ({
 		type: "downloadImage",
 		mediaSourceId,
 		payload: {
@@ -814,7 +844,7 @@ export async function queueDownloadJobs(
 			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
 		},
 	}));
-	if (jobRows.length === 0) return 0;
+	if (jobRows.length === 0) return { jobCount: 0, skippedCount };
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
@@ -823,5 +853,5 @@ export async function queueDownloadJobs(
 
 	// Jobs are picked up by the worker automatically.
 
-	return items.length;
+	return { jobCount: newItems.length, skippedCount };
 }

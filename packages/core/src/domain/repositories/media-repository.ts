@@ -102,4 +102,13 @@ export type IMediaRepository = {
 		request: FindDuplicatesRequest,
 		tx?: Transaction,
 	): Promise<FindDuplicatesResponse>;
+
+	/**
+	 * Check if an existing media item has the exact same set of source URLs.
+	 * Returns the mediaId if a match is found, null otherwise.
+	 */
+	findMediaIdWithMatchingUrlSet(
+		urls: string[],
+		tx?: Transaction,
+	): Promise<string | null>;
 };
