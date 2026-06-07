@@ -1301,22 +1301,29 @@ export function createMediaRepository(
 				.groupBy(mediaUrls.mediaId)
 				.having(sql`count(*) = ${urls.length}`);
 
-			for (const row of candidateRows) {
-				const [totalResult] = await client
-					.select({ count: sql<number>`count(*)` })
-					.from(mediaUrls)
-					.where(eq(mediaUrls.mediaId, row.mediaId));
+			if (candidateRows.length === 0) return null;
 
-				if (totalResult.count === urls.length) {
-					const existingUrls = await client
-						.select({ url: mediaUrls.url })
-						.from(mediaUrls)
-						.where(eq(mediaUrls.mediaId, row.mediaId));
+			const candidateIds = candidateRows.map((r) => r.mediaId);
 
-					const existingSet = new Set(existingUrls.map((u) => u.url));
-					if (urls.every((u) => existingSet.has(u))) {
-						return row.mediaId;
-					}
+			// Batch-fetch all URLs for all candidates
+			const allCandidateUrls = await client
+				.select({ mediaId: mediaUrls.mediaId, url: mediaUrls.url })
+				.from(mediaUrls)
+				.where(inArray(mediaUrls.mediaId, candidateIds));
+
+			// Group by mediaId and check for complete match
+			const urlsByCandidate = new Map<string, string[]>();
+			for (const row of allCandidateUrls) {
+				const arr = urlsByCandidate.get(row.mediaId) || [];
+				arr.push(row.url);
+				urlsByCandidate.set(row.mediaId, arr);
+			}
+
+			const urlSet = new Set(urls);
+			for (const [mediaId, existingUrls] of urlsByCandidate) {
+				if (existingUrls.length !== urls.length) continue;
+				if (existingUrls.every((u) => urlSet.has(u))) {
+					return mediaId;
 				}
 			}
 

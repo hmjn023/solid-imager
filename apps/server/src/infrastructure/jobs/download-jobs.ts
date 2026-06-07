@@ -11,6 +11,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { create as createYtDlp } from "youtube-dl-exec";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -803,26 +804,31 @@ export async function queueDownloadJobs(
 		throw new Error("Media source not found or not a local source");
 	}
 
-	// Filter out items whose complete source URL set already exists
-	const newItems: DownloadItem[] = [];
-	let skippedCount = 0;
-
-	for (const item of items) {
+	// Filter out items whose complete source URL set already exists (parallel)
+	const poolResults = await asyncPool(items, 5, async (item) => {
 		const urls = item.sourceUrls || [];
-		if (urls.length < 2) {
-			newItems.push(item);
-			continue;
-		}
+		if (urls.length < 2) return { item, skip: false };
 		const existingMediaId =
 			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
 		if (existingMediaId) {
-			skippedCount++;
 			logger.info(
 				{ urls, existingMediaId, fileName: item.fileName },
 				"Skipping duplicate download item (source URLs already exist)",
 			);
+			return { item, skip: true };
+		}
+		return { item, skip: false };
+	});
+
+	const newItems: DownloadItem[] = [];
+	let skippedCount = 0;
+	for (const result of poolResults) {
+		if (result.status === "rejected") {
+			newItems.push(result.reason.item);
+		} else if (result.value.skip) {
+			skippedCount++;
 		} else {
-			newItems.push(item);
+			newItems.push(result.value.item);
 		}
 	}
 
