@@ -49,17 +49,10 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 	return fs.promises.readFile(filePath);
 }
 
-async function callRemoteOprc(
-	remoteUrl: string,
-	endpoint: "tag" | "tagRustExperimental",
-	fileBuffer: Buffer,
-	fileName: string,
-	timeoutMs: number,
-): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createClient({
+function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
+	return createClient({
 		url: remoteUrl,
-		fetch: async (request, init) => {
+		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
 			const t = setTimeout(() => controller.abort(), timeoutMs);
 			try {
@@ -72,11 +65,33 @@ async function callRemoteOprc(
 			}
 		},
 	}) as any;
+}
+
+async function callRemoteTagging(
+	remoteUrl: string,
+	endpoint: "tag" | "tagRustExperimental",
+	fileBuffer: Buffer,
+	fileName: string,
+	timeoutMs: number,
+): Promise<unknown> {
+	const file = new File([new Uint8Array(fileBuffer)], fileName);
+	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
 
 	if (endpoint === "tagRustExperimental") {
 		return remoteOrpc.ai.tagRustExperimental({ file });
 	}
 	return remoteOrpc.ai.tag({ file });
+}
+
+async function callRemoteCrop(
+	remoteUrl: string,
+	fileBuffer: Buffer,
+	fileName: string,
+	timeoutMs: number,
+): Promise<unknown> {
+	const file = new File([new Uint8Array(fileBuffer)], fileName);
+	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
+	return remoteOrpc.ai.detectAndCropCharacters({ file });
 }
 
 export const aiRouter = {
@@ -140,7 +155,7 @@ export const aiRouter = {
 				const config = services.getConfigService().getConfig();
 				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
 					const fileBuffer = await readFileBuffer(fullPath);
-					const result = (await callRemoteOprc(
+					const result = (await callRemoteTagging(
 						remoteUrl,
 						"tagRustExperimental",
 						fileBuffer,
@@ -219,7 +234,7 @@ export const aiRouter = {
 					}
 					const fullPath = path.join(connectionInfo.path, media.filePath);
 					const fileBuffer = await readFileBuffer(fullPath);
-					return (await callRemoteOprc(
+					return (await callRemoteTagging(
 						remoteUrl,
 						"tag",
 						fileBuffer,
@@ -380,9 +395,59 @@ export const aiRouter = {
 		}),
 
 	detectAndCropCharacters: os
-		.input(z.object({ mediaId: z.string().uuid() }))
+		.input(
+			z.union([
+				z.object({ mediaId: z.string().uuid() }),
+				z.object({ file: z.instanceof(File) }),
+			]),
+		)
 		.handler(async ({ input }) => {
 			try {
+				if ("file" in input) {
+					const buffer = Buffer.from(await input.file.arrayBuffer());
+					const tmpPath = path.join(
+						tmpdir(),
+						`crop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+					);
+					await fs.promises.writeFile(tmpPath, buffer);
+					try {
+						const { detectPerson } = await import("dghs-imgutils-rs");
+						const detections = await detectPerson(tmpPath);
+
+						const resultDetections = await Promise.all(
+							detections.map(async (det, idx) => {
+								const { x1, y1, x2, y2 } = det.bbox;
+								const w = Math.round(x2 - x1);
+								const h = Math.round(y2 - y1);
+
+								const cropBuffer = await sharp(tmpPath)
+									.extract({
+										left: Math.round(x1),
+										top: Math.round(y1),
+										width: w,
+										height: h,
+									})
+									.webp()
+									.toBuffer();
+
+								return {
+									index: idx,
+									bbox: { x1, y1, x2, y2 },
+									label: det.label,
+									score: det.score,
+									imageBase64: cropBuffer.toString("base64"),
+									width: w,
+									height: h,
+								};
+							}),
+						);
+
+						return { detections: resultDetections };
+					} finally {
+						await fs.promises.unlink(tmpPath).catch(() => {});
+					}
+				}
+
 				const { mediaId } = input;
 				const media = await services.getMediaRepository().findById(mediaId);
 				if (!media) {
@@ -413,9 +478,8 @@ export const aiRouter = {
 				const config = services.getConfigService().getConfig();
 				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
 					const fileBuffer = await readFileBuffer(fullPath);
-					const result = (await callRemoteOprc(
+					return (await callRemoteCrop(
 						remoteUrl,
-						"detectAndCropCharacters" as any,
 						fileBuffer,
 						path.basename(fullPath),
 						config.ai.timeoutMs,
@@ -430,7 +494,6 @@ export const aiRouter = {
 							height: number;
 						}>;
 					};
-					return result;
 				}
 
 				const { detectPerson } = await import("dghs-imgutils-rs");

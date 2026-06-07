@@ -47,6 +47,11 @@ export const aiContract = {
 		),
 
 	detectAndCropCharacters: oc
-		.input(z.object({ mediaId: z.string().uuid() }))
+		.input(
+			z.union([
+				z.object({ mediaId: z.string().uuid() }),
+				z.object({ file: z.instanceof(File) }),
+			]),
+		)
 		.output(detectAndCropResponseSchema),
 };
