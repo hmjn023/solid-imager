@@ -25,6 +25,7 @@ import {
 } from "~/infrastructure/api-clients/queries/projects-query";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { AiTaggingModal } from "../ai-tagging-modal";
+import { RustExperimentalModal } from "../rust-experimental-modal";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
@@ -70,6 +71,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			removeCharacterFromMedia={removeCharacterFromMedia}
 			removeIpFromMedia={removeIpFromMedia}
 			removeProjectFromMedia={removeProjectFromMedia}
+			rustExperimentalModal={(modalProps) => (
+				<RustExperimentalModal
+					isOpen={modalProps.isOpen}
+					media={props.media}
+					onClose={modalProps.onClose}
+				/>
+			)}
 			updateMediaDescription={(mediaSourceId, mediaId, description) =>
 				updateMedia(mediaSourceId, mediaId, { description })
 			}

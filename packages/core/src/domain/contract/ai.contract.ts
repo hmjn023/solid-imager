@@ -16,6 +16,14 @@ export const aiContract = {
 			]),
 		),
 
+	tagRustExperimental: oc
+		.input(
+			z.union([
+				z.object({ mediaId: z.string().uuid() }),
+				z.object({ file: z.instanceof(File) }),
+			]),
+		),
+
 	ccipFeature: oc
 		.input(
 			z.union([
