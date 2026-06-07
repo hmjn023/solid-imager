@@ -556,3 +556,42 @@ export const updatePresetRequestSchema = z.object({
 });
 
 export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;
+
+// ============================================================================
+// Duplicate Detection Schemas
+// ============================================================================
+
+export const duplicateReasonSchema = z.enum(["sourceUrl"]);
+export type DuplicateReason = z.infer<typeof duplicateReasonSchema>;
+
+export const duplicateMediaItemSchema = z.object({
+	id: z.uuid({ version: "v4" }),
+	mediaSourceId: z.uuid({ version: "v4" }),
+	fileName: z.string(),
+	filePath: z.string(),
+	fileSize: z.number().nullable(),
+	width: z.number(),
+	height: z.number(),
+	mediaType: z.enum(["image", "video", "audio"]),
+	createdAt: z.coerce.date(),
+	modifiedAt: z.coerce.date(),
+	sourceUrls: z.array(z.string().url()),
+});
+export type DuplicateMediaItem = z.infer<typeof duplicateMediaItemSchema>;
+
+export const duplicateGroupSchema = z.object({
+	id: z.string(),
+	reason: duplicateReasonSchema,
+	media: z.array(duplicateMediaItemSchema),
+});
+export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
+
+export const findDuplicatesResponseSchema = z.object({
+	groups: z.array(duplicateGroupSchema),
+});
+export type FindDuplicatesResponse = z.infer<typeof findDuplicatesResponseSchema>;
+
+export const findDuplicatesRequestSchema = z.object({
+	mediaSourceId: z.uuid({ version: "v4" }).optional(),
+});
+export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;

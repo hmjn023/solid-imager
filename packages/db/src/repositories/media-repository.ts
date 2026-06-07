@@ -6,6 +6,9 @@ import type { Transaction } from "@solid-imager/core/domain/interfaces/transacti
 import {
 	type AddMediaRequest,
 	type Author,
+	type DuplicateGroup,
+	type FindDuplicatesRequest,
+	type FindDuplicatesResponse,
 	type Media,
 	type MediaDetails,
 	type MediaGenerationInfo,
@@ -1175,6 +1178,112 @@ export function createMediaRepository(
 			}
 
 			return await query;
+		},
+
+		async findDuplicates(
+			request: FindDuplicatesRequest,
+			tx?: Transaction,
+		): Promise<FindDuplicatesResponse> {
+			const client = getExecutor(tx);
+
+			const mediaConditions = [
+				eq(medias.mediaType, "image"),
+				eq(medias.status, "active"),
+			];
+			if (request.mediaSourceId) {
+				mediaConditions.push(eq(medias.mediaSourceId, request.mediaSourceId));
+			}
+
+			const mediaRows = await client
+				.select({
+					id: medias.id,
+					mediaSourceId: medias.mediaSourceId,
+					fileName: medias.fileName,
+					filePath: medias.filePath,
+					fileSize: medias.fileSize,
+					width: medias.width,
+					height: medias.height,
+					mediaType: medias.mediaType,
+					createdAt: medias.createdAt,
+					modifiedAt: medias.modifiedAt,
+				})
+				.from(medias)
+				.where(and(...mediaConditions));
+
+			if (mediaRows.length === 0) {
+				return { groups: [] };
+			}
+
+			const mediaIds = mediaRows.map((row) => row.id);
+
+			// Fetch URLs in chunks to avoid SQLite "too many SQL variables" limit (~999)
+			const CHUNK_SIZE = 500;
+			const urlRows: { mediaId: string; url: string }[] = [];
+			for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
+				const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
+				const rows = await client
+					.select({
+						mediaId: mediaUrls.mediaId,
+						url: mediaUrls.url,
+					})
+					.from(mediaUrls)
+					.where(inArray(mediaUrls.mediaId, chunk));
+				urlRows.push(...rows);
+			}
+
+			const urlsByMediaId = new Map<string, string[]>();
+			for (const row of urlRows) {
+				const arr = urlsByMediaId.get(row.mediaId) || [];
+				arr.push(row.url);
+				urlsByMediaId.set(row.mediaId, arr);
+			}
+
+			const mediaMap = new Map<string, (typeof mediaRows)[number]>();
+			for (const row of mediaRows) {
+				mediaMap.set(row.id, row);
+			}
+
+			const groups: DuplicateGroup[] = [];
+
+			// Group by source URL complete match (all URLs must match)
+			const byUrlSet = new Map<string, string[]>();
+			for (const row of mediaRows) {
+				const urls = (urlsByMediaId.get(row.id) || []).slice().sort();
+				if (urls.length < 2) continue;
+				const key = urls.join("\0");
+				const arr = byUrlSet.get(key) || [];
+				arr.push(row.id);
+				byUrlSet.set(key, arr);
+			}
+
+			let urlGroupIndex = 0;
+			for (const [, ids] of byUrlSet) {
+				if (ids.length < 2) continue;
+				const group = ids.map((id) => {
+					// biome-ignore lint/style/noNonNullAssertion: ID mapped from mediaRows
+					const row = mediaMap.get(id)!;
+					return {
+						id: row.id,
+						mediaSourceId: row.mediaSourceId,
+						fileName: row.fileName,
+						filePath: row.filePath,
+						fileSize: row.fileSize,
+						width: row.width,
+						height: row.height,
+						mediaType: row.mediaType,
+						createdAt: row.createdAt,
+						modifiedAt: row.modifiedAt,
+						sourceUrls: urlsByMediaId.get(id) || [],
+					};
+				});
+				groups.push({
+					id: `url-${urlGroupIndex++}`,
+					reason: "sourceUrl",
+					media: group,
+				});
+			}
+
+			return { groups };
 		},
 
 		async findAllPathsBySourceId(
