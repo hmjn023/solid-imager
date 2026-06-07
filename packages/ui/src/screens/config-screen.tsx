@@ -209,7 +209,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 							<form.Field name="ai.remoteServerUrl">
 								{(field) => (
 									<div class="space-y-2">
-										<Label for={field().name}>Remote AI Server URL (oRPC)</Label>
+										<Label for={field().name}>
+											Remote AI Server URL (oRPC)
+										</Label>
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
@@ -222,7 +224,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											value={(field().state.value as string) ?? ""}
 										/>
 										<div class="text-muted-foreground text-xs">
-											外部の solid-imager サーバーの oRPC エンドポイントを指定。AI 処理をリモートに委託します。空欄の場合はローカルで処理します。
+											外部の solid-imager サーバーの oRPC
+											エンドポイントを指定。AI
+											処理をリモートに委託します。空欄の場合はローカルで処理します。
 										</div>
 									</div>
 								)}

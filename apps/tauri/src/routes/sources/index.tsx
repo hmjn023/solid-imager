@@ -1,10 +1,10 @@
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
+import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
+import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { SourceDeleteModal } from "~/components/source-delete-modal";
-import { SourceFormModal } from "~/components/source-form-modal";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
