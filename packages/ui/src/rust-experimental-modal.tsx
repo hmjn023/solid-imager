@@ -221,7 +221,7 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 															<span class="text-gray-500 text-xs">
 																DB:{" "}
 																{(
-																	item.dbScore! * PERCENTAGE_MULTIPLIER
+																	(item.dbScore ?? 0) * PERCENTAGE_MULTIPLIER
 																).toFixed(0)}
 																%
 															</span>
@@ -238,7 +238,7 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 															<span class="rounded bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700 text-xs">
 																Rust:{" "}
 																{(
-																	item.rustScore! * PERCENTAGE_MULTIPLIER
+																	(item.rustScore ?? 0) * PERCENTAGE_MULTIPLIER
 																).toFixed(0)}
 																%
 															</span>
@@ -247,13 +247,13 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 														<Show when={item.diff !== null}>
 															<span
 																class={`text-xs font-bold ${
-																	item.diff! >= 0
+																	(item.diff ?? 0) >= 0
 																		? "text-emerald-600"
 																		: "text-rose-600"
 																}`}
 															>
-																{item.diff! >= 0 ? "+" : ""}
-																{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(
+																{(item.diff ?? 0) >= 0 ? "+" : ""}
+																{((item.diff ?? 0) * PERCENTAGE_MULTIPLIER).toFixed(
 																	0,
 																)}
 																%
@@ -372,13 +372,13 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 															>
 																<span
 																	class={`font-semibold ${
-																		item.diff! >= 0
+																		(item.diff ?? 0) >= 0
 																			? "text-emerald-600"
 																			: "text-rose-600"
 																	}`}
 																>
-																	{item.diff! >= 0 ? "+" : ""}
-																	{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(
+																	{(item.diff ?? 0) >= 0 ? "+" : ""}
+																	{((item.diff ?? 0) * PERCENTAGE_MULTIPLIER).toFixed(
 																		1,
 																	)}
 																	%

@@ -588,7 +588,7 @@ async function _validateAndUpdateCharacter(options: {
 	client: DrizzleExecutor;
 	tx?: unknown;
 }): Promise<InferSelectModel<typeof characters> | null> {
-	const { id, charData, ipIds, client, tx } = options;
+	const { id, charData, ipIds, client } = options;
 	if (Object.keys(charData).length > 0 || ipIds !== undefined) {
 		if (Object.keys(charData).length === 0) {
 			// Only IPs changing — simple existence check
