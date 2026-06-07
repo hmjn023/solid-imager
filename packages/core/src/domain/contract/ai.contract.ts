@@ -3,40 +3,30 @@ import { z } from "zod";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
-	tagImageRequestSchema,
 	ccipFeatureRequestSchema,
+	detectAndCropResponseSchema,
+	tagImageRequestSchema,
 } from "../tagging/schemas";
 
 export const aiContract = {
-	tag: oc
-		.input(
-			z.union([
-				z.object({ file: z.instanceof(File) }),
-				tagImageRequestSchema,
-			]),
-		),
+	tag: oc.input(
+		z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
+	),
 
-	tagRustExperimental: oc
-		.input(
-			z.union([
-				z.object({ mediaId: z.string().uuid() }),
-				z.object({ file: z.instanceof(File) }),
-			]),
-		),
+	tagRustExperimental: oc.input(
+		z.union([
+			z.object({ mediaId: z.string().uuid() }),
+			z.object({ file: z.instanceof(File) }),
+		]),
+	),
 
-	ccipFeature: oc
-		.input(
-			z.union([
-				z.object({ file: z.instanceof(File) }),
-				ccipFeatureRequestSchema,
-			]),
-		),
+	ccipFeature: oc.input(
+		z.union([z.object({ file: z.instanceof(File) }), ccipFeatureRequestSchema]),
+	),
 
-	ccipDifference: oc
-		.input(ccipDifferenceRequestSchema),
+	ccipDifference: oc.input(ccipDifferenceRequestSchema),
 
-	scanBatchTaggingTargets: oc
-		.input(batchTaggingRequestSchema),
+	scanBatchTaggingTargets: oc.input(batchTaggingRequestSchema),
 
 	batchTagging: oc
 		.input(batchTaggingRequestSchema)
@@ -55,4 +45,8 @@ export const aiContract = {
 				jobId: z.string(),
 			}),
 		),
+
+	detectAndCropCharacters: oc
+		.input(z.object({ mediaId: z.string().uuid() }))
+		.output(detectAndCropResponseSchema),
 };
