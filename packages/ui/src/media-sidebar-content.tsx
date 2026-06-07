@@ -19,6 +19,10 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	characterCropModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	projectsForMediaQueryOptions: (
 		mediaSourceId: string,
 		mediaId: string,
@@ -93,6 +97,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
 			rustExperimentalModal={props.rustExperimentalModal}
+			characterCropModal={props.characterCropModal}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}
