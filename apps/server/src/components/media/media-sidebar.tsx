@@ -7,6 +7,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
+import CharacterCropModal from "~/components/media/character-crop-modal";
 import RustExperimentalModal from "~/components/media/rust-experimental-modal";
 import {
 	addCharacterToMedia,
@@ -80,6 +81,8 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isRustExperimentalModalOpen, setIsRustExperimentalModalOpen] =
+		createSignal(false);
+	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
 
 	// Description editing state
@@ -254,6 +257,14 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 					<span class="i-lucide-terminal" />
 					Extract Tags (Rust Experimental)
 				</button>
+				<button
+					class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
+					onClick={() => setIsCharacterCropModalOpen(true)}
+					type="button"
+				>
+					<span class="i-lucide-scan" />
+					Detect &amp; Crop Characters
+				</button>
 			</div>
 
 			<AiTaggingModal
@@ -267,6 +278,12 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 				isOpen={isRustExperimentalModalOpen()}
 				media={props.media}
 				onClose={() => setIsRustExperimentalModalOpen(false)}
+			/>
+
+			<CharacterCropModal
+				isOpen={isCharacterCropModalOpen()}
+				media={props.media}
+				onClose={() => setIsCharacterCropModalOpen(false)}
 			/>
 
 			<div class="space-y-2">
