@@ -1242,8 +1242,8 @@ export function createMediaRepository(
 			const byUrlSet = new Map<string, string[]>();
 			for (const row of mediaRows) {
 				const urls = (urlsByMediaId.get(row.id) || []).slice().sort();
-				const urls = (urlsByMediaId.get(row.id) || []).slice().sort();
-				if (urls.length < 1) continue;
+				if (urls.length < 2) continue;
+				const key = urls.join("\0");
 				const arr = byUrlSet.get(key) || [];
 				arr.push(row.id);
 				byUrlSet.set(key, arr);

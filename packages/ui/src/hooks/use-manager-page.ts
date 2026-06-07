@@ -544,13 +544,13 @@ export function useManagerPage(
 		} finally {
 			setIsDuplicateDeleteDialogOpen(false);
 			setDuplicatesToDelete([]);
-			setDuplicateGroups([]);
-			setKeepIds(new Set<string>());
-			setDuplicateStatus(null);
 			if (failed === 0) {
+				setDuplicateGroups([]);
+				setKeepIds(new Set<string>());
+				setDuplicateStatus(null);
 				toast.success(`Deleted ${deleted} duplicate(s)`);
 			} else {
-				toast.error(`Deleted ${deleted}, failed ${failed}`);
+				toast.error(`Deleted ${deleted}, failed ${failed}. Remaining duplicates are still shown.`);
 			}
 		}
 	};
