@@ -4,7 +4,7 @@ import {
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/hooks/use-media-source-events";
 import { listen } from "@tauri-apps/api/event";
-import type { Accessor } from "solid-js";
+import { type Accessor, mergeProps } from "solid-js";
 
 export type {
 	AllJobsCompletedEvent,
@@ -76,9 +76,11 @@ export function createTauriTransport(
 
 			return () => {
 				isCleanedUp = true;
-				void Promise.all(unlistenPromises).then((unlistenFns) => {
-					for (const unlisten of unlistenFns) {
-						unlisten();
+				void Promise.allSettled(unlistenPromises).then((results) => {
+					for (const result of results) {
+						if (result.status === "fulfilled") {
+							result.value();
+						}
 					}
 				});
 			};
@@ -92,8 +94,7 @@ export function useMediaSourceEvents(
 ): void {
 	const transport = createTauriTransport(mediaSourceId);
 
-	useMediaSourceEventsShared({
-		...options,
-		transport,
-	});
+	useMediaSourceEventsShared(
+		mergeProps(options, { transport }),
+	);
 }

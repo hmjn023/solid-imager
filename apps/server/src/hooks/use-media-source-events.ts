@@ -3,7 +3,7 @@ import {
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/hooks/use-media-source-events";
-import type { Accessor } from "solid-js";
+import { type Accessor, mergeProps } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { logger } from "~/infrastructure/logger";
 
@@ -73,15 +73,15 @@ export function createServerTransport(
 						);
 
 						await new Promise<void>((resolve) => {
-							const timer = setTimeout(resolve, delay);
-							ac.signal.addEventListener(
-								"abort",
-								() => {
-									clearTimeout(timer);
-									resolve();
-								},
-								{ once: true },
-							);
+							const onAbort = () => {
+								clearTimeout(timer);
+								resolve();
+							};
+							const timer = setTimeout(() => {
+								ac.signal.removeEventListener("abort", onAbort);
+								resolve();
+							}, delay);
+							ac.signal.addEventListener("abort", onAbort, { once: true });
 						});
 					}
 				}
@@ -102,8 +102,5 @@ export function useMediaSourceEvents(
 ): void {
 	const transport = createServerTransport(mediaSourceId);
 
-	useMediaSourceEventsShared({
-		...options,
-		transport,
-	});
+	useMediaSourceEventsShared(mergeProps(options, { transport }));
 }
