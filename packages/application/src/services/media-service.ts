@@ -14,6 +14,8 @@ import type {
 } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	type AddMediaRequest,
+	type FindDuplicatesRequest,
+	type FindDuplicatesResponse,
 	type Media,
 	type MediaDetails,
 	type MediaGenerationInfo,
@@ -1020,6 +1022,12 @@ export class MediaServiceImpl implements IMediaService {
 				tx,
 			);
 		}
+	}
+
+	async findDuplicates(
+		request: FindDuplicatesRequest,
+	): Promise<FindDuplicatesResponse> {
+		return this.mediaRepository.findDuplicates(request);
 	}
 
 	private async extractAndUpdateMetadata(

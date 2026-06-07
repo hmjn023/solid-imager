@@ -25,6 +25,10 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import {
+	deleteMedia,
+	findDuplicateMedia,
+} from "~/infrastructure/api-clients/media-api";
 import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
 import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
 import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
@@ -56,6 +60,8 @@ const managerActions = {
 		mediaSourceId?: string;
 		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>,
+	findDuplicateMedia,
+	deleteMedia,
 };
 
 export const Route = createFileRoute("/manager")({

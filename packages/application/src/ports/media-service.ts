@@ -1,5 +1,7 @@
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
+	FindDuplicatesRequest,
+	FindDuplicatesResponse,
 	Media,
 	MediaDetails,
 	MediaGenerationInfo,
@@ -176,4 +178,8 @@ export interface IMediaService {
 		mediaId: string,
 		tx?: Transaction,
 	): Promise<DeferredActions | undefined>;
+
+	findDuplicates(
+		request: FindDuplicatesRequest,
+	): Promise<FindDuplicatesResponse>;
 }
