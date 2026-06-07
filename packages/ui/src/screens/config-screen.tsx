@@ -206,6 +206,27 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
+							<form.Field name="ai.remoteServerUrl">
+								{(field) => (
+									<div class="space-y-2">
+										<Label for={field().name}>Remote AI Server URL (oRPC)</Label>
+										<Input
+											id={field().name}
+											onBlur={field().handleBlur}
+											onInput={(e) =>
+												field().handleChange(
+													(e.target.value || undefined) as any,
+												)
+											}
+											placeholder="http://power-machine:3000"
+											value={(field().state.value as string) ?? ""}
+										/>
+										<div class="text-muted-foreground text-xs">
+											外部の solid-imager サーバーの oRPC エンドポイントを指定。AI 処理をリモートに委託します。空欄の場合はローカルで処理します。
+										</div>
+									</div>
+								)}
+							</form.Field>
 						</div>
 					</TabsContent>
 

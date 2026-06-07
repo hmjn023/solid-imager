@@ -15,6 +15,10 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	rustExperimentalModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	projectsForMediaQueryOptions: (
 		mediaSourceId: string,
 		mediaId: string,
@@ -88,6 +92,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	return (
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
+			rustExperimentalModal={props.rustExperimentalModal}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}
