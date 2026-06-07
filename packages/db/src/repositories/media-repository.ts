@@ -1286,6 +1286,43 @@ export function createMediaRepository(
 			return { groups };
 		},
 
+		async findMediaIdWithMatchingUrlSet(
+			urls: string[],
+			tx?: Transaction,
+		): Promise<string | null> {
+			if (urls.length < 2) return null;
+
+			const client = getExecutor(tx);
+
+			const candidateRows = await client
+				.select({ mediaId: mediaUrls.mediaId })
+				.from(mediaUrls)
+				.where(inArray(mediaUrls.url, urls))
+				.groupBy(mediaUrls.mediaId)
+				.having(sql`count(*) = ${urls.length}`);
+
+			for (const row of candidateRows) {
+				const [totalResult] = await client
+					.select({ count: sql<number>`count(*)` })
+					.from(mediaUrls)
+					.where(eq(mediaUrls.mediaId, row.mediaId));
+
+				if (totalResult.count === urls.length) {
+					const existingUrls = await client
+						.select({ url: mediaUrls.url })
+						.from(mediaUrls)
+						.where(eq(mediaUrls.mediaId, row.mediaId));
+
+					const existingSet = new Set(existingUrls.map((u) => u.url));
+					if (urls.every((u) => existingSet.has(u))) {
+						return row.mediaId;
+					}
+				}
+			}
+
+			return null;
+		},
+
 		async findAllPathsBySourceId(
 			mediaSourceId: string,
 			tx?: Transaction,

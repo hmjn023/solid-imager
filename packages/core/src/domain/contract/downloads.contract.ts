@@ -9,6 +9,7 @@ export const downloadsContract = {
 			z.object({
 				success: z.boolean(),
 				jobCount: z.number(),
+				skippedCount: z.number(),
 				message: z.string(),
 			}),
 		),

@@ -791,18 +791,42 @@ async function registerMedia(
 
 /**
  * Queues multiple download jobs from a list of download items.
+ * Filters out items whose source URLs already exist in the database.
  */
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
-): Promise<number> {
+): Promise<{ jobCount: number; skippedCount: number }> {
 	const sourceRepo = DrizzleSourceRepository;
 	const mediaSource = await sourceRepo.findById(mediaSourceId);
 	if (mediaSource?.type !== "local") {
 		throw new Error("Media source not found or not a local source");
 	}
 
-	const jobRows: NewJob[] = items.map((item) => ({
+	// Filter out items whose complete source URL set already exists
+	const newItems: DownloadItem[] = [];
+	let skippedCount = 0;
+
+	for (const item of items) {
+		const urls = item.sourceUrls || [];
+		if (urls.length < 2) {
+			newItems.push(item);
+			continue;
+		}
+		const existingMediaId =
+			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
+		if (existingMediaId) {
+			skippedCount++;
+			logger.info(
+				{ urls, existingMediaId, fileName: item.fileName },
+				"Skipping duplicate download item (source URLs already exist)",
+			);
+		} else {
+			newItems.push(item);
+		}
+	}
+
+	const jobRows: NewJob[] = newItems.map((item) => ({
 		type: "downloadImage",
 		mediaSourceId,
 		payload: {
@@ -814,7 +838,7 @@ export async function queueDownloadJobs(
 			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
 		},
 	}));
-	if (jobRows.length === 0) return 0;
+	if (jobRows.length === 0) return { jobCount: 0, skippedCount };
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
@@ -823,5 +847,5 @@ export async function queueDownloadJobs(
 
 	// Jobs are picked up by the worker automatically.
 
-	return items.length;
+	return { jobCount: newItems.length, skippedCount };
 }
