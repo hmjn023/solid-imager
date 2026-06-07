@@ -5,7 +5,8 @@
   "workspaces": [
     "apps/*",
     "packages/client",
-    "packages/*"
+    "packages/*",
+    ".worktree/dghs-imgutils-rs"
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
