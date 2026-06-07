@@ -2,6 +2,10 @@ import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type {
 	AddMediaRequest,
 	Author,
+	DuplicateMediaItem,
+	DuplicateGroup,
+	FindDuplicatesRequest,
+	FindDuplicatesResponse,
 	Media,
 	MediaDetails,
 	MediaGenerationInfo,
@@ -90,4 +94,12 @@ export type IMediaRepository = {
 		sourceId: string,
 		tx?: Transaction,
 	): Promise<{ id: string; filePath: string }[]>;
+
+	/**
+	 * Find duplicate media by filename pattern and source URL matching.
+	 */
+	findDuplicates(
+		request: FindDuplicatesRequest,
+		tx?: Transaction,
+	): Promise<FindDuplicatesResponse>;
 };

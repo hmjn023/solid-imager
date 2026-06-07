@@ -1,6 +1,6 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { DuplicateGroup, Media } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
 	JobCompletedEvent,
@@ -21,7 +21,7 @@ import type { buildProjectsQueryOptions } from "../query-options/projects-query"
 import type { buildSourcesQueryOptions } from "../query-options/sources-query";
 import { toast } from "../toast";
 
-export type ManagerEntityType = "projects" | "ips" | "characters" | "tagging";
+export type ManagerEntityType = "projects" | "ips" | "characters" | "tagging" | "duplicates";
 export type ManagerEntity = Project | Ip | Character;
 
 export type ManagerFormData = {
@@ -68,6 +68,8 @@ export type ManagerPageActions = {
 		mediaSourceId?: string;
 		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>;
+	findDuplicateMedia: (mediaSourceId?: string) => Promise<{ groups: DuplicateGroup[] }>;
+	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
 	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
 };
 
@@ -148,6 +150,21 @@ export type UseManagerPageResult = {
 	toggleMediaSelection: (mediaId: string) => void;
 	toggleSelectAll: () => void;
 	jobHandlers: ManagerJobHandlers;
+	// Duplicates tab
+	duplicateSourceId: Accessor<string | undefined>;
+	setDuplicateSourceId: Setter<string | undefined>;
+	duplicateGroups: Accessor<DuplicateGroup[]>;
+	keepIds: Accessor<Set<string>>;
+	duplicateStatus: Accessor<string | null>;
+	isDuplicateDeleteDialogOpen: Accessor<boolean>;
+	setIsDuplicateDeleteDialogOpen: Setter<boolean>;
+	duplicatesToDelete: Accessor<{ sourceId: string; mediaId: string; fileName: string }[]>;
+	handleScanDuplicates: () => Promise<void>;
+	handleDeleteDuplicates: () => Promise<void>;
+	handleConfirmDeleteDuplicates: () => Promise<void>;
+	setKeepForGroup: (groupId: string, mediaId: string) => void;
+	selectKeepOldest: () => void;
+	selectKeepLargest: () => void;
 };
 
 function isCharacter(item: ManagerEntity): item is Character {
@@ -164,8 +181,8 @@ function resetForm(setFormData: Setter<ManagerFormData>) {
 
 function activeCrudTab(
 	activeTab: ManagerEntityType,
-): Exclude<ManagerEntityType, "tagging"> | null {
-	return activeTab === "tagging" ? null : activeTab;
+): Exclude<ManagerEntityType, "tagging" | "duplicates"> | null {
+	return activeTab === "tagging" || activeTab === "duplicates" ? null : activeTab;
 }
 
 export function useManagerPage(
@@ -220,6 +237,14 @@ export function useManagerPage(
 	);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 	const [currentPage, setCurrentPage] = createSignal(1);
+
+	// Duplicates state
+	const [duplicateSourceId, setDuplicateSourceId] = createSignal<string | undefined>(undefined);
+	const [duplicateGroups, setDuplicateGroups] = createSignal<DuplicateGroup[]>([]);
+	const [keepIds, setKeepIds] = createSignal<Set<string>>(new Set());
+	const [duplicateStatus, setDuplicateStatus] = createSignal<string | null>(null);
+	const [isDuplicateDeleteDialogOpen, setIsDuplicateDeleteDialogOpen] = createSignal(false);
+	const [duplicatesToDelete, setDuplicatesToDelete] = createSignal<{ sourceId: string; mediaId: string; fileName: string }[]>([]);
 
 	const sources = () => queries.sources() || [];
 	const ips = () => queries.ips() || [];
@@ -411,6 +436,127 @@ export function useManagerPage(
 		}
 	};
 
+	// --- Duplicates ---
+
+	const setKeepForGroup = (_groupId: string, mediaId: string) => {
+		setKeepIds((prev) => {
+			const next = new Set(prev);
+			// Remove all items from the same group (identified by having the same media items)
+			const groups = duplicateGroups();
+			for (const group of groups) {
+				for (const item of group.media) {
+					if (item.id === mediaId) {
+						// Remove other items from this group
+						for (const otherItem of group.media) {
+							next.delete(otherItem.id);
+						}
+						next.add(mediaId);
+						break;
+					}
+				}
+			}
+			return next;
+		});
+	};
+
+	const selectKeepOldest = () => {
+		const newKeep = new Set<string>();
+		for (const group of duplicateGroups()) {
+			const sorted = [...group.media].sort(
+				(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+			);
+			newKeep.add(sorted[0].id);
+		}
+		setKeepIds(newKeep);
+	};
+
+	const selectKeepLargest = () => {
+		const newKeep = new Set<string>();
+		for (const group of duplicateGroups()) {
+			const sorted = [...group.media].sort(
+				(a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0),
+			);
+			newKeep.add(sorted[0].id);
+		}
+		setKeepIds(newKeep);
+	};
+
+	const handleScanDuplicates = async () => {
+		try {
+			setDuplicateStatus("Scanning...");
+			setDuplicateGroups([]);
+			const result = await actions.findDuplicateMedia(duplicateSourceId());
+			setDuplicateGroups(result.groups);
+			// Auto-select oldest in each group
+			const newKeep = new Set<string>();
+			for (const group of result.groups) {
+				const sorted = [...group.media].sort(
+					(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+				);
+				newKeep.add(sorted[0].id);
+			}
+			setKeepIds(newKeep);
+			const dupCount = result.groups.reduce((sum, g) => sum + g.media.length - 1, 0);
+			setDuplicateStatus(`${result.groups.length} groups found (${dupCount} duplicates).`);
+		} catch (error) {
+			toast.error(`Error: ${(error as Error).message}`);
+			setDuplicateStatus(`Error: ${(error as Error).message}`);
+		}
+	};
+
+	const handleDeleteDuplicates = async () => {
+		const groups = duplicateGroups();
+		const keepSet = keepIds();
+		const toDelete: { sourceId: string; mediaId: string; fileName: string }[] = [];
+		for (const group of groups) {
+			for (const item of group.media) {
+				if (!keepSet.has(item.id)) {
+					toDelete.push({
+						sourceId: item.mediaSourceId,
+						mediaId: item.id,
+						fileName: item.fileName,
+					});
+				}
+			}
+		}
+		if (toDelete.length === 0) {
+			toast.error("No duplicates selected for deletion");
+			return;
+		}
+		setDuplicatesToDelete(toDelete);
+		setIsDuplicateDeleteDialogOpen(true);
+	};
+
+	const handleConfirmDeleteDuplicates = async () => {
+		const toDelete = duplicatesToDelete();
+		let deleted = 0;
+		let failed = 0;
+
+		try {
+			for (const item of toDelete) {
+				try {
+					await actions.deleteMedia(item.sourceId, item.mediaId);
+					deleted++;
+				} catch {
+					failed++;
+				}
+			}
+		} finally {
+			setIsDuplicateDeleteDialogOpen(false);
+			setDuplicatesToDelete([]);
+			setDuplicateGroups([]);
+			setKeepIds(new Set<string>());
+			setDuplicateStatus(null);
+			if (failed === 0) {
+				toast.success(`Deleted ${deleted} duplicate(s)`);
+			} else {
+				toast.error(`Deleted ${deleted}, failed ${failed}`);
+			}
+		}
+	};
+
+	// --- End Duplicates ---
+
 	const handleJobProgress = (event: JobProgressEvent) => {
 		setJobProgress(event);
 		setTaggingStatus(`Processing: ${event.processed} / ${event.total} tagged.`);
@@ -477,5 +623,20 @@ export function useManagerPage(
 		toggleMediaSelection,
 		toggleSelectAll,
 		jobHandlers,
+		// Duplicates
+		duplicateSourceId,
+		setDuplicateSourceId,
+		duplicateGroups,
+		keepIds,
+		duplicateStatus,
+		isDuplicateDeleteDialogOpen,
+		setIsDuplicateDeleteDialogOpen,
+		duplicatesToDelete,
+		handleScanDuplicates,
+		handleDeleteDuplicates,
+		setKeepForGroup,
+		selectKeepOldest,
+		selectKeepLargest,
+		handleConfirmDeleteDuplicates,
 	};
 }

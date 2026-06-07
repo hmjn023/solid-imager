@@ -152,3 +152,14 @@ export function moveMedia(
 export function syncMediaItems(sourceId: string, mediaIds: string[]) {
 	return orpc.media.sync({ sourceId, mediaIds });
 }
+
+/**
+ * Finds duplicate media by filename pattern and source URL matching
+ * @param mediaSourceId - Optional media source ID to filter by
+ * @returns Duplicate groups
+ */
+export function findDuplicateMedia(mediaSourceId?: string) {
+	return orpc.media.findDuplicates(
+		mediaSourceId ? { mediaSourceId } : undefined,
+	);
+}

@@ -1,6 +1,7 @@
 import { ORPCError, os } from "@orpc/server";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
+	findDuplicatesRequestSchema,
 	mediaSearchRequestSchema,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
@@ -58,6 +59,16 @@ export const mediaRouter = {
 		.handler(
 			async ({ input }) =>
 				await MediaService.getMediaDetails(input.sourceId, input.mediaId),
+		),
+
+	/**
+	 * Find duplicate media by filename pattern and source URL matching
+	 */
+	findDuplicates: os
+		.input(findDuplicatesRequestSchema.optional())
+		.handler(
+			async ({ input }) =>
+				await MediaService.findDuplicates(input ?? {}),
 		),
 
 	/**

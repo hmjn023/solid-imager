@@ -1,5 +1,5 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { DuplicateGroup, Media } from "@solid-imager/core/domain/media/schemas";
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 import {
@@ -70,6 +70,7 @@ const managerTabs: ManagerEntityType[] = [
 	"ips",
 	"characters",
 	"tagging",
+	"duplicates",
 ];
 
 function tabLabel(tab: ManagerEntityType) {
@@ -78,6 +79,9 @@ function tabLabel(tab: ManagerEntityType) {
 	}
 	if (tab === "ips") {
 		return "IPs";
+	}
+	if (tab === "duplicates") {
+		return "Duplicates";
 	}
 	return tab.charAt(0).toUpperCase() + tab.slice(1);
 }
@@ -93,7 +97,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 		<div class="container mx-auto p-8">
 			<div class="mb-8 flex items-center justify-between">
 				<h1 class="font-bold text-3xl">Entity Manager</h1>
-				<Show when={manager().activeTab() !== "tagging"}>
+				<Show when={manager().activeTab() !== "tagging" && manager().activeTab() !== "duplicates"}>
 					<Button onClick={manager().openCreateDialog}>Create New</Button>
 				</Show>
 			</div>
@@ -261,7 +265,189 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</div>
 			</Show>
 
-			<Show when={manager().activeTab() !== "tagging"}>
+			<Show when={manager().activeTab() === "duplicates"}>
+				<div class="space-y-6">
+					<Card>
+						<CardHeader>
+							<CardTitle>Duplicate Image Detection</CardTitle>
+							<CardDescription>
+								Find duplicate images by filename pattern or source URL matching.
+							</CardDescription>
+						</CardHeader>
+						<CardContent class="space-y-4">
+							<div class="grid gap-2">
+								<Label>Target Media Source (Optional)</Label>
+								<Select
+									itemComponent={(selectProps) => (
+										<SelectItem item={selectProps.item}>
+											{selectProps.item.rawValue.name}
+										</SelectItem>
+									)}
+									onChange={(value) => manager().setDuplicateSourceId(value?.id)}
+									options={manager().sources()}
+									optionTextValue="name"
+									optionValue="id"
+									placeholder="All Sources"
+									value={
+										manager().duplicateSourceId()
+											? manager()
+													.sources()
+													.find(
+														(source) =>
+															source.id === manager().duplicateSourceId(),
+													)
+											: null
+									}
+								>
+									<SelectTrigger>
+										<SelectValue<unknown>>
+											{(state) => {
+												const option = state.selectedOption();
+												return option &&
+													typeof option === "object" &&
+													"name" in option
+													? (option as { name: string }).name
+													: "All Sources";
+											}}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+							</div>
+
+							<div class="flex items-center gap-x-2 pt-2">
+								<Button onClick={manager().handleScanDuplicates}>
+									Scan for Duplicates
+								</Button>
+							</div>
+
+							<Show when={manager().duplicateStatus()}>
+								<div class="rounded bg-gray-100 p-2 text-sm">
+									{manager().duplicateStatus()}
+								</div>
+							</Show>
+						</CardContent>
+					</Card>
+
+					<Show when={manager().duplicateGroups().length > 0}>
+						<div class="flex items-center justify-between">
+							<h3 class="font-bold text-lg">
+								Duplicate Groups ({manager().duplicateGroups().length})
+							</h3>
+							<div class="flex gap-2">
+								<Button onClick={manager().selectKeepOldest} size="sm" variant="outline">
+									Keep Oldest
+								</Button>
+								<Button onClick={manager().selectKeepLargest} size="sm" variant="outline">
+									Keep Largest
+								</Button>
+								<Button onClick={manager().handleDeleteDuplicates} variant="destructive">
+									Delete{" "}
+									{(() => {
+										const groups = manager().duplicateGroups();
+										const keep = manager().keepIds();
+										let count = 0;
+										for (const g of groups) {
+											for (const m of g.media) {
+												if (!keep.has(m.id)) count++;
+											}
+										}
+										return count;
+									})()}{" "}
+									Duplicates
+								</Button>
+							</div>
+						</div>
+
+						<div class="space-y-4">
+							<For each={manager().duplicateGroups()}>
+								{(group: DuplicateGroup) => (
+									<Card>
+										<CardHeader class="pb-2">
+											<div class="flex items-center gap-2">
+												<CardTitle class="text-base">
+													{group.media.length} items
+												</CardTitle>
+												<span class="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-800 text-xs">
+													{group.reason === "filename" ? "Filename" : "Source URL"}
+												</span>
+											</div>
+										</CardHeader>
+										<CardContent>
+											<div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+												<For each={group.media}>
+													{(item) => {
+														const thumbnailUrl = () =>
+															`/api/sources/${item.mediaSourceId}/${item.id}/thumbnail?t=${item.modifiedAt.getTime()}`;
+														const isKeep = () => manager().keepIds().has(item.id);
+
+														return (
+															<button
+																class={`cursor-pointer rounded-lg border-2 p-2 text-left transition-colors ${
+																	isKeep()
+																		? "border-primary bg-primary/5"
+																		: "border-transparent hover:border-gray-300"
+																}`}
+																onClick={() =>
+																	manager().setKeepForGroup(group.id, item.id)
+																}
+																type="button"
+															>
+																<div class="relative mb-2 aspect-video w-full overflow-hidden rounded bg-gray-100">
+																	<img
+																		alt={item.fileName}
+																		class="h-full w-full object-cover"
+																		src={thumbnailUrl()}
+																	/>
+																	<Show when={isKeep()}>
+																		<div class="absolute top-1 right-1 rounded-full bg-primary px-1.5 py-0.5 font-bold text-primary-foreground text-xs">
+																			Keep
+																		</div>
+																	</Show>
+																</div>
+																<p class="truncate font-medium text-xs" title={item.fileName}>
+																	{item.fileName}
+																</p>
+																<p class="text-muted-foreground text-xs">
+																	{item.width}×{item.height}{" "}
+																	{item.fileSize != null
+																		? `· ${(item.fileSize / 1024).toFixed(1)} KB`
+																		: ""}
+																</p>
+																<p class="text-muted-foreground text-xs">
+																	{new Date(item.createdAt).toLocaleDateString()}
+																</p>
+																<Show when={item.sourceUrls.length > 0}>
+																	<div class="mt-1 max-h-12 overflow-y-auto">
+																		<For each={item.sourceUrls.slice(0, 2)}>
+																			{(url) => (
+																				<p class="truncate text-muted-foreground text-xs">
+																					{url}
+																				</p>
+																			)}
+																		</For>
+																		<Show when={item.sourceUrls.length > 2}>
+																			<p class="text-muted-foreground text-xs">
+																				+{item.sourceUrls.length - 2} more
+																			</p>
+																		</Show>
+																	</div>
+																</Show>
+															</button>
+														);
+													}}
+												</For>
+											</div>
+										</CardContent>
+									</Card>
+								)}
+							</For>
+						</div>
+					</Show>
+				</div>
+			</Show>
+
+			<Show when={manager().activeTab() !== "tagging" && manager().activeTab() !== "duplicates"}>
 				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					<For each={manager().getActiveItems()}>
 						{(item) => (
@@ -424,6 +610,40 @@ export function ManagerScreen(props: ManagerScreenProps) {
 							onClick={manager().handleConfirmDelete}
 						>
 							Delete
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			<AlertDialog
+				onOpenChange={manager().setIsDuplicateDeleteDialogOpen}
+				open={manager().isDuplicateDeleteDialogOpen()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete Duplicate Images?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This action cannot be undone. The following{" "}
+							{manager().duplicatesToDelete().length} image(s) will be
+							permanently deleted:
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<div class="max-h-48 overflow-y-auto text-sm">
+						<For each={manager().duplicatesToDelete()}>
+							{(item) => (
+								<div class="truncate border-b py-1 text-muted-foreground">
+									{item.fileName}
+								</div>
+							)}
+						</For>
+					</div>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogAction
+							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							onClick={manager().handleConfirmDeleteDuplicates}
+						>
+							Delete {manager().duplicatesToDelete().length} Items
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
