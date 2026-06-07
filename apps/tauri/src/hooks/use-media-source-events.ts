@@ -3,8 +3,8 @@ import {
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
 } from "@solid-imager/ui/hooks/use-media-source-events";
-import { type Accessor, createEffect, onCleanup } from "solid-js";
-import { orpc as rawOrpc } from "~/infrastructure/api-clients/orpc-client";
+import { listen } from "@tauri-apps/api/event";
+import { type Accessor, mergeProps } from "solid-js";
 
 export type {
 	AllJobsCompletedEvent,
@@ -20,96 +20,69 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
-const MAX_RETRY_DELAY = 30_000;
-const INITIAL_RETRY_DELAY = 1_000;
-
-/**
- * oRPC client with events subscription support.
- * The contract doesn't include `events` (it's an async generator subscription),
- * so we cast to access the router's events method directly.
- */
-const orpc = rawOrpc as unknown as {
-	sources: {
-		events: (
-			input: { id: string },
-			opts?: { signal?: AbortSignal },
-		) => Promise<AsyncIterable<{ event: string; data: unknown }>>;
-	};
-};
-
-export function createOrpcTransport(
+export function createTauriTransport(
 	mediaSourceId: Accessor<string | undefined>,
 ): MediaSourceEventTransport {
 	return {
 		listen(handler) {
-			let activeAc: AbortController | null = null;
-
-			createEffect(() => {
-				const id = mediaSourceId();
-				if (!id) {
-					return;
-				}
-
-				const ac = new AbortController();
-				activeAc = ac;
-
-				const startListening = async () => {
-					let retryCount = 0;
-
-					while (!ac.signal.aborted) {
-						try {
-							const events = await orpc.sources.events(
-								{ id },
-								{ signal: ac.signal },
-							);
-
-							retryCount = 0;
-
-							for await (const msg of events) {
-								if (ac.signal.aborted) {
-									break;
-								}
-
-								if (msg.event === "connected") {
-									continue;
-								}
-
-								handler(msg.event, msg.data);
-							}
-						} catch (_err) {
-							if (ac.signal.aborted) {
-								break;
-							}
-
-							retryCount++;
-							const delay = Math.min(
-								INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
-								MAX_RETRY_DELAY,
-							);
-							await new Promise<void>((resolve) => {
-								const timer = setTimeout(resolve, delay);
-								ac.signal.addEventListener(
-									"abort",
-									() => {
-										clearTimeout(timer);
-										resolve();
-									},
-									{ once: true },
-								);
-							});
-						}
-					}
+			const id = mediaSourceId();
+			if (!id) {
+				return () => {
+					/* no-op */
 				};
+			}
 
-				startListening();
+			let isCleanedUp = false;
 
-				onCleanup(() => {
-					ac.abort();
-				});
-			});
+			const EVENT_NAMES = [
+				"media-added",
+				"media-deleted",
+				"media-changed",
+				"media-copied",
+				"media-moved",
+				"thumbnail-generated",
+				"all-jobs-completed",
+				"watcher-error",
+				"job-progress",
+			] as const;
+
+			type EventPayload = {
+				mediaSourceId?: string;
+				sourceId?: string;
+				targetId?: string;
+				jobId?: string;
+			};
+
+			const unlistenPromises = EVENT_NAMES.map((eventName) =>
+				listen<EventPayload>(eventName, (event) => {
+					if (isCleanedUp) return;
+
+					const payload = event.payload;
+					const relevant =
+						payload?.mediaSourceId === id ||
+						payload?.sourceId === id ||
+						payload?.targetId === id ||
+						payload?.jobId === id ||
+						(payload?.mediaSourceId === undefined &&
+							payload?.sourceId === undefined &&
+							payload?.targetId === undefined &&
+							payload?.jobId === undefined);
+
+					if (relevant) {
+						handler(eventName, payload);
+					}
+				}),
+			);
 
 			return () => {
-				activeAc?.abort();
+				isCleanedUp = true;
+				void Promise.allSettled(unlistenPromises).then((results) => {
+					for (const result of results) {
+						if (result.status === "fulfilled") {
+							result.value();
+						}
+					}
+				});
 			};
 		},
 	};
@@ -119,12 +92,9 @@ export function useMediaSourceEvents(
 	mediaSourceId: Accessor<string | undefined>,
 	options: MediaSourceEventsOptions = {},
 ): void {
-	const transport = createOrpcTransport(mediaSourceId);
+	const transport = createTauriTransport(mediaSourceId);
 
-	useMediaSourceEventsShared({
-		...options,
-		transport,
-	});
+	useMediaSourceEventsShared(
+		mergeProps(options, { transport }),
+	);
 }
-
-export const createTauriTransport = createOrpcTransport;

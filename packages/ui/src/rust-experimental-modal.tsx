@@ -220,7 +220,10 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 														>
 															<span class="text-gray-500 text-xs">
 																DB:{" "}
-																{(item.dbScore! * PERCENTAGE_MULTIPLIER).toFixed(0)}%
+																{(
+																	item.dbScore! * PERCENTAGE_MULTIPLIER
+																).toFixed(0)}
+																%
 															</span>
 														</Show>
 
@@ -234,7 +237,10 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 														>
 															<span class="rounded bg-indigo-50 px-2 py-0.5 font-semibold text-indigo-700 text-xs">
 																Rust:{" "}
-																{(item.rustScore! * PERCENTAGE_MULTIPLIER).toFixed(0)}%
+																{(
+																	item.rustScore! * PERCENTAGE_MULTIPLIER
+																).toFixed(0)}
+																%
 															</span>
 														</Show>
 
@@ -247,7 +253,10 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 																}`}
 															>
 																{item.diff! >= 0 ? "+" : ""}
-																{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(0)}%
+																{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(
+																	0,
+																)}
+																%
 															</span>
 														</Show>
 													</div>
@@ -315,7 +324,9 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 									<table class="w-full text-left border-collapse text-sm">
 										<thead>
 											<tr class="bg-gray-100 border-b">
-												<th class="p-3 font-semibold text-gray-700">Tag Name</th>
+												<th class="p-3 font-semibold text-gray-700">
+													Tag Name
+												</th>
 												<th class="p-3 font-semibold text-gray-700 text-right">
 													DB Score (Python)
 												</th>
@@ -367,7 +378,10 @@ export function RustExperimentalModal(props: RustExperimentalModalProps) {
 																	}`}
 																>
 																	{item.diff! >= 0 ? "+" : ""}
-																	{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(1)}%
+																	{(item.diff! * PERCENTAGE_MULTIPLIER).toFixed(
+																		1,
+																	)}
+																	%
 																</span>
 															</Show>
 														</td>
