@@ -342,19 +342,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									Keep Largest
 								</Button>
 								<Button onClick={manager().handleDeleteDuplicates} variant="destructive">
-									Delete{" "}
-									{(() => {
-										const groups = manager().duplicateGroups();
-										const keep = manager().keepIds();
-										let count = 0;
-										for (const g of groups) {
-											for (const m of g.media) {
-												if (!keep.has(m.id)) count++;
-											}
-										}
-										return count;
-									})()}{" "}
-									Duplicates
+									Delete {manager().deleteCount()} Duplicates
 								</Button>
 							</div>
 						</div>
@@ -369,7 +357,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 													{group.media.length} items
 												</CardTitle>
 												<span class="rounded-full bg-blue-100 px-2 py-0.5 font-medium text-blue-800 text-xs">
-													{group.reason === "filename" ? "Filename" : "Source URL"}
+													Source URL
 												</span>
 											</div>
 										</CardHeader>

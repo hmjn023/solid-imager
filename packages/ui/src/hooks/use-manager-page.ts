@@ -165,6 +165,7 @@ export type UseManagerPageResult = {
 	setKeepForGroup: (groupId: string, mediaId: string) => void;
 	selectKeepOldest: () => void;
 	selectKeepLargest: () => void;
+	deleteCount: Accessor<number>;
 };
 
 function isCharacter(item: ManagerEntity): item is Character {
@@ -531,12 +532,14 @@ export function useManagerPage(
 		const toDelete = duplicatesToDelete();
 		let deleted = 0;
 		let failed = 0;
+		const deletedIds = new Set<string>();
 
 		try {
 			for (const item of toDelete) {
 				try {
 					await actions.deleteMedia(item.sourceId, item.mediaId);
 					deleted++;
+					deletedIds.add(item.mediaId);
 				} catch {
 					failed++;
 				}
@@ -550,12 +553,44 @@ export function useManagerPage(
 				setDuplicateStatus(null);
 				toast.success(`Deleted ${deleted} duplicate(s)`);
 			} else {
-				toast.error(`Deleted ${deleted}, failed ${failed}. Remaining duplicates are still shown.`);
+				// Remove successfully deleted items from groups
+				setDuplicateGroups((prev) =>
+					prev
+						.map((group) => ({
+							...group,
+							media: group.media.filter((m) => !deletedIds.has(m.id)),
+						}))
+						.filter((group) => group.media.length >= 2),
+				);
+				setKeepIds((prev) => {
+					const next = new Set(prev);
+					for (const id of deletedIds) next.delete(id);
+					return next;
+				});
+				if (deleted > 0) {
+					toast.error(
+						`Deleted ${deleted}, failed ${failed}. Remaining duplicates are still shown.`,
+					);
+				} else {
+					toast.error(`Failed to delete: all ${failed} items failed.`);
+				}
 			}
 		}
 	};
 
 	// --- End Duplicates ---
+
+	const deleteCount = () => {
+		const groups = duplicateGroups();
+		const keep = keepIds();
+		let count = 0;
+		for (const g of groups) {
+			for (const m of g.media) {
+				if (!keep.has(m.id)) count++;
+			}
+		}
+		return count;
+	};
 
 	const handleJobProgress = (event: JobProgressEvent) => {
 		setJobProgress(event);
@@ -638,5 +673,6 @@ export function useManagerPage(
 		selectKeepOldest,
 		selectKeepLargest,
 		handleConfirmDeleteDuplicates,
+		deleteCount,
 	};
 }

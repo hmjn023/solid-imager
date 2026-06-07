@@ -1216,13 +1216,20 @@ export function createMediaRepository(
 
 			const mediaIds = mediaRows.map((row) => row.id);
 
-			const urlRows = await client
-				.select({
-					mediaId: mediaUrls.mediaId,
-					url: mediaUrls.url,
-				})
-				.from(mediaUrls)
-				.where(inArray(mediaUrls.mediaId, mediaIds));
+			// Fetch URLs in chunks to avoid SQLite "too many SQL variables" limit (~999)
+			const CHUNK_SIZE = 500;
+			const urlRows: { mediaId: string; url: string }[] = [];
+			for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
+				const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
+				const rows = await client
+					.select({
+						mediaId: mediaUrls.mediaId,
+						url: mediaUrls.url,
+					})
+					.from(mediaUrls)
+					.where(inArray(mediaUrls.mediaId, chunk));
+				urlRows.push(...rows);
+			}
 
 			const urlsByMediaId = new Map<string, string[]>();
 			for (const row of urlRows) {

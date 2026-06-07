@@ -561,7 +561,7 @@ export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;
 // Duplicate Detection Schemas
 // ============================================================================
 
-export const duplicateReasonSchema = z.enum(["filename", "sourceUrl"]);
+export const duplicateReasonSchema = z.enum(["sourceUrl"]);
 export type DuplicateReason = z.infer<typeof duplicateReasonSchema>;
 
 export const duplicateMediaItemSchema = z.object({
