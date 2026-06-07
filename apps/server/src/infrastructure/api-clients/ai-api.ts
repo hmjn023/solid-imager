@@ -32,3 +32,7 @@ export function fetchAiTagsForFile(file: File) {
 export function fetchRustExperimentalTags(mediaId: string) {
 	return orpc.ai.tagRustExperimental({ mediaId });
 }
+
+export function fetchCharacterCrops(mediaId: string) {
+	return orpc.ai.detectAndCropCharacters({ mediaId });
+}

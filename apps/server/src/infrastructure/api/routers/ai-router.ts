@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
+import type { NapiBBox } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
@@ -10,6 +11,7 @@ import {
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
+import sharp from "sharp";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -375,5 +377,104 @@ export const aiRouter = {
 				message: "Batch tagging started with selected media.",
 				jobId: parentJob.id,
 			};
+		}),
+
+	detectAndCropCharacters: os
+		.input(z.object({ mediaId: z.string().uuid() }))
+		.handler(async ({ input }) => {
+			try {
+				const { mediaId } = input;
+				const media = await services.getMediaRepository().findById(mediaId);
+				if (!media) {
+					throw new Error("Media not found");
+				}
+				const mediaSource = await services
+					.getSourceRepository()
+					.findById(media.mediaSourceId);
+				if (!mediaSource) {
+					throw new Error("Media source not found");
+				}
+				if (mediaSource.type !== "local") {
+					throw new Error(
+						"Only local media sources are supported for character detection",
+					);
+				}
+
+				const connectionInfo = mediaSource.connectionInfo as
+					| Record<string, unknown>
+					| null
+					| undefined;
+				if (!connectionInfo || typeof connectionInfo.path !== "string") {
+					throw new Error("Media source connection path is missing or invalid");
+				}
+				const fullPath = path.join(connectionInfo.path, media.filePath);
+
+				const remoteUrl = getRemoteServerUrl();
+				const config = services.getConfigService().getConfig();
+				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
+					const fileBuffer = await readFileBuffer(fullPath);
+					const result = (await callRemoteOprc(
+						remoteUrl,
+						"detectAndCropCharacters" as any,
+						fileBuffer,
+						path.basename(fullPath),
+						config.ai.timeoutMs,
+					)) as {
+						detections: Array<{
+							index: number;
+							bbox: NapiBBox;
+							label: string;
+							score: number;
+							imageBase64: string;
+							width: number;
+							height: number;
+						}>;
+					};
+					return result;
+				}
+
+				const { detectPerson } = await import("dghs-imgutils-rs");
+				const detections = await detectPerson(fullPath);
+
+				const resultDetections = await Promise.all(
+					detections.map(async (det, idx) => {
+						const { x1, y1, x2, y2 } = det.bbox;
+						const w = Math.round(x2 - x1);
+						const h = Math.round(y2 - y1);
+
+						const cropBuffer = await sharp(fullPath)
+							.extract({
+								left: Math.round(x1),
+								top: Math.round(y1),
+								width: w,
+								height: h,
+							})
+							.webp()
+							.toBuffer();
+
+						return {
+							index: idx,
+							bbox: { x1, y1, x2, y2 },
+							label: det.label,
+							score: det.score,
+							imageBase64: cropBuffer.toString("base64"),
+							width: w,
+							height: h,
+						};
+					}),
+				);
+
+				return { detections: resultDetections };
+			} catch (error) {
+				logger.error(
+					{ err: error, input },
+					"Character detection and cropping failed",
+				);
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `Character detection and cropping failed: ${message}`,
+				});
+			}
 		}),
 };
