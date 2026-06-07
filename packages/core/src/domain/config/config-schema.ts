@@ -33,6 +33,7 @@ const MIN_AI_TIMEOUT = 1000;
 export const AiConfigSchema = z.object({
 	baseUrl: z.string().default(DEFAULT_AI_BASE_URL),
 	timeoutMs: z.number().min(MIN_AI_TIMEOUT).default(DEFAULT_AI_TIMEOUT),
+	remoteServerUrl: z.string().optional(),
 });
 
 const DEFAULT_AI_CONFIG = {

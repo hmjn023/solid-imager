@@ -1,4 +1,8 @@
-import { os } from "@orpc/server";
+import fs from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { ORPCError, os } from "@orpc/server";
+import { createClient } from "@solid-imager/client";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
@@ -18,7 +22,156 @@ import {
 } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
+function isRemoteServerLocal(url: string): boolean {
+	try {
+		const host = new URL(url).hostname;
+		return (
+			host === "localhost" ||
+			host === "127.0.0.1" ||
+			host === "::1" ||
+			host === "0.0.0.0"
+		);
+	} catch {
+		return true;
+	}
+}
+
+function getRemoteServerUrl(): string | undefined {
+	const config = services.getConfigService().getConfig();
+	const url = config.ai.remoteServerUrl;
+	if (!url || url.trim() === "") return undefined;
+	return url;
+}
+
+async function readFileBuffer(filePath: string): Promise<Buffer> {
+	return fs.promises.readFile(filePath);
+}
+
+async function callRemoteOprc(
+	remoteUrl: string,
+	endpoint: "tag" | "tagRustExperimental",
+	fileBuffer: Buffer,
+	fileName: string,
+	timeoutMs: number,
+): Promise<unknown> {
+	const file = new File([new Uint8Array(fileBuffer)], fileName);
+	const remoteOrpc = createClient({
+		url: remoteUrl,
+		fetch: async (request, init) => {
+			const controller = new AbortController();
+			const t = setTimeout(() => controller.abort(), timeoutMs);
+			try {
+				return await fetch(request, {
+					...init,
+					signal: controller.signal,
+				});
+			} finally {
+				clearTimeout(t);
+			}
+		},
+	}) as any;
+
+	if (endpoint === "tagRustExperimental") {
+		return remoteOrpc.ai.tagRustExperimental({ file });
+	}
+	return remoteOrpc.ai.tag({ file });
+}
+
 export const aiRouter = {
+	tagRustExperimental: os
+		.input(
+			z.union([
+				z.object({ mediaId: z.string().uuid() }),
+				z.object({ file: z.instanceof(File) }),
+			]),
+		)
+		.handler(async ({ input }) => {
+			try {
+				if ("file" in input) {
+					const buffer = Buffer.from(await input.file.arrayBuffer());
+					const tmpPath = path.join(
+						tmpdir(),
+						`rust-tag-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+					);
+					await fs.promises.writeFile(tmpPath, buffer);
+					try {
+						const { getPixaiTags } = await import("dghs-imgutils-rs");
+						const result = await getPixaiTags(tmpPath);
+						return {
+							general: result.general,
+							character: result.character,
+							ips: result.ips,
+							ips_mapping: result.ipsMapping,
+						};
+					} finally {
+						await fs.promises.unlink(tmpPath).catch(() => {});
+					}
+				}
+
+				const { mediaId } = input;
+				const media = await services.getMediaRepository().findById(mediaId);
+				if (!media) {
+					throw new Error("Media not found");
+				}
+				const mediaSource = await services
+					.getSourceRepository()
+					.findById(media.mediaSourceId);
+				if (!mediaSource) {
+					throw new Error("Media source not found");
+				}
+				if (mediaSource.type !== "local") {
+					throw new Error(
+						"Only local media sources are supported for Rust tagging",
+					);
+				}
+
+				const connectionInfo = mediaSource.connectionInfo as
+					| Record<string, unknown>
+					| null
+					| undefined;
+				if (!connectionInfo || typeof connectionInfo.path !== "string") {
+					throw new Error("Media source connection path is missing or invalid");
+				}
+				const fullPath = path.join(connectionInfo.path, media.filePath);
+
+				const remoteUrl = getRemoteServerUrl();
+				const config = services.getConfigService().getConfig();
+				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
+					const fileBuffer = await readFileBuffer(fullPath);
+					const result = (await callRemoteOprc(
+						remoteUrl,
+						"tagRustExperimental",
+						fileBuffer,
+						path.basename(fullPath),
+						config.ai.timeoutMs,
+					)) as {
+						general: Record<string, number>;
+						character: Record<string, number>;
+						ips: string[];
+						ips_mapping: Record<string, string[]>;
+					};
+					return result;
+				}
+
+				const { getPixaiTags } = await import("dghs-imgutils-rs");
+				const result = await getPixaiTags(fullPath);
+
+				return {
+					general: result.general,
+					character: result.character,
+					ips: result.ips,
+					ips_mapping: result.ipsMapping,
+				};
+			} catch (error) {
+				logger.error({ err: error, input }, "Rust AI tagging failed");
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `Rust AI tagging failed: ${message}`,
+				});
+			}
+		}),
+
 	tag: os
 		.input(
 			z.union([
@@ -38,10 +191,49 @@ export const aiRouter = {
 					throw new Error("mediaSourceId and mediaId are required");
 				}
 
+				const remoteUrl = getRemoteServerUrl();
+				const config = services.getConfigService().getConfig();
+				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
+					const media = await services.getMediaRepository().findById(mediaId);
+					if (!media) {
+						throw new Error("Media not found");
+					}
+					const mediaSource = await services
+						.getSourceRepository()
+						.findById(media.mediaSourceId);
+					if (mediaSource?.type !== "local") {
+						throw new Error(
+							"Only local media sources are supported for remote tagging",
+						);
+					}
+					const connectionInfo = mediaSource.connectionInfo as
+						| Record<string, unknown>
+						| null
+						| undefined;
+					if (!connectionInfo || typeof connectionInfo.path !== "string") {
+						throw new Error(
+							"Media source connection path is missing or invalid",
+						);
+					}
+					const fullPath = path.join(connectionInfo.path, media.filePath);
+					const fileBuffer = await readFileBuffer(fullPath);
+					return (await callRemoteOprc(
+						remoteUrl,
+						"tag",
+						fileBuffer,
+						path.basename(fullPath),
+						config.ai.timeoutMs,
+					)) as import("@solid-imager/core/domain/tagging/schemas").TaggingResponse;
+				}
+
 				return await taggingService.getTagsForMedia(mediaSourceId, mediaId);
 			} catch (error) {
 				logger.error({ err: error, input }, "AI tagging failed");
-				throw error;
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `AI tagging failed: ${message}`,
+				});
 			}
 		}),
 

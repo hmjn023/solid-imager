@@ -5,7 +5,8 @@
   "workspaces": [
     "apps/*",
     "packages/client",
-    "packages/*"
+    "packages/*",
+    ".worktree/dghs-imgutils-rs"
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@tanstack/cli": "^0.68.0",
+    "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
     "typescript": "^6.0.3",
     "vite-plus": "^0.1.24"
   },

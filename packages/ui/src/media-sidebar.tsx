@@ -31,6 +31,10 @@ type MediaSidebarProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	rustExperimentalModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	onUpdate?: () => void;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
@@ -58,6 +62,8 @@ function formatBytes(bytes: number, decimals = 2) {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
+	const [isRustExperimentalModalOpen, setIsRustExperimentalModalOpen] =
+		createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
@@ -143,7 +149,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</div>
 
 			<Show when={props.aiTaggingModal}>
-				<div class="flex gap-2">
+				<div class="flex flex-col gap-2">
 					<button
 						class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
 						onClick={() => setIsAiTaggingModalOpen(true)}
@@ -152,11 +158,25 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<span class="i-lucide-sparkles" />
 						Extract Tags (AI)
 					</button>
+					<Show when={props.rustExperimentalModal}>
+						<button
+							class="flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700"
+							onClick={() => setIsRustExperimentalModalOpen(true)}
+							type="button"
+						>
+							<span class="i-lucide-terminal" />
+							Extract Tags (Rust Experimental)
+						</button>
+					</Show>
 				</div>
 			</Show>
 			{props.aiTaggingModal?.({
 				isOpen: isAiTaggingModalOpen(),
 				onClose: () => setIsAiTaggingModalOpen(false),
+			})}
+			{props.rustExperimentalModal?.({
+				isOpen: isRustExperimentalModalOpen(),
+				onClose: () => setIsRustExperimentalModalOpen(false),
 			})}
 
 			<div class="space-y-2">

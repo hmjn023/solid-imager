@@ -24,3 +24,11 @@ export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
 export function fetchAiTagsForFile(file: File) {
 	return orpc.ai.tag({ file });
 }
+
+/**
+ * Fetches experimental Rust AI tags for a media item
+ * @param mediaId - The ID of the media item
+ */
+export function fetchRustExperimentalTags(mediaId: string) {
+	return orpc.ai.tagRustExperimental({ mediaId });
+}

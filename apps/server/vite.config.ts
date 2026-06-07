@@ -63,7 +63,8 @@ export default defineConfig({
       "fluent-ffmpeg",
       "archiver",
       "@lancedb/lancedb",
-      "apache-arrow"
+      "apache-arrow",
+      "dghs-imgutils-rs"
     ],
   },
 });
