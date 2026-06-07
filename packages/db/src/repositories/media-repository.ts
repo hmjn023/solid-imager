@@ -1286,6 +1286,50 @@ export function createMediaRepository(
 			return { groups };
 		},
 
+		async findMediaIdWithMatchingUrlSet(
+			urls: string[],
+			tx?: Transaction,
+		): Promise<string | null> {
+			if (urls.length < 2) return null;
+
+			const client = getExecutor(tx);
+
+			const candidateRows = await client
+				.select({ mediaId: mediaUrls.mediaId })
+				.from(mediaUrls)
+				.where(inArray(mediaUrls.url, urls))
+				.groupBy(mediaUrls.mediaId)
+				.having(sql`count(*) = ${urls.length}`);
+
+			if (candidateRows.length === 0) return null;
+
+			const candidateIds = candidateRows.map((r) => r.mediaId);
+
+			// Batch-fetch all URLs for all candidates
+			const allCandidateUrls = await client
+				.select({ mediaId: mediaUrls.mediaId, url: mediaUrls.url })
+				.from(mediaUrls)
+				.where(inArray(mediaUrls.mediaId, candidateIds));
+
+			// Group by mediaId and check for complete match
+			const urlsByCandidate = new Map<string, string[]>();
+			for (const row of allCandidateUrls) {
+				const arr = urlsByCandidate.get(row.mediaId) || [];
+				arr.push(row.url);
+				urlsByCandidate.set(row.mediaId, arr);
+			}
+
+			const urlSet = new Set(urls);
+			for (const [mediaId, existingUrls] of urlsByCandidate) {
+				if (existingUrls.length !== urls.length) continue;
+				if (existingUrls.every((u) => urlSet.has(u))) {
+					return mediaId;
+				}
+			}
+
+			return null;
+		},
+
 		async findAllPathsBySourceId(
 			mediaSourceId: string,
 			tx?: Transaction,
