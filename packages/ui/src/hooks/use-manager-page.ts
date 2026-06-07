@@ -463,7 +463,7 @@ export function useManagerPage(
 		const newKeep = new Set<string>();
 		for (const group of duplicateGroups()) {
 			const sorted = [...group.media].sort(
-				(a, b) => a.createdAt.getTime() - b.createdAt.getTime(),
+				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 			);
 			newKeep.add(sorted[0].id);
 		}
