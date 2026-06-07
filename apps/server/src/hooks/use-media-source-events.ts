@@ -21,6 +21,9 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
+const MAX_RETRY_DELAY = 30_000;
+const INITIAL_RETRY_DELAY = 1_000;
+
 export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
 ): MediaSourceEventTransport {
@@ -36,21 +39,50 @@ export function createServerTransport(
 			const ac = new AbortController();
 
 			const startEventStream = async () => {
-				try {
-					const events = await orpc.sources.events(
-						{ id },
-						{ signal: ac.signal },
-					);
+				let retryCount = 0;
 
-					for await (const msg of events) {
+				while (!ac.signal.aborted) {
+					try {
+						const events = await orpc.sources.events(
+							{ id },
+							{ signal: ac.signal },
+						);
+
+						retryCount = 0;
+
+						for await (const msg of events) {
+							if (ac.signal.aborted) {
+								break;
+							}
+							handler(msg.event, msg.data);
+						}
+					} catch (err) {
 						if (ac.signal.aborted) {
 							break;
 						}
-						handler(msg.event, msg.data);
-					}
-				} catch (err) {
-					if (!ac.signal.aborted) {
-						logger.error({ err }, "Event stream error");
+
+						retryCount++;
+						const delay = Math.min(
+							INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
+							MAX_RETRY_DELAY,
+						);
+
+						logger.error(
+							{ err, retryCount, delay },
+							"Event stream error, retrying",
+						);
+
+						await new Promise<void>((resolve) => {
+							const timer = setTimeout(resolve, delay);
+							ac.signal.addEventListener(
+								"abort",
+								() => {
+									clearTimeout(timer);
+									resolve();
+								},
+								{ once: true },
+							);
+						});
 					}
 				}
 			};

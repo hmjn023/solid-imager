@@ -20,14 +20,14 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 
 function Media() {
 	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
-	const mediaSourceId = params().mediaSourceId as UUID;
-	const mediaId = params().mediaId as UUID;
+	const mediaSourceId = () => params().mediaSourceId as UUID;
+	const mediaId = () => params().mediaId as UUID;
 
 	return (
 		<MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
-			mediaId={mediaId}
-			mediaSourceId={mediaSourceId}
+			mediaId={mediaId()}
+			mediaSourceId={mediaSourceId()}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
 				<MediaSidebar
 					isUpdating={isUpdating}
@@ -36,7 +36,7 @@ function Media() {
 				/>
 			)}
 			renderMediaViewer={(media) => <MediaViewer media={media} />}
-			transport={createServerTransport(() => mediaSourceId)}
+			transport={createServerTransport(mediaSourceId)}
 		/>
 	);
 }
