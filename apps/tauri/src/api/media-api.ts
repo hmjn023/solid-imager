@@ -31,3 +31,9 @@ export function moveMedia(mediaId: string, targetSourceId: string) {
 export function syncMediaItems(sourceId: string, mediaIds: string[]) {
 	return client.media.sync({ sourceId, mediaIds });
 }
+
+export function findDuplicateMedia(mediaSourceId?: string) {
+	return client.media.findDuplicates(
+		mediaSourceId ? { mediaSourceId } : undefined,
+	);
+}
