@@ -42,7 +42,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const data = await props.fetchCrops(props.media.id, transparent());
+			const data = await props.fetchCrops(props.media.id, untrack(transparent));
 			setResult(data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Unknown error occurred");
