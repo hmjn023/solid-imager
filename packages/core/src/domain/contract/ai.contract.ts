@@ -49,8 +49,14 @@ export const aiContract = {
 	detectAndCropCharacters: oc
 		.input(
 			z.union([
-				z.object({ mediaId: z.string().uuid() }),
-				z.object({ file: z.instanceof(File) }),
+				z.object({
+					mediaId: z.string().uuid(),
+					transparent: z.boolean().optional().default(false),
+				}),
+				z.object({
+					file: z.instanceof(File),
+					transparent: z.boolean().optional().default(false),
+				}),
 			]),
 		)
 		.output(detectAndCropResponseSchema),
