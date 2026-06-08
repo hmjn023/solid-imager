@@ -33,6 +33,6 @@ export function fetchRustExperimentalTags(mediaId: string) {
 	return orpc.ai.tagRustExperimental({ mediaId });
 }
 
-export function fetchCharacterCrops(mediaId: string) {
-	return orpc.ai.detectAndCropCharacters({ mediaId });
+export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
+	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
 }

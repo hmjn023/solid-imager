@@ -1,6 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { DetectAndCropResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createEffect, createSignal, For, Show } from "solid-js";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -13,7 +14,10 @@ export type CharacterCropModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
 	media: MediaDetails;
-	fetchCrops: (mediaId: string) => Promise<DetectAndCropResponse>;
+	fetchCrops: (
+		mediaId: string,
+		transparent: boolean,
+	) => Promise<DetectAndCropResponse>;
 };
 
 const PERCENTAGE_MULTIPLIER = 100;
@@ -22,6 +26,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 	const [isLoading, setIsLoading] = createSignal(false);
 	const [result, setResult] = createSignal<DetectAndCropResponse | null>(null);
 	const [error, setError] = createSignal<string | null>(null);
+	const [transparent, setTransparent] = createSignal(false);
 
 	createEffect(() => {
 		if (props.isOpen) {
@@ -37,12 +42,19 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 		setIsLoading(true);
 		setError(null);
 		try {
-			const data = await props.fetchCrops(props.media.id);
+			const data = await props.fetchCrops(props.media.id, untrack(transparent));
 			setResult(data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Unknown error occurred");
 		} finally {
 			setIsLoading(false);
+		}
+	};
+
+	const handleTransparentToggle = () => {
+		setTransparent((prev) => !prev);
+		if (result() !== null) {
+			detectAndCrop();
 		}
 	};
 
@@ -63,12 +75,23 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 					</DialogDescription>
 				</DialogHeader>
 
-				<div class="py-4">
+				<div class="flex items-center gap-2 py-2">
+					<Checkbox checked={transparent()} onChange={handleTransparentToggle}>
+						<CheckboxControl class="h-4 w-4 rounded border-gray-300 bg-white text-primary shadow-sm" />
+						<CheckboxLabel class="cursor-pointer text-sm">
+							Transparent background (ISNetIS segmentation, slower)
+						</CheckboxLabel>
+					</Checkbox>
+				</div>
+
+				<div class="py-2">
 					<Show when={isLoading()}>
 						<div class="flex flex-col items-center justify-center py-12">
 							<div class="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
 							<span class="mt-4 font-medium text-gray-600 text-sm">
-								Running person detection and cropping...
+								{transparent()
+									? "Running person detection & segmentation..."
+									: "Running person detection and cropping..."}
 							</span>
 						</div>
 					</Show>
@@ -94,11 +117,17 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 								<For each={result()?.detections ?? []}>
 									{(det) => (
 										<div class="overflow-hidden rounded-lg border bg-gray-50">
-											<div class="relative bg-gray-100">
+											<div
+												class="relative bg-gray-100"
+												classList={{
+													"bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMklEQVQ4T2NkYPj/n4EBCxg5ODgYqIIxMTAwMDAwMDAzMDIwsDAwMDIwsDAwMDBQJ8AAAP//AwBpuQYZjU6F0AAAAABJRU5ErkJggg==)]":
+														transparent(),
+												}}
+											>
 												<img
 													alt={`${det.label} ${det.index + 1}`}
 													class="mx-auto block max-h-64 object-contain"
-													src={`data:image/webp;base64,${det.imageBase64}`}
+													src={`data:image/${det.format};base64,${det.imageBase64}`}
 												/>
 												<span class="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 font-mono text-white text-xs">
 													#{det.index + 1}
