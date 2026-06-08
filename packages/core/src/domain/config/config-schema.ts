@@ -33,12 +33,13 @@ const MIN_AI_TIMEOUT = 1000;
 export const AiConfigSchema = z.object({
 	baseUrl: z.string().default(DEFAULT_AI_BASE_URL),
 	timeoutMs: z.number().min(MIN_AI_TIMEOUT).default(DEFAULT_AI_TIMEOUT),
-	remoteServerUrl: z.string().optional(),
+	remoteServerUrl: z.string().default(""),
 });
 
 const DEFAULT_AI_CONFIG = {
 	baseUrl: DEFAULT_AI_BASE_URL,
 	timeoutMs: DEFAULT_AI_TIMEOUT,
+	remoteServerUrl: "",
 } as const;
 
 const DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED = true;
