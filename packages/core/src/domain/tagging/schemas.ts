@@ -62,12 +62,14 @@ export const characterCropSchema = z.object({
 	imageBase64: z.string(),
 	width: z.number(),
 	height: z.number(),
+	format: z.enum(["webp", "png"]),
 });
 
 export type CharacterCrop = z.infer<typeof characterCropSchema>;
 
 export const detectAndCropRequestSchema = z.object({
 	mediaId: z.string().uuid(),
+	transparent: z.boolean().optional().default(false),
 });
 
 export const detectAndCropResponseSchema = z.object({

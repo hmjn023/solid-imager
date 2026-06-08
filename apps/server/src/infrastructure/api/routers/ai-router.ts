@@ -94,6 +94,64 @@ async function callRemoteCrop(
 	return remoteOrpc.ai.detectAndCropCharacters({ file });
 }
 
+async function cropDetection(
+	imagePath: string,
+	det: { bbox: NapiBBox; label: string; score: number },
+	idx: number,
+	transparent: boolean,
+) {
+	const { x1, y1, x2, y2 } = det.bbox;
+	const w = Math.round(x2 - x1);
+	const h = Math.round(y2 - y1);
+
+	let cropBuffer: Buffer;
+	let _format: string;
+
+	if (transparent) {
+		const cropPath = path.join(
+			tmpdir(),
+			`crop-seg-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}.png`,
+		);
+		await sharp(imagePath)
+			.extract({
+				left: Math.round(x1),
+				top: Math.round(y1),
+				width: w,
+				height: h,
+			})
+			.png()
+			.toFile(cropPath);
+		try {
+			const { segmentRgbaWithIsnetis } = await import("dghs-imgutils-rs");
+			cropBuffer = Buffer.from(await segmentRgbaWithIsnetis(cropPath));
+			_format = "png";
+		} finally {
+			await fs.promises.unlink(cropPath).catch(() => {});
+		}
+	} else {
+		cropBuffer = await sharp(imagePath)
+			.extract({
+				left: Math.round(x1),
+				top: Math.round(y1),
+				width: w,
+				height: h,
+			})
+			.webp()
+			.toBuffer();
+		_format = "webp";
+	}
+
+	return {
+		index: idx,
+		bbox: { x1, y1, x2, y2 },
+		label: det.label,
+		score: det.score,
+		imageBase64: cropBuffer.toString("base64"),
+		width: w,
+		height: h,
+	};
+}
+
 export const aiRouter = {
 	tagRustExperimental: os
 		.input(
@@ -397,12 +455,20 @@ export const aiRouter = {
 	detectAndCropCharacters: os
 		.input(
 			z.union([
-				z.object({ mediaId: z.string().uuid() }),
-				z.object({ file: z.instanceof(File) }),
+				z.object({
+					mediaId: z.string().uuid(),
+					transparent: z.boolean().optional().default(false),
+				}),
+				z.object({
+					file: z.instanceof(File),
+					transparent: z.boolean().optional().default(false),
+				}),
 			]),
 		)
 		.handler(async ({ input }) => {
 			try {
+				const transparent = input.transparent ?? false;
+
 				if ("file" in input) {
 					const buffer = Buffer.from(await input.file.arrayBuffer());
 					const tmpPath = path.join(
@@ -415,31 +481,9 @@ export const aiRouter = {
 						const detections = await detectPerson(tmpPath);
 
 						const resultDetections = await Promise.all(
-							detections.map(async (det, idx) => {
-								const { x1, y1, x2, y2 } = det.bbox;
-								const w = Math.round(x2 - x1);
-								const h = Math.round(y2 - y1);
-
-								const cropBuffer = await sharp(tmpPath)
-									.extract({
-										left: Math.round(x1),
-										top: Math.round(y1),
-										width: w,
-										height: h,
-									})
-									.webp()
-									.toBuffer();
-
-								return {
-									index: idx,
-									bbox: { x1, y1, x2, y2 },
-									label: det.label,
-									score: det.score,
-									imageBase64: cropBuffer.toString("base64"),
-									width: w,
-									height: h,
-								};
-							}),
+							detections.map(async (det, idx) =>
+								cropDetection(tmpPath, det, idx, transparent),
+							),
 						);
 
 						return { detections: resultDetections };
@@ -500,31 +544,9 @@ export const aiRouter = {
 				const detections = await detectPerson(fullPath);
 
 				const resultDetections = await Promise.all(
-					detections.map(async (det, idx) => {
-						const { x1, y1, x2, y2 } = det.bbox;
-						const w = Math.round(x2 - x1);
-						const h = Math.round(y2 - y1);
-
-						const cropBuffer = await sharp(fullPath)
-							.extract({
-								left: Math.round(x1),
-								top: Math.round(y1),
-								width: w,
-								height: h,
-							})
-							.webp()
-							.toBuffer();
-
-						return {
-							index: idx,
-							bbox: { x1, y1, x2, y2 },
-							label: det.label,
-							score: det.score,
-							imageBase64: cropBuffer.toString("base64"),
-							width: w,
-							height: h,
-						};
-					}),
+					detections.map(async (det, idx) =>
+						cropDetection(fullPath, det, idx, transparent),
+					),
 				);
 
 				return { detections: resultDetections };

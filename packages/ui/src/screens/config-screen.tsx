@@ -216,9 +216,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
-												field().handleChange(
-													(e.target.value || undefined) as any,
-												)
+												field().handleChange(e.target.value as any)
 											}
 											placeholder="http://power-machine:3000"
 											value={(field().state.value as string) ?? ""}

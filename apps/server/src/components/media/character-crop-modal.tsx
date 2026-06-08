@@ -11,7 +11,9 @@ type CharacterCropModalProps = {
 export default function CharacterCropModal(props: CharacterCropModalProps) {
 	return (
 		<SharedCharacterCropModal
-			fetchCrops={async (mediaId: string) => fetchCharacterCrops(mediaId)}
+			fetchCrops={async (mediaId: string, transparent: boolean) =>
+				fetchCharacterCrops(mediaId, transparent)
+			}
 			isOpen={props.isOpen}
 			media={props.media}
 			onClose={props.onClose}

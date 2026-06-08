@@ -11,9 +11,10 @@ type CharacterCropModalProps = {
 export function CharacterCropModal(props: CharacterCropModalProps) {
 	return (
 		<SharedCharacterCropModal
-			fetchCrops={async (mediaId: string) => {
+			fetchCrops={async (mediaId: string, transparent: boolean) => {
 				return serverOrpc.ai.detectAndCropCharacters({
 					mediaId,
+					transparent,
 				}) as any;
 			}}
 			isOpen={props.isOpen}
