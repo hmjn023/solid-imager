@@ -4,7 +4,7 @@ export function getThumbnailResource(
 	mediaSourceId: string,
 	mediaId: string,
 ): string {
-	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}/thumbnail`);
+	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/thumbnail/${mediaId}`);
 }
 
 export function buildThumbnailUrl(args: {
@@ -13,7 +13,7 @@ export function buildThumbnailUrl(args: {
 	mediaSourceId: string;
 }): string {
 	const base = buildAbsoluteUrl(
-		`/api/sources/${args.mediaSourceId}/${args.mediaId}/thumbnail`,
+		`/api/sources/${args.mediaSourceId}/thumbnail/${args.mediaId}`,
 	);
 	return args.cacheKey ? `${base}?t=${args.cacheKey}` : base;
 }

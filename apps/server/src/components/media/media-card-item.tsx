@@ -25,7 +25,7 @@ type MediaCardItemProps = {
 
 export function MediaCardItem(props: MediaCardItemProps) {
 	const thumbnailUrl = () =>
-		`/api/sources/${props.media.mediaSourceId}/${props.media.id}/thumbnail?t=${new Date(
+		`/api/sources/${props.media.mediaSourceId}/thumbnail/${props.media.id}?t=${new Date(
 			props.media.modifiedAt,
 		).getTime()}`;
 
