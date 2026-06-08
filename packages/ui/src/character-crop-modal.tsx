@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { DetectAndCropResponse } from "@solid-imager/core/domain/tagging/schemas";
-import { createEffect, createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show, untrack } from "solid-js";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
 	Dialog,
