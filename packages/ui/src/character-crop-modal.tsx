@@ -1,7 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { DetectAndCropResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createEffect, createSignal, For, Show } from "solid-js";
-import { Checkbox } from "./checkbox";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -9,7 +9,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "./dialog";
-import { Label } from "./label";
 
 export type CharacterCropModalProps = {
 	isOpen: boolean;
@@ -77,14 +76,12 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 				</DialogHeader>
 
 				<div class="flex items-center gap-2 py-2">
-					<Checkbox
-						checked={transparent()}
-						id="transparent-bg"
-						onChange={handleTransparentToggle}
-					/>
-					<Label for="transparent-bg" class="cursor-pointer text-sm">
-						Transparent background (ISNetIS segmentation, slower)
-					</Label>
+					<Checkbox checked={transparent()} onChange={handleTransparentToggle}>
+						<CheckboxControl class="h-4 w-4 rounded border-gray-300 bg-white text-primary shadow-sm" />
+						<CheckboxLabel class="cursor-pointer text-sm">
+							Transparent background (ISNetIS segmentation, slower)
+						</CheckboxLabel>
+					</Checkbox>
 				</div>
 
 				<div class="py-2">
