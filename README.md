@@ -27,7 +27,7 @@ Lint: Biome
 
 ### プロジェクト構成（モノレポ）
 
-- `apps/server/`: メインサーバー (SolidStart + oRPC)。バックエンドAPIとフロントエンドUIを統合。
+- `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとフロントエンドUIを統合。
 - `apps/cli/`: メディア管理・同期用CLIツール。
 - `packages/core/`: ドメインモデル、Zodスキーマ、ビジネスロジック、各インターフェース。
 - `packages/ui/`: 共通UIコンポーネントライブラリ (Kobalte + Tailwind CSS + solid-ui)。
