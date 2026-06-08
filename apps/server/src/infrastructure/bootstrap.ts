@@ -91,27 +91,31 @@ export function initServices() {
 	);
 
 	// Register MediaProcessingService (Implementation)
-	services.registerMediaProcessingService(
-		new MediaProcessingServiceImpl({
-			sourceRepo: services.getSourceRepository(),
-			mediaRepo: services.getMediaRepository(),
-			tagRepo: services.getTagRepository(),
-			authorRepo: services.getAuthorRepository(),
-			characterRepo: services.getCharacterRepository(),
-			ipRepo: services.getIpRepository(),
-			projectRepo: services.getProjectRepository(),
-			jobRepo,
-			imageProcessor: services.getImageProcessor(),
-			mediaStorage: services.getMediaStorage(),
-			enableAutoTagging: config.jobs.enableAutoTagging,
-			supportedExtensions: config.media.supportedExtensions,
-			generateThumbnail: (
-				media: { id: string; filePath: string },
-				sourcePath: string,
-				mediaSourceId: string,
-			) => generateThumbnail(media as any, sourcePath, mediaSourceId),
-			sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
-				SseManager.sendEvent(mediaSourceId, event, data),
+	const mediaProcessingService = new MediaProcessingServiceImpl({
+		sourceRepo: services.getSourceRepository(),
+		mediaRepo: services.getMediaRepository(),
+		tagRepo: services.getTagRepository(),
+		authorRepo: services.getAuthorRepository(),
+		characterRepo: services.getCharacterRepository(),
+		ipRepo: services.getIpRepository(),
+		projectRepo: services.getProjectRepository(),
+		jobRepo,
+		imageProcessor: services.getImageProcessor(),
+		mediaStorage: services.getMediaStorage(),
+		enableAutoTagging: config.jobs.enableAutoTagging,
+		supportedExtensions: config.media.supportedExtensions,
+		generateThumbnail: (
+			media: { id: string; filePath: string },
+			sourcePath: string,
+			mediaSourceId: string,
+		) => generateThumbnail(media as any, sourcePath, mediaSourceId),
+		sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
+			SseManager.sendEvent(mediaSourceId, event, data),
+	});
+	services.registerMediaProcessingService(mediaProcessingService);
+	configService.onChange((newConfig) =>
+		mediaProcessingService.updateConfig({
+			enableAutoTagging: newConfig.jobs.enableAutoTagging,
 		}),
 	);
 }

@@ -16,4 +16,6 @@ export interface IMediaProcessingService {
     context: Partial<MediaMetadataContext>,
     tx?: Transaction,
   ): Promise<void>;
+
+  updateConfig(config: { enableAutoTagging: boolean }): void;
 }
