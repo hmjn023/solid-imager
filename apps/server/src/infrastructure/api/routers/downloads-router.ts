@@ -10,10 +10,7 @@ export const downloadsRouter = {
 	 * Starts bulk download jobs
 	 */
 	start: os.input(bulkDownloadRequestSchema).handler(async ({ input }) => {
-		const result = await queueDownloadJobs(
-			input.mediaSourceId,
-			input.items,
-		);
+		const result = await queueDownloadJobs(input.mediaSourceId, input.items);
 		const msg =
 			result.skippedCount > 0
 				? `Queued ${result.jobCount} download jobs (${result.skippedCount} duplicates skipped)`

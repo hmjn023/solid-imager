@@ -4,7 +4,7 @@ import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
-import { PythonClient } from "~/infrastructure/ai/python-client";
+import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
@@ -68,11 +68,11 @@ export function initServices() {
 	services.registerFileSystem(new NodeFileSystem());
 	services.registerImageProcessor(ImageProcessor);
 
-	// Initialize PythonClient with config values
-	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
-	services.registerAiClient(pythonClient);
+	// Initialize RustAiClient with config values
+	const rustAiClient = new RustAiClient(config.ai.baseUrl, config.ai.timeoutMs);
+	services.registerAiClient(rustAiClient);
 	configService.onChange((newConfig) =>
-		pythonClient.updateConfig(newConfig.ai),
+		rustAiClient.updateConfig(newConfig.ai),
 	);
 
 	const jobWorker = new JobWorker(jobRepo, processJob);

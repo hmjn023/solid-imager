@@ -173,15 +173,23 @@ export function ConfigScreen(props: ConfigScreenProps) {
 							<form.Field name="ai.baseUrl">
 								{(field) => (
 									<div class="space-y-2">
-										<Label for={field().name}>Base URL</Label>
+										<Label for={field().name}>
+											Remote AI Server URL (oRPC)
+										</Label>
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
 												field().handleChange(e.target.value as any)
 											}
+											placeholder="http://power-machine:3000"
 											value={(field().state.value as string) ?? ""}
 										/>
+										<div class="text-muted-foreground text-xs">
+											外部の solid-imager サーバーの oRPC
+											エンドポイントを指定。AI
+											処理をリモートに委託します。空欄の場合はローカルで処理します。
+										</div>
 									</div>
 								)}
 							</form.Field>
@@ -203,29 +211,6 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={(field().state.value as number) ?? ""}
 										/>
-									</div>
-								)}
-							</form.Field>
-							<form.Field name="ai.remoteServerUrl">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>
-											Remote AI Server URL (oRPC)
-										</Label>
-										<Input
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) =>
-												field().handleChange(e.target.value as any)
-											}
-											placeholder="http://power-machine:3000"
-											value={(field().state.value as string) ?? ""}
-										/>
-										<div class="text-muted-foreground text-xs">
-											外部の solid-imager サーバーの oRPC
-											エンドポイントを指定。AI
-											処理をリモートに委託します。空欄の場合はローカルで処理します。
-										</div>
 									</div>
 								)}
 							</form.Field>

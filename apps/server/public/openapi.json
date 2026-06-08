@@ -67,7 +67,9 @@
         "operationId": "sources.list",
         "summary": "メディアソース一覧取得",
         "description": "登録されているすべてのメディアソース（ローカル、SFTP、S3等）を取得します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -92,7 +94,9 @@
         "operationId": "sources.get",
         "summary": "メディアソース詳細取得",
         "description": "UUIDを指定して特定のメディアソースの情報を取得します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -117,7 +121,9 @@
         "operationId": "sources.create",
         "summary": "メディアソース作成",
         "description": "新しいメディアソースを登録します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -142,7 +148,9 @@
         "operationId": "sources.update",
         "summary": "メディアソース更新",
         "description": "既存のメディアソースの設定を更新します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -167,7 +175,35 @@
         "operationId": "sources.delete",
         "summary": "メディアソース削除",
         "description": "メディアソースを削除し、監視を停止します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/sync": {
+      "post": {
+        "operationId": "sources.sync",
+        "summary": "sync",
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -191,7 +227,9 @@
       "post": {
         "operationId": "sources.dump",
         "summary": "dump",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -215,7 +253,9 @@
       "post": {
         "operationId": "sources.restore",
         "summary": "restore",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -239,7 +279,35 @@
       "post": {
         "operationId": "sources.importZip",
         "summary": "importZip",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/importLanceDB": {
+      "post": {
+        "operationId": "sources.importLanceDB",
+        "summary": "importLanceDB",
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -264,7 +332,9 @@
         "operationId": "sources.status",
         "summary": "メディアソースの状態取得",
         "description": "スキャン進捗やファイル数などの統計情報を取得します。",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -288,7 +358,9 @@
       "post": {
         "operationId": "sources.events",
         "summary": "events",
-        "tags": ["Media Sources"],
+        "tags": [
+          "Media Sources"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -312,7 +384,9 @@
       "post": {
         "operationId": "tags.list",
         "summary": "list",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -336,7 +410,9 @@
       "post": {
         "operationId": "tags.get",
         "summary": "get",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -360,7 +436,9 @@
       "post": {
         "operationId": "tags.create",
         "summary": "create",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -384,7 +462,9 @@
       "post": {
         "operationId": "tags.update",
         "summary": "update",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -408,7 +488,9 @@
       "post": {
         "operationId": "tags.delete",
         "summary": "delete",
-        "tags": ["Tags"],
+        "tags": [
+          "Tags"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -433,7 +515,9 @@
         "operationId": "media.search",
         "summary": "メディア検索",
         "description": "タグ、プロジェクト、キャラクターなどの条件でメディアを検索します。",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -457,7 +541,9 @@
       "post": {
         "operationId": "media.get",
         "summary": "get",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -481,7 +567,35 @@
       "post": {
         "operationId": "media.getDetails",
         "summary": "getDetails",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/findDuplicates": {
+      "post": {
+        "operationId": "media.findDuplicates",
+        "summary": "findDuplicates",
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -505,7 +619,9 @@
       "post": {
         "operationId": "media.getContent",
         "summary": "getContent",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -529,7 +645,9 @@
       "post": {
         "operationId": "media.getTags",
         "summary": "getTags",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -553,7 +671,35 @@
       "post": {
         "operationId": "media.update",
         "summary": "update",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/sync": {
+      "post": {
+        "operationId": "media.sync",
+        "summary": "sync",
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -577,7 +723,9 @@
       "post": {
         "operationId": "media.delete",
         "summary": "delete",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -601,7 +749,9 @@
       "post": {
         "operationId": "media.copy",
         "summary": "copy",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -625,7 +775,9 @@
       "post": {
         "operationId": "media.move",
         "summary": "move",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -649,7 +801,9 @@
       "post": {
         "operationId": "media.upload",
         "summary": "upload",
-        "tags": ["Media"],
+        "tags": [
+          "Media"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -673,7 +827,9 @@
       "post": {
         "operationId": "categories.list",
         "summary": "list",
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -697,7 +853,9 @@
       "post": {
         "operationId": "categories.get",
         "summary": "get",
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -721,7 +879,9 @@
       "post": {
         "operationId": "categories.create",
         "summary": "create",
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -745,7 +905,9 @@
       "post": {
         "operationId": "categories.update",
         "summary": "update",
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -769,7 +931,9 @@
       "post": {
         "operationId": "categories.delete",
         "summary": "delete",
-        "tags": ["Categories"],
+        "tags": [
+          "Categories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -793,7 +957,9 @@
       "post": {
         "operationId": "projects.list",
         "summary": "list",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -817,7 +983,9 @@
       "post": {
         "operationId": "projects.get",
         "summary": "get",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -841,7 +1009,9 @@
       "post": {
         "operationId": "projects.create",
         "summary": "create",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -865,7 +1035,9 @@
       "post": {
         "operationId": "projects.update",
         "summary": "update",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -889,7 +1061,9 @@
       "post": {
         "operationId": "projects.delete",
         "summary": "delete",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -913,7 +1087,9 @@
       "post": {
         "operationId": "projects.listForMedia",
         "summary": "listForMedia",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -937,7 +1113,9 @@
       "post": {
         "operationId": "projects.addToMedia",
         "summary": "addToMedia",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -961,7 +1139,9 @@
       "post": {
         "operationId": "projects.removeFromMedia",
         "summary": "removeFromMedia",
-        "tags": ["Projects"],
+        "tags": [
+          "Projects"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -985,7 +1165,9 @@
       "post": {
         "operationId": "characters.list",
         "summary": "list",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1009,7 +1191,9 @@
       "post": {
         "operationId": "characters.get",
         "summary": "get",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1033,7 +1217,9 @@
       "post": {
         "operationId": "characters.create",
         "summary": "create",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1057,7 +1243,9 @@
       "post": {
         "operationId": "characters.update",
         "summary": "update",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1081,7 +1269,9 @@
       "post": {
         "operationId": "characters.delete",
         "summary": "delete",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1105,7 +1295,9 @@
       "post": {
         "operationId": "characters.listForMedia",
         "summary": "listForMedia",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1129,7 +1321,9 @@
       "post": {
         "operationId": "characters.addToMedia",
         "summary": "addToMedia",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1153,7 +1347,9 @@
       "post": {
         "operationId": "characters.removeFromMedia",
         "summary": "removeFromMedia",
-        "tags": ["Characters"],
+        "tags": [
+          "Characters"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1177,7 +1373,9 @@
       "post": {
         "operationId": "ips.list",
         "summary": "list",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1201,7 +1399,9 @@
       "post": {
         "operationId": "ips.get",
         "summary": "get",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1225,7 +1425,9 @@
       "post": {
         "operationId": "ips.create",
         "summary": "create",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1249,7 +1451,9 @@
       "post": {
         "operationId": "ips.update",
         "summary": "update",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1273,7 +1477,9 @@
       "post": {
         "operationId": "ips.delete",
         "summary": "delete",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1297,7 +1503,9 @@
       "post": {
         "operationId": "ips.listForMedia",
         "summary": "listForMedia",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1321,7 +1529,9 @@
       "post": {
         "operationId": "ips.addToMedia",
         "summary": "addToMedia",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1345,7 +1555,9 @@
       "post": {
         "operationId": "ips.removeFromMedia",
         "summary": "removeFromMedia",
-        "tags": ["IPs"],
+        "tags": [
+          "IPs"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1369,7 +1581,9 @@
       "post": {
         "operationId": "thumbnails.generate",
         "summary": "generate",
-        "tags": ["Thumbnails"],
+        "tags": [
+          "Thumbnails"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1393,7 +1607,9 @@
       "post": {
         "operationId": "thumbnails.clear",
         "summary": "clear",
-        "tags": ["Thumbnails"],
+        "tags": [
+          "Thumbnails"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1417,7 +1633,9 @@
       "post": {
         "operationId": "downloads.start",
         "summary": "start",
-        "tags": ["Downloads"],
+        "tags": [
+          "Downloads"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1441,7 +1659,9 @@
       "post": {
         "operationId": "directories.list",
         "summary": "list",
-        "tags": ["Directories"],
+        "tags": [
+          "Directories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1465,7 +1685,9 @@
       "post": {
         "operationId": "directories.create",
         "summary": "create",
-        "tags": ["Directories"],
+        "tags": [
+          "Directories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1489,7 +1711,9 @@
       "post": {
         "operationId": "directories.delete",
         "summary": "delete",
-        "tags": ["Directories"],
+        "tags": [
+          "Directories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1513,7 +1737,9 @@
       "post": {
         "operationId": "directories.rename",
         "summary": "rename",
-        "tags": ["Directories"],
+        "tags": [
+          "Directories"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1538,7 +1764,9 @@
         "operationId": "ai.tag",
         "summary": "AI自動タグ付け",
         "description": "画像を解析して、関連するタグ（DeepDanbooru等）を自動生成します。",
-        "tags": ["AI"],
+        "tags": [
+          "AI"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1562,7 +1790,9 @@
       "post": {
         "operationId": "ai.ccipFeature",
         "summary": "ccipFeature",
-        "tags": ["AI"],
+        "tags": [
+          "AI"
+        ],
         "responses": {
           "200": {
             "description": "OK",
@@ -1586,7 +1816,136 @@
       "post": {
         "operationId": "ai.ccipDifference",
         "summary": "ccipDifference",
-        "tags": ["AI"],
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/scanBatchTaggingTargets": {
+      "post": {
+        "operationId": "ai.scanBatchTaggingTargets",
+        "summary": "scanBatchTaggingTargets",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/batchTagging": {
+      "post": {
+        "operationId": "ai.batchTagging",
+        "summary": "batchTagging",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/startBatchTaggingWithIds": {
+      "post": {
+        "operationId": "ai.startBatchTaggingWithIds",
+        "summary": "startBatchTaggingWithIds",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/detectAndCropCharacters": {
+      "post": {
+        "operationId": "ai.detectAndCropCharacters",
+        "summary": "detectAndCropCharacters",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/authors/list": {
+      "post": {
+        "operationId": "authors.list",
+        "summary": "list",
         "responses": {
           "200": {
             "description": "OK",
@@ -1610,7 +1969,308 @@
       "post": {
         "operationId": "utils.fetchUrl",
         "summary": "fetchUrl",
-        "tags": ["Utilities"],
+        "tags": [
+          "Utilities"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/bulkAdd": {
+      "post": {
+        "operationId": "imports.bulkAdd",
+        "summary": "bulkAdd",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/listPending": {
+      "post": {
+        "operationId": "imports.listPending",
+        "summary": "listPending",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/process": {
+      "post": {
+        "operationId": "imports.process",
+        "summary": "process",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/cancel": {
+      "post": {
+        "operationId": "imports.cancel",
+        "summary": "cancel",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/events": {
+      "post": {
+        "operationId": "imports.events",
+        "summary": "events",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/get": {
+      "post": {
+        "operationId": "config.get",
+        "summary": "get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/update": {
+      "post": {
+        "operationId": "config.update",
+        "summary": "update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/list": {
+      "post": {
+        "operationId": "presets.list",
+        "summary": "list",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/get": {
+      "post": {
+        "operationId": "presets.get",
+        "summary": "get",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/getByName": {
+      "post": {
+        "operationId": "presets.getByName",
+        "summary": "getByName",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/create": {
+      "post": {
+        "operationId": "presets.create",
+        "summary": "create",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/update": {
+      "post": {
+        "operationId": "presets.update",
+        "summary": "update",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/presets/delete": {
+      "post": {
+        "operationId": "presets.delete",
+        "summary": "delete",
         "responses": {
           "200": {
             "description": "OK",

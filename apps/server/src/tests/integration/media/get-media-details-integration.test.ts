@@ -12,7 +12,7 @@ import {
 } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
-import { PythonClient } from "~/infrastructure/ai/python-client";
+import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
@@ -57,7 +57,7 @@ describe("getMediaDetails", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new PythonClient());
+		services.registerAiClient(new RustAiClient());
 
 		// Dynamically import dependencies
 		const pgliteModule = await import("@electric-sql/pglite");
