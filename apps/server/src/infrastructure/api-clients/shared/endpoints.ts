@@ -18,7 +18,7 @@ export const API_ENDPOINTS = {
 	mediaUpdate: (sourceId: string, mediaId: string) =>
 		`/api/sources/${sourceId}/${mediaId}`,
 	mediaThumbnail: (sourceId: string, mediaId: string) =>
-		`/api/sources/${sourceId}/${mediaId}/thumbnail`,
+		`/api/sources/${sourceId}/thumbnail/${mediaId}`,
 	mediaUpload: (sourceId: string) => `/api/sources/${sourceId}/upload`,
 	mediaCopy: (sourceId: string, mediaId: string) =>
 		`/api/sources/${sourceId}/${mediaId}/copy`,
