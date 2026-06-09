@@ -67,8 +67,7 @@ export const mediaRouter = {
 	findDuplicates: os
 		.input(findDuplicatesRequestSchema.optional())
 		.handler(
-			async ({ input }) =>
-				await MediaService.findDuplicates(input ?? {}),
+			async ({ input }) => await MediaService.findDuplicates(input ?? {}),
 		),
 
 	/**

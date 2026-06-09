@@ -5,14 +5,12 @@
   "workspaces": [
     "apps/*",
     "packages/client",
-    "packages/*",
-    ".worktree/dghs-imgutils-rs"
+    "packages/*"
   ],
   "scripts": {
     "dev": "bun --filter @solid-imager/server dev",
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
-    "ai:start": "uv run uvicorn src-python.main:app --host 0.0.0.0 --port 8000",
     "lint": "vp run lint",
     "check": "vp run check",
     "format": "vp run format",
@@ -28,7 +26,8 @@
   },
   "trustedDependencies": [
     "youtube-dl-exec",
-    "ffmpeg-static"
+    "ffmpeg-static",
+    "dghs-imgutils-rs"
   ],
   "packageManager": "npm@11.11.1",
   "overrides": {

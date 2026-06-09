@@ -366,7 +366,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 												<For each={group.media}>
 													{(item) => {
 														const thumbnailUrl = () =>
-															`/api/sources/${item.mediaSourceId}/${item.id}/thumbnail?t=${new Date(item.modifiedAt).getTime()}`;
+															`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`;
 														const isKeep = () => manager().keepIds().has(item.id);
 
 														return (

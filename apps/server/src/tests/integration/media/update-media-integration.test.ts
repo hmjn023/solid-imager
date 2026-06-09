@@ -10,7 +10,7 @@ import {
 import { ZodError } from "zod";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
-import { PythonClient } from "~/infrastructure/ai/python-client";
+import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -42,7 +42,7 @@ describe("updateMedia Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new PythonClient());
+		services.registerAiClient(new RustAiClient());
 	});
 	let testMediaId: string;
 	const testSourceId = crypto.randomUUID();

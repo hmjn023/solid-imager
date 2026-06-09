@@ -4,7 +4,7 @@ import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
-import { PythonClient } from "~/infrastructure/ai/python-client";
+import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
@@ -68,11 +68,11 @@ export function initServices() {
 	services.registerFileSystem(new NodeFileSystem());
 	services.registerImageProcessor(ImageProcessor);
 
-	// Initialize PythonClient with config values
-	const pythonClient = new PythonClient(config.ai.baseUrl, config.ai.timeoutMs);
-	services.registerAiClient(pythonClient);
+	// Initialize RustAiClient with config values
+	const rustAiClient = new RustAiClient(config.ai.baseUrl, config.ai.timeoutMs);
+	services.registerAiClient(rustAiClient);
 	configService.onChange((newConfig) =>
-		pythonClient.updateConfig(newConfig.ai),
+		rustAiClient.updateConfig(newConfig.ai),
 	);
 
 	const jobWorker = new JobWorker(jobRepo, processJob);
@@ -91,27 +91,31 @@ export function initServices() {
 	);
 
 	// Register MediaProcessingService (Implementation)
-	services.registerMediaProcessingService(
-		new MediaProcessingServiceImpl({
-			sourceRepo: services.getSourceRepository(),
-			mediaRepo: services.getMediaRepository(),
-			tagRepo: services.getTagRepository(),
-			authorRepo: services.getAuthorRepository(),
-			characterRepo: services.getCharacterRepository(),
-			ipRepo: services.getIpRepository(),
-			projectRepo: services.getProjectRepository(),
-			jobRepo,
-			imageProcessor: services.getImageProcessor(),
-			mediaStorage: services.getMediaStorage(),
-			enableAutoTagging: config.jobs.enableAutoTagging,
-			supportedExtensions: config.media.supportedExtensions,
-			generateThumbnail: (
-				media: { id: string; filePath: string },
-				sourcePath: string,
-				mediaSourceId: string,
-			) => generateThumbnail(media as any, sourcePath, mediaSourceId),
-			sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
-				SseManager.sendEvent(mediaSourceId, event, data),
+	const mediaProcessingService = new MediaProcessingServiceImpl({
+		sourceRepo: services.getSourceRepository(),
+		mediaRepo: services.getMediaRepository(),
+		tagRepo: services.getTagRepository(),
+		authorRepo: services.getAuthorRepository(),
+		characterRepo: services.getCharacterRepository(),
+		ipRepo: services.getIpRepository(),
+		projectRepo: services.getProjectRepository(),
+		jobRepo,
+		imageProcessor: services.getImageProcessor(),
+		mediaStorage: services.getMediaStorage(),
+		enableAutoTagging: config.jobs.enableAutoTagging,
+		supportedExtensions: config.media.supportedExtensions,
+		generateThumbnail: (
+			media: { id: string; filePath: string },
+			sourcePath: string,
+			mediaSourceId: string,
+		) => generateThumbnail(media as any, sourcePath, mediaSourceId),
+		sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
+			SseManager.sendEvent(mediaSourceId, event, data),
+	});
+	services.registerMediaProcessingService(mediaProcessingService);
+	configService.onChange((newConfig) =>
+		mediaProcessingService.updateConfig({
+			enableAutoTagging: newConfig.jobs.enableAutoTagging,
 		}),
 	);
 }

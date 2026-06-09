@@ -8,7 +8,7 @@ import { createMemo, createSignal, For, Show } from "solid-js";
 import AiTaggingModal from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
-import RustExperimentalModal from "~/components/media/rust-experimental-modal";
+
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -80,8 +80,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
-	const [isRustExperimentalModalOpen, setIsRustExperimentalModalOpen] =
-		createSignal(false);
+
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
 
@@ -250,14 +249,6 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 					Extract Tags (AI)
 				</button>
 				<button
-					class="flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700"
-					onClick={() => setIsRustExperimentalModalOpen(true)}
-					type="button"
-				>
-					<span class="i-lucide-terminal" />
-					Extract Tags (Rust Experimental)
-				</button>
-				<button
 					class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
 					onClick={() => setIsCharacterCropModalOpen(true)}
 					type="button"
@@ -272,12 +263,6 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 				mediaId={props.media.id}
 				mediaSourceId={props.media.mediaSourceId}
 				onClose={() => setIsAiTaggingModalOpen(false)}
-			/>
-
-			<RustExperimentalModal
-				isOpen={isRustExperimentalModalOpen()}
-				media={props.media}
-				onClose={() => setIsRustExperimentalModalOpen(false)}
 			/>
 
 			<CharacterCropModal

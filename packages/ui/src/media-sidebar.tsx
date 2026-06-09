@@ -31,10 +31,7 @@ type MediaSidebarProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
-	rustExperimentalModal?: (props: {
-		isOpen: boolean;
-		onClose: () => void;
-	}) => JSX.Element;
+
 	characterCropModal?: (props: {
 		isOpen: boolean;
 		onClose: () => void;
@@ -66,8 +63,7 @@ function formatBytes(bytes: number, decimals = 2) {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
-	const [isRustExperimentalModalOpen, setIsRustExperimentalModalOpen] =
-		createSignal(false);
+
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
@@ -164,16 +160,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<span class="i-lucide-sparkles" />
 						Extract Tags (AI)
 					</button>
-					<Show when={props.rustExperimentalModal}>
-						<button
-							class="flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700"
-							onClick={() => setIsRustExperimentalModalOpen(true)}
-							type="button"
-						>
-							<span class="i-lucide-terminal" />
-							Extract Tags (Rust Experimental)
-						</button>
-					</Show>
+
 					<Show when={props.characterCropModal}>
 						<button
 							class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
@@ -190,10 +177,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				isOpen: isAiTaggingModalOpen(),
 				onClose: () => setIsAiTaggingModalOpen(false),
 			})}
-			{props.rustExperimentalModal?.({
-				isOpen: isRustExperimentalModalOpen(),
-				onClose: () => setIsRustExperimentalModalOpen(false),
-			})}
+
 			{props.characterCropModal?.({
 				isOpen: isCharacterCropModalOpen(),
 				onClose: () => setIsCharacterCropModalOpen(false),

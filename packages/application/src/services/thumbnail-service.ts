@@ -23,7 +23,7 @@ export class ThumbnailServiceImpl implements IThumbnailService {
 		mediaId: string,
 		size?: number,
 	): string {
-		let url = `/api/sources/${mediaSourceId}/${mediaId}/thumbnail`;
+		let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
 		if (size) {
 			url += `?size=${size}`;
 		}

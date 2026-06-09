@@ -40,7 +40,7 @@ function isRemoteServerLocal(url: string): boolean {
 
 function getRemoteServerUrl(): string | undefined {
 	const config = services.getConfigService().getConfig();
-	const url = config.ai.remoteServerUrl;
+	const url = config.ai.baseUrl;
 	if (!url || url.trim() === "") return undefined;
 	return url;
 }
@@ -69,17 +69,12 @@ function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 
 async function callRemoteTagging(
 	remoteUrl: string,
-	endpoint: "tag" | "tagRustExperimental",
 	fileBuffer: Buffer,
 	fileName: string,
 	timeoutMs: number,
 ): Promise<unknown> {
 	const file = new File([new Uint8Array(fileBuffer)], fileName);
 	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
-
-	if (endpoint === "tagRustExperimental") {
-		return remoteOrpc.ai.tagRustExperimental({ file });
-	}
 	return remoteOrpc.ai.tag({ file });
 }
 
@@ -153,100 +148,6 @@ async function cropDetection(
 }
 
 export const aiRouter = {
-	tagRustExperimental: os
-		.input(
-			z.union([
-				z.object({ mediaId: z.string().uuid() }),
-				z.object({ file: z.instanceof(File) }),
-			]),
-		)
-		.handler(async ({ input }) => {
-			try {
-				if ("file" in input) {
-					const buffer = Buffer.from(await input.file.arrayBuffer());
-					const tmpPath = path.join(
-						tmpdir(),
-						`rust-tag-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
-					);
-					await fs.promises.writeFile(tmpPath, buffer);
-					try {
-						const { getPixaiTags } = await import("dghs-imgutils-rs");
-						const result = await getPixaiTags(tmpPath);
-						return {
-							general: result.general,
-							character: result.character,
-							ips: result.ips,
-							ips_mapping: result.ipsMapping,
-						};
-					} finally {
-						await fs.promises.unlink(tmpPath).catch(() => {});
-					}
-				}
-
-				const { mediaId } = input;
-				const media = await services.getMediaRepository().findById(mediaId);
-				if (!media) {
-					throw new Error("Media not found");
-				}
-				const mediaSource = await services
-					.getSourceRepository()
-					.findById(media.mediaSourceId);
-				if (!mediaSource) {
-					throw new Error("Media source not found");
-				}
-				if (mediaSource.type !== "local") {
-					throw new Error(
-						"Only local media sources are supported for Rust tagging",
-					);
-				}
-
-				const connectionInfo = mediaSource.connectionInfo as
-					| Record<string, unknown>
-					| null
-					| undefined;
-				if (!connectionInfo || typeof connectionInfo.path !== "string") {
-					throw new Error("Media source connection path is missing or invalid");
-				}
-				const fullPath = path.join(connectionInfo.path, media.filePath);
-
-				const remoteUrl = getRemoteServerUrl();
-				const config = services.getConfigService().getConfig();
-				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-					const fileBuffer = await readFileBuffer(fullPath);
-					const result = (await callRemoteTagging(
-						remoteUrl,
-						"tagRustExperimental",
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					)) as {
-						general: Record<string, number>;
-						character: Record<string, number>;
-						ips: string[];
-						ips_mapping: Record<string, string[]>;
-					};
-					return result;
-				}
-
-				const { getPixaiTags } = await import("dghs-imgutils-rs");
-				const result = await getPixaiTags(fullPath);
-
-				return {
-					general: result.general,
-					character: result.character,
-					ips: result.ips,
-					ips_mapping: result.ipsMapping,
-				};
-			} catch (error) {
-				logger.error({ err: error, input }, "Rust AI tagging failed");
-				const message =
-					error instanceof Error ? error.message : "Unknown error";
-				throw new ORPCError("UNPROCESSABLE_CONTENT", {
-					message: `Rust AI tagging failed: ${message}`,
-				});
-			}
-		}),
-
 	tag: os
 		.input(
 			z.union([
@@ -294,7 +195,6 @@ export const aiRouter = {
 					const fileBuffer = await readFileBuffer(fullPath);
 					return (await callRemoteTagging(
 						remoteUrl,
-						"tag",
 						fileBuffer,
 						path.basename(fullPath),
 						config.ai.timeoutMs,

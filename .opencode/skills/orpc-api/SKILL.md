@@ -314,33 +314,9 @@ export class ValidationError extends Error {
 }
 ```
 
-グローバルエラーハンドラー (`apps/server/src/infrastructure/api/app.ts`):
-```typescript
-export const app = new Elysia()
-  .onError(({ code, error, request }) => {
-    if (error instanceof ResourceNotFoundError) {
-      return new Response(JSON.stringify({ error: error.message }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    if (error instanceof ValidationError) {
-      return new Response(JSON.stringify({ errors: error.errors }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
-    logger.error({ err: error, code, path: request.url }, "Unhandled Error");
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
-  });
-```
-
 ### バイナリコンテンツの扱い
 
-oRPC は JSON ベースのため、画像等のバイナリデータは Base64 エンコードで約33%サイズ増大しパフォーマンスが低下。専用の REST エンドポイントを使用してください。
+oRPC は JSON ベースのため、画像等のバイナリデータは Base64 エンコードで約33%サイズ増大しパフォーマンスが低下。専用の REST エンドポイント（TanStack Start API Route）を使用してください。
 
 ```typescript
 // ❌ 間違った実装
@@ -353,22 +329,28 @@ export const mediaRouter = {
     }),
 };
 
-// ✅ 正しい実装 - REST エンドポイント (Elysia)
-app.get("/api/sources/:sourceId/:mediaId", async ({ params }) => {
-  const filePath = await MediaService.getMediaPath(params.sourceId, params.mediaId);
-  const buffer = await fs.readFile(filePath);
-  return new Response(buffer, {
-    headers: {
-      "Content-Type": media.mimeType,
-      "Content-Length": String(buffer.length),
+// ✅ 正しい実装 - REST エンドポイント (TanStack Start API Route)
+export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
+  server: {
+    handlers: {
+      GET: async ({ params }) => {
+        const { mediaSourceId, mediaId } = params;
+        const { buffer, contentType } = await MediaService.getMediaContent(
+          mediaSourceId,
+          mediaId,
+        );
+        return new Response(buffer as unknown as BodyInit, {
+          headers: { "Content-Type": contentType },
+        });
+      },
     },
-  });
+  },
 });
 ```
 
 ### OpenAPI 自動生成
 
-oRPC は OpenAPI 仕様を自動生成できます。設定は `apps/server/src/infrastructure/api/app.ts` で行います。
+oRPC は OpenAPI 仕様を自動生成できます。自動生成スクリプトは `apps/server/scripts/generate-swagger-spec.ts` に定義されており、`bun --filter @solid-imager/server gen:spec` で実行できます。
 
 ルーターに JSDoc コメントを追加すると、OpenAPI 仕様に反映されます:
 ```typescript

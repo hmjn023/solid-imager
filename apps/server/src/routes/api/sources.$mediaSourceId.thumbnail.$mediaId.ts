@@ -4,7 +4,7 @@ import { bootstrap } from "~/infrastructure/bootstrap";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
 
 export const Route = createFileRoute(
-	"/api/sources/$mediaSourceId/$mediaId/thumbnail",
+	"/api/sources/$mediaSourceId/thumbnail/$mediaId",
 )({
 	server: {
 		handlers: {

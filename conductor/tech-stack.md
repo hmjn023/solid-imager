@@ -5,7 +5,7 @@
 - **Runtime**: Bun (Server & Tooling)
 
 ## Frontend (Web & Desktop Client)
-- **Framework**: SolidStart (SolidJS)
+- **Framework**: TanStack Start (SolidJS)
 - **Routing**: TanStack Router (Planned/Transitioning)
 - **State Management**: TanStack Query
 - **Form Management**: TanStack Form
@@ -13,9 +13,8 @@
 - **Desktop Shell**: Tauri v2 (Planned for Client)
 
 ## Backend (Server)
-- **API Framework**: ElysiaJS
 - **RPC Framework**: oRPC (Type-safe contract)
-- **SSR**: SolidStart (Server-Side Rendering)
+- **SSR**: TanStack Start (Server-Side Rendering)
 
 ## Database & ORM
 - **ORM**: Drizzle ORM
