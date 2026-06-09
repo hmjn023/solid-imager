@@ -2,7 +2,7 @@ import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { configQueryOptions } from "~/infrastructure/api-clients/queries/config-query";
-import { ConfigForm } from "./config/config-form";
+import { ConfigForm } from "./config/-config-form";
 
 export const Route = createFileRoute("/config")({
 	loader: async ({ context }) => {

@@ -43,9 +43,35 @@ export class RustAiClient implements IAiClient {
 		prefix: string,
 		callback: (filePath: string) => Promise<T>,
 	): Promise<T> {
+		const bytes = new Uint8Array(buffer).subarray(0, 4);
+		let ext = ".png";
+		if (
+			bytes[0] === 0x89 &&
+			bytes[1] === 0x50 &&
+			bytes[2] === 0x4e &&
+			bytes[3] === 0x47
+		)
+			ext = ".png";
+		else if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+			ext = ".jpg";
+		else if (
+			bytes[0] === 0x52 &&
+			bytes[1] === 0x49 &&
+			bytes[2] === 0x46 &&
+			bytes[3] === 0x46
+		)
+			ext = ".webp";
+		else if (
+			bytes[0] === 0x47 &&
+			bytes[1] === 0x49 &&
+			bytes[2] === 0x46 &&
+			bytes[3] === 0x38
+		)
+			ext = ".gif";
+
 		const tmpPath = path.join(
 			tmpdir(),
-			`${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+			`${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
 		);
 		await fs.promises.writeFile(tmpPath, Buffer.from(buffer));
 		try {
