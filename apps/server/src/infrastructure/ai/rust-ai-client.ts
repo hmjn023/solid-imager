@@ -38,17 +38,27 @@ export class RustAiClient implements IAiClient {
 		}
 	}
 
-	async tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse> {
+	private async withTempFile<T>(
+		buffer: ArrayBuffer,
+		prefix: string,
+		callback: (filePath: string) => Promise<T>,
+	): Promise<T> {
 		const tmpPath = path.join(
 			tmpdir(),
-			`rust-tag-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+			`${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
 		);
-		await fs.promises.writeFile(tmpPath, Buffer.from(imageBuffer));
+		await fs.promises.writeFile(tmpPath, Buffer.from(buffer));
 		try {
-			return await this.tagImageByPath(tmpPath);
+			return await callback(tmpPath);
 		} finally {
 			await fs.promises.unlink(tmpPath).catch(() => {});
 		}
+	}
+
+	async tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse> {
+		return this.withTempFile(imageBuffer, "rust-tag", (filePath) =>
+			this.tagImageByPath(filePath),
+		);
 	}
 
 	async tagImageByPath(filePath: string): Promise<TaggingResponse> {
@@ -65,16 +75,9 @@ export class RustAiClient implements IAiClient {
 	async extractCcipFeature(
 		imageBuffer: ArrayBuffer,
 	): Promise<CcipFeatureResponse> {
-		const tmpPath = path.join(
-			tmpdir(),
-			`rust-ccip-${Date.now()}-${Math.random().toString(36).slice(2)}.png`,
+		return this.withTempFile(imageBuffer, "rust-ccip", (filePath) =>
+			this.extractCcipFeatureByPath(filePath),
 		);
-		await fs.promises.writeFile(tmpPath, Buffer.from(imageBuffer));
-		try {
-			return await this.extractCcipFeatureByPath(tmpPath);
-		} finally {
-			await fs.promises.unlink(tmpPath).catch(() => {});
-		}
 	}
 
 	async extractCcipFeatureByPath(
