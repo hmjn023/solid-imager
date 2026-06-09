@@ -44,6 +44,21 @@ export default defineConfig({
     clearScreen: () => {},
     hasWarned: false,
   },
+  build: {
+    rollupOptions: {
+      external: [
+        "dghs-imgutils-rs",
+        "sharp",
+        "ffmpeg-static",
+        "fluent-ffmpeg",
+        "@electric-sql/pglite",
+        "pg",
+        "archiver",
+        "@lancedb/lancedb",
+        "apache-arrow"
+      ],
+    },
+  },
   ssr: {
     noExternal: [
       "@tanstack/solid-router",

@@ -54,7 +54,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly jobRepo: IJobRepository;
 	private readonly imageProcessor: IImageProcessor;
 	private readonly mediaStorage: IMediaStorage;
-	private readonly enableAutoTagging: boolean;
+	private enableAutoTagging: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
 	private readonly sseSendEvent: MediaProcessingServiceDeps["sseSendEvent"];
@@ -76,6 +76,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.generateThumbnail = deps.generateThumbnail;
 		this.sseSendEvent = deps.sseSendEvent;
 		this.logger = deps.logger;
+	}
+
+	updateConfig(config: { enableAutoTagging: boolean }): void {
+		this.enableAutoTagging = config.enableAutoTagging;
 	}
 
 	async registerAndProcess(

@@ -15,10 +15,7 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
-	rustExperimentalModal?: (props: {
-		isOpen: boolean;
-		onClose: () => void;
-	}) => JSX.Element;
+
 	characterCropModal?: (props: {
 		isOpen: boolean;
 		onClose: () => void;
@@ -96,7 +93,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	return (
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
-			rustExperimentalModal={props.rustExperimentalModal}
+
 			characterCropModal={props.characterCropModal}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}

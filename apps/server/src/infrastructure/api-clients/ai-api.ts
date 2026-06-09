@@ -25,14 +25,6 @@ export function fetchAiTagsForFile(file: File) {
 	return orpc.ai.tag({ file });
 }
 
-/**
- * Fetches experimental Rust AI tags for a media item
- * @param mediaId - The ID of the media item
- */
-export function fetchRustExperimentalTags(mediaId: string) {
-	return orpc.ai.tagRustExperimental({ mediaId });
-}
-
 export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
 	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
 }

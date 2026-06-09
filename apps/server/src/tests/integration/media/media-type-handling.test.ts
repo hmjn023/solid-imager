@@ -12,7 +12,7 @@ import {
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { taggingService } from "~/application/services/tagging-service";
-import { PythonClient } from "~/infrastructure/ai/python-client";
+import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
@@ -83,7 +83,7 @@ describe("Media Type Handling Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerAiClient(new PythonClient());
+		services.registerAiClient(new RustAiClient());
 
 		try {
 			const migratorModule = await import("drizzle-orm/pglite/migrator");
