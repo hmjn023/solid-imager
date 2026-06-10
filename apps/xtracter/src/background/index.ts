@@ -71,7 +71,7 @@ async function getMediaSources(): Promise<SafeMediaSource[]> {
 			const client = await getClient();
 			return await client.sources.list();
 		});
-		return sources as SafeMediaSource[];
+		return sources;
 	} catch (_error) {
 		return [];
 	}
@@ -242,8 +242,10 @@ chrome.runtime.onMessage.addListener(
 		if (isDownloadMessage(message)) {
 			const { targetUrl } = message.data;
 			const extension = getExtensionFromUrl(targetUrl);
-			// Cast to handle string vs Date for createdAt field between core and ext schemas
-			const filename = generateMediaFilename(message.data as Parameters<typeof generateMediaFilename>[0], extension);
+			const filename = generateMediaFilename(
+				{ ...message.data, createdAt: message.data.createdAt ? new Date(message.data.createdAt) : undefined },
+				extension,
+			);
 
 			chrome.downloads.download(
 				{

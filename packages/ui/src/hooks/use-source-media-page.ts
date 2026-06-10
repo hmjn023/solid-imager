@@ -13,6 +13,7 @@ import {
 	setScrollPosition,
 } from "@solid-imager/core/domain/sources/store";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
 import { createInfiniteQuery, keepPreviousData } from "@tanstack/solid-query";
 import type { Accessor, Setter } from "solid-js";
@@ -565,7 +566,7 @@ export function useSourceMediaPage(
 			await actions.startDownloadJobs(id() || "", items);
 			toast.success("Bulk download started");
 		} catch (error) {
-			toast.error(`Failed to start download: ${(error as Error).message}`);
+			toast.error(`Failed to start download: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -712,7 +713,7 @@ export function useSourceMediaPage(
 			}
 			refreshMediaQuery();
 		} catch (error) {
-			toast.error(`Restore failed: ${(error as Error).message}`, {
+			toast.error(`Restore failed: ${getErrorMessage(error)}`, {
 				id: "restore-toast",
 			});
 		} finally {
@@ -863,7 +864,7 @@ export function useSourceMediaPage(
 				});
 			}
 		} catch (e) {
-			toast.error(`Failed to ${mode} media: ${(e as Error).message}`);
+			toast.error(`Failed to ${mode} media: ${getErrorMessage(e)}`);
 		} finally {
 			setMediaIdToMoveCopy(null);
 		}
@@ -887,7 +888,7 @@ export function useSourceMediaPage(
 			toast.success(`Batch sync completed for ${mediaIds.length} items`);
 			refreshMediaQuery();
 		} catch (error) {
-			toast.error(`Failed to batch sync: ${(error as Error).message}`);
+			toast.error(`Failed to batch sync: ${getErrorMessage(error)}`);
 		} finally {
 			setIsSyncingMedia(false);
 		}
@@ -900,7 +901,7 @@ export function useSourceMediaPage(
 			toast.success("Metadata synced successfully");
 			refreshMediaQuery();
 		} catch (e) {
-			toast.error(`Failed to sync metadata: ${(e as Error).message}`);
+			toast.error(`Failed to sync metadata: ${getErrorMessage(e)}`);
 		}
 	};
 

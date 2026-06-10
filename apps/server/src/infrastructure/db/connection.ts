@@ -37,8 +37,9 @@ export async function closeConnection(connection: DbConnection): Promise<void> {
 	} else if (
 		typeof connection === "object" &&
 		connection !== null &&
-		"release" in connection
+		"release" in connection &&
+		typeof connection.release === "function"
 	) {
-		(connection as PoolClient).release();
+		connection.release();
 	}
 }

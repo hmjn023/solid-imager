@@ -31,7 +31,7 @@ export function MediaListActions(props: MediaListActionsProps) {
 
 	return (
 		<Show when={!isServer && document.getElementById("nav-actions")}>
-			<Portal mount={document.getElementById("nav-actions") as HTMLElement}>
+			<Portal mount={document.getElementById("nav-actions")!}>
 				<Button
 					class="mr-2 border-white text-white hover:bg-sky-700"
 					onClick={() => props.onDumpDownload("json")}

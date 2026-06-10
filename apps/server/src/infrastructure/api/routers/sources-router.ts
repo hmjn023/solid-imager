@@ -9,6 +9,7 @@ import {
 	sftpConnectionSchema,
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { z } from "zod";
 import { BackupService } from "~/application/services/backup-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
@@ -16,6 +17,11 @@ import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
+import {
+	asDumpStream,
+	nodeStreamToWebReadable,
+	webReadableToNodeStream,
+} from "~/infrastructure/utils/stream-utils";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
@@ -231,7 +237,7 @@ export const sourcesRouter = {
 					results.push({
 						id,
 						success: true,
-						...(pr.value as Record<string, unknown>),
+						...(isRecord(pr.value) ? pr.value : {}),
 					});
 				} else {
 					logger.error(
@@ -268,21 +274,27 @@ export const sourcesRouter = {
 			});
 
 			if (input.mode === "zip") {
-				return new Response(result as ReadableStream, {
-					headers: {
-						"Content-Type": "application/zip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+				return new Response(
+					asDumpStream(result),
+					{
+						headers: {
+							"Content-Type": "application/zip",
+							"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+						},
 					},
-				});
+				);
 			}
 
 			if (input.mode === "lancedb") {
-				return new Response(result as ReadableStream, {
-					headers: {
-						"Content-Type": "application/gzip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
+				return new Response(
+					asDumpStream(result),
+					{
+						headers: {
+							"Content-Type": "application/gzip",
+							"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
+						},
 					},
-				});
+				);
 			}
 
 			return result;
@@ -328,7 +340,6 @@ export const sourcesRouter = {
 			const path = await import("node:path");
 			const fs = await import("node:fs");
 			const { pipeline } = await import("node:stream/promises");
-			const { Readable } = await import("node:stream");
 
 			const tempDir = path.join(process.cwd(), ".cache", "import");
 			await fs.promises.mkdir(tempDir, { recursive: true });
@@ -338,9 +349,7 @@ export const sourcesRouter = {
 				// Stream the file to disk
 				const fileStream = input.file.stream();
 				await pipeline(
-					Readable.fromWeb(
-						fileStream as Parameters<typeof Readable.fromWeb>[0],
-					),
+					webReadableToNodeStream(fileStream),
 					fs.createWriteStream(tempFilePath),
 				);
 
@@ -376,7 +385,6 @@ export const sourcesRouter = {
 			const pathMod = await import("node:path");
 			const fsSync = await import("node:fs");
 			const { pipeline } = await import("node:stream/promises");
-			const { Readable } = await import("node:stream");
 
 			const tempDir = pathMod.join(process.cwd(), ".cache", "lancedb-restore");
 			await fsSync.promises.mkdir(tempDir, { recursive: true });
@@ -388,9 +396,7 @@ export const sourcesRouter = {
 			try {
 				const fileStream = input.file.stream();
 				await pipeline(
-					Readable.fromWeb(
-						fileStream as Parameters<typeof Readable.fromWeb>[0],
-					),
+					webReadableToNodeStream(fileStream),
 					fsSync.createWriteStream(tempFilePath),
 				);
 

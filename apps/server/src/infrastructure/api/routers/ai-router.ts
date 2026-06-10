@@ -145,6 +145,7 @@ async function cropDetection(
 		imageBase64: cropBuffer.toString("base64"),
 		width: w,
 		height: h,
+		format: transparent ? ("png" as const) : ("webp" as const),
 	};
 }
 

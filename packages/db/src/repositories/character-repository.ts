@@ -157,7 +157,8 @@ export function createCharacterRepository(
 						.where(inArray(ips.id, ipIds));
 				}
 
-				return { ...insertedChar, ips: ipsResult } as Character;
+				const mappedIps = ipsResult.map((ip) => ({ id: ip.id, name: ip.name }));
+				return { ...insertedChar, ips: mappedIps };
 			} catch (error: unknown) {
 				if (
 					error &&
@@ -197,10 +198,10 @@ export function createCharacterRepository(
 							id,
 							tx ?? client,
 						);
-						if (!existing) {
-							throw new ResourceNotFoundError("Character", id);
-						}
-						return existing as Character;
+					if (!existing) {
+						throw new ResourceNotFoundError("Character", id);
+					}
+					return existing;
 					}
 
 					// Build result from returned row + IP fetch (avoiding re-fetch)
@@ -223,7 +224,8 @@ export function createCharacterRepository(
 						ipsResult = existingIps;
 					}
 
-					return { ...updatedData, ips: ipsResult } as Character;
+					const mappedIps = ipsResult.map((ip) => ({ id: ip.id, name: ip.name }));
+					return { ...updatedData, ips: mappedIps };
 				};
 
 				if (tx) {

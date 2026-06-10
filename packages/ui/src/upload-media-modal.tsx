@@ -1,5 +1,6 @@
 import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -168,7 +169,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			setFiles([file]);
 			updatePreview(file);
 		} catch (fetchError) {
-			setError((fetchError as Error).message);
+			setError(getErrorMessage(fetchError));
 		} finally {
 			setIsFetchingUrl(false);
 		}
@@ -212,7 +213,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			});
 			props.onClose();
 		} catch (submitError) {
-			setError((submitError as Error).message);
+			setError(getErrorMessage(submitError));
 		} finally {
 			setIsSubmitting(false);
 		}

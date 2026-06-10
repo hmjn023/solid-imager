@@ -11,6 +11,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
+function parseNumberInput(val: string): number | undefined {
+	const n = Number(val);
+	return val === "" || Number.isNaN(n) ? undefined : n;
+}
+
+function handleNumberFieldChange(
+	handleChange: (updater: never) => void,
+	val: string,
+) {
+	handleChange(parseNumberInput(val) as never);
+}
+
 export type ConfigScreenProps = {
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
@@ -70,12 +82,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												handleNumberFieldChange(field().handleChange, e.target.value);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
@@ -100,12 +107,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												handleNumberFieldChange(field().handleChange, e.target.value);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
@@ -130,12 +132,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												handleNumberFieldChange(field().handleChange, e.target.value);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
@@ -180,7 +177,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(e.target.value as never)
 											}
 											placeholder="http://power-machine:3000"
 											value={(field().state.value as string) ?? ""}
@@ -201,12 +198,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												handleNumberFieldChange(field().handleChange, e.target.value);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
@@ -247,12 +239,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											min="0"
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												handleNumberFieldChange(field().handleChange, e.target.value);
 											}}
 											type="number"
 											value={(field().state.value as number) ?? ""}
@@ -279,7 +266,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(e.target.value as never)
 											}
 											value={(field().state.value as string) ?? ""}
 										/>
@@ -296,11 +283,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													const val = e.target.value;
-													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+													handleNumberFieldChange(
+														field().handleChange,
+														e.target.value,
 													);
 												}}
 												type="number"
@@ -319,11 +304,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													const val = e.target.value;
-													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+													handleNumberFieldChange(
+														field().handleChange,
+														e.target.value,
 													);
 												}}
 												type="number"
@@ -512,7 +495,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 											id={field().name}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(e.target.value as never)
 											}
 											value={(field().state.value as string) ?? ""}
 										>

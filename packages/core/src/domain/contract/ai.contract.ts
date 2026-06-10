@@ -6,12 +6,18 @@ import {
 	ccipFeatureRequestSchema,
 	detectAndCropResponseSchema,
 	tagImageRequestSchema,
+	taggingResponseSchema,
 } from "../tagging/schemas";
 
 export const aiContract = {
-	tag: oc.input(
-		z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
-	),
+	tag: oc
+		.input(
+			z.union([
+				z.object({ file: z.instanceof(File) }),
+				tagImageRequestSchema,
+			]),
+		)
+		.output(taggingResponseSchema),
 
 	tagRustExperimental: oc.input(
 		z.union([

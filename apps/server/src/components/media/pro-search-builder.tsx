@@ -26,6 +26,7 @@ import {
 	SelectValue,
 } from "@solid-imager/ui/select";
 import { cn } from "@solid-imager/ui/utils/cn";
+import { parseSelectValue } from "@solid-imager/ui/utils";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
 // Labels for targets
@@ -63,6 +64,39 @@ const OPERATOR_LABELS: Record<string, string> = {
 	isNotEmpty: "が空でない",
 };
 
+const FILTER_TARGETS = [
+	"fileName",
+	"filePath",
+	"description",
+	"keyword",
+	"tag",
+	"author",
+	"project",
+	"ip",
+	"character",
+	"folder",
+	"rating",
+	"viewCount",
+	"fileSize",
+	"createdAt",
+	"aiGenerated",
+] as const;
+const FILTER_OPERATORS = [
+	"equals",
+	"contains",
+	"startsWith",
+	"endsWith",
+	"gt",
+	"gte",
+	"lt",
+	"lte",
+	"in",
+	"notIn",
+	"isEmpty",
+	"isNotEmpty",
+] as const;
+const GROUP_OPERATORS = ["and", "or"] as const;
+
 type Props = {
 	value: SearchGroup | null;
 	onChange: (value: SearchGroup | null) => void;
@@ -73,6 +107,12 @@ type Props = {
 	characters?: Character[];
 	authors?: Author[];
 };
+
+function isSearchGroup(
+	node: SearchCriterion | SearchGroup,
+): node is SearchGroup {
+	return node.type === "group";
+}
 
 export function ProSearchBuilder(props: Props) {
 	// Ensure we have a root group if value is null
@@ -170,11 +210,11 @@ function GroupBuilder(props: {
 								if (val) {
 									props.onChange({
 										...props.group,
-										operator: val as SearchGroup["operator"],
+										operator: parseSelectValue(val, GROUP_OPERATORS, "and"),
 									});
 								}
 							}}
-							options={["and", "or"]}
+							options={[...GROUP_OPERATORS]}
 							value={props.group.operator}
 						>
 							<SelectTrigger class="w-20 sm:w-24">
@@ -235,7 +275,7 @@ function GroupBuilder(props: {
 										tags={props.tags}
 									/>
 								}
-								when={child().type === "group"}
+								when={isSearchGroup(child())}
 							>
 								<GroupBuilder
 									authors={props.authors}
@@ -270,10 +310,10 @@ const STRING_OPERATORS = [
 	"endsWith",
 	"isEmpty",
 	"isNotEmpty",
-];
-const NUMERIC_OPERATORS = ["equals", "gt", "gte", "lt", "lte"];
-const RELATIONAL_OPERATORS = ["equals", "contains", "in", "notIn"]; // contains for partial match on name
-const BOOLEAN_OPERATORS = ["equals"];
+] as const;
+const NUMERIC_OPERATORS = ["equals", "gt", "gte", "lt", "lte"] as const;
+const RELATIONAL_OPERATORS = ["equals", "contains", "in", "notIn"] as const;
+const BOOLEAN_OPERATORS = ["equals"] as const;
 
 function CriterionBuilder(props: {
 	criterion: SearchCriterion;
@@ -320,7 +360,7 @@ function CriterionBuilder(props: {
 				"folder",
 			].includes(target)
 		) {
-			return STRING_OPERATORS;
+			return [...STRING_OPERATORS];
 		}
 		if (
 			[
@@ -332,15 +372,15 @@ function CriterionBuilder(props: {
 				"height",
 			].includes(target)
 		) {
-			return NUMERIC_OPERATORS;
+			return [...NUMERIC_OPERATORS];
 		}
 		if (["tag", "project", "ip", "character", "author"].includes(target)) {
-			return RELATIONAL_OPERATORS;
+			return [...RELATIONAL_OPERATORS];
 		}
 		if (["aiGenerated", "favorite", "isArchived"].includes(target)) {
-			return BOOLEAN_OPERATORS;
+			return [...BOOLEAN_OPERATORS];
 		}
-		return Object.keys(OPERATOR_LABELS);
+		return [...FILTER_OPERATORS];
 	};
 
 	return (
@@ -360,13 +400,13 @@ function CriterionBuilder(props: {
 
 						props.onChange({
 							...props.criterion,
-							target: val as SearchCriterion["target"],
-							operator: newOp as SearchCriterion["operator"],
+							target: parseSelectValue(val, FILTER_TARGETS, "fileName"),
+							operator: parseSelectValue(newOp, FILTER_OPERATORS, "equals"),
 							value: "", // Clear value on target change to prevent incompatible types
 						});
 					}
 				}}
-				options={Object.keys(TARGET_LABELS)}
+				options={[...FILTER_TARGETS]}
 				value={props.criterion.target}
 			>
 				<SelectTrigger class="w-full">
@@ -387,7 +427,7 @@ function CriterionBuilder(props: {
 					if (val && val !== props.criterion.operator) {
 						props.onChange({
 							...props.criterion,
-							operator: val as SearchCriterion["operator"],
+							operator: parseSelectValue(val, FILTER_OPERATORS, "equals"),
 						});
 					}
 				}}

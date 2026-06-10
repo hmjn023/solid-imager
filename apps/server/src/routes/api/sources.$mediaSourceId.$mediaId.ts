@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaService } from "~/application/services/media-service";
 import { bootstrap } from "~/infrastructure/bootstrap";
+import { bufferToBodyInit } from "~/infrastructure/utils/stream-utils";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 	server: {
@@ -12,7 +13,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 					mediaSourceId,
 					mediaId,
 				);
-				return new Response(buffer as unknown as BodyInit, {
+				return new Response(bufferToBodyInit(buffer), {
 					headers: { "Content-Type": contentType },
 				});
 			},

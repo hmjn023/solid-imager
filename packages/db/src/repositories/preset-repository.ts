@@ -1,9 +1,9 @@
 import type {
   CreatePresetRequest,
   Preset,
-  SearchGroup,
   UpdatePresetRequest,
 } from "@solid-imager/core/domain/media/schemas";
+import { searchGroupSchema } from "@solid-imager/core/domain/media/schemas";
 import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { presets } from "../schema";
@@ -16,7 +16,7 @@ export function createPresetRepository(
     return {
       id: row.id,
       name: row.name,
-      value: row.value as SearchGroup,
+      value: searchGroupSchema.parse(row.value),
       sort: row.sort as Preset["sort"],
       order: row.order as Preset["order"],
       mode: row.mode as Preset["mode"],

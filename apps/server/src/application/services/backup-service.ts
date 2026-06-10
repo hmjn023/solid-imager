@@ -5,6 +5,7 @@ import {
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { Table } from "drizzle-orm";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -30,6 +31,15 @@ import {
 } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
+import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
+
+function createZipArchive(mod: {
+	ZipArchive: new (
+		opts?: Record<string, unknown>,
+	) => import("archiver").Archiver;
+}): import("archiver").Archiver {
+	return new mod.ZipArchive({ zlib: { level: 9 } });
+}
 
 interface MediaListQueryItem {
 	id: string;
@@ -119,9 +129,11 @@ export const BackupService = {
 		});
 
 		for (const source of localSources) {
-			const connectionInfo = source.connectionInfo as { path: string };
-			const basePath = connectionInfo.path;
-			const fullPath = path.join(basePath, filePath);
+			const parsed = localConnectionSchema.safeParse(source.connectionInfo);
+			if (!parsed.success) {
+				continue;
+			}
+			const fullPath = path.join(parsed.data.path, filePath);
 
 			try {
 				await fs.access(fullPath);
@@ -267,7 +279,7 @@ export const BackupService = {
 				validateRelativePath(validItem.filePath);
 			} catch (e) {
 				skippedCount++;
-				errorMessages.push((e as Error).message);
+				errorMessages.push(getErrorMessage(e));
 				continue;
 			}
 
@@ -343,6 +355,7 @@ export const BackupService = {
 
 		const tagMap = await this._ensureMasterData(
 			tags,
+			tags.id,
 			tags.name,
 			tagNames,
 			{
@@ -352,12 +365,15 @@ export const BackupService = {
 		);
 		const authorMap = await this._ensureMasterDataWithExtras(
 			authors,
+			authors.id,
 			authors.name,
+			authors.accountId,
 			authorData,
 			_tx,
 		);
 		const projectMap = await this._ensureMasterData(
 			projects,
+			projects.id,
 			projects.name,
 			projectNames,
 			{ description: "" },
@@ -365,6 +381,7 @@ export const BackupService = {
 		);
 		const ipMap = await this._ensureMasterData(
 			ips,
+			ips.id,
 			ips.name,
 			ipNames,
 			{
@@ -375,6 +392,7 @@ export const BackupService = {
 		);
 		const charMap = await this._ensureMasterData(
 			characters,
+			characters.id,
 			characters.name,
 			charNames,
 			{ description: "", source: "restored" },
@@ -690,6 +708,7 @@ export const BackupService = {
 
 	async _ensureMasterData(
 		table: Table,
+		idColumn: PgColumn,
 		nameColumn: PgColumn,
 		names: Set<string>,
 		defaults: Record<string, unknown>,
@@ -709,7 +728,7 @@ export const BackupService = {
 
 		// Fetch IDs
 		const records = (await d
-			.select({ id: (table as any).id, name: nameColumn })
+			.select({ id: idColumn, name: nameColumn })
 			.from(table)
 			.where(inArray(nameColumn, nameList))) as { id: string; name: string }[];
 
@@ -723,7 +742,9 @@ export const BackupService = {
 	 */
 	async _ensureMasterDataWithExtras(
 		table: Table,
+		idColumn: PgColumn,
 		nameColumn: PgColumn,
+		accountIdColumn: PgColumn,
 		dataMap: Map<string, { accountId?: string | null }>,
 		_tx?: TransactionClient,
 	): Promise<Map<string, string>> {
@@ -738,9 +759,9 @@ export const BackupService = {
 		// First, find existing authors by name
 		const existingRecords = (await d
 			.select({
-				id: (table as any).id,
+				id: idColumn,
 				name: nameColumn,
-				accountId: (table as any).accountId,
+				accountId: accountIdColumn,
 			})
 			.from(table)
 			.where(inArray(nameColumn, nameList))) as {
@@ -786,9 +807,9 @@ export const BackupService = {
 			// Fetch the newly inserted records
 			const newRecords = (await d
 				.select({
-					id: (table as any).id,
+					id: idColumn,
 					name: nameColumn,
-					accountId: (table as any).accountId,
+					accountId: accountIdColumn,
 				})
 				.from(table)
 				.where(
@@ -881,7 +902,9 @@ export const BackupService = {
 												dumpData = JSON.parse(buffer.toString("utf-8"));
 												resolve({ zipfile: openedZipfile, entries, dumpData });
 											} catch (e) {
-												rejectAndClose(e as Error);
+												rejectAndClose(
+													e instanceof Error ? e : new Error(String(e)),
+												);
 											}
 										});
 										readStream.on("error", rejectAndClose);
@@ -910,7 +933,7 @@ export const BackupService = {
 			throw new Error("Invalid dump format");
 		}
 
-		const itemsToRestore = dumpData as unknown[];
+		const itemsToRestore = dumpData;
 		const driver = getDriver(mediaSource);
 
 		try {
@@ -1100,7 +1123,7 @@ export const BackupService = {
 
 		if (mode === "lancedb") {
 			const driver = getDriver(mediaSource);
-			const { PassThrough, Readable } = await import("node:stream");
+			const { PassThrough } = await import("node:stream");
 			const { spawn } = await import("node:child_process");
 
 			const { writeToLanceDB, cleanupLanceDBDir } = await import(
@@ -1180,26 +1203,24 @@ export const BackupService = {
 				await cleanupLanceDBDir(lanceDbDir);
 			});
 
-			return Readable.toWeb(passThrough) as unknown as ReadableStream;
+			return nodeStreamToWebReadable(passThrough);
 		}
 
 		// ZIP Mode: Streaming Implementation
 		const driver = getDriver(mediaSource);
 		const archiverMod = await import("archiver");
-		const { PassThrough, Readable } = await import("node:stream");
+		const { PassThrough } = await import("node:stream");
 		const fsSync = await import("node:fs");
 		const { randomUUID } = await import("node:crypto");
 
+		type ArchiverModule = {
+			ZipArchive: new (
+				opts?: Record<string, unknown>,
+			) => import("archiver").Archiver;
+		};
+
 		const passThrough = new PassThrough();
-		const archive = new (
-			archiverMod as unknown as {
-				ZipArchive: new (
-					opts?: Record<string, unknown>,
-				) => import("archiver").Archiver;
-			}
-		).ZipArchive({
-			zlib: { level: 9 },
-		});
+		const archive = createZipArchive(archiverMod as unknown as ArchiverModule);
 
 		let tempJsonPath: string | null = null;
 		const cleanup = async () => {
@@ -1308,7 +1329,7 @@ export const BackupService = {
 			}
 		})();
 
-		return Readable.toWeb(passThrough) as unknown as ReadableStream;
+		return nodeStreamToWebReadable(passThrough);
 	},
 
 	// Helper to transform media list to dump format

@@ -1,11 +1,13 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
+import { ipSchema } from "../ips/schemas";
 
 export const ipsContract = {
-	list: oc,
+	list: oc.output(z.array(ipSchema)),
 
 	get: oc
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.string().uuid() }))
+		.output(ipSchema),
 
 	create: oc
 		.input(
@@ -13,7 +15,8 @@ export const ipsContract = {
 				name: z.string(),
 				description: z.string().optional(),
 			}),
-		),
+		)
+		.output(ipSchema),
 
 	update: oc
 		.input(
@@ -24,13 +27,15 @@ export const ipsContract = {
 					description: z.string().optional(),
 				}),
 			}),
-		),
+		)
+		.output(ipSchema),
 
 	delete: oc
 		.input(z.object({ id: z.string().uuid() })),
 
 	listForMedia: oc
-		.input(z.object({ mediaId: z.string().uuid() })),
+		.input(z.object({ mediaId: z.string().uuid() }))
+		.output(z.array(ipSchema)),
 
 	addToMedia: oc
 		.input(

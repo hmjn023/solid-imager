@@ -2,7 +2,6 @@ import type {
 	MediaSource,
 	NewMediaSource,
 } from "@solid-imager/core/domain/repositories/source-repository";
-import type { MediaSource as DbMediaSource } from "~/infrastructure/db/schema";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
 /**
@@ -79,17 +78,7 @@ const testConnectionServer = async (mediaSourceId: string) => {
 				HTTP_STATUS_NOT_FOUND,
 			);
 		}
-		const toDbMediaSource = (s: MediaSource): DbMediaSource =>
-			({
-				id: s.id,
-				name: s.name,
-				description: s.description || null,
-				type: s.type,
-				connectionInfo: s.connectionInfo,
-				createdAt: s.createdAt,
-				updatedAt: s.updatedAt,
-			}) as DbMediaSource;
-		const driver = getDriver(toDbMediaSource(source));
+		const driver = getDriver(source);
 		const connectionTest = await driver.testConnection();
 		if (!connectionTest.success) {
 			throw new FetchError(

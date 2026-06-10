@@ -47,7 +47,7 @@ export async function apiRequest<T>(
 	path: string,
 	schema: ZodSchema<T>,
 	options?: RequestInit,
-): Promise<T> {
+): Promise<T | undefined> {
 	const url = buildUrl(path);
 
 	try {
@@ -79,7 +79,7 @@ export async function apiRequest<T>(
 
 		const HttpStatusNoContent = 204;
 		if (response.status === HttpStatusNoContent) {
-			return undefined as T;
+			return undefined;
 		}
 
 		const data = await response.json();

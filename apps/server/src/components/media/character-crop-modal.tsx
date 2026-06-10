@@ -12,12 +12,7 @@ export default function CharacterCropModal(props: CharacterCropModalProps) {
 	return (
 		<SharedCharacterCropModal
 			fetchCrops={async (mediaId: string, transparent: boolean) => {
-				const res = await fetchCharacterCrops(mediaId, transparent);
-				type FetchCropsFn = Parameters<
-					typeof SharedCharacterCropModal
-				>[0]["fetchCrops"];
-				type FetchCropsReturn = Awaited<ReturnType<FetchCropsFn>>;
-				return res as unknown as FetchCropsReturn;
+				return fetchCharacterCrops(mediaId, transparent);
 			}}
 			isOpen={props.isOpen}
 			media={props.media}

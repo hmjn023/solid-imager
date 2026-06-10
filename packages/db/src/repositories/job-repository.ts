@@ -2,19 +2,19 @@ import type {
   IJobRepository,
   Job,
   NewJob,
-  JobStatus,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
+import { isJobStatus } from "@solid-imager/core/utils/type-guards";
 
 function mapJob(row: typeof jobs.$inferSelect): Job {
   return {
     id: row.id,
     type: row.type,
     mediaSourceId: row.mediaSourceId,
-    status: row.status as JobStatus,
+    status: isJobStatus(row.status) ? row.status : "pending",
     payload: row.payload,
     result: row.result,
     error: row.error,

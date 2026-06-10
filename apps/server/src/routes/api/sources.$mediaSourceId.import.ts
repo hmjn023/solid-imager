@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { BackupService } from "~/application/services/backup-service";
 import { initServices } from "~/infrastructure/bootstrap";
+import { webReadableToNodeStream } from "~/infrastructure/utils/stream-utils";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 	server: {
@@ -11,7 +12,6 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 				const { randomUUID } = await import("node:crypto");
 				const fs = await import("node:fs");
 				const path = await import("node:path");
-				const { Readable } = await import("node:stream");
 				const { pipeline } = await import("node:stream/promises");
 
 				const tempDir = path.join(process.cwd(), ".cache", "import");
@@ -27,9 +27,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 					}
 
 					await pipeline(
-						Readable.fromWeb(
-							request.body as Parameters<typeof Readable.fromWeb>[0],
-						),
+						webReadableToNodeStream(request.body),
 						fs.createWriteStream(tempFilePath),
 					);
 

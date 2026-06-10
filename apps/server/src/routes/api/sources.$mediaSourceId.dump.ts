@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { BackupService } from "~/application/services/backup-service";
 import { initServices } from "~/infrastructure/bootstrap";
+import { asDumpStream } from "~/infrastructure/utils/stream-utils";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 	server: {
@@ -18,23 +19,29 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 					includeImages,
 				});
 
-				if (mode === "zip") {
-					return new Response(result as ReadableStream, {
+			if (mode === "zip") {
+				return new Response(
+					asDumpStream(result),
+					{
 						headers: {
 							"Content-Type": "application/zip",
 							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.zip"`,
 						},
-					});
-				}
+					},
+				);
+			}
 
-				if (mode === "lancedb") {
-					return new Response(result as ReadableStream, {
+			if (mode === "lancedb") {
+				return new Response(
+					asDumpStream(result),
+					{
 						headers: {
 							"Content-Type": "application/gzip",
 							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.tar.gz"`,
 						},
-					});
-				}
+					},
+				);
+			}
 
 				return Response.json(result, {
 					headers: {

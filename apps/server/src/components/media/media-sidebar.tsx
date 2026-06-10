@@ -1,4 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
@@ -99,7 +100,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 			// Trigger refetch to update the UI
 			props.onUpdate?.();
 		} catch (error) {
-			toast.error(`Failed to update description: ${(error as Error).message}`);
+			toast.error(`Failed to update description: ${getErrorMessage(error)}`);
 		}
 	};
 

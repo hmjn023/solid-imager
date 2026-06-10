@@ -1,4 +1,5 @@
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import {
@@ -44,7 +45,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			await props.onRemove(id);
 		} catch (error) {
 			toast.error(
-				`${props.title} の削除に失敗しました: ${(error as Error).message}`,
+				`${props.title} の削除に失敗しました: ${getErrorMessage(error)}`,
 			);
 		} finally {
 			setIsMutating(false);
@@ -59,7 +60,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の追加に失敗しました: ${(error as Error).message}`,
+				`${props.title} の追加に失敗しました: ${getErrorMessage(error)}`,
 			);
 		} finally {
 			setIsMutating(false);
@@ -79,7 +80,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の作成に失敗しました: ${(error as Error).message}`,
+				`${props.title} の作成に失敗しました: ${getErrorMessage(error)}`,
 			);
 		} finally {
 			setIsMutating(false);

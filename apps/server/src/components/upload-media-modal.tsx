@@ -1,5 +1,5 @@
 import { uploadMediaFormSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -16,16 +16,6 @@ import { zodValidator } from "@tanstack/zod-form-adapter";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
-
-const getErrorMessage = (error: unknown): string => {
-	if (typeof error === "string") {
-		return error;
-	}
-	if (isRecord(error) && typeof error.message === "string") {
-		return error.message;
-	}
-	return String(error || "");
-};
 
 type UploadMediaModalProps = {
 	isOpen: boolean;
@@ -73,7 +63,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 				});
 				props.onClose();
 			} catch (e) {
-				setUploadError((e as Error).message);
+				setUploadError(getErrorMessage(e));
 			}
 		},
 		validatorAdapter: zodValidator(),
@@ -150,11 +140,9 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 			form.setFieldValue("filename", fetchedFile.name);
 			setPreviewUrl(URL.createObjectURL(fetchedFile));
 		} catch (e) {
-			// Form field error could be set here, but we'll use the general error for now
-			// or set error on sourceUrl field specifically
 			form.setFieldMeta("sourceUrl", (meta) => ({
 				...meta,
-				errors: [(e as Error).message],
+				errors: [getErrorMessage(e)],
 			}));
 		} finally {
 			setIsFetchingUrl(false);

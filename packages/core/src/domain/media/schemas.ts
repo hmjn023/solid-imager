@@ -485,6 +485,15 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
+export const pendingImportJobSchema = z.object({
+	id: z.string(),
+	item: downloadItemSchema,
+	createdAt: z.coerce.date(),
+	targetSourceId: z.string().optional(),
+});
+
+export type PendingImportJob = z.infer<typeof pendingImportJobSchema>;
+
 export const bulkDownloadRequestSchema = z.object({
 	mediaSourceId: z.uuid({ version: "v4", message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),

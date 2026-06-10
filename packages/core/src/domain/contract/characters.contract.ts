@@ -1,18 +1,21 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	characterSchema,
 	newCharacterSchema,
 	updateCharacterSchema,
 } from "../characters/schemas";
 
 export const charactersContract = {
-	list: oc,
+	list: oc.output(z.array(characterSchema)),
 
 	get: oc
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.string().uuid() }))
+		.output(characterSchema),
 
 	create: oc
-		.input(newCharacterSchema),
+		.input(newCharacterSchema)
+		.output(characterSchema),
 
 	update: oc
 		.input(
@@ -20,13 +23,15 @@ export const charactersContract = {
 				id: z.string().uuid(),
 				data: updateCharacterSchema,
 			}),
-		),
+		)
+		.output(characterSchema),
 
 	delete: oc
 		.input(z.object({ id: z.string().uuid() })),
 
 	listForMedia: oc
-		.input(z.object({ mediaId: z.string().uuid() })),
+		.input(z.object({ mediaId: z.string().uuid() }))
+		.output(z.array(characterSchema)),
 
 	addToMedia: oc
 		.input(

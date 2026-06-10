@@ -8,6 +8,8 @@ import type {
   NewMediaSource,
   SourceRepository,
 } from "@solid-imager/core/domain/repositories/source-repository";
+import { connectionInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import { isMediaSourceType } from "@solid-imager/core/utils/type-guards";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { mediaSources } from "../schema";
 import type { DrizzleExecutor } from "../types";
@@ -19,8 +21,8 @@ function mapToMediaSource(dbSource: DbMediaSource): MediaSource {
     id: dbSource.id,
     name: dbSource.name,
     description: dbSource.description,
-    type: dbSource.type as MediaSource["type"],
-    connectionInfo: dbSource.connectionInfo as MediaSource["connectionInfo"],
+    type: isMediaSourceType(dbSource.type) ? dbSource.type : "local",
+    connectionInfo: connectionInfoSchema.parse(dbSource.connectionInfo),
     createdAt: dbSource.createdAt,
     updatedAt: dbSource.updatedAt,
   };

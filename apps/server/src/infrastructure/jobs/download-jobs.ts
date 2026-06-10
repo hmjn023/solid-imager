@@ -9,11 +9,13 @@ import type {
 	AddMediaRequest,
 	DownloadItem,
 } from "@solid-imager/core/domain/media/schemas";
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
-import { create as createYtDlp } from "youtube-dl-exec";
+import { hasStderr, isRecord } from "@solid-imager/core/utils/type-guards";
+import { create as createYtDlp, type Flags } from "youtube-dl-exec";
+import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
@@ -99,6 +101,23 @@ type YtDlpOutput = {
 	filename: string;
 };
 
+const ytDlpOutputSchema = z.object({
+	id: z.string(),
+	title: z.string(),
+	description: z.string(),
+	duration: z.number().optional(),
+	width: z.number().optional(),
+	height: z.number().optional(),
+	ext: z.string(),
+	uploader: z.string().optional(),
+	uploader_id: z.string().optional(),
+	upload_date: z.string().optional(),
+	_filename: z.string().optional(),
+	filename: z.string(),
+});
+
+const ytDlpOutputArraySchema = z.array(ytDlpOutputSchema);
+
 type Cookie = {
 	domain: string;
 	path: string;
@@ -166,8 +185,8 @@ async function downloadWithYtDlp(
 		const ffmpegLocation = await resolveFfmpegPath();
 		const ytDlpPath = await resolveYtDlpPath();
 		const ytdlp = createYtDlp(ytDlpPath);
-		const result = await ytdlp(url, {
-			noSimulate: true,
+		const flags: Flags = {
+			simulate: false,
 			printJson: true,
 			paths: outputDir,
 			output: template,
@@ -176,7 +195,8 @@ async function downloadWithYtDlp(
 			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as Parameters<typeof ytdlp>[1]);
+		};
+		const result = await ytdlp(url, flags);
 
 		// output handling
 		const outputs = parseYtDlpOutput(result);
@@ -190,11 +210,8 @@ async function downloadWithYtDlp(
 		});
 	} catch (error) {
 		// youtube-dl-exec errors include stderr
-		if (error instanceof Error && "stderr" in error) {
-			logger.error(
-				{ stderr: (error as Error & { stderr: string }).stderr },
-				"yt-dlp execution failed",
-			);
+		if (hasStderr(error)) {
+			logger.error({ stderr: error.stderr }, "yt-dlp execution failed");
 		} else {
 			logger.error({ err: error }, "yt-dlp execution failed");
 		}
@@ -225,9 +242,9 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
 			return acc;
 		}, []);
 	} else if (Array.isArray(result)) {
-		outputs = result as unknown as YtDlpOutput[];
+		outputs = ytDlpOutputArraySchema.parse(result);
 	} else if (typeof result === "object" && result !== null) {
-		outputs = [result as unknown as YtDlpOutput];
+		outputs = [ytDlpOutputSchema.parse(result)];
 	} else {
 		logger.warn(
 			{ resultType: typeof result, result },
@@ -252,15 +269,16 @@ async function fetchMetadataWithYtDlp(
 		const ffmpegLocation = await resolveFfmpegPath();
 		const ytDlpPath = await resolveYtDlpPath();
 		const ytdlp = createYtDlp(ytDlpPath);
-		const result = await ytdlp(url, {
+		const flags: Flags = {
 			dumpSingleJson: true,
-			noDownload: true,
+			skipDownload: true,
 			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as Parameters<typeof ytdlp>[1]);
+		};
+		const result = await ytdlp(url, flags);
 
-		return result as unknown as YtDlpOutput;
+		return ytDlpOutputSchema.parse(result);
 	} catch (error) {
 		logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
 		return null;
@@ -628,7 +646,7 @@ async function handleDirectImageDownload(
  */
 function getDownloadItemFromJob(job: Job): DownloadItem {
 	if (!isRecord(job.payload)) {
-		return {} as DownloadItem;
+		throw new Error("Invalid job payload: expected DownloadItem");
 	}
 	const payload = job.payload;
 	const normalized: Record<string, unknown> = { ...payload };
@@ -652,7 +670,7 @@ function getDownloadItemFromJob(job: Job): DownloadItem {
 			typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
 	}
 
-	return normalized as unknown as DownloadItem;
+	return downloadItemSchema.parse(normalized);
 }
 
 export async function processDownloadJob(job: Job): Promise<void> {

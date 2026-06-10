@@ -2,6 +2,7 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
 	createMemo,
@@ -105,7 +106,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			setIsEditingDescription(false);
 			props.onUpdate?.();
 		} catch (error) {
-			toast.error(`Failed to update description: ${(error as Error).message}`);
+			toast.error(`Failed to update description: ${getErrorMessage(error)}`);
 		}
 	};
 
