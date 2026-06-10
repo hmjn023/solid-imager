@@ -4,7 +4,11 @@ import {
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
+import type { Table } from "drizzle-orm";
 import { and, eq, inArray, sql } from "drizzle-orm";
+import type { PgColumn } from "drizzle-orm/pg-core";
 import yauzl from "yauzl";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
@@ -26,6 +30,57 @@ import {
 } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
+
+interface MediaListQueryItem {
+	id: string;
+	filePath: string;
+	fileName: string;
+	description: string | null;
+	width: number | null;
+	height: number | null;
+	fileSize: number | null;
+	mediaType: string;
+	createdAt: Date | string;
+	modifiedAt: Date | string;
+	generationInfo?: {
+		prompt: string | null;
+		negativePrompt: string | null;
+		modelName: string | null;
+		seed: number | null;
+		steps: number | null;
+		cfgScale: number | null;
+		aiGenerated: boolean | null;
+		workflow: unknown;
+		metadata: unknown;
+	} | null;
+	urls: { url: string }[];
+	tags: {
+		tag: { name: string };
+		tagType: string;
+		confidence: number | null;
+		source: string;
+	}[];
+	authors: {
+		author: { name: string; accountId: string | null };
+	}[];
+	characters: {
+		character: {
+			name: string;
+			description: string | null;
+			ips?: { ip: { name: string } }[] | null;
+		};
+		confidence: number | null;
+		source: string;
+	}[];
+	ips: {
+		ip: { name: string; description: string | null };
+		confidence: number | null;
+		source: string;
+	}[];
+	projects: {
+		project: { name: string; description: string | null };
+	}[];
+}
 
 // const _IMAGES_PREFIX = /^images\//;
 
@@ -85,7 +140,7 @@ export const BackupService = {
 	 * Restores media metadata from a JSON dump.
 	 * Optimized with Bulk Operations.
 	 */
-	async restoreSource(mediaSourceId: string, items: any[]) {
+	async restoreSource(mediaSourceId: string, items: unknown[]) {
 		const mediaSource = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});
@@ -177,9 +232,14 @@ export const BackupService = {
 		};
 	},
 
-	async _filterValidItems(items: any[], mediaSource: any) {
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const basePath = connectionInfo.path;
+	async _filterValidItems(
+		items: unknown[],
+		mediaSource: { type: string; connectionInfo: unknown },
+	) {
+		const parsedConnection = localConnectionSchema.safeParse(
+			mediaSource.connectionInfo,
+		);
+		const basePath = parsedConnection.success ? parsedConnection.data.path : "";
 		const isLocal = mediaSource.type === "local";
 
 		const validItems: MediaDumpItem[] = [];
@@ -211,7 +271,7 @@ export const BackupService = {
 				continue;
 			}
 
-			if (isLocal) {
+			if (isLocal && basePath) {
 				const fullPath = path.join(basePath, validItem.filePath);
 				try {
 					await fs.access(fullPath);
@@ -429,17 +489,16 @@ export const BackupService = {
 		_tx?: TransactionClient,
 	) {
 		const d = _tx ?? db;
-		const mediaTagsData: any[] = [];
-		const mediaAuthorsData: any[] = [];
-		const mediaProjectsData: any[] = [];
-		const mediaCharsData: any[] = [];
-		const characterIpsData: any[] = [];
-		const mediaIpsData: any[] = [];
+		const mediaTagsData: (typeof mediaTags.$inferInsert)[] = [];
+		const mediaAuthorsData: (typeof mediaAuthors.$inferInsert)[] = [];
+		const mediaProjectsData: (typeof mediaProjects.$inferInsert)[] = [];
+		const mediaCharsData: (typeof mediaCharacters.$inferInsert)[] = [];
+		const characterIpsData: (typeof characterIps.$inferInsert)[] = [];
+		const mediaIpsData: (typeof mediaIps.$inferInsert)[] = [];
+		const mediaUrlsData: (typeof mediaUrls.$inferInsert)[] = [];
+		const mediaGenInfoData: (typeof mediaGenerationInfo.$inferInsert)[] = [];
 		// Track unique (mediaId, ipId) pairs to prevent duplicates
 		const seenMediaIps = new Set<string>();
-		// ... rest of data arrays
-		const mediaUrlsData: any[] = [];
-		const mediaGenInfoData: any[] = [];
 
 		for (const item of validItems) {
 			if (!item.filePath) {
@@ -593,7 +652,7 @@ export const BackupService = {
 		}
 
 		// Insert new relations in chunks
-		const insertChunked = async (table: any, data: any[]) => {
+		const insertChunked = async (table: Table, data: unknown[]) => {
 			const BatchSize = 1_000;
 			for (let i = 0; i < data.length; i += BatchSize) {
 				await d
@@ -630,10 +689,10 @@ export const BackupService = {
 	},
 
 	async _ensureMasterData(
-		table: any,
-		nameColumn: any,
+		table: Table,
+		nameColumn: PgColumn,
 		names: Set<string>,
-		defaults: any,
+		defaults: Record<string, unknown>,
 		_tx?: TransactionClient,
 	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
@@ -649,12 +708,12 @@ export const BackupService = {
 			.onConflictDoNothing();
 
 		// Fetch IDs
-		const records = await d
-			.select({ id: table.id, name: nameColumn })
+		const records = (await d
+			.select({ id: (table as any).id, name: nameColumn })
 			.from(table)
-			.where(inArray(nameColumn, nameList));
+			.where(inArray(nameColumn, nameList))) as { id: string; name: string }[];
 
-		return new Map(records.map((r: any) => [r.name, r.id]));
+		return new Map(records.map((r) => [r.name, r.id]));
 	},
 
 	/**
@@ -663,8 +722,8 @@ export const BackupService = {
 	 * so we use manual dedup by name and update accountId when available.
 	 */
 	async _ensureMasterDataWithExtras(
-		table: any,
-		nameColumn: any,
+		table: Table,
+		nameColumn: PgColumn,
 		dataMap: Map<string, { accountId?: string | null }>,
 		_tx?: TransactionClient,
 	): Promise<Map<string, string>> {
@@ -677,10 +736,18 @@ export const BackupService = {
 		const nameList = entries.map(([name]) => name);
 
 		// First, find existing authors by name
-		const existingRecords = await d
-			.select({ id: table.id, name: nameColumn, accountId: table.accountId })
+		const existingRecords = (await d
+			.select({
+				id: (table as any).id,
+				name: nameColumn,
+				accountId: (table as any).accountId,
+			})
 			.from(table)
-			.where(inArray(nameColumn, nameList));
+			.where(inArray(nameColumn, nameList))) as {
+			id: string;
+			name: string;
+			accountId: string | null;
+		}[];
 
 		const existingByName = new Map<
 			string,
@@ -717,15 +784,19 @@ export const BackupService = {
 			);
 
 			// Fetch the newly inserted records
-			const newRecords = await d
-				.select({ id: table.id, name: nameColumn, accountId: table.accountId })
+			const newRecords = (await d
+				.select({
+					id: (table as any).id,
+					name: nameColumn,
+					accountId: (table as any).accountId,
+				})
 				.from(table)
 				.where(
 					inArray(
 						nameColumn,
 						newEntries.map(([name]) => name),
 					),
-				);
+				)) as { id: string; name: string; accountId: string | null }[];
 
 			for (const r of newRecords) {
 				if (!existingByName.has(r.name)) {
@@ -759,7 +830,7 @@ export const BackupService = {
 		const loadZip = (): Promise<{
 			zipfile: yauzl.ZipFile;
 			entries: Map<string, yauzl.Entry>;
-			dumpData: any;
+			dumpData: unknown;
 		}> => {
 			return new Promise((resolve, reject) => {
 				yauzl.open(
@@ -778,7 +849,7 @@ export const BackupService = {
 						openedZipfile.on("error", rejectAndClose);
 
 						const entries = new Map<string, yauzl.Entry>();
-						let dumpData: any = null;
+						let dumpData: unknown = null;
 						let dumpEntry: yauzl.Entry | null = null;
 
 						openedZipfile.readEntry();
@@ -827,7 +898,7 @@ export const BackupService = {
 
 		let zipfile: yauzl.ZipFile;
 		let entries: Map<string, yauzl.Entry>;
-		let dumpData: any;
+		let dumpData: unknown;
 
 		const result = await loadZip();
 		zipfile = result.zipfile;
@@ -839,14 +910,15 @@ export const BackupService = {
 			throw new Error("Invalid dump format");
 		}
 
+		const itemsToRestore = dumpData as unknown[];
 		const driver = getDriver(mediaSource);
 
 		try {
 			// Process files
-			for (const item of dumpData) {
-				if (item.filePath) {
+			for (const item of itemsToRestore) {
+				if (isRecord(item) && item.filePath) {
 					try {
-						validateRelativePath(item.filePath);
+						validateRelativePath(item.filePath as string);
 					} catch (_e) {
 						continue;
 					}
@@ -871,7 +943,7 @@ export const BackupService = {
 								readStream.on("end", async () => {
 									try {
 										const content = Buffer.concat(chunks);
-										await driver.put(item.filePath, content);
+										await driver.put(item.filePath as string, content);
 										resolve();
 									} catch (e) {
 										reject(e);
@@ -889,7 +961,10 @@ export const BackupService = {
 
 		// Process metadata using bulk restore logic
 		// This reuses the optimized batch insertion logic from restoreSource
-		const restoreResult = await this.restoreSource(mediaSourceId, dumpData);
+		const restoreResult = await this.restoreSource(
+			mediaSourceId,
+			itemsToRestore,
+		);
 
 		return {
 			success: true,
@@ -1237,59 +1312,75 @@ export const BackupService = {
 	},
 
 	// Helper to transform media list to dump format
-	_transformMediaList(mediaList: any[]): MediaDumpItem[] {
-		return mediaList.map((media: any) => {
+	_transformMediaList(
+		mediaList: Partial<MediaListQueryItem>[],
+	): MediaDumpItem[] {
+		return mediaList.map((media) => {
 			// Extract tags
-			const simpleTags = media.tags.map((mt: any) => ({
-				name: mt.tag.name,
-				type: mt.tagType,
-				confidence: mt.confidence,
-				source: mt.source,
+			const simpleTags = (media.tags || []).map((mt) => ({
+				name: mt.tag?.name || "",
+				type:
+					mt.tagType === "positive"
+						? ("positive" as const)
+						: mt.tagType === "negative"
+							? ("negative" as const)
+							: undefined,
+				confidence: mt.confidence ?? null,
+				source: mt.source || "",
 			}));
 
 			// Extract authors
-			const simpleAuthors = media.authors.map((ma: any) => ({
-				name: ma.author.name,
-				accountId: ma.author.accountId,
+			const simpleAuthors = (media.authors || []).map((ma) => ({
+				name: ma.author?.name || "",
+				accountId: ma.author?.accountId ?? null,
 			}));
 
 			// Extract characters
-			const simpleCharacters = media.characters.map((mc: any) => ({
-				name: mc.character.name,
-				description: mc.character.description,
-				confidence: mc.confidence,
-				linkedIps: mc.character.ips?.map((ci: any) => ci.ip.name),
-				source: mc.source,
+			const simpleCharacters = (media.characters || []).map((mc) => ({
+				name: mc.character?.name || "",
+				description: mc.character?.description ?? null,
+				confidence: mc.confidence ?? null,
+				linkedIps:
+					mc.character?.ips?.map((ci) => ci.ip?.name || "").filter(Boolean) ??
+					[],
+				source: mc.source || "",
 			}));
 
 			// Extract IPs
-			const simpleIps = media.ips.map((mi: any) => ({
-				name: mi.ip.name,
-				description: mi.ip.description,
-				confidence: mi.confidence,
-				source: mi.source,
+			const simpleIps = (media.ips || []).map((mi) => ({
+				name: mi.ip?.name || "",
+				description: mi.ip?.description ?? null,
+				confidence: mi.confidence ?? null,
+				source: mi.source || "",
 			}));
 
 			// Extract Projects
-			const simpleProjects = media.projects.map((mp: any) => ({
-				name: mp.project.name,
-				description: mp.project.description,
+			const simpleProjects = (media.projects || []).map((mp) => ({
+				name: mp.project?.name || "",
+				description: mp.project?.description ?? null,
 			}));
 
 			// Extract source URLs
-			const sourceUrls = media.urls.map((u: any) => u.url);
+			const sourceUrls = (media.urls || [])
+				.map((u) => u.url || "")
+				.filter(Boolean);
 
 			return {
 				id: media.id,
 				filePath: media.filePath,
 				fileName: media.fileName,
-				description: media.description,
-				width: media.width,
-				height: media.height,
-				fileSize: media.fileSize,
-				mediaType: media.mediaType,
-				createdAt: media.createdAt,
-				modifiedAt: media.modifiedAt,
+				description: media.description ?? undefined,
+				width: media.width ?? undefined,
+				height: media.height ?? undefined,
+				fileSize: media.fileSize ?? undefined,
+				mediaType:
+					media.mediaType === "image" ||
+					media.mediaType === "video" ||
+					media.mediaType === "audio"
+						? media.mediaType
+						: undefined,
+				createdAt: media.createdAt ? new Date(media.createdAt) : undefined,
+				modifiedAt: media.modifiedAt ? new Date(media.modifiedAt) : undefined,
 				// indexedAt: media.indexedAt, // Not in schema
 
 				// Essential metadata
@@ -1298,15 +1389,15 @@ export const BackupService = {
 				// AI Generation Info
 				generationInfo: media.generationInfo
 					? {
-							prompt: media.generationInfo.prompt,
-							negativePrompt: media.generationInfo.negativePrompt,
-							modelName: media.generationInfo.modelName,
-							seed: media.generationInfo.seed,
-							steps: media.generationInfo.steps,
-							cfgScale: media.generationInfo.cfgScale,
-							aiGenerated: media.generationInfo.aiGenerated,
-							workflow: media.generationInfo.workflow,
-							metadata: media.generationInfo.metadata,
+							prompt: media.generationInfo.prompt ?? undefined,
+							negativePrompt: media.generationInfo.negativePrompt ?? undefined,
+							modelName: media.generationInfo.modelName || undefined,
+							seed: media.generationInfo.seed ?? undefined,
+							steps: media.generationInfo.steps ?? undefined,
+							cfgScale: media.generationInfo.cfgScale ?? undefined,
+							aiGenerated: media.generationInfo.aiGenerated ?? undefined,
+							workflow: media.generationInfo.workflow ?? undefined,
+							metadata: media.generationInfo.metadata ?? undefined,
 						}
 					: null,
 

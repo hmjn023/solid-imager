@@ -1,4 +1,6 @@
 import path from "node:path";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
@@ -94,7 +96,11 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			);
 		}
 
-		const basePath = (source.connectionInfo as { path: string }).path;
+		const connectionParse = localConnectionSchema.safeParse(source.connectionInfo);
+		if (!connectionParse.success) {
+			throw new Error("Invalid local source connection info: missing or invalid path");
+		}
+		const basePath = connectionParse.data.path;
 		const fullPath = path.join(basePath, relativePath);
 
 		// Get file metadata
@@ -154,11 +160,14 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			return;
 		}
 
-		const payload = job.payload as any;
-		const mediaId = payload?.mediaId;
-
-		if (!mediaId) {
-			this.logger?.warn("Missing mediaId in job payload", { jobId: job.id });
+		const payload = job.payload;
+		if (!isRecord(payload)) {
+			this.logger?.warn("Missing payload or invalid payload in job", { jobId: job.id });
+			return;
+		}
+		const mediaId = payload.mediaId;
+		if (typeof mediaId !== "string") {
+			this.logger?.warn("Missing or invalid mediaId in job payload", { jobId: job.id });
 			return;
 		}
 
@@ -168,7 +177,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			return;
 		}
 
-		const mediaPath = path.join(payload.sourcePath, media.filePath);
+		const sourcePath = payload.sourcePath;
+		if (typeof sourcePath !== "string") {
+			this.logger?.warn("Missing or invalid sourcePath in job payload", { jobId: job.id });
+			return;
+		}
+		const mediaPath = path.join(sourcePath, media.filePath);
 
 		const mediaSourceId = job.mediaSourceId;
 		if (!mediaSourceId) {
@@ -177,16 +191,18 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		}
 
 		// Step 1: Metadata extraction
-		if (!payload?.skipMetadataExtraction) {
+		if (payload.skipMetadataExtraction !== true) {
 			try {
 				const metadata = await this.imageProcessor.extractMetadata(mediaPath);
 
 				await this.mediaRepo.upsertGenerationInfo(
 					media.id,
-					typeof metadata.prompt === "object"
+					typeof metadata.prompt === "object" && metadata.prompt !== null
 						? JSON.stringify(metadata.prompt)
-						: (metadata.prompt as string | null),
-					metadata.workflow as object | null,
+						: typeof metadata.prompt === "string"
+							? metadata.prompt
+							: null,
+					isRecord(metadata.workflow) ? metadata.workflow : null,
 				);
 
 				if (metadata.tags.length > 0) {
@@ -206,7 +222,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		// Step 2: Thumbnail generation
 		try {
-			await this.generateThumbnail(media, payload.sourcePath, mediaSourceId);
+			await this.generateThumbnail(media, sourcePath, mediaSourceId);
 			this.sseSendEvent(mediaSourceId, "thumbnail-generated", {
 				mediaId: media.id,
 			});
@@ -252,7 +268,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				mediaId,
 				context.tags.map((t) => ({
 					name: t.name,
-					type: (t.type ?? "positive") as "positive" | "negative",
+					type: t.type === "negative" ? "negative" : "positive",
 					confidence: t.confidence ?? undefined,
 				})),
 				"user_provided",

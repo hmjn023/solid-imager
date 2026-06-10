@@ -925,11 +925,18 @@ export function createMediaRepository(
 				.innerJoin(tags, eq(mediaTags.tagId, tags.id))
 				.where(eq(mediaTags.mediaId, mediaId));
 			return rows.map((r) => ({
-				...r.tags,
-				type: r.media_tags.tagType,
-				source: r.media_tags.source,
+				id: r.tags.id,
+				name: r.tags.name,
+				description: r.tags.description,
+				attribute: r.tags.attribute,
+				color: r.tags.color,
+				source: r.tags.source,
+				authorId: r.tags.authorId,
+				createdAt: r.tags.createdAt,
+				updatedAt: r.tags.updatedAt,
+				type: r.media_tags.tagType as "positive" | "negative",
 				confidence: r.media_tags.confidence,
-			})) as unknown as MediaTag[];
+			})) as MediaTag[];
 		},
 
 		async getGenerationInfo(

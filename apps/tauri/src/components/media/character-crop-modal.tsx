@@ -12,10 +12,13 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 	return (
 		<SharedCharacterCropModal
 			fetchCrops={async (mediaId: string, transparent: boolean) => {
-				return serverOrpc.ai.detectAndCropCharacters({
+				const res = await serverOrpc.ai.detectAndCropCharacters({
 					mediaId,
 					transparent,
-				}) as any;
+				});
+				type FetchCropsFn = Parameters<typeof SharedCharacterCropModal>[0]["fetchCrops"];
+				type FetchCropsReturn = Awaited<ReturnType<FetchCropsFn>>;
+				return res as unknown as FetchCropsReturn;
 			}}
 			isOpen={props.isOpen}
 			media={props.media}

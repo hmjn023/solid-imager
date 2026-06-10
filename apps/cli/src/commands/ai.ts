@@ -2,7 +2,18 @@ import { Cli, z } from "incur";
 import { getClient } from "../orpc-client.ts";
 import { getErrorMessage, globalOptions } from "../utils.ts";
 
-export const tagHandler = async (c: any) => {
+import { type BasicContext } from "./media.ts";
+
+const tagArgs = z.object({ mediaId: z.string() });
+const tagOptions = globalOptions.extend({
+	mediaSourceId: z
+		.string()
+		.describe("The source ID of the media (required by API)"),
+});
+
+export const tagHandler = async (
+	c: BasicContext<z.infer<typeof tagArgs>, z.infer<typeof tagOptions>>,
+) => {
 	const rpc = getClient(c.options.remote);
 	try {
 		const result = await rpc.ai.tag({
@@ -15,7 +26,9 @@ export const tagHandler = async (c: any) => {
 	}
 };
 
-export const statusHandler = async (c: any) => {
+export const statusHandler = async (
+	c: BasicContext<Record<string, never>, z.infer<typeof globalOptions>>,
+) => {
 	try {
 		// The bun server proxies /api/ai/health or we can just ping the config
 		const res = await fetch(
@@ -39,12 +52,8 @@ export const statusHandler = async (c: any) => {
 export const aiCmd = Cli.create("ai", { description: "AI processing tools" })
 	.command("tag", {
 		description: "Trigger AI tagging for a remote media file",
-		args: z.object({ mediaId: z.string() }),
-		options: globalOptions.extend({
-			mediaSourceId: z
-				.string()
-				.describe("The source ID of the media (required by API)"),
-		}),
+		args: tagArgs,
+		options: tagOptions,
 		run: tagHandler,
 	})
 	.command("status", {

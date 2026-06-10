@@ -1,3 +1,5 @@
+import { isRecord } from "./type-guards";
+
 /**
  * Simple deep equality check for JSON-serializable objects.
  * Handles objects, arrays, and primitives.
@@ -11,17 +13,12 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		return a.getTime() === b.getTime();
 	}
 
-	if (
-		typeof a !== "object" ||
-		a === null ||
-		typeof b !== "object" ||
-		b === null
-	) {
+	if (!isRecord(a) || !isRecord(b)) {
 		return false;
 	}
 
-	const keysA = Object.keys(a as object);
-	const keysB = Object.keys(b as object);
+	const keysA = Object.keys(a);
+	const keysB = Object.keys(b);
 
 	if (keysA.length !== keysB.length) {
 		return false;
@@ -34,12 +31,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		if (keysBSet ? !keysBSet.has(key) : !keysB.includes(key)) {
 			return false;
 		}
-		if (
-			!deepEqual(
-				(a as Record<string, unknown>)[key],
-				(b as Record<string, unknown>)[key],
-			)
-		) {
+		if (!deepEqual(a[key], b[key])) {
 			return false;
 		}
 	}

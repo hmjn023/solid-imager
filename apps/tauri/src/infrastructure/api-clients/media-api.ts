@@ -11,7 +11,7 @@ export {
 import { client } from "~/orpc-client";
 
 export function updateMedia(sourceId: string, mediaId: string, data: unknown) {
-	return client.media.update({ sourceId, mediaId, data: data as any });
+	return client.media.update({ sourceId, mediaId, data: data as Parameters<typeof client.media.update>[0]["data"] });
 }
 
 export function uploadMedia(
@@ -29,5 +29,5 @@ export function uploadMedia(
 }
 
 export function startDownloadJobs(mediaSourceId: string, items: unknown[]) {
-	return client.downloads.start({ mediaSourceId, items: items as any });
+	return client.downloads.start({ mediaSourceId, items: items as Parameters<typeof client.downloads.start>[0]["items"] });
 }

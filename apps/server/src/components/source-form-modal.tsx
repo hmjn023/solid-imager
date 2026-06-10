@@ -2,6 +2,7 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -28,7 +29,7 @@ const DEFAULT_SFTP_PORT = 22;
 type SourceFormModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
-	onSubmit: (data: any) => void;
+	onSubmit: (data: unknown) => void;
 	editingSource?: MediaSourceInfo | SafeMediaSource | null;
 };
 
@@ -37,7 +38,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		name: string;
 		description: string;
 		type: "local" | "sftp" | "s3";
-		connectionInfo: Record<string, string | number>;
+		connectionInfo: Record<string, string | number | undefined>;
 	}>({
 		name: "",
 		description: "",
@@ -53,7 +54,12 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 				name: props.editingSource.name,
 				description: props.editingSource.description || "",
 				type: props.editingSource.type as "local" | "sftp" | "s3",
-				connectionInfo: (props.editingSource.connectionInfo as any) || {},
+				connectionInfo: isRecord(props.editingSource.connectionInfo)
+					? (props.editingSource.connectionInfo as Record<
+							string,
+							string | number | undefined
+						>)
+					: {},
 			});
 		} else {
 			setFormData({

@@ -92,43 +92,6 @@ async function runDatabaseCommand(
 	await writePromise;
 }
 
-export const dumpHandler = async (c: any) => {
-	if (c.options.format !== "sql") {
-		return c.error({
-			code: "NOT_IMPLEMENTED",
-			message: `Format ${c.options.format} dump is not yet implemented natively in CLI.`,
-		});
-	}
-
-	try {
-		const outputPath = validatePath(c.options.output, c.agent);
-		await runDatabaseCommand("pg_dump", ["-U", "postgres", "solid_imager"], {
-			docker: c.options.docker,
-			outputFile: outputPath,
-			agent: c.agent,
-		});
-
-		return c.ok({ success: true, file: outputPath, format: c.options.format });
-	} catch (e) {
-		return c.error({ code: "DUMP_ERROR", message: getErrorMessage(e) });
-	}
-};
-
-export const restoreHandler = async (c: any) => {
-	try {
-		const inputPath = validatePath(c.args.filepath, c.agent);
-		await runDatabaseCommand("psql", ["-U", "postgres", "-d", "solid_imager"], {
-			docker: c.options.docker,
-			inputFile: inputPath,
-			agent: c.agent,
-		});
-
-		return c.ok({ success: true, file: inputPath });
-	} catch (e) {
-		return c.error({ code: "RESTORE_ERROR", message: getErrorMessage(e) });
-	}
-};
-
 export const dbCmd = Cli.create("db", {
 	description: "Database operations (Local server only)",
 })
@@ -145,7 +108,27 @@ export const dbCmd = Cli.create("db", {
 				.default(true)
 				.describe("Use docker exec to dump from running container"),
 		}),
-		run: dumpHandler,
+		run: async (c) => {
+			if (c.options.format !== "sql") {
+				return c.error({
+					code: "NOT_IMPLEMENTED",
+					message: `Format ${c.options.format} dump is not yet implemented natively in CLI.`,
+				});
+			}
+
+			try {
+				const outputPath = validatePath(c.options.output, c.agent);
+				await runDatabaseCommand("pg_dump", ["-U", "postgres", "solid_imager"], {
+					docker: c.options.docker,
+					outputFile: outputPath,
+					agent: c.agent,
+				});
+
+				return c.ok({ success: true, file: outputPath, format: c.options.format });
+			} catch (e) {
+				return c.error({ code: "DUMP_ERROR", message: getErrorMessage(e) });
+			}
+		},
 	})
 	.command("restore", {
 		description: "Restore the local database",
@@ -156,5 +139,18 @@ export const dbCmd = Cli.create("db", {
 				.default(true)
 				.describe("Use docker exec to restore to running container"),
 		}),
-		run: restoreHandler,
+		run: async (c) => {
+			try {
+				const inputPath = validatePath(c.args.filepath, c.agent);
+				await runDatabaseCommand("psql", ["-U", "postgres", "-d", "solid_imager"], {
+					docker: c.options.docker,
+					inputFile: inputPath,
+					agent: c.agent,
+				});
+
+				return c.ok({ success: true, file: inputPath });
+			} catch (e) {
+				return c.error({ code: "RESTORE_ERROR", message: getErrorMessage(e) });
+			}
+		},
 	});

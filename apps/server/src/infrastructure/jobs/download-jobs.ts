@@ -12,6 +12,7 @@ import type {
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp } from "youtube-dl-exec";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
@@ -98,7 +99,14 @@ type YtDlpOutput = {
 	filename: string;
 };
 
-type Cookie = any;
+type Cookie = {
+	domain: string;
+	path: string;
+	secure: boolean;
+	expirationDate?: number;
+	name: string;
+	value: string;
+};
 
 async function createNetscapeCookieFile(
 	cookies: Cookie[],
@@ -168,7 +176,7 @@ async function downloadWithYtDlp(
 			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as any);
+		} as Parameters<typeof ytdlp>[1]);
 
 		// output handling
 		const outputs = parseYtDlpOutput(result);
@@ -250,7 +258,7 @@ async function fetchMetadataWithYtDlp(
 			...(ffmpegLocation && { ffmpegLocation }),
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
-		} as any);
+		} as Parameters<typeof ytdlp>[1]);
 
 		return result as unknown as YtDlpOutput;
 	} catch (error) {
@@ -619,25 +627,32 @@ async function handleDirectImageDownload(
  * Handles backward compatibility mapping.
  */
 function getDownloadItemFromJob(job: Job): DownloadItem {
-	if (!job.payload) {
+	if (!isRecord(job.payload)) {
 		return {} as DownloadItem;
 	}
-	const payload = job.payload as any;
-	const item = { ...payload } as unknown as DownloadItem;
+	const payload = job.payload;
+	const normalized: Record<string, unknown> = { ...payload };
 
-	if (!item.targetUrl && payload?.imageUrl) {
-		item.targetUrl = payload.imageUrl;
+	if (
+		typeof normalized.targetUrl !== "string" &&
+		typeof payload.imageUrl === "string"
+	) {
+		normalized.targetUrl = payload.imageUrl;
 	}
 
-	if (!item.description && payload?.description) {
-		item.description = payload.description;
+	if (
+		typeof normalized.description !== "string" &&
+		typeof payload.description === "string"
+	) {
+		normalized.description = payload.description;
 	}
 
-	if (!item.sourceUrls) {
-		item.sourceUrls = payload?.sourceUrl ? [payload.sourceUrl] : [];
+	if (!Array.isArray(normalized.sourceUrls)) {
+		normalized.sourceUrls =
+			typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
 	}
 
-	return item;
+	return normalized as unknown as DownloadItem;
 }
 
 export async function processDownloadJob(job: Job): Promise<void> {

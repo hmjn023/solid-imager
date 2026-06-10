@@ -10,10 +10,10 @@ const getORPCClient = createIsomorphicFn()
 			context: () => ({
 				headers: getRequestHeaders(),
 			}),
-		}) as any;
+		});
 	})
 	.client(() => {
-		return createClient({ url: window.location.origin }) as any;
+		return createClient<typeof appRouter>({ url: window.location.origin });
 	});
 
 export const client = getORPCClient();

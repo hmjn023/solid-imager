@@ -15,7 +15,7 @@ export function createAuthorsRepository(
     if (!result.success) {
       return null;
     }
-    return result.data as unknown as AuthorListEntry;
+    return result.data;
   };
 
   return {

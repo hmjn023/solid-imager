@@ -17,7 +17,12 @@ type FileWatcher = {
 
 // mediaSourceId -> Set of clients
 // HMR survival: use global map if available
-const globalAny = globalThis as any;
+const globalAny = globalThis as typeof globalThis & {
+	__SSE_CLIENTS_MAP__?: Map<string, Set<SseClient>>;
+	__SSE_WATCHERS_MAP__?: Map<string, FileWatcher>;
+	__SSE_EVENT_EMITTER__?: EventEmitter;
+	__SSE_CLEANUP_REGISTERED__?: boolean;
+};
 
 if (!globalAny.__SSE_CLIENTS_MAP__) {
 	globalAny.__SSE_CLIENTS_MAP__ = new Map<string, Set<SseClient>>();

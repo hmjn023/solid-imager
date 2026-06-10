@@ -12,6 +12,7 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 
 export const Route = createFileRoute("/sources/")({
 	loader: async ({ context }) => {
@@ -26,9 +27,9 @@ function SourcesRoute() {
 
 	const page = useSourcesPage({
 		actions: {
-			createMediaSource: (data: unknown) => createMediaSource(data as any),
+			createMediaSource: (data: unknown) => createMediaSource(mediaSourceInfoSchema.parse(data)),
 			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+				updateMediaSource(id, mediaSourceInfoSchema.parse(data)),
 			deleteMediaSource,
 			syncMediaSources,
 		},

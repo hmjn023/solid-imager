@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@types/node": "^24.10.4",
-    "typescript": "^5.9.3",
+    "typescript": "^6.0.3",
     "vite-plus": "latest",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "npm:@voidzero-dev/vite-plus-test@latest"

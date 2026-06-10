@@ -1,4 +1,5 @@
 import { uploadMediaFormSchema } from "@solid-imager/core/domain/media/upload-schemas";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -15,6 +16,16 @@ import { zodValidator } from "@tanstack/zod-form-adapter";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
+
+const getErrorMessage = (error: unknown): string => {
+	if (typeof error === "string") {
+		return error;
+	}
+	if (isRecord(error) && typeof error.message === "string") {
+		return error.message;
+	}
+	return String(error || "");
+};
 
 type UploadMediaModalProps = {
 	isOpen: boolean;
@@ -188,8 +199,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										/>
 										<Show when={field().state.meta.errors.length > 0}>
 											<p class="text-red-500 text-sm">
-												{(field().state.meta.errors[0] as any)?.message ??
-													field().state.meta.errors[0]}
+												{getErrorMessage(field().state.meta.errors[0])}
 											</p>
 										</Show>
 									</div>
@@ -229,8 +239,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 												/>
 												<Show when={field().state.meta.errors.length > 0}>
 													<p class="text-red-500 text-sm">
-														{(field().state.meta.errors[0] as any)?.message ??
-															field().state.meta.errors[0]}
+														{getErrorMessage(field().state.meta.errors[0])}
 													</p>
 												</Show>
 											</>

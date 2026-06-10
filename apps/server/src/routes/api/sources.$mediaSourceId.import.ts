@@ -27,7 +27,9 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 					}
 
 					await pipeline(
-						Readable.fromWeb(request.body as any),
+						Readable.fromWeb(
+							request.body as Parameters<typeof Readable.fromWeb>[0],
+						),
 						fs.createWriteStream(tempFilePath),
 					);
 

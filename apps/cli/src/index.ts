@@ -19,10 +19,10 @@ cli.command("ping", {
 			const rpc = getClient(c.options.remote);
 			const config = await rpc.config.get();
 			return { status: "ok", remote: c.options.remote, config };
-		} catch (e: any) {
+		} catch (e: unknown) {
 			return {
 				error: "CONNECTION_ERROR",
-				message: `Failed to connect to ${c.options.remote}: ${e.message}`,
+				message: `Failed to connect to ${c.options.remote}: ${e instanceof Error ? e.message : String(e)}`,
 			};
 		}
 	},

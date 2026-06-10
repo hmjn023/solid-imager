@@ -15,6 +15,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
+import type { appRouter } from "~/domain/shared/api-contract";
 import { db } from "~/infrastructure/db";
 import {
 	mediaCharacters,
@@ -50,7 +51,7 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 }
 
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient({
+	return createClient<typeof appRouter>({
 		url: remoteUrl,
 		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
@@ -64,7 +65,7 @@ function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 				clearTimeout(t);
 			}
 		},
-	}) as any;
+	});
 }
 
 async function callRemoteTagging(

@@ -45,7 +45,12 @@ export function createCollectionRepository(
           .returning();
         return result[0];
       } catch (error: unknown) {
-        if ((error as any).code === "23505") {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          (error as { code: string }).code === "23505"
+        ) {
           throw new ResourceConflictError(
             "Collection with this name already exists",
           );
@@ -74,7 +79,12 @@ export function createCollectionRepository(
         if (error instanceof ResourceNotFoundError) {
           throw error;
         }
-        if ((error as any).code === "23505") {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          (error as { code: string }).code === "23505"
+        ) {
           throw new ResourceConflictError(
             "Collection with this name already exists",
           );
@@ -108,7 +118,12 @@ export function createCollectionRepository(
             displayOrder: item.displayOrder,
           });
       } catch (error: unknown) {
-        if ((error as any).code === "23505") {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          (error as { code: string }).code === "23505"
+        ) {
           throw new ResourceConflictError(
             "Media already exists in this collection",
           );

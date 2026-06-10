@@ -1,11 +1,28 @@
-import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
 import type {
   IJobRepository,
   Job,
   NewJob,
+  JobStatus,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
+
+import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
+
+function mapJob(row: typeof jobs.$inferSelect): Job {
+  return {
+    id: row.id,
+    type: row.type,
+    mediaSourceId: row.mediaSourceId,
+    status: row.status as JobStatus,
+    payload: row.payload,
+    result: row.result,
+    error: row.error,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+    parentId: row.parentId,
+  };
+}
 
 export function createJobRepository(
   getExecutor: (tx?: unknown) => DrizzleExecutor,
@@ -15,7 +32,7 @@ export function createJobRepository(
   return {
     async create(job: NewJob): Promise<Job> {
       const [created] = await db().insert(jobs).values(job).returning();
-      return created as unknown as Job;
+      return mapJob(created);
     },
 
     async createIfUnique(job: NewJob): Promise<Job | null> {
@@ -38,7 +55,7 @@ export function createJobRepository(
           .onConflictDoNothing()
           .returning();
 
-        return (created ?? null) as unknown as Job | null;
+        return created ? mapJob(created) : null;
       }
 
       return this.create(job);
@@ -46,10 +63,10 @@ export function createJobRepository(
 
     async findById(id: string): Promise<Job | null> {
       const [job] = await db().select().from(jobs).where(eq(jobs.id, id));
-      return (job || null) as unknown as Job | null;
+      return job ? mapJob(job) : null;
     },
 
-    findPending(
+    async findPending(
       limit: number,
       options?: { excludeTypes?: string[]; includeTypes?: string[] },
     ): Promise<Job[]> {
@@ -72,12 +89,13 @@ export function createJobRepository(
         conditions.push(inArray(jobs.type, options.includeTypes));
       }
 
-      return db()
+      const rows = await db()
         .select()
         .from(jobs)
         .where(and(...conditions))
         .orderBy(asc(jobs.createdAt))
-        .limit(limit) as Promise<Job[]>;
+        .limit(limit);
+      return rows.map(mapJob);
     },
 
     async markAsInProgress(id: string): Promise<void> {
@@ -95,7 +113,7 @@ export function createJobRepository(
         .update(jobs)
         .set({
           status: "completed",
-          result: result as any,
+          result: result ?? null,
           updatedAt: new Date(),
         })
         .where(eq(jobs.id, id));
@@ -113,9 +131,19 @@ export function createJobRepository(
     },
 
     async update(id: string, data: Partial<Job>): Promise<void> {
+      const updates: Partial<typeof jobs.$inferInsert> = {};
+      if (data.type !== undefined) updates.type = data.type;
+      if (data.mediaSourceId !== undefined) updates.mediaSourceId = data.mediaSourceId;
+      if (data.status !== undefined) updates.status = data.status;
+      if (data.payload !== undefined) updates.payload = data.payload;
+      if (data.result !== undefined) updates.result = data.result;
+      if (data.error !== undefined) updates.error = data.error;
+      if (data.parentId !== undefined) updates.parentId = data.parentId;
+      updates.updatedAt = new Date();
+
       await db()
         .update(jobs)
-        .set(data as any)
+        .set(updates)
         .where(eq(jobs.id, id));
     },
 

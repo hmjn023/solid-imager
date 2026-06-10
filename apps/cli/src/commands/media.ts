@@ -70,7 +70,46 @@ function ensureExtension(filename: string, contentType: string | null): string {
 	return ext ? `${filename}.${ext}` : filename;
 }
 
-export const getHandler = async (c: any) => {
+const getArgs = z.object({ id: z.string() });
+const searchOptions = globalOptions.extend({
+	query: z.string().optional().describe("Search query text"),
+	limit: z.coerce.number().default(20).describe("Max results"),
+	offset: z.coerce.number().default(0).describe("Pagination offset"),
+});
+const viewArgs = z.object({ id: z.string() });
+const viewOptions = globalOptions.extend({
+	width: z.string().default("auto").describe("Width (e.g. 50%, 400px)"),
+	height: z.string().default("auto").describe("Height (e.g. auto, 400px)"),
+});
+const downloadArgs = z.object({ id: z.string() });
+const downloadOptions = globalOptions.extend({
+	output: z.string().optional().describe("Output file path (optional)"),
+});
+
+export interface BasicContext<TArgs = Record<string, unknown>, TOptions = Record<string, unknown>> {
+	agent: boolean;
+	args: TArgs;
+	displayName: string;
+	env: Record<string, unknown>;
+	error: (options: {
+		code: string;
+		cta?: unknown;
+		exitCode?: number;
+		message: string;
+		retryable?: boolean;
+	}) => never;
+	format: string;
+	formatExplicit: boolean;
+	name: string;
+	ok: (data: unknown, meta?: { cta?: unknown }) => never;
+	options: TOptions;
+	var: Record<string, unknown>;
+	version?: string;
+}
+
+export const getHandler = async (
+	c: BasicContext<z.infer<typeof getArgs>, z.infer<typeof globalOptions>>,
+) => {
 	const rpc = getClient(c.options.remote);
 	const sourceId = c.options.source;
 	if (!sourceId) {
@@ -87,7 +126,9 @@ export const getHandler = async (c: any) => {
 	}
 };
 
-export const searchHandler = async (c: any) => {
+export const searchHandler = async (
+	c: BasicContext<Record<string, never>, z.infer<typeof searchOptions>>,
+) => {
 	const rpc = getClient(c.options.remote);
 	try {
 		const result = await rpc.media.search({
@@ -95,7 +136,6 @@ export const searchHandler = async (c: any) => {
 			params: {
 				limit: c.options.limit,
 				offset: c.options.offset,
-				// We use a keyword search filter if a query is provided
 				condition: c.options.query
 					? {
 							type: "group",
@@ -120,9 +160,10 @@ export const searchHandler = async (c: any) => {
 	}
 };
 
-export const viewHandler = async (c: any) => {
+export const viewHandler = async (
+	c: BasicContext<z.infer<typeof viewArgs>, z.infer<typeof viewOptions>>,
+) => {
 	try {
-		// Fail fast with dimension validation
 		const width = validateDimension(c.options.width);
 		const height = validateDimension(c.options.height);
 
@@ -174,7 +215,9 @@ export const viewHandler = async (c: any) => {
 	}
 };
 
-export const downloadHandler = async (c: any) => {
+export const downloadHandler = async (
+	c: BasicContext<z.infer<typeof downloadArgs>, z.infer<typeof downloadOptions>>,
+) => {
 	try {
 		const sourceId = c.options.source;
 		if (!sourceId) {
@@ -207,19 +250,11 @@ export const downloadHandler = async (c: any) => {
 		}
 
 		const contentType = res.headers.get("Content-Type");
-		const defaultFilename = ensureExtension(
-			media.fileName || media.id,
-			contentType,
-		);
-		const filename = resolveDownloadPath(
-			c.options.output,
-			defaultFilename,
-			c.agent,
-		);
+		const defaultFilename = ensureExtension(media.fileName || media.id, contentType);
+		const filename = resolveDownloadPath(c.options.output, defaultFilename, c.agent);
 		const fileStream = createWriteStream(filename);
 
-		// Bun or Node native fetch bodies are ReadableStreams
-		await finished(Readable.fromWeb(res.body as any).pipe(fileStream));
+		await finished(Readable.fromWeb(res.body as import("stream/web").ReadableStream).pipe(fileStream));
 
 		return c.ok({ message: `Downloaded to ${filename}` });
 	} catch (e) {
@@ -230,34 +265,24 @@ export const downloadHandler = async (c: any) => {
 export const mediaCmd = Cli.create("media", { description: "Media operations" })
 	.command("get", {
 		description: "Get media metadata by ID",
-		args: z.object({ id: z.string() }),
+		args: getArgs,
 		options: globalOptions,
 		run: getHandler,
 	})
 	.command("search", {
 		description: "Search media",
-		options: globalOptions.extend({
-			query: z.string().optional().describe("Search query text"),
-			limit: z.coerce.number().default(20).describe("Max results"),
-			offset: z.coerce.number().default(0).describe("Pagination offset"),
-		}),
+		options: searchOptions,
 		run: searchHandler,
 	})
 	.command("view", {
-		description:
-			"View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
-		args: z.object({ id: z.string() }),
-		options: globalOptions.extend({
-			width: z.string().default("auto").describe("Width (e.g. 50%, 400px)"),
-			height: z.string().default("auto").describe("Height (e.g. auto, 400px)"),
-		}),
+		description: "View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
+		args: viewArgs,
+		options: viewOptions,
 		run: viewHandler,
 	})
 	.command("download", {
 		description: "Download media file by ID",
-		args: z.object({ id: z.string() }),
-		options: globalOptions.extend({
-			output: z.string().optional().describe("Output file path (optional)"),
-		}),
+		args: downloadArgs,
+		options: downloadOptions,
 		run: downloadHandler,
 	});

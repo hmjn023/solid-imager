@@ -12,7 +12,7 @@ export function createTransactionManager(
 			callback: (tx: Transaction) => Promise<T>,
 		): Promise<T> {
 			const db = getExecutor();
-			return await (db as any).transaction(async (tx: unknown) => {
+			return await (db as { transaction: Function }).transaction(async (tx: unknown) => {
 				return await callback(tx as Transaction);
 			});
 		},

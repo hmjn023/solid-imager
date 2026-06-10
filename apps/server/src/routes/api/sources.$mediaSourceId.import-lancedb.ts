@@ -29,7 +29,9 @@ export const Route = createFileRoute(
 					}
 
 					await pipeline(
-						Readable.fromWeb(request.body as any),
+						Readable.fromWeb(
+							request.body as Parameters<typeof Readable.fromWeb>[0],
+						),
 						fs.createWriteStream(tempFilePath),
 					);
 

@@ -242,8 +242,8 @@ chrome.runtime.onMessage.addListener(
 		if (isDownloadMessage(message)) {
 			const { targetUrl } = message.data;
 			const extension = getExtensionFromUrl(targetUrl);
-			// Cast to any to handle string vs Date for createdAt field between core and ext schemas
-			const filename = generateMediaFilename(message.data as any, extension);
+			// Cast to handle string vs Date for createdAt field between core and ext schemas
+			const filename = generateMediaFilename(message.data as Parameters<typeof generateMediaFilename>[0], extension);
 
 			chrome.downloads.download(
 				{

@@ -1,6 +1,9 @@
-import type {
-	MediaSourceInfo,
-	SafeMediaSource,
+import {
+	localConnectionSchema,
+	type MediaSourceInfo,
+	type SafeMediaSource,
+	s3ConnectionSchema,
+	sftpConnectionSchema,
 } from "@solid-imager/core/domain/sources/schemas";
 import {
 	Card,
@@ -37,16 +40,23 @@ const getTypeLabel = (type: string) => {
 };
 
 const getConnectionDetails = (source: SafeMediaSource | MediaSourceInfo) => {
-	const info = source.connectionInfo as any;
+	const info = source.connectionInfo;
 
 	if (source.type === "local") {
-		return `Path: ${info.path || "N/A"}`;
+		const parsed = localConnectionSchema.safeParse(info);
+		return `Path: ${parsed.success ? parsed.data.path : "N/A"}`;
 	}
 	if (source.type === "sftp") {
-		return `SFTP: ${info.host || "?"}:${info.remotePath || "?"}`;
+		const parsed = sftpConnectionSchema.safeParse(info);
+		return parsed.success
+			? `SFTP: ${parsed.data.host}:${parsed.data.remotePath}`
+			: "SFTP: Invalid connection info";
 	}
 	if (source.type === "s3") {
-		return `S3: ${info.bucket || "?"} (${info.region || "?"})`;
+		const parsed = s3ConnectionSchema.safeParse(info);
+		return parsed.success
+			? `S3: ${parsed.data.bucket} (${parsed.data.region})`
+			: "S3: Invalid connection info";
 	}
 	return "Unknown Connection";
 };
