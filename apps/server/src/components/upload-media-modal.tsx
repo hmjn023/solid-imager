@@ -12,7 +12,6 @@ import {
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { createForm } from "@tanstack/solid-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
@@ -66,7 +65,6 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 				setUploadError(getErrorMessage(e));
 			}
 		},
-		validatorAdapter: zodValidator(),
 		validators: {
 			onChange: uploadMediaFormSchema,
 		},
