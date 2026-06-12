@@ -1,3 +1,6 @@
+import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
+import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
+import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import type { IMediaStorage } from "@solid-imager/core";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
@@ -132,6 +135,7 @@ describe("MediaService Unit Tests", () => {
 			upsertGenerationInfo: vi.fn(),
 			getDetails: vi.fn(),
 			findAllPathsBySourceId: vi.fn(),
+			findDuplicates: vi.fn(),
 		} as unknown as IMediaRepository;
 
 		mockSourceRepository = {
@@ -180,35 +184,61 @@ describe("MediaService Unit Tests", () => {
 			addContextMetadataToExistingMedia: vi.fn(),
 		};
 
-		// Instantiate service with mocks
-		mediaService = new MediaServiceImpl(
+		const mockSseNotifier = {
+			sendEvent: vi.fn(),
+			notifyMediaCopied: vi.fn(),
+		};
+		const mockThumbnailManager = {
+			deleteThumbnail: vi.fn(),
+		};
+		const mockLogger = {
+			info: vi.fn(),
+			error: vi.fn(),
+			warn: vi.fn(),
+		};
+		const mockDeferredActionExecutor = {
+			execute: vi.fn(),
+		};
+
+		// Create sub-services
+		const queryService = new MediaQueryService(
 			mockMediaRepository,
 			mockSourceRepository,
 			mockStorageService,
 			mockTagRepository,
 			mockImageProcessor,
+			mockLogger,
+		);
+
+		const uploadService = new MediaUploadService(
+			mockMediaRepository,
+			mockSourceRepository,
+			mockStorageService,
+			mockJobRepository,
+		);
+
+		const transferService = new MediaTransferService(
+			mockMediaRepository,
+			mockSourceRepository,
+			mockStorageService,
 			mockAuthorRepository,
 			mockProjectRepository,
 			mockCharacterRepository,
 			mockIpRepository,
 			DrizzleTransactionManager,
 			mockJobRepository,
-			{
-				sendEvent: vi.fn(),
-				notifyMediaCopied: vi.fn(),
-			},
-			{
-				deleteThumbnail: vi.fn(),
-			},
-			{
-				info: vi.fn(),
-				error: vi.fn(),
-				warn: vi.fn(),
-			},
+			mockSseNotifier,
+			mockThumbnailManager,
+			mockLogger,
+			mockDeferredActionExecutor,
 			localMockMediaProcessingService,
-			{
-				execute: vi.fn(),
-			},
+		);
+
+		// Instantiate facade with sub-services
+		mediaService = new MediaServiceImpl(
+			queryService,
+			uploadService,
+			transferService,
 		);
 	});
 

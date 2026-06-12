@@ -42,5 +42,8 @@ export {
   SearchServiceImpl,
   MediaServiceImpl,
   validateFileSignature,
+  MediaQueryService,
+  MediaUploadService,
+  MediaTransferService,
   createLanceDbDumpService,
 } from "./services";
