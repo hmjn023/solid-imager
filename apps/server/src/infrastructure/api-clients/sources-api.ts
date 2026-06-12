@@ -93,7 +93,10 @@ export async function fetchSourceDump(
 	return response.blob();
 }
 
-export function restoreSource(id: string, data: any) {
+export function restoreSource(id: string, data: unknown) {
+	if (!Array.isArray(data)) {
+		throw new Error("Invalid restore data: expected an array");
+	}
 	return orpc.sources.restore({ id, data });
 }
 

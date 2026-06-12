@@ -170,14 +170,14 @@ export class MediaServiceImpl implements IMediaService {
 		const searchRequest = mediaSearchRequestSchema.parse(params);
 		if (mediaSourceId) {
 			const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-			return (await this.mediaRepository.search(
+			return await this.mediaRepository.search(
 				validatedSourceId,
 				searchRequest,
-			)) as MediaSearchResponse;
+			);
 		}
-		return (await this.mediaRepository.globalSearch(
+		return await this.mediaRepository.globalSearch(
 			searchRequest,
-		)) as MediaSearchResponse;
+		);
 	}
 
 	/**
@@ -189,11 +189,11 @@ export class MediaServiceImpl implements IMediaService {
 		params: { query?: string; tags?: string[] },
 	): Promise<Media[]> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return (await this.mediaRepository.searchInDirectory(
+		return await this.mediaRepository.searchInDirectory(
 			validatedSourceId,
 			directoryPath,
 			params,
-		)) as Media[];
+		);
 	}
 
 	/**
@@ -251,7 +251,7 @@ export class MediaServiceImpl implements IMediaService {
 
 		let insertedMedia: Media;
 		try {
-			insertedMedia = (await this.mediaRepository.upsert(newMedia)) as Media;
+			insertedMedia = await this.mediaRepository.upsert(newMedia);
 		} catch (error) {
 			// 3. Rollback: Delete file if DB insertion fails
 			try {
@@ -300,7 +300,7 @@ export class MediaServiceImpl implements IMediaService {
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
 		const mediaDetails =
-			(await this.mediaRepository.getDetails(validatedMediaId)) as MediaDetails | null;
+			await this.mediaRepository.getDetails(validatedMediaId);
 		if (!mediaDetails) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -318,7 +318,7 @@ export class MediaServiceImpl implements IMediaService {
 			);
 		}
 
-		return {
+		const result: MediaDetails = {
 			...mediaDetails,
 			generationInfo: finalGenerationInfo
 				? {
@@ -330,7 +330,8 @@ export class MediaServiceImpl implements IMediaService {
 						steps: finalGenerationInfo.steps ?? 0,
 					}
 				: null,
-		} as MediaDetails;
+		};
+		return result;
 	}
 
 	/**
@@ -348,9 +349,9 @@ export class MediaServiceImpl implements IMediaService {
 			throw new ResourceNotFoundError("Media Source", validatedSourceId);
 		}
 
-		const media = (await this.mediaRepository.findById(
+		const media = await this.mediaRepository.findById(
 			validatedMediaId,
-		)) as Media | null;
+		);
 		if (!media) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -390,13 +391,7 @@ export class MediaServiceImpl implements IMediaService {
 
 				if (!existing) {
 					try {
-						const metadata = (await this.storageService.getFileMetadata(file)) as {
-							width: number;
-							height: number;
-							size: number;
-							createdAt: Date;
-							modifiedAt: Date;
-						};
+						const metadata = await this.storageService.getFileMetadata(file);
 
 						// Simple extension check for media type
 						const mediaType = getMediaTypeFromExtension(file);
@@ -414,9 +409,9 @@ export class MediaServiceImpl implements IMediaService {
 							description: null,
 						};
 
-						const created = (await this.mediaRepository.upsert(
+						const created = await this.mediaRepository.upsert(
 							newMedia,
-						)) as Media;
+						);
 						newMediaItems.push({ id: created.id, filePath: relativePath });
 					} catch (_e) {
 						// Ignore creation errors
@@ -448,9 +443,9 @@ export class MediaServiceImpl implements IMediaService {
 	 */
 	async getAllMedia(mediaSourceId: string): Promise<Media[]> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return (await this.mediaRepository.findAllBySourceId(
+		return await this.mediaRepository.findAllBySourceId(
 			validatedSourceId,
-		)) as Media[];
+		);
 	}
 
 	/**
@@ -462,9 +457,9 @@ export class MediaServiceImpl implements IMediaService {
 	): Promise<Media> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
-		const media = (await this.mediaRepository.findById(
+		const media = await this.mediaRepository.findById(
 			validatedMediaId,
-		)) as Media | null;
+		);
 		if (!media) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -487,7 +482,7 @@ export class MediaServiceImpl implements IMediaService {
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 		const parsedUpdates = updateMediaRequestSchema.parse(updates);
 
-		const execute = async (t: Transaction) => {
+		const execute = async (t: Transaction): Promise<Media> => {
 			const media = await this.mediaRepository.findById(validatedMediaId, t);
 			if (!media || media.mediaSourceId !== validatedSourceId) {
 				throw new ResourceNotFoundError("Media", validatedMediaId);
@@ -505,13 +500,13 @@ export class MediaServiceImpl implements IMediaService {
 				t,
 			);
 
-			return updatedMedia as Media;
+			return updatedMedia;
 		};
 
 		if (tx) {
 			return await execute(tx);
 		}
-		return (await this.transactionManager.transaction(execute)) as Media;
+		return await this.transactionManager.transaction(execute);
 	}
 
 	/**
@@ -524,9 +519,9 @@ export class MediaServiceImpl implements IMediaService {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-		const media = (await this.mediaRepository.findById(
+		const media = await this.mediaRepository.findById(
 			validatedMediaId,
-		)) as Media | null;
+		);
 		if (!media || media.mediaSourceId !== validatedSourceId) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -541,9 +536,9 @@ export class MediaServiceImpl implements IMediaService {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-		const media = (await this.mediaRepository.findById(
+		const media = await this.mediaRepository.findById(
 			validatedMediaId,
-		)) as Media | null;
+		);
 		if (!media) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -564,9 +559,9 @@ export class MediaServiceImpl implements IMediaService {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-		const media = (await this.mediaRepository.findById(
+		const media = await this.mediaRepository.findById(
 			validatedMediaId,
-		)) as Media | null;
+		);
 		if (!media) {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
@@ -574,9 +569,9 @@ export class MediaServiceImpl implements IMediaService {
 			throw new ResourceNotFoundError("Media not found in source");
 		}
 
-		const generationInfo = (await this.mediaRepository.getGenerationInfo(
+		const generationInfo = await this.mediaRepository.getGenerationInfo(
 			validatedMediaId,
-		)) as MediaGenerationInfo | null;
+		);
 		return generationInfo
 			? {
 					...generationInfo,

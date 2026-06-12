@@ -7,8 +7,10 @@ import {
 	mediaSchema,
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
+	tagSchema,
 	updateMediaRequestSchema,
 } from "../media/schemas";
+import { uploadResponseSchema } from "../media/upload-schemas";
 
 export const mediaContract = {
 	search: oc
@@ -44,7 +46,8 @@ export const mediaContract = {
 				sourceId: z.string().uuid(),
 				mediaId: z.string().uuid(),
 			}),
-		),
+		)
+		.output(z.never()),
 
 	getTags: oc
 		.input(
@@ -52,7 +55,8 @@ export const mediaContract = {
 				sourceId: z.string().uuid(),
 				mediaId: z.string().uuid(),
 			}),
-		),
+		)
+		.output(z.array(tagSchema)),
 
 	update: oc
 		.input(
@@ -61,7 +65,8 @@ export const mediaContract = {
 				mediaId: z.string().uuid(),
 				data: updateMediaRequestSchema,
 			}),
-		),
+		)
+		.output(mediaSchema),
 
 	sync: oc
 		.input(
@@ -97,7 +102,8 @@ export const mediaContract = {
 				mediaId: z.string().uuid(),
 				targetSourceId: z.string().uuid(),
 			}),
-		),
+		)
+		.output(z.object({ success: z.boolean() })),
 
 	move: oc
 		.input(
@@ -105,7 +111,8 @@ export const mediaContract = {
 				mediaId: z.string().uuid(),
 				targetSourceId: z.string().uuid(),
 			}),
-		),
+		)
+		.output(z.object({ success: z.boolean() })),
 
 	upload: oc
 		.input(
@@ -118,7 +125,8 @@ export const mediaContract = {
 				overwrite: z.string().optional(),
 				autoIncrement: z.string().optional(),
 			}),
-		),
+		)
+		.output(uploadResponseSchema),
 
 	findDuplicates: oc
 		.input(findDuplicatesRequestSchema.optional())

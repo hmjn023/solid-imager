@@ -93,7 +93,12 @@ export function createIpRepository(
 				const result = await client.insert(ips).values(ip).returning();
 				return mapIp(result[0]);
 			} catch (error: unknown) {
-				if ((error as any).code === "23505") {
+				if (
+					error &&
+					typeof error === "object" &&
+					"code" in error &&
+					(error as { code: string }).code === "23505"
+				) {
 					throw new ResourceConflictError("IP with this name already exists");
 				}
 				throw error;
@@ -117,7 +122,12 @@ export function createIpRepository(
 				if (error instanceof ResourceNotFoundError) {
 					throw error;
 				}
-				if ((error as any).code === "23505") {
+				if (
+					error &&
+					typeof error === "object" &&
+					"code" in error &&
+					(error as { code: string }).code === "23505"
+				) {
 					throw new ResourceConflictError("IP with this name already exists");
 				}
 				throw new UnexpectedError("Failed to update IP", error);

@@ -1,12 +1,12 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
-import { downloadItemSchema } from "../media/schemas";
+import { downloadItemSchema, pendingImportJobSchema } from "../media/schemas";
 
 export const importsContract = {
 	bulkAdd: oc
 		.input(z.object({ items: z.array(downloadItemSchema) })),
 
-	listPending: oc,
+	listPending: oc.output(z.array(pendingImportJobSchema)),
 
 	process: oc
 		.input(

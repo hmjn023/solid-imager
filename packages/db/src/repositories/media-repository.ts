@@ -65,7 +65,9 @@ import {
 	tags,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { createMediaSearchFunctions } from "./media-repository-utils";
+import { isMediaStatus, isTagType } from "@solid-imager/core/utils/type-guards";
 
 // ============================================================================
 // Types
@@ -95,6 +97,11 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
 const DEFAULT_LIMIT = 100;
 const DEFAULT_OFFSET = 0;
 
+function getRelationalClient(client: DrizzleExecutor) {
+	// DrizzleExecutor union type doesn't expose .query correctly in TS
+	return (client as NodePgDatabase<typeof import("../schema")>).query;
+}
+
 // ============================================================================
 // Mapping Functions
 // ============================================================================
@@ -113,7 +120,7 @@ function mapToMedia(dbMedia: DbMedia): Media {
 		createdAt: dbMedia.createdAt,
 		modifiedAt: dbMedia.modifiedAt,
 		indexedAt: dbMedia.indexedAt,
-		status: dbMedia.status as Media["status"],
+		status: isMediaStatus(dbMedia.status) ? dbMedia.status : "active",
 	};
 }
 
@@ -520,7 +527,7 @@ function makeBuildSearchQuery(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 		}
 
 		if (node.type === "group") {
-			const children = node.children as any[];
+			const children: (SearchGroup | SearchCriterion)[] = node.children;
 			const conditions = children
 				.map((child) => buildSearchQueryInner(child, depth + 1))
 				.filter((c): c is SQL => c !== undefined);
@@ -600,13 +607,15 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 				media: medias,
 				totalCount: sql<number>`count(*) over()`,
 			})
-			.from(medias);
+			.from(medias)
+			.$dynamic();
 
 		if (needsDetailsJoin) {
+			// Drizzle's conditional .leftJoin() changes the query type in a way TS can't track
 			query = query.leftJoin(
 				mediaDetails,
 				eq(mediaDetails.mediaId, medias.id),
-			) as any;
+			);
 		}
 
 		const orderBy = getOrderByClause(params.sort, params.order);
@@ -871,7 +880,7 @@ export function createMediaRepository(
 		): Promise<MediaDetails | null> {
 			try {
 				const client = getExecutor(tx);
-				const result = await (client as any).query.medias.findFirst({
+				const result = await getRelationalClient(client).medias.findFirst({
 					where: eq(medias.id, mediaId),
 					with: {
 						tags: {
@@ -924,12 +933,19 @@ export function createMediaRepository(
 				.from(mediaTags)
 				.innerJoin(tags, eq(mediaTags.tagId, tags.id))
 				.where(eq(mediaTags.mediaId, mediaId));
-			return rows.map((r) => ({
-				...r.tags,
-				type: r.media_tags.tagType,
-				source: r.media_tags.source,
+			return rows.map((r): MediaTag => ({
+				id: r.tags.id,
+				name: r.tags.name,
+				description: r.tags.description,
+				attribute: r.tags.attribute,
+				color: r.tags.color,
+				source: r.tags.source,
+				authorId: r.tags.authorId,
+				createdAt: r.tags.createdAt,
+				updatedAt: r.tags.updatedAt,
+				type: isTagType(r.media_tags.tagType) ? r.media_tags.tagType : "positive",
 				confidence: r.media_tags.confidence,
-			})) as unknown as MediaTag[];
+			}));
 		},
 
 		async getGenerationInfo(

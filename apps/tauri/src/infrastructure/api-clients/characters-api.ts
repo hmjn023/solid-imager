@@ -6,17 +6,15 @@ export function createCharacter(data: {
 	name: string;
 	description?: string;
 	ipIds?: string[];
-}): Promise<{ id: string }> {
-	return client.characters.create(data) as unknown as Promise<{ id: string }>;
+}) {
+	return client.characters.create(data);
 }
 
 export function updateCharacter(
 	id: string,
 	data: { name?: string; description?: string; ipIds?: string[] },
-): Promise<{ id: string }> {
-	return client.characters.update({ id, data }) as unknown as Promise<{
-		id: string;
-	}>;
+) {
+	return client.characters.update({ id, data });
 }
 
 export async function deleteCharacter(id: string) {

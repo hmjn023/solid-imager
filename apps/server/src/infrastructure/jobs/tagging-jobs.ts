@@ -1,5 +1,6 @@
 import { and, asc, eq, notExists } from "drizzle-orm";
 import { z } from "zod";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
@@ -15,19 +16,19 @@ import {
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 
-type AutoTaggingJobPayload = {
-	mediaId: string;
-	force?: boolean;
-};
+const autoTaggingPayloadSchema = z.object({
+	mediaId: z.string(),
+	force: z.boolean().optional(),
+});
 
-type BulkTaggingDispatchJobPayload = {
-	force?: boolean;
-	batchSize?: number;
-	mediaSourceId?: string;
-};
+const bulkTaggingDispatchPayloadSchema = z.object({
+	force: z.boolean().optional(),
+	batchSize: z.number().optional(),
+	mediaSourceId: z.string().optional(),
+});
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
-	const payload = job.payload as AutoTaggingJobPayload;
+	const payload = autoTaggingPayloadSchema.parse(job.payload);
 	const { mediaId, force } = payload;
 	const { mediaSourceId, parentId } = job;
 	const JOB_EVENTS_CHANNEL = "global-jobs";
@@ -82,7 +83,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 			await services.getJobRepository().update(parentId, { status: "failed" });
 			SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
 				jobId: parentId,
-				error: (error as Error).message,
+				error: getErrorMessage(error),
 			});
 		}
 		throw error;
@@ -90,7 +91,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 }
 
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
-	const payload = job.payload as BulkTaggingDispatchJobPayload;
+	const payload = bulkTaggingDispatchPayloadSchema.parse(job.payload);
 	const force = payload?.force ?? false;
 	const batchSize = payload?.batchSize ?? 1000;
 	const mediaSourceId = payload?.mediaSourceId;

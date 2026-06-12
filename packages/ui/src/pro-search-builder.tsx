@@ -27,6 +27,7 @@ import {
 	SelectValue,
 } from "./select";
 import { cn } from "./utils/cn";
+import { parseSelectValue } from "./utils/parse-select-value";
 
 const TARGET_LABELS: Record<string, string> = {
 	fileName: "ファイル名",
@@ -204,10 +205,10 @@ function GroupBuilder(props: {
 							)}
 							onChange={(value) => {
 								if (value) {
-									props.onChange({
-										...props.group,
-										operator: value as SearchGroup["operator"],
-									});
+								props.onChange({
+									...props.group,
+									operator: parseSelectValue(value, ["and", "or"], "and"),
+								});
 								}
 							}}
 							options={["and", "or"]}
@@ -257,35 +258,33 @@ function GroupBuilder(props: {
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
 					<Index each={props.group.children}>
-						{(child, index) => (
-							<Show
-								fallback={
-									<CriterionBuilder
-										authors={props.authors}
-										characters={props.characters}
-										criterion={child() as SearchCriterion}
-										ips={props.ips}
-										onChange={(value) => updateChild(index, value)}
-										onRemove={() => removeChild(index)}
-										projects={props.projects}
-										tags={props.tags}
-									/>
-								}
-								when={child().type === "group"}
-							>
+						{(child, index) => {
+							const c = child();
+							return c.type === "group" ? (
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={child() as SearchGroup}
+									group={c}
 									ips={props.ips}
 									onChange={(value) => updateChild(index, value)}
 									onRemove={() => removeChild(index)}
 									projects={props.projects}
 									tags={props.tags}
 								/>
-							</Show>
-						)}
+							) : (
+								<CriterionBuilder
+									authors={props.authors}
+									characters={props.characters}
+									criterion={c}
+									ips={props.ips}
+									onChange={(value) => updateChild(index, value)}
+									onRemove={() => removeChild(index)}
+									projects={props.projects}
+									tags={props.tags}
+								/>
+							);
+						}}
 					</Index>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
@@ -357,10 +356,31 @@ function CriterionBuilder(props: {
 						return;
 					}
 					const operators = getValidOperators(value);
-					props.onChange({
-						...props.criterion,
-						target: value as SearchCriterion["target"],
-						operator: (operators[0] || "equals") as SearchCriterion["operator"],
+				props.onChange({
+					...props.criterion,
+					target: parseSelectValue(
+						value,
+						Object.keys(TARGET_LABELS) as readonly SearchCriterion["target"][],
+						"fileName",
+					),
+					operator: parseSelectValue(
+						operators[0] || "equals",
+						[
+							"equals",
+							"contains",
+							"startsWith",
+							"endsWith",
+							"gt",
+							"gte",
+							"lt",
+							"lte",
+							"in",
+							"notIn",
+							"isEmpty",
+							"isNotEmpty",
+						] as readonly SearchCriterion["operator"][],
+						"equals",
+					),
 						value: ["aiGenerated", "favorite", "isArchived"].includes(value)
 							? true
 							: "",
@@ -385,10 +405,27 @@ function CriterionBuilder(props: {
 				)}
 				onChange={(value) => {
 					if (value) {
-						props.onChange({
-							...props.criterion,
-							operator: value as SearchCriterion["operator"],
-						});
+					props.onChange({
+						...props.criterion,
+						operator: parseSelectValue(
+							value,
+							[
+								"equals",
+								"contains",
+								"startsWith",
+								"endsWith",
+								"gt",
+								"gte",
+								"lt",
+								"lte",
+								"in",
+								"notIn",
+								"isEmpty",
+								"isNotEmpty",
+							] as readonly SearchCriterion["operator"][],
+							"equals",
+						),
+					});
 					}
 				}}
 				options={getValidOperators(props.criterion.target)}
@@ -424,11 +461,11 @@ function CriterionBuilder(props: {
 							}
 						}}
 						optionLabel={(item) =>
-							"accountId" in item ? getAuthorLabel(item as Author) : item.name
+							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
 						options={autocompleteItems() || []}
 						optionTextValue={(item) =>
-							"accountId" in item ? getAuthorLabel(item as Author) : item.name
+							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
 						optionValue={(item) => item.name}
 						placeholder="検索..."

@@ -13,6 +13,7 @@ sharp.cache({ memory: 100, items: 200, files: 20 });
 import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
@@ -165,19 +166,25 @@ export class LocalImageProcessor implements IImageProcessor {
 				comments.push(...metadata.comments);
 			}
 			// Attempt to read from EXIF fields
-			const exif = (metadata.exif as any)?.IFD0;
-			if (exif) {
-				if (exif.UserComment) {
+			const exif = isRecord(metadata.exif) ? metadata.exif.IFD0 : undefined;
+			if (isRecord(exif)) {
+				const userComment = exif.UserComment;
+				if (userComment) {
 					// It might be a Buffer, so convert it
-					const comment = Buffer.isBuffer(exif.UserComment)
-						? exif.UserComment.toString("utf-8")
-						: exif.UserComment;
-					comments.push({ keyword: "workflow", text: comment.trim() });
+					const comment = Buffer.isBuffer(userComment)
+						? userComment.toString("utf-8")
+						: typeof userComment === "string"
+							? userComment
+							: "";
+					if (comment) {
+						comments.push({ keyword: "workflow", text: comment.trim() });
+					}
 				}
-				if (exif.ImageDescription) {
+				const imageDescription = exif.ImageDescription;
+				if (typeof imageDescription === "string") {
 					comments.push({
 						keyword: "prompt",
-						text: exif.ImageDescription.trim(),
+						text: imageDescription.trim(),
 					});
 				}
 			}

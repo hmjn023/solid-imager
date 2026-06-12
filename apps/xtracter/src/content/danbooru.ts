@@ -1,4 +1,5 @@
 import type { Author, TweetMetadata } from "@ext/schema";
+import { querySelectorTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 
@@ -67,9 +68,10 @@ export function processDanbooruMedia(
 	) => HTMLDivElement,
 ) {
 	// Danbooru has one main image per post page usually `#image` or `.image-container`
-	const imageContainer = document.querySelector(
+	const imageContainer = querySelectorTyped<HTMLElement>(
+		document,
 		".image-container",
-	) as HTMLElement;
+	);
 
 	// Post page logic
 	if (
@@ -99,9 +101,10 @@ export function processDanbooruMedia(
 			continue;
 		}
 
-		const previewContainer = preview.querySelector(
+		const previewContainer = querySelectorTyped<HTMLElement>(
+			preview,
 			".post-preview-container",
-		) as HTMLElement;
+		);
 		if (!previewContainer) {
 			continue;
 		}
@@ -224,7 +227,7 @@ function parseDanbooruApiMetadata(
 }
 
 function extractTargetUrl(container: HTMLElement): string | null {
-	const imgElement = container.querySelector("#image") as HTMLImageElement;
+	const imgElement = querySelectorTyped<HTMLImageElement>(container, "#image");
 	let targetUrl = "";
 
 	if (imgElement?.src) {

@@ -2,17 +2,20 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
 	newProjectSchema,
+	projectSchema,
 	updateProjectSchema,
 } from "../projects/schemas";
 
 export const projectsContract = {
-	list: oc,
+	list: oc.output(z.array(projectSchema)),
 
 	get: oc
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.string().uuid() }))
+		.output(projectSchema),
 
 	create: oc
-		.input(newProjectSchema),
+		.input(newProjectSchema)
+		.output(projectSchema),
 
 	update: oc
 		.input(
@@ -20,13 +23,15 @@ export const projectsContract = {
 				id: z.string().uuid(),
 				data: updateProjectSchema,
 			}),
-		),
+		)
+		.output(projectSchema),
 
 	delete: oc
 		.input(z.object({ id: z.string().uuid() })),
 
 	listForMedia: oc
-		.input(z.object({ mediaId: z.string().uuid() })),
+		.input(z.object({ mediaId: z.string().uuid() }))
+		.output(z.array(projectSchema)),
 
 	addToMedia: oc
 		.input(

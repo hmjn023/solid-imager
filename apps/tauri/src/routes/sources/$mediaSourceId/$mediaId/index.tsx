@@ -1,4 +1,3 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
@@ -35,7 +34,7 @@ function MediaDetailRoute() {
 	}));
 
 	const sourceRootPath = () => {
-		const source = mediaSource.data as SafeMediaSource | undefined;
+		const source = mediaSource.data;
 		if (source?.type !== "local") {
 			return undefined;
 		}

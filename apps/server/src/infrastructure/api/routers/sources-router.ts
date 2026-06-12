@@ -1,11 +1,15 @@
 import { os } from "@orpc/server";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import {
+	localConnectionSchema,
 	mediaSourceInfoSchema,
 	mediaSourceStatusSchema,
 	type SafeMediaSource,
+	s3ConnectionSchema,
+	sftpConnectionSchema,
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { z } from "zod";
 import { BackupService } from "~/application/services/backup-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
@@ -13,53 +17,54 @@ import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
+import {
+	asDumpStream,
+	nodeStreamToWebReadable,
+	webReadableToNodeStream,
+} from "~/infrastructure/utils/stream-utils";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
  */
 function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	const { connectionInfo, ...rest } = source;
-	const info = connectionInfo as any;
 
 	if (source.type === "local") {
+		const parsed = localConnectionSchema.safeParse(connectionInfo);
 		return {
 			...rest,
 			connectionInfo: {
-				path: info.path,
+				path: parsed.success ? parsed.data.path : "",
 			},
 		};
 	}
 	if (source.type === "sftp") {
+		const parsed = sftpConnectionSchema.safeParse(connectionInfo);
 		return {
 			...rest,
 			type: source.type,
 			connectionInfo: {
-				host: info.host,
-				port: info.port,
-				username: info.username,
-				remotePath: info.remotePath,
+				host: parsed.success ? parsed.data.host : "",
+				port: parsed.success ? parsed.data.port : 22,
+				username: parsed.success ? parsed.data.username : "",
+				remotePath: parsed.success ? parsed.data.remotePath : "",
 			},
 		};
 	}
 	if (source.type === "s3") {
+		const parsed = s3ConnectionSchema.safeParse(connectionInfo);
 		return {
 			...rest,
 			type: source.type,
 			connectionInfo: {
-				bucket: info.bucket,
-				region: info.region,
-				prefix: info.prefix,
+				region: parsed.success ? parsed.data.region : "",
+				bucket: parsed.success ? parsed.data.bucket : "",
+				prefix:
+					parsed.success && parsed.data.prefix ? parsed.data.prefix : undefined,
 			},
 		};
 	}
-	// Fallback for local
-	return {
-		...rest,
-		type: source.type,
-		connectionInfo: {
-			path: info.path || "",
-		},
-	};
+	throw new Error(`Unsupported source type: ${source.type}`);
 }
 
 /**
@@ -232,7 +237,7 @@ export const sourcesRouter = {
 					results.push({
 						id,
 						success: true,
-						...(pr.value as Record<string, unknown>),
+						...(isRecord(pr.value) ? pr.value : {}),
 					});
 				} else {
 					logger.error(
@@ -269,21 +274,27 @@ export const sourcesRouter = {
 			});
 
 			if (input.mode === "zip") {
-				return new Response(result as ReadableStream, {
-					headers: {
-						"Content-Type": "application/zip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+				return new Response(
+					asDumpStream(result),
+					{
+						headers: {
+							"Content-Type": "application/zip",
+							"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+						},
 					},
-				});
+				);
 			}
 
 			if (input.mode === "lancedb") {
-				return new Response(result as ReadableStream, {
-					headers: {
-						"Content-Type": "application/gzip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
+				return new Response(
+					asDumpStream(result),
+					{
+						headers: {
+							"Content-Type": "application/gzip",
+							"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
+						},
 					},
-				});
+				);
 			}
 
 			return result;
@@ -299,7 +310,7 @@ export const sourcesRouter = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				data: z.array(z.any()),
+				data: z.array(z.unknown()),
 			}),
 		)
 		.handler(
@@ -329,7 +340,6 @@ export const sourcesRouter = {
 			const path = await import("node:path");
 			const fs = await import("node:fs");
 			const { pipeline } = await import("node:stream/promises");
-			const { Readable } = await import("node:stream");
 
 			const tempDir = path.join(process.cwd(), ".cache", "import");
 			await fs.promises.mkdir(tempDir, { recursive: true });
@@ -339,7 +349,7 @@ export const sourcesRouter = {
 				// Stream the file to disk
 				const fileStream = input.file.stream();
 				await pipeline(
-					Readable.fromWeb(fileStream as any),
+					webReadableToNodeStream(fileStream),
 					fs.createWriteStream(tempFilePath),
 				);
 
@@ -375,7 +385,6 @@ export const sourcesRouter = {
 			const pathMod = await import("node:path");
 			const fsSync = await import("node:fs");
 			const { pipeline } = await import("node:stream/promises");
-			const { Readable } = await import("node:stream");
 
 			const tempDir = pathMod.join(process.cwd(), ".cache", "lancedb-restore");
 			await fsSync.promises.mkdir(tempDir, { recursive: true });
@@ -387,7 +396,7 @@ export const sourcesRouter = {
 			try {
 				const fileStream = input.file.stream();
 				await pipeline(
-					Readable.fromWeb(fileStream as any),
+					webReadableToNodeStream(fileStream),
 					fsSync.createWriteStream(tempFilePath),
 				);
 
@@ -416,7 +425,7 @@ export const sourcesRouter = {
 		.output(mediaSourceStatusSchema)
 		.handler(async ({ input }) => {
 			const status = await MediaSourceService.getStatus(input.id);
-			return status as any;
+			return status as z.infer<typeof mediaSourceStatusSchema>;
 		}),
 
 	/**
@@ -437,11 +446,11 @@ export const sourcesRouter = {
 			yield { event: "connected", data: "connected" };
 
 			// Queue for events — use pointer index instead of shift()
-			const queue: { event: string; data: any }[] = [];
+			const queue: { event: string; data: unknown }[] = [];
 			let head = 0;
 			let resolve: (() => void) | null = null;
 
-			const onEvent = (payload: { event: string; data: any }) => {
+			const onEvent = (payload: { event: string; data: unknown }) => {
 				queue.push(payload);
 				if (resolve) {
 					resolve();

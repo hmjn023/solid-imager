@@ -1,4 +1,5 @@
 import type { Author, TweetMetadata } from "@ext/schema";
+import { querySelectorAllTyped, querySelectorTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 const PROCESSED_VIDEO_CLASS = "xtracter-video-processed";
@@ -22,9 +23,11 @@ function processImages(
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
-	const images = document.querySelectorAll('img[src*="pbs.twimg.com/media"]');
-	for (const img of images) {
-		const imageElement = img as HTMLImageElement;
+	const images = querySelectorAllTyped<HTMLImageElement>(
+		document,
+		'img[src*="pbs.twimg.com/media"]',
+	);
+	for (const imageElement of images) {
 
 		if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
 			continue;
@@ -59,7 +62,8 @@ function processVideos(
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
-	const videoComponents = document.querySelectorAll(
+	const videoComponents = querySelectorAllTyped<HTMLElement>(
+		document,
 		'div[data-testid="videoComponent"]',
 	);
 	for (const videoComponent of videoComponents) {
@@ -71,10 +75,10 @@ function processVideos(
 			continue;
 		}
 
-		const tweetArticle = findTweetArticle(videoComponent as HTMLElement);
+		const tweetArticle = findTweetArticle(videoComponent);
 		const metadata = extractMetadata(
 			tweetArticle,
-			container as HTMLElement,
+			container,
 			"VIDEO",
 		);
 
@@ -108,15 +112,15 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
 		element.closest('[data-testid="layers"]') ||
 		document.querySelector('[data-testid="layers"]');
 	if (layer) {
-		const article = layer.querySelector("article");
+		const article = querySelectorTyped<HTMLElement>(layer, "article");
 		if (article) {
-			return article as HTMLElement;
+			return article;
 		}
 	}
 
-	const articles = document.querySelectorAll("article");
+	const articles = querySelectorAllTyped<HTMLElement>(document, "article");
 	if (articles.length === 1) {
-		return articles[0] as HTMLElement;
+		return articles[0];
 	}
 
 	return null;
@@ -205,20 +209,26 @@ function determineTargetUrl(
 	}
 
 	try {
-		const img = element as HTMLImageElement;
-		const url = new URL(img.src);
+		if (!(element instanceof HTMLImageElement)) {
+			return element.getAttribute("src") ?? "";
+		}
+		const url = new URL(element.src);
 		url.searchParams.set("name", "orig");
 		return url.toString();
 	} catch (_e) {
-		return (element as HTMLImageElement).src;
+		if (element instanceof HTMLImageElement) {
+			return element.src;
+		}
+		return element.getAttribute("src") ?? "";
 	}
 }
 
 function extractFromArticle(article: HTMLElement) {
-	const tweetTextNode = article.querySelector('div[data-testid="tweetText"]');
-	const tweetText = tweetTextNode
-		? (tweetTextNode as HTMLElement).innerText
-		: "";
+	const tweetTextNode = querySelectorTyped<HTMLElement>(
+		article,
+		'div[data-testid="tweetText"]',
+	);
+	const tweetText = tweetTextNode?.innerText ?? "";
 
 	const timeNode = article.querySelector("time");
 	const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";

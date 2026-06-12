@@ -20,7 +20,7 @@ export function createAppRouter() {
 		history: createHashHistory(),
 		context: {
 			queryClient,
-		} as AppRouterContext,
+		} satisfies AppRouterContext,
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,

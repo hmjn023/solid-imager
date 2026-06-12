@@ -1,4 +1,5 @@
 import { uploadMediaFormSchema } from "@solid-imager/core/domain/media/upload-schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Dialog,
@@ -11,7 +12,6 @@ import {
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { createForm } from "@tanstack/solid-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
 import { createEffect, createSignal, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
@@ -62,10 +62,9 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 				});
 				props.onClose();
 			} catch (e) {
-				setUploadError((e as Error).message);
+				setUploadError(getErrorMessage(e));
 			}
 		},
-		validatorAdapter: zodValidator(),
 		validators: {
 			onChange: uploadMediaFormSchema,
 		},
@@ -139,11 +138,9 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 			form.setFieldValue("filename", fetchedFile.name);
 			setPreviewUrl(URL.createObjectURL(fetchedFile));
 		} catch (e) {
-			// Form field error could be set here, but we'll use the general error for now
-			// or set error on sourceUrl field specifically
 			form.setFieldMeta("sourceUrl", (meta) => ({
 				...meta,
-				errors: [(e as Error).message],
+				errors: [getErrorMessage(e)],
 			}));
 		} finally {
 			setIsFetchingUrl(false);
@@ -188,8 +185,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 										/>
 										<Show when={field().state.meta.errors.length > 0}>
 											<p class="text-red-500 text-sm">
-												{(field().state.meta.errors[0] as any)?.message ??
-													field().state.meta.errors[0]}
+												{getErrorMessage(field().state.meta.errors[0])}
 											</p>
 										</Show>
 									</div>
@@ -229,8 +225,7 @@ function UploadMediaFormContent(props: UploadMediaModalProps) {
 												/>
 												<Show when={field().state.meta.errors.length > 0}>
 													<p class="text-red-500 text-sm">
-														{(field().state.meta.errors[0] as any)?.message ??
-															field().state.meta.errors[0]}
+														{getErrorMessage(field().state.meta.errors[0])}
 													</p>
 												</Show>
 											</>

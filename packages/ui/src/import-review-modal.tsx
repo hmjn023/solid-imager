@@ -1,5 +1,6 @@
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
 	createResource,
@@ -127,7 +128,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			props.onImportCompleted();
 			props.onClose();
 		} catch (error) {
-			toast.error(`Failed to process imports: ${(error as Error).message}`);
+			toast.error(`Failed to process imports: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -138,7 +139,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			setSelectedJobIds(createEmptySelection());
 			toast.success("Requests deleted");
 		} catch (error) {
-			toast.error(`Failed to cancel imports: ${(error as Error).message}`);
+			toast.error(`Failed to cancel imports: ${getErrorMessage(error)}`);
 		} finally {
 			setIsDeleteDialogOpen(false);
 		}

@@ -5,15 +5,15 @@ import { client } from "~/orpc-client";
 export function createIp(data: {
 	name: string;
 	description?: string;
-}): Promise<{ id: string }> {
-	return client.ips.create(data) as unknown as Promise<{ id: string }>;
+}) {
+	return client.ips.create(data);
 }
 
 export function updateIp(
 	id: string,
 	data: { name?: string; description?: string },
-): Promise<{ id: string }> {
-	return client.ips.update({ id, data }) as unknown as Promise<{ id: string }>;
+) {
+	return client.ips.update({ id, data });
 }
 
 export async function deleteIp(id: string) {

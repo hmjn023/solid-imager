@@ -1,12 +1,7 @@
 import { z } from "incur";
+import { getErrorMessage } from "@solid-imager/core/utils";
 
-/**
- * Safely extract error message from unknown error object
- */
-export function getErrorMessage(e: unknown): string {
-	if (e instanceof Error) return e.message;
-	return String(e);
-}
+export { getErrorMessage };
 
 /**
  * Shared global options for commands

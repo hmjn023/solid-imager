@@ -6,6 +6,9 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
+import { parseSelectValue } from "./utils/parse-select-value";
+
+const SORT_OPTIONS = ["date", "name", "size", "rating", "viewCount"] as const;
 
 export type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
 
@@ -46,7 +49,7 @@ export function SortControls(props: SortControlsProps) {
 							</SelectItem>
 						)}
 						onChange={(value) =>
-							props.onSortByChange((value as SortOption) || "date")
+							props.onSortByChange(parseSelectValue(value, SORT_OPTIONS, "date"))
 						}
 						options={["date", "name", "size", "rating", "viewCount"]}
 						placeholder="項目"
@@ -55,7 +58,7 @@ export function SortControls(props: SortControlsProps) {
 						<SelectTrigger>
 							<SelectValue<string>>
 								{(state) =>
-									getSortLabel((state.selectedOption() as SortOption) || "date")
+									getSortLabel(parseSelectValue(state.selectedOption(), SORT_OPTIONS, "date"))
 								}
 							</SelectValue>
 						</SelectTrigger>

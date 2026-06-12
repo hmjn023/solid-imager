@@ -106,7 +106,7 @@ describe("Sources API Client Extensions", () => {
 
 	it("should call orpc.sources.restore with correct parameters", async () => {
 		const id = "test-source-id";
-		const data = { items: [] };
+		const data: any[] = [];
 		const mockResponse = { processed: 10, skipped: 2 };
 
 		((orpc.sources as any).restore as any).mockResolvedValue(

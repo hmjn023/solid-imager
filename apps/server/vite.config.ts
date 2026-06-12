@@ -10,6 +10,21 @@ import { devtools } from "@tanstack/devtools-vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+const bypassSecFetchDestPlugin = () => ({
+  name: "bypass-sec-fetch-dest",
+  configureServer(server: any) {
+    server.middlewares.use((req: any, _res: any, next: any) => {
+      if (req.url?.startsWith("/api/")) {
+        if (req.headers["sec-fetch-dest"] === "image") {
+          req.headers["x-orig-sec-fetch-dest"] = req.headers["sec-fetch-dest"];
+          delete req.headers["sec-fetch-dest"];
+        }
+      }
+      next();
+    });
+  },
+});
+
 export default defineConfig({
   resolve: {
     alias: {
@@ -23,16 +38,24 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    bypassSecFetchDestPlugin(),
     devtools(),
     nitro(),
     tanstackRouter({
       target: "solid",
       autoCodeSplitting: true,
+      routeFileIgnorePattern: ".*/components/.*",
     }),
     tailwindcss(),
     tanstackStart(),
     solidPlugin({ ssr: true }),
   ],
+  optimizeDeps: {
+    exclude: [
+      "dghs-imgutils-rs",
+      "@lancedb/lancedb",
+    ],
+  },
   customLogger: {
     warn(msg, options) {
       if (typeof msg === "string" && msg.includes("externalized for browser compatibility")) return;

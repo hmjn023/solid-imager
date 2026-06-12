@@ -1,4 +1,3 @@
-import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { AiTaggingModal as SharedAiTaggingModal } from "@solid-imager/ui/ai-tagging-modal";
 import { serverOrpc } from "~/infrastructure/api-clients/server-orpc-client";
 
@@ -15,9 +14,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			description={`Tags extracted from ${props.fileName} using the AI service.`}
 			fetchTags={async () => {
 				const file = await props.loadFile();
-				return serverOrpc.ai.tag({
-					file,
-				}) as unknown as Promise<TaggingResponse>;
+				return serverOrpc.ai.tag({ file });
 			}}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
