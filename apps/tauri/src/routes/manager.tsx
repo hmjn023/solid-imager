@@ -1,7 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	prefetchManagerPageQueries,
-	type StartBatchTaggingResult,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
@@ -9,6 +8,10 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
+import {
+	scanBatchTaggingTargets,
+	startBatchTaggingWithIds,
+} from "~/infrastructure/api-clients/ai-api";
 import {
 	createCharacter,
 	deleteCharacter,
@@ -20,18 +23,14 @@ import {
 	updateIp,
 } from "~/infrastructure/api-clients/ips-api";
 import {
-	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
-} from "~/infrastructure/api-clients/ai-api";
+	deleteMedia,
+	findDuplicateMedia,
+} from "~/infrastructure/api-clients/media-api";
 import {
 	createProject,
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
-import {
-	deleteMedia,
-	findDuplicateMedia,
-} from "~/infrastructure/api-clients/media-api";
 import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
 import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
 import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
@@ -67,7 +66,7 @@ export const Route = createFileRoute("/manager")({
 	component: ManagerPage,
 });
 
-export default function ManagerPage() {
+function ManagerPage() {
 	const queryClient = useQueryClient();
 
 	const manager = useManagerPage({

@@ -30,22 +30,7 @@ import {
 	searchState,
 } from "~/presentation/store/search-store";
 
-const wrappedPresetClient = {
-	presets: {
-		list: () => rawPresetClient.list(),
-		get: (input: { id: number }) => rawPresetClient.get(input.id),
-		getByName: (input: { name: string }) =>
-			rawPresetClient.getByName(input.name),
-		create: rawPresetClient.create,
-		update: (input: {
-			id: number;
-			data: Parameters<typeof rawPresetClient.update>[1];
-		}) => rawPresetClient.update(input.id, input.data),
-		delete: (input: { id: number }) => rawPresetClient.delete(input.id),
-	},
-};
-
-const PresetClient = createPresetClient(wrappedPresetClient);
+const PresetClient = createPresetClient(rawPresetClient);
 
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
