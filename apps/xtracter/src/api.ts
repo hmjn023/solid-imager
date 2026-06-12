@@ -7,7 +7,7 @@ const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
 export const getClient = async () => {
-	const result = await chrome.storage.local.get(["apiUrl"]);
+	const result: { apiUrl?: string } = await chrome.storage.local.get(["apiUrl"]);
 	const url = result.apiUrl || DEFAULT_API_URL;
 
 	return createClient<AppContract>({
