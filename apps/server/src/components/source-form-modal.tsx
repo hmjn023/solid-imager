@@ -38,7 +38,19 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 		name: string;
 		description: string;
 		type: "local" | "sftp" | "s3";
-		connectionInfo: Record<string, string | number | undefined>;
+		connectionInfo: {
+			path?: string;
+			host?: string;
+			port?: number;
+			username?: string;
+			password?: string;
+			remotePath?: string;
+			bucket?: string;
+			region?: string;
+			accessKeyId?: string;
+			secretAccessKey?: string;
+			prefix?: string;
+		};
 	}>({
 		name: "",
 		description: "",
@@ -53,12 +65,9 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 			setFormData({
 				name: props.editingSource.name,
 				description: props.editingSource.description || "",
-				type: props.editingSource.type as "local" | "sftp" | "s3",
+				type: props.editingSource.type,
 				connectionInfo: isRecord(props.editingSource.connectionInfo)
-					? (props.editingSource.connectionInfo as Record<
-							string,
-							string | number | undefined
-						>)
+					? (props.editingSource.connectionInfo as Record<string, any>)
 					: {},
 			});
 		} else {
@@ -188,14 +197,14 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									{itemProps.item.rawValue.label}
 								</SelectItem>
 							)}
-							onChange={(v) =>
-								setFormData("type", v?.value as "local" | "sftp" | "s3")
-							}
+							onChange={(v) => {
+								if (v) setFormData("type", v.value);
+							}}
 							options={[
 								{ value: "local", label: "Local Filesystem" },
 								{ value: "sftp", label: "SFTP" },
 								{ value: "s3", label: "S3 Compatible Storage" },
-							]}
+							] as const}
 							value={{
 								value: formData.type,
 								label: getTypeLabel(formData.type),
@@ -222,7 +231,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										setFormData("connectionInfo", "path", e.currentTarget.value)
 									}
 									placeholder="/mnt/data/photos"
-									value={(formData.connectionInfo.path as string) || ""}
+									value={formData.connectionInfo.path || ""}
 								/>
 								<Show when={errors().path}>
 									<p class="text-red-500 text-sm">{errors().path}</p>
@@ -244,7 +253,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 											)
 										}
 										placeholder="192.168.1.10"
-										value={(formData.connectionInfo.host as string) || ""}
+										value={formData.connectionInfo.host || ""}
 									/>
 									<Show when={errors().host}>
 										<p class="text-red-500 text-sm">{errors().host}</p>
@@ -258,7 +267,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 											setFormData(
 												"connectionInfo",
 												"port",
-												e.currentTarget.value,
+												e.currentTarget.value ? Number(e.currentTarget.value) : undefined,
 											)
 										}
 										placeholder="22"
@@ -279,7 +288,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										)
 									}
 									placeholder="user"
-									value={(formData.connectionInfo.username as string) || ""}
+									value={formData.connectionInfo.username || ""}
 								/>
 								<Show when={errors().username}>
 									<p class="text-red-500 text-sm">{errors().username}</p>
@@ -298,7 +307,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									}
 									placeholder="********"
 									type="password"
-									value={(formData.connectionInfo.password as string) || ""}
+									value={formData.connectionInfo.password || ""}
 								/>
 							</div>
 							<div class="space-y-2">
@@ -313,7 +322,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										)
 									}
 									placeholder="/home/user/photos"
-									value={(formData.connectionInfo.remotePath as string) || ""}
+									value={formData.connectionInfo.remotePath || ""}
 								/>
 								<Show when={errors().remotePath}>
 									<p class="text-red-500 text-sm">{errors().remotePath}</p>
@@ -335,7 +344,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 											)
 										}
 										placeholder="my-bucket"
-										value={(formData.connectionInfo.bucket as string) || ""}
+										value={formData.connectionInfo.bucket || ""}
 									/>
 									<Show when={errors().bucket}>
 										<p class="text-red-500 text-sm">{errors().bucket}</p>
@@ -353,7 +362,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 											)
 										}
 										placeholder="us-east-1"
-										value={(formData.connectionInfo.region as string) || ""}
+										value={formData.connectionInfo.region || ""}
 									/>
 									<Show when={errors().region}>
 										<p class="text-red-500 text-sm">{errors().region}</p>
@@ -372,7 +381,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										)
 									}
 									placeholder="AKIA..."
-									value={(formData.connectionInfo.accessKeyId as string) || ""}
+									value={formData.connectionInfo.accessKeyId || ""}
 								/>
 								<Show when={errors().accessKeyId}>
 									<p class="text-red-500 text-sm">{errors().accessKeyId}</p>
@@ -392,7 +401,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 									placeholder="********"
 									type="password"
 									value={
-										(formData.connectionInfo.secretAccessKey as string) || ""
+										formData.connectionInfo.secretAccessKey || ""
 									}
 								/>
 								<Show when={errors().secretAccessKey}>
@@ -411,7 +420,7 @@ export default function SourceFormModal(props: SourceFormModalProps) {
 										)
 									}
 									placeholder="photos/"
-									value={(formData.connectionInfo.prefix as string) || ""}
+									value={formData.connectionInfo.prefix || ""}
 								/>
 							</div>
 						</Show>

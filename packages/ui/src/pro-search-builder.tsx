@@ -258,35 +258,33 @@ function GroupBuilder(props: {
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
 					<Index each={props.group.children}>
-						{(child, index) => (
-							<Show
-								fallback={
-									<CriterionBuilder
-										authors={props.authors}
-										characters={props.characters}
-										criterion={child() as SearchCriterion}
-										ips={props.ips}
-										onChange={(value) => updateChild(index, value)}
-										onRemove={() => removeChild(index)}
-										projects={props.projects}
-										tags={props.tags}
-									/>
-								}
-								when={child().type === "group"}
-							>
+						{(child, index) => {
+							const c = child();
+							return c.type === "group" ? (
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={child() as SearchGroup}
+									group={c}
 									ips={props.ips}
 									onChange={(value) => updateChild(index, value)}
 									onRemove={() => removeChild(index)}
 									projects={props.projects}
 									tags={props.tags}
 								/>
-							</Show>
-						)}
+							) : (
+								<CriterionBuilder
+									authors={props.authors}
+									characters={props.characters}
+									criterion={c}
+									ips={props.ips}
+									onChange={(value) => updateChild(index, value)}
+									onRemove={() => removeChild(index)}
+									projects={props.projects}
+									tags={props.tags}
+								/>
+							);
+						}}
 					</Index>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
@@ -463,11 +461,11 @@ function CriterionBuilder(props: {
 							}
 						}}
 						optionLabel={(item) =>
-							"accountId" in item ? getAuthorLabel(item as Author) : item.name
+							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
 						options={autocompleteItems() || []}
 						optionTextValue={(item) =>
-							"accountId" in item ? getAuthorLabel(item as Author) : item.name
+							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
 						optionValue={(item) => item.name}
 						placeholder="検索..."

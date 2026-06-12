@@ -72,7 +72,7 @@ function SourcesRoute() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			(mediaSources.data as Array<{ id?: string }>)
+			mediaSources.data
 				?.map((s) => s.id)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});

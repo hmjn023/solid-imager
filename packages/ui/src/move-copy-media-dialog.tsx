@@ -71,10 +71,10 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 						<p class="text-red-500 text-sm">{props.error}</p>
 					</Show>
 					<Show when={!(props.isLoading || props.error)}>
-						<Select
+						<Select<{ value: string; label: string }>
 							itemComponent={(itemProps) => (
 								<SelectItem item={itemProps.item}>
-									{(itemProps.item.rawValue as { label: string }).label}
+									{itemProps.item.rawValue.label}
 								</SelectItem>
 							)}
 							onChange={(val) => setTargetSourceId(val?.value ?? null)}

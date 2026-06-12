@@ -60,10 +60,10 @@ const _CollapsibleSection = (props: {
 	title: string;
 	content: string | object;
 }) => {
-	const isJson = typeof props.content === "object" && props.content !== null;
-	const formattedContent = isJson
-		? JSON.stringify(props.content, null, 2)
-		: (props.content as string);
+	const formattedContent =
+		typeof props.content === "object" && props.content !== null
+			? JSON.stringify(props.content, null, 2)
+			: props.content;
 
 	return (
 		<Collapsible.Root class="w-full">

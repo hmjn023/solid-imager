@@ -179,12 +179,12 @@ export function PresetManager(props: {
 
 			<div class="flex items-center gap-2">
 				<div class="min-w-0 flex-1">
-					<Select
+					<Select<string>
 						itemComponent={(itemProps) => {
 							const preset = presets()?.find(
 								(p: Preset) =>
 									String(p.id) ===
-									(itemProps.item as { rawValue: string }).rawValue,
+									itemProps.item.rawValue,
 							);
 							return (
 								<SelectItem
@@ -205,7 +205,7 @@ export function PresetManager(props: {
 								{(state) => {
 									const preset = presets()?.find(
 										(p: Preset) =>
-											String(p.id) === (state.selectedOption() as string),
+											String(p.id) === state.selectedOption(),
 									);
 									return (
 										<span class="truncate">
