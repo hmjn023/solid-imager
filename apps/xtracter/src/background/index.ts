@@ -80,7 +80,7 @@ async function getMediaSources(): Promise<SafeMediaSource[]> {
 // Determine which source ID to use
 async function getTargetSourceId(): Promise<string | null> {
 	// 1. Check local storage for user selection
-	const result = await chrome.storage.local.get(["selectedSourceId"]);
+	const result: { selectedSourceId?: string } = await chrome.storage.local.get(["selectedSourceId"]);
 	if (result.selectedSourceId) {
 		return result.selectedSourceId;
 	}
