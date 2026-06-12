@@ -36,7 +36,7 @@ import {
 	inArray,
 	isNotNull,
 	isNull,
-	like,
+	ilike,
 	lt,
 	lte,
 	not,
@@ -223,11 +223,11 @@ function buildValueCondition(
 		case "equals":
 			return eq(column, value);
 		case "contains":
-			return like(column, `%${escapeLikePattern(String(value))}%`);
+			return ilike(column, `%${escapeLikePattern(String(value))}%`);
 		case "startsWith":
-			return like(column, `${escapeLikePattern(String(value))}%`);
+			return ilike(column, `${escapeLikePattern(String(value))}%`);
 		case "endsWith":
-			return like(column, `%${escapeLikePattern(String(value))}`);
+			return ilike(column, `%${escapeLikePattern(String(value))}`);
 		case "gt":
 			return gt(column, value);
 		case "gte":
@@ -253,9 +253,9 @@ function makeBuildKeywordCondition(getExecutor: (tx?: unknown) => DrizzleExecuto
 	return (node: SearchCriterion): SQL | undefined => {
 		const pattern = `%${escapeLikePattern(String(node.value))}%`;
 		const condition = or(
-			like(medias.fileName, pattern),
-			like(medias.filePath, pattern),
-			like(medias.description, pattern),
+			ilike(medias.fileName, pattern),
+			ilike(medias.filePath, pattern),
+			ilike(medias.description, pattern),
 			exists(
 				getExecutor()
 					.select({ id: mediaGenerationInfo.mediaId })
@@ -263,7 +263,7 @@ function makeBuildKeywordCondition(getExecutor: (tx?: unknown) => DrizzleExecuto
 					.where(
 						and(
 							eq(mediaGenerationInfo.mediaId, medias.id),
-							like(mediaGenerationInfo.prompt, pattern),
+							ilike(mediaGenerationInfo.prompt, pattern),
 						),
 					),
 			),
@@ -464,7 +464,7 @@ function makeBuildCriterionQuery(getExecutor: (tx?: unknown) => DrizzleExecutor)
 			}
 			const folderPath = node.value.endsWith("/") ? node.value : `${node.value}/`;
 			const pattern = `${escapeLikePattern(folderPath)}%`;
-			const condition = like(medias.filePath, pattern);
+			const condition = ilike(medias.filePath, pattern);
 			return node.negate ? not(condition) : condition;
 		}
 
@@ -1132,7 +1132,7 @@ export function createMediaRepository(
 			const pattern = `${directoryPath.endsWith("/") ? directoryPath : `${directoryPath}/`}%`;
 			const conditions: import("drizzle-orm").SQL[] = [
 				eq(medias.mediaSourceId, mediaSourceId),
-				like(medias.filePath, pattern),
+				ilike(medias.filePath, pattern),
 			];
 			const results = await client
 				.select()

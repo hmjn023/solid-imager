@@ -66,7 +66,7 @@ describe("calculateNextModeState - Pro to Simple transition", () => {
 			children: [
 				{
 					type: "criterion",
-					target: "fileName",
+					target: "keyword",
 					operator: "contains",
 					value: "test",
 				},
@@ -110,7 +110,7 @@ describe("calculateNextModeState - Simple to Pro transition", () => {
 			children: [
 				{
 					type: "criterion",
-					target: "fileName",
+					target: "keyword",
 					operator: "contains",
 					value: "test",
 				},

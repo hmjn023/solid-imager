@@ -7,7 +7,7 @@ import {
   eq,
   type InferSelectModel,
   inArray,
-  like,
+  ilike,
   notInArray,
   or,
   type SQL,
@@ -56,8 +56,8 @@ function buildWhereClause(
     const escapedQuery = escapeLikeString(options.query);
     conditions.push(
       or(
-        like(medias.fileName, `%${escapedQuery}%`),
-        like(medias.description, `%${escapedQuery}%`),
+        ilike(medias.fileName, `%${escapedQuery}%`),
+        ilike(medias.description, `%${escapedQuery}%`),
       ),
     );
   }
@@ -184,15 +184,15 @@ export function createMediaSearchFunctions(
         const executor = getExecutor();
         const conditions: (SQL | undefined)[] = [
           eq(medias.mediaSourceId, mediaSourceId),
-          like(medias.filePath, `${escapeLikeString(directoryPath)}%`),
+          ilike(medias.filePath, `${escapeLikeString(directoryPath)}%`),
         ];
 
         if (searchOptions.query) {
           const escapedQuery = escapeLikeString(searchOptions.query);
           conditions.push(
             or(
-              like(medias.fileName, `%${escapedQuery}%`),
-              like(medias.description, `%${escapedQuery}%`),
+              ilike(medias.fileName, `%${escapedQuery}%`),
+              ilike(medias.description, `%${escapedQuery}%`),
             ),
           );
         }

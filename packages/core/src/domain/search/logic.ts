@@ -87,7 +87,7 @@ const applyCriterionToState = (
 ): boolean => {
 	const { target, operator, value, negate } = criterion;
 
-	if (target === "fileName" && operator === "contains" && !negate) {
+	if (target === "keyword" && operator === "contains" && !negate) {
 		if (typeof value === "string") {
 			state.searchQuery = value;
 			return true;
@@ -129,11 +129,11 @@ export const getSearchConditionFromState = (
 	// Simple Mode Construction
 	const conditions: SearchGroup["children"] = [];
 
-	// Keyword (File name)
+	// Keyword (File name, description, prompt, etc.)
 	if (state.searchQuery.trim()) {
 		conditions.push({
 			type: "criterion",
-			target: "fileName",
+			target: "keyword",
 			operator: "contains",
 			value: state.searchQuery.trim(),
 		});
