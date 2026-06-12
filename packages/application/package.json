@@ -22,7 +22,7 @@
     "apache-arrow": "^21.1.0"
   },
   "devDependencies": {
-    "@types/node": "^24.10.4",
+    "@types/node": "^25.9.3",
     "typescript": "^6.0.3",
     "vite-plus": "latest",
     "vite-tsconfig-paths": "^5.1.4",
