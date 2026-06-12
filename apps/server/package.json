@@ -78,7 +78,7 @@
     "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",
     "@tanstack/devtools-vite": "^0.7.0",
-    "@types/archiver": "^7.0.0",
+    "@types/archiver": "^8.0.0",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/fluent-ffmpeg": "^2.1.28",
     "@types/node": "^25.9.1",
