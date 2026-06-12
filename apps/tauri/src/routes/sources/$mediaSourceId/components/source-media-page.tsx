@@ -1,8 +1,7 @@
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
-import { createQuery } from "@tanstack/solid-query";
+import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { useParams } from "@tanstack/solid-router";
-import { createMemo } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -35,22 +34,13 @@ import {
 	searchState,
 } from "~/presentation/store/search-store";
 
+const presetClient = createPresetClient(rawPresetClient);
+
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const mediaSourceId = () => params().mediaSourceId;
 
-	const sources = createQuery(() => mediaSourcesQueryOptions());
-
-	const presetClient = createPresetClient(rawPresetClient);
-
-	const sourceRootPath = createMemo(() => {
-		const current = sources.data?.find((item) => item.id === mediaSourceId());
-		if (current?.type !== "local") {
-			return undefined;
-		}
-		const connectionInfo = current.connectionInfo as { path?: string };
-		return connectionInfo.path;
-	});
+	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 
 	const transport = createTauriTransport(mediaSourceId);
 
@@ -86,7 +76,7 @@ export function SourceMediaPage() {
 				<MediaGridItem
 					media={media}
 					onContextMenu={onContextMenu}
-					sourceRootPath={sourceRootPath()}
+					sourceRootPath={sourceRootPathResolver(mediaSourceId())}
 				/>
 			)}
 			moveCopyDialogComponent={MoveCopyMediaDialog}

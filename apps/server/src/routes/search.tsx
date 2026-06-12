@@ -9,21 +9,6 @@ import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persiste
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 
-const wrappedPresetClient = {
-	presets: {
-		list: () => rawPresetClient.list(),
-		get: (input: { id: number }) => rawPresetClient.get(input.id),
-		getByName: (input: { name: string }) =>
-			rawPresetClient.getByName(input.name),
-		create: rawPresetClient.create,
-		update: (input: {
-			id: number;
-			data: Parameters<typeof rawPresetClient.update>[1];
-		}) => rawPresetClient.update(input.id, input.data),
-		delete: (input: { id: number }) => rawPresetClient.delete(input.id),
-	},
-};
-
 import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
 import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
 import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
@@ -53,12 +38,12 @@ export const Route = createFileRoute("/search")({
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
-const PresetClient = createPresetClient(wrappedPresetClient);
+const PresetClient = createPresetClient(rawPresetClient);
 
 function SearchRoute() {
 	const queryClient = useQueryClient();
 
-	useCurrentSearchPersistence("all");
+	useCurrentSearchPersistence("all", PresetClient);
 
 	const page = useSearchPage({
 		searchMedia,

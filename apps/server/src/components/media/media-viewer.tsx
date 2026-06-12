@@ -1,49 +1,94 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import { useParams } from "@tanstack/solid-router";
-import { createMemo, Match, Switch } from "solid-js";
+import {
+	type MediaSource,
+	MediaViewer as SharedMediaViewer,
+} from "@solid-imager/ui/media-viewer";
+import { createMemo, onCleanup } from "solid-js";
+
+const MIME_BY_EXTENSION: Record<string, string> = {
+	mp4: "video/mp4",
+	webm: "video/webm",
+	mov: "video/quicktime",
+	mp3: "audio/mpeg",
+	wav: "audio/wav",
+	jpg: "image/jpeg",
+	jpeg: "image/jpeg",
+	png: "image/png",
+	webp: "image/webp",
+	gif: "image/gif",
+	bmp: "image/bmp",
+	svg: "image/svg+xml",
+};
+
+function resolveMimeType(fileName: string) {
+	const extension = fileName.split(".").pop()?.toLowerCase();
+	return (
+		(extension && MIME_BY_EXTENSION[extension]) || "application/octet-stream"
+	);
+}
+
+class ApiMediaSource implements MediaSource {
+	type: "image" | "video" | "audio";
+	private urls: string[] = [];
+
+	constructor(private media: MediaDetails) {
+		this.type =
+			media.mediaType === "video"
+				? "video"
+				: media.mediaType === "audio"
+					? "audio"
+					: "image";
+	}
+
+	async getUrl() {
+		const url = `/api/sources/${this.media.mediaSourceId}/${this.media.id}`;
+		const response = await fetch(url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch media: ${response.status}`);
+		}
+		const blob = await response.blob();
+		const typedBlob = new Blob([blob], {
+			type: resolveMimeType(this.media.fileName),
+		});
+		const blobUrl = URL.createObjectURL(typedBlob);
+		this.urls.push(blobUrl);
+		return blobUrl;
+	}
+
+	revokeUrl(url: string) {
+		const idx = this.urls.indexOf(url);
+		if (idx !== -1) {
+			URL.revokeObjectURL(url);
+			this.urls.splice(idx, 1);
+		}
+	}
+
+	cleanup() {
+		for (const url of this.urls) {
+			URL.revokeObjectURL(url);
+		}
+		this.urls = [];
+	}
+}
 
 type MediaViewerProps = {
 	media: MediaDetails;
+	sourceRootPath?: string | null;
 };
 
-export default function MediaViewer(props: MediaViewerProps) {
-	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
-
-	const mediaUrl = createMemo(
-		() => `/api/sources/${params().mediaSourceId}/${params().mediaId}`,
-	);
+export function MediaViewer(props: MediaViewerProps) {
+	const source = createMemo(() => {
+		const s = new ApiMediaSource(props.media);
+		onCleanup(() => s.cleanup());
+		return s;
+	});
 
 	return (
-		<div class="flex h-full w-full items-center justify-center bg-black/5">
-			<Switch>
-				<Match when={props.media.mediaType === "video"}>
-					<video
-						class="max-h-full max-w-full"
-						controls
-						height={props.media.height}
-						src={mediaUrl()}
-						width={props.media.width}
-					>
-						<track kind="captions" />
-						Your browser does not support the video tag.
-					</video>
-				</Match>
-				<Match when={props.media.mediaType === "audio"}>
-					<audio controls src={mediaUrl()}>
-						<track kind="captions" />
-						Your browser does not support the audio tag.
-					</audio>
-				</Match>
-				<Match when={true}>
-					<img
-						alt={props.media.fileName}
-						class="max-h-full max-w-full object-contain"
-						height={props.media.height}
-						src={mediaUrl()}
-						width={props.media.width}
-					/>
-				</Match>
-			</Switch>
-		</div>
+		<SharedMediaViewer
+			fileName={props.media.fileName}
+			height={props.media.height}
+			source={source()}
+			width={props.media.width}
+		/>
 	);
 }

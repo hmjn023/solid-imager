@@ -6,7 +6,7 @@ import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
-import AiTaggingModal from "~/components/media/ai-tagging-modal";
+import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
 
@@ -77,7 +77,7 @@ const _CollapsibleSection = (props: {
 	);
 };
 
-export default function MediaSidebar(props: MediaSidebarProps) {
+export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
