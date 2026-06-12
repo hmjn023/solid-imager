@@ -36,12 +36,12 @@
 		"@tailwindcss/vite": "^4.3.0",
 		"@tanstack/router-plugin": "latest",
 
-		"@types/node": "^24.12.4",
+		"@types/node": "^25.9.3",
     "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^6.0.3",
 		"vite": "^0.1.24",
 		"vite-plugin-solid": "^2.11.12",
-		"vite-plus": "latest"
+    "vite-plus": "^0.1.24"
 	}
 }

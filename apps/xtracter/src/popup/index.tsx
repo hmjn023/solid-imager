@@ -18,7 +18,7 @@ function Popup() {
 	const [uploadStatus, setUploadStatus] = createSignal("");
 
 	const loadSettings = async () => {
-		const settings = await chrome.storage.local.get([
+		const settings: { apiUrl?: string; selectedSourceId?: string } = await chrome.storage.local.get([
 			"selectedSourceId",
 			"apiUrl",
 		]);
