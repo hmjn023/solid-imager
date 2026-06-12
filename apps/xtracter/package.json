@@ -14,17 +14,17 @@
   },
   "devDependencies": {
     "@types/chrome": "^0.1.43",
-    "@types/node": "^20.11.24",
-    "solid-js": "^1.9.12",
+    "@types/node": "^25.9.1",
+    "solid-js": "^1.9.13",
     "typescript": "^6.0.3",
-    "vite": "^3.0.0",
-    "vite-plugin-solid": "^2.11.11",
-    "vite-plus": "latest"
+    "vite": "^0.1.24",
+    "vite-plugin-solid": "^2.11.12",
+    "vite-plus": "^0.1.24"
   },
   "dependencies": {
-    "zod": "^4.3.5",
-    "@orpc/client": "^1.13.2",
-    "@orpc/server": "^1.13.2",
+    "zod": "^4.4.3",
+    "@orpc/client": "^1.14.4",
+    "@orpc/server": "^1.14.4",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*"
   }

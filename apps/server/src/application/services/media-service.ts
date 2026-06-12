@@ -11,10 +11,13 @@ import type {
 	ISseNotifier,
 	IThumbnailManager,
 } from "@solid-imager/application/ports/media-service";
+import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
 import {
 	MediaServiceImpl,
 	validateFileSignature,
 } from "@solid-imager/application/services/media-service";
+import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
+import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import { services } from "~/application/registry";
 import { executeDeferredActions } from "~/application/services/job-dispatch-service";
@@ -76,12 +79,26 @@ function createMediaService(): MediaServiceImpl {
 		},
 	};
 
-	return new MediaServiceImpl(
+	const queryService = new MediaQueryService(
 		services.getMediaRepository(),
 		services.getSourceRepository(),
 		services.getMediaStorage(),
 		services.getTagRepository(),
 		services.getImageProcessor(),
+		appLogger,
+	);
+
+	const uploadService = new MediaUploadService(
+		services.getMediaRepository(),
+		services.getSourceRepository(),
+		services.getMediaStorage(),
+		services.getJobRepository(),
+	);
+
+	const transferService = new MediaTransferService(
+		services.getMediaRepository(),
+		services.getSourceRepository(),
+		services.getMediaStorage(),
 		services.getAuthorRepository(),
 		services.getProjectRepository(),
 		services.getCharacterRepository(),
@@ -91,9 +108,11 @@ function createMediaService(): MediaServiceImpl {
 		sseNotifier,
 		thumbnailManager,
 		appLogger,
-		mediaContextProcessor,
 		deferredActionExecutor,
+		mediaContextProcessor,
 	);
+
+	return new MediaServiceImpl(queryService, uploadService, transferService);
 }
 
 const getMediaService = () => {
