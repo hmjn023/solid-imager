@@ -1,1081 +1,161 @@
 /**
- * MediaService - Core business logic for media management.
- * Extracted from apps/server to packages/application.
- * Infrastructure dependencies are injected via constructor.
+ * MediaServiceImpl - Thin facade that delegates to focused services.
+ * Maintains backward compatibility with IMediaService interface.
  */
 
-import path from "node:path";
-import type { IMediaStorage } from "@solid-imager/core";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
-	Transaction,
-	TransactionManager,
-} from "@solid-imager/core/domain/interfaces/transaction-manager";
-import {
-	type AddMediaRequest,
-	type FindDuplicatesRequest,
-	type FindDuplicatesResponse,
-	type Media,
-	type MediaDetails,
-	type MediaGenerationInfo,
-	type MediaSearchResponse,
-	mediaIdSchema,
-	mediaSearchRequestSchema,
-	mediaSourceIdSchema,
-	updateMediaRequestSchema,
+	FindDuplicatesRequest,
+	FindDuplicatesResponse,
+	Media,
+	MediaDetails,
+	MediaGenerationInfo,
+	MediaSearchResponse,
+	MediaTag,
 } from "@solid-imager/core/domain/media/schemas";
-import {
-	type UploadMediaRequest,
-	type UploadResponse,
-	uploadMediaRequestSchema,
+import type {
+	UploadMediaRequest,
+	UploadResponse,
 } from "@solid-imager/core/domain/media/upload-schemas";
-import {
-	getContentTypeFromExtension,
-	getMediaTypeFromExtension,
-} from "@solid-imager/core/domain/media/utils/media-type-utils";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type {
 	DeferredActions,
-	DeferredSse,
-	IDeferredActionExecutor,
-	ILogger,
-	IMediaContextProcessor,
 	IMediaService,
-	ISseNotifier,
-	IThumbnailManager,
 } from "../ports/media-service";
+import type { MediaQueryService } from "./media-query-service";
+import type { MediaTransferService } from "./media-transfer-service";
+import type { MediaUploadService } from "./media-upload-service";
 
-const SIGNATURES: Record<string, Buffer> = {
-	png: Buffer.from("89504e470d0a1a0a", "hex"),
-	jpg: Buffer.from("ffd8ff", "hex"),
-	jpeg: Buffer.from("ffd8ff", "hex"),
-	gif: Buffer.from("47494638", "hex"),
-	webp: Buffer.from("52494646", "hex"), // RIFF
-	mp4: Buffer.from("66747970", "hex"), // ftyp
-	webm: Buffer.from("1a45dfa3", "hex"),
-	mp3: Buffer.from("494433", "hex"), // ID3
-	wav: Buffer.from("52494646", "hex"), // RIFF
-};
-
-const WEBP_SUBTYPE = Buffer.from("57454250", "hex"); // WEBP
-const FILE_HEADER_BYTES = 12;
-const WEBP_OFFSET = 8;
-const WEBP_END = 12;
-
-export async function validateFileSignature(
-	file: File,
-	filename: string,
-): Promise<void> {
-	const ext = path.extname(filename).toLowerCase().replace(".", "");
-	const buffer = await file.slice(0, FILE_HEADER_BYTES).arrayBuffer();
-	const bytes = new Uint8Array(buffer);
-
-	// Basic checks
-	if (ext in SIGNATURES) {
-		const sig = SIGNATURES[ext];
-		// Check start signature
-		if (sig && !bytes.subarray(0, sig.length).every((b, i) => b === sig[i])) {
-			throw new Error(`File signature mismatch for .${ext}`);
-		}
-	}
-
-	// Extra check for WEBP: RIFF....WEBP
-	if (
-		ext === "webp" &&
-		!bytes
-			.subarray(WEBP_OFFSET, WEBP_END)
-			.every((b, i) => b === WEBP_SUBTYPE[i])
-	) {
-		throw new Error("Invalid WEBP signature (missing WEBP)");
-	}
-}
+export { validateFileSignature } from "./media-upload-service";
 
 export class MediaServiceImpl implements IMediaService {
-	private readonly mediaRepository: IMediaRepository;
-	private readonly sourceRepository: SourceRepository;
-	private readonly storageService: IMediaStorage;
-	private readonly tagRepository: TagRepository;
-	private readonly imageProcessor: IImageProcessor;
-	private readonly authorRepository: IAuthorRepository;
-	private readonly projectRepository: IProjectRepository;
-	private readonly characterRepository: CharacterRepository;
-	private readonly ipRepository: IIpRepository;
-	private readonly transactionManager: TransactionManager;
-	private readonly jobRepo: IJobRepository;
-	private readonly sseNotifier: ISseNotifier;
-	private readonly thumbnailManager: IThumbnailManager;
-	private readonly logger: ILogger;
-	private readonly mediaContextProcessor: IMediaContextProcessor;
-	private readonly deferredActionExecutor: IDeferredActionExecutor;
-
 	constructor(
-		mediaRepository: IMediaRepository,
-		sourceRepository: SourceRepository,
-		storageService: IMediaStorage,
-		tagRepository: TagRepository,
-		imageProcessor: IImageProcessor,
-		authorRepository: IAuthorRepository,
-		projectRepository: IProjectRepository,
-		characterRepository: CharacterRepository,
-		ipRepository: IIpRepository,
-		transactionManager: TransactionManager,
-		jobRepo: IJobRepository,
-		sseNotifier: ISseNotifier,
-		thumbnailManager: IThumbnailManager,
-		logger: ILogger,
-		mediaContextProcessor: IMediaContextProcessor,
-		deferredActionExecutor: IDeferredActionExecutor,
-	) {
-		this.mediaRepository = mediaRepository;
-		this.sourceRepository = sourceRepository;
-		this.storageService = storageService;
-		this.tagRepository = tagRepository;
-		this.imageProcessor = imageProcessor;
-		this.authorRepository = authorRepository;
-		this.projectRepository = projectRepository;
-		this.characterRepository = characterRepository;
-		this.ipRepository = ipRepository;
-		this.transactionManager = transactionManager;
-		this.jobRepo = jobRepo;
-		this.sseNotifier = sseNotifier;
-		this.thumbnailManager = thumbnailManager;
-		this.logger = logger;
-		this.mediaContextProcessor = mediaContextProcessor;
-		this.deferredActionExecutor = deferredActionExecutor;
-	}
+		private readonly queryService: MediaQueryService,
+		private readonly uploadService: MediaUploadService,
+		private readonly transferService: MediaTransferService,
+	) {}
 
-	/**
-	 * Starts processing jobs for the given source using the unified processor.
-	 * @deprecated Worker now handles this automatically.
-	 */
 	startProcessing(_mediaSourceId: string) {
 		// No-op: JobWorker is handling this globally.
 	}
 
-	/**
-	 * Searches for media.
-	 */
 	async searchMedia(
 		mediaSourceId: string | undefined | null,
 		params: unknown,
 	): Promise<MediaSearchResponse> {
-		const searchRequest = mediaSearchRequestSchema.parse(params);
-		if (mediaSourceId) {
-			const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-			return await this.mediaRepository.search(
-				validatedSourceId,
-				searchRequest,
-			);
-		}
-		return await this.mediaRepository.globalSearch(
-			searchRequest,
-		);
+		return this.queryService.searchMedia(mediaSourceId, params);
 	}
 
-	/**
-	 * Searches for media in a directory.
-	 */
 	async searchMediaInDirectory(
 		mediaSourceId: string,
 		directoryPath: string,
 		params: { query?: string; tags?: string[] },
 	): Promise<Media[]> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return await this.mediaRepository.searchInDirectory(
-			validatedSourceId,
+		return this.queryService.searchMediaInDirectory(
+			mediaSourceId,
 			directoryPath,
 			params,
 		);
 	}
 
-	/**
-	 * Uploads a media file.
-	 */
 	async uploadMedia(
 		mediaSourceId: string,
 		file: File,
 		options: UploadMediaRequest,
 	): Promise<UploadResponse> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
-
-		if (!mediaSource) {
-			throw new ResourceNotFoundError("Media Source", validatedSourceId);
-		}
-
-		if (mediaSource.type !== "local") {
-			throw new Error(
-				"Only local media sources are supported for uploads in Phase 1.",
-			);
-		}
-
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const basePath = connectionInfo.path;
-
-		const uploadRequest = uploadMediaRequestSchema.parse(options);
-
-		// 0. Validate File Signature
-		await validateFileSignature(file, uploadRequest.filename ?? file.name);
-
-		// 1. Save File via StorageService
-		const fileInfo = await this.storageService.saveFile(basePath, file, {
-			filename: uploadRequest.filename,
-			overwrite: uploadRequest.overwrite,
-			autoIncrement: uploadRequest.autoIncrement,
-		});
-
-		// Determine media type based on extension
-		const mediaType = getMediaTypeFromExtension(fileInfo.fileName);
-
-		// 2. Create Media Entry
-		const newMedia: AddMediaRequest = {
-			mediaSourceId: validatedSourceId,
-			filePath: fileInfo.filePath,
-			fileName: fileInfo.fileName,
-			mediaType,
-			description: uploadRequest.description || null,
-			width: fileInfo.width,
-			height: fileInfo.height,
-			fileSize: fileInfo.size,
-			createdAt: fileInfo.createdAt,
-			modifiedAt: fileInfo.modifiedAt,
-		};
-
-		let insertedMedia: Media;
-		try {
-			insertedMedia = await this.mediaRepository.upsert(newMedia);
-		} catch (error) {
-			// 3. Rollback: Delete file if DB insertion fails
-			try {
-				await this.storageService.deleteFile(basePath, fileInfo.filePath);
-			} catch (_deleteError) {
-				// Ignore rollback error
-			}
-			throw error;
-		}
-
-		// Register URL if present (legacy support for sourceUrl in upload)
-		if (uploadRequest.sourceUrl) {
-			await this.mediaRepository.addUrls(insertedMedia.id, [
-				uploadRequest.sourceUrl,
-			]);
-		}
-
-		// 4. Trigger processMedia Job (unified processing)
-		await this.jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: validatedSourceId,
-			payload: {
-				mediaId: insertedMedia.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
-		});
-
-		this.startProcessing(validatedSourceId);
-
-		return {
-			success: true,
-			filePath: fileInfo.filePath,
-			conflict: fileInfo.conflict as { existingFile: string; suggestedName: string } | undefined,
-		};
+		return this.uploadService.uploadMedia(mediaSourceId, file, options);
 	}
 
-	/**
-	 * Retrieves media details including tags and generation info.
-	 */
 	async getMediaDetails(
 		mediaSourceId: string,
 		mediaId: string,
 	): Promise<MediaDetails> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const mediaDetails =
-			await this.mediaRepository.getDetails(validatedMediaId);
-		if (!mediaDetails) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (mediaDetails.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media not found in source");
-		}
-
-		let finalGenerationInfo = mediaDetails.generationInfo;
-
-		// If generation info is not found, try to extract it (Lazy Extraction)
-		if (!finalGenerationInfo) {
-			finalGenerationInfo = await this.extractAndUpdateMetadata(
-				mediaDetails as Media,
-				validatedSourceId,
-			);
-		}
-
-		const result: MediaDetails = {
-			...mediaDetails,
-			generationInfo: finalGenerationInfo
-				? {
-						...finalGenerationInfo,
-						aiGenerated: finalGenerationInfo.aiGenerated ?? false,
-						modelName: finalGenerationInfo.modelName ?? "",
-						seed: finalGenerationInfo.seed ?? -1,
-						cfgScale: finalGenerationInfo.cfgScale ?? 0,
-						steps: finalGenerationInfo.steps ?? 0,
-					}
-				: null,
-		};
-		return result;
+		return this.queryService.getMediaDetails(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Retrieves media content (file buffer) and content type.
-	 */
 	async getMediaContent(
 		mediaSourceId: string,
 		mediaId: string,
 	): Promise<{ buffer: Uint8Array; contentType: string }> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
-		if (!mediaSource) {
-			throw new ResourceNotFoundError("Media Source", validatedSourceId);
-		}
-
-		const media = await this.mediaRepository.findById(
-			validatedMediaId,
-		);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media not found in source");
-		}
-
-		if (mediaSource.type !== "local") {
-			throw new Error("Only local media sources is supported.");
-		}
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const buffer = await this.storageService.getFile(
-			connectionInfo.path,
-			media.filePath,
-		);
-
-		const contentType = getContentTypeFromExtension(media.fileName);
-
-		return { buffer, contentType };
+		return this.queryService.getMediaContent(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Registers existing media from a directory.
-	 */
 	async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const files = await this.storageService.scanDirectory(directoryPath);
-		const newMediaItems: { id: string; filePath: string }[] = [];
-
-		for (const file of files) {
-			try {
-				const relativePath = path.relative(directoryPath, file);
-				const existing = await this.mediaRepository.findByPath(
-					validatedSourceId,
-					relativePath,
-				);
-
-				if (!existing) {
-					try {
-						const metadata = await this.storageService.getFileMetadata(file);
-
-						// Simple extension check for media type
-						const mediaType = getMediaTypeFromExtension(file);
-
-						const newMedia: AddMediaRequest = {
-							mediaSourceId: validatedSourceId,
-							filePath: relativePath,
-							fileName: path.basename(file),
-							mediaType,
-							width: metadata.width,
-							height: metadata.height,
-							fileSize: metadata.size,
-							createdAt: metadata.createdAt,
-							modifiedAt: metadata.modifiedAt,
-							description: null,
-						};
-
-						const created = await this.mediaRepository.upsert(
-							newMedia,
-						);
-						newMediaItems.push({ id: created.id, filePath: relativePath });
-					} catch (_e) {
-						// Ignore creation errors
-					}
-				}
-			} catch (_e) {
-				// Ignore finding errors
-			}
-		}
-
-		if (newMediaItems.length > 0) {
-			// Use processMedia job type for unified processing
-			for (const item of newMediaItems) {
-				await this.jobRepo.create({
-					type: "processMedia",
-					mediaSourceId: validatedSourceId,
-					payload: {
-						mediaId: item.id,
-						sourcePath: directoryPath,
-						type: "processMedia",
-					},
-				});
-			}
-		}
+		return this.uploadService.registerExistingMedia(
+			mediaSourceId,
+			directoryPath,
+		);
 	}
 
-	/**
-	 * Retrieves all media for a source.
-	 */
 	async getAllMedia(mediaSourceId: string): Promise<Media[]> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		return await this.mediaRepository.findAllBySourceId(
-			validatedSourceId,
-		);
+		return this.queryService.getAllMedia(mediaSourceId);
 	}
 
-	/**
-	 * Retrieves a single media item.
-	 */
-	async getMedia(
-		mediaSourceId: string,
-		mediaId: string,
-	): Promise<Media> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-		const media = await this.mediaRepository.findById(
-			validatedMediaId,
-		);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media not found in source");
-		}
-		return media;
+	async getMedia(mediaSourceId: string, mediaId: string): Promise<Media> {
+		return this.queryService.getMedia(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Updates a media item.
-	 */
 	async updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
 		updates: unknown,
 		tx?: Transaction,
 	): Promise<Media> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-		const parsedUpdates = updateMediaRequestSchema.parse(updates);
-
-		const execute = async (t: Transaction): Promise<Media> => {
-			const media = await this.mediaRepository.findById(validatedMediaId, t);
-			if (!media || media.mediaSourceId !== validatedSourceId) {
-				throw new ResourceNotFoundError("Media", validatedMediaId);
-			}
-
-			const updatedMedia = await this.mediaRepository.update(validatedMediaId, parsedUpdates, t);
-			await this.mediaContextProcessor.addContextMetadataToExistingMedia(
-				validatedMediaId,
-				{
-					sourceUrls: parsedUpdates.sourceUrls,
-					authors: parsedUpdates.authors,
-					characters: parsedUpdates.characters,
-					ips: parsedUpdates.ips,
-				},
-				t,
-			);
-
-			return updatedMedia;
-		};
-
-		if (tx) {
-			return await execute(tx);
-		}
-		return await this.transactionManager.transaction(execute);
+		return this.transferService.updateMedia(
+			mediaSourceId,
+			mediaId,
+			updates,
+			tx,
+		);
 	}
 
-	/**
-	 * Reprocesses media metadata (extracts generation info and tags).
-	 */
 	async reprocessMetadata(
 		mediaSourceId: string,
 		mediaId: string,
 	): Promise<MediaGenerationInfo | null> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const media = await this.mediaRepository.findById(
-			validatedMediaId,
-		);
-		if (!media || media.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-
-		return await this.extractAndUpdateMetadata(media, validatedSourceId);
+		return this.queryService.reprocessMetadata(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Retrieves tags for a media item.
-	 */
-	async getMediaTags(mediaSourceId: string, mediaId: string) {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const media = await this.mediaRepository.findById(
-			validatedMediaId,
-		);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media not found in source");
-		}
-
-		return await this.mediaRepository.getTags(validatedMediaId);
+	async getMediaTags(
+		mediaSourceId: string,
+		mediaId: string,
+	): Promise<MediaTag[]> {
+		return this.queryService.getMediaTags(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Retrieves metadata (generation info) for a media item.
-	 */
 	async getMediaMetadata(
 		mediaSourceId: string,
 		mediaId: string,
 	): Promise<MediaGenerationInfo | null> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const media = await this.mediaRepository.findById(
-			validatedMediaId,
-		);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new ResourceNotFoundError("Media not found in source");
-		}
-
-		const generationInfo = await this.mediaRepository.getGenerationInfo(
-			validatedMediaId,
-		);
-		return generationInfo
-			? {
-					...generationInfo,
-					aiGenerated: generationInfo.aiGenerated ?? false,
-					modelName: generationInfo.modelName ?? "",
-					seed: generationInfo.seed ?? -1,
-					cfgScale: generationInfo.cfgScale ?? 0,
-					steps: generationInfo.steps ?? 0,
-				}
-			: null;
+		return this.queryService.getMediaMetadata(mediaSourceId, mediaId);
 	}
 
-	/**
-	 * Copies a media item to another source.
-	 */
 	async copyMedia(
 		sourceMediaId: string,
 		targetSourceId: string,
 		tx?: Transaction,
 	): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
-		const validatedSourceMediaId = mediaIdSchema.parse(sourceMediaId);
-		const validatedTargetSourceId = mediaSourceIdSchema.parse(targetSourceId);
-
-		// 1. Get Source Media and Source Info
-		const sourceMedia = await this.mediaRepository.findById(
-			validatedSourceMediaId,
-			tx,
-		);
-		if (!sourceMedia) {
-			throw new ResourceNotFoundError("Source Media", validatedSourceMediaId);
-		}
-
-		const sourceSource = await this.sourceRepository.findById(
-			sourceMedia.mediaSourceId,
-			tx,
-		);
-		const targetSource = await this.sourceRepository.findById(
-			validatedTargetSourceId,
-			tx,
-		);
-
-		if (!(sourceSource && targetSource)) {
-			throw new Error("Source or target media source not found.");
-		}
-
-		// 2. Validate Local-to-Local (Phase 1 Limitation)
-		if (sourceSource.type !== "local" || targetSource.type !== "local") {
-			throw new Error("Only local-to-local copy is supported in this version.");
-		}
-
-		const sourceConnection = sourceSource.connectionInfo as { path: string };
-		const targetConnection = targetSource.connectionInfo as { path: string };
-		const fullSourcePath = path.join(
-			sourceConnection.path,
-			sourceMedia.filePath,
-		);
-
-		// 3. Perform Physical Copy
-		const fileInfo = await this.storageService.copyFile(
-			fullSourcePath,
-			targetConnection.path,
-			{
-				filename: sourceMedia.fileName,
-				autoIncrement: true,
-			},
-		);
-
-		// 4. Create New Media Entry in DB
-		const newMedia: AddMediaRequest = {
-			mediaSourceId: validatedTargetSourceId,
-			filePath: fileInfo.filePath,
-			fileName: fileInfo.fileName,
-			mediaType: sourceMedia.mediaType,
-			width: fileInfo.width,
-			height: fileInfo.height,
-			fileSize: fileInfo.size,
-			description: sourceMedia.description,
-			// Preserve original dates instead of using new file timestamps
-			createdAt: sourceMedia.createdAt,
-			modifiedAt: sourceMedia.modifiedAt,
-		};
-
-		let newMediaEntry: Media;
-		try {
-			newMediaEntry = await this.mediaRepository.create(newMedia, tx);
-			await this._copyMediaMetadata(validatedSourceMediaId, newMediaEntry.id, tx);
-		} catch (error) {
-			try {
-				await this.storageService.deleteFile(targetConnection.path, fileInfo.filePath);
-			} catch (_deleteError) {
-				this.logger.error({ err: _deleteError, filePath: fileInfo.filePath }, "Failed to clean up copied file after DB failure");
-			}
-			throw error;
-		}
-
-		// 5. Prepare Deferred Actions (Jobs + Notifications)
-		const sourcePath = targetConnection.path;
-		// Construct DB Job DTO (DeferredJob)
-		const deferredJob = {
-			mediaId: newMediaEntry.id,
-			sourcePath,
-			type: "processMedia" as const,
-			payload: {
-				mediaId: newMediaEntry.id,
-				sourcePath,
-				type: "processMedia",
-			},
-		};
-
-		const deferredActions: DeferredActions = {
-			jobs: [
-				{
-					mediaSourceId: validatedTargetSourceId,
-					jobs: [deferredJob],
-				},
-			],
-			sse: [],
-		};
-
-		const sseEvent: DeferredSse = {
-			mediaSourceId: validatedTargetSourceId,
-			event: "media-copied",
-			payload: {
-				sourceMediaId,
-				media: newMediaEntry,
-				timestamp: new Date().toISOString(),
-			},
-		};
-
-		if (tx) {
-			deferredActions.sse.push(sseEvent);
-			return {
-				success: true,
-				media: newMediaEntry,
-				deferred: deferredActions,
-			};
-		}
-
-		// Execute immediately if no transaction
-		await this.jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: validatedTargetSourceId,
-			payload: {
-				mediaId: newMediaEntry.id,
-				sourcePath,
-				type: "processMedia",
-			},
-		});
-
-		this.sseNotifier.notifyMediaCopied(
-			sourceMediaId,
-			validatedTargetSourceId,
-			newMediaEntry,
-		);
-
-		return {
-			success: true,
-			media: newMediaEntry,
-		};
+		return this.transferService.copyMedia(sourceMediaId, targetSourceId, tx);
 	}
 
-	/**
-	 * Moves a media item to another source (Copy + Delete).
-	 */
 	async moveMedia(
 		sourceMediaId: string,
 		targetSourceId: string,
 		tx?: Transaction,
 	): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
-		const execute = async (t: Transaction) => {
-			const accumulatedDeferred: DeferredActions = {
-				jobs: [],
-				sse: [],
-			};
-
-			// Track copied file for cleanup on DB failure
-			let copiedFileCleanup: { targetPath: string; filePath: string } | null =
-				null;
-
-			try {
-				// 1. Copy
-				const copyResult = await this.copyMedia(
-					sourceMediaId,
-					targetSourceId,
-					t,
-				);
-				if (copyResult.deferred) {
-					accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
-				}
-
-				// 2. Delete Original if Copy Successful
-				if (copyResult.success) {
-					// Record file info for potential cleanup
-					const targetSource = await this.sourceRepository.findById(
-						targetSourceId,
-						t,
-					);
-					if (targetSource?.type === "local") {
-						const conn = targetSource.connectionInfo as { path: string };
-						copiedFileCleanup = {
-							targetPath: conn.path,
-							filePath: copyResult.media.filePath,
-						};
-					}
-
-					const sourceMedia = await this.mediaRepository.findById(
-						sourceMediaId,
-						t,
-					);
-					if (sourceMedia) {
-						const deleteResult = await this.deleteMedia(
-							sourceMedia.mediaSourceId,
-							sourceMediaId,
-							t,
-						);
-				if (deleteResult) {
-					accumulatedDeferred.jobs.push(...deleteResult.jobs);
-					if (deleteResult.filesToDelete) {
-						accumulatedDeferred.filesToDelete = [
-							...(accumulatedDeferred.filesToDelete ?? []),
-							...deleteResult.filesToDelete,
-						];
-					}
-					if (deleteResult.thumbnailsToDelete) {
-						accumulatedDeferred.thumbnailsToDelete = [
-							...(accumulatedDeferred.thumbnailsToDelete ?? []),
-							...deleteResult.thumbnailsToDelete,
-						];
-					}
-				}
-
-						const sseEventSource: DeferredSse = {
-							mediaSourceId: sourceMedia.mediaSourceId,
-							event: "media-moved",
-							payload: {
-								type: "source",
-								mediaId: sourceMediaId,
-								targetId: targetSourceId,
-								timestamp: new Date().toISOString(),
-							},
-						};
-						const sseEventTarget: DeferredSse = {
-							mediaSourceId: targetSourceId,
-							event: "media-moved",
-							payload: {
-								type: "target",
-								media: copyResult.media,
-								sourceId: sourceMedia.mediaSourceId,
-								timestamp: new Date().toISOString(),
-							},
-						};
-						accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
-					}
-				}
-				return {
-					...copyResult,
-					deferred: accumulatedDeferred,
-				};
-			} catch (error) {
-				// Clean up copied file if DB transaction fails
-				if (copiedFileCleanup) {
-					try {
-						await this.storageService.deleteFile(
-							copiedFileCleanup.targetPath,
-							copiedFileCleanup.filePath,
-						);
-					} catch {
-						// Ignore cleanup errors
-					}
-				}
-				throw error;
-			}
-		};
-
-		if (tx) {
-			return await execute(tx);
-		}
-
-		// Top-level transaction
-		const result = await this.transactionManager.transaction(execute);
-
-		// Execute deferred actions after commit
-		if (result.deferred) {
-			await this.deferredActionExecutor.execute(result.deferred);
-		}
-
-		return result;
+		return this.transferService.moveMedia(sourceMediaId, targetSourceId, tx);
 	}
 
-	/**
-	 * Deletes a media item.
-	 */
 	async deleteMedia(
 		mediaSourceId: string,
 		mediaId: string,
 		tx?: Transaction,
 	): Promise<DeferredActions | undefined> {
-		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
-		const validatedMediaId = mediaIdSchema.parse(mediaId);
-
-		const media = await this.mediaRepository.findById(validatedMediaId, tx);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new Error("Media not in specified source");
-		}
-
-		// 1. Delete from database
-		await this.mediaRepository.delete(validatedMediaId, tx);
-
-		// 2. Collect file paths for deferred deletion
-		let filesToDelete: DeferredActions["filesToDelete"];
-		if (media.mediaSourceId) {
-			const mediaSource = await this.sourceRepository.findById(
-				media.mediaSourceId,
-				tx,
-			);
-			if (mediaSource && mediaSource.type === "local") {
-				const connectionInfo = mediaSource.connectionInfo as { path: string };
-				filesToDelete = [
-					{ basePath: connectionInfo.path, filePath: media.filePath },
-				];
-			}
-		}
-
-		const thumbnailsToDelete: DeferredActions["thumbnailsToDelete"] = [
-			{ mediaSourceId: validatedSourceId, mediaId: validatedMediaId },
-		];
-
-		// Prepare Deferred Notification
-		const sseEvent: DeferredSse = {
-			mediaSourceId: validatedSourceId,
-			event: "media-deleted",
-			payload: {
-				filePath: media.filePath,
-				timestamp: new Date().toISOString(),
-			},
-		};
-
-		if (tx) {
-			return {
-				jobs: [],
-				sse: [sseEvent],
-				filesToDelete,
-				thumbnailsToDelete,
-			};
-		}
-
-		// Non-transactional path: delete files immediately
-		if (thumbnailsToDelete) {
-			for (const thumb of thumbnailsToDelete) {
-				try {
-					await this.thumbnailManager.deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);
-				} catch (_e) {
-					// Log error
-				}
-			}
-		}
-		if (filesToDelete) {
-			for (const file of filesToDelete) {
-				try {
-					await this.storageService.deleteFile(file.basePath, file.filePath);
-				} catch (_e) {
-					// Log error
-				}
-			}
-		}
-
-		// Notify via SSE immediately
-		this.sseNotifier.sendEvent(
-			sseEvent.mediaSourceId,
-			sseEvent.event,
-			sseEvent.payload,
-		);
-	}
-
-	/**
-	 * Helper to copy metadata (Authors, Projects, Characters, IPs, URLs)
-	 */
-	private async _copyMediaMetadata(
-		sourceMediaId: string,
-		newMediaId: string,
-		tx: Transaction,
-	): Promise<void> {
-		// 1. Authors
-		const sourceAuthors = await this.mediaRepository.getAuthors(
-			sourceMediaId,
-			tx,
-		);
-		if (sourceAuthors.length > 0) {
-			await this.authorRepository.addMediaBulk(
-				newMediaId,
-				sourceAuthors.map((a: { id: string }) => a.id),
-				tx,
-			);
-		}
-
-		// 2. Projects
-		const sourceProjects = await this.projectRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
-		if (sourceProjects.length > 0) {
-			await this.projectRepository.addMediaBulk(
-				newMediaId,
-				sourceProjects.map((p: { id: string }) => p.id),
-				tx,
-			);
-		}
-
-		// 3. Characters
-		const sourceCharacters = await this.characterRepository.findByMediaId(
-			sourceMediaId,
-			tx,
-		);
-		if (sourceCharacters.length > 0) {
-			await this.characterRepository.addToMediaBulk(
-				newMediaId,
-				sourceCharacters.map((c: { id: string }) => ({ id: c.id })),
-				"manual",
-				tx,
-			);
-		}
-
-		// 4. IPs
-		const sourceIps = await this.ipRepository.findByMediaId(sourceMediaId, tx);
-		if (sourceIps.length > 0) {
-			await this.ipRepository.addMediaBulk(
-				newMediaId,
-				sourceIps.map((i: { id: string }) => ({ id: i.id })),
-				"manual",
-				tx,
-			);
-		}
-
-		// 5. URLs
-		const sourceUrls = await this.mediaRepository.getUrls(sourceMediaId, tx);
-		if (sourceUrls.length > 0) {
-			await this.mediaRepository.addUrls(
-				newMediaId,
-				sourceUrls.map((u: { url: string }) => u.url),
-				tx,
-			);
-		}
+		return this.transferService.deleteMedia(mediaSourceId, mediaId, tx);
 	}
 
 	async findDuplicates(
 		request: FindDuplicatesRequest,
 	): Promise<FindDuplicatesResponse> {
-		return this.mediaRepository.findDuplicates(request);
-	}
-
-	private async extractAndUpdateMetadata(
-		media: Media,
-		sourceId: string,
-	): Promise<MediaGenerationInfo | null> {
-		const mediaSource = await this.sourceRepository.findById(sourceId);
-		if (!mediaSource || mediaSource.type !== "local") {
-			return null;
-		}
-
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
-		const fullPath = path.join(connectionInfo.path, media.filePath);
-
-		try {
-			const metadata = await this.imageProcessor.extractMetadata(fullPath);
-
-			this.logger.info(
-				{
-					mediaId: media.id,
-					fullPath,
-					tagsCount: metadata.tags.length,
-					hasWorkflow: !!metadata.workflow,
-					hasPrompt: !!metadata.prompt,
-				},
-				"[MediaService] extractAndUpdateMetadata result",
-			);
-
-			// Store generation info
-			await this.mediaRepository.upsertGenerationInfo(
-				media.id,
-				typeof metadata.prompt === "object"
-					? JSON.stringify(metadata.prompt)
-					: (metadata.prompt as string | null),
-				metadata.workflow as object | null,
-			);
-
-			// Store tags
-			if (metadata.tags.length > 0) {
-				await this.tagRepository.addTagsToMedia(
-					media.id,
-					metadata.tags,
-					"comfyui_workflow",
-				);
-			}
-
-			return await this.mediaRepository.getGenerationInfo(media.id);
-		} catch (e) {
-			this.logger.error(
-				{ err: e, mediaId: media.id, fullPath },
-				"[MediaService] extractAndUpdateMetadata FAILED",
-			);
-			return null;
-		}
+		return this.queryService.findDuplicates(request);
 	}
 }
