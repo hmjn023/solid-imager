@@ -77,7 +77,7 @@ const _CollapsibleSection = (props: {
 	);
 };
 
-export default function MediaSidebar(props: MediaSidebarProps) {
+export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);

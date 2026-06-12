@@ -1,11 +1,13 @@
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {
@@ -28,19 +30,7 @@ function MediaDetailRoute() {
 	const mediaSourceId = () => params().mediaSourceId;
 	const mediaId = () => params().mediaId;
 
-	const mediaSource = createQuery(() => ({
-		queryKey: ["mediaSource", mediaSourceId()],
-		queryFn: () => orpc.sources.get({ id: mediaSourceId() }),
-	}));
-
-	const sourceRootPath = () => {
-		const source = mediaSource.data;
-		if (source?.type !== "local") {
-			return undefined;
-		}
-		const connectionInfo = source.connectionInfo as { path?: string };
-		return connectionInfo.path;
-	};
+	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 
 	return (
 		<MediaDetailScreen
@@ -63,7 +53,7 @@ function MediaDetailRoute() {
 			renderMediaViewer={(media, srp) => (
 				<MediaViewer media={media} sourceRootPath={srp} />
 			)}
-			sourceRootPath={sourceRootPath()}
+			sourceRootPath={sourceRootPathResolver(mediaSourceId())}
 			transport={createTauriTransport(mediaSourceId)}
 		/>
 	);
