@@ -3,7 +3,7 @@ import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
-import { createMemo } from "solid-js";
+import { createMemo, onCleanup } from "solid-js";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",
@@ -62,6 +62,13 @@ class ApiMediaSource implements MediaSource {
 			this.urls.splice(idx, 1);
 		}
 	}
+
+	cleanup() {
+		for (const url of this.urls) {
+			URL.revokeObjectURL(url);
+		}
+		this.urls = [];
+	}
 }
 
 type MediaViewerProps = {
@@ -70,7 +77,11 @@ type MediaViewerProps = {
 };
 
 export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(() => new ApiMediaSource(props.media));
+	const source = createMemo(() => {
+		const s = new ApiMediaSource(props.media);
+		onCleanup(() => s.cleanup());
+		return s;
+	});
 
 	return (
 		<SharedMediaViewer

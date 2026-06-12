@@ -31,7 +31,6 @@ export function PendingDownloadsIndicator() {
 		},
 		subscribeImportEvents: (handler) => {
 			const ac = new AbortController();
-			let cleanup: (() => void) | undefined;
 
 			void (async () => {
 				try {
@@ -49,7 +48,6 @@ export function PendingDownloadsIndicator() {
 
 			return () => {
 				ac.abort();
-				cleanup?.();
 			};
 		},
 	};
