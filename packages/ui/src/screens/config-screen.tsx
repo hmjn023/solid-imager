@@ -1,6 +1,6 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import { createForm } from "@tanstack/solid-form";
+import { createForm, type Updater } from "@tanstack/solid-form";
 import { Show } from "solid-js";
 import { Button } from "../button";
 import { Input } from "../input";
@@ -10,16 +10,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
+type DeepFormConfig<T> = T extends number
+	? number | undefined
+	: T extends Array<infer U>
+		? Array<DeepFormConfig<U>>
+		: T extends object
+			? { [K in keyof T]: DeepFormConfig<T[K]> }
+			: T;
+
+type FormConfig = DeepFormConfig<AppConfig>;
+
 function parseNumberInput(val: string): number | undefined {
 	const n = Number(val);
 	return val === "" || Number.isNaN(n) ? undefined : n;
-}
-
-function handleNumberFieldChange(
-	handleChange: (updater: number | undefined | ((prev: number | undefined) => number | undefined)) => void,
-	val: string,
-) {
-	handleChange(parseNumberInput(val));
 }
 export type ConfigScreenProps = {
 	data: AppConfig;
@@ -29,13 +32,13 @@ export type ConfigScreenProps = {
 
 export function ConfigScreen(props: ConfigScreenProps) {
 	const form = createForm(() => ({
-		defaultValues: props.data,
+		defaultValues: props.data as unknown as FormConfig,
 		validators: {
 			onChange: AppConfigSchema as any,
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				await props.onSubmit(value);
+				await props.onSubmit(value as Partial<AppConfig>);
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
 			} catch (_error) {
@@ -79,7 +82,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												handleNumberFieldChange(field().handleChange, e.target.value);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
 											value={field().state.value ?? ""}
@@ -104,7 +107,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												handleNumberFieldChange(field().handleChange, e.target.value);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
 											value={field().state.value ?? ""}
@@ -129,7 +132,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												handleNumberFieldChange(field().handleChange, e.target.value);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
 											value={field().state.value ?? ""}
@@ -195,7 +198,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												handleNumberFieldChange(field().handleChange, e.target.value);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
 											value={field().state.value ?? ""}
@@ -236,7 +239,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											min="0"
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												handleNumberFieldChange(field().handleChange, e.target.value);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
 											value={field().state.value ?? ""}
@@ -280,9 +283,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													handleNumberFieldChange(
-														field().handleChange,
-														e.target.value,
+													field().handleChange(
+														parseNumberInput(e.target.value),
 													);
 												}}
 												type="number"
@@ -301,9 +303,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													handleNumberFieldChange(
-														field().handleChange,
-														e.target.value,
+													field().handleChange(
+														parseNumberInput(e.target.value),
 													);
 												}}
 												type="number"
