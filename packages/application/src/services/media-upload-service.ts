@@ -15,6 +15,7 @@ import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils
 import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 
 const SIGNATURES: Record<string, Buffer> = {
 	png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -84,7 +85,9 @@ export class MediaUploadService {
 			);
 		}
 
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
+		const connectionInfo = localConnectionSchema.parse(
+			mediaSource.connectionInfo,
+		);
 		const basePath = connectionInfo.path;
 
 		const uploadRequest = uploadMediaRequestSchema.parse(options);

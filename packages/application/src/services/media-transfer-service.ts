@@ -19,6 +19,7 @@ import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type {
 	DeferredActions,
 	DeferredSse,
@@ -118,13 +119,15 @@ export class MediaTransferService {
 		}
 
 		if (sourceSource.type !== "local" || targetSource.type !== "local") {
-			throw new Error(
-				"Only local-to-local copy is supported in this version.",
-			);
+			throw new Error("Only local-to-local copy is supported in this version.");
 		}
 
-		const sourceConnection = sourceSource.connectionInfo as { path: string };
-		const targetConnection = targetSource.connectionInfo as { path: string };
+		const sourceConnection = localConnectionSchema.parse(
+			sourceSource.connectionInfo,
+		);
+		const targetConnection = localConnectionSchema.parse(
+			targetSource.connectionInfo,
+		);
 		const fullSourcePath = path.join(
 			sourceConnection.path,
 			sourceMedia.filePath,
@@ -268,7 +271,9 @@ export class MediaTransferService {
 						t,
 					);
 					if (targetSource?.type === "local") {
-						const conn = targetSource.connectionInfo as { path: string };
+						const conn = localConnectionSchema.parse(
+							targetSource.connectionInfo,
+						);
 						copiedFileCleanup = {
 							targetPath: conn.path,
 							filePath: copyResult.media.filePath,
@@ -381,7 +386,9 @@ export class MediaTransferService {
 				tx,
 			);
 			if (mediaSource && mediaSource.type === "local") {
-				const connectionInfo = mediaSource.connectionInfo as { path: string };
+				const connectionInfo = localConnectionSchema.parse(
+					mediaSource.connectionInfo,
+				);
 				filesToDelete = [
 					{ basePath: connectionInfo.path, filePath: media.filePath },
 				];

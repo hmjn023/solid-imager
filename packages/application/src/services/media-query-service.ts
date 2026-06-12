@@ -17,6 +17,7 @@ import type { IMediaRepository } from "@solid-imager/core/domain/repositories/me
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { ILogger } from "../ports/media-service";
 
 export class MediaQueryService {
@@ -121,7 +122,9 @@ export class MediaQueryService {
 		if (mediaSource.type !== "local") {
 			throw new Error("Only local media sources is supported.");
 		}
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
+		const connectionInfo = localConnectionSchema.parse(
+			mediaSource.connectionInfo,
+		);
 		const buffer = await this.storageService.getFile(
 			connectionInfo.path,
 			media.filePath,
@@ -195,9 +198,8 @@ export class MediaQueryService {
 			throw new ResourceNotFoundError("Media not found in source");
 		}
 
-		const generationInfo = await this.mediaRepository.getGenerationInfo(
-			validatedMediaId,
-		);
+		const generationInfo =
+			await this.mediaRepository.getGenerationInfo(validatedMediaId);
 		return generationInfo
 			? {
 					...generationInfo,
@@ -225,7 +227,9 @@ export class MediaQueryService {
 			return null;
 		}
 
-		const connectionInfo = mediaSource.connectionInfo as { path: string };
+		const connectionInfo = localConnectionSchema.parse(
+			mediaSource.connectionInfo,
+		);
 		const fullPath = path.join(connectionInfo.path, media.filePath);
 
 		try {
