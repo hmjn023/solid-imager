@@ -3,11 +3,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
+import {
+	type Media,
+	mediaSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import type { NapiBBox } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
 	ccipFeatureRequestSchema,
+	startBatchTaggingResponseSchema,
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
@@ -247,6 +252,7 @@ export const aiRouter = {
 
 	scanBatchTaggingTargets: os
 		.input(batchTaggingRequestSchema)
+		.output(z.array(mediaSchema))
 		.handler(async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
@@ -285,7 +291,7 @@ export const aiRouter = {
 				)
 				.orderBy(asc(medias.id));
 
-			return results;
+			return results as unknown as Media[];
 		}),
 
 	batchTagging: os
@@ -306,6 +312,7 @@ export const aiRouter = {
 				mediaIds: z.array(z.string()),
 			}),
 		)
+		.output(startBatchTaggingResponseSchema)
 		.handler(async ({ input }) => {
 			const { mediaIds, mediaSourceId, force } = input;
 			const jobRepo = services.getJobRepository();

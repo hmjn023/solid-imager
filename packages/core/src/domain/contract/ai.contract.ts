@@ -1,21 +1,19 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
+import { mediaSchema } from "../media/schemas";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
 	ccipFeatureRequestSchema,
 	detectAndCropResponseSchema,
-	tagImageRequestSchema,
 	taggingResponseSchema,
+	tagImageRequestSchema,
 } from "../tagging/schemas";
 
 export const aiContract = {
 	tag: oc
 		.input(
-			z.union([
-				z.object({ file: z.instanceof(File) }),
-				tagImageRequestSchema,
-			]),
+			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
 		)
 		.output(taggingResponseSchema),
 
@@ -32,7 +30,9 @@ export const aiContract = {
 
 	ccipDifference: oc.input(ccipDifferenceRequestSchema),
 
-	scanBatchTaggingTargets: oc.input(batchTaggingRequestSchema),
+	scanBatchTaggingTargets: oc
+		.input(batchTaggingRequestSchema)
+		.output(z.array(mediaSchema)),
 
 	batchTagging: oc
 		.input(batchTaggingRequestSchema)

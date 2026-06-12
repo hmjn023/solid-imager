@@ -607,14 +607,15 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 				media: medias,
 				totalCount: sql<number>`count(*) over()`,
 			})
-			.from(medias);
+			.from(medias)
+			.$dynamic();
 
 		if (needsDetailsJoin) {
 			// Drizzle's conditional .leftJoin() changes the query type in a way TS can't track
 			query = query.leftJoin(
 				mediaDetails,
 				eq(mediaDetails.mediaId, medias.id),
-			) as any;
+			);
 		}
 
 		const orderBy = getOrderByClause(params.sort, params.order);

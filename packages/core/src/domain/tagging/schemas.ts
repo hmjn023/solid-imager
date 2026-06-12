@@ -77,3 +77,13 @@ export const detectAndCropResponseSchema = z.object({
 });
 
 export type DetectAndCropResponse = z.infer<typeof detectAndCropResponseSchema>;
+
+export const startBatchTaggingResponseSchema = z.object({
+	success: z.boolean(),
+	message: z.string(),
+	jobId: z.string().uuid(),
+});
+
+export type StartBatchTaggingResponse = z.infer<
+	typeof startBatchTaggingResponseSchema
+>;
