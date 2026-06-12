@@ -10,18 +10,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
-function parseNumberInput(val: string): number {
+function parseNumberInput(val: string): number | undefined {
 	const n = Number(val);
-	return val === "" || Number.isNaN(n) ? 0 : n;
+	return val === "" || Number.isNaN(n) ? undefined : n;
 }
 
 function handleNumberFieldChange(
-	handleChange: (updater: number | ((prev: number) => number)) => void,
+	handleChange: (updater: number | undefined | ((prev: number | undefined) => number | undefined)) => void,
 	val: string,
 ) {
 	handleChange(parseNumberInput(val));
 }
-
 export type ConfigScreenProps = {
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
