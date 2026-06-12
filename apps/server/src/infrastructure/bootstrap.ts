@@ -108,7 +108,7 @@ export function initServices() {
 			media: { id: string; filePath: string },
 			sourcePath: string,
 			mediaSourceId: string,
-		) => generateThumbnail(media as any, sourcePath, mediaSourceId),
+		) => generateThumbnail(media, sourcePath, mediaSourceId),
 		sseSendEvent: (mediaSourceId: string, event: string, data: unknown) =>
 			SseManager.sendEvent(mediaSourceId, event, data),
 	});
@@ -136,7 +136,10 @@ export function startBackgroundWorker() {
 	const jobRepo = services.getJobRepository();
 
 	// Singleton management for JobWorker to prevent duplicates during HMR
-	const globalAny = globalThis as any;
+	const globalAny = globalThis as typeof globalThis & {
+		__JOB_WORKER__?: JobWorker;
+		__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
+	};
 	if (globalAny.__JOB_WORKER__) {
 		globalAny.__JOB_WORKER__.stop();
 	}

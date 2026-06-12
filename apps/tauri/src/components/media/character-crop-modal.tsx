@@ -15,7 +15,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 				return serverOrpc.ai.detectAndCropCharacters({
 					mediaId,
 					transparent,
-				}) as any;
+				});
 			}}
 			isOpen={props.isOpen}
 			media={props.media}

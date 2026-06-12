@@ -1,8 +1,7 @@
-import type { PendingImportJob } from "@solid-imager/ui/import-review-modal";
 import { client } from "~/orpc-client";
 
-export function listPendingImports(): Promise<PendingImportJob[]> {
-	return client.imports.listPending() as unknown as Promise<PendingImportJob[]>;
+export function listPendingImports() {
+	return client.imports.listPending();
 }
 
 export function processPendingImports(

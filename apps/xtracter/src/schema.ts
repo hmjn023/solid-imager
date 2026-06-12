@@ -13,7 +13,7 @@ export const downloadItemSchema = z.object({
 
 	// Metadata
 	description: z.string().nullable().optional(),
-	createdAt: z.string().optional(), // ISO string
+	createdAt: z.string().optional(),
 
 	// Relations
 	sourceUrls: z.array(z.string()).optional(),

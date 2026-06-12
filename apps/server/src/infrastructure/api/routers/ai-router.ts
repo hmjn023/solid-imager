@@ -3,11 +3,16 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
+import {
+	type Media,
+	mediaSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import type { NapiBBox } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
 	ccipFeatureRequestSchema,
+	startBatchTaggingResponseSchema,
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
@@ -15,6 +20,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
+import type { appRouter } from "~/domain/shared/api-contract";
 import { db } from "~/infrastructure/db";
 import {
 	mediaCharacters,
@@ -50,7 +56,7 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 }
 
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient({
+	return createClient<typeof appRouter>({
 		url: remoteUrl,
 		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
@@ -64,7 +70,7 @@ function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 				clearTimeout(t);
 			}
 		},
-	}) as any;
+	});
 }
 
 async function callRemoteTagging(
@@ -144,6 +150,7 @@ async function cropDetection(
 		imageBase64: cropBuffer.toString("base64"),
 		width: w,
 		height: h,
+		format: transparent ? ("png" as const) : ("webp" as const),
 	};
 }
 
@@ -245,6 +252,7 @@ export const aiRouter = {
 
 	scanBatchTaggingTargets: os
 		.input(batchTaggingRequestSchema)
+		.output(z.array(mediaSchema))
 		.handler(async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
@@ -283,7 +291,7 @@ export const aiRouter = {
 				)
 				.orderBy(asc(medias.id));
 
-			return results;
+			return results as unknown as Media[];
 		}),
 
 	batchTagging: os
@@ -304,6 +312,7 @@ export const aiRouter = {
 				mediaIds: z.array(z.string()),
 			}),
 		)
+		.output(startBatchTaggingResponseSchema)
 		.handler(async ({ input }) => {
 			const { mediaIds, mediaSourceId, force } = input;
 			const jobRepo = services.getJobRepository();

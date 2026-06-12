@@ -1,4 +1,5 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createResource,
 	createSignal,
@@ -42,7 +43,7 @@ export function PendingDownloadsIndicator(
 			return (await props.listPending()).length;
 		} catch (error) {
 			if (!isServer) {
-				toast.error(`Failed to check inbox: ${(error as Error).message}`);
+				toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
 			}
 			return 0;
 		}

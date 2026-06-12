@@ -6,6 +6,7 @@ import type {
 	MediaStorageResult,
 } from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import sharp from "sharp";
 import type { z } from "zod";
 
@@ -113,7 +114,7 @@ export const ServerMediaStorage: IMediaStorage = {
 		try {
 			await fs.unlink(fullPath);
 		} catch (error: unknown) {
-			if ((error as any).code === "ENOENT") {
+			if (isRecord(error) && error.code === "ENOENT") {
 				return; // Already deleted
 			}
 			throw error;

@@ -13,7 +13,7 @@ export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
 	type: "processMedia" | "downloadImage";
-	payload?: any;
+	payload?: unknown;
 };
 
 export type DeferredJobs = {
@@ -24,7 +24,7 @@ export type DeferredJobs = {
 export type DeferredSse = {
 	mediaSourceId: string;
 	event: string;
-	payload: any;
+	payload: unknown;
 };
 
 export type FileToDelete = {
@@ -79,7 +79,9 @@ export async function executeDeferredActions(actions: DeferredActions) {
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,
 					payload: {
-						...job.payload,
+						...(job.payload && typeof job.payload === "object"
+							? job.payload
+							: {}),
 						mediaId: job.mediaId,
 						sourcePath: job.sourcePath,
 					},

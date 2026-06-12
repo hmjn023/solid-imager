@@ -8,6 +8,7 @@ import {
 	AppConfigSchema,
 	defaultAppConfig,
 } from "@solid-imager/core/domain/config/config-schema";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { logger } from "~/infrastructure/logger";
 
 type ConfigChangeListener = (config: AppConfig) => void;
@@ -150,8 +151,8 @@ export class ServerConfigService implements IConfigService {
 				continue;
 			}
 
-			let currentSchemaNode = defaultAppConfig as any;
-			let currentOverrideNode = overrides as any;
+			let currentSchemaNode: unknown = defaultAppConfig;
+			let currentOverrideNode: Record<string, unknown> = overrides;
 			// CONFIG_AI_BASE_URL -> AIBASEURL
 			let remainingKey = envKey
 				.substring(prefix.length)
@@ -159,7 +160,9 @@ export class ServerConfigService implements IConfigService {
 				.replace(/_/g, "");
 
 			while (remainingKey.length > 0) {
-				const keys = Object.keys(currentSchemaNode || {});
+				const keys = isRecord(currentSchemaNode)
+					? Object.keys(currentSchemaNode)
+					: [];
 				const sortedKeys = keys.sort((a, b) => b.length - a.length);
 				const matchingKey = sortedKeys.find((k) =>
 					remainingKey.startsWith(k.toUpperCase()),
@@ -182,24 +185,24 @@ export class ServerConfigService implements IConfigService {
 				if (!currentOverrideNode[matchingKey]) {
 					currentOverrideNode[matchingKey] = {};
 				}
-				currentOverrideNode = currentOverrideNode[matchingKey];
-				currentSchemaNode = currentSchemaNode[matchingKey];
+				const nextOverrideNode = currentOverrideNode[matchingKey];
+				if (isRecord(nextOverrideNode)) {
+					currentOverrideNode = nextOverrideNode;
+				} else {
+					const newNode = {};
+					currentOverrideNode[matchingKey] = newNode;
+					currentOverrideNode = newNode;
+				}
+				currentSchemaNode = isRecord(currentSchemaNode)
+					? currentSchemaNode[matchingKey]
+					: undefined;
 			}
 		}
 		return overrides;
 	}
 
-	private deepMerge(target: any, source: any): any {
-		if (
-			typeof target !== "object" ||
-			target === null ||
-			typeof source !== "object" ||
-			source === null
-		) {
-			return source;
-		}
-
-		if (Array.isArray(source)) {
+	private deepMerge(target: unknown, source: unknown): unknown {
+		if (!isRecord(target) || !isRecord(source)) {
 			return source;
 		}
 

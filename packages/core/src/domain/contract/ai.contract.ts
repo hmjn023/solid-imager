@@ -1,17 +1,21 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
+import { mediaSchema } from "../media/schemas";
 import {
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
 	ccipFeatureRequestSchema,
 	detectAndCropResponseSchema,
+	taggingResponseSchema,
 	tagImageRequestSchema,
 } from "../tagging/schemas";
 
 export const aiContract = {
-	tag: oc.input(
-		z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
-	),
+	tag: oc
+		.input(
+			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
+		)
+		.output(taggingResponseSchema),
 
 	tagRustExperimental: oc.input(
 		z.union([
@@ -26,7 +30,9 @@ export const aiContract = {
 
 	ccipDifference: oc.input(ccipDifferenceRequestSchema),
 
-	scanBatchTaggingTargets: oc.input(batchTaggingRequestSchema),
+	scanBatchTaggingTargets: oc
+		.input(batchTaggingRequestSchema)
+		.output(z.array(mediaSchema)),
 
 	batchTagging: oc
 		.input(batchTaggingRequestSchema)

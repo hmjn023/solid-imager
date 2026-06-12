@@ -6,6 +6,14 @@ import {
 	safeMediaSourceSchema,
 } from "../sources/schemas";
 
+const importResultSchema = z.object({
+	success: z.boolean(),
+	importedCount: z.number(),
+	skippedCount: z.number(),
+	errors: z.array(z.string()),
+	message: z.string(),
+});
+
 export const sourcesContract = {
 	list: oc
 		.output(z.array(safeMediaSourceSchema)),
@@ -60,6 +68,14 @@ export const sourcesContract = {
 				id: z.string().uuid(),
 				data: z.array(z.any()),
 			}),
+		)
+		.output(
+			z.object({
+				processed: z.number(),
+				skipped: z.number(),
+				errors: z.array(z.string()),
+				cancelled: z.boolean().optional(),
+			}),
 		),
 
 	importZip: oc
@@ -68,7 +84,8 @@ export const sourcesContract = {
 				id: z.string().uuid(),
 				file: z.instanceof(File),
 			}),
-		),
+		)
+		.output(importResultSchema),
 
 	importLanceDB: oc
 		.input(
@@ -76,7 +93,8 @@ export const sourcesContract = {
 				id: z.string().uuid(),
 				file: z.instanceof(File),
 			}),
-		),
+		)
+		.output(importResultSchema),
 
 	status: oc
 		.input(z.object({ id: z.string().uuid() }))

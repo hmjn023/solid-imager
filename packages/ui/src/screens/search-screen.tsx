@@ -108,7 +108,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							isPending={page().searchResultQuery.isLoading}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
-							queryError={(page().searchResultQuery.error as Error) ?? null}
+							queryError={page().searchResultQuery.error instanceof Error ? page().searchResultQuery.error : null}
 							renderItem={(media, _options) => props.renderMediaItem(media)}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState

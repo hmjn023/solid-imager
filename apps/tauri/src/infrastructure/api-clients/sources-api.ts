@@ -38,21 +38,11 @@ export async function restoreSource(
 		signal?: AbortSignal;
 		onProgress?: (done: number, total: number) => void;
 	},
-): Promise<{
-	processed: number;
-	skipped: number;
-	errors: string[];
-	cancelled?: boolean;
-}> {
+) {
 	return client.sources.restore({
 		id: sourceId,
 		data: data as unknown[],
-	}) as unknown as Promise<{
-		processed: number;
-		skipped: number;
-		errors: string[];
-		cancelled?: boolean;
-	}>;
+	});
 }
 
 export async function importSourceZip(id: string, file: File) {

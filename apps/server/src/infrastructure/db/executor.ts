@@ -1,8 +1,15 @@
 import type { DrizzleExecutor } from "@solid-imager/db/types";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 
-export function getExecutor(tx?: unknown): DrizzleExecutor {
+function isTransactionClient(value: unknown): value is TransactionClient {
 	return (
-		(tx as unknown as TransactionClient) || (db as unknown as DrizzleExecutor)
+		value !== null &&
+		typeof value === "object" &&
+		"select" in value &&
+		"insert" in value
 	);
+}
+
+export function getExecutor(tx?: unknown): DrizzleExecutor {
+	return isTransactionClient(tx) ? tx : db;
 }

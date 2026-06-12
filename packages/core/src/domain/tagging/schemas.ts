@@ -62,7 +62,7 @@ export const characterCropSchema = z.object({
 	imageBase64: z.string(),
 	width: z.number(),
 	height: z.number(),
-	format: z.enum(["webp", "png"]),
+	format: z.enum(["webp", "png"]).optional(),
 });
 
 export type CharacterCrop = z.infer<typeof characterCropSchema>;
@@ -77,3 +77,13 @@ export const detectAndCropResponseSchema = z.object({
 });
 
 export type DetectAndCropResponse = z.infer<typeof detectAndCropResponseSchema>;
+
+export const startBatchTaggingResponseSchema = z.object({
+	success: z.boolean(),
+	message: z.string(),
+	jobId: z.string().uuid(),
+});
+
+export type StartBatchTaggingResponse = z.infer<
+	typeof startBatchTaggingResponseSchema
+>;

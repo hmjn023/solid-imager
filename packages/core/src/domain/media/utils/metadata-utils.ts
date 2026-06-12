@@ -4,6 +4,7 @@ import {
 	type TagExtractionOptions,
 } from "@/domain/tags/extractor";
 import { type Workflow, workflowSchema } from "@/domain/tags/schemas";
+import { isRecord } from "@/utils/type-guards";
 
 function parseWorkflowAndExtractTags(
 	text: string,
@@ -52,7 +53,7 @@ function processCommentChunk(
 					MAX_NODES_TO_CHECK,
 				);
 				const isApiFormat = valuesToCheck.some(
-					(v: any) => typeof v === "object" && v !== null && "class_type" in v,
+					(v) => isRecord(v) && "class_type" in v,
 				);
 
 				if (hasNodes || isApiFormat) {

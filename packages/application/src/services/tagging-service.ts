@@ -1,4 +1,5 @@
 import path from "node:path";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -134,24 +135,23 @@ export class TaggingServiceImpl implements ITaggingService {
       throw new Error("Media source not found");
     }
 
-    let response: TaggingResponse;
+    if (mediaSource.type !== "local") {
+      console.error("Only local media sources are supported.");
+      return null;
+    }
 
-    // Check if AI service is accessible locally (can use path-based API)
-    // If AI service is on remote host, we must send the file buffer
+    const connectionParse = localConnectionSchema.safeParse(mediaSource.connectionInfo);
+    if (!connectionParse.success) {
+      throw new Error("Invalid local source connection info: missing path");
+    }
+    const fullPath = path.join(connectionParse.data.path, media.filePath);
+
+    let response: TaggingResponse;
     const canUsePathApi = this.isAiServiceLocal();
 
-    if (mediaSource.type === "local" && canUsePathApi) {
-      const connectionInfo = mediaSource.connectionInfo as { path: string };
-      const fullPath = path.join(connectionInfo.path, media.filePath);
+    if (canUsePathApi) {
       response = await this.aiClient.tagImageByPath(fullPath);
     } else {
-      // Send file buffer when AI service is remote or media source is not local
-      if (mediaSource.type !== "local") {
-			console.error("Only local media sources are supported.");
-			return null;
-      }
-      const connectionInfo = mediaSource.connectionInfo as { path: string };
-      const fullPath = path.join(connectionInfo.path, media.filePath);
       const buffer = await this.readFileBuffer(fullPath);
       response = await this.aiClient.tagImage(buffer);
     }
@@ -315,24 +315,25 @@ export class TaggingServiceImpl implements ITaggingService {
       throw new Error("CCIP feature extraction is only supported for images");
     }
     const mediaSource = await this.sourceRepo.findById(mediaSourceId);
-
     if (!mediaSource) {
       throw new Error("Media source not found");
     }
 
-    // Check if AI service is accessible locally (can use path-based API)
-    const canUsePathApi = this.isAiServiceLocal();
-
-    if (mediaSource.type === "local" && canUsePathApi) {
-      const connectionInfo = mediaSource.connectionInfo as { path: string };
-      const fullPath = path.join(connectionInfo.path, media.filePath);
-      return await this.aiClient.extractCcipFeatureByPath(fullPath);
-    }
     if (mediaSource.type !== "local") {
       throw new Error("Only local media sources is supported.");
     }
-    const connectionInfo = mediaSource.connectionInfo as { path: string };
-    const fullPath = path.join(connectionInfo.path, media.filePath);
+
+    const connectionParse = localConnectionSchema.safeParse(mediaSource.connectionInfo);
+    if (!connectionParse.success) {
+      throw new Error("Invalid local source connection info: missing path");
+    }
+    const fullPath = path.join(connectionParse.data.path, media.filePath);
+
+    const canUsePathApi = this.isAiServiceLocal();
+
+    if (canUsePathApi) {
+      return await this.aiClient.extractCcipFeatureByPath(fullPath);
+    }
     const buffer = await this.readFileBuffer(fullPath);
     return await this.aiClient.extractCcipFeature(buffer);
   }
@@ -353,8 +354,7 @@ export class TaggingServiceImpl implements ITaggingService {
    * Path-based API only works when AI service can access the file system
    */
   private isAiServiceLocal(): boolean {
-    const client = this.aiClient as unknown as { getBaseUrl?: () => string };
-    const baseUrl = client.getBaseUrl?.();
+    const baseUrl = this.aiClient.getBaseUrl?.();
     if (!baseUrl) {
       return true; // Fallback: assume local
     }

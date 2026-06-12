@@ -70,7 +70,7 @@ export function getThumbnailPath(
  * @returns {Promise<void>} A promise that resolves when the thumbnail has been generated.
  */
 export async function generateThumbnail(
-	media: Media,
+	media: Pick<Media, "id" | "filePath">,
 	sourcePath: string,
 	mediaSourceId: string,
 ): Promise<void> {

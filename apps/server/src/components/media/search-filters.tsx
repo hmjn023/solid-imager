@@ -68,7 +68,7 @@ function FilterSection<T>(props: {
 					{(id) => {
 						const item = props.items?.find(
 							(i) => props.getItemKey(i) === id,
-						) as T;
+						);
 						return (
 							<Badge
 								class="cursor-pointer"

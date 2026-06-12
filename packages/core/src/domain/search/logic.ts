@@ -88,8 +88,11 @@ const applyCriterionToState = (
 	const { target, operator, value, negate } = criterion;
 
 	if (target === "fileName" && operator === "contains" && !negate) {
-		state.searchQuery = value as string;
-		return true;
+		if (typeof value === "string") {
+			state.searchQuery = value;
+			return true;
+		}
+		return false;
 	}
 
 	if (operator !== "equals") {
@@ -105,8 +108,8 @@ const applyCriterionToState = (
 	};
 
 	const list = targetMap[target];
-	if (list) {
-		list.push(value as string);
+	if (list && typeof value === "string") {
+		list.push(value);
 		return true;
 	}
 
@@ -205,8 +208,8 @@ export const preparePresetState = (
 ) => {
 	const simpleState = restoreFromSearchGroup(preset.value);
 	const sortState = {
-		sortBy: (preset.sort as SearchState["sortBy"]) || "date",
-		sortOrder: (preset.order as SearchState["sortOrder"]) || "desc",
+		sortBy: preset.sort || "date",
+		sortOrder: preset.order || "desc",
 	};
 
 	if (preset.mode != null) {
@@ -236,7 +239,7 @@ export const preparePresetState = (
 
 	// Fallback for older presets without mode
 	if (simpleState) {
-		const targetMode = (currentState.mode || "simple") as "simple" | "pro";
+		const targetMode = currentState.mode || "simple";
 		return {
 			mode: targetMode,
 			activePresetId: preset.id,

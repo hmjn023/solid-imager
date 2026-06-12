@@ -17,7 +17,12 @@ type FileWatcher = {
 
 // mediaSourceId -> Set of clients
 // HMR survival: use global map if available
-const globalAny = globalThis as any;
+const globalAny = globalThis as typeof globalThis & {
+	__SSE_CLIENTS_MAP__: Map<string, Set<SseClient>> | undefined;
+	__SSE_WATCHERS_MAP__: Map<string, FileWatcher> | undefined;
+	__SSE_EVENT_EMITTER__: EventEmitter | undefined;
+	__SSE_CLEANUP_REGISTERED__: boolean | undefined;
+};
 
 if (!globalAny.__SSE_CLIENTS_MAP__) {
 	globalAny.__SSE_CLIENTS_MAP__ = new Map<string, Set<SseClient>>();
@@ -43,7 +48,7 @@ const eventEmitter: EventEmitter = globalAny.__SSE_EVENT_EMITTER__;
 if (!globalAny.__SSE_CLEANUP_REGISTERED__) {
 	const cleanup = async () => {
 		// console.log("[SseManager] Cleaning up watchers...");
-		const watchers = globalAny.__SSE_WATCHERS_MAP__ as Map<string, FileWatcher>;
+		const watchers = globalAny.__SSE_WATCHERS_MAP__;
 		if (watchers) {
 			const closePromises = Array.from(watchers.values()).map((fw) =>
 				fw.watcher.close(),

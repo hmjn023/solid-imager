@@ -23,6 +23,7 @@
     "./domain/contract": "./src/domain/contract/index.ts",
     "./domain/contract/*": "./src/domain/contract/*.ts",
     "./interfaces/*": "./src/interfaces/*.ts",
+    "./utils": "./src/utils/index.ts",
     "./utils/*": "./src/utils/*.ts"
   },
   "scripts": {

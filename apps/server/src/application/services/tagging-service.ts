@@ -7,7 +7,7 @@ export { TaggingServiceImpl } from "@solid-imager/application/services/tagging-s
 
 function readFileBuffer(filePath: string): Promise<ArrayBuffer> {
 	return import("node:fs/promises").then((fs) =>
-		fs.readFile(filePath).then((buf) => buf.buffer as ArrayBuffer),
+		fs.readFile(filePath).then((buf) => new Uint8Array(buf).buffer),
 	);
 }
 

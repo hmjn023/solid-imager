@@ -18,6 +18,7 @@ import {
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 
 type Props = {
 	isOpen: boolean;
@@ -77,7 +78,7 @@ export default function ImportReviewModal(props: Props) {
 		if (jobs && jobs.length > 0) {
 			const allIds = new Set(
 				jobs.map((j: { id: string }) => j.id),
-			) as Set<string>;
+			);
 			setSelectedJobIds(allIds);
 		}
 	});
@@ -121,7 +122,7 @@ export default function ImportReviewModal(props: Props) {
 			props.onImportCompleted();
 			props.onClose();
 		} catch (e) {
-			toast.error(`Failed to process imports: ${(e as Error).message}`);
+			toast.error(`Failed to process imports: ${getErrorMessage(e)}`);
 		}
 	};
 

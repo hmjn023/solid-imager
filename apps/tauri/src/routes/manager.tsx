@@ -19,7 +19,10 @@ import {
 	deleteIp,
 	updateIp,
 } from "~/infrastructure/api-clients/ips-api";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import {
+	scanBatchTaggingTargets,
+	startBatchTaggingWithIds,
+} from "~/infrastructure/api-clients/ai-api";
 import {
 	createProject,
 	deleteProject,
@@ -51,15 +54,8 @@ const managerActions = {
 	createCharacter,
 	updateCharacter,
 	deleteCharacter,
-	scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets as (input: {
-		force: boolean;
-		mediaSourceId?: string;
-	}) => Promise<Media[]>,
-	startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds as (input: {
-		force: boolean;
-		mediaSourceId?: string;
-		mediaIds: string[];
-	}) => Promise<StartBatchTaggingResult>,
+	scanBatchTaggingTargets,
+	startBatchTaggingWithIds,
 	findDuplicateMedia,
 	deleteMedia,
 };

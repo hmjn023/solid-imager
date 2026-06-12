@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import type { IFileSystem } from "@solid-imager/core";
+import { isBufferEncoding } from "@solid-imager/core/utils/type-guards";
 
 export class NodeFileSystem implements IFileSystem {
 	async exists(path: string): Promise<boolean> {
@@ -16,7 +17,9 @@ export class NodeFileSystem implements IFileSystem {
 	}
 
 	async readTextFile(path: string, encoding = "utf-8"): Promise<string> {
-		return await fs.readFile(path, { encoding: encoding as BufferEncoding });
+		return await fs.readFile(path, {
+			encoding: isBufferEncoding(encoding) ? encoding : "utf-8",
+		});
 	}
 
 	async writeFile(path: string, data: string | Uint8Array): Promise<void> {

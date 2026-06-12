@@ -2,6 +2,7 @@ import { os } from "@orpc/server";
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
+import type { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
@@ -12,7 +13,7 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
  */
 async function classifyBulkAddItems(
 	items: z.infer<typeof downloadItemSchema>[],
-	BackupService: any,
+	backupService: typeof BackupService,
 ) {
 	const restoreGroups = new Map<string, z.infer<typeof downloadItemSchema>[]>();
 	const importItems: z.infer<typeof downloadItemSchema>[] = [];
@@ -23,7 +24,7 @@ async function classifyBulkAddItems(
 
 		// Check for local file existence (Restore)
 		if (item.filePath) {
-			const sourceId = await BackupService.findMediaSourceForFile(
+			const sourceId = await backupService.findMediaSourceForFile(
 				item.filePath,
 			);
 			if (sourceId) {
@@ -217,12 +218,12 @@ export const importsRouter = {
 		yield { event: "connected", data: "connected" };
 
 		// Queue for events
-		const queue: { event: string; data: any }[] = [];
+		const queue: { event: string; data: unknown }[] = [];
 		let resolve: (() => void) | null = null;
 
 		const mediaSourceId = "global-imports";
 
-		const onEvent = (payload: { event: string; data: any }) => {
+		const onEvent = (payload: { event: string; data: unknown }) => {
 			queue.push(payload);
 			if (resolve) {
 				resolve();

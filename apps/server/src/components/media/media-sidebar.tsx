@@ -1,4 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
@@ -59,10 +60,10 @@ const _CollapsibleSection = (props: {
 	title: string;
 	content: string | object;
 }) => {
-	const isJson = typeof props.content === "object" && props.content !== null;
-	const formattedContent = isJson
-		? JSON.stringify(props.content, null, 2)
-		: (props.content as string);
+	const formattedContent =
+		typeof props.content === "object" && props.content !== null
+			? JSON.stringify(props.content, null, 2)
+			: props.content;
 
 	return (
 		<Collapsible.Root class="w-full">
@@ -99,7 +100,7 @@ export default function MediaSidebar(props: MediaSidebarProps) {
 			// Trigger refetch to update the UI
 			props.onUpdate?.();
 		} catch (error) {
-			toast.error(`Failed to update description: ${(error as Error).message}`);
+			toast.error(`Failed to update description: ${getErrorMessage(error)}`);
 		}
 	};
 

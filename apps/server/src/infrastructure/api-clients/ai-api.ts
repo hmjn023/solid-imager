@@ -28,3 +28,18 @@ export function fetchAiTagsForFile(file: File) {
 export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
 	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
 }
+
+export function scanBatchTaggingTargets(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+}) {
+	return orpc.ai.scanBatchTaggingTargets(params);
+}
+
+export function startBatchTaggingWithIds(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+	mediaIds: string[];
+}) {
+	return orpc.ai.startBatchTaggingWithIds(params);
+}

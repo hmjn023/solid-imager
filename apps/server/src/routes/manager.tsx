@@ -1,7 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	prefetchManagerPageQueries,
-	type StartBatchTaggingResult,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
@@ -9,6 +8,10 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
+import {
+	scanBatchTaggingTargets,
+	startBatchTaggingWithIds,
+} from "~/infrastructure/api-clients/ai-api";
 import {
 	createCharacter,
 	deleteCharacter,
@@ -23,7 +26,6 @@ import {
 	deleteMedia,
 	findDuplicateMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createProject,
 	deleteProject,
@@ -51,15 +53,8 @@ const managerActions = {
 	createCharacter,
 	updateCharacter,
 	deleteCharacter,
-	scanBatchTaggingTargets: orpc.ai.scanBatchTaggingTargets as (input: {
-		force: boolean;
-		mediaSourceId?: string;
-	}) => Promise<Media[]>,
-	startBatchTaggingWithIds: orpc.ai.startBatchTaggingWithIds as (input: {
-		force: boolean;
-		mediaSourceId?: string;
-		mediaIds: string[];
-	}) => Promise<StartBatchTaggingResult>,
+	scanBatchTaggingTargets,
+	startBatchTaggingWithIds,
 	findDuplicateMedia,
 	deleteMedia,
 };

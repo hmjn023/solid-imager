@@ -1,7 +1,6 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import { createForm } from "@tanstack/solid-form";
-import { zodValidator } from "@tanstack/zod-form-adapter";
+import { createForm, type Updater } from "@tanstack/solid-form";
 import { Show } from "solid-js";
 import { Button } from "../button";
 import { Input } from "../input";
@@ -11,6 +10,20 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
+type DeepFormConfig<T> = T extends number
+	? number | undefined
+	: T extends Array<infer U>
+		? Array<DeepFormConfig<U>>
+		: T extends object
+			? { [K in keyof T]: DeepFormConfig<T[K]> }
+			: T;
+
+type FormConfig = DeepFormConfig<AppConfig>;
+
+function parseNumberInput(val: string): number | undefined {
+	const n = Number(val);
+	return val === "" || Number.isNaN(n) ? undefined : n;
+}
 export type ConfigScreenProps = {
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
@@ -19,14 +32,13 @@ export type ConfigScreenProps = {
 
 export function ConfigScreen(props: ConfigScreenProps) {
 	const form = createForm(() => ({
-		defaultValues: props.data,
-		validatorAdapter: zodValidator(),
+		defaultValues: props.data as unknown as FormConfig,
 		validators: {
 			onChange: AppConfigSchema as any,
 		},
 		onSubmit: async ({ value }) => {
 			try {
-				await props.onSubmit(value);
+				await props.onSubmit(value as Partial<AppConfig>);
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
 			} catch (_error) {
@@ -70,15 +82,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
-											value={(field().state.value as number) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
 											<div class="text-red-500 text-sm">
@@ -100,15 +107,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
-											value={(field().state.value as number) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
 											<div class="text-red-500 text-sm">
@@ -130,15 +132,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
-											value={(field().state.value as number) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
 											<div class="text-red-500 text-sm">
@@ -153,7 +150,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								{(field) => (
 									<div class="flex items-center space-x-2">
 										<Switch
-											checked={(field().state.value as boolean) ?? false}
+											checked={field().state.value ?? false}
 											onChange={field().handleChange}
 										>
 											<SwitchControl>
@@ -180,10 +177,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(e.target.value)
 											}
 											placeholder="http://power-machine:3000"
-											value={(field().state.value as string) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 										<div class="text-muted-foreground text-xs">
 											外部の solid-imager サーバーの oRPC
@@ -201,15 +198,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
-											value={(field().state.value as number) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 									</div>
 								)}
@@ -225,7 +217,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								{(field) => (
 									<div class="flex items-center space-x-2">
 										<Switch
-											checked={(field().state.value as boolean) ?? false}
+											checked={field().state.value ?? false}
 											onChange={field().handleChange}
 										>
 											<SwitchControl>
@@ -247,15 +239,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											min="0"
 											onBlur={field().handleBlur}
 											onInput={(e) => {
-												const val = e.target.value;
-												field().handleChange(
-													(val === ""
-														? undefined
-														: Number(val)) as unknown as number,
-												);
+												field().handleChange(parseNumberInput(e.target.value));
 											}}
 											type="number"
-											value={(field().state.value as number) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 										<Show when={field().state.meta.errors.length}>
 											<div class="text-red-500 text-sm">
@@ -279,9 +266,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(e.target.value)
 											}
-											value={(field().state.value as string) ?? ""}
+											value={field().state.value ?? ""}
 										/>
 									</div>
 								)}
@@ -296,15 +283,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													const val = e.target.value;
 													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+														parseNumberInput(e.target.value),
 													);
 												}}
 												type="number"
-												value={(field().state.value as number) ?? ""}
+												value={field().state.value ?? ""}
 											/>
 										</div>
 									)}
@@ -319,15 +303,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													const val = e.target.value;
 													field().handleChange(
-														(val === ""
-															? undefined
-															: Number(val)) as unknown as number,
+														parseNumberInput(e.target.value),
 													);
 												}}
 												type="number"
-												value={(field().state.value as number) ?? ""}
+												value={field().state.value ?? ""}
 											/>
 										</div>
 									)}
@@ -357,11 +338,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													field().handleChange(list);
 												}}
 												placeholder=".jpg, .png"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={field().state.value?.join(", ") ?? ""}
 											/>
 											<div class="text-muted-foreground text-xs">
 												Comma separated
@@ -385,11 +362,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													field().handleChange(list);
 												}}
 												placeholder=".mp4, .webm"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={field().state.value?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
@@ -410,11 +383,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													field().handleChange(list);
 												}}
 												placeholder=".mp3, .wav"
-												value={
-													(field().state.value as string[] | undefined)?.join(
-														", ",
-													) ?? ""
-												}
+												value={field().state.value?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
@@ -440,9 +409,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												field().handleChange(list);
 											}}
 											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
+												field().state.value?.join(", ") ?? ""
 											}
 										/>
 									</div>
@@ -465,9 +432,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												field().handleChange(list);
 											}}
 											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
+												field().state.value?.join(", ") ?? ""
 											}
 										/>
 									</div>
@@ -490,9 +455,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												field().handleChange(list);
 											}}
 											value={
-												(field().state.value as string[] | undefined)?.join(
-													", ",
-												) ?? ""
+												field().state.value?.join(", ") ?? ""
 											}
 										/>
 									</div>
@@ -512,9 +475,17 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 											id={field().name}
 											onInput={(e) =>
-												field().handleChange(e.target.value as any)
+												field().handleChange(
+													e.target.value as
+														| "trace"
+														| "debug"
+														| "info"
+														| "warn"
+														| "error"
+														| "fatal",
+												)
 											}
-											value={(field().state.value as string) ?? ""}
+											value={field().state.value ?? ""}
 										>
 											<option value="trace">Trace</option>
 											<option value="debug">Debug</option>

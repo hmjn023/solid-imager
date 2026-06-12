@@ -7,8 +7,10 @@ import {
 	SelectValue,
 } from "@solid-imager/ui/select";
 import { cn } from "@solid-imager/ui/utils/cn";
+import { parseSelectValue } from "@solid-imager/ui/utils";
 
-type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
+const SORT_OPTIONS = ["date", "name", "size", "rating", "viewCount"] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
 
 type SortControlsProps = {
 	sortBy: SortOption;
@@ -47,9 +49,9 @@ export function SortControls(props: SortControlsProps) {
 						);
 					}}
 					onChange={(value) =>
-						props.onSortByChange((value as SortOption) || "date")
+						props.onSortByChange(parseSelectValue(value, SORT_OPTIONS, "date"))
 					}
-					options={["date", "name", "size", "rating", "viewCount"]}
+					options={[...SORT_OPTIONS]}
 					placeholder="項目"
 					value={props.sortBy}
 				>

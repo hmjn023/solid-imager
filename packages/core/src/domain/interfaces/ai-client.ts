@@ -19,4 +19,6 @@ export type IAiClient = {
 		feature1: number[],
 		feature2: number[],
 	): Promise<CcipDifferenceResponse>;
+
+	getBaseUrl?: () => string;
 };

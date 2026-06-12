@@ -13,6 +13,17 @@ import { eq } from "drizzle-orm";
 import { users } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
+function mapUser(row: typeof users.$inferSelect): User {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    password: row.password,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export function createUserRepository(
   getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): UserRepositoryDef {
@@ -20,7 +31,7 @@ export function createUserRepository(
     async findAll(): Promise<User[]> {
       try {
         const results = await getExecutor().select().from(users);
-        return results as unknown as User[];
+        return results.map(mapUser);
       } catch (error) {
         throw new UnexpectedError("Failed to select users", error);
       }
@@ -35,7 +46,7 @@ export function createUserRepository(
         if (result.length === 0) {
           return null;
         }
-        return result[0] as unknown as User;
+        return mapUser(result[0]);
       } catch (error) {
         throw new UnexpectedError(
           `Failed to select user by ID: ${id}`,
@@ -53,7 +64,7 @@ export function createUserRepository(
         if (result.length === 0) {
           return null;
         }
-        return result[0] as unknown as User;
+        return mapUser(result[0]);
       } catch (error) {
         throw new UnexpectedError(
           `Failed to select user by email: ${email}`,
@@ -68,7 +79,7 @@ export function createUserRepository(
           .insert(users)
           .values(user)
           .returning();
-        return result[0] as unknown as User;
+        return mapUser(result[0]);
       } catch (error: unknown) {
         if (
           error &&
@@ -95,7 +106,7 @@ export function createUserRepository(
         if (result.length === 0) {
           throw new ResourceNotFoundError("User", id);
         }
-        return result[0] as unknown as User;
+        return mapUser(result[0]);
       } catch (error) {
         if (error instanceof ResourceNotFoundError) {
           throw error;

@@ -382,10 +382,14 @@ export function createLanceDbDumpService(deps?: {
 }): ILanceDbDumpService {
 	const log = deps?.logger ?? { info() {}, error() {} };
 
+	function extractConnectFn(mod: { connect: unknown }): LanceConnectFn {
+		return mod.connect as LanceConnectFn;
+	}
+
 	async function getConnect(): Promise<LanceConnectFn> {
 		if (deps?.connect) return deps.connect;
 		const lancedb = await import("@lancedb/lancedb");
-		return lancedb.connect as unknown as LanceConnectFn;
+		return extractConnectFn(lancedb);
 	}
 
 	async function writeToLanceDB(

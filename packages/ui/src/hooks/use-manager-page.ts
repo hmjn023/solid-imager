@@ -8,6 +8,7 @@ import type {
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { createQuery, type QueryClient } from "@tanstack/solid-query";
 import {
 	type Accessor,
@@ -316,7 +317,7 @@ export function useManagerPage(
 			setEditingItem(null);
 			resetForm(setFormData);
 		} catch (error) {
-			toast.error(`Failed to save: ${(error as Error).message}`);
+			toast.error(`Failed to save: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -341,7 +342,7 @@ export function useManagerPage(
 			setEditingItem(null);
 			resetForm(setFormData);
 		} catch (error) {
-			toast.error(`Failed to save: ${(error as Error).message}`);
+			toast.error(`Failed to save: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -362,7 +363,7 @@ export function useManagerPage(
 			invalidateActive();
 			toast.success("Deleted successfully");
 		} catch (error) {
-			toast.error(`Failed to delete: ${(error as Error).message}`);
+			toast.error(`Failed to delete: ${getErrorMessage(error)}`);
 		} finally {
 			setIsDeleteDialogOpen(false);
 			setItemToDelete(null);
@@ -381,8 +382,8 @@ export function useManagerPage(
 			setSelectedMedia(new Set(result.map((item) => item.id)));
 			setTaggingStatus(`${result.length} items found.`);
 		} catch (error) {
-			toast.error(`Error: ${(error as Error).message}`);
-			setTaggingStatus(`Error during scan: ${(error as Error).message}`);
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setTaggingStatus(`Error during scan: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -412,8 +413,8 @@ export function useManagerPage(
 				setTaggingStatus("Failed to start batch tagging.");
 			}
 		} catch (error) {
-			toast.error(`Error: ${(error as Error).message}`);
-			setTaggingStatus(`Error: ${(error as Error).message}`);
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -500,8 +501,8 @@ export function useManagerPage(
 			const dupCount = result.groups.reduce((sum, g) => sum + g.media.length - 1, 0);
 			setDuplicateStatus(`${result.groups.length} groups found (${dupCount} duplicates).`);
 		} catch (error) {
-			toast.error(`Error: ${(error as Error).message}`);
-			setDuplicateStatus(`Error: ${(error as Error).message}`);
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setDuplicateStatus(`Error: ${getErrorMessage(error)}`);
 		}
 	};
 

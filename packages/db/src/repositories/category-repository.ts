@@ -14,6 +14,18 @@ import { eq } from "drizzle-orm";
 import { categories } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
+function mapCategory(row: typeof categories.$inferSelect): Category {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    color: row.color,
+    parentId: row.parentId,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export function createCategoryRepository(
   getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): CategoryRepository {
@@ -21,7 +33,7 @@ export function createCategoryRepository(
     async findAll(): Promise<Category[]> {
       try {
         const results = await getExecutor().select().from(categories);
-        return results as unknown as Category[];
+        return results.map(mapCategory);
       } catch (error) {
         throw new UnexpectedError("Failed to select categories", error);
       }
@@ -39,7 +51,7 @@ export function createCategoryRepository(
         if (result.length === 0) {
           return null;
         }
-        return result[0] as unknown as Category;
+        return mapCategory(result[0]);
       } catch (error) {
         throw new UnexpectedError(
           `Failed to select category by ID: ${id}`,
@@ -56,12 +68,13 @@ export function createCategoryRepository(
         const result = await getExecutor(tx)
           .insert(categories)
           .values({
-            ...category,
+            name: category.name,
             description: category.description ?? "",
             color: category.color ?? "#808080",
+            parentId: category.parentId ?? null,
           })
           .returning();
-        return result[0] as unknown as Category;
+        return mapCategory(result[0]);
       } catch (error: unknown) {
         throw new UnexpectedError("Failed to insert category", error);
       }
@@ -73,16 +86,23 @@ export function createCategoryRepository(
       tx?: unknown,
     ): Promise<Category> {
       try {
+        const updates: Partial<typeof categories.$inferInsert> = {};
+        if (category.name !== undefined) updates.name = category.name;
+        if (category.description !== undefined) updates.description = category.description;
+        if (category.color !== undefined) updates.color = category.color;
+        if (category.parentId !== undefined) updates.parentId = category.parentId;
+        updates.updatedAt = new Date();
+
         const result = await getExecutor(tx)
           .update(categories)
-          .set(category)
+          .set(updates)
           .where(eq(categories.id, id))
           .returning();
 
         if (result.length === 0) {
           throw new ResourceNotFoundError("Category", id);
         }
-        return result[0] as unknown as Category;
+        return mapCategory(result[0]);
       } catch (error) {
         if (error instanceof ResourceNotFoundError) {
           throw error;

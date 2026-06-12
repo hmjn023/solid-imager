@@ -1,3 +1,4 @@
+import { isRecord } from "../../utils/type-guards";
 import type { TagData, Workflow } from "./schemas";
 
 /**
@@ -86,23 +87,26 @@ function processWorkflowNode({
 	positiveTags,
 	negativeTags,
 }: ProcessWorkflowNodeParams) {
-	if (typeof node !== "object" || node === null) {
+	if (!isRecord(node)) {
 		return;
 	}
 
-	// safely cast to Record since we checked it is an object
-	const nodeRecord = node as Record<string, unknown>;
-
-	const nodeType = nodeRecord.type || nodeRecord.class_type;
-	const nodeTitle = nodeRecord.title || (nodeRecord as any)._meta?.title;
+	const nodeType = node.type || node.class_type;
+	const meta = node._meta;
+	const nodeTitle =
+		typeof node.title === "string"
+			? node.title
+			: isRecord(meta) && typeof meta.title === "string"
+				? meta.title
+				: undefined;
 
 	if (typeof nodeType === "string" && positiveNodeTypes.includes(nodeType)) {
 		const valuesToProcess: unknown[] = [];
-		if (Array.isArray(nodeRecord.widgets_values)) {
-			valuesToProcess.push(...nodeRecord.widgets_values);
+		if (Array.isArray(node.widgets_values)) {
+			valuesToProcess.push(...node.widgets_values);
 		}
-		if (nodeRecord.inputs && typeof nodeRecord.inputs === "object") {
-			valuesToProcess.push(...Object.values(nodeRecord.inputs));
+		if (isRecord(node.inputs)) {
+			valuesToProcess.push(...Object.values(node.inputs));
 		}
 
 		const negativeTagSet = new Set(
@@ -137,7 +141,7 @@ export function extractTagsFromWorkflow(
 	const positiveTags: TagData[] = [];
 	const negativeTags: TagData[] = [];
 
-	let nodesToProcess: any[] = [];
+	let nodesToProcess: unknown[] = [];
 	if (workflow && Array.isArray(workflow.nodes)) {
 		nodesToProcess = workflow.nodes;
 	} else if (

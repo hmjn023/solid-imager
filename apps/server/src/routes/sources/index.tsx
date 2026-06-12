@@ -1,3 +1,4 @@
+import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
@@ -60,9 +61,10 @@ function SourcesRoute() {
 
 	const page = useSourcesPage({
 		actions: {
-			createMediaSource: (data: unknown) => createMediaSource(data as any),
+			createMediaSource: (data: unknown) =>
+				createMediaSource(mediaSourceInfoSchema.parse(data)),
 			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, data as any),
+				updateMediaSource(id, mediaSourceInfoSchema.parse(data)),
 			deleteMediaSource,
 			syncMediaSources,
 		},
@@ -70,7 +72,7 @@ function SourcesRoute() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			(mediaSources.data as Array<{ id?: string }>)
+			mediaSources.data
 				?.map((s) => s.id)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});

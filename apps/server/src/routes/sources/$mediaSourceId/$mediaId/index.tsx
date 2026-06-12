@@ -1,4 +1,3 @@
-import type { UUID } from "@solid-imager/core/domain/shared/schemas";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import MediaSidebar from "~/components/media/media-sidebar";
@@ -10,8 +9,8 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {
 		await context.queryClient.ensureQueryData(
 			mediaDetailsQueryOptions(
-				params.mediaSourceId as UUID,
-				params.mediaId as UUID,
+				params.mediaSourceId,
+				params.mediaId,
 			),
 		);
 	},
@@ -20,8 +19,8 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 
 function Media() {
 	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
-	const mediaSourceId = () => params().mediaSourceId as UUID;
-	const mediaId = () => params().mediaId as UUID;
+	const mediaSourceId = () => params().mediaSourceId;
+	const mediaId = () => params().mediaId;
 
 	return (
 		<MediaDetailScreen
