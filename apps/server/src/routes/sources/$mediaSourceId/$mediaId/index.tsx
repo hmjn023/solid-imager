@@ -1,17 +1,14 @@
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import MediaSidebar from "~/components/media/media-sidebar";
-import MediaViewer from "~/components/media/media-viewer";
+import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {
 		await context.queryClient.ensureQueryData(
-			mediaDetailsQueryOptions(
-				params.mediaSourceId,
-				params.mediaId,
-			),
+			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
 		);
 	},
 	component: Media,
