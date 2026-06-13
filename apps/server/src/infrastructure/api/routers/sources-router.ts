@@ -274,27 +274,21 @@ export const sourcesRouter = {
 			});
 
 			if (input.mode === "zip") {
-				return new Response(
-					asDumpStream(result),
-					{
-						headers: {
-							"Content-Type": "application/zip",
-							"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
-						},
+				return new Response(asDumpStream(result), {
+					headers: {
+						"Content-Type": "application/zip",
+						"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
 					},
-				);
+				});
 			}
 
 			if (input.mode === "lancedb") {
-				return new Response(
-					asDumpStream(result),
-					{
-						headers: {
-							"Content-Type": "application/gzip",
-							"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
-						},
+				return new Response(asDumpStream(result), {
+					headers: {
+						"Content-Type": "application/gzip",
+						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
 					},
-				);
+				});
 			}
 
 			return result;
@@ -440,7 +434,7 @@ export const sourcesRouter = {
 					"Real-time Server-Sent Events stream for media source updates",
 			},
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.string().uuid().or(z.literal("*")) }))
 		.handler(async function* ({ input, signal }) {
 			// Yield initial connection event
 			yield { event: "connected", data: "connected" };
@@ -458,7 +452,7 @@ export const sourcesRouter = {
 				}
 			};
 
-			const eventName = `event:${input.id}`;
+			const eventName = input.id === "*" ? "event:*" : `event:${input.id}`;
 			SseManager.emitter.on(eventName, onEvent);
 
 			try {

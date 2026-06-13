@@ -125,8 +125,9 @@ export const SseManager = {
 	 * @param {unknown} data - The data payload of the event.
 	 */
 	sendEvent(mediaSourceId: string, eventType: string, data: unknown): void {
-		// Notify through internal emitter first
+		// Notify through internal emitter
 		eventEmitter.emit(`event:${mediaSourceId}`, { event: eventType, data });
+		eventEmitter.emit("event:*", { event: eventType, data });
 
 		const clients = clientsMap.get(mediaSourceId);
 		if (!clients) {
