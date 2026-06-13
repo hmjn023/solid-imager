@@ -6,8 +6,7 @@ import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
+import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {

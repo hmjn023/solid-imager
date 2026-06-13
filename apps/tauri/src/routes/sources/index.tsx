@@ -8,13 +8,13 @@ import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getCollections } from "~/collections";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
 	deleteMediaSource,
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/")({
 	loader: async ({ context }) => {

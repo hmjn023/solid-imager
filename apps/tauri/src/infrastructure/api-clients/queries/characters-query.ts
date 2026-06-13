@@ -1,1 +1,0 @@
-export { allCharactersQueryOptions } from "~/queries";

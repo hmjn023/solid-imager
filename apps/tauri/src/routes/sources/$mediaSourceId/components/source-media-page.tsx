@@ -15,12 +15,6 @@ import {
 	syncMediaItems,
 	uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
-import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
-import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
@@ -33,6 +27,14 @@ import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
+import {
+	allAuthorsQueryOptions,
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	mediaSourcesQueryOptions,
+	tagsQueryOptions,
+} from "~/queries";
 
 const presetClient = createPresetClient(rawPresetClient);
 

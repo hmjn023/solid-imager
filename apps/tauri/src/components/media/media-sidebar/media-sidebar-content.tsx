@@ -16,14 +16,14 @@ import {
 	createProject,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
-import {
-	allProjectsQueryOptions,
-	projectsForMediaQueryOptions,
-} from "~/infrastructure/api-clients/queries/projects-query";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
+import {
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	projectsForMediaQueryOptions,
+} from "~/queries";
 import { AiTaggingModal } from "../ai-tagging-modal";
 import { CharacterCropModal } from "../character-crop-modal";
 

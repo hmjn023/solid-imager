@@ -130,15 +130,18 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const allIps = createQuery(() => allIpsQueryOptions());
 	const allCharacters = createQuery(() => allCharactersQueryOptions());
 
+	const projectsForMediaKey = projectsForMediaQueryOptions(
+		props.media.mediaSourceId,
+		props.media.id,
+	).queryKey;
+
 	const handleAddProject = async (projectId: string) => {
 		await addProjectToMedia(
 			props.media.mediaSourceId,
 			props.media.id,
 			projectId,
 		);
-		queryClient.invalidateQueries({
-			queryKey: ["projectsForMedia", props.media.id],
-		});
+		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
 	};
 
 	const handleRemoveProject = async (projectId: string) => {
@@ -147,15 +150,15 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			props.media.id,
 			projectId,
 		);
-		queryClient.invalidateQueries({
-			queryKey: ["projectsForMedia", props.media.id],
-		});
+		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
 	};
 
 	const handleCreateProject = async (name: string) => {
 		const newProject = await createProject({ name });
 		await handleAddProject(newProject.id);
-		queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+		queryClient.invalidateQueries({
+			queryKey: allProjectsQueryOptions().queryKey,
+		});
 	};
 
 	const handleAddIp = async (ipId: string) => {
@@ -171,7 +174,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const handleCreateIp = async (name: string) => {
 		const newIp = await createIp({ name });
 		await handleAddIp(newIp.id);
-		queryClient.invalidateQueries({ queryKey: ["allIps"] });
+		queryClient.invalidateQueries({
+			queryKey: allIpsQueryOptions().queryKey,
+		});
 	};
 
 	const availableCharacters = createMemo(() => {
@@ -222,7 +227,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const handleCreateCharacter = async (name: string) => {
 		const newCharacter = await createCharacter({ name });
 		await handleAddCharacter(newCharacter.id);
-		queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
+		queryClient.invalidateQueries({
+			queryKey: allCharactersQueryOptions().queryKey,
+		});
 	};
 
 	return (
