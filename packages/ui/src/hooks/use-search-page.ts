@@ -15,6 +15,7 @@ import {
 	keepPreviousData,
 } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+import { isServer } from "solid-js/web";
 import type { buildAuthorsQueryOptions } from "../query-options/authors-query";
 import type { buildCharactersQueryOptions } from "../query-options/characters-query";
 import type { buildIpsQueryOptions } from "../query-options/ips-query";
@@ -214,7 +215,9 @@ export function useSearchPage(
 	});
 
 	onCleanup(() => {
-		setScrollY(window.scrollY);
+		if (!isServer) {
+			setScrollY(window.scrollY);
+		}
 		const timer = refreshTimer();
 		if (timer) {
 			clearTimeout(timer);

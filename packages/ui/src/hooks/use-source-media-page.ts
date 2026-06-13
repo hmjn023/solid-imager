@@ -302,6 +302,9 @@ export function useSourceMediaPage(
 	});
 
 	onCleanup(() => {
+		if (isServer) {
+			return;
+		}
 		const sourceId = id();
 		if (sourceId) {
 			setScrollPosition(sourceId, window.scrollY);
