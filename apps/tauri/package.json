@@ -24,7 +24,6 @@
 		"@solid-imager/ui": "workspace:*",
 		"@tanstack/solid-query": "latest",
 		"@tanstack/solid-router": "latest",
-		"@tanstack/solid-start": "latest",
 		"@tauri-apps/api": "^2.11.0",
 		"@tauri-apps/plugin-http": "^2.5.9",
 		"solid-js": "^1.9.13",
