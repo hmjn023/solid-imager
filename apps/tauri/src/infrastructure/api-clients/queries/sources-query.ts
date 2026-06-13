@@ -1,1 +1,1 @@
-export { mediaSourcesQueryOptions } from "~/queries/sources-query";
+export { mediaSourcesQueryOptions } from "~/queries";

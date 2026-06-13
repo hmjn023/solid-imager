@@ -1,1 +1,1 @@
-export { configQueryOptions } from "~/queries/config-query";
+export { configQueryOptions } from "~/queries";

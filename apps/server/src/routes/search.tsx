@@ -9,12 +9,14 @@ import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persiste
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 
-import { allAuthorsQueryOptions } from "~/infrastructure/api-clients/queries/authors-query";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
-import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
-import { tagsQueryOptions } from "~/infrastructure/api-clients/queries/tags-query";
+import {
+	allAuthorsQueryOptions,
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	mediaSourcesQueryOptions,
+	tagsQueryOptions,
+} from "~/infrastructure/api-clients/queries";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	getSearchCondition,

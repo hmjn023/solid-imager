@@ -8,7 +8,7 @@ import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
+import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
 	createMediaSource,
 	deleteMediaSource,

@@ -1,1 +1,1 @@
-export { mediaDetailsQueryOptions } from "~/queries/media-query";
+export { mediaDetailsQueryOptions } from "~/queries";

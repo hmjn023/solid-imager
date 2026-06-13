@@ -1,10 +1,10 @@
 import { initializePersistence } from "~/infrastructure/db/persistence";
-import { createTagsCollection } from "./tags-collection";
-import { createSourcesCollection } from "./sources-collection";
-import { createProjectsCollection } from "./projects-collection";
+import { createAuthorsCollection } from "./authors-collection";
 import { createCharactersCollection } from "./characters-collection";
 import { createIpsCollection } from "./ips-collection";
-import { createAuthorsCollection } from "./authors-collection";
+import { createProjectsCollection } from "./projects-collection";
+import { createSourcesCollection } from "./sources-collection";
+import { createTagsCollection } from "./tags-collection";
 
 export type AppCollections = {
 	tags: ReturnType<typeof createTagsCollection>;

@@ -1,9 +1,9 @@
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
+import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
-import type { getPersistence } from "~/infrastructure/db/persistence";
 
 type CharacterResponse = Awaited<
 	ReturnType<typeof client.characters.list>

@@ -1,1 +1,1 @@
-export { allAuthorsQueryOptions } from "~/queries/entities-query";
+export { allAuthorsQueryOptions } from "~/queries";

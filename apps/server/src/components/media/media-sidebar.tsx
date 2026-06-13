@@ -13,13 +13,11 @@ import CharacterCropModal from "~/components/media/character-crop-modal";
 import {
 	addCharacterToMedia,
 	createCharacter,
-	fetchAllCharacters,
 	removeCharacterFromMedia,
 } from "~/infrastructure/api-clients/characters-api";
 import {
 	addIpToMedia,
 	createIp,
-	fetchAllIps,
 	removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
 
@@ -28,10 +26,15 @@ import { updateMedia } from "~/infrastructure/api-clients/media-api";
 import {
 	addProjectToMedia,
 	createProject,
-	fetchAllProjects,
-	fetchProjectsForMedia,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
+
+import {
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	projectsForMediaQueryOptions,
+} from "~/infrastructure/api-clients/queries";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
@@ -120,23 +123,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const genInfo = createMemo(() => props.media.generationInfo);
 
 	// Queries for associations
-	const projects = createQuery(() => ({
-		queryKey: ["projectsForMedia", props.media.id],
-		queryFn: () =>
-			fetchProjectsForMedia(props.media.mediaSourceId, props.media.id),
-	}));
-	const allProjects = createQuery(() => ({
-		queryKey: ["allProjects"],
-		queryFn: fetchAllProjects,
-	}));
-	const allIps = createQuery(() => ({
-		queryKey: ["allIps"],
-		queryFn: fetchAllIps,
-	}));
-	const allCharacters = createQuery(() => ({
-		queryKey: ["allCharacters"],
-		queryFn: fetchAllCharacters,
-	}));
+	const projects = createQuery(() =>
+		projectsForMediaQueryOptions(props.media.mediaSourceId, props.media.id),
+	);
+	const allProjects = createQuery(() => allProjectsQueryOptions());
+	const allIps = createQuery(() => allIpsQueryOptions());
+	const allCharacters = createQuery(() => allCharactersQueryOptions());
 
 	const handleAddProject = async (projectId: string) => {
 		await addProjectToMedia(

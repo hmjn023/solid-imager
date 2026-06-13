@@ -1,1 +1,1 @@
-export { allCharactersQueryOptions } from "~/queries/entities-query";
+export { allCharactersQueryOptions } from "~/queries";

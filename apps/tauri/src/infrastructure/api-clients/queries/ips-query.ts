@@ -1,1 +1,1 @@
-export { allIpsQueryOptions } from "~/queries/entities-query";
+export { allIpsQueryOptions } from "~/queries";

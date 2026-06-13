@@ -31,10 +31,12 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
-import { allProjectsQueryOptions } from "~/infrastructure/api-clients/queries/projects-query";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
+import {
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	mediaSourcesQueryOptions,
+} from "~/infrastructure/api-clients/queries";
 
 const managerQueryOptions = {
 	projects: allProjectsQueryOptions,

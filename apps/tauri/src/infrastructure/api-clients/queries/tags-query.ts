@@ -1,1 +1,1 @@
-export { tagsQueryOptions } from "~/queries/tags-query";
+export { tagsQueryOptions } from "~/queries";

@@ -1,5 +1,5 @@
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
