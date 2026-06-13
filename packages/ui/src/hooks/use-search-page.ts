@@ -16,12 +16,6 @@ import {
 } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
-import type { buildAuthorsQueryOptions } from "../query-options/authors-query";
-import type { buildCharactersQueryOptions } from "../query-options/characters-query";
-import type { buildIpsQueryOptions } from "../query-options/ips-query";
-import type { buildProjectsQueryOptions } from "../query-options/projects-query";
-import type { buildSourcesQueryOptions } from "../query-options/sources-query";
-import type { buildTagsQueryOptions } from "../query-options/tags-query";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -35,12 +29,12 @@ export type SearchPageFilterData = {
 };
 
 export type SearchPageQueryOptions = {
-	tags: () => ReturnType<typeof buildTagsQueryOptions>;
-	sources: () => ReturnType<typeof buildSourcesQueryOptions>;
-	projects: () => ReturnType<typeof buildProjectsQueryOptions>;
-	ips: () => ReturnType<typeof buildIpsQueryOptions>;
-	characters: () => ReturnType<typeof buildCharactersQueryOptions>;
-	authors: () => ReturnType<typeof buildAuthorsQueryOptions>;
+	tags: () => any;
+	sources: () => any;
+	projects: () => any;
+	ips: () => any;
+	characters: () => any;
+	authors: () => any;
 };
 
 export interface UseSearchPageOptions {
@@ -97,12 +91,12 @@ export function useSearchPage(
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 	} = options;
 
-	const tags = createQuery(() => queries.tags());
-	const sources = createQuery(() => queries.sources());
-	const allProjects = createQuery(() => queries.projects());
-	const allIps = createQuery(() => queries.ips());
-	const allCharacters = createQuery(() => queries.characters());
-	const allAuthors = createQuery(() => queries.authors());
+	const tags = createQuery<TagResponse[]>(() => queries.tags());
+	const sources = createQuery<SafeMediaSource[]>(() => queries.sources());
+	const allProjects = createQuery<Project[]>(() => queries.projects());
+	const allIps = createQuery<Ip[]>(() => queries.ips());
+	const allCharacters = createQuery<Character[]>(() => queries.characters());
+	const allAuthors = createQuery<Author[]>(() => queries.authors());
 
 	const conditionKey = createMemo(() =>
 		JSON.stringify(getSearchCondition() ?? null),

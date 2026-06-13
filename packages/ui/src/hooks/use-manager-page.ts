@@ -1,6 +1,9 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { DuplicateGroup, Media } from "@solid-imager/core/domain/media/schemas";
+import type {
+	DuplicateGroup,
+	Media,
+} from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
 	JobCompletedEvent,
@@ -16,13 +19,14 @@ import {
 	createSignal,
 	type Setter,
 } from "solid-js";
-import type { buildCharactersQueryOptions } from "../query-options/characters-query";
-import type { buildIpsQueryOptions } from "../query-options/ips-query";
-import type { buildProjectsQueryOptions } from "../query-options/projects-query";
-import type { buildSourcesQueryOptions } from "../query-options/sources-query";
 import { toast } from "../toast";
 
-export type ManagerEntityType = "projects" | "ips" | "characters" | "tagging" | "duplicates";
+export type ManagerEntityType =
+	| "projects"
+	| "ips"
+	| "characters"
+	| "tagging"
+	| "duplicates";
 export type ManagerEntity = Project | Ip | Character;
 
 export type ManagerFormData = {
@@ -69,7 +73,9 @@ export type ManagerPageActions = {
 		mediaSourceId?: string;
 		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>;
-	findDuplicateMedia: (mediaSourceId?: string) => Promise<{ groups: DuplicateGroup[] }>;
+	findDuplicateMedia: (
+		mediaSourceId?: string,
+	) => Promise<{ groups: DuplicateGroup[] }>;
 	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
 	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
 };
@@ -77,10 +83,10 @@ export type ManagerPageActions = {
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
 
 export type ManagerPageQueryOptions = {
-	projects: () => ReturnType<typeof buildProjectsQueryOptions>;
-	ips: () => ReturnType<typeof buildIpsQueryOptions>;
-	characters: () => ReturnType<typeof buildCharactersQueryOptions>;
-	sources: () => ReturnType<typeof buildSourcesQueryOptions>;
+	projects: () => any;
+	ips: () => any;
+	characters: () => any;
+	sources: () => any;
 };
 
 export type UseManagerPageOptions = {
@@ -159,7 +165,9 @@ export type UseManagerPageResult = {
 	duplicateStatus: Accessor<string | null>;
 	isDuplicateDeleteDialogOpen: Accessor<boolean>;
 	setIsDuplicateDeleteDialogOpen: Setter<boolean>;
-	duplicatesToDelete: Accessor<{ sourceId: string; mediaId: string; fileName: string }[]>;
+	duplicatesToDelete: Accessor<
+		{ sourceId: string; mediaId: string; fileName: string }[]
+	>;
 	handleScanDuplicates: () => Promise<void>;
 	handleDeleteDuplicates: () => Promise<void>;
 	handleConfirmDeleteDuplicates: () => Promise<void>;
@@ -184,7 +192,9 @@ function resetForm(setFormData: Setter<ManagerFormData>) {
 function activeCrudTab(
 	activeTab: ManagerEntityType,
 ): Exclude<ManagerEntityType, "tagging" | "duplicates"> | null {
-	return activeTab === "tagging" || activeTab === "duplicates" ? null : activeTab;
+	return activeTab === "tagging" || activeTab === "duplicates"
+		? null
+		: activeTab;
 }
 
 export function useManagerPage(
@@ -198,10 +208,12 @@ export function useManagerPage(
 		onBatchTaggingStart,
 		itemsPerPage = 50,
 	} = options;
-	const projects = createQuery(() => queryOptions.projects());
-	const ipsQuery = createQuery(() => queryOptions.ips());
-	const characters = createQuery(() => queryOptions.characters());
-	const sourcesQuery = createQuery(() => queryOptions.sources());
+	const projects = createQuery<Project[]>(() => queryOptions.projects());
+	const ipsQuery = createQuery<Ip[]>(() => queryOptions.ips());
+	const characters = createQuery<Character[]>(() => queryOptions.characters());
+	const sourcesQuery = createQuery<SafeMediaSource[]>(() =>
+		queryOptions.sources(),
+	);
 
 	const queries: ManagerPageQueries = {
 		projects: () => projects.data,
@@ -241,12 +253,21 @@ export function useManagerPage(
 	const [currentPage, setCurrentPage] = createSignal(1);
 
 	// Duplicates state
-	const [duplicateSourceId, setDuplicateSourceId] = createSignal<string | undefined>(undefined);
-	const [duplicateGroups, setDuplicateGroups] = createSignal<DuplicateGroup[]>([]);
+	const [duplicateSourceId, setDuplicateSourceId] = createSignal<
+		string | undefined
+	>(undefined);
+	const [duplicateGroups, setDuplicateGroups] = createSignal<DuplicateGroup[]>(
+		[],
+	);
 	const [keepIds, setKeepIds] = createSignal<Set<string>>(new Set());
-	const [duplicateStatus, setDuplicateStatus] = createSignal<string | null>(null);
-	const [isDuplicateDeleteDialogOpen, setIsDuplicateDeleteDialogOpen] = createSignal(false);
-	const [duplicatesToDelete, setDuplicatesToDelete] = createSignal<{ sourceId: string; mediaId: string; fileName: string }[]>([]);
+	const [duplicateStatus, setDuplicateStatus] = createSignal<string | null>(
+		null,
+	);
+	const [isDuplicateDeleteDialogOpen, setIsDuplicateDeleteDialogOpen] =
+		createSignal(false);
+	const [duplicatesToDelete, setDuplicatesToDelete] = createSignal<
+		{ sourceId: string; mediaId: string; fileName: string }[]
+	>([]);
 
 	const sources = () => queries.sources() || [];
 	const ips = () => queries.ips() || [];
@@ -465,7 +486,8 @@ export function useManagerPage(
 		const newKeep = new Set<string>();
 		for (const group of duplicateGroups()) {
 			const sorted = [...group.media].sort(
-				(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+				(a, b) =>
+					new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 			);
 			newKeep.add(sorted[0].id);
 		}
@@ -493,13 +515,19 @@ export function useManagerPage(
 			const newKeep = new Set<string>();
 			for (const group of result.groups) {
 				const sorted = [...group.media].sort(
-					(a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+					(a, b) =>
+						new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
 				);
 				newKeep.add(sorted[0].id);
 			}
 			setKeepIds(newKeep);
-			const dupCount = result.groups.reduce((sum, g) => sum + g.media.length - 1, 0);
-			setDuplicateStatus(`${result.groups.length} groups found (${dupCount} duplicates).`);
+			const dupCount = result.groups.reduce(
+				(sum, g) => sum + g.media.length - 1,
+				0,
+			);
+			setDuplicateStatus(
+				`${result.groups.length} groups found (${dupCount} duplicates).`,
+			);
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);
 			setDuplicateStatus(`Error: ${getErrorMessage(error)}`);
@@ -509,7 +537,8 @@ export function useManagerPage(
 	const handleDeleteDuplicates = async () => {
 		const groups = duplicateGroups();
 		const keepSet = keepIds();
-		const toDelete: { sourceId: string; mediaId: string; fileName: string }[] = [];
+		const toDelete: { sourceId: string; mediaId: string; fileName: string }[] =
+			[];
 		for (const group of groups) {
 			for (const item of group.media) {
 				if (!keepSet.has(item.id)) {

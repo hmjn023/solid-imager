@@ -1,6 +1,5 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
-import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -17,16 +16,16 @@ import {
 	createProject,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
-import { allCharactersQueryOptions } from "~/infrastructure/api-clients/queries/characters-query";
-import { allIpsQueryOptions } from "~/infrastructure/api-clients/queries/ips-query";
+import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
+import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import {
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
 	allProjectsQueryOptions,
 	projectsForMediaQueryOptions,
-} from "~/infrastructure/api-clients/queries/projects-query";
-import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
+} from "~/queries";
 import { AiTaggingModal } from "../ai-tagging-modal";
 import { CharacterCropModal } from "../character-crop-modal";
-
 
 type MediaSidebarProps = {
 	media: MediaDetails;
@@ -72,7 +71,6 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			removeCharacterFromMedia={removeCharacterFromMedia}
 			removeIpFromMedia={removeIpFromMedia}
 			removeProjectFromMedia={removeProjectFromMedia}
-
 			characterCropModal={(modalProps) => (
 				<CharacterCropModal
 					isOpen={modalProps.isOpen}

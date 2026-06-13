@@ -22,10 +22,15 @@
 		"@solid-imager/client": "workspace:*",
 		"@solid-imager/core": "workspace:*",
 		"@solid-imager/ui": "workspace:*",
-		"@tanstack/solid-query": "latest",
+		"@tanstack/db": "^0.6.8",
+		"@tanstack/query-db-collection": "^1.0.40",
+		"@tanstack/solid-db": "^0.2.22",
+		"@tanstack/solid-query": "5.99.2",
 		"@tanstack/solid-router": "latest",
+		"@tanstack/tauri-db-sqlite-persistence": "^0.2.0",
 		"@tauri-apps/api": "^2.11.0",
 		"@tauri-apps/plugin-http": "^2.5.9",
+		"@tauri-apps/plugin-sql": "^2.4.0",
 		"solid-js": "^1.9.13",
 		"zod": "^4.4.3"
 	},
@@ -34,13 +39,12 @@
 		"@tauri-apps/cli": "^2.11.2",
 		"@tailwindcss/vite": "^4.3.0",
 		"@tanstack/router-plugin": "latest",
-
 		"@types/node": "^25.9.3",
-    "tailwindcss": "^4.3.0",
-    "tailwindcss-animate": "^1.0.7",
-    "typescript": "^6.0.3",
+		"tailwindcss": "^4.3.0",
+		"tailwindcss-animate": "^1.0.7",
+		"typescript": "^6.0.3",
 		"vite": "^0.1.24",
 		"vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24"
+		"vite-plus": "^0.1.24"
 	}
 }
