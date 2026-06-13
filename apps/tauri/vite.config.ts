@@ -2,7 +2,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
-import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { defineConfig } from "vite";
 import solidPlugin from "vite-plugin-solid";
 
@@ -34,18 +33,9 @@ export default defineConfig({
 		tanstackRouter({
 			target: "solid",
 			autoCodeSplitting: true,
-			routeFileIgnorePattern: ".*/components/.*",
 		}),
+		solidPlugin(),
 		tailwindcss(),
-		tanstackStart({
-			spa: {
-				enabled: true,
-				prerender: {
-					outputPath: "index.html",
-				},
-			},
-		}),
-		solidPlugin({ ssr: true }),
 	],
 	define: {
 		"import.meta.env.VITE_API_URL": JSON.stringify(

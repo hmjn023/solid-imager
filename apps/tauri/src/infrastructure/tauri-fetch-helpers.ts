@@ -12,7 +12,7 @@ export async function fetchAsBlobUrl(
 	mimeType?: string,
 ): Promise<string> {
 	const url = buildAbsoluteUrl(path);
-	const response = await tauriFetch(url);
+	const response = await getApiFetch()(url);
 	if (!response.ok) {
 		throw new Error(`Failed to fetch ${url}: ${response.status}`);
 	}

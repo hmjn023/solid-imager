@@ -1,28 +1,23 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
+import { createHashHistory, createRouter } from "@tanstack/solid-router";
 import { routeTree } from "./routeTree.gen";
 
 export type AppRouterContext = {
 	queryClient: QueryClient;
 };
 
-let clientQueryClient: QueryClient | undefined;
+const queryClient = new QueryClient({
+	defaultOptions: {
+		queries: {
+			retry: false,
+		},
+	},
+});
 
-export function getRouter() {
-	if (!clientQueryClient) {
-		clientQueryClient = new QueryClient({
-			defaultOptions: {
-				queries: {
-					retry: false,
-				},
-			},
-		});
-	}
-
-	const queryClient = clientQueryClient;
-
-	return createTanStackRouter({
+export function createAppRouter() {
+	return createRouter({
 		routeTree,
+		history: createHashHistory(),
 		context: {
 			queryClient,
 		} satisfies AppRouterContext,
@@ -39,6 +34,6 @@ export function getRouter() {
 
 declare module "@tanstack/solid-router" {
 	interface Register {
-		router: ReturnType<typeof getRouter>;
+		router: ReturnType<typeof createAppRouter>;
 	}
 }
