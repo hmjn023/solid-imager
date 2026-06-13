@@ -18,9 +18,9 @@ export const mediaDetailsQueryOptions = (
 		input: { sourceId: mediaSourceId, mediaId },
 	});
 export const projectsForMediaQueryOptions = (
-	_mediaSourceId: string,
-	mediaId: string,
+	mediaSourceIdOrMediaId: string,
+	mediaId?: string,
 ) =>
 	utils.projects.listForMedia.queryOptions({
-		input: { mediaId },
+		input: { mediaId: mediaId ?? mediaSourceIdOrMediaId },
 	});
