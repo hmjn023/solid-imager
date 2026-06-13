@@ -42,6 +42,8 @@
 
 ## スキル一覧
 
+スキルは `.agents/skills/` 配下に配置する。
+
 | スキル名 | 説明 | ロード条件 |
 |---|---|---|
 | `solid-imager` | プロジェクト概要、セットアップ、コーディング規約 | 常時 |
@@ -58,6 +60,7 @@
 | `cli` | imager-cli コマンド開発 | CLIコマンド追加・変更時 |
 | `git-worktree` | git worktree を用いた並列開発ワークフロー | 複数PRの同時進行時 |
 | `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
+| `tanstack-db` | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes） | クライアント側データレイヤー変更時 |
 
 <!--VITE PLUS START-->
 

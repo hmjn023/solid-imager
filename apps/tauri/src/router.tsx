@@ -6,7 +6,7 @@ export type AppRouterContext = {
 	queryClient: QueryClient;
 };
 
-const queryClient = new QueryClient({
+export const queryClient = new QueryClient({
 	defaultOptions: {
 		queries: {
 			retry: false,

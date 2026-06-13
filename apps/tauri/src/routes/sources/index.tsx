@@ -3,8 +3,9 @@ import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { useLiveQuery } from "@tanstack/solid-db";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
 import {
 	createMediaSource,
@@ -13,6 +14,7 @@ import {
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import { getCollections } from "~/collections";
 
 export const Route = createFileRoute("/sources/")({
 	loader: async ({ context }) => {
@@ -23,31 +25,43 @@ export const Route = createFileRoute("/sources/")({
 
 function SourcesRoute() {
 	const queryClient = useQueryClient();
-	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
+	const { sources } = getCollections();
+	const mediaSources = useLiveQuery(() => sources);
 
 	const page = useSourcesPage({
 		actions: {
-			createMediaSource: (data: unknown) => createMediaSource(mediaSourceInfoSchema.parse(data)),
-			updateMediaSource: (id: string, data: unknown) =>
-				updateMediaSource(id, mediaSourceInfoSchema.parse(data)),
-			deleteMediaSource,
-			syncMediaSources,
+			createMediaSource: async (data: unknown) => {
+				await createMediaSource(mediaSourceInfoSchema.parse(data));
+				await sources.utils.refetch();
+			},
+			updateMediaSource: async (id: string, data: unknown) => {
+				await updateMediaSource(id, mediaSourceInfoSchema.parse(data));
+				await sources.utils.refetch();
+			},
+			deleteMediaSource: async (id: string) => {
+				await deleteMediaSource(id);
+				await sources.utils.refetch();
+			},
+			syncMediaSources: async (ids: string[]) => {
+				await syncMediaSources(ids);
+				await sources.utils.refetch();
+			},
 		},
 		queryClient,
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		getSourceIds: () =>
-			mediaSources.data
-				?.map((s) => s.id)
+			mediaSources()
+				?.map((s) => s.id ?? s.name)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
 
 	return (
 		<SourcesScreen
 			page={page}
-			mediaSources={() => mediaSources.data}
-			isLoading={mediaSources.isLoading}
-			isError={mediaSources.isError}
-			error={mediaSources.error ?? null}
+			mediaSources={() => mediaSources()}
+			isLoading={false}
+			isError={false}
+			error={null}
 			renderSourceCard={(source) => (
 				<SourceCard
 					href={source.id ? `#/sources/${source.id}` : "#/sources"}
