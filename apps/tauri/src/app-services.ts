@@ -1,5 +1,5 @@
 export function getTauriAppServices() {
 	return {
-		localDatabaseAvailable: false,
+		localDatabaseAvailable: true,
 	};
 }
