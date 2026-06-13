@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import { ClientOnly } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
@@ -63,7 +64,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	return (
 		<main class="container mx-auto p-4">
 			{props.renderNavActions?.({ openMobileFilters })}
-			<Show when={isMounted()}>
+			<ClientOnly>
 				<Dialog
 					open={isMobileFilterOpen()}
 					onOpenChange={setIsMobileFilterOpen}
@@ -75,7 +76,7 @@ export function SearchScreen(props: SearchScreenProps) {
 						<div class="space-y-4">{panel}</div>
 					</DialogContent>
 				</Dialog>
-			</Show>
+			</ClientOnly>
 
 			<div class="mb-8 flex items-center justify-between">
 				<div>
