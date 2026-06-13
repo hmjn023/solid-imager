@@ -1,6 +1,6 @@
 import type { ComponentProps } from "solid-js";
-import { createSignal, Show } from "solid-js";
-import { isServer, Portal } from "solid-js/web";
+import { createSignal, onMount, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -28,9 +28,11 @@ export type MediaListActionsProps = {
 
 export function MediaListActions(props: MediaListActionsProps) {
 	const [isLanceDBDialogOpen, setIsLanceDBDialogOpen] = createSignal(false);
+	const [isMounted, setIsMounted] = createSignal(false);
+	onMount(() => setIsMounted(true));
 
 	return (
-		<Show when={!isServer && document.getElementById("nav-actions")}>
+		<Show when={isMounted() && document.getElementById("nav-actions")}>
 			<Portal mount={document.getElementById("nav-actions")!}>
 				<Button
 					class="mr-2 border-white text-white hover:bg-sky-700"

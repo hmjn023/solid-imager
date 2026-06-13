@@ -268,9 +268,6 @@ export function useSourceMediaPage(
 	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
 
 	onMount(() => {
-		if (isServer) {
-			return;
-		}
 		if ("scrollRestoration" in history) {
 			history.scrollRestoration = "manual";
 		}
@@ -305,9 +302,6 @@ export function useSourceMediaPage(
 	});
 
 	onCleanup(() => {
-		if (isServer) {
-			return;
-		}
 		const sourceId = id();
 		if (sourceId) {
 			setScrollPosition(sourceId, window.scrollY);
@@ -319,29 +313,28 @@ export function useSourceMediaPage(
 		HTMLDivElement | undefined
 	>(undefined);
 
-	createEffect(() => {
-		if (isServer) {
-			return;
-		}
-		const el = loadMoreRef();
-		if (!el) {
-			return;
-		}
+	onMount(() => {
+		createEffect(() => {
+			const el = loadMoreRef();
+			if (!el) {
+				return;
+			}
 
-		const hasNext = mediaQuery.hasNextPage;
-		void hasNext;
+			const hasNext = mediaQuery.hasNextPage;
+			void hasNext;
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
-					mediaQuery.fetchNextPage();
-				}
-			},
-			{ threshold: 0.5, rootMargin: "1000px" },
-		);
+			const observer = new IntersectionObserver(
+				(entries) => {
+					if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
+						mediaQuery.fetchNextPage();
+					}
+				},
+				{ threshold: 0.5, rootMargin: "1000px" },
+			);
 
-		observer.observe(el);
-		onCleanup(() => observer.disconnect());
+			observer.observe(el);
+			onCleanup(() => observer.disconnect());
+		});
 	});
 
 	// --- UI state ---
@@ -426,7 +419,6 @@ export function useSourceMediaPage(
 	// --- Media source events ---
 	useMediaSourceEvents({
 		transport,
-		enabled: () => !isServer,
 		onMediaAdded: () => {
 			setAddedCount((prev) => prev + 1);
 
@@ -806,12 +798,10 @@ export function useSourceMediaPage(
 	};
 
 	onMount(() => {
-		if (!isServer) {
-			document.addEventListener("paste", handlePaste);
-			onCleanup(() => {
-				document.removeEventListener("paste", handlePaste);
-			});
-		}
+		document.addEventListener("paste", handlePaste);
+		onCleanup(() => {
+			document.removeEventListener("paste", handlePaste);
+		});
 	});
 
 	const handleDelete = (mediaId: string) => {

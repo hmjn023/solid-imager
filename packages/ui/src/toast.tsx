@@ -1,4 +1,5 @@
 import { createSignal, onMount, Show } from "solid-js";
+import { isServer } from "solid-js/web";
 
 // Types for toast
 interface ToastOptions {
@@ -34,9 +35,7 @@ const mockToast: any = {
 
 let toastImpl: any = mockToast;
 
-const canUseBrowserToast = typeof document !== "undefined";
-
-if (canUseBrowserToast) {
+if (!isServer) {
 	import("solid-sonner").then((m) => {
 		toastImpl = m.toast;
 	});

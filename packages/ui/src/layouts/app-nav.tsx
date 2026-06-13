@@ -1,7 +1,6 @@
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onCleanup, onMount } from "solid-js";
-import { isServer } from "solid-js/web";
 
 type AppNavProps = {
 	pendingDownloadsIndicator?: JSX.Element;
@@ -18,9 +17,6 @@ export function AppNav(props: AppNavProps) {
 	const [lastScrollY, setLastScrollY] = createSignal(0);
 
 	const handleScroll = () => {
-		if (isServer) {
-			return;
-		}
 		const currentScrollY = window.scrollY;
 
 		if (currentScrollY < 0) {
@@ -42,16 +38,10 @@ export function AppNav(props: AppNavProps) {
 	};
 
 	onMount(() => {
-		if (isServer) {
-			return;
-		}
 		window.addEventListener("scroll", handleScroll, { passive: true });
 	});
 
 	onCleanup(() => {
-		if (isServer) {
-			return;
-		}
 		window.removeEventListener("scroll", handleScroll);
 	});
 

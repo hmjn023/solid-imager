@@ -2,7 +2,6 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
-import { isServer } from "solid-js/web";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import type {
@@ -35,9 +34,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 
 	onMount(() => {
-		if (!isServer) {
-			setIsMounted(true);
-		}
+		setIsMounted(true);
 	});
 
 	const page = () => props.page;
@@ -66,7 +63,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	return (
 		<main class="container mx-auto p-4">
 			{props.renderNavActions?.({ openMobileFilters })}
-			<Show when={!isServer}>
+			<Show when={isMounted()}>
 				<Dialog
 					open={isMobileFilterOpen()}
 					onOpenChange={setIsMobileFilterOpen}
@@ -108,7 +105,11 @@ export function SearchScreen(props: SearchScreenProps) {
 							isPending={page().searchResultQuery.isLoading}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
-							queryError={page().searchResultQuery.error instanceof Error ? page().searchResultQuery.error : null}
+							queryError={
+								page().searchResultQuery.error instanceof Error
+									? page().searchResultQuery.error
+									: null
+							}
 							renderItem={(media, _options) => props.renderMediaItem(media)}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState
