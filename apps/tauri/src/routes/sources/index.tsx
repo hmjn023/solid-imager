@@ -51,7 +51,7 @@ function SourcesRoute() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		getSourceIds: () =>
 			mediaSources()
-				?.map((s) => s.id)
+				?.map((s) => s.id ?? s.name)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
 

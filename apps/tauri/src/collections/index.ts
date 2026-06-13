@@ -28,7 +28,11 @@ export async function initializeCollections() {
 	// 最初のコレクションを1つ作成して refetch で内部テーブルを初期化してから、
 	// 残りのコレクションを順次作成する。
 	const tags = createTagsCollection(persistence);
-	await tags.utils.refetch();
+	try {
+		await tags.utils.refetch();
+	} catch (error) {
+		console.error("Failed to perform initial refetch for tags:", error);
+	}
 
 	const sources = createSourcesCollection(persistence);
 	const projects = createProjectsCollection(persistence);
