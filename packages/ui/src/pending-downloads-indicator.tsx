@@ -8,7 +8,6 @@ import {
 	onMount,
 	Show,
 } from "solid-js";
-import { isServer } from "solid-js/web";
 import { isImportInboxEvent } from "./import-inbox-helpers";
 import {
 	ImportReviewModal,
@@ -42,18 +41,12 @@ export function PendingDownloadsIndicator(
 		try {
 			return (await props.listPending()).length;
 		} catch (error) {
-			if (!isServer) {
-				toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
-			}
+			toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
 			return 0;
 		}
 	});
 
 	onMount(() => {
-		if (isServer) {
-			return;
-		}
-
 		let disposed = false;
 		let cleanup: (() => void) | undefined;
 

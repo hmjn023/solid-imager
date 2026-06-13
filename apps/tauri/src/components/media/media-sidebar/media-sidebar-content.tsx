@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -38,7 +38,7 @@ type MediaSidebarProps = {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const loadMediaFile = async () => {
 		const url = buildMediaContentUrl(props.media.mediaSourceId, props.media.id);
-		const response = await tauriFetch(url);
+		const response = await getApiFetch()(url);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch media: ${response.status}`);
 		}
