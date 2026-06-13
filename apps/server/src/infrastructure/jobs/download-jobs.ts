@@ -762,7 +762,10 @@ async function updateExistingMediaWithMetadata(
 		projects: item.projects,
 	});
 
-	SseManager.sendEvent(mediaSourceId, "media-added", { mediaId });
+	SseManager.sendEvent(mediaSourceId, "media-added", {
+		mediaId,
+		filePath: newMedia.filePath,
+	});
 	logger.info(
 		{ mediaId },
 		"[DownloadJob] Existing media updated with download metadata",
