@@ -1,20 +1,20 @@
+import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
+import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { useLiveQuery } from "@tanstack/solid-db";
-import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries/sources-query";
+import { getCollections } from "~/collections";
 import {
 	createMediaSource,
 	deleteMediaSource,
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { getCollections } from "~/collections";
+import { mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/")({
 	loader: async ({ context }) => {

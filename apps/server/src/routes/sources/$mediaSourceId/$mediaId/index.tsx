@@ -3,7 +3,7 @@ import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
-import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries/media-query";
+import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {

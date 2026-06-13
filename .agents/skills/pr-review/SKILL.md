@@ -40,7 +40,41 @@ gh api repos/{owner}/{repo}/pulls/{PR}/comments/{COMMENT_ID}/replies \
 
 ## コメントの解決
 
-`scripts/resolve-comment.sh` でコメントを resolved にする。
+### レビュースレッドの解決（推奨）
+
+PR のレビュースレッドを「解決済み」にする。GitHub UI のチェックマークが付く。
+
+```bash
+# 1. スレッド一覧を取得
+gh api graphql -f query='
+query {
+  repository(owner: "hmjn023", name: "solid-imager") {
+    pullRequest(number: <PR番号>) {
+      reviewThreads(first: 10) {
+        nodes {
+          id
+          isResolved
+          comments(first: 1) {
+            nodes { id path body }
+          }
+        }
+      }
+    }
+  }
+}' --jq '.data.repository.pullRequest.reviewThreads.nodes[] | {threadId: .id, resolved: .isResolved, path: .comments.nodes[0].path}'
+
+# 2. スレッドを解決
+gh api graphql -f query='
+mutation {
+  resolveReviewThread(input: {threadId: "<THREAD_ID>"}) {
+    thread { id isResolved }
+  }
+}'
+```
+
+### コメントの最小化（スパム等に使用）
+
+`scripts/resolve-comment.sh` でコメントを minimized にする。スパム・オフトピック等に使用。
 
 ```bash
 # node_id を指定して解決
@@ -61,7 +95,7 @@ bash .opencode/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
 1. `pr-comments.sh` でコメント一覧を取得
 2. Critical/Medium の優先度に応じて対応
 3. コード修正後、該当コメントに返信（対応内容の説明）
-4. `resolve-comment.sh` でコメントを解決
+4. GraphQL `resolveReviewThread` でレビュースレッドを解決
 5. 最終確認のため再度 `pr-comments.sh` で未解決コメントを確認
 
 ## メモ
