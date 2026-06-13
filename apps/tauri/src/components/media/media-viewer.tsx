@@ -3,8 +3,8 @@ import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import { createMemo } from "solid-js";
+import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
@@ -44,7 +44,7 @@ class ApiMediaSource implements MediaSource {
 
 	async getUrl() {
 		const url = buildMediaContentUrl(this.media.mediaSourceId, this.media.id);
-		const response = await tauriFetch(url);
+		const response = await getApiFetch()(url);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch media: ${response.status}`);
 		}
