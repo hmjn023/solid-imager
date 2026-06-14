@@ -11,11 +11,11 @@ import { Button } from "@solid-imager/ui/button";
 import { Card, CardContent } from "@solid-imager/ui/card";
 import {
 	Combobox,
-	ComboboxContent,
 	ComboboxControl,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
+	VirtualComboboxContent,
 } from "@solid-imager/ui/combobox";
 import { Input } from "@solid-imager/ui/input";
 import {
@@ -483,7 +483,7 @@ function CriterionBuilder(props: {
 						<ComboboxControl>
 							<ComboboxInput />
 						</ComboboxControl>
-						<ComboboxContent class="max-h-[300px]" />
+						<VirtualComboboxContent class="max-h-[300px]" />
 					</Combobox>
 				</Match>
 

@@ -1,7 +1,8 @@
 import * as ComboboxPrimitive from "@kobalte/core/combobox";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
+import { createVirtualizer } from "@tanstack/solid-virtual";
+import { createEffect, createMemo, For, Show, splitProps } from "solid-js";
 import type { JSX, ValidComponent } from "solid-js";
-import { Show, splitProps } from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -192,6 +193,101 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 	);
 };
 
+const ITEM_HEIGHT_PX = 32;
+const VIRTUAL_OVERSCAN = 5;
+
+const VirtualComboboxContent = <T extends ValidComponent = "div">(
+	props: PolymorphicProps<T, ComboboxContentProps<T>>,
+) => {
+	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
+	let scrollEl: HTMLUListElement | undefined;
+
+	const virtualizer = createVirtualizer({
+		count: 0,
+		getScrollElement: () => scrollEl ?? null,
+		estimateSize: () => ITEM_HEIGHT_PX,
+		overscan: VIRTUAL_OVERSCAN,
+	});
+
+	return (
+		<ComboboxPrimitive.Portal>
+			<ComboboxPrimitive.Content
+				class={cn(
+					"fade-in-80 relative z-50 min-w-32 animate-in overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+					local.class,
+				)}
+				{...others}
+			>
+				<ComboboxPrimitive.Listbox
+					class="m-0 p-1"
+					ref={(el: Element) => {
+						scrollEl = el as HTMLUListElement;
+					}}
+					scrollToItem={(key) => {
+						const items = virtualizer.getVirtualItems();
+						const idx = items.findIndex((v) => v.key === key);
+						if (idx >= 0) virtualizer.scrollToIndex(idx);
+					}}
+					style={{ overflow: "auto" }}
+				>
+					{(items) => {
+						const asArray = createMemo(() => [...items()]);
+
+						createEffect(() => {
+							virtualizer.setOptions({
+								...virtualizer.options,
+								count: asArray().length,
+							});
+						});
+
+						const virtualItems = createMemo(() => {
+							return virtualizer.getVirtualItems();
+						});
+
+						return (
+							<div
+								style={{
+									height: `${virtualizer.getTotalSize()}px`,
+									width: "100%",
+									position: "relative",
+								}}
+							>
+								<For each={virtualItems()}>
+									{(virtualRow) => {
+										const item = asArray()[virtualRow.index];
+										if (!item) return null;
+										return (
+											<div
+												style={{
+													position: "absolute",
+													top: 0,
+													left: 0,
+													width: "100%",
+													height: `${virtualRow.size}px`,
+													transform: `translateY(${virtualRow.start}px)`,
+												}}
+											>
+												<ComboboxPrimitive.Item
+													item={item}
+													class="relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50"
+												>
+													<ComboboxPrimitive.ItemLabel>
+														{item.textValue}
+													</ComboboxPrimitive.ItemLabel>
+												</ComboboxPrimitive.Item>
+											</div>
+										);
+									}}
+								</For>
+							</div>
+						);
+					}}
+				</ComboboxPrimitive.Listbox>
+			</ComboboxPrimitive.Content>
+		</ComboboxPrimitive.Portal>
+	);
+};
+
 export {
 	Combobox,
 	ComboboxContent,
@@ -203,4 +299,5 @@ export {
 	ComboboxItemLabel,
 	ComboboxSection,
 	ComboboxTrigger,
+	VirtualComboboxContent,
 };
