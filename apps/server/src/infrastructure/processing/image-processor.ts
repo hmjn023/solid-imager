@@ -112,7 +112,10 @@ export class LocalImageProcessor implements IImageProcessor {
 
 		// Default image processing
 		try {
-			await new Bun.Image(mediaPath)
+			// Use buffer to allow Bun.Image to auto-detect format from magic bytes,
+			// avoiding issues with mismatched extensions (e.g. JPEG data saved as .png)
+			const buffer = Buffer.from(await Bun.file(mediaPath).arrayBuffer());
+			await new Bun.Image(buffer)
 				.resize(size, size, { fit: "inside", withoutEnlargement: true })
 				.webp({ quality: _quality })
 				.write(outputPath);
@@ -169,8 +172,15 @@ export class LocalImageProcessor implements IImageProcessor {
 
 			const comments: ImageMetadataComment[] = [];
 
-			// 1. Extract PNG chunks (tEXt) if it's a PNG file
-			if (ext === ".png") {
+			// 1. Extract PNG chunks (tEXt) — detect by magic bytes, not extension
+			// PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+			const isPng =
+				fileBuffer.length >= 8 &&
+				fileBuffer[0] === 0x89 &&
+				fileBuffer[1] === 0x50 &&
+				fileBuffer[2] === 0x4e &&
+				fileBuffer[3] === 0x47;
+			if (isPng) {
 				try {
 					const chunks = extract(fileBuffer);
 					for (const chunk of chunks) {
@@ -308,7 +318,8 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const metadata = await new Bun.Image(mediaPath).metadata();
+		const buffer = Buffer.from(await Bun.file(mediaPath).arrayBuffer());
+		const metadata = await new Bun.Image(buffer).metadata();
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}
