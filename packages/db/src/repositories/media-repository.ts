@@ -683,6 +683,20 @@ export function createMediaRepository(
 			}
 		},
 
+		async findByIds(mediaIds: string[], tx?: Transaction): Promise<Media[]> {
+			if (mediaIds.length === 0) return [];
+			try {
+				const client = getExecutor(tx);
+				const results = await client
+					.select()
+					.from(medias)
+					.where(inArray(medias.id, mediaIds));
+				return results.map(mapToMedia);
+			} catch (e) {
+				throw new UnexpectedError(`Failed to select media by IDs`, e);
+			}
+		},
+
 		/**
 		 * Retrieves a specific media item by Source ID and File Path.
 		 */
@@ -1438,16 +1452,26 @@ export function createMediaRepository(
 			if (updates.length === 0) return;
 			try {
 				const runUpdates = async (executor: DrizzleExecutor) => {
+					const idList = updates.map((u) => u.id);
+					let filePathSql = sql`case ${medias.id} `;
+					let fileNameSql = sql`case ${medias.id} `;
+
 					for (const u of updates) {
-						await executor
-							.update(medias)
-							.set({
-								filePath: u.filePath,
-								fileName: u.fileName,
-								modifiedAt: new Date(),
-							})
-							.where(eq(medias.id, u.id));
+						filePathSql = sql`${filePathSql} when ${u.id} then ${u.filePath} `;
+						fileNameSql = sql`${fileNameSql} when ${u.id} then ${u.fileName} `;
 					}
+
+					filePathSql = sql`${filePathSql} else ${medias.filePath} end`;
+					fileNameSql = sql`${fileNameSql} else ${medias.fileName} end`;
+
+					await executor
+						.update(medias)
+						.set({
+							filePath: filePathSql,
+							fileName: fileNameSql,
+							modifiedAt: new Date(),
+						})
+						.where(inArray(medias.id, idList));
 				};
 
 				if (tx) {

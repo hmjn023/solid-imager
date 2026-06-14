@@ -141,7 +141,7 @@ export function SourceMediaPage() {
 			<BulkActionDialog
 				open={isBulkActionOpen()}
 				onOpenChange={setIsBulkActionOpen}
-				mediaSourceId={mediaSourceId() || ""}
+				mediaSourceId={mediaSourceId()}
 				mediaIds={selectedMediaIds()}
 				onSuccess={handleBulkSuccess}
 			/>

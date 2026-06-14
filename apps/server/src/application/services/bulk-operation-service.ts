@@ -23,9 +23,12 @@ export const BulkOperationService = {
 		const parsedUpdates = updateMediaRequestSchema.parse(updates);
 		const mediaRepo = services.getMediaRepository();
 
-		// セキュリティ及び整合性チェック
+		// 一括取得してセキュリティ及び整合性チェック
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (!media || media.mediaSourceId !== mediaSourceId) {
 				throw new Error(
 					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
@@ -52,9 +55,13 @@ export const BulkOperationService = {
 		}
 		const basePath = (source.connectionInfo as { path: string }).path;
 
+		// 一括取得
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		const validMediaIds: string[] = [];
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (media && media.mediaSourceId === mediaSourceId) {
 				validMediaIds.push(mediaId);
 				// 実ファイルの削除
@@ -104,11 +111,15 @@ export const BulkOperationService = {
 		}
 		const basePath = (source.connectionInfo as { path: string }).path;
 
+		// 一括取得
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		const pathUpdates: { id: string; filePath: string; fileName: string }[] =
 			[];
 
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (media && media.mediaSourceId === mediaSourceId) {
 				const cleanDestDir = destinationPath.endsWith("/")
 					? destinationPath
@@ -154,9 +165,12 @@ export const BulkOperationService = {
 	) {
 		const mediaRepo = services.getMediaRepository();
 
-		// セキュリティ及び整合性チェック
+		// 一括取得してセキュリティ及び整合性チェック
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (!media || media.mediaSourceId !== mediaSourceId) {
 				throw new Error(
 					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
@@ -185,9 +199,12 @@ export const BulkOperationService = {
 			"~/application/services/media-service"
 		);
 
-		// セキュリティチェック
+		// 一括取得してセキュリティチェック
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (!media || media.mediaSourceId !== mediaSourceId) {
 				throw new Error(
 					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
@@ -224,9 +241,12 @@ export const BulkOperationService = {
 			"~/application/services/media-service"
 		);
 
-		// セキュリティチェック
+		// 一括取得してセキュリティチェック
+		const mediaList = await mediaRepo.findByIds(mediaIds);
+		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
 		for (const mediaId of mediaIds) {
-			const media = await mediaRepo.findById(mediaId);
+			const media = mediaMap.get(mediaId);
 			if (!media || media.mediaSourceId !== mediaSourceId) {
 				throw new Error(
 					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,

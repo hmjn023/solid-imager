@@ -16,6 +16,7 @@ import type {
 
 export type IMediaRepository = {
 	findById(id: string, tx?: Transaction): Promise<Media | null>;
+	findByIds(ids: string[], tx?: Transaction): Promise<Media[]>;
 	findByPath(
 		sourceId: string,
 		filePath: string,
