@@ -823,6 +823,162 @@
         }
       }
     },
+    "/media/bulkEdit": {
+      "post": {
+        "operationId": "media.bulkEdit",
+        "summary": "bulkEdit",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkDelete": {
+      "post": {
+        "operationId": "media.bulkDelete",
+        "summary": "bulkDelete",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkMove": {
+      "post": {
+        "operationId": "media.bulkMove",
+        "summary": "bulkMove",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkTag": {
+      "post": {
+        "operationId": "media.bulkTag",
+        "summary": "bulkTag",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkCopyToSource": {
+      "post": {
+        "operationId": "media.bulkCopyToSource",
+        "summary": "bulkCopyToSource",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkMoveToSource": {
+      "post": {
+        "operationId": "media.bulkMoveToSource",
+        "summary": "bulkMoveToSource",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/categories/list": {
       "post": {
         "operationId": "categories.list",

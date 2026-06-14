@@ -1,6 +1,10 @@
+import { Button } from "@solid-imager/ui/button";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
+import { createSignal, Show } from "solid-js";
+import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -37,42 +41,114 @@ const PresetClient = createPresetClient(rawPresetClient);
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const mediaSourceId = () => params().mediaSourceId;
+	const queryClient = useQueryClient();
 
 	const transport = createServerTransport(mediaSourceId);
 
+	// 一括選択用シグナル
+	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
+	const [selectedMediaIds, setSelectedMediaIds] = createSignal<string[]>([]);
+	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
+
+	const handleToggleSelect = (mediaId: string) => {
+		setIsBulkSelectMode(true);
+		setSelectedMediaIds((prev) => {
+			const next = prev.includes(mediaId)
+				? prev.filter((id) => id !== mediaId)
+				: [...prev, mediaId];
+			if (next.length === 0) {
+				setIsBulkSelectMode(false);
+			}
+			return next;
+		});
+	};
+
+	const isSelected = (mediaId: string) => selectedMediaIds().includes(mediaId);
+
+	const handleCancelSelect = () => {
+		setIsBulkSelectMode(false);
+		setSelectedMediaIds([]);
+	};
+
+	// 一括操作成功時のコールバック
+	const handleBulkSuccess = () => {
+		handleCancelSelect();
+		queryClient.invalidateQueries({
+			queryKey: ["media", mediaSourceId()],
+		});
+	};
+
 	return (
-		<SourceMediaPageComponent
-			enableVirtualization
-			mediaSourceId={mediaSourceId}
-			transport={transport}
-			presetClient={PresetClient}
-			actions={{
-				searchMedia,
-				uploadMedia: (sourceId, file, opts) =>
-					uploadMedia(sourceId, file, opts),
-				deleteMedia,
-				copyMedia,
-				moveMedia,
-				syncMediaItems,
-				startDownloadJobs,
-				fetchSourceDump,
-				restoreSource,
-				importSourceZip,
-			}}
-			getSearchCondition={getSearchCondition}
-			sortBy={() => searchState.sortBy}
-			sortOrder={() => searchState.sortOrder}
-			tagsQueryOptions={tagsQueryOptions}
-			projectsQueryOptions={allProjectsQueryOptions}
-			ipsQueryOptions={allIpsQueryOptions}
-			charactersQueryOptions={allCharactersQueryOptions}
-			authorsQueryOptions={allAuthorsQueryOptions}
-			renderItem={(media, { onContextMenu }) => (
-				<MediaGridItem media={media} onContextMenu={onContextMenu} />
-			)}
-			moveCopyDialogComponent={MoveCopyMediaDialog}
-			uploadModalComponent={UploadMediaModal}
-			showOpenInNewTab
-		/>
+		<>
+			<SourceMediaPageComponent
+				enableVirtualization
+				mediaSourceId={mediaSourceId}
+				transport={transport}
+				presetClient={PresetClient}
+				actions={{
+					searchMedia,
+					uploadMedia: (sourceId, file, opts) =>
+						uploadMedia(sourceId, file, opts),
+					deleteMedia,
+					copyMedia,
+					moveMedia,
+					syncMediaItems,
+					startDownloadJobs,
+					fetchSourceDump,
+					restoreSource,
+					importSourceZip,
+				}}
+				getSearchCondition={getSearchCondition}
+				sortBy={() => searchState.sortBy}
+				sortOrder={() => searchState.sortOrder}
+				tagsQueryOptions={tagsQueryOptions}
+				projectsQueryOptions={allProjectsQueryOptions}
+				ipsQueryOptions={allIpsQueryOptions}
+				charactersQueryOptions={allCharactersQueryOptions}
+				authorsQueryOptions={allAuthorsQueryOptions}
+				onToggleSelect={handleToggleSelect}
+				isBulkSelectMode={isBulkSelectMode}
+				isSelected={isSelected}
+				onBulkAction={() => setIsBulkActionOpen(true)}
+				onClearSelection={handleCancelSelect}
+				selectedCount={() => selectedMediaIds().length}
+				renderItem={(media, options) => (
+					<MediaGridItem
+						media={media}
+						onContextMenu={options.onContextMenu}
+						isBulkSelectMode={options.isBulkSelectMode}
+						isSelected={options.isSelected}
+						onToggleSelect={() => handleToggleSelect(media.id)}
+					/>
+				)}
+				moveCopyDialogComponent={MoveCopyMediaDialog}
+				uploadModalComponent={UploadMediaModal}
+				showOpenInNewTab
+			/>
+
+			{/* 一括選択ツールバー */}
+			<Show when={isBulkSelectMode() && selectedMediaIds().length > 0}>
+				<div class="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 border border-primary/20 bg-background/95 px-6 py-3 shadow-lg backdrop-blur rounded-full">
+					<span class="font-medium text-sm">
+						{selectedMediaIds().length} 件選択中
+					</span>
+					<Button onClick={() => setIsBulkActionOpen(true)} size="sm">
+						一括操作を実行
+					</Button>
+					<Button onClick={handleCancelSelect} variant="outline" size="sm">
+						解除
+					</Button>
+				</div>
+			</Show>
+
+			{/* 一括操作ダイアログ */}
+			<BulkActionDialog
+				open={isBulkActionOpen()}
+				onOpenChange={setIsBulkActionOpen}
+				mediaSourceId={mediaSourceId()}
+				mediaIds={selectedMediaIds()}
+				onSuccess={handleBulkSuccess}
+			/>
+		</>
 	);
 }

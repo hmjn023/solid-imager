@@ -361,6 +361,7 @@ export function useSourceMediaPage(
 		null,
 	);
 
+
 	let fileInputRef: HTMLInputElement | undefined;
 	const setFileInputRef = (el: HTMLInputElement) => {
 		fileInputRef = el;

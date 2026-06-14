@@ -370,4 +370,18 @@ export const ServerMediaStorage: IMediaStorage = {
 			throw e;
 		}
 	},
+
+	async moveFile(
+		basePath: string,
+		sourcePath: string,
+		targetPath: string,
+	): Promise<void> {
+		const fullSourcePath = resolveSafePath(basePath, sourcePath);
+		const fullTargetPath = resolveSafePath(basePath, targetPath);
+
+		const targetDir = path.dirname(fullTargetPath);
+		await fs.mkdir(targetDir, { recursive: true });
+
+		await fs.rename(fullSourcePath, fullTargetPath);
+	},
 };
