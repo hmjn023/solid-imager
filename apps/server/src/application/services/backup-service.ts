@@ -1181,32 +1181,26 @@ export const BackupService = {
 			});
 
 			try {
-				const { Glob } = await import("bun");
-				const glob = new Glob("**/*");
-				const archiveMap: Record<string, Uint8Array> = {};
-
-				for await (const file of glob.scan({ cwd: lanceDbDir })) {
-					const fullPath = path.join(lanceDbDir, file);
-					const stats = await fs.stat(fullPath);
-					if (stats.isFile()) {
-						archiveMap[file] = await Bun.file(fullPath).bytes();
-					}
-				}
-
-				const archive = new Bun.Archive(archiveMap, { compress: "gzip" });
-				const bytes = await archive.bytes();
-
-				return new ReadableStream({
-					start(controller) {
-						controller.enqueue(bytes);
-						controller.close();
-					},
+				const proc = Bun.spawn(["tar", "-czf", "-", "-C", lanceDbDir, "."], {
+					stdout: "pipe",
+					stderr: "ignore",
 				});
+
+				proc.exited.then(async (code) => {
+					if (code !== 0) {
+						logger.error({ code }, "tar process exited with non-zero code");
+					}
+					await cleanupLanceDBDir(lanceDbDir);
+				}).catch(async (err) => {
+					logger.error({ err }, "tar process failed");
+					await cleanupLanceDBDir(lanceDbDir);
+				});
+
+				return proc.stdout;
 			} catch (err) {
-				logger.error({ err }, "Failed to create Bun.Archive for LanceDB dump");
-				throw err;
-			} finally {
+				logger.error({ err }, "Failed to spawn tar for LanceDB dump");
 				await cleanupLanceDBDir(lanceDbDir);
+				throw err;
 			}
 		}
 

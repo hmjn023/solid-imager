@@ -134,6 +134,10 @@ export const DirectorySyncService = {
 				cwd: basePath,
 				onlyFiles: true,
 			})) {
+				const parts = file.split(/[/\\]/);
+				if (parts.some((part) => part.startsWith("."))) {
+					continue;
+				}
 				fsPaths.push(file);
 			}
 

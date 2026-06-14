@@ -2,18 +2,19 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { initServices } from "~/infrastructure/bootstrap";
 import { services } from "~/application/registry";
 
+initServices();
+
 export const Route = createFileRoute("/api/ai/health")({
 	server: {
 		handlers: {
 			GET: async () => {
-				initServices();
 				const aiClient = services.getAiClient();
 				const isHealthy = await aiClient.healthCheck();
 				if (isHealthy) {
 					return new Response(
 						JSON.stringify({
 							status: "healthy",
-							fallback: aiClient.getBaseUrl() === "",
+							fallback: aiClient.getBaseUrl?.() === "",
 						}),
 						{
 							status: 200,
