@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import type { IConfigService } from "@solid-imager/core";
 import {
@@ -20,8 +19,12 @@ export class ServerConfigService implements IConfigService {
 	private listeners: ConfigChangeListener[] = [];
 
 	constructor() {
-		const __dirname = path.dirname(fileURLToPath(import.meta.url));
-		const defaultPath = path.resolve(__dirname, "../../../config.json");
+		let defaultPath = "config.json";
+		if (fs.existsSync(path.resolve(process.cwd(), "apps/server"))) {
+			defaultPath = path.resolve(process.cwd(), "apps/server/config.json");
+		} else {
+			defaultPath = path.resolve(process.cwd(), "config.json");
+		}
 		this.configPath = process.env.CONFIG_PATH
 			? path.resolve(process.env.CONFIG_PATH)
 			: defaultPath;

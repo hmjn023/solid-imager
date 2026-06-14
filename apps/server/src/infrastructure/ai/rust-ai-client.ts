@@ -16,8 +16,13 @@ import type { appRouter } from "~/domain/shared/api-contract";
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<typeof appRouter>({
 		url: remoteUrl,
-		fetch: (request: Request, init?: RequestInit) =>
-			fetch(request, { ...init, signal: AbortSignal.timeout(timeoutMs) }),
+		fetch: (request: Request, init?: RequestInit) => {
+			const timeoutSignal = AbortSignal.timeout(timeoutMs);
+			const signal = init?.signal
+				? AbortSignal.any([init.signal, timeoutSignal])
+				: timeoutSignal;
+			return fetch(request, { ...init, signal });
+		},
 	});
 }
 
@@ -62,7 +67,7 @@ export class RustAiClient implements IAiClient {
 		const bytes =
 			buffer instanceof Uint8Array
 				? buffer.subarray(0, 4)
-				: new Uint8Array(buffer, 0, 4);
+				: new Uint8Array(buffer).subarray(0, 4);
 		if (
 			bytes[0] === 0x89 &&
 			bytes[1] === 0x50 &&
