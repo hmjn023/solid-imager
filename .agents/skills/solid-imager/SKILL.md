@@ -25,7 +25,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 
 2. **環境変数の設定:**
    ```bash
-   cp apps/server/.env.example apps/server/.env
+   cp .env.example .env
    ```
 
 3. **データベースのセットアップ:**

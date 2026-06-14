@@ -6,8 +6,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
-import { cn } from "@solid-imager/ui/utils/cn";
 import { parseSelectValue } from "@solid-imager/ui/utils";
+import { cn } from "@solid-imager/ui/utils/cn";
 
 const SORT_OPTIONS = ["date", "name", "size", "rating", "viewCount"] as const;
 type SortOption = (typeof SORT_OPTIONS)[number];

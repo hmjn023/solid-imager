@@ -19,29 +19,23 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 					includeImages,
 				});
 
-			if (mode === "zip") {
-				return new Response(
-					asDumpStream(result),
-					{
+				if (mode === "zip") {
+					return new Response(asDumpStream(result), {
 						headers: {
 							"Content-Type": "application/zip",
 							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.zip"`,
 						},
-					},
-				);
-			}
+					});
+				}
 
-			if (mode === "lancedb") {
-				return new Response(
-					asDumpStream(result),
-					{
+				if (mode === "lancedb") {
+					return new Response(asDumpStream(result), {
 						headers: {
 							"Content-Type": "application/gzip",
 							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.tar.gz"`,
 						},
-					},
-				);
-			}
+					});
+				}
 
 				return Response.json(result, {
 					headers: {

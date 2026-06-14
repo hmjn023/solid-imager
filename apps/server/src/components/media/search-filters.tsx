@@ -78,9 +78,7 @@ function FilterSection<T>(props: {
 			<div class="mb-2 flex flex-wrap gap-2">
 				<For each={props.selectedItems}>
 					{(id) => {
-						const item = props.items?.find(
-							(i) => props.getItemKey(i) === id,
-						);
+						const item = props.items?.find((i) => props.getItemKey(i) === id);
 						return (
 							<Badge
 								class="cursor-pointer"

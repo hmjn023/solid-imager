@@ -25,8 +25,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
-import { cn } from "@solid-imager/ui/utils/cn";
 import { parseSelectValue } from "@solid-imager/ui/utils";
+import { cn } from "@solid-imager/ui/utils/cn";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
 // Labels for targets
