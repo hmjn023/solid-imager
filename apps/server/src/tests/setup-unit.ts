@@ -4,32 +4,6 @@ import { beforeEach, vi } from "vite-plus/test";
 
 if (typeof (globalThis as any).Bun === "undefined") {
 	(globalThis as any).Bun = {
-		Image: class {
-			private input: any;
-			constructor(input: any) {
-				this.input = input;
-			}
-			resize() {
-				return this;
-			}
-			webp() {
-				return this;
-			}
-			async write(outputPath: string) {
-				const fs = await import("node:fs/promises");
-				if (typeof this.input === "string") {
-					await fs.copyFile(this.input, outputPath);
-				} else if (
-					this.input instanceof Buffer ||
-					this.input instanceof Uint8Array
-				) {
-					await fs.writeFile(outputPath, this.input);
-				}
-			}
-			async metadata() {
-				return { width: 1, height: 1, format: "png" };
-			}
-		},
 		file: (path: string) => {
 			return {
 				exists: () =>
