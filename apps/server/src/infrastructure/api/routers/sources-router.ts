@@ -19,7 +19,6 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import {
 	asDumpStream,
-	nodeStreamToWebReadable,
 	webReadableToNodeStream,
 } from "~/infrastructure/utils/stream-utils";
 
