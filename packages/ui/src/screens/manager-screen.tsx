@@ -93,6 +93,8 @@ function isCharacter(item: ManagerEntity) {
 	return "ips" in item;
 }
 
+const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
+
 export function ManagerScreen(props: ManagerScreenProps) {
 	const manager = () => props.manager;
 
@@ -298,7 +300,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 										)
 									}
 									options={[
-										{ id: "__all__", name: "All Sources" },
+										ALL_SOURCES_OPTION,
 										...manager().sources(),
 									]}
 									optionTextValue="name"
@@ -312,7 +314,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 														(source) =>
 															source.id === manager().duplicateSourceId(),
 													)
-											: { id: "__all__", name: "All Sources" }
+											: ALL_SOURCES_OPTION
 									}
 								>
 									<SelectTrigger>
