@@ -132,7 +132,8 @@ async function cropDetection(
 				.catch(() => {});
 		}
 	} else {
-		const webpBuf = await jimpImage.getBuffer("image/webp" as any);
+		const pngBuf = await jimpImage.getBuffer("image/png");
+		const webpBuf = await new Bun.Image(pngBuf).webp().buffer();
 		cropBuffer = Buffer.from(webpBuf);
 		_format = "webp";
 	}

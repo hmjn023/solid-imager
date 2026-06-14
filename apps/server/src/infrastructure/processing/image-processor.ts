@@ -8,7 +8,7 @@ import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schem
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import ExifReader from "exifreader";
-import { Jimp } from "jimp";
+
 import * as text from "png-chunk-text";
 import extract from "png-chunks-extract";
 import { services } from "~/application/registry";
@@ -80,17 +80,11 @@ export class LocalImageProcessor implements IImageProcessor {
 						.on("error", (err) => reject(err));
 				});
 
-				// Process the screenshot with Jimp (convert to webp)
-				const image = await Jimp.read(tempScreenshot);
-				const w = image.width;
-				const h = image.height;
-				if (w > size || h > size) {
-					const ratio = Math.min(size / w, size / h);
-					const newW = Math.round(w * ratio);
-					const newH = Math.round(h * ratio);
-					image.resize({ w: newW, h: newH });
-				}
-				await image.write(outputPath as any);
+				// Process the screenshot with Bun.Image (convert to webp)
+				await new Bun.Image(tempScreenshot)
+					.resize(size, size, { fit: "inside", withoutEnlargement: true })
+					.webp({ quality: _quality })
+					.write(outputPath);
 
 				logger.info(
 					{ outputPath },
@@ -118,16 +112,10 @@ export class LocalImageProcessor implements IImageProcessor {
 
 		// Default image processing
 		try {
-			const image = await Jimp.read(mediaPath);
-			const w = image.width;
-			const h = image.height;
-			if (w > size || h > size) {
-				const ratio = Math.min(size / w, size / h);
-				const newW = Math.round(w * ratio);
-				const newH = Math.round(h * ratio);
-				image.resize({ w: newW, h: newH });
-			}
-			await image.write(outputPath as any);
+			await new Bun.Image(mediaPath)
+				.resize(size, size, { fit: "inside", withoutEnlargement: true })
+				.webp({ quality: _quality })
+				.write(outputPath);
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaPath },
@@ -320,11 +308,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const image = await Jimp.read(mediaPath);
-		const metadata = {
-			width: image.width,
-			height: image.height,
-		};
+		const metadata = await new Bun.Image(mediaPath).metadata();
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}

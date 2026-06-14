@@ -219,22 +219,21 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats (try Jimp first, fall back to ffprobe for misidentified videos)
+		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
 		try {
-			const { Jimp } = await import("jimp");
-			const image = await Jimp.read(fullPath);
+			const metadata = await new Bun.Image(fullPath).metadata();
 
-			if (image.width && image.height) {
+			if (metadata.width && metadata.height) {
 				return {
-					width: image.width,
-					height: image.height,
+					width: metadata.width,
+					height: metadata.height,
 					size: stats.size,
 					createdAt: stats.birthtime,
 					modifiedAt: stats.mtime,
 				};
 			}
 		} catch {
-			// Jimp failed — possibly a video with an image extension, fall through to ffprobe
+			// Bun.Image failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
 		// Fallback: try ffprobe for video files that were misidentified as images
