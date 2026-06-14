@@ -42,6 +42,7 @@ export function SourceMediaPage() {
 
 	return (
 		<SourceMediaPageComponent
+			enableVirtualization
 			mediaSourceId={mediaSourceId}
 			transport={transport}
 			presetClient={PresetClient}

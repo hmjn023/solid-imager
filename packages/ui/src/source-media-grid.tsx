@@ -36,6 +36,10 @@ type SourceMediaGridProps = {
 	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
 	onSyncSingleMedia?: (mediaId: string) => void;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
+	/** Whether there are more pages to load. */
+	hasNextPage?: boolean;
+	/** Called when virtual scroll reaches near the end. */
+	onLoadMore?: () => void;
 	/** Render a single media grid item. */
 	renderItem: (
 		media: Media,
@@ -151,6 +155,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		mediaItemHeight();
 		columnCount();
 		mediaRowVirtualizer.measure();
+	});
+
+	// Virtual scroll-based load more: trigger when user scrolls near the end
+	createEffect(() => {
+		if (!shouldVirtualize()) return;
+		const totalRows = rowCount();
+		const handleScroll = () => {
+			if (!props.hasNextPage || props.isFetchingNextPage) return;
+			const lastItem = mediaRowVirtualizer.getVirtualItems().at(-1);
+			if (lastItem && lastItem.index >= totalRows - 2) {
+				props.onLoadMore?.();
+			}
+		};
+		window.addEventListener("scroll", handleScroll, { passive: true });
+		onCleanup(() => window.removeEventListener("scroll", handleScroll));
 	});
 
 	const contextMenuMediaId = () => props.contextMenuMediaId?.() ?? null;

@@ -106,6 +106,8 @@ export function SearchScreen(props: SearchScreenProps) {
 							isPending={page().searchResultQuery.isLoading}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
+							onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+							hasNextPage={page().searchResultQuery.hasNextPage}
 							queryError={
 								page().searchResultQuery.error instanceof Error
 									? page().searchResultQuery.error
