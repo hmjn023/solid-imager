@@ -1195,44 +1195,55 @@ export function createMediaRepository(
         mediaMap.set(row.id, row);
       }
 
-      const groups: DuplicateGroup[] = [];
-
-      // Group by source URL complete match (all URLs must match)
-      const byUrlSet = new Map<string, string[]>();
+      // Group media by source ID
+      const mediaBySource = new Map<string, (typeof mediaRows)[number][]>();
       for (const row of mediaRows) {
-        const urls = (urlsByMediaId.get(row.id) || []).slice().sort();
-        if (urls.length < 2) continue;
-        const key = urls.join("\0");
-        const arr = byUrlSet.get(key) || [];
-        arr.push(row.id);
-        byUrlSet.set(key, arr);
+        const arr = mediaBySource.get(row.mediaSourceId) || [];
+        arr.push(row);
+        mediaBySource.set(row.mediaSourceId, arr);
       }
 
+      const groups: DuplicateGroup[] = [];
       let urlGroupIndex = 0;
-      for (const [, ids] of byUrlSet) {
-        if (ids.length < 2) continue;
-        const group = ids.map((id) => {
-          // biome-ignore lint/style/noNonNullAssertion: ID mapped from mediaRows
-          const row = mediaMap.get(id)!;
-          return {
-            id: row.id,
-            mediaSourceId: row.mediaSourceId,
-            fileName: row.fileName,
-            filePath: row.filePath,
-            fileSize: row.fileSize,
-            width: row.width,
-            height: row.height,
-            mediaType: row.mediaType,
-            createdAt: row.createdAt,
-            modifiedAt: row.modifiedAt,
-            sourceUrls: urlsByMediaId.get(id) || [],
-          };
-        });
-        groups.push({
-          id: `url-${urlGroupIndex++}`,
-          reason: "sourceUrl",
-          media: group,
-        });
+
+      // Process each source independently
+      for (const [, sourceMediaRows] of mediaBySource) {
+        // Group by source URL complete match (all URLs must match)
+        const byUrlSet = new Map<string, string[]>();
+        for (const row of sourceMediaRows) {
+          const urls = (urlsByMediaId.get(row.id) || []).slice().sort();
+          if (urls.length < 2) continue;
+          const key = urls.join("\0");
+          const arr = byUrlSet.get(key) || [];
+          arr.push(row.id);
+          byUrlSet.set(key, arr);
+        }
+
+        for (const [, ids] of byUrlSet) {
+          if (ids.length < 2) continue;
+          const group = ids.map((id) => {
+            // biome-ignore lint/style/noNonNullAssertion: ID mapped from mediaRows
+            const row = mediaMap.get(id)!;
+            return {
+              id: row.id,
+              mediaSourceId: row.mediaSourceId,
+              fileName: row.fileName,
+              filePath: row.filePath,
+              fileSize: row.fileSize,
+              width: row.width,
+              height: row.height,
+              mediaType: row.mediaType,
+              createdAt: row.createdAt,
+              modifiedAt: row.modifiedAt,
+              sourceUrls: urlsByMediaId.get(id) || [],
+            };
+          });
+          groups.push({
+            id: `url-${urlGroupIndex++}`,
+            reason: "sourceUrl",
+            media: group,
+          });
+        }
       }
 
       return { groups };

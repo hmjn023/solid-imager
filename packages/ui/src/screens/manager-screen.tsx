@@ -293,9 +293,14 @@ export function ManagerScreen(props: ManagerScreenProps) {
 										</SelectItem>
 									)}
 									onChange={(value) =>
-										manager().setDuplicateSourceId(value?.id)
+										manager().setDuplicateSourceId(
+											value?.id === "__all__" ? undefined : value?.id,
+										)
 									}
-									options={manager().sources()}
+									options={[
+										{ id: "__all__", name: "All Sources" },
+										...manager().sources(),
+									]}
 									optionTextValue="name"
 									optionValue="id"
 									placeholder="All Sources"
@@ -307,7 +312,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 														(source) =>
 															source.id === manager().duplicateSourceId(),
 													)
-											: null
+											: { id: "__all__", name: "All Sources" }
 									}
 								>
 									<SelectTrigger>
