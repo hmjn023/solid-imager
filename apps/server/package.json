@@ -6,9 +6,9 @@
     "./api-contract": "./src/domain/shared/api-contract.ts"
   },
   "scripts": {
-    "dev": "vp dev",
+    "dev": "bun --bun run vp dev",
     "build": "bun --bun run vp build",
-    "preview": "vp preview",
+    "preview": "bun --bun run vp preview",
     "start": "bun --bun .output/server/index.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

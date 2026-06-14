@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
@@ -52,7 +51,8 @@ function getRemoteServerUrl(): string | undefined {
 }
 
 async function readFileBuffer(filePath: string): Promise<Buffer> {
-	return fs.promises.readFile(filePath);
+	const bytes = await Bun.file(filePath).bytes();
+	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
@@ -121,17 +121,18 @@ async function cropDetection(
 			tmpdir(),
 			`crop-seg-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}.png`,
 		);
-		await jimpImage.write(cropPath);
+		await jimpImage.write(cropPath as any);
 		try {
 			const { segmentRgbaWithIsnetis } = await import("dghs-imgutils-rs");
 			cropBuffer = Buffer.from(await segmentRgbaWithIsnetis(cropPath));
 			_format = "png";
 		} finally {
-			await fs.promises.unlink(cropPath).catch(() => {});
+			await Bun.file(cropPath)
+				.delete()
+				.catch(() => {});
 		}
 	} else {
-		const pngBuf = await jimpImage.getBuffer("image/png");
-		const webpBuf = await new Bun.Image(pngBuf).webp().buffer();
+		const webpBuf = await jimpImage.getBuffer("image/webp" as any);
 		cropBuffer = Buffer.from(webpBuf);
 		_format = "webp";
 	}
@@ -378,7 +379,7 @@ export const aiRouter = {
 						tmpdir(),
 						`crop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 					);
-					await fs.promises.writeFile(tmpPath, buffer);
+					await Bun.write(tmpPath, buffer);
 					try {
 						const { detectPerson } = await import("dghs-imgutils-rs");
 						const detections = await detectPerson(tmpPath);
@@ -391,7 +392,9 @@ export const aiRouter = {
 
 						return { detections: resultDetections };
 					} finally {
-						await fs.promises.unlink(tmpPath).catch(() => {});
+						await Bun.file(tmpPath)
+							.delete()
+							.catch(() => {});
 					}
 				}
 

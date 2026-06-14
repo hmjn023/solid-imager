@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineNitroConfig({
+  preset: "bun",
   rollupConfig: {
     external: ["@lancedb/lancedb", "apache-arrow", /^@lancedb\/lancedb-/, "dghs-imgutils-rs"],
   },

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { initServices } from "~/infrastructure/bootstrap";
 import { services } from "~/application/registry";
+import { initServices } from "~/infrastructure/bootstrap";
 
 initServices();
 

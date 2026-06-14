@@ -7,7 +7,7 @@ import { Readable } from "node:stream";
 export function nodeStreamToWebReadable(
 	nodeStream: Readable,
 ): ReadableStream<Uint8Array> {
-	return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+	return Readable.toWeb(nodeStream) as unknown as ReadableStream<Uint8Array>;
 }
 
 /**

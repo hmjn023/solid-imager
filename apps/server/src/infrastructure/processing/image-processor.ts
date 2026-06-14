@@ -8,6 +8,7 @@ import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schem
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import ExifReader from "exifreader";
+import { Jimp } from "jimp";
 import * as text from "png-chunk-text";
 import extract from "png-chunks-extract";
 import { services } from "~/application/registry";
@@ -32,7 +33,7 @@ export class LocalImageProcessor implements IImageProcessor {
 		mediaPath: string,
 		outputPath: string,
 		size: number,
-		quality: number,
+		_quality: number,
 	): Promise<void> {
 		const path = await import("node:path");
 		const ext = path.extname(mediaPath).toLowerCase();
@@ -58,7 +59,6 @@ export class LocalImageProcessor implements IImageProcessor {
 
 			const ffmpeg = getFfmpeg();
 			const os = (await import("node:os")).default;
-			const fs = (await import("node:fs/promises")).default;
 
 			// Use a temp file for the screenshot
 
@@ -80,11 +80,17 @@ export class LocalImageProcessor implements IImageProcessor {
 						.on("error", (err) => reject(err));
 				});
 
-				// Process the screenshot with Bun.Image (convert to webp)
-				await new Bun.Image(tempScreenshot)
-					.resize(size, size, { fit: "inside", withoutEnlargement: true })
-					.webp({ quality })
-					.write(outputPath);
+				// Process the screenshot with Jimp (convert to webp)
+				const image = await Jimp.read(tempScreenshot);
+				const w = image.width;
+				const h = image.height;
+				if (w > size || h > size) {
+					const ratio = Math.min(size / w, size / h);
+					const newW = Math.round(w * ratio);
+					const newH = Math.round(h * ratio);
+					image.resize({ w: newW, h: newH });
+				}
+				await image.write(outputPath as any);
 
 				logger.info(
 					{ outputPath },
@@ -98,19 +104,30 @@ export class LocalImageProcessor implements IImageProcessor {
 				throw error;
 			} finally {
 				// Clean up temp file
-				fs.unlink(tempScreenshot).catch((err) =>
-					logger.warn({ err }, "Failed to clean up temporary screenshot file"),
-				);
+				Bun.file(tempScreenshot)
+					.delete()
+					.catch((err) =>
+						logger.warn(
+							{ err },
+							"Failed to clean up temporary screenshot file",
+						),
+					);
 			}
 			return;
 		}
 
 		// Default image processing
 		try {
-			await new Bun.Image(mediaPath)
-				.resize(size, size, { fit: "inside", withoutEnlargement: true })
-				.webp({ quality })
-				.write(outputPath);
+			const image = await Jimp.read(mediaPath);
+			const w = image.width;
+			const h = image.height;
+			if (w > size || h > size) {
+				const ratio = Math.min(size / w, size / h);
+				const newW = Math.round(w * ratio);
+				const newH = Math.round(h * ratio);
+				image.resize({ w: newW, h: newH });
+			}
+			await image.write(outputPath as any);
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaPath },
@@ -155,8 +172,12 @@ export class LocalImageProcessor implements IImageProcessor {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
-			const fs = await import("node:fs/promises");
-			const fileBuffer = await fs.readFile(mediaPath);
+			const bytes = await Bun.file(mediaPath).bytes();
+			const fileBuffer = Buffer.from(
+				bytes.buffer,
+				bytes.byteOffset,
+				bytes.byteLength,
+			);
 
 			const comments: ImageMetadataComment[] = [];
 
@@ -191,7 +212,8 @@ export class LocalImageProcessor implements IImageProcessor {
 
 				if (tags.UserComment) {
 					const comment =
-						tags.UserComment.description || tags.UserComment.value;
+						(tags.UserComment as any).description ||
+						(tags.UserComment as any).value;
 					const commentText = Array.isArray(comment)
 						? comment.join("")
 						: typeof comment === "string"
@@ -298,7 +320,11 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const metadata = await new Bun.Image(mediaPath).metadata();
+		const image = await Jimp.read(mediaPath);
+		const metadata = {
+			width: image.width,
+			height: image.height,
+		};
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}

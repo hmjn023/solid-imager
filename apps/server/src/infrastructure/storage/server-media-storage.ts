@@ -112,7 +112,12 @@ export const ServerMediaStorage: IMediaStorage = {
 		try {
 			await fs.unlink(fullPath);
 		} catch (error: unknown) {
-			if (isRecord(error) && error.code === "ENOENT") {
+			if (
+				error &&
+				typeof error === "object" &&
+				"code" in error &&
+				error.code === "ENOENT"
+			) {
 				return; // Already deleted
 			}
 			throw error;
@@ -121,7 +126,7 @@ export const ServerMediaStorage: IMediaStorage = {
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
 		const fullPath = resolveSafePath(basePath, filePath);
-		return await fs.readFile(fullPath);
+		return await Bun.file(fullPath).bytes();
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
@@ -214,21 +219,22 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
+		// Image formats (try Jimp first, fall back to ffprobe for misidentified videos)
 		try {
-			const metadata = await new Bun.Image(fullPath).metadata();
+			const { Jimp } = await import("jimp");
+			const image = await Jimp.read(fullPath);
 
-			if (metadata.width && metadata.height) {
+			if (image.width && image.height) {
 				return {
-					width: metadata.width,
-					height: metadata.height,
+					width: image.width,
+					height: image.height,
 					size: stats.size,
 					createdAt: stats.birthtime,
 					modifiedAt: stats.mtime,
 				};
 			}
 		} catch {
-			// Bun.Image failed — possibly a video with an image extension, fall through to ffprobe
+			// Jimp failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
 		// Fallback: try ffprobe for video files that were misidentified as images
