@@ -38,6 +38,9 @@ type SourceMediaGridProps = {
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
+	onBulkAction?: () => void;
+	onClearSelection?: () => void;
+	selectedCount?: () => number;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	/** Whether there are more pages to load. */
 	hasNextPage?: boolean;
@@ -209,8 +212,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							{(media) =>
 								props.renderItem(media, {
 									onContextMenu: onContextMenuHandler(media.id),
-									isBulkSelectMode: props.isBulkSelectMode?.(),
-									isSelected: props.isSelected?.(media.id),
+									get isBulkSelectMode() {
+										return props.isBulkSelectMode?.();
+									},
+									get isSelected() {
+										return props.isSelected?.(media.id);
+									},
 								})
 							}
 						</For>
@@ -235,8 +242,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{(media) =>
 										props.renderItem(media, {
 											onContextMenu: onContextMenuHandler(media.id),
-											isBulkSelectMode: props.isBulkSelectMode?.(),
-											isSelected: props.isSelected?.(media.id),
+											get isBulkSelectMode() {
+												return props.isBulkSelectMode?.();
+											},
+											get isSelected() {
+												return props.isSelected?.(media.id);
+											},
 										})
 									}
 								</For>
@@ -299,6 +310,24 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							</ContextMenuItem>
 
 							<ContextMenuSeparator />
+
+							<Show when={props.isBulkSelectMode?.() && (props.selectedCount?.() ?? 0) > 0}>
+								<ContextMenuItem
+									onSelect={() => {
+										props.onBulkAction?.();
+									}}
+								>
+									Run bulk operations ({props.selectedCount?.()} selected)
+								</ContextMenuItem>
+								<ContextMenuItem
+									onSelect={() => {
+										props.onClearSelection?.();
+									}}
+								>
+									Clear selection
+								</ContextMenuItem>
+								<ContextMenuSeparator />
+							</Show>
 
 							<Show when={showOpenInNewTab()}>
 								<ContextMenuItem

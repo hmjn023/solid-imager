@@ -1,11 +1,12 @@
+import { Button } from "@solid-imager/ui/button";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import { createSignal, Show } from "solid-js";
+import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -34,7 +35,6 @@ import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
-import { Button } from "@solid-imager/ui/button";
 
 const PresetClient = createPresetClient(rawPresetClient);
 
@@ -105,6 +105,9 @@ export function SourceMediaPage() {
 				onToggleSelect={handleToggleSelect}
 				isBulkSelectMode={isBulkSelectMode}
 				isSelected={isSelected}
+				onBulkAction={() => setIsBulkActionOpen(true)}
+				onClearSelection={handleCancelSelect}
+				selectedCount={() => selectedMediaIds().length}
 				renderItem={(media, options) => (
 					<MediaGridItem
 						media={media}
@@ -125,17 +128,10 @@ export function SourceMediaPage() {
 					<span class="font-medium text-sm">
 						{selectedMediaIds().length} 件選択中
 					</span>
-					<Button
-						onClick={() => setIsBulkActionOpen(true)}
-						size="sm"
-					>
+					<Button onClick={() => setIsBulkActionOpen(true)} size="sm">
 						一括操作を実行
 					</Button>
-					<Button
-						onClick={handleCancelSelect}
-						variant="outline"
-						size="sm"
-					>
+					<Button onClick={handleCancelSelect} variant="outline" size="sm">
 						解除
 					</Button>
 				</div>

@@ -1,4 +1,3 @@
-import path from "node:path";
 import { updateMediaRequestSchema } from "@solid-imager/core/domain/media/schemas";
 import { services } from "~/application/registry";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -105,7 +104,8 @@ export const BulkOperationService = {
 		}
 		const basePath = (source.connectionInfo as { path: string }).path;
 
-		const pathUpdates: { id: string; filePath: string; fileName: string }[] = [];
+		const pathUpdates: { id: string; filePath: string; fileName: string }[] =
+			[];
 
 		for (const mediaId of mediaIds) {
 			const media = await mediaRepo.findById(mediaId);
@@ -181,7 +181,9 @@ export const BulkOperationService = {
 		targetSourceId: string,
 	) {
 		const mediaRepo = services.getMediaRepository();
-		const { MediaService } = await import("~/application/services/media-service");
+		const { MediaService } = await import(
+			"~/application/services/media-service"
+		);
 
 		// セキュリティチェック
 		for (const mediaId of mediaIds) {
@@ -201,7 +203,10 @@ export const BulkOperationService = {
 		const poolResults = await asyncPool(mediaIds, 5, processCopy);
 		const failures = poolResults.filter((r) => r.status === "rejected");
 		if (failures.length > 0) {
-			logger.error({ failures }, "Some copy operations failed during bulk copy");
+			logger.error(
+				{ failures },
+				"Some copy operations failed during bulk copy",
+			);
 			throw new Error(`Failed to copy ${failures.length} media items.`);
 		}
 	},
@@ -215,7 +220,9 @@ export const BulkOperationService = {
 		targetSourceId: string,
 	) {
 		const mediaRepo = services.getMediaRepository();
-		const { MediaService } = await import("~/application/services/media-service");
+		const { MediaService } = await import(
+			"~/application/services/media-service"
+		);
 
 		// セキュリティチェック
 		for (const mediaId of mediaIds) {
@@ -235,7 +242,10 @@ export const BulkOperationService = {
 		const poolResults = await asyncPool(mediaIds, 5, processMove);
 		const failures = poolResults.filter((r) => r.status === "rejected");
 		if (failures.length > 0) {
-			logger.error({ failures }, "Some move operations failed during bulk move");
+			logger.error(
+				{ failures },
+				"Some move operations failed during bulk move",
+			);
 			throw new Error(`Failed to move ${failures.length} media items.`);
 		}
 	},

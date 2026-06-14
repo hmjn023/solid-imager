@@ -65,6 +65,9 @@ export type SourceMediaScreenProps = {
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
+	onBulkAction?: () => void;
+	onClearSelection?: () => void;
+	selectedCount?: () => number;
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
@@ -143,6 +146,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					onToggleSelect={props.onToggleSelect}
 					isBulkSelectMode={props.isBulkSelectMode}
 					isSelected={props.isSelected}
+					onBulkAction={props.onBulkAction}
+					onClearSelection={props.onClearSelection}
+					selectedCount={props.selectedCount}
 					hasNextPage={page().mediaQuery.hasNextPage}
 					queryError={page().mediaQuery.error ?? null}
 					renderItem={props.renderItem}
