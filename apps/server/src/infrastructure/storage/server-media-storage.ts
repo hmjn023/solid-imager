@@ -112,7 +112,12 @@ export const ServerMediaStorage: IMediaStorage = {
 		try {
 			await fs.unlink(fullPath);
 		} catch (error: unknown) {
-			if (isRecord(error) && error.code === "ENOENT") {
+			if (
+				error &&
+				typeof error === "object" &&
+				"code" in error &&
+				error.code === "ENOENT"
+			) {
 				return; // Already deleted
 			}
 			throw error;
@@ -121,7 +126,7 @@ export const ServerMediaStorage: IMediaStorage = {
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
 		const fullPath = resolveSafePath(basePath, filePath);
-		return await fs.readFile(fullPath);
+		return await Bun.file(fullPath).bytes();
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {

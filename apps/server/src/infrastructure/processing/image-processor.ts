@@ -8,6 +8,7 @@ import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schem
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import ExifReader from "exifreader";
+
 import * as text from "png-chunk-text";
 import extract from "png-chunks-extract";
 import { services } from "~/application/registry";
@@ -32,7 +33,7 @@ export class LocalImageProcessor implements IImageProcessor {
 		mediaPath: string,
 		outputPath: string,
 		size: number,
-		quality: number,
+		_quality: number,
 	): Promise<void> {
 		const path = await import("node:path");
 		const ext = path.extname(mediaPath).toLowerCase();
@@ -58,7 +59,6 @@ export class LocalImageProcessor implements IImageProcessor {
 
 			const ffmpeg = getFfmpeg();
 			const os = (await import("node:os")).default;
-			const fs = (await import("node:fs/promises")).default;
 
 			// Use a temp file for the screenshot
 
@@ -83,7 +83,7 @@ export class LocalImageProcessor implements IImageProcessor {
 				// Process the screenshot with Bun.Image (convert to webp)
 				await new Bun.Image(tempScreenshot)
 					.resize(size, size, { fit: "inside", withoutEnlargement: true })
-					.webp({ quality })
+					.webp({ quality: _quality })
 					.write(outputPath);
 
 				logger.info(
@@ -98,9 +98,14 @@ export class LocalImageProcessor implements IImageProcessor {
 				throw error;
 			} finally {
 				// Clean up temp file
-				fs.unlink(tempScreenshot).catch((err) =>
-					logger.warn({ err }, "Failed to clean up temporary screenshot file"),
-				);
+				Bun.file(tempScreenshot)
+					.delete()
+					.catch((err) =>
+						logger.warn(
+							{ err },
+							"Failed to clean up temporary screenshot file",
+						),
+					);
 			}
 			return;
 		}
@@ -109,7 +114,7 @@ export class LocalImageProcessor implements IImageProcessor {
 		try {
 			await new Bun.Image(mediaPath)
 				.resize(size, size, { fit: "inside", withoutEnlargement: true })
-				.webp({ quality })
+				.webp({ quality: _quality })
 				.write(outputPath);
 		} catch (error) {
 			logger.error(
@@ -155,8 +160,12 @@ export class LocalImageProcessor implements IImageProcessor {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
-			const fs = await import("node:fs/promises");
-			const fileBuffer = await fs.readFile(mediaPath);
+			const bytes = await Bun.file(mediaPath).bytes();
+			const fileBuffer = Buffer.from(
+				bytes.buffer,
+				bytes.byteOffset,
+				bytes.byteLength,
+			);
 
 			const comments: ImageMetadataComment[] = [];
 
@@ -191,7 +200,8 @@ export class LocalImageProcessor implements IImageProcessor {
 
 				if (tags.UserComment) {
 					const comment =
-						tags.UserComment.description || tags.UserComment.value;
+						(tags.UserComment as any).description ||
+						(tags.UserComment as any).value;
 					const commentText = Array.isArray(comment)
 						? comment.join("")
 						: typeof comment === "string"

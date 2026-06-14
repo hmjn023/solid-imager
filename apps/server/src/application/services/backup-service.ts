@@ -1186,15 +1186,17 @@ export const BackupService = {
 					stderr: "ignore",
 				});
 
-				proc.exited.then(async (code) => {
-					if (code !== 0) {
-						logger.error({ code }, "tar process exited with non-zero code");
-					}
-					await cleanupLanceDBDir(lanceDbDir);
-				}).catch(async (err) => {
-					logger.error({ err }, "tar process failed");
-					await cleanupLanceDBDir(lanceDbDir);
-				});
+				proc.exited
+					.then(async (code) => {
+						if (code !== 0) {
+							logger.error({ code }, "tar process exited with non-zero code");
+						}
+						await cleanupLanceDBDir(lanceDbDir);
+					})
+					.catch(async (err) => {
+						logger.error({ err }, "tar process failed");
+						await cleanupLanceDBDir(lanceDbDir);
+					});
 
 				return proc.stdout;
 			} catch (err) {

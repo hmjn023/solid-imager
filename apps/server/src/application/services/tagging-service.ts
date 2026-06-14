@@ -5,10 +5,8 @@ import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 export { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 
-function readFileBuffer(filePath: string): Promise<ArrayBuffer> {
-	return import("node:fs/promises").then((fs) =>
-		fs.readFile(filePath).then((buf) => new Uint8Array(buf).buffer),
-	);
+async function readFileBuffer(filePath: string): Promise<ArrayBuffer> {
+	return await Bun.file(filePath).arrayBuffer();
 }
 
 let _taggingService: TaggingServiceImpl | null = null;
