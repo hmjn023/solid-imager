@@ -196,7 +196,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 			ipRepo: mockIpRepo,
 			projectRepo: mockProjectRepo,
 			jobRepo: mockJobRepo as any,
-			imageProcessor: {} as any,
+			imageProcessor: mockImageProcessor as any,
 			mediaStorage: {} as any,
 			enableAutoTagging: false,
 			supportedExtensions: {

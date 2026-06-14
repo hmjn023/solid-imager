@@ -6,8 +6,6 @@ import type {
 	MediaStorageResult,
 } from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
-import sharp from "sharp";
 import type { z } from "zod";
 
 /**
@@ -81,7 +79,7 @@ export const ServerMediaStorage: IMediaStorage = {
 
 		// Save the file
 		const arrayBuffer = await file.arrayBuffer();
-		await fs.writeFile(targetFilePath, new Uint8Array(arrayBuffer));
+		await Bun.write(targetFilePath, arrayBuffer);
 
 		// Extract valid metadata using getFileMetadata to support both images and videos
 		try {
@@ -114,7 +112,12 @@ export const ServerMediaStorage: IMediaStorage = {
 		try {
 			await fs.unlink(fullPath);
 		} catch (error: unknown) {
-			if (isRecord(error) && error.code === "ENOENT") {
+			if (
+				error &&
+				typeof error === "object" &&
+				"code" in error &&
+				error.code === "ENOENT"
+			) {
 				return; // Already deleted
 			}
 			throw error;
@@ -123,7 +126,7 @@ export const ServerMediaStorage: IMediaStorage = {
 
 	async getFile(basePath: string, filePath: string): Promise<Uint8Array> {
 		const fullPath = resolveSafePath(basePath, filePath);
-		return await fs.readFile(fullPath);
+		return await Bun.file(fullPath).bytes();
 	},
 
 	async scanDirectory(basePath: string): Promise<string[]> {
@@ -216,9 +219,9 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats (try sharp first, fall back to ffprobe for misidentified videos)
+		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
 		try {
-			const metadata = await sharp(fullPath).metadata();
+			const metadata = await new Bun.Image(fullPath).metadata();
 
 			if (metadata.width && metadata.height) {
 				return {
@@ -230,7 +233,7 @@ export const ServerMediaStorage: IMediaStorage = {
 				};
 			}
 		} catch {
-			// sharp failed — possibly a video with an image extension, fall through to ffprobe
+			// Bun.Image failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
 		// Fallback: try ffprobe for video files that were misidentified as images
@@ -344,7 +347,7 @@ export const ServerMediaStorage: IMediaStorage = {
 		}
 
 		// Copy the file
-		await fs.copyFile(sourcePath, targetFilePath);
+		await Bun.write(targetFilePath, Bun.file(sourcePath));
 
 		// Extract metadata using getFileMetadata
 		try {

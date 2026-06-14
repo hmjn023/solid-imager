@@ -88,7 +88,8 @@ export class LocalDriver implements MediaSourceDriver {
 	 */
 	async get(p: string): Promise<Buffer> {
 		const absolutePath = this.getAbsolutePath(p);
-		return await fs.readFile(absolutePath);
+		const bytes = await Bun.file(absolutePath).bytes();
+		return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	}
 
 	/**
@@ -101,7 +102,7 @@ export class LocalDriver implements MediaSourceDriver {
 	async put(p: string, content: Buffer): Promise<void> {
 		const absolutePath = this.getAbsolutePath(p);
 		await fs.mkdir(path.dirname(absolutePath), { recursive: true });
-		await fs.writeFile(absolutePath, content);
+		await Bun.write(absolutePath, content);
 	}
 
 	/**

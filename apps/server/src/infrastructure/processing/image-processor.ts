@@ -4,16 +4,13 @@
  * Feature 17.2: メディア処理 / 情報抽出
  */
 
-import sharp from "sharp";
-
-// Optimize sharp memory usage
-// Default cache is too aggressive for development environment
-sharp.cache({ memory: 100, items: 200, files: 20 });
-
 import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+import ExifReader from "exifreader";
+
+import * as text from "png-chunk-text";
+import extract from "png-chunks-extract";
 import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
@@ -36,7 +33,7 @@ export class LocalImageProcessor implements IImageProcessor {
 		mediaPath: string,
 		outputPath: string,
 		size: number,
-		quality: number,
+		_quality: number,
 	): Promise<void> {
 		const path = await import("node:path");
 		const ext = path.extname(mediaPath).toLowerCase();
@@ -62,7 +59,6 @@ export class LocalImageProcessor implements IImageProcessor {
 
 			const ffmpeg = getFfmpeg();
 			const os = (await import("node:os")).default;
-			const fs = (await import("node:fs/promises")).default;
 
 			// Use a temp file for the screenshot
 
@@ -84,11 +80,11 @@ export class LocalImageProcessor implements IImageProcessor {
 						.on("error", (err) => reject(err));
 				});
 
-				// Process the screenshot with sharp (convert to webp)
-				await sharp(tempScreenshot)
+				// Process the screenshot with Bun.Image (convert to webp)
+				await new Bun.Image(tempScreenshot)
 					.resize(size, size, { fit: "inside", withoutEnlargement: true })
-					.webp({ quality })
-					.toFile(outputPath);
+					.webp({ quality: _quality })
+					.write(outputPath);
 
 				logger.info(
 					{ outputPath },
@@ -102,19 +98,24 @@ export class LocalImageProcessor implements IImageProcessor {
 				throw error;
 			} finally {
 				// Clean up temp file
-				fs.unlink(tempScreenshot).catch((err) =>
-					logger.warn({ err }, "Failed to clean up temporary screenshot file"),
-				);
+				Bun.file(tempScreenshot)
+					.delete()
+					.catch((err) =>
+						logger.warn(
+							{ err },
+							"Failed to clean up temporary screenshot file",
+						),
+					);
 			}
 			return;
 		}
 
 		// Default image processing
 		try {
-			await sharp(mediaPath)
+			await new Bun.Image(mediaPath)
 				.resize(size, size, { fit: "inside", withoutEnlargement: true })
-				.webp({ quality })
-				.toFile(outputPath);
+				.webp({ quality: _quality })
+				.write(outputPath);
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaPath },
@@ -159,34 +160,83 @@ export class LocalImageProcessor implements IImageProcessor {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
-			const metadata = await sharp(mediaPath).metadata();
+			const bytes = await Bun.file(mediaPath).bytes();
+			const fileBuffer = Buffer.from(
+				bytes.buffer,
+				bytes.byteOffset,
+				bytes.byteLength,
+			);
 
 			const comments: ImageMetadataComment[] = [];
-			if (metadata.comments) {
-				comments.push(...metadata.comments);
+
+			// 1. Extract PNG chunks (tEXt) if it's a PNG file
+			if (ext === ".png") {
+				try {
+					const chunks = extract(fileBuffer);
+					for (const chunk of chunks) {
+						if (chunk.name === "tEXt") {
+							try {
+								const decoded = text.decode(chunk.data);
+								comments.push({
+									keyword: decoded.keyword,
+									text: decoded.text,
+								});
+							} catch (e) {
+								logger.warn(
+									{ err: e, mediaPath },
+									"Failed to decode PNG tEXt chunk",
+								);
+							}
+						}
+					}
+				} catch (e) {
+					logger.error({ err: e, mediaPath }, "Failed to extract PNG chunks");
+				}
 			}
-			// Attempt to read from EXIF fields
-			const exif = isRecord(metadata.exif) ? metadata.exif.IFD0 : undefined;
-			if (isRecord(exif)) {
-				const userComment = exif.UserComment;
-				if (userComment) {
-					// It might be a Buffer, so convert it
-					const comment = Buffer.isBuffer(userComment)
-						? userComment.toString("utf-8")
-						: typeof userComment === "string"
-							? userComment
+
+			// 2. Extract EXIF data (UserComment, ImageDescription)
+			try {
+				const tags = ExifReader.load(fileBuffer);
+
+				if (tags.UserComment) {
+					const comment =
+						(tags.UserComment as any).description ||
+						(tags.UserComment as any).value;
+					const commentText = Array.isArray(comment)
+						? comment.join("")
+						: typeof comment === "string"
+							? comment
 							: "";
-					if (comment) {
-						comments.push({ keyword: "workflow", text: comment.trim() });
+
+					if (commentText) {
+						// Filter out standard EXIF ASCII prefix if any
+						const cleanComment = commentText.replace(
+							/^(ASCII\0\0\0|UNICODE\0\0\0)/,
+							"",
+						);
+						comments.push({ keyword: "workflow", text: cleanComment.trim() });
 					}
 				}
-				const imageDescription = exif.ImageDescription;
-				if (typeof imageDescription === "string") {
-					comments.push({
-						keyword: "prompt",
-						text: imageDescription.trim(),
-					});
+
+				if (tags.ImageDescription) {
+					const description =
+						tags.ImageDescription.description || tags.ImageDescription.value;
+					const descText = Array.isArray(description)
+						? description.join("")
+						: typeof description === "string"
+							? description
+							: "";
+
+					if (descText) {
+						comments.push({
+							keyword: "prompt",
+							text: descText.trim(),
+						});
+					}
 				}
+			} catch (e) {
+				// Non-fatal, many files won't have EXIF data
+				logger.debug({ err: e, mediaPath }, "No EXIF tags parsed");
 			}
 
 			// Get tag extraction options from config with fallback
@@ -258,7 +308,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const metadata = await sharp(mediaPath).metadata();
+		const metadata = await new Bun.Image(mediaPath).metadata();
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}

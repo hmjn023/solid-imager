@@ -48,7 +48,7 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-    exclude: ["dghs-imgutils-rs", "@lancedb/lancedb"],
+    exclude: ["bun", "dghs-imgutils-rs", "@lancedb/lancedb"],
   },
   customLogger: {
     warn(msg, options) {
@@ -66,12 +66,11 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [
+        "bun",
         "dghs-imgutils-rs",
-        "sharp",
         "ffmpeg-static",
         "fluent-ffmpeg",
         "@electric-sql/pglite",
-        "pg",
         "archiver",
         "@lancedb/lancedb",
         "apache-arrow",
@@ -89,9 +88,8 @@ export default defineConfig({
       "@solid-primitives/.*",
     ],
     external: [
+      "bun",
       "@electric-sql/pglite",
-      "pg",
-      "sharp",
       "ffmpeg-static",
       "ffmpeg-static-static",
       "fluent-ffmpeg",

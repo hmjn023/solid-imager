@@ -1,6 +1,7 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	bulkDeleteMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	findDuplicatesResponseSchema,
 	mediaDetailsSchema,
@@ -131,4 +132,8 @@ export const mediaContract = {
 	findDuplicates: oc
 		.input(findDuplicatesRequestSchema.optional())
 		.output(findDuplicatesResponseSchema),
+
+	bulkDelete: oc
+		.input(bulkDeleteMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
 };

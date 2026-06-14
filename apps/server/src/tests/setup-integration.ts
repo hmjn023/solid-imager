@@ -2,6 +2,157 @@ import path from "node:path";
 import { config } from "dotenv";
 import { beforeAll, beforeEach, vi } from "vite-plus/test";
 
+if (typeof (globalThis as any).Bun === "undefined") {
+	(globalThis as any).Bun = {
+		Image: class {
+			private input: any;
+			constructor(input: any) {
+				this.input = input;
+			}
+			resize() {
+				return this;
+			}
+			webp() {
+				return this;
+			}
+			async write(outputPath: string) {
+				const fs = await import("node:fs/promises");
+				if (typeof this.input === "string") {
+					await fs.copyFile(this.input, outputPath);
+				} else if (
+					this.input instanceof Buffer ||
+					this.input instanceof Uint8Array
+				) {
+					await fs.writeFile(outputPath, this.input);
+				}
+			}
+			async metadata() {
+				return { width: 1, height: 1, format: "png" };
+			}
+		},
+		file: (path: string) => {
+			return {
+				exists: () =>
+					import("node:fs/promises").then((fs) => {
+						const res = fs.access?.(path);
+						return res
+							? res.then(() => true).catch(() => false)
+							: Promise.resolve(false);
+					}),
+				arrayBuffer: () =>
+					import("node:fs/promises").then((fs) => {
+						const res = fs.readFile?.(path);
+						return res
+							? res
+									.then((buf) => (buf ? buf.buffer : new ArrayBuffer(0)))
+									.catch(() => new ArrayBuffer(0))
+							: Promise.resolve(new ArrayBuffer(0));
+					}),
+				text: () =>
+					import("node:fs/promises").then((fs) => {
+						const res = fs.readFile?.(path, "utf-8");
+						return res
+							? res.then((val) => val || "").catch(() => "")
+							: Promise.resolve("");
+					}),
+				bytes: () =>
+					import("node:fs/promises").then((fs) => {
+						const res = fs.readFile?.(path);
+						return res
+							? res
+									.then((buf) =>
+										buf ? new Uint8Array(buf) : new Uint8Array(0),
+									)
+									.catch(() => new Uint8Array(0))
+							: Promise.resolve(new Uint8Array(0));
+					}),
+				size: 0,
+				type: "text/plain",
+				delete: () =>
+					import("node:fs/promises").then((fs) => {
+						const res = fs.unlink?.(path);
+						return res ? res.then(() => {}).catch(() => {}) : Promise.resolve();
+					}),
+			};
+		},
+		write: async (dest: any, data: any) => {
+			const fs = await import("node:fs/promises");
+			const destPath =
+				typeof dest === "string" ? dest : dest.name || String(dest);
+
+			let bytesLength = 0;
+			if (data && typeof data.arrayBuffer === "function") {
+				const buf = await data.arrayBuffer();
+				await fs.writeFile(destPath, Buffer.from(buf));
+				bytesLength = buf.byteLength;
+			} else if (data instanceof ArrayBuffer || ArrayBuffer.isView(data)) {
+				const buf = Buffer.from(data as any);
+				await fs.writeFile(destPath, buf);
+				bytesLength = buf.byteLength;
+			} else if (typeof data === "string") {
+				await fs.writeFile(destPath, data);
+				bytesLength = Buffer.from(data).byteLength;
+			}
+			return bytesLength;
+		},
+		Archive: class {
+			private map: any;
+			private options: any;
+			constructor(input: any, options: any) {
+				this.map = input;
+				this.options = options;
+			}
+			async bytes() {
+				return new Uint8Array();
+			}
+			async blob() {
+				return new Blob([]);
+			}
+			async extract(_dest: string) {
+				return 0;
+			}
+		},
+	};
+}
+
+// Mock the "bun" module so "import { Glob, SQL } from 'bun'" works on Node.js
+vi.mock("bun", () => {
+	return {
+		SQL: class {},
+		Glob: class {
+			private pattern: string;
+			constructor(pattern: string) {
+				this.pattern = pattern;
+			}
+			async *scan(options: any) {
+				const fs = await import("node:fs/promises");
+				const path = await import("node:path");
+				const root = options.cwd || process.cwd();
+
+				async function* walk(dir: string): AsyncGenerator<string> {
+					try {
+						const entries = await fs.readdir(dir, { withFileTypes: true });
+						for (const entry of entries) {
+							const res = path.resolve(dir, entry.name);
+							if (entry.name.startsWith(".")) {
+								continue;
+							}
+							if (entry.isDirectory()) {
+								yield* walk(res);
+							} else {
+								yield path.relative(root, res);
+							}
+						}
+					} catch (_e) {
+						// Ignored
+					}
+				}
+				yield* walk(root);
+			}
+		},
+	};
+});
+
 // Bootstrap
 beforeAll(async () => {
 	// 1. Ensure DB migration is completed first

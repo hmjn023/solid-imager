@@ -1,7 +1,22 @@
+import path from "node:path";
+import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { createFileRoute } from "@tanstack/solid-router";
-import { MediaService } from "~/application/services/media-service";
+import { services } from "~/application/registry";
 import { bootstrap } from "~/infrastructure/bootstrap";
-import { bufferToBodyInit } from "~/infrastructure/utils/stream-utils";
+
+const resolveSafePath = (basePath: string, targetPath: string): string => {
+	const resolvedPath = path.resolve(basePath, targetPath);
+	const absoluteBase = path.resolve(basePath);
+
+	if (
+		resolvedPath !== absoluteBase &&
+		!resolvedPath.startsWith(absoluteBase + path.sep)
+	) {
+		throw new Error(`Invalid path: ${targetPath}`);
+	}
+	return resolvedPath;
+};
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 	server: {
@@ -9,11 +24,31 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 			GET: async ({ params }) => {
 				bootstrap();
 				const { mediaSourceId, mediaId } = params;
-				const { buffer, contentType } = await MediaService.getMediaContent(
-					mediaSourceId,
-					mediaId,
+
+				const media = await services.getMediaRepository().findById(mediaId);
+				if (!media || media.mediaSourceId !== mediaSourceId) {
+					return new Response("Media not found", { status: 404 });
+				}
+
+				const mediaSource = await services
+					.getSourceRepository()
+					.findById(mediaSourceId);
+				if (mediaSource?.type !== "local") {
+					return new Response("Invalid media source", { status: 400 });
+				}
+
+				const connectionInfo = localConnectionSchema.parse(
+					mediaSource.connectionInfo,
 				);
-				return new Response(bufferToBodyInit(buffer), {
+				const fullPath = resolveSafePath(connectionInfo.path, media.filePath);
+
+				const file = Bun.file(fullPath);
+				if (!(await file.exists())) {
+					return new Response("File not found on disk", { status: 404 });
+				}
+
+				const contentType = getContentTypeFromExtension(media.fileName);
+				return new Response(file, {
 					headers: { "Content-Type": contentType },
 				});
 			},

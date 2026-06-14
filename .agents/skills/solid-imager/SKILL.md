@@ -52,8 +52,8 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 - **Server:** `~/*` → `apps/server/src`
 - **Core Package:** `@/*` → `packages/core/src`
 
-### Bun固有APIの回避
-ポータビリティを確保するため、`Bun.file()` のようなBun固有のAPIの使用は避け、可能な限りNode.js互換のAPIやWeb標準APIを使用してください。
+### Bun固有APIの活用
+サーバー側（`apps/server` など）の実装においては、パフォーマンスの最大化と開発効率の向上のため、`Bun.file()` などのBun固有のAPIを積極的に活用してください。ただし、ブラウザや他の環境で動作する共有パッケージ（`packages/core`, `packages/client` 等）では、ポータビリティを確保するため、可能な限りNode.js互換のAPIやWeb標準APIを使用してください。
 
 ### 開発サーバーの不使用
 開発サーバー (`bun run dev`) を起動しないでください。あなたの役割はコードの実装と修正であり、アプリケーションを直接実行することではありません。

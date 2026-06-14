@@ -12,7 +12,7 @@ describe("AuthorRepository Deduplication", () => {
 			await db.execute("DROP SCHEMA IF EXISTS drizzle CASCADE");
 			await db.execute("DROP SCHEMA IF EXISTS public CASCADE");
 			await db.execute("CREATE SCHEMA public");
-			await migrate(db, { migrationsFolder: "drizzle" });
+			await migrate(db as any, { migrationsFolder: "drizzle" });
 		} catch (e) {
 			console.error(e);
 		}

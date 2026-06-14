@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
@@ -140,11 +139,13 @@ export class RustAiClient implements IAiClient {
 		);
 		const fileData =
 			buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
-		await fs.promises.writeFile(tmpPath, fileData);
+		await Bun.write(tmpPath, fileData);
 		try {
 			return await callback(tmpPath);
 		} finally {
-			await fs.promises.unlink(tmpPath).catch(() => {});
+			await Bun.file(tmpPath)
+				.delete()
+				.catch(() => {});
 		}
 	}
 
@@ -164,7 +165,7 @@ export class RustAiClient implements IAiClient {
 
 	async tagImageByPath(filePath: string): Promise<TaggingResponse> {
 		if (this.baseUrl) {
-			const buffer = await fs.promises.readFile(filePath);
+			const buffer = await Bun.file(filePath).bytes();
 			const result = await this.callRemoteOrpcWithFile(
 				(c, f) => c.ai.tag({ file: f }),
 				buffer,
@@ -203,7 +204,7 @@ export class RustAiClient implements IAiClient {
 		filePath: string,
 	): Promise<CcipFeatureResponse> {
 		if (this.baseUrl) {
-			const buffer = await fs.promises.readFile(filePath);
+			const buffer = await Bun.file(filePath).bytes();
 			const result = await this.callRemoteOrpcWithFile(
 				(c, f) => c.ai.ccipFeature({ file: f }),
 				buffer,

@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
@@ -16,7 +15,7 @@ import {
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
-import sharp from "sharp";
+import { Jimp } from "jimp";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -52,7 +51,8 @@ function getRemoteServerUrl(): string | undefined {
 }
 
 async function readFileBuffer(filePath: string): Promise<Buffer> {
-	return fs.promises.readFile(filePath);
+	const bytes = await Bun.file(filePath).bytes();
+	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
@@ -108,37 +108,33 @@ async function cropDetection(
 	let cropBuffer: Buffer;
 	let _format: string;
 
+	const jimpImage = await Jimp.read(imagePath);
+	jimpImage.crop({
+		x: Math.round(x1),
+		y: Math.round(y1),
+		w,
+		h,
+	});
+
 	if (transparent) {
 		const cropPath = path.join(
 			tmpdir(),
 			`crop-seg-${Date.now()}-${idx}-${Math.random().toString(36).slice(2)}.png`,
 		);
-		await sharp(imagePath)
-			.extract({
-				left: Math.round(x1),
-				top: Math.round(y1),
-				width: w,
-				height: h,
-			})
-			.png()
-			.toFile(cropPath);
+		await jimpImage.write(cropPath as any);
 		try {
 			const { segmentRgbaWithIsnetis } = await import("dghs-imgutils-rs");
 			cropBuffer = Buffer.from(await segmentRgbaWithIsnetis(cropPath));
 			_format = "png";
 		} finally {
-			await fs.promises.unlink(cropPath).catch(() => {});
+			await Bun.file(cropPath)
+				.delete()
+				.catch(() => {});
 		}
 	} else {
-		cropBuffer = await sharp(imagePath)
-			.extract({
-				left: Math.round(x1),
-				top: Math.round(y1),
-				width: w,
-				height: h,
-			})
-			.webp()
-			.toBuffer();
+		const pngBuf = await jimpImage.getBuffer("image/png");
+		const webpBuf = await new Bun.Image(pngBuf).webp().buffer();
+		cropBuffer = Buffer.from(webpBuf);
 		_format = "webp";
 	}
 
@@ -384,7 +380,7 @@ export const aiRouter = {
 						tmpdir(),
 						`crop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
 					);
-					await fs.promises.writeFile(tmpPath, buffer);
+					await Bun.write(tmpPath, buffer);
 					try {
 						const { detectPerson } = await import("dghs-imgutils-rs");
 						const detections = await detectPerson(tmpPath);
@@ -397,7 +393,9 @@ export const aiRouter = {
 
 						return { detections: resultDetections };
 					} finally {
-						await fs.promises.unlink(tmpPath).catch(() => {});
+						await Bun.file(tmpPath)
+							.delete()
+							.catch(() => {});
 					}
 				}
 

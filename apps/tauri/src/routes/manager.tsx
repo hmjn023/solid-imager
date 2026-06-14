@@ -23,7 +23,7 @@ import {
 	updateIp,
 } from "~/infrastructure/api-clients/ips-api";
 import {
-	deleteMedia,
+	bulkDeleteMedia,
 	findDuplicateMedia,
 } from "~/infrastructure/api-clients/media-api";
 import {
@@ -58,7 +58,7 @@ const managerActions = {
 	scanBatchTaggingTargets,
 	startBatchTaggingWithIds,
 	findDuplicateMedia,
-	deleteMedia,
+	bulkDeleteMedia,
 };
 
 export const Route = createFileRoute("/manager")({
