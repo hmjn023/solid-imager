@@ -6,6 +6,7 @@ export {
 	moveMedia,
 	searchMedia,
 	syncMediaItems,
+	bulkDeleteMedia,
 } from "~/api/media-api";
 
 import type { DownloadItem, UpdateMediaRequest } from "@solid-imager/core/domain/media/schemas";
