@@ -32,7 +32,11 @@ export type SourceMediaScreenProps = {
 	/** Render a single media grid item. */
 	renderItem: (
 		media: Media,
-		options: { onContextMenu: () => void },
+		options: {
+			onContextMenu: () => void;
+			isBulkSelectMode?: boolean;
+			isSelected?: boolean;
+		},
 	) => JSX.Element;
 	renderJobProgress?: (props: {
 		jobProgress: () =>
@@ -58,6 +62,9 @@ export type SourceMediaScreenProps = {
 	enableVirtualization?: boolean;
 	/** Show "Open in New Tab" context menu item. Default: false. */
 	showOpenInNewTab?: boolean;
+	onToggleSelect?: (mediaId: string) => void;
+	isBulkSelectMode?: () => boolean;
+	isSelected?: (mediaId: string) => boolean;
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
@@ -133,6 +140,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					onDelete={page().handleDelete}
 					onLoadMore={() => page().mediaQuery.fetchNextPage()}
 					onSyncSingleMedia={page().handleSyncSingleMedia}
+					onToggleSelect={props.onToggleSelect}
+					isBulkSelectMode={props.isBulkSelectMode}
+					isSelected={props.isSelected}
 					hasNextPage={page().mediaQuery.hasNextPage}
 					queryError={page().mediaQuery.error ?? null}
 					renderItem={props.renderItem}

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { updateMediaRequestSchema } from "@solid-imager/core/domain/media/schemas";
 import { services } from "~/application/registry";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -100,8 +101,7 @@ export const BulkOperationService = {
 		}
 		const basePath = (source.connectionInfo as { path: string }).path;
 
-		const pathUpdates: { id: string; filePath: string; fileName: string }[] =
-			[];
+		const pathUpdates: { id: string; filePath: string; fileName: string }[] = [];
 
 		for (const mediaId of mediaIds) {
 			const media = await mediaRepo.findById(mediaId);
@@ -159,6 +159,74 @@ export const BulkOperationService = {
 		}
 		if (tagsToAdd.length > 0) {
 			await mediaRepo.bulkAddTags(mediaIds, tagsToAdd);
+		}
+	},
+
+	/**
+	 * Performs a bulk copy operation to copy multiple media items to a target media source.
+	 */
+	async bulkCopyToSource(
+		mediaSourceId: string,
+		mediaIds: string[],
+		targetSourceId: string,
+	) {
+		const mediaRepo = services.getMediaRepository();
+		const { MediaService } = await import("~/application/services/media-service");
+
+		// セキュリティチェック
+		for (const mediaId of mediaIds) {
+			const media = await mediaRepo.findById(mediaId);
+			if (!media || media.mediaSourceId !== mediaSourceId) {
+				throw new Error(
+					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
+				);
+			}
+		}
+
+		const { asyncPool } = await import("@solid-imager/core/utils/async-pool");
+		const processCopy = async (mediaId: string) => {
+			await MediaService.copyMedia(mediaId, targetSourceId);
+		};
+
+		const poolResults = await asyncPool(mediaIds, 5, processCopy);
+		const failures = poolResults.filter((r) => r.status === "rejected");
+		if (failures.length > 0) {
+			logger.error({ failures }, "Some copy operations failed during bulk copy");
+			throw new Error(`Failed to copy ${failures.length} media items.`);
+		}
+	},
+
+	/**
+	 * Performs a bulk move operation to move multiple media items to a target media source.
+	 */
+	async bulkMoveToSource(
+		mediaSourceId: string,
+		mediaIds: string[],
+		targetSourceId: string,
+	) {
+		const mediaRepo = services.getMediaRepository();
+		const { MediaService } = await import("~/application/services/media-service");
+
+		// セキュリティチェック
+		for (const mediaId of mediaIds) {
+			const media = await mediaRepo.findById(mediaId);
+			if (!media || media.mediaSourceId !== mediaSourceId) {
+				throw new Error(
+					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
+				);
+			}
+		}
+
+		const { asyncPool } = await import("@solid-imager/core/utils/async-pool");
+		const processMove = async (mediaId: string) => {
+			await MediaService.moveMedia(mediaId, targetSourceId);
+		};
+
+		const poolResults = await asyncPool(mediaIds, 5, processMove);
+		const failures = poolResults.filter((r) => r.status === "rejected");
+		if (failures.length > 0) {
+			logger.error({ failures }, "Some move operations failed during bulk move");
+			throw new Error(`Failed to move ${failures.length} media items.`);
 		}
 	},
 };

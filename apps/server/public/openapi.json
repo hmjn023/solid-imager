@@ -927,6 +927,58 @@
         }
       }
     },
+    "/media/bulkCopyToSource": {
+      "post": {
+        "operationId": "media.bulkCopyToSource",
+        "summary": "bulkCopyToSource",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/bulkMoveToSource": {
+      "post": {
+        "operationId": "media.bulkMoveToSource",
+        "summary": "bulkMoveToSource",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/categories/list": {
       "post": {
         "operationId": "categories.list",

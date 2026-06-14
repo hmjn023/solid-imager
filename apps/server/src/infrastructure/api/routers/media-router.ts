@@ -5,6 +5,8 @@ import {
 	bulkEditMediaRequestSchema,
 	bulkMoveMediaRequestSchema,
 	bulkTagMediaRequestSchema,
+	bulkCopyToSourceMediaRequestSchema,
+	bulkMoveToSourceMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	mediaSearchRequestSchema,
 	updateMediaRequestSchema,
@@ -295,4 +297,32 @@ export const mediaRouter = {
 		);
 		return { success: true };
 	}),
+
+	/**
+	 * Bulk copy multiple media items to another source
+	 */
+	bulkCopyToSource: os
+		.input(bulkCopyToSourceMediaRequestSchema)
+		.handler(async ({ input }) => {
+			await BulkOperationService.bulkCopyToSource(
+				input.mediaSourceId,
+				input.mediaIds,
+				input.targetSourceId,
+			);
+			return { success: true };
+		}),
+
+	/**
+	 * Bulk move multiple media items to another source
+	 */
+	bulkMoveToSource: os
+		.input(bulkMoveToSourceMediaRequestSchema)
+		.handler(async ({ input }) => {
+			await BulkOperationService.bulkMoveToSource(
+				input.mediaSourceId,
+				input.mediaIds,
+				input.targetSourceId,
+			);
+			return { success: true };
+		}),
 };

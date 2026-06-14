@@ -644,3 +644,26 @@ export const bulkTagMediaRequestSchema = z.object({
 	tagsToRemove: z.array(z.string().uuid("Invalid tag ID format")),
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
+
+export const bulkCopyToSourceMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+	targetSourceId: z.string().uuid("Invalid target source ID format"),
+});
+export type BulkCopyToSourceMediaRequest = z.infer<
+	typeof bulkCopyToSourceMediaRequestSchema
+>;
+
+export const bulkMoveToSourceMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+	targetSourceId: z.string().uuid("Invalid target source ID format"),
+});
+export type BulkMoveToSourceMediaRequest = z.infer<
+	typeof bulkMoveToSourceMediaRequestSchema
+>;
+

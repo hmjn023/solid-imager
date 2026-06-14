@@ -35,6 +35,9 @@ type SourceMediaGridProps = {
 	onDelete?: (mediaId: string) => void;
 	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
 	onSyncSingleMedia?: (mediaId: string) => void;
+	onToggleSelect?: (mediaId: string) => void;
+	isBulkSelectMode?: () => boolean;
+	isSelected?: (mediaId: string) => boolean;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
 	/** Whether there are more pages to load. */
 	hasNextPage?: boolean;
@@ -43,7 +46,11 @@ type SourceMediaGridProps = {
 	/** Render a single media grid item. */
 	renderItem: (
 		media: Media,
-		options: { onContextMenu: () => void },
+		options: {
+			onContextMenu: () => void;
+			isBulkSelectMode?: boolean;
+			isSelected?: boolean;
+		},
 	) => JSX.Element;
 	/** Enable virtualization for large lists. Default: false. */
 	enableVirtualization?: boolean;
@@ -202,6 +209,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							{(media) =>
 								props.renderItem(media, {
 									onContextMenu: onContextMenuHandler(media.id),
+									isBulkSelectMode: props.isBulkSelectMode?.(),
+									isSelected: props.isSelected?.(media.id),
 								})
 							}
 						</For>
@@ -226,6 +235,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{(media) =>
 										props.renderItem(media, {
 											onContextMenu: onContextMenuHandler(media.id),
+											isBulkSelectMode: props.isBulkSelectMode?.(),
+											isSelected: props.isSelected?.(media.id),
 										})
 									}
 								</For>
@@ -273,6 +284,22 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							}
 							when={contextMenuMediaId()}
 						>
+							<ContextMenuItem
+								onSelect={() => {
+									const id = contextMenuMediaId();
+									if (id) props.onToggleSelect?.(id);
+								}}
+							>
+								{(() => {
+									const id = contextMenuMediaId();
+									return id && props.isBulkSelectMode?.() && props.isSelected?.(id)
+										? "Deselect"
+										: "Select";
+								})()}
+							</ContextMenuItem>
+
+							<ContextMenuSeparator />
+
 							<Show when={showOpenInNewTab()}>
 								<ContextMenuItem
 									onSelect={() => {

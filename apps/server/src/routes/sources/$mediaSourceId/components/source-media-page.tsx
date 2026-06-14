@@ -1,8 +1,10 @@
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useParams } from "@tanstack/solid-router";
+import { createSignal, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
+import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -31,6 +33,7 @@ import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
+import { Button } from "@solid-imager/ui/button";
 
 const PresetClient = createPresetClient(rawPresetClient);
 
@@ -40,39 +43,114 @@ export function SourceMediaPage() {
 
 	const transport = createServerTransport(mediaSourceId);
 
+	// 一括選択用シグナル
+	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
+	const [selectedMediaIds, setSelectedMediaIds] = createSignal<string[]>([]);
+	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
+
+	const handleToggleSelect = (mediaId: string) => {
+		setIsBulkSelectMode(true);
+		setSelectedMediaIds((prev) =>
+			prev.includes(mediaId)
+				? prev.filter((id) => id !== mediaId)
+				: [...prev, mediaId],
+		);
+	};
+
+	const isSelected = (mediaId: string) => selectedMediaIds().includes(mediaId);
+
+	const handleCancelSelect = () => {
+		setIsBulkSelectMode(false);
+		setSelectedMediaIds([]);
+	};
+
+	// 一括操作成功時のコールバック
+	const handleBulkSuccess = () => {
+		handleCancelSelect();
+		// リロードさせるため、transportの通知を利用するか、リフレッシュをトリガーする
+		// ここでは SSE Transport が自動検知するか、またはページ再読込が必要だが、
+		// TanStack Router を介した再読み込みや refetch はクライアントのキャッシュをクリアする。
+		// 一般的には window.location.reload() が確実で手っ取り早いが、
+		// queryClient を使った invalidation の方が洗練されている。
+		// 簡易的に location.reload() で全画面を再読込する
+		window.location.reload();
+	};
+
 	return (
-		<SourceMediaPageComponent
-			enableVirtualization
-			mediaSourceId={mediaSourceId}
-			transport={transport}
-			presetClient={PresetClient}
-			actions={{
-				searchMedia,
-				uploadMedia: (sourceId, file, opts) =>
-					uploadMedia(sourceId, file, opts),
-				deleteMedia,
-				copyMedia,
-				moveMedia,
-				syncMediaItems,
-				startDownloadJobs,
-				fetchSourceDump,
-				restoreSource,
-				importSourceZip,
-			}}
-			getSearchCondition={getSearchCondition}
-			sortBy={() => searchState.sortBy}
-			sortOrder={() => searchState.sortOrder}
-			tagsQueryOptions={tagsQueryOptions}
-			projectsQueryOptions={allProjectsQueryOptions}
-			ipsQueryOptions={allIpsQueryOptions}
-			charactersQueryOptions={allCharactersQueryOptions}
-			authorsQueryOptions={allAuthorsQueryOptions}
-			renderItem={(media, { onContextMenu }) => (
-				<MediaGridItem media={media} onContextMenu={onContextMenu} />
-			)}
-			moveCopyDialogComponent={MoveCopyMediaDialog}
-			uploadModalComponent={UploadMediaModal}
-			showOpenInNewTab
-		/>
+		<>
+			<SourceMediaPageComponent
+				enableVirtualization
+				mediaSourceId={mediaSourceId}
+				transport={transport}
+				presetClient={PresetClient}
+				actions={{
+					searchMedia,
+					uploadMedia: (sourceId, file, opts) =>
+						uploadMedia(sourceId, file, opts),
+					deleteMedia,
+					copyMedia,
+					moveMedia,
+					syncMediaItems,
+					startDownloadJobs,
+					fetchSourceDump,
+					restoreSource,
+					importSourceZip,
+				}}
+				getSearchCondition={getSearchCondition}
+				sortBy={() => searchState.sortBy}
+				sortOrder={() => searchState.sortOrder}
+				tagsQueryOptions={tagsQueryOptions}
+				projectsQueryOptions={allProjectsQueryOptions}
+				ipsQueryOptions={allIpsQueryOptions}
+				charactersQueryOptions={allCharactersQueryOptions}
+				authorsQueryOptions={allAuthorsQueryOptions}
+				onToggleSelect={handleToggleSelect}
+				isBulkSelectMode={isBulkSelectMode}
+				isSelected={isSelected}
+				renderItem={(media, options) => (
+					<MediaGridItem
+						media={media}
+						onContextMenu={options.onContextMenu}
+						isBulkSelectMode={options.isBulkSelectMode}
+						isSelected={options.isSelected}
+						onToggleSelect={() => handleToggleSelect(media.id)}
+					/>
+				)}
+				moveCopyDialogComponent={MoveCopyMediaDialog}
+				uploadModalComponent={UploadMediaModal}
+				showOpenInNewTab
+			/>
+
+			{/* 一括選択ツールバー */}
+			<Show when={isBulkSelectMode() && selectedMediaIds().length > 0}>
+				<div class="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 border border-primary/20 bg-background/95 px-6 py-3 shadow-lg backdrop-blur rounded-full">
+					<span class="font-medium text-sm">
+						{selectedMediaIds().length} 件選択中
+					</span>
+					<Button
+						onClick={() => setIsBulkActionOpen(true)}
+						size="sm"
+					>
+						一括操作を実行
+					</Button>
+					<Button
+						onClick={handleCancelSelect}
+						variant="outline"
+						size="sm"
+					>
+						解除
+					</Button>
+				</div>
+			</Show>
+
+			{/* 一括操作ダイアログ */}
+			<BulkActionDialog
+				open={isBulkActionOpen()}
+				onOpenChange={setIsBulkActionOpen}
+				mediaSourceId={mediaSourceId() || ""}
+				mediaIds={selectedMediaIds()}
+				onSuccess={handleBulkSuccess}
+			/>
+		</>
 	);
 }

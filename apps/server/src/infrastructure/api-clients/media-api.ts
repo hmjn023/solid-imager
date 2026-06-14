@@ -163,3 +163,43 @@ export function findDuplicateMedia(mediaSourceId?: string) {
 		mediaSourceId ? { mediaSourceId } : undefined,
 	);
 }
+
+export function bulkDeleteMedia(sourceId: string, mediaIds: string[]) {
+	return orpc.media.bulkDelete({ mediaSourceId: sourceId, mediaIds });
+}
+
+export function bulkCopyToSource(
+	sourceId: string,
+	mediaIds: string[],
+	targetSourceId: string,
+) {
+	return orpc.media.bulkCopyToSource({
+		mediaSourceId: sourceId,
+		mediaIds,
+		targetSourceId,
+	});
+}
+
+export function bulkMoveToSource(
+	sourceId: string,
+	mediaIds: string[],
+	targetSourceId: string,
+) {
+	return orpc.media.bulkMoveToSource({
+		mediaSourceId: sourceId,
+		mediaIds,
+		targetSourceId,
+	});
+}
+
+export function bulkMoveMedia(
+	sourceId: string,
+	mediaIds: string[],
+	destinationPath: string,
+) {
+	return orpc.media.bulkMove({
+		mediaSourceId: sourceId,
+		mediaIds,
+		destinationPath,
+	});
+}

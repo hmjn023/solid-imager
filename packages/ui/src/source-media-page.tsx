@@ -41,6 +41,9 @@ export type SourceMediaPageProps = {
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
 	renderItem: SourceMediaScreenProps["renderItem"];
 	showOpenInNewTab?: boolean;
+	onToggleSelect?: (mediaId: string) => void;
+	isBulkSelectMode?: () => boolean;
+	isSelected?: (mediaId: string) => boolean;
 };
 
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
@@ -94,6 +97,9 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			moveCopyDialogComponent={props.moveCopyDialogComponent}
 			uploadModalComponent={props.uploadModalComponent}
 			showOpenInNewTab={props.showOpenInNewTab}
+			onToggleSelect={props.onToggleSelect}
+			isBulkSelectMode={props.isBulkSelectMode}
+			isSelected={props.isSelected}
 		/>
 	);
 }
