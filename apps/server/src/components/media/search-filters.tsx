@@ -59,7 +59,7 @@ function FilterSection<T>(props: {
 	placeholder?: string;
 	badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
-	const [value, _setValue] = createSignal<T | null>(null);
+	const [value, setValue] = createSignal<T | null>(null);
 	const [filterText, setFilterText] = createDebouncedSignal("", 150);
 
 	const filteredItems = createMemo(() => {
@@ -108,6 +108,11 @@ function FilterSection<T>(props: {
 				onChange={(val) => {
 					if (val) {
 						props.onSelect(val);
+						setValue(() => val);
+						requestAnimationFrame(() => {
+							setValue(null);
+							setFilterText("");
+						});
 					}
 				}}
 				onInputChange={(text) => setFilterText(text)}
