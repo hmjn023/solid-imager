@@ -4,13 +4,16 @@
  * Feature 17.2: メディア処理 / 情報抽出
  */
 
+import sharp from "sharp";
+
+// Optimize sharp memory usage
+// Default cache is too aggressive for development environment
+sharp.cache({ memory: 100, items: 200, files: 20 });
+
 import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import ExifReader from "exifreader";
-
-import * as text from "png-chunk-text";
-import extract from "png-chunks-extract";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
@@ -33,7 +36,7 @@ export class LocalImageProcessor implements IImageProcessor {
 		mediaPath: string,
 		outputPath: string,
 		size: number,
-		_quality: number,
+		quality: number,
 	): Promise<void> {
 		const path = await import("node:path");
 		const ext = path.extname(mediaPath).toLowerCase();
@@ -59,6 +62,7 @@ export class LocalImageProcessor implements IImageProcessor {
 
 			const ffmpeg = getFfmpeg();
 			const os = (await import("node:os")).default;
+			const fs = (await import("node:fs/promises")).default;
 
 			// Use a temp file for the screenshot
 
@@ -80,11 +84,11 @@ export class LocalImageProcessor implements IImageProcessor {
 						.on("error", (err) => reject(err));
 				});
 
-				// Process the screenshot with Bun.Image (convert to webp)
-				await new Bun.Image(tempScreenshot)
+				// Process the screenshot with sharp (convert to webp)
+				await sharp(tempScreenshot)
 					.resize(size, size, { fit: "inside", withoutEnlargement: true })
-					.webp({ quality: _quality })
-					.write(outputPath);
+					.webp({ quality })
+					.toFile(outputPath);
 
 				logger.info(
 					{ outputPath },
@@ -98,27 +102,19 @@ export class LocalImageProcessor implements IImageProcessor {
 				throw error;
 			} finally {
 				// Clean up temp file
-				Bun.file(tempScreenshot)
-					.delete()
-					.catch((err) =>
-						logger.warn(
-							{ err },
-							"Failed to clean up temporary screenshot file",
-						),
-					);
+				fs.unlink(tempScreenshot).catch((err) =>
+					logger.warn({ err }, "Failed to clean up temporary screenshot file"),
+				);
 			}
 			return;
 		}
 
 		// Default image processing
 		try {
-			// Use buffer to allow Bun.Image to auto-detect format from magic bytes,
-			// avoiding issues with mismatched extensions (e.g. JPEG data saved as .png)
-			const buffer = Buffer.from(await Bun.file(mediaPath).arrayBuffer());
-			await new Bun.Image(buffer)
+			await sharp(mediaPath)
 				.resize(size, size, { fit: "inside", withoutEnlargement: true })
-				.webp({ quality: _quality })
-				.write(outputPath);
+				.webp({ quality })
+				.toFile(outputPath);
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaPath },
@@ -163,90 +159,34 @@ export class LocalImageProcessor implements IImageProcessor {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
-			const bytes = await Bun.file(mediaPath).bytes();
-			const fileBuffer = Buffer.from(
-				bytes.buffer,
-				bytes.byteOffset,
-				bytes.byteLength,
-			);
+			const metadata = await sharp(mediaPath).metadata();
 
 			const comments: ImageMetadataComment[] = [];
-
-			// 1. Extract PNG chunks (tEXt) — detect by magic bytes, not extension
-			// PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
-			const isPng =
-				fileBuffer.length >= 8 &&
-				fileBuffer[0] === 0x89 &&
-				fileBuffer[1] === 0x50 &&
-				fileBuffer[2] === 0x4e &&
-				fileBuffer[3] === 0x47;
-			if (isPng) {
-				try {
-					const chunks = extract(fileBuffer);
-					for (const chunk of chunks) {
-						if (chunk.name === "tEXt") {
-							try {
-								const decoded = text.decode(chunk.data);
-								comments.push({
-									keyword: decoded.keyword,
-									text: decoded.text,
-								});
-							} catch (e) {
-								logger.warn(
-									{ err: e, mediaPath },
-									"Failed to decode PNG tEXt chunk",
-								);
-							}
-						}
-					}
-				} catch (e) {
-					logger.error({ err: e, mediaPath }, "Failed to extract PNG chunks");
-				}
+			if (metadata.comments) {
+				comments.push(...metadata.comments);
 			}
-
-			// 2. Extract EXIF data (UserComment, ImageDescription)
-			try {
-				const tags = ExifReader.load(fileBuffer);
-
-				if (tags.UserComment) {
-					const comment =
-						(tags.UserComment as any).description ||
-						(tags.UserComment as any).value;
-					const commentText = Array.isArray(comment)
-						? comment.join("")
-						: typeof comment === "string"
-							? comment
+			// Attempt to read from EXIF fields
+			const exif = isRecord(metadata.exif) ? metadata.exif.IFD0 : undefined;
+			if (isRecord(exif)) {
+				const userComment = exif.UserComment;
+				if (userComment) {
+					// It might be a Buffer, so convert it
+					const comment = Buffer.isBuffer(userComment)
+						? userComment.toString("utf-8")
+						: typeof userComment === "string"
+							? userComment
 							: "";
-
-					if (commentText) {
-						// Filter out standard EXIF ASCII prefix if any
-						const cleanComment = commentText.replace(
-							/^(ASCII\0\0\0|UNICODE\0\0\0)/,
-							"",
-						);
-						comments.push({ keyword: "workflow", text: cleanComment.trim() });
+					if (comment) {
+						comments.push({ keyword: "workflow", text: comment.trim() });
 					}
 				}
-
-				if (tags.ImageDescription) {
-					const description =
-						tags.ImageDescription.description || tags.ImageDescription.value;
-					const descText = Array.isArray(description)
-						? description.join("")
-						: typeof description === "string"
-							? description
-							: "";
-
-					if (descText) {
-						comments.push({
-							keyword: "prompt",
-							text: descText.trim(),
-						});
-					}
+				const imageDescription = exif.ImageDescription;
+				if (typeof imageDescription === "string") {
+					comments.push({
+						keyword: "prompt",
+						text: imageDescription.trim(),
+					});
 				}
-			} catch (e) {
-				// Non-fatal, many files won't have EXIF data
-				logger.debug({ err: e, mediaPath }, "No EXIF tags parsed");
 			}
 
 			// Get tag extraction options from config with fallback
@@ -318,8 +258,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const buffer = Buffer.from(await Bun.file(mediaPath).arrayBuffer());
-		const metadata = await new Bun.Image(buffer).metadata();
+		const metadata = await sharp(mediaPath).metadata();
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}
@@ -376,7 +315,7 @@ export const AudioProcessor = {
 	 * Generates a waveform visualization for an audio file.
 	 * @param {string} _audioPath - The path to the source audio file.
 	 * @param {string} _outputPath - The path where the waveform image will be saved.
-	 * @returns {Promise<void>} A promise that resolves when the waveform has been generated.
+	 * @returns {Promise<void>} A promise that resolves when the waveform image has been generated.
 	 */
 	generateWaveform(_audioPath: string, _outputPath: string): Promise<void> {
 		// TODO: Generate audio waveform visualization
