@@ -1125,8 +1125,6 @@ export const BackupService = {
 
 		if (mode === "lancedb") {
 			const driver = getDriver(mediaSource);
-			const { PassThrough } = await import("node:stream");
-			const { spawn } = await import("node:child_process");
 
 			const { writeToLanceDB, cleanupLanceDBDir } = await import(
 				"~/application/services/lancedb-dump-service"
@@ -1182,30 +1180,34 @@ export const BackupService = {
 					: undefined,
 			});
 
-			const passThrough = new PassThrough();
+			try {
+				const { Glob } = await import("bun");
+				const glob = new Glob("**/*");
+				const archiveMap: Record<string, Uint8Array> = {};
 
-			const tarProc = spawn("tar", ["-czf", "-", "-C", lanceDbDir, "."], {
-				stdio: ["ignore", "pipe", "ignore"],
-			});
-
-			tarProc.stdout.pipe(passThrough);
-
-			tarProc.on("error", (err: Error) => {
-				logger.error({ err }, "Failed to spawn tar for LanceDB dump");
-				passThrough.destroy(err);
-			});
-
-			tarProc.on("close", async (code: number | null) => {
-				if (code !== 0) {
-					logger.error({ code }, "tar process exited with non-zero code");
-					passThrough.destroy(new Error(`tar exited with code ${code}`));
-				} else {
-					passThrough.end();
+				for await (const file of glob.scan({ cwd: lanceDbDir })) {
+					const fullPath = path.join(lanceDbDir, file);
+					const stats = await fs.stat(fullPath);
+					if (stats.isFile()) {
+						archiveMap[file] = await Bun.file(fullPath).bytes();
+					}
 				}
-				await cleanupLanceDBDir(lanceDbDir);
-			});
 
-			return nodeStreamToWebReadable(passThrough);
+				const archive = new Bun.Archive(archiveMap, { compress: "gzip" });
+				const bytes = await archive.bytes();
+
+				return new ReadableStream({
+					start(controller) {
+						controller.enqueue(bytes);
+						controller.close();
+					},
+				});
+			} catch (err) {
+				logger.error({ err }, "Failed to create Bun.Archive for LanceDB dump");
+				throw err;
+			} finally {
+				await cleanupLanceDBDir(lanceDbDir);
+			}
 		}
 
 		// ZIP Mode: Streaming Implementation

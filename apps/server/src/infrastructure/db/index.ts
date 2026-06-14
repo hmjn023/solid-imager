@@ -1,30 +1,28 @@
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
-import { drizzle as drizzleNodePostgres } from "drizzle-orm/node-postgres";
+import { SQL } from "bun";
+import { drizzle as drizzleBunSql } from "drizzle-orm/bun-sql";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
-import { Pool } from "pg";
 import * as schema from "./schema";
 
-export type NodePostgresDb = ReturnType<
-	typeof drizzleNodePostgres<typeof schema>
->;
+export type BunSqlDb = ReturnType<typeof drizzleBunSql<typeof schema>>;
 export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
-export type DbInstance = NodePostgresDb | PgLiteDb;
+export type DbInstance = BunSqlDb | PgLiteDb;
 
 /**
  * Type representing either a database instance or a transaction client.
  * In Drizzle, both share the same common interface for queries.
  */
-export type TransactionClient = NodePostgresDb | PgLiteDb;
+export type TransactionClient = BunSqlDb | PgLiteDb;
 
 let _db: DbInstance | null = null;
-let _queryClient: Pool | PGlite | null = null;
+let _queryClient: SQL | PGlite | null = null;
 
 /**
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
  * It reads database connection details from environment variables.
- * @returns {NodePostgresDb | PgLiteDb} The initialized Drizzle ORM database instance.
+ * @returns {BunSqlDb | PgLiteDb} The initialized Drizzle ORM database instance.
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
@@ -48,8 +46,9 @@ function initializeDb() {
 		console.log(
 			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(pglitePath)})`,
 		);
-		_queryClient = new PGlite(pglitePath);
-		_db = drizzlePglite(_queryClient, { schema });
+		const client = new PGlite(pglitePath);
+		_queryClient = client;
+		_db = drizzlePglite(client, { schema });
 		return _db;
 	}
 
@@ -65,8 +64,9 @@ function initializeDb() {
 	}
 
 	const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-	_queryClient = new Pool({ connectionString });
-	_db = drizzleNodePostgres(_queryClient, { schema });
+	const client = new SQL(connectionString);
+	_queryClient = client;
+	_db = drizzleBunSql({ client, schema });
 	return _db;
 }
 
@@ -74,7 +74,7 @@ function initializeDb() {
  * A proxy object for the Drizzle ORM database instance.
  * It ensures that the database is initialized lazily upon first access.
  */
-export const db = new Proxy({} as NodePostgresDb | PgLiteDb, {
+export const db = new Proxy({} as BunSqlDb | PgLiteDb, {
 	get(_target, prop) {
 		const instance = initializeDb();
 		const value = instance[prop as keyof typeof instance];

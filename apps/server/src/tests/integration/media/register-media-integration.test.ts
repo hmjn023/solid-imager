@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import sharp from "sharp";
+
 import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
@@ -27,18 +27,11 @@ describe("registerExistingMedia Integration", () => {
 			path.join(fixturesDir, "test-source-register-"),
 		);
 
-		// Create a dummy image file
+		// Create a dummy image file (1x1 red PNG)
 		const imagePath = path.join(tempSourceDir, testImageName);
-		await sharp({
-			create: {
-				width: 100,
-				height: 100,
-				channels: 4,
-				background: { r: 255, g: 0, b: 0, alpha: 1 },
-			},
-		})
-			.png()
-			.toFile(imagePath);
+		const dummyPngBase64 =
+			"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+		await fs.writeFile(imagePath, Buffer.from(dummyPngBase64, "base64"));
 
 		// Insert a media source
 		[mediaSource] = await db
@@ -70,8 +63,8 @@ describe("registerExistingMedia Integration", () => {
 			await MediaService.registerExistingMedia(mediaSource.id, tempSourceDir);
 
 			// Verify media was added to DB
-			const ExpectedWidth = 100;
-			const ExpectedHeight = 100;
+			const ExpectedWidth = 1;
+			const ExpectedHeight = 1;
 			const mediaList = await MediaService.getAllMedia(mediaSource.id);
 			expect(mediaList).toHaveLength(1);
 			expect(mediaList[0].fileName).toBe(testImageName);
