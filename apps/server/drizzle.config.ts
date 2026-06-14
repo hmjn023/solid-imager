@@ -23,9 +23,7 @@ if (DB_HOST === "pglite") {
 } else {
   // PostgreSQL用の設定
   if (!(DB_HOST && DB_PORT && DB_USER && DB_PASSWORD && DB_DATABASE)) {
-    throw new Error(
-      "Database environment variables are not set for PostgreSQL"
-    );
+    throw new Error("Database environment variables are not set for PostgreSQL");
   }
 
   const databaseUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}`;

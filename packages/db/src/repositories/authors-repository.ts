@@ -20,22 +20,14 @@ export function createAuthorsRepository(
 
   return {
     list: async (): Promise<AuthorListEntry[]> => {
-      const rows = await getExecutor()
-        .select()
-        .from(authors)
-        .orderBy(desc(authors.name));
+      const rows = await getExecutor().select().from(authors).orderBy(desc(authors.name));
       return rows.map(parseAuthor).filter((a): a is AuthorListEntry => a !== null);
     },
     search: async (query: string): Promise<AuthorListEntry[]> => {
       const rows = await getExecutor()
         .select()
         .from(authors)
-        .where(
-          or(
-            like(authors.name, `%${query}%`),
-            like(authors.accountId, `%${query}%`),
-          ),
-        )
+        .where(or(like(authors.name, `%${query}%`), like(authors.accountId, `%${query}%`)))
         .orderBy(desc(authors.name));
       return rows.map(parseAuthor).filter((a): a is AuthorListEntry => a !== null);
     },

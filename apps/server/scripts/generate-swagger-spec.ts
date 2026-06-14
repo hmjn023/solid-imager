@@ -7,14 +7,38 @@ import { openApiTags } from "../src/infrastructure/api/openapi-tags";
 
 // エンドポイントごとの詳細な説明マップ
 const endpointDocs: Record<string, { summary: string; description?: string }> = {
-  "sources.list": { summary: "メディアソース一覧取得", description: "登録されているすべてのメディアソース（ローカル、SFTP、S3等）を取得します。" },
-  "sources.get": { summary: "メディアソース詳細取得", description: "UUIDを指定して特定のメディアソースの情報を取得します。" },
-  "sources.create": { summary: "メディアソース作成", description: "新しいメディアソースを登録します。" },
-  "sources.update": { summary: "メディアソース更新", description: "既存のメディアソースの設定を更新します。" },
-  "sources.delete": { summary: "メディアソース削除", description: "メディアソースを削除し、監視を停止します。" },
-  "sources.status": { summary: "メディアソースの状態取得", description: "スキャン進捗やファイル数などの統計情報を取得します。" },
-  "media.search": { summary: "メディア検索", description: "タグ、プロジェクト、キャラクターなどの条件でメディアを検索します。" },
-  "ai.tag": { summary: "AI自動タグ付け", description: "画像を解析して、関連するタグ（DeepDanbooru等）を自動生成します。" },
+  "sources.list": {
+    summary: "メディアソース一覧取得",
+    description: "登録されているすべてのメディアソース（ローカル、SFTP、S3等）を取得します。",
+  },
+  "sources.get": {
+    summary: "メディアソース詳細取得",
+    description: "UUIDを指定して特定のメディアソースの情報を取得します。",
+  },
+  "sources.create": {
+    summary: "メディアソース作成",
+    description: "新しいメディアソースを登録します。",
+  },
+  "sources.update": {
+    summary: "メディアソース更新",
+    description: "既存のメディアソースの設定を更新します。",
+  },
+  "sources.delete": {
+    summary: "メディアソース削除",
+    description: "メディアソースを削除し、監視を停止します。",
+  },
+  "sources.status": {
+    summary: "メディアソースの状態取得",
+    description: "スキャン進捗やファイル数などの統計情報を取得します。",
+  },
+  "media.search": {
+    summary: "メディア検索",
+    description: "タグ、プロジェクト、キャラクターなどの条件でメディアを検索します。",
+  },
+  "ai.tag": {
+    summary: "AI自動タグ付け",
+    description: "画像を解析して、関連するタグ（DeepDanbooru等）を自動生成します。",
+  },
   // 必要に応じて追加してください
 };
 

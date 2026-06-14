@@ -49,7 +49,9 @@ export function SortControls(props: SortControlsProps) {
 							</SelectItem>
 						)}
 						onChange={(value) =>
-							props.onSortByChange(parseSelectValue(value, SORT_OPTIONS, "date"))
+							props.onSortByChange(
+								parseSelectValue(value, SORT_OPTIONS, "date"),
+							)
 						}
 						options={["date", "name", "size", "rating", "viewCount"]}
 						placeholder="項目"
@@ -58,7 +60,13 @@ export function SortControls(props: SortControlsProps) {
 						<SelectTrigger>
 							<SelectValue<string>>
 								{(state) =>
-									getSortLabel(parseSelectValue(state.selectedOption(), SORT_OPTIONS, "date"))
+									getSortLabel(
+										parseSelectValue(
+											state.selectedOption(),
+											SORT_OPTIONS,
+											"date",
+										),
+									)
 								}
 							</SelectValue>
 						</SelectTrigger>

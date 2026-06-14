@@ -4,12 +4,7 @@
   "entryPointStrategy": "expand",
   "out": "./public/docs",
   "tsconfig": "./tsconfig.doc.json",
-  "exclude": [
-    "**/node_modules/**",
-    "**/*.spec.ts",
-    "**/*.test.ts",
-    "**/tests/**"
-  ],
+  "exclude": ["**/node_modules/**", "**/*.spec.ts", "**/*.test.ts", "**/tests/**"],
   "name": "Solid Imager Documentation",
   "includeVersion": true,
   "cleanOutputDir": true,

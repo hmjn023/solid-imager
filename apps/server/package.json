@@ -44,7 +44,6 @@
     "@solid-imager/core": "workspace:*",
     "@solid-imager/db": "workspace:*",
     "@solid-imager/ui": "workspace:*",
-    "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#main",
     "@tanstack/router-plugin": "^1.168.14",
     "@tanstack/solid-form": "^1.33.0",
     "@tanstack/solid-query": "5.99.2",
@@ -56,6 +55,7 @@
     "apache-arrow": "^21.1.0",
     "archiver": "^8.0.0",
     "chokidar": "^5.0.0",
+    "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#main",
     "drizzle-orm": "^0.45.2",
     "fast-glob": "^3.3.3",
     "ffmpeg-static": "^5.3.0",
@@ -101,7 +101,7 @@
     "ultracite": "7.8.3",
     "vite": "^0.1.24",
     "vite-plugin-solid": "^2.11.12",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
-    "vite-plus": "^0.1.24"
+    "vite-plus": "^0.1.24",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
   }
 }

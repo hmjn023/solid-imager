@@ -35,10 +35,9 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const [isSubmitting, setIsSubmitting] = createSignal(false);
 	const [errorMsg, setErrorMsg] = createSignal("");
 
-	const [sources] = createResource<SafeMediaSource[], boolean>(
-		() => props.open,
-		async (isOpen) => {
-			if (!isOpen) return [];
+	const [sources] = createResource(
+		() => (props.open ? true : null),
+		async () => {
 			return await fetchMediaSources();
 		},
 		{ initialValue: [] },

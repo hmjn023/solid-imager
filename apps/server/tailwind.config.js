@@ -6,7 +6,7 @@ export default {
   content: [
     "./src/**/*.{ts,tsx}",
     "../tauri/src/**/*.{ts,tsx}",
-    "../../packages/ui/src/**/*.{ts,tsx}"
+    "../../packages/ui/src/**/*.{ts,tsx}",
   ],
   prefix: "",
   theme: {

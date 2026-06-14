@@ -29,15 +29,26 @@ function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 export class RustAiClient implements IAiClient {
 	private baseUrl: string;
 	private timeoutMs: number;
+	private client: ReturnType<typeof createRemoteOrpcClient> | null = null;
 
 	constructor(baseUrl = "", timeoutMs = 30_000) {
 		this.baseUrl = baseUrl;
 		this.timeoutMs = timeoutMs;
+		this.refreshClient();
 	}
 
 	updateConfig(config: { baseUrl: string; timeoutMs: number }) {
 		this.baseUrl = config.baseUrl;
 		this.timeoutMs = config.timeoutMs;
+		this.refreshClient();
+	}
+
+	private refreshClient() {
+		if (this.baseUrl) {
+			this.client = createRemoteOrpcClient(this.baseUrl, this.timeoutMs);
+		} else {
+			this.client = null;
+		}
 	}
 
 	getBaseUrl(): string {
@@ -47,9 +58,14 @@ export class RustAiClient implements IAiClient {
 	async healthCheck(): Promise<boolean> {
 		if (this.baseUrl) {
 			try {
-				const client = createRemoteOrpcClient(this.baseUrl, this.timeoutMs);
-				await client.config.get();
-				return true;
+				if (!this.client) {
+					this.refreshClient();
+				}
+				if (this.client) {
+					await this.client.config.get();
+					return true;
+				}
+				return false;
 			} catch {
 				return false;
 			}
@@ -102,12 +118,14 @@ export class RustAiClient implements IAiClient {
 		buffer: ArrayBuffer | Uint8Array,
 		fileName?: string,
 	): Promise<T> {
-		const client = createRemoteOrpcClient(this.baseUrl, this.timeoutMs);
+		if (!this.client) {
+			throw new Error("Client is not initialized (baseUrl is empty)");
+		}
 		const finalName = fileName || `image${this.getExtensionFromBuffer(buffer)}`;
 		const fileData =
 			buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
 		const file = new File([fileData as BlobPart], finalName);
-		return action(client, file);
+		return action(this.client, file);
 	}
 
 	private async withTempFile<T>(
@@ -206,8 +224,13 @@ export class RustAiClient implements IAiClient {
 		feature2: number[],
 	): Promise<CcipDifferenceResponse> {
 		if (this.baseUrl) {
-			const client = createRemoteOrpcClient(this.baseUrl, this.timeoutMs);
-			const result = await client.ai.ccipDifference({ feature1, feature2 });
+			if (!this.client) {
+				throw new Error("Client is not initialized (baseUrl is empty)");
+			}
+			const result = await this.client.ai.ccipDifference({
+				feature1,
+				feature2,
+			});
 			return ccipDifferenceResponseSchema.parse(result);
 		}
 

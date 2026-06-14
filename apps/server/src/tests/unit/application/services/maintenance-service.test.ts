@@ -304,12 +304,18 @@ describe("MaintenanceService", () => {
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
 				1,
 				undefined,
-				{ limit: 1000, offset: 0 },
+				{
+					limit: 1000,
+					offset: 0,
+				},
 			);
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
 				2,
 				undefined,
-				{ limit: 1000, offset: 1000 },
+				{
+					limit: 1000,
+					offset: 1000,
+				},
 			);
 			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
 		});

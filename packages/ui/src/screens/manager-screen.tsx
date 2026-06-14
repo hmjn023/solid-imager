@@ -1,5 +1,8 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { DuplicateGroup, Media } from "@solid-imager/core/domain/media/schemas";
+import type {
+	DuplicateGroup,
+	Media,
+} from "@solid-imager/core/domain/media/schemas";
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 import {
@@ -97,7 +100,12 @@ export function ManagerScreen(props: ManagerScreenProps) {
 		<div class="container mx-auto p-8">
 			<div class="mb-8 flex items-center justify-between">
 				<h1 class="font-bold text-3xl">Entity Manager</h1>
-				<Show when={manager().activeTab() !== "tagging" && manager().activeTab() !== "duplicates"}>
+				<Show
+					when={
+						manager().activeTab() !== "tagging" &&
+						manager().activeTab() !== "duplicates"
+					}
+				>
 					<Button onClick={manager().openCreateDialog}>Create New</Button>
 				</Show>
 			</div>
@@ -271,7 +279,8 @@ export function ManagerScreen(props: ManagerScreenProps) {
 						<CardHeader>
 							<CardTitle>Duplicate Image Detection</CardTitle>
 							<CardDescription>
-								Find duplicate images by filename pattern or source URL matching.
+								Find duplicate images by filename pattern or source URL
+								matching.
 							</CardDescription>
 						</CardHeader>
 						<CardContent class="space-y-4">
@@ -283,7 +292,9 @@ export function ManagerScreen(props: ManagerScreenProps) {
 											{selectProps.item.rawValue.name}
 										</SelectItem>
 									)}
-									onChange={(value) => manager().setDuplicateSourceId(value?.id)}
+									onChange={(value) =>
+										manager().setDuplicateSourceId(value?.id)
+									}
 									options={manager().sources()}
 									optionTextValue="name"
 									optionValue="id"
@@ -335,13 +346,24 @@ export function ManagerScreen(props: ManagerScreenProps) {
 								Duplicate Groups ({manager().duplicateGroups().length})
 							</h3>
 							<div class="flex gap-2">
-								<Button onClick={manager().selectKeepOldest} size="sm" variant="outline">
+								<Button
+									onClick={manager().selectKeepOldest}
+									size="sm"
+									variant="outline"
+								>
 									Keep Oldest
 								</Button>
-								<Button onClick={manager().selectKeepLargest} size="sm" variant="outline">
+								<Button
+									onClick={manager().selectKeepLargest}
+									size="sm"
+									variant="outline"
+								>
 									Keep Largest
 								</Button>
-								<Button onClick={manager().handleDeleteDuplicates} variant="destructive">
+								<Button
+									onClick={manager().handleDeleteDuplicates}
+									variant="destructive"
+								>
 									Delete {manager().deleteCount()} Duplicates
 								</Button>
 							</div>
@@ -367,7 +389,8 @@ export function ManagerScreen(props: ManagerScreenProps) {
 													{(item) => {
 														const thumbnailUrl = () =>
 															`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`;
-														const isKeep = () => manager().keepIds().has(item.id);
+														const isKeep = () =>
+															manager().keepIds().has(item.id);
 
 														return (
 															<button
@@ -393,7 +416,10 @@ export function ManagerScreen(props: ManagerScreenProps) {
 																		</div>
 																	</Show>
 																</div>
-																<p class="truncate font-medium text-xs" title={item.fileName}>
+																<p
+																	class="truncate font-medium text-xs"
+																	title={item.fileName}
+																>
 																	{item.fileName}
 																</p>
 																<p class="text-muted-foreground text-xs">
@@ -403,7 +429,9 @@ export function ManagerScreen(props: ManagerScreenProps) {
 																		: ""}
 																</p>
 																<p class="text-muted-foreground text-xs">
-																	{new Date(item.createdAt).toLocaleDateString()}
+																	{new Date(
+																		item.createdAt,
+																	).toLocaleDateString()}
 																</p>
 																<Show when={item.sourceUrls.length > 0}>
 																	<div class="mt-1 max-h-12 overflow-y-auto">
@@ -435,7 +463,12 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</div>
 			</Show>
 
-			<Show when={manager().activeTab() !== "tagging" && manager().activeTab() !== "duplicates"}>
+			<Show
+				when={
+					manager().activeTab() !== "tagging" &&
+					manager().activeTab() !== "duplicates"
+				}
+			>
 				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					<For each={manager().getActiveItems()}>
 						{(item) => (

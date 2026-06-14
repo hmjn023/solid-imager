@@ -1,8 +1,8 @@
 import * as ComboboxPrimitive from "@kobalte/core/combobox";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { createVirtualizer } from "@tanstack/solid-virtual";
-import { createEffect, createMemo, For, Show, splitProps } from "solid-js";
 import type { JSX, ValidComponent } from "solid-js";
+import { createEffect, createMemo, For, Show, splitProps } from "solid-js";
 
 import { cn } from "./utils/cn";
 

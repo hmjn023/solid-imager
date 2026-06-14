@@ -46,9 +46,7 @@ function initializeDb() {
 			process.env.PGLITE_DATA_DIR ||
 			path.join(process.cwd(), ".data", "pglite");
 		console.log(
-			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(
-				pglitePath,
-			)})`,
+			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(pglitePath)})`,
 		);
 		_queryClient = new PGlite(pglitePath);
 		_db = drizzlePglite(_queryClient, { schema });

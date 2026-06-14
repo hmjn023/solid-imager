@@ -13,15 +13,21 @@ export default defineNitroConfig({
     compiled: (nitro) => {
       const serverDir = nitro.options.output.serverDir;
       const libsDir = path.join(serverDir, "_libs");
-      
+
       // Resolve the source directory of pglite assets from node_modules
-      const pgliteLocalPath = path.resolve(__dirname, "node_modules/@electric-sql/pglite/package.json");
-      const pgliteRootPath = path.resolve(__dirname, "../../node_modules/@electric-sql/pglite/package.json");
+      const pgliteLocalPath = path.resolve(
+        __dirname,
+        "node_modules/@electric-sql/pglite/package.json",
+      );
+      const pgliteRootPath = path.resolve(
+        __dirname,
+        "../../node_modules/@electric-sql/pglite/package.json",
+      );
       const pglitePkgPath = path.dirname(
-        fs.existsSync(pgliteLocalPath) ? pgliteLocalPath : pgliteRootPath
+        fs.existsSync(pgliteLocalPath) ? pgliteLocalPath : pgliteRootPath,
       );
       const pgliteDistPath = path.join(pglitePkgPath, "dist");
-      
+
       const assetsToCopy = ["pglite.data", "pglite.wasm"];
 
       for (const asset of assetsToCopy) {
@@ -41,7 +47,10 @@ export default defineNitroConfig({
 
       // Copy yt-dlp binary for bundled youtube-dl-exec
       const ytDlpLocalPath = path.resolve(__dirname, "node_modules/youtube-dl-exec/bin/yt-dlp");
-      const ytDlpRootPath = path.resolve(__dirname, "../../node_modules/youtube-dl-exec/bin/yt-dlp");
+      const ytDlpRootPath = path.resolve(
+        __dirname,
+        "../../node_modules/youtube-dl-exec/bin/yt-dlp",
+      );
       const ytDlpSource = fs.existsSync(ytDlpLocalPath) ? ytDlpLocalPath : ytDlpRootPath;
       const binDir = path.join(serverDir, "bin");
       const ytDlpDest = path.join(binDir, "yt-dlp");

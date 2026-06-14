@@ -303,28 +303,35 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							>
 								{(() => {
 									const id = contextMenuMediaId();
-									return id && props.isBulkSelectMode?.() && props.isSelected?.(id)
-										? "Deselect"
-										: "Select";
+									return id &&
+										props.isBulkSelectMode?.() &&
+										props.isSelected?.(id)
+										? "選択解除"
+										: "選択";
 								})()}
 							</ContextMenuItem>
 
 							<ContextMenuSeparator />
 
-							<Show when={props.isBulkSelectMode?.() && (props.selectedCount?.() ?? 0) > 0}>
+							<Show
+								when={
+									props.isBulkSelectMode?.() &&
+									(props.selectedCount?.() ?? 0) > 0
+								}
+							>
 								<ContextMenuItem
 									onSelect={() => {
 										props.onBulkAction?.();
 									}}
 								>
-									Run bulk operations ({props.selectedCount?.()} selected)
+									一括操作を実行 ({props.selectedCount?.()}件選択中)
 								</ContextMenuItem>
 								<ContextMenuItem
 									onSelect={() => {
 										props.onClearSelection?.();
 									}}
 								>
-									Clear selection
+									選択をクリア
 								</ContextMenuItem>
 								<ContextMenuSeparator />
 							</Show>
@@ -339,7 +346,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										}
 									}}
 								>
-									Open in New Tab
+									新しいタブで開く
 								</ContextMenuItem>
 							</Show>
 
@@ -350,7 +357,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									if (id) props.onDelete?.(id);
 								}}
 							>
-								Delete
+								削除
 							</ContextMenuItem>
 
 							<ContextMenuSeparator />
@@ -361,7 +368,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									if (id) props.onCopyMove?.(id, "copy");
 								}}
 							>
-								Copy to Source
+								他のソースへコピー
 							</ContextMenuItem>
 							<ContextMenuItem
 								onSelect={() => {
@@ -369,7 +376,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									if (id) props.onCopyMove?.(id, "move");
 								}}
 							>
-								Move to Source
+								他のソースへ移動
 							</ContextMenuItem>
 
 							<ContextMenuSeparator />
@@ -380,7 +387,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									if (id) props.onSyncSingleMedia?.(id);
 								}}
 							>
-								Sync Metadata (Reprocess)
+								メタデータを同期 (再処理)
 							</ContextMenuItem>
 						</Show>
 					</ContextMenuContent>
@@ -406,7 +413,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				ref={props.setLoadMoreRef}
 			>
 				<Show when={props.isFetchingNextPage}>
-					<div class="text-center text-gray-500">Loading more...</div>
+					<div class="text-center text-gray-500">読み込み中...</div>
 				</Show>
 			</div>
 		</div>
