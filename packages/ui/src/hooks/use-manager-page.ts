@@ -77,6 +77,7 @@ export type ManagerPageActions = {
 		mediaSourceId?: string,
 	) => Promise<{ groups: DuplicateGroup[] }>;
 	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
+	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
 	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
 };
 
@@ -564,14 +565,25 @@ export function useManagerPage(
 		let failed = 0;
 		const deletedIds = new Set<string>();
 
+		// Group by sourceId to perform bulk deletion
+		const groupsBySource = new Map<string, string[]>();
+		for (const item of toDelete) {
+			if (!groupsBySource.has(item.sourceId)) {
+				groupsBySource.set(item.sourceId, []);
+			}
+			groupsBySource.get(item.sourceId)!.push(item.mediaId);
+		}
+
 		try {
-			for (const item of toDelete) {
+			for (const [sourceId, mediaIds] of groupsBySource.entries()) {
 				try {
-					await actions.deleteMedia(item.sourceId, item.mediaId);
-					deleted++;
-					deletedIds.add(item.mediaId);
+					await actions.bulkDeleteMedia(sourceId, mediaIds);
+					deleted += mediaIds.length;
+					for (const id of mediaIds) {
+						deletedIds.add(id);
+					}
 				} catch {
-					failed++;
+					failed += mediaIds.length;
 				}
 			}
 		} finally {
