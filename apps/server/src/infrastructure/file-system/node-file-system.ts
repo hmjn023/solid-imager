@@ -1,29 +1,21 @@
 import fs from "node:fs/promises";
 import type { IFileSystem } from "@solid-imager/core";
-import { isBufferEncoding } from "@solid-imager/core/utils/type-guards";
 
 export class NodeFileSystem implements IFileSystem {
 	async exists(path: string): Promise<boolean> {
-		try {
-			await fs.access(path);
-			return true;
-		} catch {
-			return false;
-		}
+		return await Bun.file(path).exists();
 	}
 
 	async readFile(path: string): Promise<Uint8Array> {
-		return await fs.readFile(path);
+		return await Bun.file(path).bytes();
 	}
 
-	async readTextFile(path: string, encoding = "utf-8"): Promise<string> {
-		return await fs.readFile(path, {
-			encoding: isBufferEncoding(encoding) ? encoding : "utf-8",
-		});
+	async readTextFile(path: string, _encoding = "utf-8"): Promise<string> {
+		return await Bun.file(path).text();
 	}
 
 	async writeFile(path: string, data: string | Uint8Array): Promise<void> {
-		await fs.writeFile(path, data);
+		await Bun.write(path, data);
 	}
 
 	async mkdir(path: string, options?: { recursive?: boolean }): Promise<void> {
@@ -45,7 +37,7 @@ export class NodeFileSystem implements IFileSystem {
 	}
 
 	async unlink(path: string): Promise<void> {
-		await fs.unlink(path);
+		await Bun.file(path).delete();
 	}
 
 	async rm(
@@ -56,7 +48,7 @@ export class NodeFileSystem implements IFileSystem {
 	}
 
 	async copyFile(src: string, dest: string): Promise<void> {
-		await fs.copyFile(src, dest);
+		await Bun.write(dest, Bun.file(src));
 	}
 
 	async rename(oldPath: string, newPath: string): Promise<void> {

@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import fg from "fast-glob";
+import { Glob } from "bun";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
@@ -127,14 +127,19 @@ export const DirectorySyncService = {
 				dbPathMap.set(normalizedPath, record.id);
 			}
 
-			// 2. Scan actual file system
-			// fast-glob uses POSIX separators even on Windows
-			const fsPaths = await fg("**/*", {
+			// 2. Scan actual file system using Bun.Glob
+			const glob = new Glob("**/*");
+			const fsPaths: string[] = [];
+			for await (const file of glob.scan({
 				cwd: basePath,
-				ignore: ["**/.*", "**/.*/**"], // Ignore dotfiles and dot directories
 				onlyFiles: true,
-				caseSensitiveMatch: false,
-			});
+			})) {
+				const parts = file.split(/[/\\]/);
+				if (parts.some((part) => part.startsWith("."))) {
+					continue;
+				}
+				fsPaths.push(file);
+			}
 
 			const mediaExtensions = services.getConfigService().getConfig()
 				.media.supportedExtensions;
