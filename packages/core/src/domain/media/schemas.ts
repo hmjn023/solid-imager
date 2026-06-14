@@ -598,9 +598,49 @@ export type DuplicateGroup = z.infer<typeof duplicateGroupSchema>;
 export const findDuplicatesResponseSchema = z.object({
 	groups: z.array(duplicateGroupSchema),
 });
-export type FindDuplicatesResponse = z.infer<typeof findDuplicatesResponseSchema>;
+export type FindDuplicatesResponse = z.infer<
+	typeof findDuplicatesResponseSchema
+>;
 
 export const findDuplicatesRequestSchema = z.object({
 	mediaSourceId: z.uuid({ version: "v4" }).optional(),
 });
 export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;
+
+export const bulkEditMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+	updates: updateMediaRequestSchema,
+});
+export type BulkEditMediaRequest = z.infer<typeof bulkEditMediaRequestSchema>;
+
+export const bulkDeleteMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+});
+export type BulkDeleteMediaRequest = z.infer<
+	typeof bulkDeleteMediaRequestSchema
+>;
+
+export const bulkMoveMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+	destinationPath: z.string().min(1, "Destination path is required"),
+});
+export type BulkMoveMediaRequest = z.infer<typeof bulkMoveMediaRequestSchema>;
+
+export const bulkTagMediaRequestSchema = z.object({
+	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaIds: z
+		.array(z.string().uuid("Invalid media ID format"))
+		.min(1, "At least one media ID is required"),
+	tagsToAdd: z.array(z.string().uuid("Invalid tag ID format")),
+	tagsToRemove: z.array(z.string().uuid("Invalid tag ID format")),
+});
+export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;

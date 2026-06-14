@@ -2,8 +2,6 @@ import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type {
 	AddMediaRequest,
 	Author,
-	DuplicateMediaItem,
-	DuplicateGroup,
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
 	Media,
@@ -111,4 +109,25 @@ export type IMediaRepository = {
 		urls: string[],
 		tx?: Transaction,
 	): Promise<string | null>;
+
+	bulkUpdate(
+		mediaIds: string[],
+		updates: UpdateMediaRequest,
+		tx?: Transaction,
+	): Promise<void>;
+	bulkDelete(mediaIds: string[], tx?: Transaction): Promise<void>;
+	bulkUpdatePaths(
+		updates: { id: string; filePath: string; fileName: string }[],
+		tx?: Transaction,
+	): Promise<void>;
+	bulkAddTags(
+		mediaIds: string[],
+		tagIds: string[],
+		tx?: Transaction,
+	): Promise<void>;
+	bulkRemoveTags(
+		mediaIds: string[],
+		tagIds: string[],
+		tx?: Transaction,
+	): Promise<void>;
 };

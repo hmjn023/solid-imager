@@ -1,12 +1,17 @@
 import { ORPCError, os } from "@orpc/server";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
+	bulkDeleteMediaRequestSchema,
+	bulkEditMediaRequestSchema,
+	bulkMoveMediaRequestSchema,
+	bulkTagMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	mediaSearchRequestSchema,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { z } from "zod";
+import { BulkOperationService } from "~/application/services/bulk-operation-service";
 import { MediaService } from "~/application/services/media-service";
 
 /**
@@ -240,4 +245,54 @@ export const mediaRouter = {
 					autoIncrement: input.autoIncrement === "true",
 				}),
 		),
+
+	/**
+	 * Bulk edit multiple media metadata
+	 */
+	bulkEdit: os.input(bulkEditMediaRequestSchema).handler(async ({ input }) => {
+		await BulkOperationService.bulkEditMedia(
+			input.mediaSourceId,
+			input.mediaIds,
+			input.updates,
+		);
+		return { success: true };
+	}),
+
+	/**
+	 * Bulk delete multiple media items
+	 */
+	bulkDelete: os
+		.input(bulkDeleteMediaRequestSchema)
+		.handler(async ({ input }) => {
+			await BulkOperationService.bulkDeleteMedia(
+				input.mediaSourceId,
+				input.mediaIds,
+			);
+			return { success: true };
+		}),
+
+	/**
+	 * Bulk move multiple media items within the source
+	 */
+	bulkMove: os.input(bulkMoveMediaRequestSchema).handler(async ({ input }) => {
+		await BulkOperationService.bulkMoveMedia(
+			input.mediaSourceId,
+			input.mediaIds,
+			input.destinationPath,
+		);
+		return { success: true };
+	}),
+
+	/**
+	 * Bulk add/remove tags on multiple media items
+	 */
+	bulkTag: os.input(bulkTagMediaRequestSchema).handler(async ({ input }) => {
+		await BulkOperationService.bulkTagMedia(
+			input.mediaSourceId,
+			input.mediaIds,
+			input.tagsToAdd,
+			input.tagsToRemove,
+		);
+		return { success: true };
+	}),
 };

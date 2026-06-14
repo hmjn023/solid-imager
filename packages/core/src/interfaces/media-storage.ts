@@ -53,4 +53,10 @@ export type IMediaStorage = {
 			autoIncrement?: boolean;
 		},
 	): Promise<MediaStorageResult>;
+
+	moveFile(
+		basePath: string,
+		sourcePath: string,
+		targetPath: string,
+	): Promise<void>;
 };

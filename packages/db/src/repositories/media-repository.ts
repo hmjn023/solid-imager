@@ -1372,5 +1372,139 @@ export function createMediaRepository(
 				);
 			}
 		},
+
+		async bulkUpdate(
+			mediaIds: string[],
+			updates: UpdateMediaRequest,
+			tx?: Transaction,
+		): Promise<void> {
+			if (mediaIds.length === 0) return;
+			try {
+				const client = getExecutor(tx);
+				const dbUpdates: Partial<NewMedia> = {};
+
+				if (updates.filePath !== undefined) {
+					dbUpdates.filePath = updates.filePath;
+				}
+				if (updates.fileName !== undefined) {
+					dbUpdates.fileName = updates.fileName;
+				}
+				if (updates.fileSize !== undefined) {
+					dbUpdates.fileSize = updates.fileSize;
+				}
+				if (updates.mediaType !== undefined) {
+					dbUpdates.mediaType = updates.mediaType;
+				}
+				if (updates.width !== undefined) {
+					dbUpdates.width = updates.width;
+				}
+				if (updates.height !== undefined) {
+					dbUpdates.height = updates.height;
+				}
+				if (updates.description !== undefined) {
+					dbUpdates.description = updates.description;
+				}
+				if (updates.createdAt !== undefined) {
+					dbUpdates.createdAt = updates.createdAt;
+				}
+
+				dbUpdates.modifiedAt = updates.modifiedAt || new Date();
+
+				await client
+					.update(medias)
+					.set(dbUpdates)
+					.where(inArray(medias.id, mediaIds));
+			} catch (error) {
+				throw new UnexpectedError("Failed to bulk update media", error);
+			}
+		},
+
+		async bulkDelete(mediaIds: string[], tx?: Transaction): Promise<void> {
+			if (mediaIds.length === 0) return;
+			try {
+				const client = getExecutor(tx);
+				await client
+					.delete(medias)
+					.where(inArray(medias.id, mediaIds));
+			} catch (error) {
+				throw new UnexpectedError("Failed to bulk delete media", error);
+			}
+		},
+
+		async bulkUpdatePaths(
+			updates: { id: string; filePath: string; fileName: string }[],
+			tx?: Transaction,
+		): Promise<void> {
+			if (updates.length === 0) return;
+			try {
+				const client = getExecutor(tx);
+				for (const u of updates) {
+					await client
+						.update(medias)
+						.set({
+							filePath: u.filePath,
+							fileName: u.fileName,
+							modifiedAt: new Date(),
+						})
+						.where(eq(medias.id, u.id));
+				}
+			} catch (error) {
+				throw new UnexpectedError("Failed to bulk update media paths", error);
+			}
+		},
+
+		async bulkAddTags(
+			mediaIds: string[],
+			tagIds: string[],
+			tx?: Transaction,
+		): Promise<void> {
+			if (mediaIds.length === 0 || tagIds.length === 0) return;
+			try {
+				const client = getExecutor(tx);
+				const values = mediaIds.flatMap((mediaId) =>
+					tagIds.map((tagId) => ({
+						mediaId,
+						tagId,
+						tagType: "positive" as const,
+						confidence: 1.0,
+					})),
+				);
+
+				const CHUNK_SIZE = 500;
+				for (let i = 0; i < values.length; i += CHUNK_SIZE) {
+					const chunk = values.slice(i, i + CHUNK_SIZE);
+					await client
+						.insert(mediaTags)
+						.values(chunk)
+						.onConflictDoNothing({
+							target: [mediaTags.mediaId, mediaTags.tagId],
+						});
+				}
+			} catch (error) {
+				throw new UnexpectedError("Failed to bulk add tags to media", error);
+			}
+		},
+
+		async bulkRemoveTags(
+			mediaIds: string[],
+			tagIds: string[],
+			tx?: Transaction,
+		): Promise<void> {
+			if (mediaIds.length === 0 || tagIds.length === 0) return;
+			try {
+				const client = getExecutor(tx);
+				await client
+					.delete(mediaTags)
+					.where(
+						and(
+							inArray(mediaTags.mediaId, mediaIds),
+							inArray(mediaTags.tagId, tagIds),
+						),
+					);
+			} catch (error) {
+				throw new UnexpectedError("Failed to bulk remove tags from media", error);
+			}
+		},
 	};
 }
+
