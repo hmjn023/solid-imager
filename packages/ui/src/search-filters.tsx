@@ -4,21 +4,22 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createSignal, For } from "solid-js";
+import { createMemo, createSignal, For } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "./badge";
 import { Button } from "./button";
 import {
 	Combobox,
-	ComboboxContent,
 	ComboboxControl,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
+	VirtualComboboxContent,
 } from "./combobox";
 import { Input } from "./input";
 import { Label } from "./label";
 import { cn } from "./utils/cn";
+import { createDebouncedSignal } from "./utils/debounce";
 
 type SearchFiltersProps = {
 	state: SearchState;
@@ -46,6 +47,17 @@ function FilterSection<T>(props: {
 	badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
 	const [value, _setValue] = createSignal<T | null>(null);
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+
+	const filteredItems = createMemo(() => {
+		const items = props.items;
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items;
+		return items.filter((item) =>
+			props.getItemLabel(item).toLowerCase().includes(query),
+		);
+	});
 
 	return (
 		<div class="space-y-2">
@@ -85,8 +97,9 @@ function FilterSection<T>(props: {
 						props.onSelect(val);
 					}
 				}}
+				onInputChange={(text) => setFilterText(text)}
 				optionLabel={props.getItemLabel}
-				options={props.items || []}
+				options={filteredItems()}
 				optionTextValue={props.getItemLabel}
 				optionValue={(item) => props.getItemKey(item)}
 				placeholder={props.placeholder}
@@ -96,7 +109,7 @@ function FilterSection<T>(props: {
 				<ComboboxControl>
 					<ComboboxInput />
 				</ComboboxControl>
-				<ComboboxContent class="max-h-[300px]" />
+				<VirtualComboboxContent class="max-h-[300px]" />
 			</Combobox>
 		</div>
 	);

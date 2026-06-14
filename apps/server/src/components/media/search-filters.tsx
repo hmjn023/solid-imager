@@ -7,16 +7,17 @@ import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Combobox,
-	ComboboxContent,
 	ComboboxControl,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
+	VirtualComboboxContent,
 } from "@solid-imager/ui/combobox";
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { cn } from "@solid-imager/ui/utils/cn";
-import { createSignal, For } from "solid-js";
+import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
+import { createMemo, createSignal, For } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 
 export type SearchFilterState = {
@@ -59,6 +60,17 @@ function FilterSection<T>(props: {
 	badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
 	const [value, _setValue] = createSignal<T | null>(null);
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+
+	const filteredItems = createMemo(() => {
+		const items = props.items;
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items;
+		return items.filter((item) =>
+			props.getItemLabel(item).toLowerCase().includes(query),
+		);
+	});
 
 	return (
 		<div class="space-y-2">
@@ -96,11 +108,11 @@ function FilterSection<T>(props: {
 				onChange={(val) => {
 					if (val) {
 						props.onSelect(val);
-						// setValue(null); // Keep the selection visible
 					}
 				}}
+				onInputChange={(text) => setFilterText(text)}
 				optionLabel={props.getItemLabel}
-				options={props.items || []}
+				options={filteredItems()}
 				optionTextValue={props.getItemLabel}
 				optionValue={(item) => props.getItemKey(item)}
 				placeholder={props.placeholder}
@@ -110,7 +122,7 @@ function FilterSection<T>(props: {
 				<ComboboxControl>
 					<ComboboxInput />
 				</ComboboxControl>
-				<ComboboxContent class="max-h-[300px]" />
+				<VirtualComboboxContent class="max-h-[300px]" />
 			</Combobox>
 		</div>
 	);
