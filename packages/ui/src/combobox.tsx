@@ -1,7 +1,7 @@
 import * as ComboboxPrimitive from "@kobalte/core/combobox";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { createVirtualizer } from "@tanstack/solid-virtual";
-import { createMemo, For, Show, splitProps } from "solid-js";
+import { createEffect, createMemo, For, Show, splitProps } from "solid-js";
 import type { JSX, ValidComponent } from "solid-js";
 
 import { cn } from "./utils/cn";
@@ -232,11 +232,15 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 				>
 					{(items) => {
 						const asArray = createMemo(() => [...items()]);
-						const virtualItems = createMemo(() => {
+
+						createEffect(() => {
 							virtualizer.setOptions({
 								...virtualizer.options,
 								count: asArray().length,
 							});
+						});
+
+						const virtualItems = createMemo(() => {
 							return virtualizer.getVirtualItems();
 						});
 
