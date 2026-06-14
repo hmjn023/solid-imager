@@ -259,6 +259,7 @@
   },
   "trustedDependencies": [
     "ffmpeg-static",
+    "sharp",
     "dghs-imgutils-rs",
     "youtube-dl-exec",
   ],
