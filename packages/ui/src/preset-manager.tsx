@@ -182,9 +182,7 @@ export function PresetManager(props: {
 					<Select<string>
 						itemComponent={(itemProps) => {
 							const preset = presets()?.find(
-								(p: Preset) =>
-									String(p.id) ===
-									itemProps.item.rawValue,
+								(p: Preset) => String(p.id) === itemProps.item.rawValue,
 							);
 							return (
 								<SelectItem
@@ -204,8 +202,7 @@ export function PresetManager(props: {
 							<SelectValue<string>>
 								{(state) => {
 									const preset = presets()?.find(
-										(p: Preset) =>
-											String(p.id) === state.selectedOption(),
+										(p: Preset) => String(p.id) === state.selectedOption(),
 									);
 									return (
 										<span class="truncate">

@@ -2,6 +2,9 @@
   "name": "@solid-imager/ui",
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./*": "./src/*"
+  },
   "scripts": {
     "lint": "biome lint ./src",
     "format": "biome format --fix ./src",
@@ -9,9 +12,6 @@
     "test": "vp test run",
     "test:unit": "vp test run",
     "typecheck": "sh -c 'tsc --noEmit'"
-  },
-  "exports": {
-    "./*": "./src/*"
   },
   "dependencies": {
     "@kobalte/core": "^0.13.11",
@@ -32,11 +32,11 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "typescript": "^6.0.3",
     "@biomejs/biome": "^2.4.16",
     "@solid-imager/core": "workspace:*",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
+    "typescript": "^6.0.3",
     "vite-plus": "^0.1.24",
-    "vite-tsconfig-paths": "^6.1.1"
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
   }
 }

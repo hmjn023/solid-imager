@@ -39,46 +39,31 @@ export function createUserRepository(
 
     async findById(id: string): Promise<User | null> {
       try {
-        const result = await getExecutor()
-          .select()
-          .from(users)
-          .where(eq(users.id, id));
+        const result = await getExecutor().select().from(users).where(eq(users.id, id));
         if (result.length === 0) {
           return null;
         }
         return mapUser(result[0]);
       } catch (error) {
-        throw new UnexpectedError(
-          `Failed to select user by ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to select user by ID: ${id}`, error);
       }
     },
 
     async findByEmail(email: string): Promise<User | null> {
       try {
-        const result = await getExecutor()
-          .select()
-          .from(users)
-          .where(eq(users.email, email));
+        const result = await getExecutor().select().from(users).where(eq(users.email, email));
         if (result.length === 0) {
           return null;
         }
         return mapUser(result[0]);
       } catch (error) {
-        throw new UnexpectedError(
-          `Failed to select user by email: ${email}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to select user by email: ${email}`, error);
       }
     },
 
     async create(user: NewUser): Promise<User> {
       try {
-        const result = await getExecutor()
-          .insert(users)
-          .values(user)
-          .returning();
+        const result = await getExecutor().insert(users).values(user).returning();
         return mapUser(result[0]);
       } catch (error: unknown) {
         if (
@@ -87,9 +72,7 @@ export function createUserRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "User with this email already exists",
-          );
+          throw new ResourceConflictError("User with this email already exists");
         }
         throw new UnexpectedError("Failed to insert user", error);
       }
@@ -117,23 +100,15 @@ export function createUserRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "User with this email already exists",
-          );
+          throw new ResourceConflictError("User with this email already exists");
         }
-        throw new UnexpectedError(
-          `Failed to update user with ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to update user with ID: ${id}`, error);
       }
     },
 
     async delete(id: string): Promise<void> {
       try {
-        const result = await getExecutor()
-          .delete(users)
-          .where(eq(users.id, id))
-          .returning();
+        const result = await getExecutor().delete(users).where(eq(users.id, id)).returning();
 
         if (result.length === 0) {
           throw new ResourceNotFoundError("User", id);
@@ -142,10 +117,7 @@ export function createUserRepository(
         if (error instanceof ResourceNotFoundError) {
           throw error;
         }
-        throw new UnexpectedError(
-          `Failed to delete user with ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to delete user with ID: ${id}`, error);
       }
     },
   };

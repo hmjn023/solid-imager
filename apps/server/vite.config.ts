@@ -28,10 +28,7 @@ const bypassSecFetchDestPlugin = () => ({
 export default defineConfig({
   resolve: {
     alias: {
-      "@solid-imager/core": path.resolve(
-        __dirname,
-        "../../packages/core/src"
-      ),
+      "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
       "@": path.resolve(__dirname, "../../packages/core/src"),
       "~": path.resolve(__dirname, "./src"),
     },
@@ -51,17 +48,16 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-    exclude: [
-      "dghs-imgutils-rs",
-      "@lancedb/lancedb",
-    ],
+    exclude: ["dghs-imgutils-rs", "@lancedb/lancedb"],
   },
   customLogger: {
     warn(msg, options) {
       if (typeof msg === "string" && msg.includes("externalized for browser compatibility")) return;
       console.warn(msg, options);
     },
-    warnOnce(msg, options) { this.warn(msg, options); },
+    warnOnce(msg, options) {
+      this.warn(msg, options);
+    },
     info: console.info,
     error: console.error,
     clearScreen: () => {},
@@ -78,7 +74,7 @@ export default defineConfig({
         "pg",
         "archiver",
         "@lancedb/lancedb",
-        "apache-arrow"
+        "apache-arrow",
       ],
     },
   },
@@ -90,7 +86,7 @@ export default defineConfig({
       "@kobalte/core",
       "solid-sonner",
       "corvu",
-      "@solid-primitives/.*"
+      "@solid-primitives/.*",
     ],
     external: [
       "@electric-sql/pglite",
@@ -102,7 +98,7 @@ export default defineConfig({
       "archiver",
       "@lancedb/lancedb",
       "apache-arrow",
-      "dghs-imgutils-rs"
+      "dghs-imgutils-rs",
     ],
   },
 });

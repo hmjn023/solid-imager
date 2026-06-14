@@ -30,14 +30,10 @@ export function bufferToBodyInit(buffer: Uint8Array): BodyInit {
 export function ensureWebReadableStream(
 	result: Readable | ReadableStream<Uint8Array>,
 ): ReadableStream<Uint8Array> {
-	return result instanceof Readable
-		? nodeStreamToWebReadable(result)
-		: result;
+	return result instanceof Readable ? nodeStreamToWebReadable(result) : result;
 }
 
-export function asDumpStream(
-	result: unknown,
-): ReadableStream<Uint8Array> {
+export function asDumpStream(result: unknown): ReadableStream<Uint8Array> {
 	if (result instanceof Readable) {
 		return nodeStreamToWebReadable(result);
 	}

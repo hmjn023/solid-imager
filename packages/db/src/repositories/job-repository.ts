@@ -49,11 +49,7 @@ export function createJobRepository(
       }
 
       if (mediaId) {
-        const [created] = await db()
-          .insert(jobs)
-          .values(job)
-          .onConflictDoNothing()
-          .returning();
+        const [created] = await db().insert(jobs).values(job).onConflictDoNothing().returning();
 
         return created ? mapJob(created) : null;
       }
@@ -71,15 +67,10 @@ export function createJobRepository(
       options?: { excludeTypes?: string[]; includeTypes?: string[] },
     ): Promise<Job[]> {
       if (options?.excludeTypes?.length && options?.includeTypes?.length) {
-        throw new Error(
-          "Cannot use excludeTypes and includeTypes simultaneously.",
-        );
+        throw new Error("Cannot use excludeTypes and includeTypes simultaneously.");
       }
 
-      const conditions = [
-        eq(jobs.status, "pending"),
-        ne(jobs.type, "import_request"),
-      ];
+      const conditions = [eq(jobs.status, "pending"), ne(jobs.type, "import_request")];
 
       if (options?.excludeTypes?.length) {
         conditions.push(notInArray(jobs.type, options.excludeTypes));
@@ -141,10 +132,7 @@ export function createJobRepository(
       if (data.parentId !== undefined) updates.parentId = data.parentId;
       updates.updatedAt = new Date();
 
-      await db()
-        .update(jobs)
-        .set(updates)
-        .where(eq(jobs.id, id));
+      await db().update(jobs).set(updates).where(eq(jobs.id, id));
     },
 
     async incrementProgress(id: string): Promise<void> {

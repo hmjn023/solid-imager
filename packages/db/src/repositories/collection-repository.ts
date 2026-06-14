@@ -22,10 +22,7 @@ export function createCollectionRepository(
       return await getExecutor().select().from(collections);
     },
 
-    async findById(
-      id: string,
-      tx?: unknown,
-    ): Promise<Collection | null> {
+    async findById(id: string, tx?: unknown): Promise<Collection | null> {
       const rows = await getExecutor(tx)
         .select()
         .from(collections)
@@ -34,15 +31,9 @@ export function createCollectionRepository(
       return rows[0] || null;
     },
 
-    async create(
-      collection: NewCollection,
-      tx?: unknown,
-    ): Promise<Collection> {
+    async create(collection: NewCollection, tx?: unknown): Promise<Collection> {
       try {
-        const result = await getExecutor(tx)
-          .insert(collections)
-          .values(collection)
-          .returning();
+        const result = await getExecutor(tx).insert(collections).values(collection).returning();
         return result[0];
       } catch (error: unknown) {
         if (
@@ -51,19 +42,13 @@ export function createCollectionRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "Collection with this name already exists",
-          );
+          throw new ResourceConflictError("Collection with this name already exists");
         }
         throw new UnexpectedError("Failed to create collection", error);
       }
     },
 
-    async update(
-      id: string,
-      updates: UpdateCollection,
-      tx?: unknown,
-    ): Promise<Collection> {
+    async update(id: string, updates: UpdateCollection, tx?: unknown): Promise<Collection> {
       try {
         const result = await getExecutor(tx)
           .update(collections)
@@ -85,9 +70,7 @@ export function createCollectionRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "Collection with this name already exists",
-          );
+          throw new ResourceConflictError("Collection with this name already exists");
         }
         throw new UnexpectedError("Failed to update collection", error);
       }
@@ -104,19 +87,13 @@ export function createCollectionRepository(
       }
     },
 
-    async addItem(
-      collectionId: string,
-      item: NewCollectionItem,
-      tx?: unknown,
-    ): Promise<void> {
+    async addItem(collectionId: string, item: NewCollectionItem, tx?: unknown): Promise<void> {
       try {
-        await getExecutor(tx)
-          .insert(mediaCollections)
-          .values({
-            collectionId,
-            mediaId: item.mediaId,
-            displayOrder: item.displayOrder,
-          });
+        await getExecutor(tx).insert(mediaCollections).values({
+          collectionId,
+          mediaId: item.mediaId,
+          displayOrder: item.displayOrder,
+        });
       } catch (error: unknown) {
         if (
           error &&
@@ -124,19 +101,13 @@ export function createCollectionRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "Media already exists in this collection",
-          );
+          throw new ResourceConflictError("Media already exists in this collection");
         }
         throw new UnexpectedError("Failed to add item to collection", error);
       }
     },
 
-    async removeItem(
-      collectionId: string,
-      mediaId: string,
-      tx?: unknown,
-    ): Promise<void> {
+    async removeItem(collectionId: string, mediaId: string, tx?: unknown): Promise<void> {
       const result = await getExecutor(tx)
         .delete(mediaCollections)
         .where(

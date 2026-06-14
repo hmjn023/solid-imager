@@ -61,7 +61,9 @@ const SOURCE_TYPE_OPTIONS: { value: SourceFormType; label: string }[] = [
 	{ value: "s3", label: "S3 Compatible Storage" },
 ];
 
-const SOURCE_TYPE_VALUES = SOURCE_TYPE_OPTIONS.map((o) => o.value) as readonly SourceFormType[];
+const SOURCE_TYPE_VALUES = SOURCE_TYPE_OPTIONS.map(
+	(o) => o.value,
+) as readonly SourceFormType[];
 
 const getTypeLabel = (type: SourceFormType) =>
 	SOURCE_TYPE_OPTIONS.find((option) => option.value === type)?.label ?? type;
@@ -225,7 +227,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 									</SelectItem>
 								)}
 								onChange={(value) =>
-									setFormData("type", parseSelectValue(value?.value, SOURCE_TYPE_VALUES, "local"))
+									setFormData(
+										"type",
+										parseSelectValue(value?.value, SOURCE_TYPE_VALUES, "local"),
+									)
 								}
 								options={selectOptions()}
 								value={{

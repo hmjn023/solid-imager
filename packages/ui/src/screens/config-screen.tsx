@@ -1,6 +1,6 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import { createForm, type Updater } from "@tanstack/solid-form";
+import { createForm } from "@tanstack/solid-form";
 import { Show } from "solid-js";
 import { Button } from "../button";
 import { Input } from "../input";
@@ -176,9 +176,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
-											onInput={(e) =>
-												field().handleChange(e.target.value)
-											}
+											onInput={(e) => field().handleChange(e.target.value)}
 											placeholder="http://power-machine:3000"
 											value={field().state.value ?? ""}
 										/>
@@ -265,9 +263,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										<Input
 											id={field().name}
 											onBlur={field().handleBlur}
-											onInput={(e) =>
-												field().handleChange(e.target.value)
-											}
+											onInput={(e) => field().handleChange(e.target.value)}
 											value={field().state.value ?? ""}
 										/>
 									</div>
@@ -408,9 +404,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												field().state.value?.join(", ") ?? ""
-											}
+											value={field().state.value?.join(", ") ?? ""}
 										/>
 									</div>
 								)}
@@ -431,9 +425,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												field().state.value?.join(", ") ?? ""
-											}
+											value={field().state.value?.join(", ") ?? ""}
 										/>
 									</div>
 								)}
@@ -454,9 +446,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													.filter(Boolean);
 												field().handleChange(list);
 											}}
-											value={
-												field().state.value?.join(", ") ?? ""
-											}
+											value={field().state.value?.join(", ") ?? ""}
 										/>
 									</div>
 								)}

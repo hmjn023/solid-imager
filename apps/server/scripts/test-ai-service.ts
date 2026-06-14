@@ -6,7 +6,9 @@ async function main() {
   console.log("Checking AI Service availability...");
   const available = await taggingService.isServiceAvailable();
   if (!available) {
-    console.error("AI Service is not available. Please run 'bun run ai:start' in a separate terminal.");
+    console.error(
+      "AI Service is not available. Please run 'bun run ai:start' in a separate terminal.",
+    );
     process.exit(1);
   }
   console.log("AI Service is available!");

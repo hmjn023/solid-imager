@@ -41,10 +41,7 @@ export function createSourceRepository(
       }
     },
 
-    async findById(
-      id: string,
-      tx?: unknown,
-    ): Promise<MediaSource | null> {
+    async findById(id: string, tx?: unknown): Promise<MediaSource | null> {
       try {
         const result = await getExecutor(tx)
           .select()
@@ -56,17 +53,11 @@ export function createSourceRepository(
         }
         return mapToMediaSource(result[0]);
       } catch (error) {
-        throw new UnexpectedError(
-          `Failed to select media source by ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to select media source by ID: ${id}`, error);
       }
     },
 
-    async create(
-      source: NewMediaSource,
-      tx?: unknown,
-    ): Promise<MediaSource> {
+    async create(source: NewMediaSource, tx?: unknown): Promise<MediaSource> {
       try {
         const result = await getExecutor(tx)
           .insert(mediaSources)
@@ -80,19 +71,13 @@ export function createSourceRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "Media source with this name or ID already exists",
-          );
+          throw new ResourceConflictError("Media source with this name or ID already exists");
         }
         throw new UnexpectedError("Failed to insert media source", error);
       }
     },
 
-    async update(
-      id: string,
-      source: Partial<MediaSource>,
-      tx?: unknown,
-    ): Promise<MediaSource> {
+    async update(id: string, source: Partial<MediaSource>, tx?: unknown): Promise<MediaSource> {
       try {
         const result = await getExecutor(tx)
           .update(mediaSources)
@@ -114,14 +99,9 @@ export function createSourceRepository(
           "code" in error &&
           (error as { code: string }).code === "23505"
         ) {
-          throw new ResourceConflictError(
-            "Media source with this name or ID already exists",
-          );
+          throw new ResourceConflictError("Media source with this name or ID already exists");
         }
-        throw new UnexpectedError(
-          `Failed to update media source with ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to update media source with ID: ${id}`, error);
       }
     },
 
@@ -138,10 +118,7 @@ export function createSourceRepository(
         if (error instanceof ResourceNotFoundError) {
           throw error;
         }
-        throw new UnexpectedError(
-          `Failed to delete media source with ID: ${id}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to delete media source with ID: ${id}`, error);
       }
     },
   };

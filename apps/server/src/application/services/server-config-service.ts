@@ -19,7 +19,15 @@ export class ServerConfigService implements IConfigService {
 	private listeners: ConfigChangeListener[] = [];
 
 	constructor() {
-		this.configPath = path.resolve(process.cwd(), "config.json");
+		let defaultPath = "config.json";
+		if (fs.existsSync(path.resolve(process.cwd(), "apps/server"))) {
+			defaultPath = path.resolve(process.cwd(), "apps/server/config.json");
+		} else {
+			defaultPath = path.resolve(process.cwd(), "config.json");
+		}
+		this.configPath = process.env.CONFIG_PATH
+			? path.resolve(process.env.CONFIG_PATH)
+			: defaultPath;
 		this.config = defaultAppConfig;
 	}
 

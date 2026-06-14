@@ -38,7 +38,7 @@ try {
   // Note: We avoid passing password via CLI args for security, relying on .pgpass or trust in container,
   // but standard postgres image usually allows 'postgres' user without pass locally or env var.
   // Since we are exec-ing AS the user inside container, auth usually works.
-  
+
   // Using -U (user) and -d (database)
   await $`docker exec -t ${containerId} pg_dump -U ${DB_USER} -d ${DB_DATABASE} --clean --if-exists > ${FILEPATH}`;
 

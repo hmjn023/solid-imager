@@ -1047,7 +1047,9 @@ export const BackupService = {
 
 			execSync(
 				`tar -xzf "${tarGzPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
-				{ stdio: "ignore" },
+				{
+					stdio: "ignore",
+				},
 			);
 
 			const driver = getDriver(mediaSource);

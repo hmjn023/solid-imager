@@ -93,7 +93,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	return (
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
-
 			characterCropModal={props.characterCropModal}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}

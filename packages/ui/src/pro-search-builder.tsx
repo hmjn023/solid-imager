@@ -205,10 +205,10 @@ function GroupBuilder(props: {
 							)}
 							onChange={(value) => {
 								if (value) {
-								props.onChange({
-									...props.group,
-									operator: parseSelectValue(value, ["and", "or"], "and"),
-								});
+									props.onChange({
+										...props.group,
+										operator: parseSelectValue(value, ["and", "or"], "and"),
+									});
 								}
 							}}
 							options={["and", "or"]}
@@ -356,31 +356,33 @@ function CriterionBuilder(props: {
 						return;
 					}
 					const operators = getValidOperators(value);
-				props.onChange({
-					...props.criterion,
-					target: parseSelectValue(
-						value,
-						Object.keys(TARGET_LABELS) as readonly SearchCriterion["target"][],
-						"fileName",
-					),
-					operator: parseSelectValue(
-						operators[0] || "equals",
-						[
+					props.onChange({
+						...props.criterion,
+						target: parseSelectValue(
+							value,
+							Object.keys(
+								TARGET_LABELS,
+							) as readonly SearchCriterion["target"][],
+							"fileName",
+						),
+						operator: parseSelectValue(
+							operators[0] || "equals",
+							[
+								"equals",
+								"contains",
+								"startsWith",
+								"endsWith",
+								"gt",
+								"gte",
+								"lt",
+								"lte",
+								"in",
+								"notIn",
+								"isEmpty",
+								"isNotEmpty",
+							] as readonly SearchCriterion["operator"][],
 							"equals",
-							"contains",
-							"startsWith",
-							"endsWith",
-							"gt",
-							"gte",
-							"lt",
-							"lte",
-							"in",
-							"notIn",
-							"isEmpty",
-							"isNotEmpty",
-						] as readonly SearchCriterion["operator"][],
-						"equals",
-					),
+						),
 						value: ["aiGenerated", "favorite", "isArchived"].includes(value)
 							? true
 							: "",
@@ -405,27 +407,27 @@ function CriterionBuilder(props: {
 				)}
 				onChange={(value) => {
 					if (value) {
-					props.onChange({
-						...props.criterion,
-						operator: parseSelectValue(
-							value,
-							[
+						props.onChange({
+							...props.criterion,
+							operator: parseSelectValue(
+								value,
+								[
+									"equals",
+									"contains",
+									"startsWith",
+									"endsWith",
+									"gt",
+									"gte",
+									"lt",
+									"lte",
+									"in",
+									"notIn",
+									"isEmpty",
+									"isNotEmpty",
+								] as readonly SearchCriterion["operator"][],
 								"equals",
-								"contains",
-								"startsWith",
-								"endsWith",
-								"gt",
-								"gte",
-								"lt",
-								"lte",
-								"in",
-								"notIn",
-								"isEmpty",
-								"isNotEmpty",
-							] as readonly SearchCriterion["operator"][],
-							"equals",
-						),
-					});
+							),
+						});
 					}
 				}}
 				options={getValidOperators(props.criterion.target)}

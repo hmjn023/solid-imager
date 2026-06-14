@@ -14,14 +14,7 @@ import {
   sql,
   getTableColumns,
 } from "drizzle-orm";
-import {
-  mediaCharacters,
-  mediaIps,
-  mediaProjects,
-  medias,
-  mediaTags,
-  tags,
-} from "../schema";
+import { mediaCharacters, mediaIps, mediaProjects, medias, mediaTags, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 function escapeLikeString(str: string): string {
@@ -96,10 +89,7 @@ function buildWhereClause(
   return valid.length > 0 ? and(...valid) : undefined;
 }
 
-function buildOrderByClause(
-  sort?: "date" | "name" | "size",
-  order: "asc" | "desc" = "desc",
-): SQL {
+function buildOrderByClause(sort?: "date" | "name" | "size", order: "asc" | "desc" = "desc"): SQL {
   if (sort === "date") {
     return order === "asc" ? asc(medias.createdAt) : desc(medias.createdAt);
   }
@@ -112,21 +102,13 @@ function buildOrderByClause(
   return desc(medias.createdAt);
 }
 
-export function createMediaSearchFunctions(
-  getExecutor: (tx?: unknown) => DrizzleExecutor,
-) {
+export function createMediaSearchFunctions(getExecutor: (tx?: unknown) => DrizzleExecutor) {
   return {
-    async searchMedia(
-      mediaSourceId: string,
-      searchOptions: SearchOptions,
-    ) {
+    async searchMedia(mediaSourceId: string, searchOptions: SearchOptions) {
       try {
         const executor = getExecutor();
         const whereClause = buildWhereClause(mediaSourceId, searchOptions);
-        const orderByClause = buildOrderByClause(
-          searchOptions.sort,
-          searchOptions.order,
-        );
+        const orderByClause = buildOrderByClause(searchOptions.sort, searchOptions.order);
 
         const query = executor
           .select({
@@ -140,9 +122,7 @@ export function createMediaSearchFunctions(
         let pagedQuery: any = query;
 
         if (searchOptions.limit !== undefined) {
-          pagedQuery = pagedQuery
-            .limit(searchOptions.limit)
-            .offset(searchOptions.offset || 0);
+          pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
         } else if (searchOptions.offset && searchOptions.offset > 0) {
           pagedQuery = pagedQuery.offset(searchOptions.offset);
         }
@@ -168,10 +148,7 @@ export function createMediaSearchFunctions(
 
         return { media: mediaList, total };
       } catch (error) {
-        throw new UnexpectedError(
-          `Failed to search media for source ID: ${mediaSourceId}`,
-          error,
-        );
+        throw new UnexpectedError(`Failed to search media for source ID: ${mediaSourceId}`, error);
       }
     },
 
@@ -214,34 +191,23 @@ export function createMediaSearchFunctions(
       }
     },
 
-    async globalSearchMedia(
-      searchOptions: SearchOptions,
-    ) {
+    async globalSearchMedia(searchOptions: SearchOptions) {
       try {
         const executor = getExecutor();
         const whereClause = buildWhereClause(undefined, searchOptions);
-        const orderByClause = buildOrderByClause(
-          searchOptions.sort,
-          searchOptions.order,
-        );
+        const orderByClause = buildOrderByClause(searchOptions.sort, searchOptions.order);
 
         const [{ total }] = await executor
           .select({ total: count() })
           .from(medias)
           .where(whereClause);
 
-        const query = executor
-          .select()
-          .from(medias)
-          .where(whereClause)
-          .orderBy(orderByClause);
+        const query = executor.select().from(medias).where(whereClause).orderBy(orderByClause);
 
         let pagedQuery: any = query;
 
         if (searchOptions.limit !== undefined) {
-          pagedQuery = pagedQuery
-            .limit(searchOptions.limit)
-            .offset(searchOptions.offset || 0);
+          pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
         } else if (searchOptions.offset && searchOptions.offset > 0) {
           pagedQuery = pagedQuery.offset(searchOptions.offset);
         }
