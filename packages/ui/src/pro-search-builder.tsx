@@ -12,11 +12,11 @@ import { Button } from "./button";
 import { Card, CardContent } from "./card";
 import {
 	Combobox,
-	ComboboxContent,
 	ComboboxControl,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
+	VirtualComboboxContent,
 } from "./combobox";
 import { Input } from "./input";
 import {
@@ -477,7 +477,7 @@ function CriterionBuilder(props: {
 						<ComboboxControl>
 							<ComboboxInput />
 						</ComboboxControl>
-						<ComboboxContent class="max-h-[300px]" />
+						<VirtualComboboxContent class="max-h-[300px]" />
 					</Combobox>
 				</Match>
 

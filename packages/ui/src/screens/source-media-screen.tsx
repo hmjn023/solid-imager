@@ -131,7 +131,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					mediaSourceId={page().mediaSourceId}
 					onCopyMove={page().handleCopyMove}
 					onDelete={page().handleDelete}
+					onLoadMore={() => page().mediaQuery.fetchNextPage()}
 					onSyncSingleMedia={page().handleSyncSingleMedia}
+					hasNextPage={page().mediaQuery.hasNextPage}
 					queryError={page().mediaQuery.error ?? null}
 					renderItem={props.renderItem}
 					setContextMenuMediaId={page().setContextMenuMediaId}
