@@ -221,7 +221,8 @@ export const ServerMediaStorage: IMediaStorage = {
 
 		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
 		try {
-			const metadata = await new Bun.Image(fullPath).metadata();
+			const buffer = Buffer.from(await Bun.file(fullPath).arrayBuffer());
+			const metadata = await new Bun.Image(buffer).metadata();
 
 			if (metadata.width && metadata.height) {
 				return {
