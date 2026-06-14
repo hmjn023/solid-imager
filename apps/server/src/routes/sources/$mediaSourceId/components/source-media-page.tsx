@@ -1,5 +1,6 @@
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
+import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import { createSignal, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
@@ -40,6 +41,7 @@ const PresetClient = createPresetClient(rawPresetClient);
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const mediaSourceId = () => params().mediaSourceId;
+	const queryClient = useQueryClient();
 
 	const transport = createServerTransport(mediaSourceId);
 
@@ -67,13 +69,9 @@ export function SourceMediaPage() {
 	// 一括操作成功時のコールバック
 	const handleBulkSuccess = () => {
 		handleCancelSelect();
-		// リロードさせるため、transportの通知を利用するか、リフレッシュをトリガーする
-		// ここでは SSE Transport が自動検知するか、またはページ再読込が必要だが、
-		// TanStack Router を介した再読み込みや refetch はクライアントのキャッシュをクリアする。
-		// 一般的には window.location.reload() が確実で手っ取り早いが、
-		// queryClient を使った invalidation の方が洗練されている。
-		// 簡易的に location.reload() で全画面を再読込する
-		window.location.reload();
+		queryClient.invalidateQueries({
+			queryKey: ["media", mediaSourceId()],
+		});
 	};
 
 	return (

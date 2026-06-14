@@ -53,9 +53,11 @@ export const BulkOperationService = {
 		}
 		const basePath = (source.connectionInfo as { path: string }).path;
 
+		const validMediaIds: string[] = [];
 		for (const mediaId of mediaIds) {
 			const media = await mediaRepo.findById(mediaId);
 			if (media && media.mediaSourceId === mediaSourceId) {
+				validMediaIds.push(mediaId);
 				// 実ファイルの削除
 				try {
 					await mediaStorage.deleteFile(basePath, media.filePath);
@@ -77,7 +79,9 @@ export const BulkOperationService = {
 			}
 		}
 
-		await mediaRepo.bulkDelete(mediaIds);
+		if (validMediaIds.length > 0) {
+			await mediaRepo.bulkDelete(validMediaIds);
+		}
 	},
 
 	/**
@@ -112,14 +116,20 @@ export const BulkOperationService = {
 				const newFilePath = `${cleanDestDir}${media.fileName}`;
 
 				if (newFilePath !== media.filePath) {
-					// ファイルを物理的に移動
-					await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
-
-					pathUpdates.push({
-						id: media.id,
-						filePath: newFilePath,
-						fileName: media.fileName,
-					});
+					try {
+						// ファイルを物理的に移動
+						await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
+						pathUpdates.push({
+							id: media.id,
+							filePath: newFilePath,
+							fileName: media.fileName,
+						});
+					} catch (e) {
+						logger.error(
+							{ mediaId, filePath: media.filePath, newFilePath, error: e },
+							"Failed to move file in storage during bulk move",
+						);
+					}
 				}
 			}
 		}

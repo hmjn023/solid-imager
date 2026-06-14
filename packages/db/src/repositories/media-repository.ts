@@ -1437,16 +1437,25 @@ export function createMediaRepository(
 		): Promise<void> {
 			if (updates.length === 0) return;
 			try {
-				const client = getExecutor(tx);
-				for (const u of updates) {
-					await client
-						.update(medias)
-						.set({
-							filePath: u.filePath,
-							fileName: u.fileName,
-							modifiedAt: new Date(),
-						})
-						.where(eq(medias.id, u.id));
+				const runUpdates = async (executor: DrizzleExecutor) => {
+					for (const u of updates) {
+						await executor
+							.update(medias)
+							.set({
+								filePath: u.filePath,
+								fileName: u.fileName,
+								modifiedAt: new Date(),
+							})
+							.where(eq(medias.id, u.id));
+					}
+				};
+
+				if (tx) {
+					await runUpdates(getExecutor(tx));
+				} else {
+					await getExecutor().transaction(async (innerTx) => {
+						await runUpdates(innerTx);
+					});
 				}
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk update media paths", error);
