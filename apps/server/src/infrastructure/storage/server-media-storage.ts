@@ -6,6 +6,7 @@ import type {
 	MediaStorageResult,
 } from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
+import sharp from "sharp";
 import type { z } from "zod";
 
 /**
@@ -219,10 +220,9 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
+		// Image formats (try sharp first, fall back to ffprobe for misidentified videos)
 		try {
-			const buffer = Buffer.from(await Bun.file(fullPath).arrayBuffer());
-			const metadata = await new Bun.Image(buffer).metadata();
+			const metadata = await sharp(fullPath).metadata();
 
 			if (metadata.width && metadata.height) {
 				return {
@@ -234,7 +234,7 @@ export const ServerMediaStorage: IMediaStorage = {
 				};
 			}
 		} catch {
-			// Bun.Image failed — possibly a video with an image extension, fall through to ffprobe
+			// sharp failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
 		// Fallback: try ffprobe for video files that were misidentified as images

@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
+import sharp from "sharp";
 
 import {
 	afterEach,
@@ -13,23 +14,8 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 
 // Mock definitions
 vi.mock("node:fs/promises");
+vi.mock("sharp");
 vi.mock("fluent-ffmpeg");
-
-const mockMetadata = vi.fn();
-const mockBunImage = vi.fn().mockImplementation(function (this: any) {
-	return {
-		metadata: mockMetadata,
-	};
-});
-
-Object.defineProperty(globalThis, "Bun", {
-	value: {
-		...(typeof Bun !== "undefined" ? Bun : {}),
-		Image: mockBunImage,
-	},
-	configurable: true,
-	writable: true,
-});
 
 describe("ServerMediaStorage Unit Tests", () => {
 	const basePath = "/tmp/test-storage";
@@ -41,12 +27,14 @@ describe("ServerMediaStorage Unit Tests", () => {
 		// Setup default mocks using vi.mocked checks for type safety if needed,
 		// or just casting for convenience in this simple test file.
 
-		mockBunImage.mockImplementation(function (this: any) {
-			return {
-				metadata: mockMetadata,
-			};
-		});
-		mockMetadata.mockResolvedValue({ width: ExpectedWidth, height: 600 });
+		// Mock sharp to return an object with metadata method
+		const mockSharpInstance = {
+			metadata: vi
+				.fn()
+				.mockResolvedValue({ width: ExpectedWidth, height: 600 }),
+		};
+		// @ts-expect-error - Mocking default export function behavior
+		vi.mocked(sharp).mockReturnValue(mockSharpInstance);
 
 		// Mock fluent-ffmpeg
 		// fluent-ffmpeg default export is a function that returns an object (command)
@@ -91,8 +79,8 @@ describe("ServerMediaStorage Unit Tests", () => {
 			// Verify
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			// Bun.Image should NOT be called for video files
-			expect(mockBunImage).not.toHaveBeenCalled();
+			// Sharp should NOT be called for video files
+			expect(sharp).not.toHaveBeenCalled();
 		});
 
 		it("should succeed for image files using sharp", async () => {
@@ -121,7 +109,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			// Verify
 			expect(result).toBeDefined();
-			expect(mockBunImage).toHaveBeenCalled();
+			expect(sharp).toHaveBeenCalled();
 			expect(result.width).toBe(ExpectedWidth);
 		});
 	});
@@ -150,7 +138,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			expect(mockBunImage).not.toHaveBeenCalled();
+			expect(sharp).not.toHaveBeenCalled();
 		});
 	});
 });

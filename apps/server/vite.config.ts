@@ -74,6 +74,7 @@ export default defineConfig({
         "archiver",
         "@lancedb/lancedb",
         "apache-arrow",
+        "sharp",
       ],
     },
   },
@@ -97,6 +98,7 @@ export default defineConfig({
       "@lancedb/lancedb",
       "apache-arrow",
       "dghs-imgutils-rs",
+      "sharp",
     ],
   },
 });
