@@ -76,7 +76,6 @@ export type ManagerPageActions = {
 	findDuplicateMedia: (
 		mediaSourceId?: string,
 	) => Promise<{ groups: DuplicateGroup[] }>;
-	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
 	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
 	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
 };
@@ -561,6 +560,9 @@ export function useManagerPage(
 
 	const handleConfirmDeleteDuplicates = async () => {
 		const toDelete = duplicatesToDelete();
+		if (toDelete.length === 0) {
+			return;
+		}
 		let deleted = 0;
 		let failed = 0;
 		const deletedIds = new Set<string>();
