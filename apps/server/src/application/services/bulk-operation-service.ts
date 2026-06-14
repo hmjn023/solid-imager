@@ -53,40 +53,51 @@ export const BulkOperationService = {
 		if (!source) {
 			throw new Error(`Media source not found: ${mediaSourceId}`);
 		}
-		const basePath = (source.connectionInfo as { path: string }).path;
+		const connectionInfo = source.connectionInfo as Record<
+			string,
+			unknown
+		> | null;
+		const basePath = connectionInfo?.path as string | undefined;
+		if (!basePath) {
+			throw new Error(`Base path not found for media source: ${mediaSourceId}`);
+		}
 
-		// 一括取得
+		// 一括取得してセキュリティ及び整合性チェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);
 		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
 
-		const validMediaIds: string[] = [];
 		for (const mediaId of mediaIds) {
 			const media = mediaMap.get(mediaId);
-			if (media && media.mediaSourceId === mediaSourceId) {
-				validMediaIds.push(mediaId);
-				// 実ファイルの削除
-				try {
-					await mediaStorage.deleteFile(basePath, media.filePath);
-				} catch (e) {
-					logger.warn(
-						{ mediaId, filePath: media.filePath, error: e },
-						"Failed to delete file from storage during bulk delete",
-					);
-				}
-				// サムネイルの削除
-				try {
-					await deleteThumbnail(mediaSourceId, media.id);
-				} catch (e) {
-					logger.warn(
-						{ mediaId, error: e },
-						"Failed to delete thumbnail during bulk delete",
-					);
-				}
+			if (!media || media.mediaSourceId !== mediaSourceId) {
+				throw new Error(
+					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
+				);
 			}
 		}
 
-		if (validMediaIds.length > 0) {
-			await mediaRepo.bulkDelete(validMediaIds);
+		for (const media of mediaList) {
+			// 実ファイルの削除
+			try {
+				await mediaStorage.deleteFile(basePath, media.filePath);
+			} catch (e) {
+				logger.warn(
+					{ mediaId: media.id, filePath: media.filePath, error: e },
+					"Failed to delete file from storage during bulk delete",
+				);
+			}
+			// サムネイルの削除
+			try {
+				await deleteThumbnail(mediaSourceId, media.id);
+			} catch (e) {
+				logger.warn(
+					{ mediaId: media.id, error: e },
+					"Failed to delete thumbnail during bulk delete",
+				);
+			}
+		}
+
+		if (mediaIds.length > 0) {
+			await mediaRepo.bulkDelete(mediaIds);
 		}
 	},
 
@@ -109,38 +120,56 @@ export const BulkOperationService = {
 		if (!source) {
 			throw new Error(`Media source not found: ${mediaSourceId}`);
 		}
-		const basePath = (source.connectionInfo as { path: string }).path;
+		const connectionInfo = source.connectionInfo as Record<
+			string,
+			unknown
+		> | null;
+		const basePath = connectionInfo?.path as string | undefined;
+		if (!basePath) {
+			throw new Error(`Base path not found for media source: ${mediaSourceId}`);
+		}
 
-		// 一括取得
+		// 一括取得してセキュリティ及び整合性チェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);
 		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
+
+		for (const mediaId of mediaIds) {
+			const media = mediaMap.get(mediaId);
+			if (!media || media.mediaSourceId !== mediaSourceId) {
+				throw new Error(
+					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
+				);
+			}
+		}
 
 		const pathUpdates: { id: string; filePath: string; fileName: string }[] =
 			[];
 
-		for (const mediaId of mediaIds) {
-			const media = mediaMap.get(mediaId);
-			if (media && media.mediaSourceId === mediaSourceId) {
-				const cleanDestDir = destinationPath.endsWith("/")
-					? destinationPath
-					: `${destinationPath}/`;
-				const newFilePath = `${cleanDestDir}${media.fileName}`;
+		for (const media of mediaList) {
+			const cleanDestDir = destinationPath.endsWith("/")
+				? destinationPath
+				: `${destinationPath}/`;
+			const newFilePath = `${cleanDestDir}${media.fileName}`;
 
-				if (newFilePath !== media.filePath) {
-					try {
-						// ファイルを物理的に移動
-						await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
-						pathUpdates.push({
-							id: media.id,
-							filePath: newFilePath,
-							fileName: media.fileName,
-						});
-					} catch (e) {
-						logger.error(
-							{ mediaId, filePath: media.filePath, newFilePath, error: e },
-							"Failed to move file in storage during bulk move",
-						);
-					}
+			if (newFilePath !== media.filePath) {
+				try {
+					// ファイルを物理的に移動
+					await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
+					pathUpdates.push({
+						id: media.id,
+						filePath: newFilePath,
+						fileName: media.fileName,
+					});
+				} catch (e) {
+					logger.error(
+						{
+							mediaId: media.id,
+							filePath: media.filePath,
+							newFilePath,
+							error: e,
+						},
+						"Failed to move file in storage during bulk move",
+					);
 				}
 			}
 		}

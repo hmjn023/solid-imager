@@ -52,11 +52,15 @@ export function SourceMediaPage() {
 
 	const handleToggleSelect = (mediaId: string) => {
 		setIsBulkSelectMode(true);
-		setSelectedMediaIds((prev) =>
-			prev.includes(mediaId)
+		setSelectedMediaIds((prev) => {
+			const next = prev.includes(mediaId)
 				? prev.filter((id) => id !== mediaId)
-				: [...prev, mediaId],
-		);
+				: [...prev, mediaId];
+			if (next.length === 0) {
+				setIsBulkSelectMode(false);
+			}
+			return next;
+		});
 	};
 
 	const isSelected = (mediaId: string) => selectedMediaIds().includes(mediaId);

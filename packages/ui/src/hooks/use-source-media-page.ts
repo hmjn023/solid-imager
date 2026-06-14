@@ -181,12 +181,6 @@ export type UseSourceMediaPageResult = {
 	setFileInputRef: (el: HTMLInputElement) => void;
 	restoreInputRef: HTMLInputElement | undefined;
 	setRestoreInputRef: (el: HTMLInputElement) => void;
-	isBulkSelectMode: () => boolean;
-	setIsBulkSelectMode: (mode: boolean) => void;
-	selectedMediaIds: () => string[];
-	setSelectedMediaIds: (ids: string[]) => void;
-	handleToggleSelect: (mediaId: string) => void;
-	isSelected: (mediaId: string) => boolean;
 };
 
 export function useSourceMediaPage(
@@ -366,21 +360,7 @@ export function useSourceMediaPage(
 	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
 		null,
 	);
-	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
-	const [selectedMediaIds, setSelectedMediaIds] = createSignal<string[]>([]);
 
-	const handleToggleSelect = (mediaId: string) => {
-		setIsBulkSelectMode(true);
-		setSelectedMediaIds((prev) =>
-			prev.includes(mediaId)
-				? prev.filter((id) => id !== mediaId)
-				: [...prev, mediaId],
-		);
-	};
-
-	const isSelected = (mediaId: string) => {
-		return selectedMediaIds().includes(mediaId);
-	};
 
 	let fileInputRef: HTMLInputElement | undefined;
 	const setFileInputRef = (el: HTMLInputElement) => {
@@ -961,11 +941,5 @@ export function useSourceMediaPage(
 		setFileInputRef,
 		restoreInputRef,
 		setRestoreInputRef,
-		isBulkSelectMode,
-		setIsBulkSelectMode,
-		selectedMediaIds,
-		setSelectedMediaIds,
-		handleToggleSelect,
-		isSelected,
 	};
 }

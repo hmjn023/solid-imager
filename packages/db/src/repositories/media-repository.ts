@@ -687,10 +687,16 @@ export function createMediaRepository(
 			if (mediaIds.length === 0) return [];
 			try {
 				const client = getExecutor(tx);
-				const results = await client
-					.select()
-					.from(medias)
-					.where(inArray(medias.id, mediaIds));
+				const CHUNK_SIZE = 500;
+				const results: any[] = [];
+				for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
+					const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
+					const chunkResults = await client
+						.select()
+						.from(medias)
+						.where(inArray(medias.id, chunk));
+					results.push(...chunkResults);
+				}
 				return results.map(mapToMedia);
 			} catch (e) {
 				throw new UnexpectedError(`Failed to select media by IDs`, e);
@@ -1424,10 +1430,14 @@ export function createMediaRepository(
 
 				dbUpdates.modifiedAt = updates.modifiedAt || new Date();
 
-				await client
-					.update(medias)
-					.set(dbUpdates)
-					.where(inArray(medias.id, mediaIds));
+				const CHUNK_SIZE = 500;
+				for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
+					const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
+					await client
+						.update(medias)
+						.set(dbUpdates)
+						.where(inArray(medias.id, chunk));
+				}
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk update media", error);
 			}
@@ -1437,9 +1447,13 @@ export function createMediaRepository(
 			if (mediaIds.length === 0) return;
 			try {
 				const client = getExecutor(tx);
-				await client
-					.delete(medias)
-					.where(inArray(medias.id, mediaIds));
+				const CHUNK_SIZE = 500;
+				for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
+					const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
+					await client
+						.delete(medias)
+						.where(inArray(medias.id, chunk));
+				}
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk delete media", error);
 			}
@@ -1452,26 +1466,30 @@ export function createMediaRepository(
 			if (updates.length === 0) return;
 			try {
 				const runUpdates = async (executor: DrizzleExecutor) => {
-					const idList = updates.map((u) => u.id);
-					let filePathSql = sql`case ${medias.id} `;
-					let fileNameSql = sql`case ${medias.id} `;
+					const CHUNK_SIZE = 500;
+					for (let i = 0; i < updates.length; i += CHUNK_SIZE) {
+						const chunk = updates.slice(i, i + CHUNK_SIZE);
+						const idList = chunk.map((u) => u.id);
+						let filePathSql = sql`case ${medias.id} `;
+						let fileNameSql = sql`case ${medias.id} `;
 
-					for (const u of updates) {
-						filePathSql = sql`${filePathSql} when ${u.id} then ${u.filePath} `;
-						fileNameSql = sql`${fileNameSql} when ${u.id} then ${u.fileName} `;
+						for (const u of chunk) {
+							filePathSql = sql`${filePathSql} when ${u.id} then ${u.filePath} `;
+							fileNameSql = sql`${fileNameSql} when ${u.id} then ${u.fileName} `;
+						}
+
+						filePathSql = sql`${filePathSql} else ${medias.filePath} end`;
+						fileNameSql = sql`${fileNameSql} else ${medias.fileName} end`;
+
+						await executor
+							.update(medias)
+							.set({
+								filePath: filePathSql,
+								fileName: fileNameSql,
+								modifiedAt: new Date(),
+							})
+							.where(inArray(medias.id, idList));
 					}
-
-					filePathSql = sql`${filePathSql} else ${medias.filePath} end`;
-					fileNameSql = sql`${fileNameSql} else ${medias.fileName} end`;
-
-					await executor
-						.update(medias)
-						.set({
-							filePath: filePathSql,
-							fileName: fileNameSql,
-							modifiedAt: new Date(),
-						})
-						.where(inArray(medias.id, idList));
 				};
 
 				if (tx) {
