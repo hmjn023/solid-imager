@@ -161,7 +161,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 
 			{/* Hidden file inputs */}
 			<input
-				accept=".json,.zip,.tar.gz"
+				accept=".json,.ndjson,.tar"
 				class="hidden"
 				id="restore-input"
 				onChange={page().handleRestoreSelect}

@@ -28,6 +28,8 @@ import {
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
+	importSourceLanceDB,
+	importSourceNdjson,
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
@@ -97,6 +99,8 @@ export function SourceMediaPage() {
 					fetchSourceDump,
 					restoreSource,
 					importSourceZip,
+					importSourceNdjson,
+					importSourceLanceDB,
 				}}
 				getSearchCondition={getSearchCondition}
 				sortBy={() => searchState.sortBy}

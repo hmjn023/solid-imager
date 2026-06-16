@@ -989,7 +989,7 @@ export const BackupService = {
 
 	async importLanceDB(
 		mediaSourceId: string,
-		tarGzPath: string,
+		tarPath: string,
 		options?: { extractImages?: boolean },
 	) {
 		const mediaSource = await db.query.mediaSources.findFirst({
@@ -1017,7 +1017,7 @@ export const BackupService = {
 		const extractImages = options?.extractImages ?? true;
 
 		try {
-			const listOutput = execSync(`tar -tf "${tarGzPath}"`, {
+			const listOutput = execSync(`tar -tf "${tarPath}"`, {
 				encoding: "utf-8",
 			});
 			const entries = listOutput.split("\n").filter(Boolean);
@@ -1035,7 +1035,7 @@ export const BackupService = {
 			}
 
 			execSync(
-				`tar -xf "${tarGzPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
+				`tar -xf "${tarPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
 				{
 					stdio: "ignore",
 				},

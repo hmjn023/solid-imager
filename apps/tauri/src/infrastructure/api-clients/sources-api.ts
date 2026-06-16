@@ -57,6 +57,25 @@ export async function importSourceZip(id: string, file: File) {
 	return await response.json();
 }
 
+export async function importSourceNdjson(id: string, file: File) {
+	return client.sources.importNdjson({
+		id,
+		file,
+	});
+}
+
+export async function importSourceLanceDB(id: string, file: File) {
+	const url = `${API_BASE}/api/sources/${id}/import-lancedb`;
+	const response = await apiFetch(url, {
+		method: "POST",
+		body: file,
+	});
+	if (!response.ok) {
+		throw new Error(`Failed to import LanceDB: ${response.status}`);
+	}
+	return await response.json();
+}
+
 export function parseRestoreFile(file: File): Promise<unknown[]> {
 	return file.text().then((text) => JSON.parse(text));
 }
