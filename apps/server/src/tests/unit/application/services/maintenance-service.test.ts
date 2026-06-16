@@ -46,6 +46,7 @@ const mockJobRepo = {
 
 const mockSourceRepo = {
 	findById: vi.fn(),
+	findAll: vi.fn(),
 };
 
 // ---- Helpers ----
@@ -75,6 +76,7 @@ describe("MaintenanceService", () => {
 			mockJobRepo as any,
 			mockSourceRepo as any,
 		);
+		mockSourceRepo.findAll.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -318,6 +320,41 @@ describe("MaintenanceService", () => {
 				},
 			);
 			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+		});
+	});
+
+	// --------------------------------------------------------------------------
+	// queueLanceDBSync (exercised via performStartupChecks)
+	// --------------------------------------------------------------------------
+
+	describe("queueLanceDBSync", () => {
+		it("should queue sync_lancedb jobs for all sources", async () => {
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
+
+			const source1 = makeLocalSource("source-1", "/path-1");
+			const source2 = makeLocalSource("source-2", "/path-2");
+			mockSourceRepo.findAll.mockResolvedValue([source1, source2]);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-sync-1" });
+
+			await service.performStartupChecks();
+
+			expect(mockSourceRepo.findAll).toHaveBeenCalledOnce();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(2);
+			expect(mockJobRepo.createIfUnique).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({
+					type: "sync_lancedb",
+					mediaSourceId: "source-1",
+				}),
+			);
+			expect(mockJobRepo.createIfUnique).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({
+					type: "sync_lancedb",
+					mediaSourceId: "source-2",
+				}),
+			);
 		});
 	});
 });
