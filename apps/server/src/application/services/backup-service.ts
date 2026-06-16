@@ -113,6 +113,12 @@ function validateRelativePath(p: string): void {
 	}
 }
 
+function validateArchiveEntries(entries: string[]): void {
+	for (const entry of entries) {
+		validateRelativePath(entry);
+	}
+}
+
 /**
  * Service for handling media source backups, restoration, and imports.
  */
@@ -917,6 +923,11 @@ export const BackupService = {
 		await fs.mkdir(extractDir, { recursive: true });
 
 		try {
+			const listOutput = execSync(`tar -tf "${tarFilePath}"`, {
+				encoding: "utf-8",
+			});
+			validateArchiveEntries(listOutput.split("\n").filter(Boolean));
+
 			// Extract tar (without compression options)
 			execSync(
 				`tar -xf "${tarFilePath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
@@ -1097,26 +1108,6 @@ export const BackupService = {
 
 		const { gte } = await import("drizzle-orm");
 
-		const mediaList = await db.query.medias.findMany({
-			where: and(
-				eq(medias.mediaSourceId, mediaSourceId),
-				gte(medias.modifiedAt, new Date(lastSynced)),
-			),
-			with: {
-				generationInfo: true,
-				urls: true,
-				tags: { with: { tag: true } },
-				authors: { with: { author: true } },
-				characters: {
-					with: { character: { with: { ips: { with: { ip: true } } } } },
-				},
-				ips: { with: { ip: true } },
-				projects: { with: { project: true } },
-			},
-		});
-
-		const transformedItems = this._transformMediaList(mediaList);
-
 		const activeRows = await db
 			.select({ id: medias.id })
 			.from(medias)
@@ -1127,11 +1118,53 @@ export const BackupService = {
 			"~/application/services/lancedb-dump-service"
 		);
 
-		await syncLanceDB(cacheDir, transformedItems, activeIds);
+		const limit = 500;
+		let offset = 0;
+		let totalUpserted = 0;
+
+		while (true) {
+			const mediaList = await db.query.medias.findMany({
+				where: and(
+					eq(medias.mediaSourceId, mediaSourceId),
+					gte(medias.modifiedAt, new Date(lastSynced)),
+				),
+				limit,
+				offset,
+				with: {
+					generationInfo: true,
+					urls: true,
+					tags: { with: { tag: true } },
+					authors: { with: { author: true } },
+					characters: {
+						with: { character: { with: { ips: { with: { ip: true } } } } },
+					},
+					ips: { with: { ip: true } },
+					projects: { with: { project: true } },
+				},
+				orderBy: medias.id,
+			});
+
+			if (mediaList.length === 0) {
+				break;
+			}
+
+			const transformedItems = this._transformMediaList(mediaList);
+			await syncLanceDB(cacheDir, transformedItems, activeIds);
+			totalUpserted += transformedItems.length;
+
+			if (mediaList.length < limit) {
+				break;
+			}
+			offset += limit;
+		}
+
+		if (totalUpserted === 0) {
+			await syncLanceDB(cacheDir, [], activeIds);
+		}
 
 		await fs.writeFile(lastSyncedFile, Date.now().toString(), "utf-8");
 		logger.info(
-			{ mediaSourceId, upserted: transformedItems.length },
+			{ mediaSourceId, upserted: totalUpserted },
 			"syncSourceLanceDBCache completed successfully",
 		);
 	},
@@ -1219,18 +1252,18 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
+			const ndjsonStream = new PassThrough();
 			const archive = new (
 				archiverMod as unknown as ArchiverModule
 			).TarArchive();
 			archive.pipe(passThrough);
+			archive.append(ndjsonStream, { name: "dump.ndjson" });
 
 			(async () => {
 				try {
 					const limit = 500;
 					let offset = 0;
 					let hasMore = true;
-
-					const ndjsonParts: string[] = [];
 
 					while (hasMore) {
 						const mediaList = await db.query.medias.findMany({
@@ -1262,7 +1295,7 @@ export const BackupService = {
 							const transformedItems = this._transformMediaList(mediaList);
 							const includeImages = options?.includeImages ?? true;
 							for (const item of transformedItems) {
-								ndjsonParts.push(`${JSON.stringify(item)}\n`);
+								ndjsonStream.write(`${JSON.stringify(item)}\n`);
 
 								if (includeImages && item.filePath) {
 									try {
@@ -1276,11 +1309,13 @@ export const BackupService = {
 						}
 					}
 
-					const ndjsonBuffer = Buffer.from(ndjsonParts.join(""));
-					archive.append(ndjsonBuffer, { name: "dump.ndjson" });
+					ndjsonStream.end();
 					await archive.finalize();
 				} catch (err) {
 					logger.error({ err }, "Error generating TAR dump");
+					ndjsonStream.destroy(
+						err instanceof Error ? err : new Error(String(err)),
+					);
 					archive.abort();
 				}
 			})();

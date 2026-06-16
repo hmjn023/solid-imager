@@ -59,9 +59,10 @@ export async function processJob(job: DbJob) {
 		// Queue LanceDB sync job
 		try {
 			const repo = services.getJobRepository();
-			await repo.create({
+			await repo.createIfUnique({
 				type: "sync_lancedb",
 				mediaSourceId,
+				payload: {},
 			});
 		} catch (e) {
 			logger.error(
@@ -79,9 +80,10 @@ export async function processJob(job: DbJob) {
 		// Queue LanceDB sync job
 		try {
 			const repo = services.getJobRepository();
-			await repo.create({
+			await repo.createIfUnique({
 				type: "sync_lancedb",
 				mediaSourceId,
+				payload: {},
 			});
 		} catch (e) {
 			logger.error(
@@ -92,10 +94,13 @@ export async function processJob(job: DbJob) {
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
 	} else if (job.type === "sync_lancedb") {
+		if (!mediaSourceId) {
+			throw new Error(`Job ${job.id} missing mediaSourceId`);
+		}
 		const { BackupService } = await import(
 			"~/application/services/backup-service"
 		);
-		await BackupService.syncSourceLanceDBCache(mediaSourceId!);
+		await BackupService.syncSourceLanceDBCache(mediaSourceId);
 	} else {
 		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
 	}
@@ -106,16 +111,25 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		const repo = services.getJobRepository();
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
+				const jobPayload = {
+					...(job.payload && typeof job.payload === "object"
+						? job.payload
+						: {}),
+					mediaId: job.mediaId,
+					sourcePath: job.sourcePath,
+				};
+				if (job.type === "sync_lancedb") {
+					await repo.createIfUnique({
+						type: job.type,
+						mediaSourceId: item.mediaSourceId,
+						payload: jobPayload,
+					});
+					continue;
+				}
 				await repo.create({
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,
-					payload: {
-						...(job.payload && typeof job.payload === "object"
-							? job.payload
-							: {}),
-						mediaId: job.mediaId,
-						sourcePath: job.sourcePath,
-					},
+					payload: jobPayload,
 				});
 			}
 		}

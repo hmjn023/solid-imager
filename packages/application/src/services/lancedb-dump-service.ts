@@ -11,6 +11,26 @@ import type {
 const METADATA_CHUNK_SIZE = 1000;
 const IMAGE_CHUNK_SIZE = 100;
 
+function resolveSafeChildPath(
+	baseDir: string,
+	relativePath: string,
+): string | null {
+	if (!relativePath || path.isAbsolute(relativePath)) {
+		return null;
+	}
+	const resolvedBase = path.resolve(baseDir);
+	const resolvedPath = path.resolve(resolvedBase, relativePath);
+	const childRelative = path.relative(resolvedBase, resolvedPath);
+	if (
+		childRelative === "" ||
+		childRelative.startsWith("..") ||
+		path.isAbsolute(childRelative)
+	) {
+		return null;
+	}
+	return resolvedPath;
+}
+
 async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
 	const arrow = await import("apache-arrow");
 	return new arrow.Schema([
@@ -428,10 +448,7 @@ export function createLanceDbDumpService(deps?: {
 			for (let i = 0; i < itemsToUpsert.length; i += METADATA_CHUNK_SIZE) {
 				const chunk = itemsToUpsert.slice(i, i + METADATA_CHUNK_SIZE);
 				const rows = chunk.map((item) => itemToRow(item));
-				await table
-					.mergeInsert("id")
-					.whenMatchedUpdateAll()
-					.execute(rows);
+				await table.mergeInsert("id").whenMatchedUpdateAll().execute(rows);
 			}
 		}
 
@@ -450,7 +467,9 @@ export function createLanceDbDumpService(deps?: {
 			}
 		}
 
-		await table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
+		await table.optimize({
+			cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
+		});
 		log.info("LanceDB cache synced", {
 			path: lanceDbDir,
 			upsertCount: itemsToUpsert.length,
@@ -536,7 +555,9 @@ export function createLanceDbDumpService(deps?: {
 			}
 
 			if (table) {
-				await table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
+				await table.optimize({
+					cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
+				});
 			}
 
 			log.info("LanceDB dump created", {
@@ -591,16 +612,23 @@ export function createLanceDbDumpService(deps?: {
 								),
 							);
 						} else {
-							const externalPath = path.join(lanceDbDir, "images", item.filePath);
-							savePromises.push(
-								fs.readFile(externalPath)
-									.then(async (buf) => {
-										await options.saveImageBuffer?.(item.filePath!, buf);
-									})
-									.catch(() => {
-										// Ignore if file doesn't exist
-									})
+							const externalPath = resolveSafeChildPath(
+								path.join(lanceDbDir, "images"),
+								item.filePath,
 							);
+							if (externalPath) {
+								const filePath = item.filePath;
+								savePromises.push(
+									fs
+										.readFile(externalPath)
+										.then(async (buf) => {
+											await options.saveImageBuffer?.(filePath, buf);
+										})
+										.catch(() => {
+											// Ignore if file doesn't exist
+										}),
+								);
+							}
 						}
 					}
 				}
