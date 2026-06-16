@@ -145,19 +145,20 @@ describe("BackupService ZIP Integration", () => {
 			projectId: project.id,
 		});
 
-		// 2. Create ZIP Dump
-		const zipStream: any = await BackupService.createDump(sourceId1, "zip");
-		const zipFilePath = path.join(tempDir, "backup.zip");
-		const writeStream = createWriteStream(zipFilePath);
+		// 2. Create TAR Dump
+		const tarStream: any = await BackupService.createDump(sourceId1, "zip");
+		const tarFilePath = path.join(tempDir, "backup.tar");
+		const writeStream = createWriteStream(tarFilePath);
 
-		await pipeline(zipStream, writeStream);
+		await pipeline(tarStream, writeStream);
 
 		// 3. Restore to Source 2
-		const importResult = await BackupService.importSourceZip(
+		const importResult = await BackupService.importSourceTar(
 			sourceId2,
-			zipFilePath,
+			tarFilePath,
 		);
 
+		console.log("IMPORT RESULT DETAILS:", importResult);
 		expect(importResult.success).toBe(true);
 		expect(importResult.importedCount).toBe(1);
 		expect(importResult.skippedCount).toBe(0);

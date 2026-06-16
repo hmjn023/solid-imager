@@ -128,11 +128,25 @@ describe("BackupService Integration", () => {
 			.values({ mediaId: media.id, url: "https://example.com/source" });
 
 		// 2. Execute Dump
-		const dumpResult = await BackupService.createDump(testSourceId, "json");
+		const dumpStream = (await BackupService.createDump(
+			testSourceId,
+			"json",
+		)) as ReadableStream;
 
 		// 3. Verify
-		expect(Array.isArray(dumpResult)).toBe(true);
-		const item = (dumpResult as any[])[0];
+		const reader = dumpStream.getReader();
+		const decoder = new TextDecoder();
+		let chunkResult = "";
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			chunkResult += decoder.decode(value, { stream: true });
+		}
+		chunkResult += decoder.decode();
+
+		const lines = chunkResult.split("\n").filter(Boolean);
+		expect(lines.length).toBe(1);
+		const item = JSON.parse(lines[0]);
 
 		expect(item.filePath).toBe("test.png");
 

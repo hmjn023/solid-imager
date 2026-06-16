@@ -6,11 +6,9 @@ import {
 } from "@solid-imager/core/domain/media/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { Table } from "drizzle-orm";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import yauzl from "yauzl";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
 	authors,
@@ -33,7 +31,7 @@ import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
-function createZipArchive(mod: {
+function _createZipArchive(mod: {
 	ZipArchive: new (
 		opts?: Record<string, unknown>,
 	) => import("archiver").Archiver;
@@ -838,7 +836,60 @@ export const BackupService = {
 	/**
 	 * Imports media data from a ZIP file path.
 	 */
-	async importSourceZip(mediaSourceId: string, zipFilePath: string) {
+	async importSourceNdjson(mediaSourceId: string, ndjsonFilePath: string) {
+		const readline = await import("node:readline");
+		const fsSync = await import("node:fs");
+
+		if (!fsSync.existsSync(ndjsonFilePath)) {
+			return {
+				importedCount: 0,
+				skippedCount: 0,
+				errors: ["dump.ndjson not found"],
+			};
+		}
+
+		const fileStream = fsSync.createReadStream(ndjsonFilePath);
+		const rl = readline.createInterface({
+			input: fileStream,
+			crlfDelay: Infinity,
+		});
+
+		let batch: unknown[] = [];
+		let totalProcessed = 0;
+		let totalSkipped = 0;
+		const allErrors: string[] = [];
+
+		const flushBatch = async () => {
+			if (batch.length === 0) return;
+			const result = await this.restoreSource(mediaSourceId, batch);
+			totalProcessed += result.processed;
+			totalSkipped += result.skipped;
+			allErrors.push(...result.errors);
+			batch = [];
+		};
+
+		for await (const line of rl) {
+			if (!line.trim()) continue;
+			try {
+				const item = JSON.parse(line);
+				batch.push(item);
+				if (batch.length >= 500) {
+					await flushBatch();
+				}
+			} catch (e) {
+				allErrors.push(`Failed to parse line: ${getErrorMessage(e)}`);
+			}
+		}
+		await flushBatch();
+
+		return {
+			importedCount: totalProcessed,
+			skippedCount: totalSkipped,
+			errors: allErrors,
+		};
+	},
+
+	async importSourceTar(mediaSourceId: string, tarFilePath: string) {
 		const mediaSource = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});
@@ -847,155 +898,76 @@ export const BackupService = {
 			throw new Error("Media source not found");
 		}
 
-		// Helper to open zip and get entries
-		const loadZip = (): Promise<{
-			zipfile: yauzl.ZipFile;
-			entries: Map<string, yauzl.Entry>;
-			dumpData: unknown;
-		}> => {
-			return new Promise((resolve, reject) => {
-				yauzl.open(
-					zipFilePath,
-					{ lazyEntries: true, autoClose: false },
-					(err, openedZipfile) => {
-						if (err || !openedZipfile) {
-							return reject(err || new Error("Failed to open zip"));
-						}
+		const { execSync } = await import("node:child_process");
+		const pathMod = await import("node:path");
+		const fsSync = await import("node:fs");
 
-						const rejectAndClose = (error: Error) => {
-							openedZipfile.close();
-							reject(error);
-						};
-
-						openedZipfile.on("error", rejectAndClose);
-
-						const entries = new Map<string, yauzl.Entry>();
-						let dumpData: unknown = null;
-						let dumpEntry: yauzl.Entry | null = null;
-
-						openedZipfile.readEntry();
-						openedZipfile.on("entry", (entry) => {
-							entries.set(entry.fileName, entry);
-							if (entry.fileName === "dump.json") {
-								dumpEntry = entry;
-							}
-							openedZipfile.readEntry();
-						});
-
-						openedZipfile.on("end", () => {
-							if (dumpEntry) {
-								openedZipfile.openReadStream(
-									dumpEntry,
-									(readErr, readStream) => {
-										if (readErr || !readStream) {
-											return rejectAndClose(
-												readErr || new Error("Failed to read dump.json"),
-											);
-										}
-										const chunks: Buffer[] = [];
-										readStream.on("data", (chunk) =>
-											chunks.push(Buffer.from(chunk)),
-										);
-										readStream.on("end", () => {
-											try {
-												const buffer = Buffer.concat(chunks);
-												dumpData = JSON.parse(buffer.toString("utf-8"));
-												resolve({ zipfile: openedZipfile, entries, dumpData });
-											} catch (e) {
-												rejectAndClose(
-													e instanceof Error ? e : new Error(String(e)),
-												);
-											}
-										});
-										readStream.on("error", rejectAndClose);
-									},
-								);
-							} else {
-								rejectAndClose(new Error("dump.json not found in ZIP"));
-							}
-						});
-					},
-				);
-			});
-		};
-
-		let zipfile: yauzl.ZipFile;
-		let entries: Map<string, yauzl.Entry>;
-		let dumpData: unknown;
-
-		const result = await loadZip();
-		zipfile = result.zipfile;
-		entries = result.entries;
-		dumpData = result.dumpData;
-
-		if (!Array.isArray(dumpData)) {
-			zipfile.close();
-			throw new Error("Invalid dump format");
-		}
-
-		const itemsToRestore = dumpData;
-		const driver = getDriver(mediaSource);
+		const extractDir = pathMod.join(
+			process.cwd(),
+			".cache",
+			"import-restore",
+			`restore-${Date.now()}`,
+		);
+		await fs.mkdir(extractDir, { recursive: true });
 
 		try {
-			// Process files
-			for (const item of itemsToRestore) {
-				if (isRecord(item) && item.filePath) {
-					try {
-						validateRelativePath(item.filePath as string);
-					} catch (_e) {
-						continue;
-					}
+			// Extract tar (without compression options)
+			execSync(
+				`tar -xf "${tarFilePath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
+				{
+					stdio: "ignore",
+				},
+			);
 
-					const imagePathInZip = `images/${item.filePath}`;
-					const entry = entries.get(imagePathInZip);
+			// 1. Import Images
+			const driver = getDriver(mediaSource);
+			const imagesDir = pathMod.join(extractDir, "images");
 
-					if (entry) {
-						await new Promise<void>((resolve, reject) => {
-							zipfile.openReadStream(entry, (err, readStream) => {
-								if (err || !readStream) {
-									return reject(
-										err ||
-											new Error(`Failed to read stream for ${entry.fileName}`),
-									);
-								}
+			const restoreImagesRecursive = async (
+				dir: string,
+				currentRelative: string = "",
+			) => {
+				let files: string[] = [];
+				try {
+					files = await fsSync.promises.readdir(dir);
+				} catch {
+					return; // images folder does not exist or empty
+				}
 
-								const chunks: Buffer[] = [];
-								readStream.on("data", (chunk) =>
-									chunks.push(Buffer.from(chunk)),
-								);
-								readStream.on("end", async () => {
-									try {
-										const content = Buffer.concat(chunks);
-										await driver.put(item.filePath as string, content);
-										resolve();
-									} catch (e) {
-										reject(e);
-									}
-								});
-								readStream.on("error", reject);
-							});
-						});
+				for (const file of files) {
+					const fullPath = pathMod.join(dir, file);
+					const relPath = currentRelative
+						? pathMod.join(currentRelative, file)
+						: file;
+					const stat = await fsSync.promises.stat(fullPath);
+					if (stat.isDirectory()) {
+						await restoreImagesRecursive(fullPath, relPath);
+					} else {
+						const buf = await fsSync.promises.readFile(fullPath);
+						await driver.put(relPath, buf);
 					}
 				}
-			}
+			};
+
+			await restoreImagesRecursive(imagesDir);
+
+			// 2. Import Metadata
+			const ndjsonPath = pathMod.join(extractDir, "dump.ndjson");
+			const restoreResult = await this.importSourceNdjson(
+				mediaSourceId,
+				ndjsonPath,
+			);
+
+			return {
+				success: true,
+				importedCount: restoreResult.importedCount,
+				skippedCount: restoreResult.skippedCount,
+				errors: restoreResult.errors,
+				message: `Successfully imported ${restoreResult.importedCount} items (Skipped: ${restoreResult.skippedCount})`,
+			};
 		} finally {
-			zipfile.close();
+			await fs.rm(extractDir, { recursive: true, force: true }).catch(() => {});
 		}
-
-		// Process metadata using bulk restore logic
-		// This reuses the optimized batch insertion logic from restoreSource
-		const restoreResult = await this.restoreSource(
-			mediaSourceId,
-			itemsToRestore,
-		);
-
-		return {
-			success: true,
-			importedCount: restoreResult.processed,
-			skippedCount: restoreResult.skipped,
-			errors: restoreResult.errors,
-			message: `Successfully imported ${restoreResult.processed} items (Skipped: ${restoreResult.skipped})`,
-		};
 	},
 
 	async importLanceDB(
@@ -1028,7 +1000,7 @@ export const BackupService = {
 		const extractImages = options?.extractImages ?? true;
 
 		try {
-			const listOutput = execSync(`tar -tzf "${tarGzPath}"`, {
+			const listOutput = execSync(`tar -tf "${tarGzPath}"`, {
 				encoding: "utf-8",
 			});
 			const entries = listOutput.split("\n").filter(Boolean);
@@ -1046,7 +1018,7 @@ export const BackupService = {
 			}
 
 			execSync(
-				`tar -xzf "${tarGzPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
+				`tar -xf "${tarGzPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
 				{
 					stdio: "ignore",
 				},
@@ -1091,9 +1063,80 @@ export const BackupService = {
 	 * Generates a dump of the media source.
 	 * Returns a JSON object or a ReadableStream for ZIP download.
 	 */
+	async syncSourceLanceDBCache(mediaSourceId: string) {
+		const mediaSource = await db.query.mediaSources.findFirst({
+			where: eq(mediaSources.id, mediaSourceId),
+		});
+
+		if (!mediaSource) {
+			throw new Error("Media source not found");
+		}
+
+		const cacheDir = path.join(
+			process.cwd(),
+			".cache",
+			"lancedb-cache",
+			`source-${mediaSourceId}`,
+		);
+		await fs.mkdir(cacheDir, { recursive: true });
+
+		const lastSyncedFile = path.join(cacheDir, ".last_synced");
+		let lastSynced = 0;
+		try {
+			const content = await fs.readFile(lastSyncedFile, "utf-8");
+			lastSynced = parseInt(content.trim(), 10) || 0;
+		} catch {
+			lastSynced = 0;
+		}
+
+		const { gte } = await import("drizzle-orm");
+
+		const mediaList = await db.query.medias.findMany({
+			where: and(
+				eq(medias.mediaSourceId, mediaSourceId),
+				gte(medias.modifiedAt, new Date(lastSynced)),
+			),
+			with: {
+				generationInfo: true,
+				urls: true,
+				tags: { with: { tag: true } },
+				authors: { with: { author: true } },
+				characters: {
+					with: { character: { with: { ips: { with: { ip: true } } } } },
+				},
+				ips: { with: { ip: true } },
+				projects: { with: { project: true } },
+			},
+		});
+
+		const transformedItems = this._transformMediaList(mediaList);
+
+		const activeRows = await db
+			.select({ id: medias.id })
+			.from(medias)
+			.where(eq(medias.mediaSourceId, mediaSourceId));
+		const activeIds = activeRows.map((r) => r.id);
+
+		const { syncLanceDB } = await import(
+			"~/application/services/lancedb-dump-service"
+		);
+
+		await syncLanceDB(cacheDir, transformedItems, activeIds);
+
+		await fs.writeFile(lastSyncedFile, Date.now().toString(), "utf-8");
+		logger.info(
+			{ mediaSourceId, upserted: transformedItems.length },
+			"syncSourceLanceDBCache completed successfully",
+		);
+	},
+
+	/**
+	 * Generates a dump of the media source.
+	 * Returns a JSON object or a ReadableStream for ZIP download.
+	 */
 	async createDump(
 		mediaSourceId: string,
-		mode: "json" | "zip" | "lancedb" = "json",
+		mode: "json" | "zip" | "ndjson" | "tar" | "lancedb" = "ndjson",
 		options?: { includeImages: boolean },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
@@ -1105,231 +1148,223 @@ export const BackupService = {
 			throw new Error("Media Source not found");
 		}
 
-		if (mode === "json") {
-			const mediaList = await db.query.medias.findMany({
-				where: eq(medias.mediaSourceId, mediaSourceId),
-				with: {
-					generationInfo: true,
-					urls: true,
-					tags: { with: { tag: true } },
-					authors: { with: { author: true } },
-					characters: {
-						with: { character: { with: { ips: { with: { ip: true } } } } },
-					},
-					ips: { with: { ip: true } },
-					projects: { with: { project: true } },
-				},
-			});
-			return this._transformMediaList(mediaList);
+		// Map legacy modes to new modes
+		const targetMode =
+			mode === "json" ? "ndjson" : mode === "zip" ? "tar" : mode;
+
+		if (targetMode === "ndjson") {
+			const { PassThrough } = await import("node:stream");
+			const passThrough = new PassThrough();
+
+			(async () => {
+				try {
+					const limit = 500;
+					let offset = 0;
+					let hasMore = true;
+
+					while (hasMore) {
+						const mediaList = await db.query.medias.findMany({
+							where: eq(medias.mediaSourceId, mediaSourceId),
+							limit,
+							offset,
+							with: {
+								generationInfo: true,
+								urls: true,
+								tags: { with: { tag: true } },
+								authors: { with: { author: true } },
+								characters: {
+									with: {
+										character: { with: { ips: { with: { ip: true } } } },
+									},
+								},
+								ips: { with: { ip: true } },
+								projects: { with: { project: true } },
+							},
+							orderBy: medias.id,
+						});
+
+						if (mediaList.length < limit) {
+							hasMore = false;
+						}
+						offset += limit;
+
+						if (mediaList.length > 0) {
+							const transformedItems = this._transformMediaList(mediaList);
+							for (const item of transformedItems) {
+								passThrough.write(`${JSON.stringify(item)}\n`);
+							}
+						}
+					}
+					passThrough.end();
+				} catch (err) {
+					logger.error({ err }, "Error generating NDJSON dump");
+					passThrough.destroy(
+						err instanceof Error ? err : new Error(String(err)),
+					);
+				}
+			})();
+
+			return nodeStreamToWebReadable(passThrough);
 		}
 
-		if (mode === "lancedb") {
+		if (targetMode === "tar") {
 			const driver = getDriver(mediaSource);
+			const archiverMod = await import("archiver");
+			const { PassThrough } = await import("node:stream");
 
-			const { writeToLanceDB, cleanupLanceDBDir } = await import(
-				"~/application/services/lancedb-dump-service"
+			const passThrough = new PassThrough();
+			const archive = new (archiverMod as any).TarArchive();
+			archive.pipe(passThrough);
+
+			(async () => {
+				try {
+					const limit = 500;
+					let offset = 0;
+					let hasMore = true;
+
+					const ndjsonParts: string[] = [];
+
+					while (hasMore) {
+						const mediaList = await db.query.medias.findMany({
+							where: eq(medias.mediaSourceId, mediaSourceId),
+							limit,
+							offset,
+							with: {
+								generationInfo: true,
+								urls: true,
+								tags: { with: { tag: true } },
+								authors: { with: { author: true } },
+								characters: {
+									with: {
+										character: { with: { ips: { with: { ip: true } } } },
+									},
+								},
+								ips: { with: { ip: true } },
+								projects: { with: { project: true } },
+							},
+							orderBy: medias.id,
+						});
+
+						if (mediaList.length < limit) {
+							hasMore = false;
+						}
+						offset += limit;
+
+						if (mediaList.length > 0) {
+							const transformedItems = this._transformMediaList(mediaList);
+							const includeImages = options?.includeImages ?? true;
+							for (const item of transformedItems) {
+								ndjsonParts.push(`${JSON.stringify(item)}\n`);
+
+								if (includeImages && item.filePath) {
+									try {
+										const buffer = await driver.get(item.filePath);
+										archive.append(buffer, { name: `images/${item.filePath}` });
+									} catch {
+										// ignore missing files
+									}
+								}
+							}
+						}
+					}
+
+					const ndjsonBuffer = Buffer.from(ndjsonParts.join(""));
+					archive.append(ndjsonBuffer, { name: "dump.ndjson" });
+					await archive.finalize();
+				} catch (err) {
+					logger.error({ err }, "Error generating TAR dump");
+					archive.abort();
+				}
+			})();
+
+			return nodeStreamToWebReadable(passThrough);
+		}
+
+		if (targetMode === "lancedb") {
+			// Sync cache first
+			await this.syncSourceLanceDBCache(mediaSourceId);
+
+			const cacheDir = path.join(
+				process.cwd(),
+				".cache",
+				"lancedb-cache",
+				`source-${mediaSourceId}`,
 			);
 
-			const includeImages = options?.includeImages ?? false;
-
-			const allItems: MediaDumpItem[] = [];
-			const limit = 500;
-			let offset = 0;
-			let hasMore = true;
-
-			while (hasMore) {
-				const mediaList = await db.query.medias.findMany({
-					where: eq(medias.mediaSourceId, mediaSourceId),
-					limit,
-					offset,
-					with: {
-						generationInfo: true,
-						urls: true,
-						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
-						characters: {
-							with: { character: { with: { ips: { with: { ip: true } } } } },
-						},
-						ips: { with: { ip: true } },
-						projects: { with: { project: true } },
-					},
-					orderBy: medias.id,
-				});
-
-				if (mediaList.length < limit) {
-					hasMore = false;
-				}
-				offset += limit;
-
-				if (mediaList.length > 0) {
-					const transformedItems = this._transformMediaList(mediaList);
-					allItems.push(...transformedItems);
-				}
-			}
-
-			const lanceDbDir = await writeToLanceDB(allItems, {
-				includeImages,
-				getImageBuffer: includeImages
-					? async (filePath: string) => {
-							try {
-								return await driver.get(filePath);
-							} catch {
-								return null;
-							}
-						}
-					: undefined,
-			});
-
-			try {
-				const proc = Bun.spawn(["tar", "-czf", "-", "-C", lanceDbDir, "."], {
-					stdout: "pipe",
-					stderr: "ignore",
-				});
-
-				proc.exited
-					.then(async (code) => {
-						if (code !== 0) {
-							logger.error({ code }, "tar process exited with non-zero code");
-						}
-						await cleanupLanceDBDir(lanceDbDir);
-					})
-					.catch(async (err) => {
-						logger.error({ err }, "tar process failed");
-						await cleanupLanceDBDir(lanceDbDir);
-					});
-
-				return proc.stdout;
-			} catch (err) {
-				logger.error({ err }, "Failed to spawn tar for LanceDB dump");
-				await cleanupLanceDBDir(lanceDbDir);
-				throw err;
-			}
-		}
-
-		// ZIP Mode: Streaming Implementation
-		const driver = getDriver(mediaSource);
-		const archiverMod = await import("archiver");
-		const { PassThrough } = await import("node:stream");
-		const fsSync = await import("node:fs");
-		const { randomUUID } = await import("node:crypto");
-
-		type ArchiverModule = {
-			ZipArchive: new (
-				opts?: Record<string, unknown>,
-			) => import("archiver").Archiver;
-		};
-
-		const passThrough = new PassThrough();
-		const archive = createZipArchive(archiverMod as unknown as ArchiverModule);
-
-		let tempJsonPath: string | null = null;
-		const cleanup = async () => {
-			if (tempJsonPath) {
+			const includeImages = options?.includeImages ?? true;
+			if (!includeImages) {
 				try {
-					await fsSync.promises.unlink(tempJsonPath);
-				} catch (_e) {
-					// ignore
+					const proc = Bun.spawn(["tar", "-cf", "-", "-C", cacheDir, "."], {
+						stdout: "pipe",
+						stderr: "ignore",
+					});
+					return proc.stdout;
+				} catch (err) {
+					logger.error(
+						{ err },
+						"Failed to spawn tar for LanceDB metadata dump",
+					);
+					throw err;
 				}
 			}
-		};
 
-		archive.on("error", async (_err: unknown) => {
-			await cleanup();
-		});
+			// Include images: package LanceDB files and images inside the tar
+			const driver = getDriver(mediaSource);
+			const archiverMod = await import("archiver");
+			const { PassThrough } = await import("node:stream");
 
-		archive.pipe(passThrough);
+			const passThrough = new PassThrough();
+			const archive = new (archiverMod as any).TarArchive();
+			archive.pipe(passThrough);
 
-		(async () => {
-			let jsonStream: import("node:fs").WriteStream | undefined;
-			try {
-				tempJsonPath = path.join(
-					process.cwd(),
-					".cache",
-					`dump-${randomUUID()}.json`,
-				);
-				jsonStream = fsSync.createWriteStream(tempJsonPath);
+			(async () => {
+				try {
+					// 1. Pack LanceDB files
+					archive.directory(cacheDir, false);
 
-				jsonStream.write("[\n");
+					// 2. Stream image buffers
+					const limit = 500;
+					let offset = 0;
+					let hasMore = true;
 
-				const limit = 50;
-				let offset = 0;
-				let hasMore = true;
-				let isFirst = true;
+					while (hasMore) {
+						const mediaList = await db.query.medias.findMany({
+							where: eq(medias.mediaSourceId, mediaSourceId),
+							limit,
+							offset,
+							columns: { id: true, filePath: true },
+							orderBy: medias.id,
+						});
 
-				while (hasMore) {
-					const mediaList = await db.query.medias.findMany({
-						where: eq(medias.mediaSourceId, mediaSourceId),
-						limit,
-						offset,
-						with: {
-							generationInfo: true,
-							urls: true,
-							tags: { with: { tag: true } },
-							authors: { with: { author: true } },
-							characters: {
-								with: { character: { with: { ips: { with: { ip: true } } } } },
-							},
-							ips: { with: { ip: true } },
-							projects: { with: { project: true } },
-						},
-						orderBy: medias.id, // Ensure stable ordering
-					});
-
-					if (mediaList.length < limit) {
-						hasMore = false;
-					}
-					offset += limit;
-
-					if (mediaList.length === 0 && isFirst) {
-						hasMore = false;
-						break;
-					}
-					if (mediaList.length === 0) {
-						hasMore = false;
-						break;
-					}
-
-					const transformedItems = this._transformMediaList(mediaList);
-
-					for (const item of transformedItems) {
-						if (!isFirst) {
-							jsonStream.write(",\n");
+						if (mediaList.length < limit) {
+							hasMore = false;
 						}
-						jsonStream.write(JSON.stringify(item, null, 2));
-						isFirst = false;
+						offset += limit;
 
-						if (item.filePath) {
-							try {
-								const buffer = await driver.get(item.filePath);
-								archive.append(buffer, { name: `images/${item.filePath}` });
-							} catch (_e) {
-								// ignore missing files
+						for (const media of mediaList) {
+							if (media.filePath) {
+								try {
+									const buffer = await driver.get(media.filePath);
+									archive.append(buffer, { name: `images/${media.filePath}` });
+								} catch {
+									// ignore
+								}
 							}
 						}
 					}
+
+					await archive.finalize();
+				} catch (err) {
+					logger.error(
+						{ err },
+						"Error generating LanceDB TAR dump with images",
+					);
+					archive.abort();
 				}
+			})();
 
-				jsonStream.write("\n]");
-				await new Promise<void>((resolve, reject) => {
-					jsonStream?.end(() => resolve());
-					jsonStream?.on("error", reject);
-				});
-
-				archive.append(fsSync.createReadStream(tempJsonPath), {
-					name: "dump.json",
-				});
-			} catch (err) {
-				logger.error({ err }, "Failed to create dump");
-				archive.abort();
-				jsonStream?.destroy();
-			} finally {
-				await archive.finalize();
-				passThrough.on("close", cleanup);
-				passThrough.on("end", cleanup);
-			}
-		})();
-
-		return nodeStreamToWebReadable(passThrough);
+			return nodeStreamToWebReadable(passThrough);
+		}
 	},
 
 	// Helper to transform media list to dump format

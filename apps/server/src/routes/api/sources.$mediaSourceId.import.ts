@@ -18,7 +18,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 				await fs.promises.mkdir(tempDir, { recursive: true });
 				const tempFilePath = path.join(
 					tempDir,
-					`import-route-${randomUUID()}.zip`,
+					`import-route-${randomUUID()}.tar`,
 				);
 
 				try {
@@ -32,7 +32,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 					);
 
 					return Response.json(
-						await BackupService.importSourceZip(
+						await BackupService.importSourceTar(
 							params.mediaSourceId,
 							tempFilePath,
 						),
