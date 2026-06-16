@@ -146,7 +146,7 @@ describe("BackupService ZIP Integration", () => {
 		});
 
 		// 2. Create TAR Dump
-		const tarStream: any = await BackupService.createDump(sourceId1, "zip");
+		const tarStream = await BackupService.createDump(sourceId1, "zip");
 		const tarFilePath = path.join(tempDir, "backup.tar");
 		const writeStream = createWriteStream(tarFilePath);
 

@@ -31,6 +31,12 @@ import { logger } from "~/infrastructure/logger";
 import { getDriver } from "~/infrastructure/storage/factory";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
+interface ArchiverModule {
+	TarArchive: new (
+		opts?: Record<string, unknown>,
+	) => import("archiver").Archiver;
+}
+
 function _createZipArchive(mod: {
 	ZipArchive: new (
 		opts?: Record<string, unknown>,
@@ -1213,7 +1219,9 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
-			const archive = new (archiverMod as any).TarArchive();
+			const archive = new (
+				archiverMod as unknown as ArchiverModule
+			).TarArchive();
 			archive.pipe(passThrough);
 
 			(async () => {
@@ -1314,7 +1322,9 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
-			const archive = new (archiverMod as any).TarArchive();
+			const archive = new (
+				archiverMod as unknown as ArchiverModule
+			).TarArchive();
 			archive.pipe(passThrough);
 
 			(async () => {
@@ -1365,6 +1375,7 @@ export const BackupService = {
 
 			return nodeStreamToWebReadable(passThrough);
 		}
+		throw new Error(`Unsupported dump mode: ${mode}`);
 	},
 
 	// Helper to transform media list to dump format
