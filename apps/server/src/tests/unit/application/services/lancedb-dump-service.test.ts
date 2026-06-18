@@ -420,10 +420,18 @@ describe("LanceDB Dump Service", () => {
 
 			mockOpenTable.mockResolvedValue(mockTable);
 
+			const mockSelectToArray = vi
+				.fn()
+				.mockResolvedValueOnce([{ id: "item-1" }, { id: "item-2" }])
+				.mockResolvedValueOnce([]);
+			const mockSelectOffset = vi.fn().mockReturnValue({
+				toArray: mockSelectToArray,
+			});
+			const mockSelectLimit = vi.fn().mockReturnValue({
+				offset: mockSelectOffset,
+			});
 			const mockSelect = vi.fn().mockReturnValue({
-				toArray: vi
-					.fn()
-					.mockResolvedValue([{ id: "item-1" }, { id: "item-2" }]),
+				limit: mockSelectLimit,
 			});
 			mockQuery.mockReturnValue({
 				select: mockSelect,
@@ -440,18 +448,22 @@ describe("LanceDB Dump Service", () => {
 					mediaType: "image",
 				},
 			];
-			const activeIds = ["item-1", "item-3"];
+			const resolveActiveIds = vi.fn().mockResolvedValue(["item-1"]);
 
 			const path = await import("node:path");
 			const fs = await import("node:fs/promises");
 			const testPath = path.join(process.cwd(), ".cache", "test-sync-lancedb");
 
 			try {
-				await service.syncLanceDB(testPath, itemsToUpsert, activeIds);
+				await service.syncLanceDB(testPath, itemsToUpsert, {
+					existingIdPageSize: 2,
+					resolveActiveIds,
+				});
 
 				expect(mockMergeInsert).toHaveBeenCalledWith("id");
 				expect(mockExecute).toHaveBeenCalledTimes(1);
 				expect(mockExecute.mock.calls[0][0][0].id).toBe("item-3");
+				expect(resolveActiveIds).toHaveBeenCalledWith(["item-1", "item-2"]);
 
 				expect(mockDelete).toHaveBeenCalledTimes(1);
 				expect(mockDelete).toHaveBeenCalledWith("id IN ('item-2')");

@@ -7,7 +7,7 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db, type TransactionClient } from "~/infrastructure/db";
 import {
@@ -1107,17 +1107,22 @@ export const BackupService = {
 			lastSynced = 0;
 		}
 
-		const { gte } = await import("drizzle-orm");
-
-		const activeRows = await db
-			.select({ id: medias.id })
-			.from(medias)
-			.where(eq(medias.mediaSourceId, mediaSourceId));
-		const activeIds = activeRows.map((r) => r.id);
-
 		const { syncLanceDB } = await import(
 			"~/application/services/lancedb-dump-service"
 		);
+		const resolveActiveIds = async (candidateIds: string[]) => {
+			if (candidateIds.length === 0) return [];
+			const activeRows = await db
+				.select({ id: medias.id })
+				.from(medias)
+				.where(
+					and(
+						eq(medias.mediaSourceId, mediaSourceId),
+						inArray(medias.id, candidateIds),
+					),
+				);
+			return activeRows.map((row) => row.id);
+		};
 
 		const limit = 500;
 		let offset = 0;
@@ -1150,7 +1155,10 @@ export const BackupService = {
 			}
 
 			const transformedItems = this._transformMediaList(mediaList);
-			await syncLanceDB(cacheDir, transformedItems, activeIds);
+			await syncLanceDB(cacheDir, transformedItems, {
+				optimize: false,
+				pruneMissing: false,
+			});
 			totalUpserted += transformedItems.length;
 
 			if (mediaList.length < limit) {
@@ -1159,9 +1167,7 @@ export const BackupService = {
 			offset += limit;
 		}
 
-		if (totalUpserted === 0) {
-			await syncLanceDB(cacheDir, [], activeIds);
-		}
+		await syncLanceDB(cacheDir, [], { resolveActiveIds });
 
 		await fs.writeFile(lastSyncedFile, Date.now().toString(), "utf-8");
 		logger.info(
