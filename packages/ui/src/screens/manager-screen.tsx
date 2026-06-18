@@ -299,10 +299,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 											value?.id === "__all__" ? undefined : value?.id,
 										)
 									}
-									options={[
-										ALL_SOURCES_OPTION,
-										...manager().sources(),
-									]}
+									options={[ALL_SOURCES_OPTION, ...manager().sources()]}
 									optionTextValue="name"
 									optionValue="id"
 									placeholder="All Sources"

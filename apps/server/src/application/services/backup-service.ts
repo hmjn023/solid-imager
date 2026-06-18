@@ -912,7 +912,6 @@ export const BackupService = {
 
 		const { execSync } = await import("node:child_process");
 		const pathMod = await import("node:path");
-		const fsSync = await import("node:fs");
 
 		const extractDir = pathMod.join(
 			process.cwd(),
@@ -944,26 +943,28 @@ export const BackupService = {
 				dir: string,
 				currentRelative: string = "",
 			) => {
-				let files: string[] = [];
+				let files: Array<string> = [];
 				try {
-					files = await fsSync.promises.readdir(dir);
+					files = await fs.readdir(dir);
 				} catch {
 					return; // images folder does not exist or empty
 				}
 
-				for (const file of files) {
-					const fullPath = pathMod.join(dir, file);
-					const relPath = currentRelative
-						? pathMod.join(currentRelative, file)
-						: file;
-					const stat = await fsSync.promises.stat(fullPath);
-					if (stat.isDirectory()) {
-						await restoreImagesRecursive(fullPath, relPath);
-					} else {
-						const buf = await fsSync.promises.readFile(fullPath);
-						await driver.put(relPath, buf);
-					}
-				}
+				await Promise.all(
+					files.map(async (file) => {
+						const fullPath = pathMod.join(dir, file);
+						const relPath = currentRelative
+							? pathMod.join(currentRelative, file)
+							: file;
+						const stat = await fs.stat(fullPath);
+						if (stat.isDirectory()) {
+							await restoreImagesRecursive(fullPath, relPath);
+						} else {
+							const buf = await fs.readFile(fullPath);
+							await driver.put(relPath, buf);
+						}
+					}),
+				);
 			};
 
 			await restoreImagesRecursive(imagesDir);

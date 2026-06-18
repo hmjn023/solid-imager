@@ -1,6 +1,6 @@
 import { ClientOnly } from "@tanstack/solid-router";
 import type { ComponentProps } from "solid-js";
-import { createSignal, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { Portal } from "solid-js/web";
 import { Button } from "./button";
 import {
@@ -29,7 +29,11 @@ export type MediaListActionsProps = {
 
 export function MediaListActions(props: MediaListActionsProps) {
 	const [isLanceDBDialogOpen, setIsLanceDBDialogOpen] = createSignal(false);
-	const navActions = () => document.getElementById("nav-actions");
+	const [navActions, setNavActions] = createSignal<HTMLElement | null>(null);
+
+	onMount(() => {
+		setNavActions(document.getElementById("nav-actions"));
+	});
 
 	return (
 		<ClientOnly>
