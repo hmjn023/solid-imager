@@ -5,11 +5,14 @@ import type {
 	ILanceDbDumpService,
 	MediaDumpItemWithImageData,
 	ReadOptions,
+	SyncOptions,
 	WriteOptions,
 } from "../ports/lancedb-dump-service";
 
 const METADATA_CHUNK_SIZE = 1000;
 const IMAGE_CHUNK_SIZE = 100;
+const EXISTING_ID_PAGE_SIZE = 1000;
+const DELETE_CHUNK_SIZE = 500;
 
 function resolveSafeChildPath(
 	baseDir: string,
@@ -402,6 +405,10 @@ type LanceConnectFn = (
 	opts?: Record<string, unknown>,
 ) => Promise<LanceDbLike>;
 
+function escapeLanceSqlString(value: string): string {
+	return value.replaceAll("'", "''");
+}
+
 export function createLanceDbDumpService(deps?: {
 	logger?: {
 		info(msg: string, data?: unknown): void;
@@ -424,7 +431,7 @@ export function createLanceDbDumpService(deps?: {
 	async function syncLanceDB(
 		lanceDbDir: string,
 		itemsToUpsert: MediaDumpItem[],
-		activeIds: string[],
+		options: SyncOptions = {},
 	): Promise<void> {
 		await fs.mkdir(lanceDbDir, { recursive: true });
 
@@ -452,28 +459,79 @@ export function createLanceDbDumpService(deps?: {
 			}
 		}
 
-		const allRows = await table.query().select(["id"]).toArray();
-		const lanceDbIds = allRows.map((r) => r.id as string).filter(Boolean);
+		const pruneMissing = options.pruneMissing ?? true;
+		let deleteCount = 0;
 
-		const activeIdSet = new Set(activeIds);
-		const idsToDelete = lanceDbIds.filter((id) => !activeIdSet.has(id));
+		if (pruneMissing) {
+			const activeIdSet = options.activeIds
+				? new Set(options.activeIds)
+				: undefined;
+			const pageSize = options.existingIdPageSize ?? EXISTING_ID_PAGE_SIZE;
+			const deleteChunkSize = options.deleteChunkSize ?? DELETE_CHUNK_SIZE;
+			const idsToDelete: string[] = [];
+			let offset = 0;
 
-		if (idsToDelete.length > 0) {
-			const chunkSize = 500;
-			for (let i = 0; i < idsToDelete.length; i += chunkSize) {
-				const chunk = idsToDelete.slice(i, i + chunkSize);
-				const whereClause = `id IN (${chunk.map((id) => `'${id}'`).join(",")})`;
-				await table.delete(whereClause);
+			while (true) {
+				const rows = await table
+					.query()
+					.select(["id"])
+					.limit(pageSize)
+					.offset(offset)
+					.toArray();
+				const candidateIds = rows
+					.map((row) => row.id)
+					.filter(
+						(id): id is string => typeof id === "string" && id.length > 0,
+					);
+
+				if (candidateIds.length === 0) {
+					if (rows.length < pageSize) break;
+					offset += rows.length;
+					continue;
+				}
+
+				let pageActiveIds: ReadonlySet<string>;
+				if (activeIdSet) {
+					pageActiveIds = activeIdSet;
+				} else if (options.resolveActiveIds) {
+					const resolved = await options.resolveActiveIds(candidateIds);
+					pageActiveIds =
+						resolved instanceof Set ? resolved : new Set(resolved);
+				} else {
+					pageActiveIds = new Set(candidateIds);
+				}
+
+				for (const id of candidateIds) {
+					if (!pageActiveIds.has(id)) {
+						idsToDelete.push(id);
+					}
+				}
+
+				if (rows.length < pageSize) break;
+				offset += rows.length;
+			}
+
+			if (idsToDelete.length > 0) {
+				for (let i = 0; i < idsToDelete.length; i += deleteChunkSize) {
+					const chunk = idsToDelete.slice(i, i + deleteChunkSize);
+					const whereClause = `id IN (${chunk
+						.map((id) => `'${escapeLanceSqlString(id)}'`)
+						.join(",")})`;
+					await table.delete(whereClause);
+				}
+				deleteCount = idsToDelete.length;
 			}
 		}
 
-		await table.optimize({
-			cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
-		});
+		if (options.optimize ?? true) {
+			await table.optimize({
+				cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
+			});
+		}
 		log.info("LanceDB cache synced", {
 			path: lanceDbDir,
 			upsertCount: itemsToUpsert.length,
-			deleteCount: idsToDelete.length,
+			deleteCount,
 		});
 	}
 

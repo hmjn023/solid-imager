@@ -16,6 +16,17 @@ export type ReadOptions = {
 	onChunk?: (chunk: MediaDumpItemWithImageData[]) => Promise<void>;
 };
 
+export type SyncOptions = {
+	pruneMissing?: boolean;
+	optimize?: boolean;
+	activeIds?: string[];
+	resolveActiveIds?: (
+		candidateIds: string[],
+	) => Promise<ReadonlySet<string> | string[]>;
+	existingIdPageSize?: number;
+	deleteChunkSize?: number;
+};
+
 export interface ILanceDbDumpService {
 	writeToLanceDB(
 		items: MediaDumpItem[],
@@ -24,7 +35,7 @@ export interface ILanceDbDumpService {
 	syncLanceDB(
 		lanceDbDir: string,
 		itemsToUpsert: MediaDumpItem[],
-		activeIds: string[],
+		options?: SyncOptions,
 	): Promise<void>;
 	readFromLanceDB(
 		lanceDbDir: string,
