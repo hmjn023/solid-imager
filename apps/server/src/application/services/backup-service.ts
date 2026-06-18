@@ -1108,31 +1108,9 @@ export const BackupService = {
 		);
 		await fs.mkdir(cacheDir, { recursive: true });
 
-		const lastSyncedFile = path.join(cacheDir, ".last_synced");
-		let lastSynced = 0;
-		try {
-			const content = await fs.readFile(lastSyncedFile, "utf-8");
-			lastSynced = parseInt(content.trim(), 10) || 0;
-		} catch {
-			lastSynced = 0;
-		}
-
 		const { syncLanceDB } = await import(
 			"~/application/services/lancedb-dump-service"
 		);
-		const resolveActiveIds = async (candidateIds: string[]) => {
-			if (candidateIds.length === 0) return [];
-			const activeRows = await db
-				.select({ id: medias.id })
-				.from(medias)
-				.where(
-					and(
-						eq(medias.mediaSourceId, mediaSourceId),
-						inArray(medias.id, candidateIds),
-					),
-				);
-			return activeRows.map((row) => row.id);
-		};
 
 		const limit = 1000;
 		let lastId: string | null = null;
@@ -1170,11 +1148,10 @@ export const BackupService = {
 			lastId = mediaList.at(-1)?.id ?? lastId;
 		}
 
-		await syncLanceDB(cacheDir, items, { resolveActiveIds });
+		await syncLanceDB(cacheDir, items);
 
-		await fs.writeFile(lastSyncedFile, Date.now().toString(), "utf-8");
 		logger.info(
-			{ mediaSourceId, upserted: items.length, previousSyncAt: lastSynced },
+			{ mediaSourceId, upserted: items.length },
 			"syncSourceLanceDBCache completed successfully",
 		);
 	},

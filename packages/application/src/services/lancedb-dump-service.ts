@@ -176,13 +176,72 @@ async function readAll(table: Table): Promise<Row[]> {
 	const rows: Row[] = [];
 	let offset = 0;
 	while (true) {
-		const chunk: Row[] = await table.query().limit(READ_CHUNK_SIZE).offset(offset).toArray();
+		const chunk = await readPage(table, offset, READ_CHUNK_SIZE);
 		if (chunk.length === 0) break;
 		rows.push(...chunk);
 		if (chunk.length < READ_CHUNK_SIZE) break;
 		offset += chunk.length;
 	}
 	return rows;
+}
+
+async function readPage(
+	table: Table,
+	offset: number,
+	limit: number,
+): Promise<Row[]> {
+	return table.query().limit(limit).offset(offset).toArray();
+}
+
+function escapeLanceSqlString(value: string): string {
+	return value.replaceAll("'", "''");
+}
+
+async function readRowsForMediaIds(
+	table: Table,
+	mediaIds: string[],
+): Promise<Row[]> {
+	if (mediaIds.length === 0) return [];
+	const ids = mediaIds
+		.map((id) => `'${escapeLanceSqlString(id)}'`)
+		.join(",");
+	return table.query().where(`mediaId IN (${ids})`).toArray();
+}
+
+function mediaIdsFromRows(rows: Row[]): string[] {
+	return rows.flatMap((row) => {
+		const id = safeString(row.id);
+		return id ? [id] : [];
+	});
+}
+
+async function readRelatedRows(
+	tables: Record<Exclude<TableName, "media">, Table>,
+	mediaRows: Row[],
+): Promise<Record<string, Row[]>> {
+	const mediaIds = mediaIdsFromRows(mediaRows);
+	const [tags, authors, characters, characterIps, ips, projects, urls, generationInfo] =
+		await Promise.all([
+			readRowsForMediaIds(tables.media_tags, mediaIds),
+			readRowsForMediaIds(tables.media_authors, mediaIds),
+			readRowsForMediaIds(tables.media_characters, mediaIds),
+			readRowsForMediaIds(tables.media_character_ips, mediaIds),
+			readRowsForMediaIds(tables.media_ips, mediaIds),
+			readRowsForMediaIds(tables.media_projects, mediaIds),
+			readRowsForMediaIds(tables.media_urls, mediaIds),
+			readRowsForMediaIds(tables.media_generation_info, mediaIds),
+		]);
+	return {
+		media: mediaRows,
+		media_tags: tags,
+		media_authors: authors,
+		media_characters: characters,
+		media_character_ips: characterIps,
+		media_ips: ips,
+		media_projects: projects,
+		media_urls: urls,
+		media_generation_info: generationInfo,
+	};
 }
 
 function safeString(value: RowValue | undefined): string | undefined {
@@ -323,28 +382,42 @@ export function createLanceDbDumpService(deps?: {
 	async function readFromLanceDB(lanceDbDir: string, options: ReadOptions = {}): Promise<MediaDumpItemWithImageData[]> {
 		const connect = await getConnect();
 		const db = await connect(lanceDbDir);
-		const tableRows: Record<string, Row[]> = {};
-		for (const tableName of tableNames) {
-			const table = await db.openTable(tableName);
-			tableRows[tableName] = await readAll(table);
-		}
-		const items = rowsToItems(tableRows);
-		if (options.extractImages && options.saveImageBuffer) {
-			await Promise.all(items.map(async (item) => {
-				if (!item.filePath) return;
-				const externalPath = resolveSafeChildPath(path.join(lanceDbDir, "images"), item.filePath);
-				if (!externalPath) return;
-				try { await options.saveImageBuffer?.(item.filePath, await fs.readFile(externalPath)); } catch {}
-			}));
-		}
-		if (options.onChunk) {
-			for (let i = 0; i < items.length; i += READ_CHUNK_SIZE) {
-				await options.onChunk(items.slice(i, i + READ_CHUNK_SIZE));
+		const mediaTable = await db.openTable("media");
+		const relatedTables = {
+			media_tags: await db.openTable("media_tags"),
+			media_authors: await db.openTable("media_authors"),
+			media_characters: await db.openTable("media_characters"),
+			media_character_ips: await db.openTable("media_character_ips"),
+			media_ips: await db.openTable("media_ips"),
+			media_projects: await db.openTable("media_projects"),
+			media_urls: await db.openTable("media_urls"),
+			media_generation_info: await db.openTable("media_generation_info"),
+		};
+		const allItems: MediaDumpItemWithImageData[] = [];
+		let offset = 0;
+		while (true) {
+			const mediaRows = await readPage(mediaTable, offset, READ_CHUNK_SIZE);
+			if (mediaRows.length === 0) break;
+			const tableRows = await readRelatedRows(relatedTables, mediaRows);
+			const items = rowsToItems(tableRows);
+			if (options.extractImages && options.saveImageBuffer) {
+				await Promise.all(items.map(async (item) => {
+					if (!item.filePath) return;
+					const externalPath = resolveSafeChildPath(path.join(lanceDbDir, "images"), item.filePath);
+					if (!externalPath) return;
+					try { await options.saveImageBuffer?.(item.filePath, await fs.readFile(externalPath)); } catch {}
+				}));
 			}
-			return [];
+			if (options.onChunk) {
+				await options.onChunk(items);
+			} else {
+				allItems.push(...items);
+			}
+			if (mediaRows.length < READ_CHUNK_SIZE) break;
+			offset += mediaRows.length;
 		}
-		log.info("LanceDB v2 dump read", { path: lanceDbDir, count: items.length });
-		return items;
+		log.info("LanceDB v2 dump read", { path: lanceDbDir, count: allItems.length });
+		return allItems;
 	}
 
 	async function cleanupLanceDBDir(dir: string): Promise<void> {

@@ -20,6 +20,9 @@ function createTable(rows: Record<string, unknown>[] = []) {
 					toArray: async () => rows.slice(offset, offset + limit),
 				}),
 			}),
+			where: () => ({
+				toArray: async () => rows,
+			}),
 		})),
 	};
 }
