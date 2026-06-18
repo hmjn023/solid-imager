@@ -1,477 +1,163 @@
-import type { MediaDumpItemWithImageData } from "@solid-imager/application/ports/lancedb-dump-service";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-const {
-	mockCreateTable,
-	mockMergeInsert,
-	mockWhenMatchedUpdateAll,
-	mockExecute,
-	mockOpenTable,
-	mockQuery,
-	mockLimit,
-	mockOffset,
-	mockToArray,
-	mockOptimize,
-} = vi.hoisted(() => ({
+const { mockCreateTable, mockOpenTable, mockOptimize } = vi.hoisted(() => ({
 	mockCreateTable: vi.fn(),
-	mockMergeInsert: vi.fn(),
-	mockWhenMatchedUpdateAll: vi.fn(),
-	mockExecute: vi.fn(),
 	mockOpenTable: vi.fn(),
-	mockQuery: vi.fn(),
-	mockLimit: vi.fn(),
-	mockOffset: vi.fn(),
-	mockToArray: vi.fn(),
 	mockOptimize: vi.fn(),
 }));
 
-function createMockTable() {
-	const table = {
-		add: vi.fn(),
-		mergeInsert: mockMergeInsert,
+function createTable(rows: Record<string, unknown>[] = []) {
+	return {
+		add: vi.fn(async (newRows: Record<string, unknown>[]) =>
+			rows.push(...newRows),
+		),
 		delete: vi.fn(),
 		optimize: mockOptimize,
-		query: mockQuery,
+		query: vi.fn(() => ({
+			limit: (limit: number) => ({
+				offset: (offset: number) => ({
+					toArray: async () => rows.slice(offset, offset + limit),
+				}),
+			}),
+		})),
 	};
-
-	mockMergeInsert.mockReturnValue({
-		whenMatchedUpdateAll: mockWhenMatchedUpdateAll,
-	});
-	mockWhenMatchedUpdateAll.mockReturnValue({
-		execute: mockExecute,
-	});
-
-	mockQuery.mockReturnValue({
-		limit: mockLimit,
-	});
-	mockLimit.mockReturnValue({
-		offset: mockOffset,
-	});
-	mockOffset.mockReturnValue({
-		toArray: mockToArray,
-	});
-
-	return table;
 }
 
-function createMockConnect(mockTable: ReturnType<typeof createMockTable>) {
+function createMockConnect(
+	readRows?: Record<string, Record<string, unknown>[]>,
+) {
+	const tables = new Map<string, ReturnType<typeof createTable>>();
+	mockCreateTable.mockImplementation(
+		async (name: string, rows: Record<string, unknown>[]) => {
+			const table = createTable([...rows]);
+			tables.set(name, table);
+			return table;
+		},
+	);
+	mockOpenTable.mockImplementation(async (name: string) => {
+		const table = tables.get(name) ?? createTable(readRows?.[name] ?? []);
+		tables.set(name, table);
+		return table;
+	});
 	return vi.fn().mockResolvedValue({
-		createTable: mockCreateTable.mockResolvedValue(mockTable),
-		openTable: mockOpenTable.mockResolvedValue(mockTable),
+		createTable: mockCreateTable,
+		openTable: mockOpenTable,
 	});
 }
 
 describe("LanceDB Dump Service", () => {
-	let mockTable: ReturnType<typeof createMockTable>;
-	let mockConnect: ReturnType<typeof createMockConnect>;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockTable = createMockTable();
-		mockConnect = createMockConnect(mockTable);
 	});
 
-	describe("writeToLanceDB", () => {
-		it("should write metadata in Phase 1 and images in Phase 2", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
+	it("writes v2 normalized tables without embedded image data", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({ connect: createMockConnect() });
 
-			const items: MediaDumpItem[] = [
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-				},
-				{
-					id: "item-2",
-					filePath: "test/image2.png",
-					fileName: "image2.png",
-					mediaType: "image",
-					width: 200,
-					height: 200,
-					fileSize: 2048,
-				},
-			];
+		const items: MediaDumpItem[] = [
+			{
+				id: "item-1",
+				filePath: "test/image1.png",
+				fileName: "image1.png",
+				mediaType: "image",
+				width: 100,
+				height: 100,
+				fileSize: 1024,
+				tags: [{ name: "tag-a", type: "positive", confidence: 0.9 }],
+				authors: [{ name: "author-a", accountId: "acct" }],
+				characters: [{ name: "char-a", linkedIps: ["ip-a"] }],
+				ips: [{ name: "ip-a" }],
+				projects: [{ name: "project-a" }],
+				sourceUrls: ["https://example.com/image1"],
+			},
+		];
 
-			const mockImageBuffer1 = Buffer.from("image-data-1");
-			const mockImageBuffer2 = Buffer.from("image-data-2");
-
-			const getImageBuffer = vi
-				.fn()
-				.mockImplementation(async (filePath: string) => {
-					if (filePath === "test/image1.png") return mockImageBuffer1;
-					if (filePath === "test/image2.png") return mockImageBuffer2;
-					return null;
-				});
-
-			await service.writeToLanceDB(items, {
-				includeImages: true,
-				getImageBuffer,
-			});
-
-			// Phase 1: createTable should be called with metadata only (no imageData)
-			expect(mockCreateTable).toHaveBeenCalledTimes(1);
-			const createTableCall = mockCreateTable.mock.calls[0];
-			expect(createTableCall[0]).toBe("media");
-			const rows = createTableCall[1];
-			expect(rows).toHaveLength(2);
-			expect(rows[0].id).toBe("item-1");
-			expect(rows[0].imageData).toBeNull();
-			expect(rows[1].id).toBe("item-2");
-			expect(rows[1].imageData).toBeNull();
-
-			// Phase 2: mergeInsert should be called with image data
-			expect(mockMergeInsert).toHaveBeenCalledWith("id");
-			expect(mockExecute).toHaveBeenCalledTimes(1);
-			const executeCall = mockExecute.mock.calls[0];
-			const imageRows = executeCall[0];
-			expect(imageRows).toHaveLength(2);
-			expect(imageRows[0].id).toBe("item-1");
-			expect(imageRows[0].imageData).toBe(mockImageBuffer1);
-			expect(imageRows[1].id).toBe("item-2");
-			expect(imageRows[1].imageData).toBe(mockImageBuffer2);
-
-			// getImageBuffer should be called for each item
-			expect(getImageBuffer).toHaveBeenCalledTimes(2);
+		await service.writeToLanceDB(items, {
+			includeImages: true,
+			getImageBuffer: vi.fn(),
 		});
 
-		it("should skip Phase 2 when includeImages is false", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
+		expect(mockCreateTable).toHaveBeenCalledTimes(9);
+		expect(mockCreateTable.mock.calls.map((call) => call[0])).toEqual([
+			"media",
+			"media_tags",
+			"media_authors",
+			"media_characters",
+			"media_character_ips",
+			"media_ips",
+			"media_projects",
+			"media_urls",
+			"media_generation_info",
+		]);
 
-			const items: MediaDumpItem[] = [
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-				},
-			];
-
-			const getImageBuffer = vi.fn();
-
-			await service.writeToLanceDB(items, {
-				includeImages: false,
-				getImageBuffer,
-			});
-
-			// Phase 1: createTable should be called
-			expect(mockCreateTable).toHaveBeenCalledTimes(1);
-
-			// Phase 2: mergeInsert should NOT be called
-			expect(mockMergeInsert).not.toHaveBeenCalled();
-			expect(getImageBuffer).not.toHaveBeenCalled();
+		const mediaRows = mockCreateTable.mock.calls[0][1];
+		expect(mediaRows[0]).toMatchObject({
+			id: "item-1",
+			filePath: "test/image1.png",
+			fileName: "image1.png",
 		});
-
-		it("should handle getImageBuffer errors gracefully", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			const items: MediaDumpItem[] = [
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-				},
-				{
-					id: "item-2",
-					filePath: "test/image2.png",
-					fileName: "image2.png",
-					mediaType: "image",
-					width: 200,
-					height: 200,
-					fileSize: 2048,
-				},
-			];
-
-			const getImageBuffer = vi
-				.fn()
-				.mockImplementation(async (filePath: string) => {
-					if (filePath === "test/image1.png") {
-						throw new Error("File not found");
-					}
-					return Buffer.from("image-data-2");
-				});
-
-			await service.writeToLanceDB(items, {
-				includeImages: true,
-				getImageBuffer,
-			});
-
-			// Phase 2: only successful image should be in mergeInsert
-			expect(mockExecute).toHaveBeenCalledTimes(1);
-			const executeCall = mockExecute.mock.calls[0];
-			const imageRows = executeCall[0];
-			expect(imageRows).toHaveLength(1);
-			expect(imageRows[0].id).toBe("item-2");
-		});
+		expect(mediaRows[0]).not.toHaveProperty("imageData");
 	});
 
-	describe("readFromLanceDB", () => {
-		it("should NOT include _imageData when extractImages is false", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			const mockImageData = new Uint8Array([1, 2, 3, 4]);
-			mockToArray.mockResolvedValue([
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-					imageData: mockImageData,
-				},
-			]);
-
-			const result = await service.readFromLanceDB("/path/to/lancedb", {
-				extractImages: false,
-			});
-
-			expect(result).toHaveLength(1);
-			const item = result[0] as MediaDumpItemWithImageData;
-			expect(item.id).toBe("item-1");
-			expect(item.filePath).toBe("test/image1.png");
-			expect(item._imageData).toBeUndefined();
+	it("reads v2 tables back into MediaDumpItem chunks", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({
+			connect: createMockConnect({
+				media: [
+					{
+						id: "item-1",
+						filePath: "test/image1.png",
+						fileName: "image1.png",
+						mediaType: "image",
+						width: 100,
+						height: 100,
+					},
+				],
+				media_tags: [{ mediaId: "item-1", name: "tag-a", type: "positive" }],
+				media_authors: [
+					{ mediaId: "item-1", name: "author-a", accountId: "acct" },
+				],
+				media_characters: [{ mediaId: "item-1", name: "char-a" }],
+				media_character_ips: [
+					{ mediaId: "item-1", characterName: "char-a", ipName: "ip-a" },
+				],
+				media_ips: [{ mediaId: "item-1", name: "ip-a" }],
+				media_projects: [{ mediaId: "item-1", name: "project-a" }],
+				media_urls: [{ mediaId: "item-1", url: "https://example.com/image1" }],
+				media_generation_info: [
+					{
+						mediaId: "item-1",
+						prompt: "prompt",
+						workflowJson: JSON.stringify({ node: true }),
+					},
+				],
+			}),
 		});
 
-		it("should include _imageData when extractImages is true", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			const mockImageData = new Uint8Array([1, 2, 3, 4]);
-			mockToArray.mockResolvedValue([
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-					imageData: mockImageData,
-				},
-			]);
-
-			const result = await service.readFromLanceDB("/path/to/lancedb", {
-				extractImages: true,
-			});
-
-			expect(result).toHaveLength(1);
-			const item = result[0] as MediaDumpItemWithImageData;
-			expect(item.id).toBe("item-1");
-			expect(item._imageData).toBe(mockImageData);
+		const chunks: MediaDumpItem[][] = [];
+		const result = await service.readFromLanceDB("/tmp/lancedb", {
+			onChunk: async (chunk) => {
+				chunks.push(chunk);
+			},
 		});
 
-		it("should call saveImageBuffer when extractImages is true", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			const mockImageData = new Uint8Array([1, 2, 3, 4]);
-			mockToArray.mockResolvedValue([
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-					imageData: mockImageData,
-				},
-			]);
-
-			const saveImageBuffer = vi.fn().mockResolvedValue(undefined);
-
-			await service.readFromLanceDB("/path/to/lancedb", {
-				extractImages: true,
-				saveImageBuffer,
-			});
-
-			expect(saveImageBuffer).toHaveBeenCalledTimes(1);
-			expect(saveImageBuffer).toHaveBeenCalledWith(
-				"test/image1.png",
-				expect.any(Buffer),
-			);
+		expect(result).toEqual([]);
+		expect(chunks).toHaveLength(1);
+		expect(chunks[0][0]).toMatchObject({
+			id: "item-1",
+			filePath: "test/image1.png",
+			tags: [{ name: "tag-a", type: "positive" }],
+			authors: [{ name: "author-a", accountId: "acct" }],
+			characters: [{ name: "char-a", linkedIps: ["ip-a"] }],
+			ips: [{ name: "ip-a" }],
+			projects: [{ name: "project-a" }],
+			sourceUrls: ["https://example.com/image1"],
 		});
-
-		it("should handle multiple chunks correctly", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			let callCount = 0;
-			mockToArray.mockImplementation(async () => {
-				callCount++;
-				if (callCount === 1) {
-					return [
-						{
-							id: "item-1",
-							filePath: "test/image1.png",
-							fileName: "image1.png",
-							mediaType: "image",
-							width: 100,
-							height: 100,
-							fileSize: 1024,
-							imageData: new Uint8Array([1]),
-						},
-					];
-				}
-				return [];
-			});
-
-			const onChunk = vi.fn().mockResolvedValue(undefined);
-
-			await service.readFromLanceDB("/path/to/lancedb", {
-				extractImages: false,
-				onChunk,
-			});
-
-			expect(onChunk).toHaveBeenCalledTimes(1);
-			const chunk = onChunk.mock.calls[0][0];
-			expect(chunk).toHaveLength(1);
-			expect(chunk[0].id).toBe("item-1");
-		});
-
-		it("should fallback to fs.readFile when extractImages is true but imageData is null", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			const path = await import("node:path");
-			const fs = await import("node:fs/promises");
-
-			const testDir = path.join(
-				process.cwd(),
-				".cache",
-				"test-lancedb-fallback",
-			);
-			const imagesDir = path.join(testDir, "images", "test");
-			await fs.mkdir(imagesDir, { recursive: true });
-
-			const mockFileBuffer = Buffer.from("mocked-external-image");
-			await fs.writeFile(path.join(imagesDir, "image1.png"), mockFileBuffer);
-
-			mockToArray.mockResolvedValue([
-				{
-					id: "item-1",
-					filePath: "test/image1.png",
-					fileName: "image1.png",
-					mediaType: "image",
-					width: 100,
-					height: 100,
-					fileSize: 1024,
-					imageData: null,
-				},
-			]);
-
-			const saveImageBuffer = vi.fn().mockResolvedValue(undefined);
-
-			try {
-				await service.readFromLanceDB(testDir, {
-					extractImages: true,
-					saveImageBuffer,
-				});
-
-				expect(saveImageBuffer).toHaveBeenCalledWith(
-					"test/image1.png",
-					mockFileBuffer,
-				);
-			} finally {
-				await fs.rm(testDir, { recursive: true, force: true }).catch(() => {});
-			}
-		});
-	});
-
-	describe("syncLanceDB", () => {
-		it("should merge insert new items and delete missing items", async () => {
-			const { createLanceDbDumpService } = await import(
-				"@solid-imager/application/services/lancedb-dump-service"
-			);
-			const service = createLanceDbDumpService({ connect: mockConnect });
-
-			mockOpenTable.mockResolvedValue(mockTable);
-
-			const mockSelectToArray = vi
-				.fn()
-				.mockResolvedValueOnce([{ id: "item-1" }, { id: "item-2" }])
-				.mockResolvedValueOnce([]);
-			const mockSelectOffset = vi.fn().mockReturnValue({
-				toArray: mockSelectToArray,
-			});
-			const mockSelectLimit = vi.fn().mockReturnValue({
-				offset: mockSelectOffset,
-			});
-			const mockSelect = vi.fn().mockReturnValue({
-				limit: mockSelectLimit,
-			});
-			mockQuery.mockReturnValue({
-				select: mockSelect,
-			});
-
-			const mockDelete = vi.fn().mockResolvedValue(undefined);
-			mockTable.delete = mockDelete;
-
-			const itemsToUpsert: MediaDumpItem[] = [
-				{
-					id: "item-3",
-					filePath: "test/image3.png",
-					fileName: "image3.png",
-					mediaType: "image",
-				},
-			];
-			const resolveActiveIds = vi.fn().mockResolvedValue(["item-1"]);
-
-			const path = await import("node:path");
-			const fs = await import("node:fs/promises");
-			const testPath = path.join(process.cwd(), ".cache", "test-sync-lancedb");
-
-			try {
-				await service.syncLanceDB(testPath, itemsToUpsert, {
-					existingIdPageSize: 2,
-					resolveActiveIds,
-				});
-
-				expect(mockMergeInsert).toHaveBeenCalledWith("id");
-				expect(mockExecute).toHaveBeenCalledTimes(1);
-				expect(mockExecute.mock.calls[0][0][0].id).toBe("item-3");
-				expect(resolveActiveIds).toHaveBeenCalledWith(["item-1", "item-2"]);
-
-				expect(mockDelete).toHaveBeenCalledTimes(1);
-				expect(mockDelete).toHaveBeenCalledWith("id IN ('item-2')");
-
-				expect(mockOptimize).toHaveBeenCalledTimes(1);
-			} finally {
-				await fs.rm(testPath, { recursive: true, force: true }).catch(() => {});
-			}
-		});
+		expect(chunks[0][0].generationInfo?.workflow).toEqual({ node: true });
 	});
 });
