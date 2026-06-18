@@ -7,9 +7,9 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import { db, type TransactionClient } from "~/infrastructure/db";
+import { db } from "~/infrastructure/db";
 import {
 	authors,
 	characterIps,
@@ -32,18 +32,26 @@ import { getDriver } from "~/infrastructure/storage/factory";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 interface ArchiverModule {
-	TarArchive: new (
-		opts?: Record<string, unknown>,
-	) => import("archiver").Archiver;
+	TarArchive: new (opts?: object) => import("archiver").Archiver;
+}
+
+async function importArchiverModule(): Promise<ArchiverModule> {
+	return import("archiver");
 }
 
 function _createZipArchive(mod: {
-	ZipArchive: new (
-		opts?: Record<string, unknown>,
-	) => import("archiver").Archiver;
+	ZipArchive: new (opts?: object) => import("archiver").Archiver;
 }): import("archiver").Archiver {
 	return new mod.ZipArchive({ zlib: { level: 9 } });
 }
+
+type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| { [key: string]: JsonValue };
 
 interface MediaListQueryItem {
 	id: string;
@@ -95,6 +103,11 @@ interface MediaListQueryItem {
 		project: { name: string; description: string | null };
 	}[];
 }
+
+type BackupDbClient = Pick<
+	typeof db,
+	"delete" | "insert" | "query" | "select" | "update"
+>;
 
 // const _IMAGES_PREFIX = /^images\//;
 
@@ -187,7 +200,7 @@ export const BackupService = {
 		let mediaPathToId = new Map<string, string>();
 
 		await db.transaction(async (tx) => {
-			const c = tx as unknown as TransactionClient;
+			const c: BackupDbClient = tx;
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
 				await this._restoreMasterData(validItems, c);
 
@@ -307,10 +320,7 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	async _restoreMasterData(
-		validItems: MediaDumpItem[],
-		_tx?: TransactionClient,
-	) {
+	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: BackupDbClient) {
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, { accountId?: string | null }>();
 		const projectNames = new Set<string>();
@@ -415,7 +425,7 @@ export const BackupService = {
 	async _restoreMediaRecords(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
-		_tx?: TransactionClient,
+		_tx?: BackupDbClient,
 	) {
 		const d = _tx ?? db;
 		const mediaValues = validItems.map((item) => ({
@@ -460,7 +470,7 @@ export const BackupService = {
 	async _mapMediaPathsToIds(
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
-		_tx?: TransactionClient,
+		_tx?: BackupDbClient,
 	) {
 		const d = _tx ?? db;
 		const ChunkSize = 1_000;
@@ -514,7 +524,7 @@ export const BackupService = {
 			ipMap: Map<string, string>;
 			charMap: Map<string, string>;
 		},
-		_tx?: TransactionClient,
+		_tx?: BackupDbClient,
 	) {
 		const d = _tx ?? db;
 		const mediaTagsData: (typeof mediaTags.$inferInsert)[] = [];
@@ -680,7 +690,7 @@ export const BackupService = {
 		}
 
 		// Insert new relations in chunks
-		const insertChunked = async (table: Table, data: unknown[]) => {
+		const insertChunked = async <T>(table: Table, data: T[]) => {
 			const BatchSize = 1_000;
 			for (let i = 0; i < data.length; i += BatchSize) {
 				await d
@@ -721,8 +731,8 @@ export const BackupService = {
 		idColumn: PgColumn,
 		nameColumn: PgColumn,
 		names: Set<string>,
-		defaults: Record<string, unknown>,
-		_tx?: TransactionClient,
+		defaults: Record<string, JsonValue>,
+		_tx?: BackupDbClient,
 	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		const nameList = Array.from(names);
@@ -756,7 +766,7 @@ export const BackupService = {
 		nameColumn: PgColumn,
 		accountIdColumn: PgColumn,
 		dataMap: Map<string, { accountId?: string | null }>,
-		_tx?: TransactionClient,
+		_tx?: BackupDbClient,
 	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		if (dataMap.size === 0) {
@@ -885,7 +895,7 @@ export const BackupService = {
 			try {
 				const item = JSON.parse(line);
 				batch.push(item);
-				if (batch.length >= 500) {
+				if (batch.length >= 2000) {
 					await flushBatch();
 				}
 			} catch (e) {
@@ -1098,44 +1108,20 @@ export const BackupService = {
 		);
 		await fs.mkdir(cacheDir, { recursive: true });
 
-		const lastSyncedFile = path.join(cacheDir, ".last_synced");
-		let lastSynced = 0;
-		try {
-			const content = await fs.readFile(lastSyncedFile, "utf-8");
-			lastSynced = parseInt(content.trim(), 10) || 0;
-		} catch {
-			lastSynced = 0;
-		}
-
 		const { syncLanceDB } = await import(
 			"~/application/services/lancedb-dump-service"
 		);
-		const resolveActiveIds = async (candidateIds: string[]) => {
-			if (candidateIds.length === 0) return [];
-			const activeRows = await db
-				.select({ id: medias.id })
-				.from(medias)
-				.where(
-					and(
-						eq(medias.mediaSourceId, mediaSourceId),
-						inArray(medias.id, candidateIds),
-					),
-				);
-			return activeRows.map((row) => row.id);
-		};
 
-		const limit = 500;
-		let offset = 0;
-		let totalUpserted = 0;
+		const limit = 1000;
+		let lastId: string | null = null;
+		const items: MediaDumpItem[] = [];
 
 		while (true) {
-			const mediaList = await db.query.medias.findMany({
-				where: and(
-					eq(medias.mediaSourceId, mediaSourceId),
-					gte(medias.modifiedAt, new Date(lastSynced)),
-				),
+			const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+				where: lastId
+					? and(eq(medias.mediaSourceId, mediaSourceId), gt(medias.id, lastId))
+					: eq(medias.mediaSourceId, mediaSourceId),
 				limit,
-				offset,
 				with: {
 					generationInfo: true,
 					urls: true,
@@ -1154,24 +1140,18 @@ export const BackupService = {
 				break;
 			}
 
-			const transformedItems = this._transformMediaList(mediaList);
-			await syncLanceDB(cacheDir, transformedItems, {
-				optimize: false,
-				pruneMissing: false,
-			});
-			totalUpserted += transformedItems.length;
+			items.push(...this._transformMediaList(mediaList));
 
 			if (mediaList.length < limit) {
 				break;
 			}
-			offset += limit;
+			lastId = mediaList.at(-1)?.id ?? lastId;
 		}
 
-		await syncLanceDB(cacheDir, [], { resolveActiveIds });
+		await syncLanceDB(cacheDir, items);
 
-		await fs.writeFile(lastSyncedFile, Date.now().toString(), "utf-8");
 		logger.info(
-			{ mediaSourceId, upserted: totalUpserted },
+			{ mediaSourceId, upserted: items.length },
 			"syncSourceLanceDBCache completed successfully",
 		);
 	},
@@ -1204,35 +1184,40 @@ export const BackupService = {
 
 			(async () => {
 				try {
-					const limit = 500;
-					let offset = 0;
+					const limit = 1000;
+					let lastId: string | null = null;
 					let hasMore = true;
 
 					while (hasMore) {
-						const mediaList = await db.query.medias.findMany({
-							where: eq(medias.mediaSourceId, mediaSourceId),
-							limit,
-							offset,
-							with: {
-								generationInfo: true,
-								urls: true,
-								tags: { with: { tag: true } },
-								authors: { with: { author: true } },
-								characters: {
-									with: {
-										character: { with: { ips: { with: { ip: true } } } },
+						const mediaList: MediaListQueryItem[] =
+							await db.query.medias.findMany({
+								where: lastId
+									? and(
+											eq(medias.mediaSourceId, mediaSourceId),
+											gt(medias.id, lastId),
+										)
+									: eq(medias.mediaSourceId, mediaSourceId),
+								limit,
+								with: {
+									generationInfo: true,
+									urls: true,
+									tags: { with: { tag: true } },
+									authors: { with: { author: true } },
+									characters: {
+										with: {
+											character: { with: { ips: { with: { ip: true } } } },
+										},
 									},
+									ips: { with: { ip: true } },
+									projects: { with: { project: true } },
 								},
-								ips: { with: { ip: true } },
-								projects: { with: { project: true } },
-							},
-							orderBy: medias.id,
-						});
+								orderBy: medias.id,
+							});
 
 						if (mediaList.length < limit) {
 							hasMore = false;
 						}
-						offset += limit;
+						lastId = mediaList.at(-1)?.id ?? lastId;
 
 						if (mediaList.length > 0) {
 							const transformedItems = this._transformMediaList(mediaList);
@@ -1255,48 +1240,51 @@ export const BackupService = {
 
 		if (targetMode === "tar") {
 			const driver = getDriver(mediaSource);
-			const archiverMod = await import("archiver");
+			const archiverMod = await importArchiverModule();
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
 			const ndjsonStream = new PassThrough();
-			const archive = new (
-				archiverMod as unknown as ArchiverModule
-			).TarArchive();
+			const archive = new archiverMod.TarArchive();
 			archive.pipe(passThrough);
 			archive.append(ndjsonStream, { name: "dump.ndjson" });
 
 			(async () => {
 				try {
-					const limit = 500;
-					let offset = 0;
+					const limit = 1000;
+					let lastId: string | null = null;
 					let hasMore = true;
 
 					while (hasMore) {
-						const mediaList = await db.query.medias.findMany({
-							where: eq(medias.mediaSourceId, mediaSourceId),
-							limit,
-							offset,
-							with: {
-								generationInfo: true,
-								urls: true,
-								tags: { with: { tag: true } },
-								authors: { with: { author: true } },
-								characters: {
-									with: {
-										character: { with: { ips: { with: { ip: true } } } },
+						const mediaList: MediaListQueryItem[] =
+							await db.query.medias.findMany({
+								where: lastId
+									? and(
+											eq(medias.mediaSourceId, mediaSourceId),
+											gt(medias.id, lastId),
+										)
+									: eq(medias.mediaSourceId, mediaSourceId),
+								limit,
+								with: {
+									generationInfo: true,
+									urls: true,
+									tags: { with: { tag: true } },
+									authors: { with: { author: true } },
+									characters: {
+										with: {
+											character: { with: { ips: { with: { ip: true } } } },
+										},
 									},
+									ips: { with: { ip: true } },
+									projects: { with: { project: true } },
 								},
-								ips: { with: { ip: true } },
-								projects: { with: { project: true } },
-							},
-							orderBy: medias.id,
-						});
+								orderBy: medias.id,
+							});
 
 						if (mediaList.length < limit) {
 							hasMore = false;
 						}
-						offset += limit;
+						lastId = mediaList.at(-1)?.id ?? lastId;
 
 						if (mediaList.length > 0) {
 							const transformedItems = this._transformMediaList(mediaList);
@@ -1331,87 +1319,88 @@ export const BackupService = {
 		}
 
 		if (targetMode === "lancedb") {
-			// Sync cache first
-			await this.syncSourceLanceDBCache(mediaSourceId);
-
-			const cacheDir = path.join(
+			const { writeToLanceDB, cleanupLanceDBDir } = await import(
+				"~/application/services/lancedb-dump-service"
+			);
+			const tempBaseDir = path.join(
 				process.cwd(),
 				".cache",
-				"lancedb-cache",
+				"lancedb-dump",
 				`source-${mediaSourceId}`,
 			);
-
 			const includeImages = options?.includeImages ?? true;
-			if (!includeImages) {
-				try {
-					const proc = Bun.spawn(["tar", "-cf", "-", "-C", cacheDir, "."], {
-						stdout: "pipe",
-						stderr: "ignore",
-					});
-					return proc.stdout;
-				} catch (err) {
-					logger.error(
-						{ err },
-						"Failed to spawn tar for LanceDB metadata dump",
-					);
-					throw err;
-				}
+			const dumpedItems: MediaDumpItem[] = [];
+			const limit = 1000;
+			let lastId: string | null = null;
+
+			while (true) {
+				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+					where: lastId
+						? and(
+								eq(medias.mediaSourceId, mediaSourceId),
+								gt(medias.id, lastId),
+							)
+						: eq(medias.mediaSourceId, mediaSourceId),
+					limit,
+					with: {
+						generationInfo: true,
+						urls: true,
+						tags: { with: { tag: true } },
+						authors: { with: { author: true } },
+						characters: {
+							with: {
+								character: { with: { ips: { with: { ip: true } } } },
+							},
+						},
+						ips: { with: { ip: true } },
+						projects: { with: { project: true } },
+					},
+					orderBy: medias.id,
+				});
+
+				if (mediaList.length === 0) break;
+				dumpedItems.push(...this._transformMediaList(mediaList));
+				lastId = mediaList.at(-1)?.id ?? lastId;
+				if (mediaList.length < limit) break;
 			}
 
-			// Include images: package LanceDB files and images inside the tar
+			const lanceDbDir = await writeToLanceDB(dumpedItems, {
+				includeImages,
+				tempDir: tempBaseDir,
+			});
 			const driver = getDriver(mediaSource);
-			const archiverMod = await import("archiver");
+			const archiverMod = await importArchiverModule();
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
-			const archive = new (
-				archiverMod as unknown as ArchiverModule
-			).TarArchive();
+			const archive = new archiverMod.TarArchive();
 			archive.pipe(passThrough);
 
 			(async () => {
 				try {
-					// 1. Pack LanceDB files
-					archive.directory(cacheDir, false);
+					archive.directory(lanceDbDir, false);
 
-					// 2. Stream image buffers
-					const limit = 500;
-					let offset = 0;
-					let hasMore = true;
-
-					while (hasMore) {
-						const mediaList = await db.query.medias.findMany({
-							where: eq(medias.mediaSourceId, mediaSourceId),
-							limit,
-							offset,
-							columns: { id: true, filePath: true },
-							orderBy: medias.id,
-						});
-
-						if (mediaList.length < limit) {
-							hasMore = false;
-						}
-						offset += limit;
-
-						for (const media of mediaList) {
-							if (media.filePath) {
-								try {
-									const buffer = await driver.get(media.filePath);
-									archive.append(buffer, { name: `images/${media.filePath}` });
-								} catch {
-									// ignore
-								}
+					if (includeImages) {
+						for (const item of dumpedItems) {
+							if (!item.filePath) continue;
+							try {
+								const buffer = await driver.get(item.filePath);
+								archive.append(buffer, { name: `images/${item.filePath}` });
+							} catch {
+								// ignore missing files
 							}
 						}
 					}
 
 					await archive.finalize();
+					await cleanupLanceDBDir(lanceDbDir);
 				} catch (err) {
 					logger.error(
 						{ err },
 						"Error generating LanceDB TAR dump with images",
 					);
 					archive.abort();
+					await cleanupLanceDBDir(lanceDbDir).catch(() => {});
 				}
 			})();
 

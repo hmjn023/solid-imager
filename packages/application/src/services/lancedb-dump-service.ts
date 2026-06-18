@@ -1,5 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import type { DataType, Schema } from "apache-arrow";
+import type { Connection, Table } from "@lancedb/lancedb";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import type {
 	ILanceDbDumpService,
@@ -9,150 +11,139 @@ import type {
 	WriteOptions,
 } from "../ports/lancedb-dump-service";
 
-const METADATA_CHUNK_SIZE = 1000;
-const IMAGE_CHUNK_SIZE = 100;
-const EXISTING_ID_PAGE_SIZE = 1000;
-const DELETE_CHUNK_SIZE = 500;
+const ROW_CHUNK_SIZE = 5000;
+const READ_CHUNK_SIZE = 5000;
 
-function resolveSafeChildPath(
-	baseDir: string,
-	relativePath: string,
-): string | null {
-	if (!relativePath || path.isAbsolute(relativePath)) {
-		return null;
-	}
+type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
+type RowValue = JsonValue | Date;
+type Row = Record<string, RowValue>;
+
+type LanceConnectFn = (uri: string) => Promise<Connection>;
+
+type TableRows = {
+	media: Row[];
+	tags: Row[];
+	authors: Row[];
+	characters: Row[];
+	characterIps: Row[];
+	ips: Row[];
+	projects: Row[];
+	urls: Row[];
+	generationInfo: Row[];
+};
+
+type TableName =
+	| "media"
+	| "media_tags"
+	| "media_authors"
+	| "media_characters"
+	| "media_character_ips"
+	| "media_ips"
+	| "media_projects"
+	| "media_urls"
+	| "media_generation_info";
+
+const tableNames: TableName[] = [
+	"media",
+	"media_tags",
+	"media_authors",
+	"media_characters",
+	"media_character_ips",
+	"media_ips",
+	"media_projects",
+	"media_urls",
+	"media_generation_info",
+];
+
+function resolveSafeChildPath(baseDir: string, relativePath: string): string | null {
+	if (!relativePath || path.isAbsolute(relativePath)) return null;
 	const resolvedBase = path.resolve(baseDir);
 	const resolvedPath = path.resolve(resolvedBase, relativePath);
 	const childRelative = path.relative(resolvedBase, resolvedPath);
-	if (
-		childRelative === "" ||
-		childRelative.startsWith("..") ||
-		path.isAbsolute(childRelative)
-	) {
+	if (childRelative === "" || childRelative.startsWith("..") || path.isAbsolute(childRelative)) {
 		return null;
 	}
 	return resolvedPath;
 }
 
-async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
+async function createSchema(fields: Array<[string, DataType, boolean?]>): Promise<Schema> {
 	const arrow = await import("apache-arrow");
-	return new arrow.Schema([
-		new arrow.Field("id", new arrow.Utf8(), true),
-		new arrow.Field("filePath", new arrow.Utf8(), true),
-		new arrow.Field("fileName", new arrow.Utf8(), true),
-		new arrow.Field("description", new arrow.Utf8(), true),
-		new arrow.Field("width", new arrow.Float64(), true),
-		new arrow.Field("height", new arrow.Float64(), true),
-		new arrow.Field("fileSize", new arrow.Float64(), true),
-		new arrow.Field("mediaType", new arrow.Utf8(), true),
-		new arrow.Field("createdAt", new arrow.TimestampMillisecond(), true),
-		new arrow.Field("modifiedAt", new arrow.TimestampMillisecond(), true),
-		new arrow.Field("imageData", new arrow.Binary(), true),
-		new arrow.Field(
-			"tags",
-			new arrow.List(
-				new arrow.Field(
-					"",
-					new arrow.Struct([
-						new arrow.Field("name", new arrow.Utf8()),
-						new arrow.Field("type", new arrow.Utf8(), true),
-						new arrow.Field("confidence", new arrow.Float64(), true),
-						new arrow.Field("source", new arrow.Utf8(), true),
-					]),
-				),
-			),
-			true,
-		),
-		new arrow.Field(
-			"authors",
-			new arrow.List(
-				new arrow.Field(
-					"",
-					new arrow.Struct([
-						new arrow.Field("name", new arrow.Utf8()),
-						new arrow.Field("accountId", new arrow.Utf8(), true),
-					]),
-				),
-			),
-			true,
-		),
-		new arrow.Field(
-			"characters",
-			new arrow.List(
-				new arrow.Field(
-					"",
-					new arrow.Struct([
-						new arrow.Field("name", new arrow.Utf8()),
-						new arrow.Field("description", new arrow.Utf8(), true),
-						new arrow.Field("confidence", new arrow.Float64(), true),
-						new arrow.Field(
-							"linkedIps",
-							new arrow.List(new arrow.Field("item", new arrow.Utf8())),
-							true,
-						),
-						new arrow.Field("source", new arrow.Utf8(), true),
-					]),
-				),
-			),
-			true,
-		),
-		new arrow.Field(
-			"ips",
-			new arrow.List(
-				new arrow.Field(
-					"",
-					new arrow.Struct([
-						new arrow.Field("name", new arrow.Utf8()),
-						new arrow.Field("description", new arrow.Utf8(), true),
-						new arrow.Field("confidence", new arrow.Float64(), true),
-						new arrow.Field("source", new arrow.Utf8(), true),
-					]),
-				),
-			),
-			true,
-		),
-		new arrow.Field(
-			"projects",
-			new arrow.List(
-				new arrow.Field(
-					"",
-					new arrow.Struct([
-						new arrow.Field("name", new arrow.Utf8()),
-						new arrow.Field("description", new arrow.Utf8(), true),
-					]),
-				),
-			),
-			true,
-		),
-		new arrow.Field(
-			"sourceUrls",
-			new arrow.List(new arrow.Field("item", new arrow.Utf8())),
-			true,
-		),
-		new arrow.Field(
-			"generationInfo",
-			new arrow.Struct([
-				new arrow.Field("prompt", new arrow.Utf8(), true),
-				new arrow.Field("negativePrompt", new arrow.Utf8(), true),
-				new arrow.Field("modelName", new arrow.Utf8(), true),
-				new arrow.Field("seed", new arrow.Float64(), true),
-				new arrow.Field("steps", new arrow.Float64(), true),
-				new arrow.Field("cfgScale", new arrow.Float64(), true),
-				new arrow.Field("aiGenerated", new arrow.Bool(), true),
-				new arrow.Field("workflow", new arrow.Utf8(), true),
-				new arrow.Field("metadata", new arrow.Utf8(), true),
-			]),
-			true,
-		),
-	]);
+	return new arrow.Schema(
+		fields.map(([name, type, nullable]) => new arrow.Field(name, type, nullable ?? true)),
+	);
 }
 
-function itemToRow(
-	item: MediaDumpItem,
-	imageData?: Buffer,
-): Record<string, unknown> {
-	const generationInfo = item.generationInfo
-		? {
+async function createSchemas(): Promise<Record<TableName, Schema>> {
+	const arrow = await import("apache-arrow");
+	const utf8 = () => new arrow.Utf8();
+	const float64 = () => new arrow.Float64();
+	const bool = () => new arrow.Bool();
+	const timestamp = () => new arrow.TimestampMillisecond();
+	return {
+		media: await createSchema([
+			["id", utf8()],
+			["filePath", utf8()],
+			["fileName", utf8()],
+			["description", utf8()],
+			["width", float64()],
+			["height", float64()],
+			["fileSize", float64()],
+			["mediaType", utf8()],
+			["createdAt", timestamp()],
+			["modifiedAt", timestamp()],
+		]),
+		media_tags: await createSchema([
+			["mediaId", utf8()], ["name", utf8()], ["type", utf8()], ["confidence", float64()], ["source", utf8()],
+		]),
+		media_authors: await createSchema([["mediaId", utf8()], ["name", utf8()], ["accountId", utf8()]]),
+		media_characters: await createSchema([
+			["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
+		]),
+		media_character_ips: await createSchema([["mediaId", utf8()], ["characterName", utf8()], ["ipName", utf8()]]),
+		media_ips: await createSchema([
+			["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
+		]),
+		media_projects: await createSchema([["mediaId", utf8()], ["name", utf8()], ["description", utf8()]]),
+		media_urls: await createSchema([["mediaId", utf8()], ["url", utf8()]]),
+		media_generation_info: await createSchema([
+			["mediaId", utf8()], ["prompt", utf8()], ["negativePrompt", utf8()], ["modelName", utf8()], ["seed", float64()], ["steps", float64()], ["cfgScale", float64()], ["aiGenerated", bool()], ["workflowJson", utf8()], ["metadataJson", utf8()],
+		]),
+	};
+}
+
+function itemId(item: MediaDumpItem, index: number): string {
+	return item.id || item.filePath || `item-${index}`;
+}
+
+function itemsToRows(items: MediaDumpItem[]): TableRows {
+	const rows: TableRows = { media: [], tags: [], authors: [], characters: [], characterIps: [], ips: [], projects: [], urls: [], generationInfo: [] };
+	items.forEach((item, index) => {
+		const mediaId = itemId(item, index);
+		rows.media.push({
+			id: mediaId,
+			filePath: item.filePath ?? null,
+			fileName: item.fileName ?? null,
+			description: item.description ?? null,
+			width: item.width ?? null,
+			height: item.height ?? null,
+			fileSize: item.fileSize ?? null,
+			mediaType: item.mediaType ?? null,
+			createdAt: item.createdAt ? new Date(item.createdAt) : null,
+			modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : null,
+		});
+
+		for (const tag of item.tags ?? []) rows.tags.push({ mediaId, name: tag.name, type: tag.type ?? null, confidence: tag.confidence ?? null, source: tag.source ?? null });
+		for (const author of item.authors ?? []) rows.authors.push({ mediaId, name: author.name, accountId: author.accountId ?? null });
+		for (const character of item.characters ?? []) {
+			rows.characters.push({ mediaId, name: character.name, description: character.description ?? null, confidence: character.confidence ?? null, source: character.source ?? null });
+			for (const ipName of character.linkedIps ?? []) rows.characterIps.push({ mediaId, characterName: character.name, ipName });
+		}
+		for (const ip of item.ips ?? []) rows.ips.push({ mediaId, name: ip.name, description: ip.description ?? null, confidence: ip.confidence ?? null, source: ip.source ?? null });
+		for (const project of item.projects ?? []) rows.projects.push({ mediaId, name: project.name, description: project.description ?? null });
+		for (const url of item.sourceUrls ?? []) rows.urls.push({ mediaId, url });
+		if (item.generationInfo) {
+			rows.generationInfo.push({
+				mediaId,
 				prompt: item.generationInfo.prompt ?? null,
 				negativePrompt: item.generationInfo.negativePrompt ?? null,
 				modelName: item.generationInfo.modelName ?? null,
@@ -160,468 +151,220 @@ function itemToRow(
 				steps: item.generationInfo.steps ?? null,
 				cfgScale: item.generationInfo.cfgScale ?? null,
 				aiGenerated: item.generationInfo.aiGenerated ?? null,
-				workflow:
-					item.generationInfo.workflow != null
-						? JSON.stringify(item.generationInfo.workflow)
-						: null,
-				metadata:
-					item.generationInfo.metadata != null
-						? JSON.stringify(item.generationInfo.metadata)
-						: null,
-			}
-		: null;
-
-	return {
-		id: item.id ?? null,
-		filePath: item.filePath ?? null,
-		fileName: item.fileName ?? null,
-		description: item.description ?? null,
-		width: item.width ?? null,
-		height: item.height ?? null,
-		fileSize: item.fileSize ?? null,
-		mediaType: item.mediaType ?? null,
-		createdAt: item.createdAt ? new Date(item.createdAt) : null,
-		modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : null,
-		imageData: imageData ?? null,
-		tags:
-			item.tags?.map((t) => ({
-				name: t.name,
-				type: t.type ?? null,
-				confidence: t.confidence ?? null,
-				source: t.source ?? null,
-			})) ?? null,
-		authors:
-			item.authors?.map((a) => ({
-				name: a.name,
-				accountId: a.accountId ?? null,
-			})) ?? null,
-		characters:
-			item.characters?.map((c) => ({
-				name: c.name,
-				description: c.description ?? null,
-				confidence: c.confidence ?? null,
-				linkedIps: c.linkedIps ?? null,
-				source: c.source ?? null,
-			})) ?? null,
-		ips:
-			item.ips?.map((i) => ({
-				name: i.name,
-				description: i.description ?? null,
-				confidence: i.confidence ?? null,
-				source: i.source ?? null,
-			})) ?? null,
-		projects:
-			item.projects?.map((p) => ({
-				name: p.name,
-				description: p.description ?? null,
-			})) ?? null,
-		sourceUrls: item.sourceUrls ?? null,
-		generationInfo,
-	};
+				workflowJson: item.generationInfo.workflow == null ? null : JSON.stringify(item.generationInfo.workflow),
+				metadataJson: item.generationInfo.metadata == null ? null : JSON.stringify(item.generationInfo.metadata),
+			});
+		}
+	});
+	return rows;
 }
 
-function toArray(value: unknown): unknown[] | undefined {
-	if (Array.isArray(value)) {
-		return value;
-	}
-	if (value && typeof value === "object" && "toArray" in value) {
-		return (value as { toArray: () => unknown[] }).toArray();
-	}
-	if (value && typeof value === "object" && Symbol.iterator in value) {
-		return Array.from(value as Iterable<unknown>);
-	}
-	return undefined;
-}
-
-function safeJsonParse(value: unknown): unknown {
-	if (typeof value !== "string") {
-		return value;
-	}
-	try {
-		return JSON.parse(value);
-	} catch {
-		return value;
+async function addChunked(table: Table, rows: Row[]): Promise<void> {
+	for (let i = 0; i < rows.length; i += ROW_CHUNK_SIZE) {
+		await table.add(rows.slice(i, i + ROW_CHUNK_SIZE));
 	}
 }
 
-function rowToItem(
-	row: Record<string, unknown>,
-	includeImageData: boolean,
-): MediaDumpItemWithImageData {
-	const generationInfoRaw = row.generationInfo as Record<
-		string,
-		unknown
-	> | null;
-	const generationInfo = generationInfoRaw
-		? {
-				prompt: (generationInfoRaw.prompt as string | undefined) ?? undefined,
-				negativePrompt:
-					(generationInfoRaw.negativePrompt as string | undefined) ?? undefined,
-				modelName:
-					(generationInfoRaw.modelName as string | undefined) ?? undefined,
-				seed: (generationInfoRaw.seed as number | undefined) ?? undefined,
-				steps: (generationInfoRaw.steps as number | undefined) ?? undefined,
-				cfgScale:
-					(generationInfoRaw.cfgScale as number | undefined) ?? undefined,
-				aiGenerated:
-					(generationInfoRaw.aiGenerated as boolean | undefined) ?? undefined,
-				workflow: generationInfoRaw.workflow
-					? (safeJsonParse(generationInfoRaw.workflow) as
-							| Record<string, unknown>
-							| undefined)
-					: undefined,
-				metadata: generationInfoRaw.metadata
-					? (safeJsonParse(generationInfoRaw.metadata) as
-							| Record<string, unknown>
-							| undefined)
-					: undefined,
-			}
-		: undefined;
-
-	const tagsArr = toArray(row.tags);
-	const authorsArr = toArray(row.authors);
-	const charactersArr = toArray(row.characters);
-	const ipsArr = toArray(row.ips);
-	const projectsArr = toArray(row.projects);
-	const sourceUrlsArr = toArray(row.sourceUrls);
-
-	const safeString = (v: unknown): string | undefined =>
-		typeof v === "string" ? v : undefined;
-	const safeNumber = (v: unknown): number | undefined =>
-		typeof v === "number" ? v : undefined;
-
-	const item: MediaDumpItemWithImageData = {
-		id: safeString(row.id),
-		filePath: safeString(row.filePath),
-		fileName: safeString(row.fileName),
-		description: safeString(row.description),
-		width: safeNumber(row.width),
-		height: safeNumber(row.height),
-		fileSize: safeNumber(row.fileSize),
-		mediaType:
-			row.mediaType === "image" ||
-			row.mediaType === "video" ||
-			row.mediaType === "audio"
-				? row.mediaType
-				: undefined,
-		createdAt: row.createdAt
-			? new Date(row.createdAt as string | number)
-			: undefined,
-		modifiedAt: row.modifiedAt
-			? new Date(row.modifiedAt as string | number)
-			: undefined,
-		tags: tagsArr?.map((t) => {
-			const obj = t as Record<string, unknown>;
-			return {
-				name: safeString(obj.name) ?? "",
-				type: (obj.type as "positive" | "negative" | undefined) ?? undefined,
-				confidence: safeNumber(obj.confidence),
-				source: safeString(obj.source),
-			};
-		}),
-		authors: authorsArr?.map((a) => {
-			const obj = a as Record<string, unknown>;
-			return {
-				name: safeString(obj.name) ?? "",
-				accountId: safeString(obj.accountId),
-			};
-		}),
-		characters: charactersArr?.map((c) => {
-			const obj = c as Record<string, unknown>;
-			return {
-				name: safeString(obj.name) ?? "",
-				description: safeString(obj.description),
-				confidence: safeNumber(obj.confidence),
-				linkedIps: toArray(obj.linkedIps) as string[] | undefined,
-				source: safeString(obj.source),
-			};
-		}),
-		ips: ipsArr?.map((i) => {
-			const obj = i as Record<string, unknown>;
-			return {
-				name: safeString(obj.name) ?? "",
-				description: safeString(obj.description),
-				confidence: safeNumber(obj.confidence),
-				source: safeString(obj.source),
-			};
-		}),
-		projects: projectsArr?.map((p) => {
-			const obj = p as Record<string, unknown>;
-			return {
-				name: safeString(obj.name) ?? "",
-				description: safeString(obj.description),
-			};
-		}),
-		sourceUrls: sourceUrlsArr?.filter(
-			(u): u is string => typeof u === "string",
-		),
-		generationInfo,
-	};
-
-	if (includeImageData && row.imageData) {
-		item._imageData = row.imageData as Uint8Array;
-	}
-
-	return item;
+async function createTable(db: Connection, schemas: Record<string, Schema>, name: string, rows: Row[]): Promise<Table> {
+	const initialRows = rows.slice(0, ROW_CHUNK_SIZE);
+	const table = await db.createTable(name, initialRows, { mode: "overwrite", schema: schemas[name] });
+	if (rows.length > ROW_CHUNK_SIZE) await addChunked(table, rows.slice(ROW_CHUNK_SIZE));
+	return table;
 }
 
-type TableLike = {
-	add(rows: Record<string, unknown>[]): Promise<void>;
-	mergeInsert(key: string): {
-		whenMatchedUpdateAll(): {
-			execute(rows: Record<string, unknown>[]): Promise<void>;
-		};
-	};
-	delete(where: string): Promise<void>;
-	optimize(opts?: Record<string, unknown>): Promise<void>;
-	query(): {
-		select(fields: string[]): {
-			limit(n: number): {
-				offset(n: number): {
-					toArray(): Promise<Record<string, unknown>[]>;
-				};
-			};
-			toArray(): Promise<Record<string, unknown>[]>;
-		};
-		limit(n: number): {
-			offset(n: number): {
-				toArray(): Promise<Record<string, unknown>[]>;
-			};
-		};
-	};
-};
+async function readAll(table: Table): Promise<Row[]> {
+	const rows: Row[] = [];
+	let offset = 0;
+	while (true) {
+		const chunk = await readPage(table, offset, READ_CHUNK_SIZE);
+		if (chunk.length === 0) break;
+		rows.push(...chunk);
+		if (chunk.length < READ_CHUNK_SIZE) break;
+		offset += chunk.length;
+	}
+	return rows;
+}
 
-type LanceDbLike = {
-	createTable: (
-		name: string,
-		data: Record<string, unknown>[],
-		opts?: Record<string, unknown>,
-	) => Promise<TableLike>;
-	openTable: (name: string) => Promise<TableLike>;
-};
-
-type LanceConnectFn = (
-	uri: string,
-	opts?: Record<string, unknown>,
-) => Promise<LanceDbLike>;
+async function readPage(
+	table: Table,
+	offset: number,
+	limit: number,
+): Promise<Row[]> {
+	return table.query().limit(limit).offset(offset).toArray();
+}
 
 function escapeLanceSqlString(value: string): string {
 	return value.replaceAll("'", "''");
 }
 
-export function createLanceDbDumpService(deps?: {
-	logger?: {
-		info(msg: string, data?: unknown): void;
-		error(msg: string, data?: unknown): void;
+async function readRowsForMediaIds(
+	table: Table,
+	mediaIds: string[],
+): Promise<Row[]> {
+	if (mediaIds.length === 0) return [];
+	const ids = mediaIds
+		.map((id) => `'${escapeLanceSqlString(id)}'`)
+		.join(",");
+	return table.query().where(`mediaId IN (${ids})`).toArray();
+}
+
+function mediaIdsFromRows(rows: Row[]): string[] {
+	return rows.flatMap((row) => {
+		const id = safeString(row.id);
+		return id ? [id] : [];
+	});
+}
+
+async function readRelatedRows(
+	tables: Record<Exclude<TableName, "media">, Table>,
+	mediaRows: Row[],
+): Promise<Record<string, Row[]>> {
+	const mediaIds = mediaIdsFromRows(mediaRows);
+	const [tags, authors, characters, characterIps, ips, projects, urls, generationInfo] =
+		await Promise.all([
+			readRowsForMediaIds(tables.media_tags, mediaIds),
+			readRowsForMediaIds(tables.media_authors, mediaIds),
+			readRowsForMediaIds(tables.media_characters, mediaIds),
+			readRowsForMediaIds(tables.media_character_ips, mediaIds),
+			readRowsForMediaIds(tables.media_ips, mediaIds),
+			readRowsForMediaIds(tables.media_projects, mediaIds),
+			readRowsForMediaIds(tables.media_urls, mediaIds),
+			readRowsForMediaIds(tables.media_generation_info, mediaIds),
+		]);
+	return {
+		media: mediaRows,
+		media_tags: tags,
+		media_authors: authors,
+		media_characters: characters,
+		media_character_ips: characterIps,
+		media_ips: ips,
+		media_projects: projects,
+		media_urls: urls,
+		media_generation_info: generationInfo,
 	};
+}
+
+function safeString(value: RowValue | undefined): string | undefined {
+	return typeof value === "string" && value.length > 0 ? value : undefined;
+}
+
+function safeNumber(value: RowValue | undefined): number | undefined {
+	return typeof value === "number" ? value : undefined;
+}
+
+function safeJson(value: RowValue | undefined): JsonValue | undefined {
+	if (typeof value !== "string") return undefined;
+	try { return JSON.parse(value); } catch { return value; }
+}
+
+function groupByMediaId(rows: Row[]): Map<string, Row[]> {
+	const grouped = new Map<string, Row[]>();
+	for (const row of rows) {
+		const mediaId = safeString(row.mediaId);
+		if (!mediaId) continue;
+		const values = grouped.get(mediaId) ?? [];
+		values.push(row);
+		grouped.set(mediaId, values);
+	}
+	return grouped;
+}
+
+function rowsToItems(tableRows: Record<string, Row[]>): MediaDumpItemWithImageData[] {
+	const tags = groupByMediaId(tableRows.media_tags ?? []);
+	const authors = groupByMediaId(tableRows.media_authors ?? []);
+	const characters = groupByMediaId(tableRows.media_characters ?? []);
+	const characterIps = groupByMediaId(tableRows.media_character_ips ?? []);
+	const ips = groupByMediaId(tableRows.media_ips ?? []);
+	const projects = groupByMediaId(tableRows.media_projects ?? []);
+	const urls = groupByMediaId(tableRows.media_urls ?? []);
+	const generationInfo = groupByMediaId(tableRows.media_generation_info ?? []);
+
+	return (tableRows.media ?? []).map((media) => {
+		const id = safeString(media.id) ?? "";
+		const linkedIpsByCharacter = new Map<string, string[]>();
+		for (const row of characterIps.get(id) ?? []) {
+			const characterName = safeString(row.characterName);
+			const ipName = safeString(row.ipName);
+			if (!(characterName && ipName)) continue;
+			const values = linkedIpsByCharacter.get(characterName) ?? [];
+			values.push(ipName);
+			linkedIpsByCharacter.set(characterName, values);
+		}
+		const gen = generationInfo.get(id)?.[0];
+		return {
+			id: safeString(media.id),
+			filePath: safeString(media.filePath),
+			fileName: safeString(media.fileName),
+			description: safeString(media.description),
+			width: safeNumber(media.width),
+			height: safeNumber(media.height),
+			fileSize: safeNumber(media.fileSize),
+			mediaType: media.mediaType === "image" || media.mediaType === "video" || media.mediaType === "audio" ? media.mediaType : undefined,
+			createdAt: dateFromRowValue(media.createdAt),
+			modifiedAt: dateFromRowValue(media.modifiedAt),
+			tags: (tags.get(id) ?? []).map((row) => ({ name: safeString(row.name) ?? "", type: row.type === "positive" || row.type === "negative" ? row.type : undefined, confidence: safeNumber(row.confidence), source: safeString(row.source) })),
+			authors: (authors.get(id) ?? []).map((row) => ({ name: safeString(row.name) ?? "", accountId: safeString(row.accountId) })),
+			characters: (characters.get(id) ?? []).map((row) => {
+				const name = safeString(row.name) ?? "";
+				return { name, description: safeString(row.description), confidence: safeNumber(row.confidence), linkedIps: linkedIpsByCharacter.get(name) ?? [], source: safeString(row.source) };
+			}),
+			ips: (ips.get(id) ?? []).map((row) => ({ name: safeString(row.name) ?? "", description: safeString(row.description), confidence: safeNumber(row.confidence), source: safeString(row.source) })),
+			projects: (projects.get(id) ?? []).map((row) => ({ name: safeString(row.name) ?? "", description: safeString(row.description) })),
+			sourceUrls: (urls.get(id) ?? []).flatMap((row) => {
+				const url = safeString(row.url);
+				return url ? [url] : [];
+			}),
+			generationInfo: gen ? { prompt: safeString(gen.prompt), negativePrompt: safeString(gen.negativePrompt), modelName: safeString(gen.modelName), seed: safeNumber(gen.seed), steps: safeNumber(gen.steps), cfgScale: safeNumber(gen.cfgScale), aiGenerated: typeof gen.aiGenerated === "boolean" ? gen.aiGenerated : undefined, workflow: jsonObject(safeJson(gen.workflowJson)), metadata: jsonObject(safeJson(gen.metadataJson)) } : undefined,
+		};
+	});
+}
+
+function dateFromRowValue(value: RowValue | undefined): Date | undefined {
+	if (value instanceof Date) return value;
+	if (typeof value === "string" || typeof value === "number") return new Date(value);
+	return undefined;
+}
+
+function jsonObject(value: JsonValue | undefined): Record<string, JsonValue> | undefined {
+	if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+	return value;
+}
+
+export function createLanceDbDumpService(deps?: {
+	logger?: { info(msg: string, data?: JsonValue): void; error(msg: string, data?: JsonValue): void };
 	connect?: LanceConnectFn;
 }): ILanceDbDumpService {
 	const log = deps?.logger ?? { info() {}, error() {} };
 
-	function extractConnectFn(mod: { connect: unknown }): LanceConnectFn {
-		return mod.connect as LanceConnectFn;
-	}
-
 	async function getConnect(): Promise<LanceConnectFn> {
 		if (deps?.connect) return deps.connect;
 		const lancedb = await import("@lancedb/lancedb");
-		return extractConnectFn(lancedb);
+		return (uri: string) => lancedb.connect(uri);
 	}
 
-	async function syncLanceDB(
-		lanceDbDir: string,
-		itemsToUpsert: MediaDumpItem[],
-		options: SyncOptions = {},
-	): Promise<void> {
-		await fs.mkdir(lanceDbDir, { recursive: true });
-
-		const connect = await getConnect();
-		const db = await connect(lanceDbDir);
-		const schema = await createMediaSchema();
-
-		let table: TableLike;
-		try {
-			table = await db.openTable("media");
-		} catch {
-			const rows = itemsToUpsert.map((item) => itemToRow(item));
-			table = await db.createTable("media", rows, {
-				mode: "overwrite",
-				schema,
-			});
-			return;
-		}
-
-		if (itemsToUpsert.length > 0) {
-			for (let i = 0; i < itemsToUpsert.length; i += METADATA_CHUNK_SIZE) {
-				const chunk = itemsToUpsert.slice(i, i + METADATA_CHUNK_SIZE);
-				const rows = chunk.map((item) => itemToRow(item));
-				await table.mergeInsert("id").whenMatchedUpdateAll().execute(rows);
-			}
-		}
-
-		const pruneMissing = options.pruneMissing ?? true;
-		let deleteCount = 0;
-
-		if (pruneMissing) {
-			const activeIdSet = options.activeIds
-				? new Set(options.activeIds)
-				: undefined;
-			const pageSize = options.existingIdPageSize ?? EXISTING_ID_PAGE_SIZE;
-			const deleteChunkSize = options.deleteChunkSize ?? DELETE_CHUNK_SIZE;
-			const idsToDelete: string[] = [];
-			let offset = 0;
-
-			while (true) {
-				const rows = await table
-					.query()
-					.select(["id"])
-					.limit(pageSize)
-					.offset(offset)
-					.toArray();
-				const candidateIds = rows
-					.map((row) => row.id)
-					.filter(
-						(id): id is string => typeof id === "string" && id.length > 0,
-					);
-
-				if (candidateIds.length === 0) {
-					if (rows.length < pageSize) break;
-					offset += rows.length;
-					continue;
-				}
-
-				let pageActiveIds: ReadonlySet<string>;
-				if (activeIdSet) {
-					pageActiveIds = activeIdSet;
-				} else if (options.resolveActiveIds) {
-					const resolved = await options.resolveActiveIds(candidateIds);
-					pageActiveIds =
-						resolved instanceof Set ? resolved : new Set(resolved);
-				} else {
-					pageActiveIds = new Set(candidateIds);
-				}
-
-				for (const id of candidateIds) {
-					if (!pageActiveIds.has(id)) {
-						idsToDelete.push(id);
-					}
-				}
-
-				if (rows.length < pageSize) break;
-				offset += rows.length;
-			}
-
-			if (idsToDelete.length > 0) {
-				for (let i = 0; i < idsToDelete.length; i += deleteChunkSize) {
-					const chunk = idsToDelete.slice(i, i + deleteChunkSize);
-					const whereClause = `id IN (${chunk
-						.map((id) => `'${escapeLanceSqlString(id)}'`)
-						.join(",")})`;
-					await table.delete(whereClause);
-				}
-				deleteCount = idsToDelete.length;
-			}
-		}
-
-		if (options.optimize ?? true) {
-			await table.optimize({
-				cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
-			});
-		}
-		log.info("LanceDB cache synced", {
-			path: lanceDbDir,
-			upsertCount: itemsToUpsert.length,
-			deleteCount,
-		});
-	}
-
-	async function writeToLanceDB(
-		items: MediaDumpItem[],
-		options: WriteOptions,
-	): Promise<string> {
-		const baseDir =
-			options.tempDir ?? path.join(process.cwd(), ".cache", "lancedb-dump");
-		const tempDir = path.join(
-			baseDir,
-			`dump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-		);
+	async function writeToLanceDB(items: MediaDumpItem[], options: WriteOptions): Promise<string> {
+		const baseDir = options.tempDir ?? path.join(process.cwd(), ".cache", "lancedb-dump");
+		const tempDir = path.join(baseDir, `dump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
 		await fs.mkdir(tempDir, { recursive: true });
-
 		try {
 			const connect = await getConnect();
 			const db = await connect(tempDir);
-			const schema = await createMediaSchema();
-
-			let table: TableLike | null = null;
-
-			// Phase 1: Write metadata only (without imageData)
-			for (let i = 0; i < items.length; i += METADATA_CHUNK_SIZE) {
-				const chunk = items.slice(i, i + METADATA_CHUNK_SIZE);
-				const rows: Record<string, unknown>[] = [];
-
-				for (const item of chunk) {
-					rows.push(itemToRow(item));
-				}
-
-				if (table === null) {
-					table = await db.createTable("media", rows, {
-						mode: "overwrite",
-						schema,
-					});
-				} else {
-					await table.add(rows);
-				}
-
-				log.info("LanceDB metadata chunk written", {
-					chunk: Math.floor(i / METADATA_CHUNK_SIZE) + 1,
-					total: items.length,
-				});
-			}
-
-			// Phase 2: Fetch images concurrently and update via mergeInsert
-			if (options.includeImages && options.getImageBuffer && table) {
-				for (let i = 0; i < items.length; i += IMAGE_CHUNK_SIZE) {
-					const chunk = items.slice(i, i + IMAGE_CHUNK_SIZE);
-
-					const imagePromises = chunk.map(async (item) => {
-						if (!item.filePath) return null;
-						try {
-							return await options.getImageBuffer?.(item.filePath);
-						} catch {
-							return null;
-						}
-					});
-
-					const imageDatas = await Promise.all(imagePromises);
-
-					const imageRows = imageDatas.flatMap((data, j) =>
-						data ? [{ id: chunk[j].id, imageData: data }] : [],
-					);
-
-					if (imageRows.length > 0) {
-						await table
-							.mergeInsert("id")
-							.whenMatchedUpdateAll()
-							.execute(imageRows);
-					}
-
-					log.info("LanceDB image chunk updated", {
-						chunk: Math.floor(i / IMAGE_CHUNK_SIZE) + 1,
-						total: items.length,
-					});
-				}
-			}
-
-			if (table) {
-				await table.optimize({
-					cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
-				});
-			}
-
-			log.info("LanceDB dump created", {
-				path: tempDir,
-				count: items.length,
-			});
+			const schemas = await createSchemas();
+			const rows = itemsToRows(items);
+			const tables = await Promise.all([
+				createTable(db, schemas, "media", rows.media),
+				createTable(db, schemas, "media_tags", rows.tags),
+				createTable(db, schemas, "media_authors", rows.authors),
+				createTable(db, schemas, "media_characters", rows.characters),
+				createTable(db, schemas, "media_character_ips", rows.characterIps),
+				createTable(db, schemas, "media_ips", rows.ips),
+				createTable(db, schemas, "media_projects", rows.projects),
+				createTable(db, schemas, "media_urls", rows.urls),
+				createTable(db, schemas, "media_generation_info", rows.generationInfo),
+			]);
+			await Promise.all(tables.map((table) => table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) })));
+			await fs.writeFile(path.join(tempDir, "manifest.json"), JSON.stringify({ format: "solid-imager-lancedb", version: 2, includeImages: options.includeImages, createdAt: new Date().toISOString(), tables: tableNames }, null, 2));
+			log.info("LanceDB v2 dump created", { path: tempDir, count: items.length });
 			return tempDir;
 		} catch (error) {
 			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
@@ -629,99 +372,51 @@ export function createLanceDbDumpService(deps?: {
 		}
 	}
 
-	async function readFromLanceDB(
-		lanceDbDir: string,
-		options: ReadOptions = {},
-	): Promise<MediaDumpItemWithImageData[]> {
+	async function syncLanceDB(lanceDbDir: string, itemsToUpsert: MediaDumpItem[], _options: SyncOptions = {}): Promise<void> {
+		await fs.rm(lanceDbDir, { recursive: true, force: true });
+		const createdDir = await writeToLanceDB(itemsToUpsert, { includeImages: false, tempDir: path.dirname(lanceDbDir) });
+		await fs.rm(lanceDbDir, { recursive: true, force: true });
+		await fs.rename(createdDir, lanceDbDir);
+	}
+
+	async function readFromLanceDB(lanceDbDir: string, options: ReadOptions = {}): Promise<MediaDumpItemWithImageData[]> {
 		const connect = await getConnect();
 		const db = await connect(lanceDbDir);
-		const table = await db.openTable("media");
-
+		const mediaTable = await db.openTable("media");
+		const relatedTables = {
+			media_tags: await db.openTable("media_tags"),
+			media_authors: await db.openTable("media_authors"),
+			media_characters: await db.openTable("media_characters"),
+			media_character_ips: await db.openTable("media_character_ips"),
+			media_ips: await db.openTable("media_ips"),
+			media_projects: await db.openTable("media_projects"),
+			media_urls: await db.openTable("media_urls"),
+			media_generation_info: await db.openTable("media_generation_info"),
+		};
 		const allItems: MediaDumpItemWithImageData[] = [];
 		let offset = 0;
-		let chunkIndex = 0;
-		const includeImageData = options.extractImages ?? false;
-
 		while (true) {
-			const rows = await table
-				.query()
-				.limit(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)
-				.offset(offset)
-				.toArray();
-
-			if (rows.length === 0) {
-				break;
+			const mediaRows = await readPage(mediaTable, offset, READ_CHUNK_SIZE);
+			if (mediaRows.length === 0) break;
+			const tableRows = await readRelatedRows(relatedTables, mediaRows);
+			const items = rowsToItems(tableRows);
+			if (options.extractImages && options.saveImageBuffer) {
+				await Promise.all(items.map(async (item) => {
+					if (!item.filePath) return;
+					const externalPath = resolveSafeChildPath(path.join(lanceDbDir, "images"), item.filePath);
+					if (!externalPath) return;
+					try { await options.saveImageBuffer?.(item.filePath, await fs.readFile(externalPath)); } catch {}
+				}));
 			}
-
-			const chunk: MediaDumpItemWithImageData[] = [];
-
-			const savePromises: Promise<void>[] = [];
-			for (const row of rows as Record<string, unknown>[]) {
-				const item = rowToItem(row, includeImageData);
-				chunk.push(item);
-
-				if (options.extractImages && options.saveImageBuffer) {
-					if (item.filePath) {
-						if (item._imageData) {
-							savePromises.push(
-								options.saveImageBuffer(
-									item.filePath,
-									Buffer.from(item._imageData),
-								),
-							);
-						} else {
-							const externalPath = resolveSafeChildPath(
-								path.join(lanceDbDir, "images"),
-								item.filePath,
-							);
-							if (externalPath) {
-								const filePath = item.filePath;
-								savePromises.push(
-									fs
-										.readFile(externalPath)
-										.then(async (buf) => {
-											await options.saveImageBuffer?.(filePath, buf);
-										})
-										.catch(() => {
-											// Ignore if file doesn't exist
-										}),
-								);
-							}
-						}
-					}
-				}
-			}
-
-			if (savePromises.length > 0) {
-				await Promise.all(savePromises);
-			}
-
 			if (options.onChunk) {
-				await options.onChunk(chunk);
+				await options.onChunk(items);
 			} else {
-				allItems.push(...chunk);
+				allItems.push(...items);
 			}
-
-			chunkIndex++;
-			log.info("LanceDB chunk read", {
-				chunk: chunkIndex,
-				count: rows.length,
-			});
-
-			if (
-				rows.length <
-				(includeImageData ? IMAGE_CHUNK_SIZE : METADATA_CHUNK_SIZE)
-			) {
-				break;
-			}
-
-			offset += rows.length;
+			if (mediaRows.length < READ_CHUNK_SIZE) break;
+			offset += mediaRows.length;
 		}
-
-		log.info("LanceDB dump read", {
-			path: lanceDbDir,
-			count: allItems.length,
-		});
+		log.info("LanceDB v2 dump read", { path: lanceDbDir, count: allItems.length });
 		return allItems;
 	}
 
