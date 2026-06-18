@@ -12,7 +12,7 @@ export type DeferredJob = {
 	// Fields for constructing a job
 	mediaId?: string;
 	sourcePath?: string;
-	type: "processMedia" | "downloadImage";
+	type: "processMedia" | "downloadImage" | "sync_lancedb";
 	payload?: unknown;
 };
 
@@ -56,6 +56,20 @@ export async function processJob(job: DbJob) {
 			"~/application/services/media-processing-service"
 		);
 		await MediaProcessingService.executeProcessMediaJob(job);
+		// Queue LanceDB sync job
+		try {
+			const repo = services.getJobRepository();
+			await repo.createIfUnique({
+				type: "sync_lancedb",
+				mediaSourceId,
+				payload: {},
+			});
+		} catch (e) {
+			logger.error(
+				{ err: e, mediaSourceId },
+				"Failed to queue sync_lancedb after processMedia",
+			);
+		}
 	} else if (job.type === "downloadImage") {
 		const { processDownloadJob } = await import(
 			"~/infrastructure/jobs/download-jobs"
@@ -63,8 +77,30 @@ export async function processJob(job: DbJob) {
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);
+		// Queue LanceDB sync job
+		try {
+			const repo = services.getJobRepository();
+			await repo.createIfUnique({
+				type: "sync_lancedb",
+				mediaSourceId,
+				payload: {},
+			});
+		} catch (e) {
+			logger.error(
+				{ err: e, mediaSourceId },
+				"Failed to queue sync_lancedb after auto_tagging",
+			);
+		}
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
+	} else if (job.type === "sync_lancedb") {
+		if (!mediaSourceId) {
+			throw new Error(`Job ${job.id} missing mediaSourceId`);
+		}
+		const { BackupService } = await import(
+			"~/application/services/backup-service"
+		);
+		await BackupService.syncSourceLanceDBCache(mediaSourceId);
 	} else {
 		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
 	}
@@ -75,16 +111,25 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		const repo = services.getJobRepository();
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
+				const jobPayload = {
+					...(job.payload && typeof job.payload === "object"
+						? job.payload
+						: {}),
+					mediaId: job.mediaId,
+					sourcePath: job.sourcePath,
+				};
+				if (job.type === "sync_lancedb") {
+					await repo.createIfUnique({
+						type: job.type,
+						mediaSourceId: item.mediaSourceId,
+						payload: jobPayload,
+					});
+					continue;
+				}
 				await repo.create({
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,
-					payload: {
-						...(job.payload && typeof job.payload === "object"
-							? job.payload
-							: {}),
-						mediaId: job.mediaId,
-						sourcePath: job.sourcePath,
-					},
+					payload: jobPayload,
 				});
 			}
 		}

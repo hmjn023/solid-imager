@@ -14,17 +14,20 @@ const importResultSchema = z.object({
 	message: z.string(),
 });
 
+const importNdjsonResultSchema = z.object({
+	importedCount: z.number(),
+	skippedCount: z.number(),
+	errors: z.array(z.string()),
+});
+
 export const sourcesContract = {
-	list: oc
-		.output(z.array(safeMediaSourceSchema)),
+	list: oc.output(z.array(safeMediaSourceSchema)),
 
 	get: oc
 		.input(z.object({ id: z.string().uuid() }))
 		.output(safeMediaSourceSchema),
 
-	create: oc
-		.input(mediaSourceInfoSchema)
-		.output(safeMediaSourceSchema),
+	create: oc.input(mediaSourceInfoSchema).output(safeMediaSourceSchema),
 
 	update: oc
 		.input(
@@ -39,28 +42,25 @@ export const sourcesContract = {
 		.input(z.object({ id: z.string().uuid() }))
 		.output(z.object({ success: z.boolean() })),
 
-	sync: oc
-		.input(z.object({ ids: z.array(z.string().uuid()) }))
-		.output(
-			z.object({
-				results: z.array(
-					z.object({
-						id: z.string(),
-						success: z.boolean(),
-						error: z.string().optional(),
-					}),
-				),
-			}),
-		),
+	sync: oc.input(z.object({ ids: z.array(z.string().uuid()) })).output(
+		z.object({
+			results: z.array(
+				z.object({
+					id: z.string(),
+					success: z.boolean(),
+					error: z.string().optional(),
+				}),
+			),
+		}),
+	),
 
-	dump: oc
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
-				includeImages: z.boolean().optional().default(false),
-			}),
-		),
+	dump: oc.input(
+		z.object({
+			id: z.string().uuid(),
+			mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+			includeImages: z.boolean().optional().default(false),
+		}),
+	),
 
 	restore: oc
 		.input(
@@ -86,6 +86,15 @@ export const sourcesContract = {
 			}),
 		)
 		.output(importResultSchema),
+
+	importNdjson: oc
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				file: z.instanceof(File),
+			}),
+		)
+		.output(importNdjsonResultSchema),
 
 	importLanceDB: oc
 		.input(

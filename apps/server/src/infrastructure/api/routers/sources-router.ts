@@ -257,7 +257,8 @@ export const sourcesRouter = {
 			openapi: {
 				tags: ["Media Sources"],
 				summary: "Export media source",
-				description: "Export media source data as JSON or ZIP archive",
+				description:
+					"Export media source data as NDJSON or uncompressed TAR archive",
 			},
 		})
 		.input(
@@ -275,8 +276,8 @@ export const sourcesRouter = {
 			if (input.mode === "zip") {
 				return new Response(asDumpStream(result), {
 					headers: {
-						"Content-Type": "application/zip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.zip"`,
+						"Content-Type": "application/x-tar",
+						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar"`,
 					},
 				});
 			}
@@ -284,20 +285,27 @@ export const sourcesRouter = {
 			if (input.mode === "lancedb") {
 				return new Response(asDumpStream(result), {
 					headers: {
-						"Content-Type": "application/gzip",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar.gz"`,
+						"Content-Type": "application/x-tar",
+						"Content-Disposition": `attachment; filename="source-${input.id}-dump-lancedb.tar"`,
 					},
 				});
 			}
 
-			return result;
+			// Mode json -> return as streaming NDJSON Response
+			return new Response(asDumpStream(result), {
+				headers: {
+					"Content-Type": "application/x-ndjson",
+					"Content-Disposition": `attachment; filename="source-${input.id}-dump.ndjson"`,
+				},
+			});
 		}),
 	restore: os
 		.meta({
 			openapi: {
 				tags: ["Media Sources"],
 				summary: "Restore media source",
-				description: "Restore media source from exported JSON data",
+				description:
+					"Restore media source from exported JSON data (legacy array)",
 			},
 		})
 		.input(
@@ -312,14 +320,14 @@ export const sourcesRouter = {
 		),
 
 	/**
-	 * Imports a media source from a Zip file
+	 * Imports a media source from a Tar file
 	 */
 	importZip: os
 		.meta({
 			openapi: {
 				tags: ["Media Sources"],
-				summary: "Import media source from ZIP",
-				description: "Import media source data from a ZIP archive",
+				summary: "Import media source from TAR",
+				description: "Import media source data from a TAR archive",
 			},
 		})
 		.input(
@@ -336,17 +344,16 @@ export const sourcesRouter = {
 
 			const tempDir = path.join(process.cwd(), ".cache", "import");
 			await fs.promises.mkdir(tempDir, { recursive: true });
-			const tempFilePath = path.join(tempDir, `import-rpc-${randomUUID()}.zip`);
+			const tempFilePath = path.join(tempDir, `import-rpc-${randomUUID()}.tar`);
 
 			try {
-				// Stream the file to disk
 				const fileStream = input.file.stream();
 				await pipeline(
 					webReadableToNodeStream(fileStream),
 					fs.createWriteStream(tempFilePath),
 				);
 
-				return await BackupService.importSourceZip(input.id, tempFilePath);
+				return await BackupService.importSourceTar(input.id, tempFilePath);
 			} finally {
 				try {
 					await fs.promises.unlink(tempFilePath);
@@ -357,14 +364,61 @@ export const sourcesRouter = {
 		}),
 
 	/**
-	 * Imports a media source from a LanceDB tar.gz archive
+	 * Imports a media source from a streaming NDJSON file
+	 */
+	importNdjson: os
+		.meta({
+			openapi: {
+				tags: ["Media Sources"],
+				summary: "Import media source from NDJSON file",
+				description: "Import media source metadata from an NDJSON file",
+			},
+		})
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				file: z.instanceof(File),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const { randomUUID } = await import("node:crypto");
+			const path = await import("node:path");
+			const fs = await import("node:fs");
+			const { pipeline } = await import("node:stream/promises");
+
+			const tempDir = path.join(process.cwd(), ".cache", "import");
+			await fs.promises.mkdir(tempDir, { recursive: true });
+			const tempFilePath = path.join(
+				tempDir,
+				`import-rpc-${randomUUID()}.ndjson`,
+			);
+
+			try {
+				const fileStream = input.file.stream();
+				await pipeline(
+					webReadableToNodeStream(fileStream),
+					fs.createWriteStream(tempFilePath),
+				);
+
+				return await BackupService.importSourceNdjson(input.id, tempFilePath);
+			} finally {
+				try {
+					await fs.promises.unlink(tempFilePath);
+				} catch {
+					// ignore
+				}
+			}
+		}),
+
+	/**
+	 * Imports a media source from a LanceDB tar archive
 	 */
 	importLanceDB: os
 		.meta({
 			openapi: {
 				tags: ["Media Sources"],
 				summary: "Import media source from LanceDB archive",
-				description: "Import media source data from a LanceDB tar.gz archive",
+				description: "Import media source data from a LanceDB tar archive",
 			},
 		})
 		.input(
@@ -383,7 +437,7 @@ export const sourcesRouter = {
 			await fsSync.promises.mkdir(tempDir, { recursive: true });
 			const tempFilePath = pathMod.join(
 				tempDir,
-				`import-lancedb-${randomUUID()}.tar.gz`,
+				`import-lancedb-${randomUUID()}.tar`,
 			);
 
 			try {
