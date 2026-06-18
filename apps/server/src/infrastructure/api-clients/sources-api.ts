@@ -71,7 +71,7 @@ export function syncMediaSources(ids: string[]) {
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
- * @param mode - The dump mode (json or zip)
+ * @param mode - The dump mode (ndjson, tar, or lancedb tar)
  * @returns Blob containing the dump
  */
 export async function fetchSourceDump(
@@ -101,9 +101,9 @@ export function restoreSource(id: string, data: unknown) {
 }
 
 /**
- * Imports a media source from a ZIP file
+ * Imports a media source from a TAR file
  * @param id - Media source ID
- * @param file - The ZIP file to import
+ * @param file - The TAR file to import
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
@@ -124,13 +124,17 @@ export async function importSourceZip(id: string, file: File) {
 	return await response.json();
 }
 
+export async function importSourceNdjson(id: string, file: File) {
+	return await orpc.sources.importNdjson({
+		id,
+		file,
+	});
+}
+
 export async function importSourceLanceDB(id: string, file: File) {
 	const url = `/api/sources/${id}/import-lancedb`;
 	const response = await fetch(url, {
 		method: "POST",
-		headers: {
-			"Content-Type": "application/gzip",
-		},
 		body: file,
 	});
 

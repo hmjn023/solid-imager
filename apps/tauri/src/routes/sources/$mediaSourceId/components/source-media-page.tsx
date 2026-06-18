@@ -18,6 +18,8 @@ import {
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
 	fetchSourceDump,
+	importSourceLanceDB,
+	importSourceNdjson,
 	importSourceZip,
 	parseRestoreFile,
 	restoreSource,
@@ -63,6 +65,8 @@ export function SourceMediaPage() {
 				fetchSourceDump,
 				restoreSource,
 				importSourceZip,
+				importSourceNdjson,
+				importSourceLanceDB,
 				parseRestoreFile,
 			}}
 			getSearchCondition={getSearchCondition}

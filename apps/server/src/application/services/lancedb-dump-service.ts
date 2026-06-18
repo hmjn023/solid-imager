@@ -15,5 +15,6 @@ const service = createLanceDbDumpService({
 });
 
 export const writeToLanceDB = service.writeToLanceDB;
+export const syncLanceDB = service.syncLanceDB;
 export const readFromLanceDB = service.readFromLanceDB;
 export const cleanupLanceDBDir = service.cleanupLanceDBDir;

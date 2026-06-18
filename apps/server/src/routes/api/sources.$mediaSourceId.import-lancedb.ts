@@ -20,7 +20,7 @@ export const Route = createFileRoute(
 				await fs.promises.mkdir(tempDir, { recursive: true });
 				const tempFilePath = path.join(
 					tempDir,
-					`import-lancedb-route-${randomUUID()}.tar.gz`,
+					`import-lancedb-route-${randomUUID()}.tar`,
 				);
 
 				try {

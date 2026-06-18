@@ -29,9 +29,35 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
+			await this.queueLanceDBSync();
 			logger.info("Startup checks completed.");
 		} catch (err) {
 			logger.error({ err }, "Startup checks failed");
+		}
+	}
+
+	private async queueLanceDBSync() {
+		try {
+			const sources = await this.sourceRepo.findAll();
+			let queuedCount = 0;
+			for (const source of sources) {
+				const created = await this.jobRepo.createIfUnique({
+					type: "sync_lancedb",
+					mediaSourceId: source.id,
+					payload: {},
+				});
+				if (created) {
+					queuedCount++;
+				}
+			}
+			if (queuedCount > 0) {
+				logger.info(
+					{ count: queuedCount },
+					"Queued LanceDB sync jobs for sources",
+				);
+			}
+		} catch (error) {
+			logger.error({ err: error }, "Failed to queue LanceDB sync jobs");
 		}
 	}
 

@@ -28,6 +28,7 @@ import { isServer } from "solid-js/web";
 import { z } from "zod";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
+import { getRestoreImportStrategies } from "./restore-import";
 import type { PresetClientLike } from "./use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
@@ -108,6 +109,24 @@ export type SourceMediaPageActions = {
 		cancelled?: boolean;
 	}>;
 	importSourceZip: (
+		sourceId: string,
+		file: File,
+	) => Promise<{
+		success: boolean;
+		importedCount: number;
+		skippedCount: number;
+		errors: string[];
+		message: string;
+	}>;
+	importSourceNdjson?: (
+		sourceId: string,
+		file: File,
+	) => Promise<{
+		importedCount: number;
+		skippedCount: number;
+		errors: string[];
+	}>;
+	importSourceLanceDB?: (
 		sourceId: string,
 		file: File,
 	) => Promise<{
@@ -592,12 +611,19 @@ export function useSourceMediaPage(
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `source-${sourceId}-dump.${mode}`;
+			a.download =
+				mode === "json"
+					? `source-${sourceId}-dump.ndjson`
+					: `source-${sourceId}-dump.tar`;
 			document.body.appendChild(a);
 			a.click();
 			window.URL.revokeObjectURL(url);
 			document.body.removeChild(a);
-			toast.success(`Dump (${mode.toUpperCase()}) downloaded successfully`);
+			toast.success(
+				mode === "json"
+					? "NDJSON dump downloaded successfully"
+					: "TAR dump downloaded successfully",
+			);
 		} catch (_error) {
 			toast.error("Failed to download dump");
 		}
@@ -618,7 +644,7 @@ export function useSourceMediaPage(
 			const url = window.URL.createObjectURL(blob);
 			const a = document.createElement("a");
 			a.href = url;
-			a.download = `source-${sourceId}-lancedb.tar.gz`;
+			a.download = `source-${sourceId}-dump-lancedb.tar`;
 			document.body.appendChild(a);
 			a.click();
 			window.URL.revokeObjectURL(url);
@@ -646,13 +672,31 @@ export function useSourceMediaPage(
 		restoreAbortController = new AbortController();
 
 		try {
-			if (
-				file.name.endsWith(".zip") ||
-				file.type === "application/zip" ||
-				file.type === "application/x-zip-compressed"
-			) {
-				toast.loading("Importing ZIP dump...", { id: "restore-toast" });
-				const result = await actions.importSourceZip(sourceId, file);
+			const strategies = getRestoreImportStrategies(file, {
+				canImportNdjson: !!actions.importSourceNdjson,
+				canImportLanceDb: !!actions.importSourceLanceDB,
+			});
+
+			if (strategies.includes("tar")) {
+				let result:
+					| Awaited<ReturnType<typeof actions.importSourceZip>>
+					| Awaited<NonNullable<SourceMediaPageActions["importSourceLanceDB"]>>;
+				if (strategies[0] === "lancedb" && actions.importSourceLanceDB) {
+					try {
+						toast.loading("Importing archive as LanceDB dump...", {
+							id: "restore-toast",
+						});
+						result = await actions.importSourceLanceDB(sourceId, file);
+					} catch {
+						toast.loading("Importing archive as TAR dump...", {
+							id: "restore-toast",
+						});
+						result = await actions.importSourceZip(sourceId, file);
+					}
+				} else {
+					toast.loading("Importing TAR dump...", { id: "restore-toast" });
+					result = await actions.importSourceZip(sourceId, file);
+				}
 				toast.success(
 					`Import complete: ${result.importedCount} items imported.`,
 					{
@@ -661,6 +705,23 @@ export function useSourceMediaPage(
 				);
 				refreshMediaQuery();
 				return;
+			}
+
+			if (strategies[0] === "ndjson" && actions.importSourceNdjson) {
+				toast.loading("Importing NDJSON dump...", { id: "restore-toast" });
+				const result = await actions.importSourceNdjson(sourceId, file);
+				toast.success(
+					`Import complete: ${result.importedCount} items imported.`,
+					{
+						id: "restore-toast",
+					},
+				);
+				refreshMediaQuery();
+				return;
+			}
+
+			if (strategies[0] === "unsupported") {
+				throw new Error("Unsupported dump format");
 			}
 
 			const data = actions.parseRestoreFile

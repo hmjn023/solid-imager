@@ -21,6 +21,11 @@ export interface ILanceDbDumpService {
 		items: MediaDumpItem[],
 		options: WriteOptions,
 	): Promise<string>;
+	syncLanceDB(
+		lanceDbDir: string,
+		itemsToUpsert: MediaDumpItem[],
+		activeIds: string[],
+	): Promise<void>;
 	readFromLanceDB(
 		lanceDbDir: string,
 		options?: ReadOptions,

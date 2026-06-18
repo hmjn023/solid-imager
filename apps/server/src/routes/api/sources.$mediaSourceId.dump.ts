@@ -22,8 +22,8 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 				if (mode === "zip") {
 					return new Response(asDumpStream(result), {
 						headers: {
-							"Content-Type": "application/zip",
-							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.zip"`,
+							"Content-Type": "application/x-tar",
+							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.tar"`,
 						},
 					});
 				}
@@ -31,15 +31,16 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/dump")({
 				if (mode === "lancedb") {
 					return new Response(asDumpStream(result), {
 						headers: {
-							"Content-Type": "application/gzip",
-							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.tar.gz"`,
+							"Content-Type": "application/x-tar",
+							"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump-lancedb.tar"`,
 						},
 					});
 				}
 
-				return Response.json(result, {
+				return new Response(asDumpStream(result), {
 					headers: {
-						"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.json"`,
+						"Content-Type": "application/x-ndjson",
+						"Content-Disposition": `attachment; filename="source-${mediaSourceId}-dump.ndjson"`,
 					},
 				});
 			},

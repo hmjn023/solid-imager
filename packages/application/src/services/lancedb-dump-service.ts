@@ -11,6 +11,26 @@ import type {
 const METADATA_CHUNK_SIZE = 1000;
 const IMAGE_CHUNK_SIZE = 100;
 
+function resolveSafeChildPath(
+	baseDir: string,
+	relativePath: string,
+): string | null {
+	if (!relativePath || path.isAbsolute(relativePath)) {
+		return null;
+	}
+	const resolvedBase = path.resolve(baseDir);
+	const resolvedPath = path.resolve(resolvedBase, relativePath);
+	const childRelative = path.relative(resolvedBase, resolvedPath);
+	if (
+		childRelative === "" ||
+		childRelative.startsWith("..") ||
+		path.isAbsolute(childRelative)
+	) {
+		return null;
+	}
+	return resolvedPath;
+}
+
 async function createMediaSchema(): Promise<import("apache-arrow").Schema> {
 	const arrow = await import("apache-arrow");
 	return new arrow.Schema([
@@ -349,8 +369,17 @@ type TableLike = {
 			execute(rows: Record<string, unknown>[]): Promise<void>;
 		};
 	};
+	delete(where: string): Promise<void>;
 	optimize(opts?: Record<string, unknown>): Promise<void>;
 	query(): {
+		select(fields: string[]): {
+			limit(n: number): {
+				offset(n: number): {
+					toArray(): Promise<Record<string, unknown>[]>;
+				};
+			};
+			toArray(): Promise<Record<string, unknown>[]>;
+		};
 		limit(n: number): {
 			offset(n: number): {
 				toArray(): Promise<Record<string, unknown>[]>;
@@ -390,6 +419,62 @@ export function createLanceDbDumpService(deps?: {
 		if (deps?.connect) return deps.connect;
 		const lancedb = await import("@lancedb/lancedb");
 		return extractConnectFn(lancedb);
+	}
+
+	async function syncLanceDB(
+		lanceDbDir: string,
+		itemsToUpsert: MediaDumpItem[],
+		activeIds: string[],
+	): Promise<void> {
+		await fs.mkdir(lanceDbDir, { recursive: true });
+
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
+		const schema = await createMediaSchema();
+
+		let table: TableLike;
+		try {
+			table = await db.openTable("media");
+		} catch {
+			const rows = itemsToUpsert.map((item) => itemToRow(item));
+			table = await db.createTable("media", rows, {
+				mode: "overwrite",
+				schema,
+			});
+			return;
+		}
+
+		if (itemsToUpsert.length > 0) {
+			for (let i = 0; i < itemsToUpsert.length; i += METADATA_CHUNK_SIZE) {
+				const chunk = itemsToUpsert.slice(i, i + METADATA_CHUNK_SIZE);
+				const rows = chunk.map((item) => itemToRow(item));
+				await table.mergeInsert("id").whenMatchedUpdateAll().execute(rows);
+			}
+		}
+
+		const allRows = await table.query().select(["id"]).toArray();
+		const lanceDbIds = allRows.map((r) => r.id as string).filter(Boolean);
+
+		const activeIdSet = new Set(activeIds);
+		const idsToDelete = lanceDbIds.filter((id) => !activeIdSet.has(id));
+
+		if (idsToDelete.length > 0) {
+			const chunkSize = 500;
+			for (let i = 0; i < idsToDelete.length; i += chunkSize) {
+				const chunk = idsToDelete.slice(i, i + chunkSize);
+				const whereClause = `id IN (${chunk.map((id) => `'${id}'`).join(",")})`;
+				await table.delete(whereClause);
+			}
+		}
+
+		await table.optimize({
+			cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
+		});
+		log.info("LanceDB cache synced", {
+			path: lanceDbDir,
+			upsertCount: itemsToUpsert.length,
+			deleteCount: idsToDelete.length,
+		});
 	}
 
 	async function writeToLanceDB(
@@ -470,7 +555,9 @@ export function createLanceDbDumpService(deps?: {
 			}
 
 			if (table) {
-				await table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) });
+				await table.optimize({
+					cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5),
+				});
 			}
 
 			log.info("LanceDB dump created", {
@@ -515,18 +602,34 @@ export function createLanceDbDumpService(deps?: {
 				const item = rowToItem(row, includeImageData);
 				chunk.push(item);
 
-				if (
-					options.extractImages &&
-					options.saveImageBuffer &&
-					item._imageData
-				) {
+				if (options.extractImages && options.saveImageBuffer) {
 					if (item.filePath) {
-						savePromises.push(
-							options.saveImageBuffer(
+						if (item._imageData) {
+							savePromises.push(
+								options.saveImageBuffer(
+									item.filePath,
+									Buffer.from(item._imageData),
+								),
+							);
+						} else {
+							const externalPath = resolveSafeChildPath(
+								path.join(lanceDbDir, "images"),
 								item.filePath,
-								Buffer.from(item._imageData),
-							),
-						);
+							);
+							if (externalPath) {
+								const filePath = item.filePath;
+								savePromises.push(
+									fs
+										.readFile(externalPath)
+										.then(async (buf) => {
+											await options.saveImageBuffer?.(filePath, buf);
+										})
+										.catch(() => {
+											// Ignore if file doesn't exist
+										}),
+								);
+							}
+						}
 					}
 				}
 			}
@@ -568,5 +671,5 @@ export function createLanceDbDumpService(deps?: {
 		await fs.rm(dir, { recursive: true, force: true });
 	}
 
-	return { writeToLanceDB, readFromLanceDB, cleanupLanceDBDir };
+	return { writeToLanceDB, syncLanceDB, readFromLanceDB, cleanupLanceDBDir };
 }
