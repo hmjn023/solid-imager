@@ -29,35 +29,9 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
-			await this.queueLanceDBSync();
 			logger.info("Startup checks completed.");
 		} catch (err) {
 			logger.error({ err }, "Startup checks failed");
-		}
-	}
-
-	private async queueLanceDBSync() {
-		try {
-			const sources = await this.sourceRepo.findAll();
-			let queuedCount = 0;
-			for (const source of sources) {
-				const created = await this.jobRepo.createIfUnique({
-					type: "sync_lancedb",
-					mediaSourceId: source.id,
-					payload: {},
-				});
-				if (created) {
-					queuedCount++;
-				}
-			}
-			if (queuedCount > 0) {
-				logger.info(
-					{ count: queuedCount },
-					"Queued LanceDB sync jobs for sources",
-				);
-			}
-		} catch (error) {
-			logger.error({ err: error }, "Failed to queue LanceDB sync jobs");
 		}
 	}
 
@@ -83,13 +57,13 @@ export class MaintenanceService {
 	private async queueMissingThumbnails() {
 		try {
 			const BATCH_SIZE = 1000;
-			let offset = 0;
+			let lastId: string | undefined;
 			let hasMore = true;
 
 			while (hasMore) {
 				const batch = await this.mediaRepo.findAllMediaIndices(undefined, {
 					limit: BATCH_SIZE,
-					offset,
+					afterId: lastId,
 				});
 
 				if (batch.length === 0) {
@@ -101,7 +75,7 @@ export class MaintenanceService {
 
 				if (missingInBatch.length > 0) {
 					logger.info(
-						{ count: missingInBatch.length, offset },
+						{ count: missingInBatch.length, afterId: lastId },
 						"Found media with missing thumbnails in batch. Queueing jobs...",
 					);
 					await this.dispatchJobs(missingInBatch, {
@@ -109,7 +83,7 @@ export class MaintenanceService {
 					});
 				}
 
-				offset += BATCH_SIZE;
+				lastId = batch.at(-1)?.id ?? lastId;
 				if (batch.length < BATCH_SIZE) {
 					hasMore = false;
 				}

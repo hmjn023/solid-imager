@@ -1115,9 +1115,13 @@ export function createMediaRepository(
 
     async findAllMediaIndices(
       tx?: Transaction,
-      options?: { limit: number; offset: number },
+      options?: { limit: number; offset?: number; afterId?: string },
     ): Promise<{ id: string; mediaSourceId: string; filePath: string }[]> {
       const client = getExecutor(tx);
+      const conditions = [eq(medias.status, "active")];
+      if (options?.afterId) {
+        conditions.push(gt(medias.id, options.afterId));
+      }
       let query = client
         .select({
           id: medias.id,
@@ -1125,11 +1129,15 @@ export function createMediaRepository(
           filePath: medias.filePath,
         })
         .from(medias)
-        .where(eq(medias.status, "active"))
+        .where(and(...conditions))
+        .orderBy(asc(medias.id))
         .$dynamic();
 
       if (options) {
-        query = query.limit(options.limit).offset(options.offset);
+        query = query.limit(options.limit);
+        if (options.offset != null) {
+          query = query.offset(options.offset);
+        }
       }
 
       return await query;

@@ -281,7 +281,7 @@ describe("MaintenanceService", () => {
 			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
 		});
 
-		it("should stop fetching batches when batch size equals BATCH_SIZE (simulate full page)", async () => {
+		it("should fetch the next batch by last media id when a page is full", async () => {
 			// Simulate exactly BATCH_SIZE (1000) items in the first batch.
 			// The loop does NOT exit early and fetches the next page (which is empty).
 			const BATCH_SIZE = 1000;
@@ -308,7 +308,7 @@ describe("MaintenanceService", () => {
 				undefined,
 				{
 					limit: 1000,
-					offset: 0,
+					afterId: undefined,
 				},
 			);
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
@@ -316,44 +316,26 @@ describe("MaintenanceService", () => {
 				undefined,
 				{
 					limit: 1000,
-					offset: 1000,
+					afterId: "m-999",
 				},
 			);
 			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
 		});
 	});
 
-	// --------------------------------------------------------------------------
-	// queueLanceDBSync (exercised via performStartupChecks)
-	// --------------------------------------------------------------------------
-
-	describe("queueLanceDBSync", () => {
-		it("should queue sync_lancedb jobs for all sources", async () => {
+	describe("LanceDB startup behavior", () => {
+		it("should not queue sync_lancedb jobs during startup checks", async () => {
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
 			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-
-			const source1 = makeLocalSource("source-1", "/path-1");
-			const source2 = makeLocalSource("source-2", "/path-2");
-			mockSourceRepo.findAll.mockResolvedValue([source1, source2]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-sync-1" });
+			mockSourceRepo.findAll.mockResolvedValue([
+				makeLocalSource("source-1", "/path-1"),
+			]);
 
 			await service.performStartupChecks();
 
-			expect(mockSourceRepo.findAll).toHaveBeenCalledOnce();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(2);
-			expect(mockJobRepo.createIfUnique).toHaveBeenNthCalledWith(
-				1,
-				expect.objectContaining({
-					type: "sync_lancedb",
-					mediaSourceId: "source-1",
-				}),
-			);
-			expect(mockJobRepo.createIfUnique).toHaveBeenNthCalledWith(
-				2,
-				expect.objectContaining({
-					type: "sync_lancedb",
-					mediaSourceId: "source-2",
-				}),
+			expect(mockSourceRepo.findAll).not.toHaveBeenCalled();
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: "sync_lancedb" }),
 			);
 		});
 	});

@@ -56,20 +56,6 @@ export async function processJob(job: DbJob) {
 			"~/application/services/media-processing-service"
 		);
 		await MediaProcessingService.executeProcessMediaJob(job);
-		// Queue LanceDB sync job
-		try {
-			const repo = services.getJobRepository();
-			await repo.createIfUnique({
-				type: "sync_lancedb",
-				mediaSourceId,
-				payload: {},
-			});
-		} catch (e) {
-			logger.error(
-				{ err: e, mediaSourceId },
-				"Failed to queue sync_lancedb after processMedia",
-			);
-		}
 	} else if (job.type === "downloadImage") {
 		const { processDownloadJob } = await import(
 			"~/infrastructure/jobs/download-jobs"
@@ -77,20 +63,6 @@ export async function processJob(job: DbJob) {
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);
-		// Queue LanceDB sync job
-		try {
-			const repo = services.getJobRepository();
-			await repo.createIfUnique({
-				type: "sync_lancedb",
-				mediaSourceId,
-				payload: {},
-			});
-		} catch (e) {
-			logger.error(
-				{ err: e, mediaSourceId },
-				"Failed to queue sync_lancedb after auto_tagging",
-			);
-		}
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
 	} else if (job.type === "sync_lancedb") {
