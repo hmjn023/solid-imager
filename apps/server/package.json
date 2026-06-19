@@ -46,7 +46,7 @@
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "^1.168.14",
     "@tanstack/solid-form": "^1.33.0",
-    "@tanstack/solid-query": "5.99.2",
+    "@tanstack/solid-query": "5.101.0",
     "@tanstack/solid-router": "^1.170.11",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-router-ssr-query": "^1.167.1",
@@ -98,7 +98,7 @@
     "ultracite": "7.8.3",
     "vite": "^0.1.24",
     "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24",
+    "vite-plus": "^0.2.1",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
   }
 }
