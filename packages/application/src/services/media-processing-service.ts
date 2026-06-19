@@ -145,6 +145,11 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				type: "processMedia",
 			},
 		});
+		await this.jobRepo.createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId,
+			payload: { reason: "media_added", mediaIds: [media.id] },
+		});
 
 		// Notify clients
 		this.sseSendEvent(mediaSourceId, "media-added", {
@@ -248,6 +253,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				console.warn({ err: e, mediaId }, "Failed to queue AI tagging job");
 			}
 		}
+
+		await this.jobRepo.createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId,
+			payload: { reason: "media_processed", mediaIds: [media.id] },
+		});
 	}
 
 	private async registerContextMetadata(

@@ -7,7 +7,7 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
@@ -15,6 +15,7 @@ import {
 	characterIps,
 	characters,
 	ips,
+	lanceDbSyncDirty,
 	mediaAuthors,
 	mediaCharacters,
 	mediaGenerationInfo,
@@ -52,6 +53,8 @@ type JsonValue =
 	| null
 	| JsonValue[]
 	| { [key: string]: JsonValue };
+
+const LanceDbDirtyMaxAttempts = 5;
 
 interface MediaListQueryItem {
 	id: string;
@@ -1087,6 +1090,172 @@ export const BackupService = {
 		}
 	},
 
+	async queueSourceLanceDBDelta(
+		mediaSourceId: string,
+		mediaIds: string[],
+		operation: "upsert" | "delete" = "upsert",
+		options: { enqueueJob?: boolean } = {},
+	) {
+		const uniqueMediaIds = [...new Set(mediaIds)].filter(Boolean);
+		if (uniqueMediaIds.length === 0) {
+			return { queued: 0 };
+		}
+
+		const now = new Date();
+		const rows = uniqueMediaIds.map((mediaId) => ({
+			mediaSourceId,
+			mediaId,
+			operation,
+			updatedAt: now,
+		}));
+
+		await db
+			.insert(lanceDbSyncDirty)
+			.values(rows)
+			.onConflictDoUpdate({
+				target: [lanceDbSyncDirty.mediaSourceId, lanceDbSyncDirty.mediaId],
+				set: {
+					operation,
+					lastError: null,
+					updatedAt: now,
+				},
+			});
+
+		if (options.enqueueJob !== false) {
+			const { services } = await import("~/application/registry");
+			await services.getJobRepository().createIfUnique({
+				type: "sync_lancedb_delta",
+				mediaSourceId,
+				payload: { reason: "dirty", batchSize: 500 },
+			});
+		}
+
+		return { queued: uniqueMediaIds.length };
+	},
+
+	async syncSourceLanceDBDeltaCache(mediaSourceId: string, batchSize = 500) {
+		const mediaSource = await db.query.mediaSources.findFirst({
+			where: eq(mediaSources.id, mediaSourceId),
+		});
+
+		if (!mediaSource) {
+			throw new Error("Media source not found");
+		}
+
+		const cacheDir = path.join(
+			process.cwd(),
+			".cache",
+			"lancedb-cache",
+			`source-${mediaSourceId}`,
+		);
+		const manifestPath = path.join(cacheDir, "manifest.json");
+		try {
+			const content = await fs.readFile(manifestPath, "utf-8");
+			const manifest = JSON.parse(content) as { version?: unknown };
+			if (manifest.version !== 3) {
+				await this.syncSourceLanceDBCache(mediaSourceId);
+				return { mode: "full", processed: 0 };
+			}
+		} catch {
+			await this.syncSourceLanceDBCache(mediaSourceId);
+			return { mode: "full", processed: 0 };
+		}
+
+		const dirtyRows = await db
+			.select()
+			.from(lanceDbSyncDirty)
+			.where(
+				and(
+					eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId),
+					lt(lanceDbSyncDirty.attempts, LanceDbDirtyMaxAttempts),
+				),
+			)
+			.orderBy(asc(lanceDbSyncDirty.updatedAt))
+			.limit(batchSize);
+
+		if (dirtyRows.length === 0) {
+			return { mode: "delta", processed: 0 };
+		}
+
+		const deleteIds = dirtyRows
+			.filter((row) => row.operation === "delete")
+			.map((row) => row.mediaId);
+		const upsertIds = dirtyRows
+			.filter((row) => row.operation !== "delete")
+			.map((row) => row.mediaId);
+
+		try {
+			let upsertItems: MediaDumpItem[] = [];
+			if (upsertIds.length > 0) {
+				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+					where: and(
+						eq(medias.mediaSourceId, mediaSourceId),
+						inArray(medias.id, upsertIds),
+					),
+					with: {
+						generationInfo: true,
+						urls: true,
+						tags: { with: { tag: true } },
+						authors: { with: { author: true } },
+						characters: {
+							with: {
+								character: {
+									with: { ips: { with: { ip: true } } },
+								},
+							},
+						},
+						ips: { with: { ip: true } },
+						projects: { with: { project: true } },
+					},
+				});
+				upsertItems = this._transformMediaList(mediaList);
+			}
+
+			const { syncLanceDBDelta } = await import(
+				"~/application/services/lancedb-dump-service"
+			);
+			await syncLanceDBDelta(cacheDir, {
+				mediaIdsToDelete: [...deleteIds, ...upsertIds],
+				itemsToUpsert: upsertItems,
+			});
+
+			await db.delete(lanceDbSyncDirty).where(
+				inArray(
+					lanceDbSyncDirty.id,
+					dirtyRows.map((row) => row.id),
+				),
+			);
+
+			logger.info(
+				{
+					mediaSourceId,
+					processed: dirtyRows.length,
+					upserted: upsertItems.length,
+					deleted: deleteIds.length,
+				},
+				"syncSourceLanceDBDeltaCache completed successfully",
+			);
+
+			return { mode: "delta", processed: dirtyRows.length };
+		} catch (error) {
+			const message = getErrorMessage(error);
+			await db
+				.update(lanceDbSyncDirty)
+				.set({
+					attempts: sql`${lanceDbSyncDirty.attempts} + 1`,
+					lastError: message,
+					updatedAt: new Date(),
+				})
+				.where(
+					inArray(
+						lanceDbSyncDirty.id,
+						dirtyRows.map((row) => row.id),
+					),
+				);
+			throw error;
+		}
+	},
+
 	/**
 	 * Generates a dump of the media source.
 	 * Returns a JSON object or a ReadableStream for ZIP download.
@@ -1108,50 +1277,59 @@ export const BackupService = {
 		);
 		await fs.mkdir(cacheDir, { recursive: true });
 
-		const { syncLanceDB } = await import(
+		const { syncLanceDBPages } = await import(
 			"~/application/services/lancedb-dump-service"
 		);
 
 		const limit = 1000;
-		let lastId: string | null = null;
-		const items: MediaDumpItem[] = [];
+		const self = this;
 
-		while (true) {
-			const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
-				where: lastId
-					? and(eq(medias.mediaSourceId, mediaSourceId), gt(medias.id, lastId))
-					: eq(medias.mediaSourceId, mediaSourceId),
-				limit,
-				with: {
-					generationInfo: true,
-					urls: true,
-					tags: { with: { tag: true } },
-					authors: { with: { author: true } },
-					characters: {
-						with: { character: { with: { ips: { with: { ip: true } } } } },
+		async function* loadPages(): AsyncIterable<MediaDumpItem[]> {
+			let lastId: string | null = null;
+
+			while (true) {
+				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+					where: lastId
+						? and(
+								eq(medias.mediaSourceId, mediaSourceId),
+								gt(medias.id, lastId),
+							)
+						: eq(medias.mediaSourceId, mediaSourceId),
+					limit,
+					with: {
+						generationInfo: true,
+						urls: true,
+						tags: { with: { tag: true } },
+						authors: { with: { author: true } },
+						characters: {
+							with: { character: { with: { ips: { with: { ip: true } } } } },
+						},
+						ips: { with: { ip: true } },
+						projects: { with: { project: true } },
 					},
-					ips: { with: { ip: true } },
-					projects: { with: { project: true } },
-				},
-				orderBy: medias.id,
-			});
+					orderBy: medias.id,
+				});
 
-			if (mediaList.length === 0) {
-				break;
+				if (mediaList.length === 0) {
+					break;
+				}
+
+				yield self._transformMediaList(mediaList);
+
+				if (mediaList.length < limit) {
+					break;
+				}
+				lastId = mediaList.at(-1)?.id ?? lastId;
 			}
-
-			items.push(...this._transformMediaList(mediaList));
-
-			if (mediaList.length < limit) {
-				break;
-			}
-			lastId = mediaList.at(-1)?.id ?? lastId;
 		}
 
-		await syncLanceDB(cacheDir, items);
+		const syncedCount = await syncLanceDBPages(cacheDir, loadPages());
+		await db
+			.delete(lanceDbSyncDirty)
+			.where(eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId));
 
 		logger.info(
-			{ mediaSourceId, upserted: items.length },
+			{ mediaSourceId, upserted: syncedCount },
 			"syncSourceLanceDBCache completed successfully",
 		);
 	},
