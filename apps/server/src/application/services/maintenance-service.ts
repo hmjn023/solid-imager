@@ -61,7 +61,7 @@ export class MaintenanceService {
 			let hasMore = true;
 
 			while (hasMore) {
-				const batch = await this.mediaRepo.findAllMediaIndices(undefined, {
+				const batch = await this.mediaRepo.findAllMediaIndices({
 					limit: BATCH_SIZE,
 					afterId: lastId,
 				});
