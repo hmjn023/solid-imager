@@ -589,6 +589,38 @@ export const mediaSync = pgTable("media_sync", {
 });
 
 /**
+ * Schema for LanceDB synchronization dirty markers.
+ * Tracks media rows that need to be reflected into the per-source LanceDB cache.
+ */
+export const lanceDbSyncDirty = pgTable(
+  "lancedb_sync_dirty",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .default(sql`gen_random_uuid()`),
+    mediaSourceId: uuid("source_id")
+      .notNull()
+      .references(() => mediaSources.id, { onDelete: "cascade" }),
+    mediaId: uuid("media_id").notNull(),
+    operation: text("operation").notNull().default("upsert"),
+    attempts: integer("attempts").notNull().default(0),
+    lastError: text("last_error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (table) => ({
+    sourceMediaUnique: unique("lancedb_sync_dirty_source_media_unique").on(
+      table.mediaSourceId,
+      table.mediaId,
+    ),
+    sourceUpdatedIndex: index("idx_lancedb_sync_dirty_source_updated").on(
+      table.mediaSourceId,
+      table.updatedAt,
+    ),
+  }),
+);
+
+/**
  * Schema for the view_history table.
  * Records user views of media items for analytics and personalized recommendations.
  */
@@ -1433,6 +1465,16 @@ export type MediaSync = InferSelectModel<typeof mediaSync>;
  * Type definition for inserting new media sync information into the database.
  */
 export type NewMediaSync = InferInsertModel<typeof mediaSync>;
+
+/**
+ * Type definition for selecting LanceDB sync dirty markers from the database.
+ */
+export type LanceDbSyncDirty = InferSelectModel<typeof lanceDbSyncDirty>;
+
+/**
+ * Type definition for inserting LanceDB sync dirty markers into the database.
+ */
+export type NewLanceDbSyncDirty = InferInsertModel<typeof lanceDbSyncDirty>;
 
 /**
  * Type definition for selecting a view history entry from the database.

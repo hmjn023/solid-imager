@@ -36,6 +36,63 @@ export function createJobRepository(
     },
 
     async createIfUnique(job: NewJob): Promise<Job | null> {
+      if (job.type === "sync_lancedb_delta" && job.mediaSourceId) {
+        const [pending] = await db()
+          .select()
+          .from(jobs)
+          .where(
+            and(
+              eq(jobs.type, job.type),
+              eq(jobs.mediaSourceId, job.mediaSourceId),
+              eq(jobs.status, "pending"),
+            ),
+          )
+          .limit(1);
+
+        if (pending) {
+          await db()
+            .update(jobs)
+            .set({
+              payload: mergeDeltaPayload(pending.payload, job.payload),
+              updatedAt: new Date(),
+            })
+            .where(eq(jobs.id, pending.id));
+          return null;
+        }
+
+        const [created] = await db().insert(jobs).values(job).returning();
+        return mapJob(created);
+      }
+
+      if (
+        ["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(job.type) &&
+        job.mediaSourceId
+      ) {
+        const [existing] = await db()
+          .select({ id: jobs.id })
+          .from(jobs)
+          .where(
+            and(
+              inArray(
+                jobs.type,
+                job.type === "sync_lancedb_delta"
+                  ? ["sync_lancedb_delta"]
+                  : ["sync_lancedb", "sync_lancedb_full"],
+              ),
+              eq(jobs.mediaSourceId, job.mediaSourceId),
+              inArray(jobs.status, ["pending", "in_progress"]),
+            ),
+          )
+          .limit(1);
+
+        if (existing) {
+          return null;
+        }
+
+        const [created] = await db().insert(jobs).values(job).returning();
+        return mapJob(created);
+      }
+
       const payload = job.payload;
       let mediaId: string | undefined;
 
@@ -141,4 +198,28 @@ export function createJobRepository(
       );
     },
   };
+}
+
+function mergeDeltaPayload(existing: unknown, next: unknown): Record<string, unknown> {
+  const existingRecord = isRecord(existing) ? existing : {};
+  const nextRecord = isRecord(next) ? next : {};
+  const mediaIds = [
+    ...extractStringArray(existingRecord.mediaIds),
+    ...extractStringArray(nextRecord.mediaIds),
+  ];
+  return {
+    ...existingRecord,
+    ...nextRecord,
+    mediaIds: [...new Set(mediaIds)],
+  };
+}
+
+function extractStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string")
+    : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

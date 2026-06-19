@@ -27,6 +27,14 @@ export type SyncOptions = {
 	deleteChunkSize?: number;
 };
 
+export type SyncPagesOptions = SyncOptions;
+
+export type SyncDeltaOptions = {
+	mediaIdsToDelete?: string[];
+	itemsToUpsert?: MediaDumpItem[];
+	optimize?: boolean;
+};
+
 export interface ILanceDbDumpService {
 	writeToLanceDB(
 		items: MediaDumpItem[],
@@ -37,6 +45,15 @@ export interface ILanceDbDumpService {
 		itemsToUpsert: MediaDumpItem[],
 		options?: SyncOptions,
 	): Promise<void>;
+	syncLanceDBPages(
+		lanceDbDir: string,
+		itemPages: AsyncIterable<MediaDumpItem[]>,
+		options?: SyncPagesOptions,
+	): Promise<number>;
+	syncLanceDBDelta(
+		lanceDbDir: string,
+		options: SyncDeltaOptions,
+	): Promise<{ deleted: number; upserted: number }>;
 	readFromLanceDB(
 		lanceDbDir: string,
 		options?: ReadOptions,

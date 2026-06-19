@@ -41,6 +41,11 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		await taggingService.getTagsForMedia(mediaSourceId, mediaId, {
 			skipCache: force,
 		});
+		await services.getJobRepository().createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId,
+			payload: { reason: "auto_tagging", mediaIds: [mediaId] },
+		});
 
 		if (parentId) {
 			const jobRepo = services.getJobRepository();

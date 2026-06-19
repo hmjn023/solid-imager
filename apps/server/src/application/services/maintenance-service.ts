@@ -29,6 +29,7 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
+			await this.queueLanceDbCacheSync();
 			logger.info("Startup checks completed.");
 		} catch (err) {
 			logger.error({ err }, "Startup checks failed");
@@ -90,6 +91,53 @@ export class MaintenanceService {
 			}
 		} catch (error) {
 			logger.error({ err: error }, "Failed to queue missing thumbnail jobs");
+		}
+	}
+
+	private async queueLanceDbCacheSync() {
+		try {
+			const sources = await this.sourceRepo.findAll();
+			let queuedCount = 0;
+
+			for (const source of sources) {
+				const jobType = (await this.hasLanceDbCache(source.id))
+					? "sync_lancedb_delta"
+					: "sync_lancedb_full";
+				const created = await this.jobRepo.createIfUnique({
+					type: jobType,
+					mediaSourceId: source.id,
+					payload: { reason: "startup" },
+				});
+				if (created) {
+					queuedCount++;
+				}
+			}
+
+			if (queuedCount > 0) {
+				logger.info(
+					{ count: queuedCount },
+					"Queued LanceDB cache sync jobs for startup",
+				);
+			}
+		} catch (error) {
+			logger.error({ err: error }, "Failed to queue LanceDB cache sync jobs");
+		}
+	}
+
+	private async hasLanceDbCache(sourceId: string): Promise<boolean> {
+		const manifestPath = path.join(
+			process.cwd(),
+			".cache",
+			"lancedb-cache",
+			`source-${sourceId}`,
+			"manifest.json",
+		);
+		try {
+			const content = await fs.readFile(manifestPath, "utf-8");
+			const manifest = JSON.parse(content) as { version?: unknown };
+			return manifest.version === 3;
+		} catch {
+			return false;
 		}
 	}
 

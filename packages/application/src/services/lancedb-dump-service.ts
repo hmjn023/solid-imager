@@ -7,12 +7,14 @@ import type {
 	ILanceDbDumpService,
 	MediaDumpItemWithImageData,
 	ReadOptions,
+	SyncDeltaOptions,
 	SyncOptions,
 	WriteOptions,
 } from "../ports/lancedb-dump-service";
 
 const ROW_CHUNK_SIZE = 5000;
 const READ_CHUNK_SIZE = 5000;
+const LANCEDB_DUMP_VERSION = 3;
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 type RowValue = JsonValue | Date;
@@ -55,6 +57,8 @@ const tableNames: TableName[] = [
 	"media_generation_info",
 ];
 
+type LanceTables = Record<TableName, Table>;
+
 function resolveSafeChildPath(baseDir: string, relativePath: string): string | null {
 	if (!relativePath || path.isAbsolute(relativePath)) return null;
 	const resolvedBase = path.resolve(baseDir);
@@ -93,26 +97,30 @@ async function createSchemas(): Promise<Record<TableName, Schema>> {
 			["modifiedAt", timestamp()],
 		]),
 		media_tags: await createSchema([
-			["mediaId", utf8()], ["name", utf8()], ["type", utf8()], ["confidence", float64()], ["source", utf8()],
+			["key", utf8(), false], ["mediaId", utf8()], ["name", utf8()], ["type", utf8()], ["confidence", float64()], ["source", utf8()],
 		]),
-		media_authors: await createSchema([["mediaId", utf8()], ["name", utf8()], ["accountId", utf8()]]),
+		media_authors: await createSchema([["key", utf8(), false], ["mediaId", utf8()], ["name", utf8()], ["accountId", utf8()]]),
 		media_characters: await createSchema([
-			["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
+			["key", utf8(), false], ["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
 		]),
-		media_character_ips: await createSchema([["mediaId", utf8()], ["characterName", utf8()], ["ipName", utf8()]]),
+		media_character_ips: await createSchema([["key", utf8(), false], ["mediaId", utf8()], ["characterName", utf8()], ["ipName", utf8()]]),
 		media_ips: await createSchema([
-			["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
+			["key", utf8(), false], ["mediaId", utf8()], ["name", utf8()], ["description", utf8()], ["confidence", float64()], ["source", utf8()],
 		]),
-		media_projects: await createSchema([["mediaId", utf8()], ["name", utf8()], ["description", utf8()]]),
-		media_urls: await createSchema([["mediaId", utf8()], ["url", utf8()]]),
+		media_projects: await createSchema([["key", utf8(), false], ["mediaId", utf8()], ["name", utf8()], ["description", utf8()]]),
+		media_urls: await createSchema([["key", utf8(), false], ["mediaId", utf8()], ["url", utf8()]]),
 		media_generation_info: await createSchema([
-			["mediaId", utf8()], ["prompt", utf8()], ["negativePrompt", utf8()], ["modelName", utf8()], ["seed", float64()], ["steps", float64()], ["cfgScale", float64()], ["aiGenerated", bool()], ["workflowJson", utf8()], ["metadataJson", utf8()],
+			["key", utf8(), false], ["mediaId", utf8()], ["prompt", utf8()], ["negativePrompt", utf8()], ["modelName", utf8()], ["seed", float64()], ["steps", float64()], ["cfgScale", float64()], ["aiGenerated", bool()], ["workflowJson", utf8()], ["metadataJson", utf8()],
 		]),
 	};
 }
 
 function itemId(item: MediaDumpItem, index: number): string {
 	return item.id || item.filePath || `item-${index}`;
+}
+
+function rowKey(...parts: Array<string | number | null | undefined>): string {
+	return parts.map((part) => String(part ?? "")).join(":");
 }
 
 function itemsToRows(items: MediaDumpItem[]): TableRows {
@@ -132,17 +140,18 @@ function itemsToRows(items: MediaDumpItem[]): TableRows {
 			modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : null,
 		});
 
-		for (const tag of item.tags ?? []) rows.tags.push({ mediaId, name: tag.name, type: tag.type ?? null, confidence: tag.confidence ?? null, source: tag.source ?? null });
-		for (const author of item.authors ?? []) rows.authors.push({ mediaId, name: author.name, accountId: author.accountId ?? null });
+		for (const tag of item.tags ?? []) rows.tags.push({ key: rowKey(mediaId, tag.name, tag.type), mediaId, name: tag.name, type: tag.type ?? null, confidence: tag.confidence ?? null, source: tag.source ?? null });
+		for (const author of item.authors ?? []) rows.authors.push({ key: rowKey(mediaId, author.name, author.accountId), mediaId, name: author.name, accountId: author.accountId ?? null });
 		for (const character of item.characters ?? []) {
-			rows.characters.push({ mediaId, name: character.name, description: character.description ?? null, confidence: character.confidence ?? null, source: character.source ?? null });
-			for (const ipName of character.linkedIps ?? []) rows.characterIps.push({ mediaId, characterName: character.name, ipName });
+			rows.characters.push({ key: rowKey(mediaId, character.name), mediaId, name: character.name, description: character.description ?? null, confidence: character.confidence ?? null, source: character.source ?? null });
+			for (const ipName of character.linkedIps ?? []) rows.characterIps.push({ key: rowKey(mediaId, character.name, ipName), mediaId, characterName: character.name, ipName });
 		}
-		for (const ip of item.ips ?? []) rows.ips.push({ mediaId, name: ip.name, description: ip.description ?? null, confidence: ip.confidence ?? null, source: ip.source ?? null });
-		for (const project of item.projects ?? []) rows.projects.push({ mediaId, name: project.name, description: project.description ?? null });
-		for (const url of item.sourceUrls ?? []) rows.urls.push({ mediaId, url });
+		for (const ip of item.ips ?? []) rows.ips.push({ key: rowKey(mediaId, ip.name), mediaId, name: ip.name, description: ip.description ?? null, confidence: ip.confidence ?? null, source: ip.source ?? null });
+		for (const project of item.projects ?? []) rows.projects.push({ key: rowKey(mediaId, project.name), mediaId, name: project.name, description: project.description ?? null });
+		for (const url of item.sourceUrls ?? []) rows.urls.push({ key: rowKey(mediaId, url), mediaId, url });
 		if (item.generationInfo) {
 			rows.generationInfo.push({
+				key: rowKey(mediaId),
 				mediaId,
 				prompt: item.generationInfo.prompt ?? null,
 				negativePrompt: item.generationInfo.negativePrompt ?? null,
@@ -172,17 +181,87 @@ async function createTable(db: Connection, schemas: Record<string, Schema>, name
 	return table;
 }
 
-async function readAll(table: Table): Promise<Row[]> {
-	const rows: Row[] = [];
-	let offset = 0;
-	while (true) {
-		const chunk = await readPage(table, offset, READ_CHUNK_SIZE);
-		if (chunk.length === 0) break;
-		rows.push(...chunk);
-		if (chunk.length < READ_CHUNK_SIZE) break;
-		offset += chunk.length;
-	}
-	return rows;
+async function createTables(db: Connection, schemas: Record<string, Schema>, rows: TableRows): Promise<LanceTables> {
+	const [
+		media,
+		mediaTags,
+		mediaAuthors,
+		mediaCharacters,
+		mediaCharacterIps,
+		mediaIps,
+		mediaProjects,
+		mediaUrls,
+		mediaGenerationInfo,
+	] = await Promise.all([
+		createTable(db, schemas, "media", rows.media),
+		createTable(db, schemas, "media_tags", rows.tags),
+		createTable(db, schemas, "media_authors", rows.authors),
+		createTable(db, schemas, "media_characters", rows.characters),
+		createTable(db, schemas, "media_character_ips", rows.characterIps),
+		createTable(db, schemas, "media_ips", rows.ips),
+		createTable(db, schemas, "media_projects", rows.projects),
+		createTable(db, schemas, "media_urls", rows.urls),
+		createTable(db, schemas, "media_generation_info", rows.generationInfo),
+	]);
+	return {
+		media,
+		media_tags: mediaTags,
+		media_authors: mediaAuthors,
+		media_characters: mediaCharacters,
+		media_character_ips: mediaCharacterIps,
+		media_ips: mediaIps,
+		media_projects: mediaProjects,
+		media_urls: mediaUrls,
+		media_generation_info: mediaGenerationInfo,
+	};
+}
+
+async function addRowsToTables(tables: LanceTables, rows: TableRows): Promise<void> {
+	await Promise.all([
+		addChunked(tables.media, rows.media),
+		addChunked(tables.media_tags, rows.tags),
+		addChunked(tables.media_authors, rows.authors),
+		addChunked(tables.media_characters, rows.characters),
+		addChunked(tables.media_character_ips, rows.characterIps),
+		addChunked(tables.media_ips, rows.ips),
+		addChunked(tables.media_projects, rows.projects),
+		addChunked(tables.media_urls, rows.urls),
+		addChunked(tables.media_generation_info, rows.generationInfo),
+	]);
+}
+
+async function openTables(db: Connection): Promise<LanceTables> {
+	return {
+		media: await db.openTable("media"),
+		media_tags: await db.openTable("media_tags"),
+		media_authors: await db.openTable("media_authors"),
+		media_characters: await db.openTable("media_characters"),
+		media_character_ips: await db.openTable("media_character_ips"),
+		media_ips: await db.openTable("media_ips"),
+		media_projects: await db.openTable("media_projects"),
+		media_urls: await db.openTable("media_urls"),
+		media_generation_info: await db.openTable("media_generation_info"),
+	};
+}
+
+function sqlInList(values: string[]): string {
+	return values.map((value) => `'${escapeLanceSqlString(value)}'`).join(",");
+}
+
+async function deleteMediaRows(tables: LanceTables, mediaIds: string[]): Promise<void> {
+	if (mediaIds.length === 0) return;
+	const ids = sqlInList(mediaIds);
+	await Promise.all([
+		tables.media.delete(`id IN (${ids})`),
+		tables.media_tags.delete(`mediaId IN (${ids})`),
+		tables.media_authors.delete(`mediaId IN (${ids})`),
+		tables.media_characters.delete(`mediaId IN (${ids})`),
+		tables.media_character_ips.delete(`mediaId IN (${ids})`),
+		tables.media_ips.delete(`mediaId IN (${ids})`),
+		tables.media_projects.delete(`mediaId IN (${ids})`),
+		tables.media_urls.delete(`mediaId IN (${ids})`),
+		tables.media_generation_info.delete(`mediaId IN (${ids})`),
+	]);
 }
 
 async function readPage(
@@ -351,19 +430,9 @@ export function createLanceDbDumpService(deps?: {
 			const db = await connect(tempDir);
 			const schemas = await createSchemas();
 			const rows = itemsToRows(items);
-			const tables = await Promise.all([
-				createTable(db, schemas, "media", rows.media),
-				createTable(db, schemas, "media_tags", rows.tags),
-				createTable(db, schemas, "media_authors", rows.authors),
-				createTable(db, schemas, "media_characters", rows.characters),
-				createTable(db, schemas, "media_character_ips", rows.characterIps),
-				createTable(db, schemas, "media_ips", rows.ips),
-				createTable(db, schemas, "media_projects", rows.projects),
-				createTable(db, schemas, "media_urls", rows.urls),
-				createTable(db, schemas, "media_generation_info", rows.generationInfo),
-			]);
-			await Promise.all(tables.map((table) => table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) })));
-			await fs.writeFile(path.join(tempDir, "manifest.json"), JSON.stringify({ format: "solid-imager-lancedb", version: 2, includeImages: options.includeImages, createdAt: new Date().toISOString(), tables: tableNames }, null, 2));
+			const tables = await createTables(db, schemas, rows);
+			await Promise.all(Object.values(tables).map((table) => table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) })));
+			await fs.writeFile(path.join(tempDir, "manifest.json"), JSON.stringify({ format: "solid-imager-lancedb", version: LANCEDB_DUMP_VERSION, includeImages: options.includeImages, createdAt: new Date().toISOString(), tables: tableNames }, null, 2));
 			log.info("LanceDB v2 dump created", { path: tempDir, count: items.length });
 			return tempDir;
 		} catch (error) {
@@ -377,6 +446,69 @@ export function createLanceDbDumpService(deps?: {
 		const createdDir = await writeToLanceDB(itemsToUpsert, { includeImages: false, tempDir: path.dirname(lanceDbDir) });
 		await fs.rm(lanceDbDir, { recursive: true, force: true });
 		await fs.rename(createdDir, lanceDbDir);
+	}
+
+	async function writePagesToLanceDB(itemPages: AsyncIterable<MediaDumpItem[]>, options: WriteOptions): Promise<{ dir: string; count: number }> {
+		const baseDir = options.tempDir ?? path.join(process.cwd(), ".cache", "lancedb-dump");
+		const tempDir = path.join(baseDir, `dump-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`);
+		await fs.mkdir(tempDir, { recursive: true });
+		let count = 0;
+		try {
+			const connect = await getConnect();
+			const db = await connect(tempDir);
+			const schemas = await createSchemas();
+			const tables = await createTables(db, schemas, itemsToRows([]));
+
+			for await (const items of itemPages) {
+				if (items.length === 0) continue;
+				count += items.length;
+				await addRowsToTables(tables, itemsToRows(items));
+			}
+
+			await Promise.all(Object.values(tables).map((table) => table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) })));
+			await fs.writeFile(path.join(tempDir, "manifest.json"), JSON.stringify({ format: "solid-imager-lancedb", version: LANCEDB_DUMP_VERSION, includeImages: options.includeImages, createdAt: new Date().toISOString(), tables: tableNames }, null, 2));
+			log.info("LanceDB v2 dump created", { path: tempDir, count });
+			return { dir: tempDir, count };
+		} catch (error) {
+			await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
+			throw error;
+		}
+	}
+
+	async function syncLanceDBPages(lanceDbDir: string, itemPages: AsyncIterable<MediaDumpItem[]>, _options: SyncOptions = {}): Promise<number> {
+		await fs.rm(lanceDbDir, { recursive: true, force: true });
+		const created = await writePagesToLanceDB(itemPages, { includeImages: false, tempDir: path.dirname(lanceDbDir) });
+		await fs.rm(lanceDbDir, { recursive: true, force: true });
+		await fs.rename(created.dir, lanceDbDir);
+		return created.count;
+	}
+
+	async function syncLanceDBDelta(
+		lanceDbDir: string,
+		options: SyncDeltaOptions,
+	): Promise<{ deleted: number; upserted: number }> {
+		const mediaIdsToDelete = options.mediaIdsToDelete ?? [];
+		const itemsToUpsert = options.itemsToUpsert ?? [];
+		const upsertIds = itemsToUpsert.flatMap((item, index) => {
+			const id = itemId(item, index);
+			return id ? [id] : [];
+		});
+		const targetIds = [...new Set([...mediaIdsToDelete, ...upsertIds])];
+		if (targetIds.length === 0) {
+			return { deleted: 0, upserted: 0 };
+		}
+
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
+		const tables = await openTables(db);
+		await deleteMediaRows(tables, targetIds);
+		await addRowsToTables(tables, itemsToRows(itemsToUpsert));
+
+		if (options.optimize) {
+			await Promise.all(Object.values(tables).map((table) => table.optimize({ cleanupOlderThan: new Date(Date.now() - 1000 * 60 * 5) })));
+		}
+
+		return { deleted: mediaIdsToDelete.length, upserted: itemsToUpsert.length };
 	}
 
 	async function readFromLanceDB(lanceDbDir: string, options: ReadOptions = {}): Promise<MediaDumpItemWithImageData[]> {
@@ -424,5 +556,5 @@ export function createLanceDbDumpService(deps?: {
 		await fs.rm(dir, { recursive: true, force: true });
 	}
 
-	return { writeToLanceDB, syncLanceDB, readFromLanceDB, cleanupLanceDBDir };
+	return { writeToLanceDB, syncLanceDB, syncLanceDBPages, syncLanceDBDelta, readFromLanceDB, cleanupLanceDBDir };
 }

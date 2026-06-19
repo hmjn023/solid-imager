@@ -303,39 +303,42 @@ describe("MaintenanceService", () => {
 
 			// Two calls: first full page, then the empty termination page
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledTimes(2);
-			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
-				1,
-				undefined,
-				{
-					limit: 1000,
-					afterId: undefined,
-				},
-			);
-			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(
-				2,
-				undefined,
-				{
-					limit: 1000,
-					afterId: "m-999",
-				},
-			);
+			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(1, {
+				limit: 1000,
+				afterId: undefined,
+			});
+			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenNthCalledWith(2, {
+				limit: 1000,
+				afterId: "m-999",
+			});
 			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
 		});
 	});
 
 	describe("LanceDB startup behavior", () => {
-		it("should not queue sync_lancedb jobs during startup checks", async () => {
+		it("should queue one full LanceDB sync job per source without a cache during startup checks", async () => {
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
 			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
 			mockSourceRepo.findAll.mockResolvedValue([
 				makeLocalSource("source-1", "/path-1"),
+				makeLocalSource("source-2", "/path-2"),
 			]);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
 
 			await service.performStartupChecks();
 
-			expect(mockSourceRepo.findAll).not.toHaveBeenCalled();
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalledWith(
-				expect.objectContaining({ type: "sync_lancedb" }),
+			expect(mockSourceRepo.findAll).toHaveBeenCalledOnce();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: "sync_lancedb_full",
+					mediaSourceId: "source-1",
+				}),
+			);
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: "sync_lancedb_full",
+					mediaSourceId: "source-2",
+				}),
 			);
 		});
 	});

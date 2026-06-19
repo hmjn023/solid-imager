@@ -21,7 +21,7 @@ import type {
 export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
-	type: "processMedia" | "downloadImage";
+	type: "processMedia" | "downloadImage" | "sync_lancedb" | "sync_lancedb_delta";
 	payload?: unknown;
 };
 

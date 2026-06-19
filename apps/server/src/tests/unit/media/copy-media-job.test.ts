@@ -127,6 +127,9 @@ describe("Reproduction: Copy Media Job Type", () => {
 				capturedJobs.push(job);
 				return Promise.resolve({ ...job, id: "job-id" });
 			}),
+			createIfUnique: vi.fn((job) =>
+				Promise.resolve({ ...job, id: "sync-job-id" }),
+			),
 		};
 
 		// Register Repositories
