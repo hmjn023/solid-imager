@@ -1205,7 +1205,7 @@
 
     "detect-libc": ["detect-libc@2.1.2", "", {}, "sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ=="],
 
-    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#baee0b5", { "dependencies": { "@napi-rs/cli": "^2.18.4" } }, "hmjn023-dghs-imgutils-rs-baee0b5", "sha512-c6S54VUsdQ5HD8yQmx2n6/3WWZpt5X3YJQH7+Ru6RVLuWsDLpXS1Vm4mQPqI0dmvByUukcgW7QmZJ34HGN0z+g=="],
+    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#21a004d", { "dependencies": { "@napi-rs/cli": "^2.18.4" } }, "hmjn023-dghs-imgutils-rs-21a004d", "sha512-wbPI1eeSGntTT2ru+cfqamHkT34DABXMyS7GEGhmE6AEECoVpzNzjAS/HcogmU+AZYFbyNVWPcQdm/6tkAX8jg=="],
 
     "diff": ["diff@7.0.0", "", {}, "sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw=="],
 
