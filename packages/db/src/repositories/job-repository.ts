@@ -204,20 +204,28 @@ function mergeDeltaPayload(existing: unknown, next: unknown): Record<string, unk
   const existingRecord = isRecord(existing) ? existing : {};
   const nextRecord = isRecord(next) ? next : {};
   const mediaIds = [
+    ...extractStringArrayOrSingle(existingRecord.mediaId),
     ...extractStringArray(existingRecord.mediaIds),
+    ...extractStringArrayOrSingle(nextRecord.mediaId),
     ...extractStringArray(nextRecord.mediaIds),
   ];
-  return {
+  const merged: Record<string, unknown> = {
     ...existingRecord,
     ...nextRecord,
     mediaIds: [...new Set(mediaIds)],
   };
+  delete merged.mediaId;
+  return merged;
 }
 
 function extractStringArray(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string")
     : [];
+}
+
+function extractStringArrayOrSingle(value: unknown): string[] {
+  return typeof value === "string" ? [value] : [];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

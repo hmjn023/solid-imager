@@ -7,7 +7,7 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
@@ -53,6 +53,8 @@ type JsonValue =
 	| null
 	| JsonValue[]
 	| { [key: string]: JsonValue };
+
+const LanceDbDirtyMaxAttempts = 5;
 
 interface MediaListQueryItem {
 	id: string;
@@ -1162,7 +1164,12 @@ export const BackupService = {
 		const dirtyRows = await db
 			.select()
 			.from(lanceDbSyncDirty)
-			.where(eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId))
+			.where(
+				and(
+					eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId),
+					lt(lanceDbSyncDirty.attempts, LanceDbDirtyMaxAttempts),
+				),
+			)
 			.orderBy(asc(lanceDbSyncDirty.updatedAt))
 			.limit(batchSize);
 
