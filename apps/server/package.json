@@ -46,7 +46,7 @@
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "^1.168.14",
     "@tanstack/solid-form": "^1.33.0",
-    "@tanstack/solid-query": "5.99.2",
+    "@tanstack/solid-query": "5.101.0",
     "@tanstack/solid-router": "^1.170.11",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-router-ssr-query": "^1.167.1",
@@ -79,7 +79,7 @@
     "@types/archiver": "^8.0.0",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/fluent-ffmpeg": "^2.1.28",
-    "@types/node": "^25.9.1",
+    "@types/node": "^26.0.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-dist": "^3.30.6",
     "@types/yauzl": "^3.3.0",
@@ -96,9 +96,7 @@
     "typedoc": "^0.28.19",
     "typescript": "^6.0.3",
     "ultracite": "7.8.3",
-    "vite": "^0.1.24",
     "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
+    "vite-plus": "^0.1.24"
   }
 }

@@ -32,8 +32,6 @@
   ],
   "packageManager": "npm@11.11.1",
   "overrides": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@latest",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@latest",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363"
   }
 }

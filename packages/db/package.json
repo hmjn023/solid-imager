@@ -23,10 +23,9 @@
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
-    "@types/node": "^25.9.3",
+    "@types/node": "^26.0.0",
     "typescript": "^6.0.3",
     "vite-plus": "^0.1.24",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
+    "vite-tsconfig-paths": "^5.1.4"
   }
 }
