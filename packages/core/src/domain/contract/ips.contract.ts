@@ -5,9 +5,7 @@ import { ipSchema } from "../ips/schemas";
 export const ipsContract = {
 	list: oc.output(z.array(ipSchema)),
 
-	get: oc
-		.input(z.object({ id: z.string().uuid() }))
-		.output(ipSchema),
+	get: oc.input(z.object({ id: z.string().uuid() })).output(ipSchema),
 
 	create: oc
 		.input(
@@ -30,26 +28,23 @@ export const ipsContract = {
 		)
 		.output(ipSchema),
 
-	delete: oc
-		.input(z.object({ id: z.string().uuid() })),
+	delete: oc.input(z.object({ id: z.string().uuid() })),
 
 	listForMedia: oc
 		.input(z.object({ mediaId: z.string().uuid() }))
 		.output(z.array(ipSchema)),
 
-	addToMedia: oc
-		.input(
-			z.object({
-				mediaId: z.string().uuid(),
-				ipId: z.string().uuid(),
-			}),
-		),
+	addToMedia: oc.input(
+		z.object({
+			mediaId: z.string().uuid(),
+			ipId: z.string().uuid(),
+		}),
+	),
 
-	removeFromMedia: oc
-		.input(
-			z.object({
-				mediaId: z.string().uuid(),
-				ipId: z.string().uuid(),
-			}),
-		),
+	removeFromMedia: oc.input(
+		z.object({
+			mediaId: z.string().uuid(),
+			ipId: z.string().uuid(),
+		}),
+	),
 };

@@ -17,10 +17,7 @@ export function createTag(data: z.infer<typeof newTagSchema>) {
 	return client.tags.create(data);
 }
 
-export function updateTag(
-	id: string,
-	data: z.infer<typeof updateTagSchema>,
-) {
+export function updateTag(id: string, data: z.infer<typeof updateTagSchema>) {
 	return client.tags.update({ id, data });
 }
 

@@ -4,8 +4,8 @@ import {
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
 import { createMemo } from "solid-js";
-import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
+import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",

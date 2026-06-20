@@ -223,7 +223,7 @@ export class MediaQueryService {
 		sourceId: string,
 	): Promise<MediaGenerationInfo | null> {
 		const mediaSource = await this.sourceRepository.findById(sourceId);
-		if (!mediaSource || mediaSource.type !== "local") {
+		if (mediaSource?.type !== "local") {
 			return null;
 		}
 

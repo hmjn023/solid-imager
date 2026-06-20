@@ -17,10 +17,7 @@ import type {
 	UploadMediaRequest,
 	UploadResponse,
 } from "@solid-imager/core/domain/media/upload-schemas";
-import type {
-	DeferredActions,
-	IMediaService,
-} from "../ports/media-service";
+import type { DeferredActions, IMediaService } from "../ports/media-service";
 import type { MediaQueryService } from "./media-query-service";
 import type { MediaTransferService } from "./media-transfer-service";
 import type { MediaUploadService } from "./media-upload-service";

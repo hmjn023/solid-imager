@@ -2,10 +2,7 @@ export { fetchAllProjects } from "~/api/entities-api";
 
 import { client } from "~/orpc-client";
 
-export function createProject(data: {
-	name: string;
-	description?: string;
-}) {
+export function createProject(data: { name: string; description?: string }) {
 	return client.projects.create(data);
 }
 

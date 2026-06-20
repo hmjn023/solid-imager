@@ -41,4 +41,3 @@ export function findDuplicateMedia(mediaSourceId?: string) {
 export function bulkDeleteMedia(sourceId: string, mediaIds: string[]) {
 	return client.media.bulkDelete({ mediaSourceId: sourceId, mediaIds });
 }
-

@@ -94,7 +94,5 @@ export function useMediaSourceEvents(
 ): void {
 	const transport = createTauriTransport(mediaSourceId);
 
-	useMediaSourceEventsShared(
-		mergeProps(options, { transport }),
-	);
+	useMediaSourceEventsShared(mergeProps(options, { transport }));
 }

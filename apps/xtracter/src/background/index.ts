@@ -80,7 +80,9 @@ async function getMediaSources(): Promise<SafeMediaSource[]> {
 // Determine which source ID to use
 async function getTargetSourceId(): Promise<string | null> {
 	// 1. Check local storage for user selection
-	const result: { selectedSourceId?: string } = await chrome.storage.local.get(["selectedSourceId"]);
+	const result: { selectedSourceId?: string } = await chrome.storage.local.get([
+		"selectedSourceId",
+	]);
 	if (result.selectedSourceId) {
 		return result.selectedSourceId;
 	}
@@ -243,7 +245,12 @@ chrome.runtime.onMessage.addListener(
 			const { targetUrl } = message.data;
 			const extension = getExtensionFromUrl(targetUrl);
 			const filename = generateMediaFilename(
-				{ ...message.data, createdAt: message.data.createdAt ? new Date(message.data.createdAt) : undefined },
+				{
+					...message.data,
+					createdAt: message.data.createdAt
+						? new Date(message.data.createdAt)
+						: undefined,
+				},
 				extension,
 			);
 

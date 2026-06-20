@@ -1,7 +1,4 @@
-export * from "./schema";
 export * from "./errors";
-export * from "./types";
-export { createTransactionManager } from "./transaction-manager";
 export { createAuthorRepository } from "./repositories/author-repository";
 export { createAuthorsRepository } from "./repositories/authors-repository";
 export { createCategoryRepository } from "./repositories/category-repository";
@@ -16,3 +13,6 @@ export { createProjectRepository } from "./repositories/project-repository";
 export { createSourceRepository } from "./repositories/source-repository";
 export { createTagRepository } from "./repositories/tag-repository";
 export { createUserRepository } from "./repositories/user-repository";
+export * from "./schema";
+export { createTransactionManager } from "./transaction-manager";
+export * from "./types";

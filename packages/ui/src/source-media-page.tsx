@@ -20,6 +20,7 @@ import {
 	type SourceMediaScreenProps,
 } from "./screens/source-media-screen";
 
+// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 type QueryOptionFactory<_TData> = () => any;
 
 export type SourceMediaPageProps = {

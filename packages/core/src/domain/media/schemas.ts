@@ -666,4 +666,3 @@ export const bulkMoveToSourceMediaRequestSchema = z.object({
 export type BulkMoveToSourceMediaRequest = z.infer<
 	typeof bulkMoveToSourceMediaRequestSchema
 >;
-

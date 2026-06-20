@@ -1,15 +1,13 @@
 export interface IThumbnailService {
-  getMediaThumbnailUrl(
-    mediaSourceId: string,
-    mediaId: string,
-    size?: number,
-  ): string;
+	getMediaThumbnailUrl(
+		mediaSourceId: string,
+		mediaId: string,
+		size?: number,
+	): string;
 
-  startThumbnailGeneration(
-    mediaSourceId: string,
-  ): Promise<{ success: boolean; count: number }>;
+	startThumbnailGeneration(
+		mediaSourceId: string,
+	): Promise<{ success: boolean; count: number }>;
 
-  clearThumbnailCache(
-    mediaSourceId: string,
-  ): Promise<{ success: boolean }>;
+	clearThumbnailCache(mediaSourceId: string): Promise<{ success: boolean }>;
 }

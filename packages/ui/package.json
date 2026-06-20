@@ -34,7 +34,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.4.16",
     "@solid-imager/core": "workspace:*",
-    "typescript": "^6.0.3",
+    "typescript": "rc",
     "vite-plus": "^0.1.24",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"

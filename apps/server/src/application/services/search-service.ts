@@ -6,14 +6,6 @@
 import { SearchServiceImpl } from "@solid-imager/application/services/search-service";
 import { services } from "~/application/registry";
 
-type SearchOptions = {
-	tags?: string[];
-	sortBy?: string;
-	order?: "asc" | "desc";
-	page?: number;
-	limit?: number;
-};
-
 let _searchService: SearchServiceImpl | null = null;
 
 export const resetSearchService = () => {

@@ -1,5 +1,5 @@
-import Database from "@tauri-apps/plugin-sql";
 import { createTauriSQLitePersistence } from "@tanstack/tauri-db-sqlite-persistence";
+import Database from "@tauri-apps/plugin-sql";
 
 /**
  * Tauri SQLプラグインはエラーをstringでrejectするが、
@@ -35,8 +35,9 @@ function wrapDatabaseWithErrorNormalization(
 	};
 }
 
-let persistenceInstance: ReturnType<typeof createTauriSQLitePersistence> | null =
-	null;
+let persistenceInstance: ReturnType<
+	typeof createTauriSQLitePersistence
+> | null = null;
 
 export async function initializePersistence() {
 	if (persistenceInstance) {

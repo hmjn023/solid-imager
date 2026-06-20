@@ -3,8 +3,7 @@ import { z } from "zod";
 import { downloadItemSchema, pendingImportJobSchema } from "../media/schemas";
 
 export const importsContract = {
-	bulkAdd: oc
-		.input(z.object({ items: z.array(downloadItemSchema) })),
+	bulkAdd: oc.input(z.object({ items: z.array(downloadItemSchema) })),
 
 	listPending: oc.output(z.array(pendingImportJobSchema)),
 

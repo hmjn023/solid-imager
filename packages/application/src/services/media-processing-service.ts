@@ -1,6 +1,4 @@
 import path from "node:path";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
@@ -8,15 +6,20 @@ import type {
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository, Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type {
+	IJobRepository,
+	Job,
+} from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { IMediaProcessingService } from "../ports/media-processing-service";
 
 export type MediaProcessingServiceDeps = {
@@ -42,7 +45,11 @@ export type MediaProcessingServiceDeps = {
 		sourcePath: string,
 		mediaSourceId: string,
 	) => Promise<void>;
-	sseSendEvent: (mediaSourceId: string, eventType: string, data: unknown) => void;
+	sseSendEvent: (
+		mediaSourceId: string,
+		eventType: string,
+		data: unknown,
+	) => void;
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
@@ -90,15 +97,19 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		contextMetadata?: Partial<MediaMetadataContext>,
 	): Promise<Media> {
 		const source = await this.sourceRepo.findById(mediaSourceId);
-		if (!source || source.type !== "local") {
+		if (source?.type !== "local") {
 			throw new Error(
 				`Source not found or not a local source: ${mediaSourceId}`,
 			);
 		}
 
-		const connectionParse = localConnectionSchema.safeParse(source.connectionInfo);
+		const connectionParse = localConnectionSchema.safeParse(
+			source.connectionInfo,
+		);
 		if (!connectionParse.success) {
-			throw new Error("Invalid local source connection info: missing or invalid path");
+			throw new Error(
+				"Invalid local source connection info: missing or invalid path",
+			);
 		}
 		const basePath = connectionParse.data.path;
 		const fullPath = path.join(basePath, relativePath);
@@ -167,12 +178,16 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const payload = job.payload;
 		if (!isRecord(payload)) {
-			this.logger?.warn("Missing payload or invalid payload in job", { jobId: job.id });
+			this.logger?.warn("Missing payload or invalid payload in job", {
+				jobId: job.id,
+			});
 			return;
 		}
 		const mediaId = payload.mediaId;
 		if (typeof mediaId !== "string") {
-			this.logger?.warn("Missing or invalid mediaId in job payload", { jobId: job.id });
+			this.logger?.warn("Missing or invalid mediaId in job payload", {
+				jobId: job.id,
+			});
 			return;
 		}
 
@@ -184,7 +199,9 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const sourcePath = payload.sourcePath;
 		if (typeof sourcePath !== "string") {
-			this.logger?.warn("Missing or invalid sourcePath in job payload", { jobId: job.id });
+			this.logger?.warn("Missing or invalid sourcePath in job payload", {
+				jobId: job.id,
+			});
 			return;
 		}
 		const mediaPath = path.join(sourcePath, media.filePath);
@@ -427,7 +444,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				confidence: confidenceMap.get(char.name) ?? 1,
 			}));
 
-			await this.characterRepo.addToMediaBulk(mediaId, charsToAddMedia, "manual", tx);
+			await this.characterRepo.addToMediaBulk(
+				mediaId,
+				charsToAddMedia,
+				"manual",
+				tx,
+			);
 
 			// Step 7: Bulk link character IPs to media
 			const ipIdsSeen = new Set<string>();
