@@ -18,7 +18,6 @@ import { Label } from "@solid-imager/ui/label";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
 import { createMemo, createSignal, For } from "solid-js";
-import type { SetStoreFunction } from "solid-js/store";
 
 export type SearchFilterState = {
 	searchQuery: string;
@@ -35,7 +34,10 @@ export type SearchFilterState = {
 
 type SearchFiltersProps = {
 	state: SearchFilterState;
-	setState: SetStoreFunction<SearchFilterState>;
+	setState: <K extends keyof SearchFilterState>(
+		key: K,
+		value: SearchFilterState[K],
+	) => void;
 	tags: TagResponse[] | undefined;
 	projects: Project[] | undefined;
 	ips: Ip[] | undefined;

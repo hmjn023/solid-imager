@@ -41,7 +41,7 @@
     "solid-js": "^1.9.13"
   },
   "devDependencies": {
-    "typescript": "^6.0.3",
+    "typescript": "rc",
     "@types/node": "^25.9.3",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
     "vite-plus": "^0.1.24",

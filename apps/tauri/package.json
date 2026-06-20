@@ -42,7 +42,7 @@
 		"@types/node": "^26.0.0",
 		"tailwindcss": "^4.3.0",
 		"tailwindcss-animate": "^1.0.7",
-		"typescript": "^6.0.3",
+		"typescript": "rc",
 		"vite-plugin-solid": "^2.11.12",
 		"vite-plus": "^0.1.24"
 	}

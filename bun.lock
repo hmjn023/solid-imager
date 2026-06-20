@@ -5,8 +5,8 @@
     "": {
       "name": "solid-imager-monorepo",
       "devDependencies": {
-        "@biomejs/biome": "^2.4.16",
-        "@tanstack/cli": "^0.69.3",
+        "@biomejs/biome": "^2.5.0",
+        "@tanstack/cli": "^0.69.4",
         "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
         "typescript": "rc",
         "vite-plus": "^0.1.24",
@@ -28,7 +28,7 @@
       },
       "devDependencies": {
         "@types/bun": "^1.3.14",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
       },
@@ -103,7 +103,7 @@
         "tailwindcss-animate": "^1.0.7",
         "tsx": "^4.22.4",
         "typedoc": "^0.28.19",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "ultracite": "7.8.3",
         "vite-plugin-solid": "^2.11.12",
         "vite-plus": "^0.1.24",
@@ -139,7 +139,7 @@
         "@types/node": "^26.0.0",
         "tailwindcss": "^4.3.0",
         "tailwindcss-animate": "^1.0.7",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plugin-solid": "^2.11.12",
         "vite-plus": "^0.1.24",
       },
@@ -158,7 +158,7 @@
         "@types/chrome": "^0.1.43",
         "@types/node": "^26.0.0",
         "solid-js": "^1.9.13",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plugin-solid": "^2.11.12",
         "vite-plus": "^0.1.24",
       },
@@ -173,7 +173,7 @@
       },
       "devDependencies": {
         "@types/node": "^25.9.3",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vite-tsconfig-paths": "^5.1.4",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
@@ -187,7 +187,7 @@
         "@orpc/contract": "^1.13.13",
       },
       "devDependencies": {
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
       },
@@ -200,7 +200,7 @@
       },
       "devDependencies": {
         "@types/node": "^25.9.3",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vite-tsconfig-paths": "^6.1.1",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
@@ -219,7 +219,7 @@
       },
       "devDependencies": {
         "@types/node": "^25.9.3",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vite-tsconfig-paths": "^5.1.4",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
@@ -249,7 +249,7 @@
       "devDependencies": {
         "@biomejs/biome": "^2.4.16",
         "@solid-imager/core": "workspace:*",
-        "typescript": "^6.0.3",
+        "typescript": "rc",
         "vite-plus": "^0.1.24",
         "vite-tsconfig-paths": "^6.1.1",
         "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
@@ -1887,29 +1887,13 @@
 
     "@orpc/shared/type-fest": ["type-fest@5.7.0", "", { "dependencies": { "tagged-tag": "^1.0.0" } }, "sha512-1URUxUqfHFM1c+zfSPsa3gnkO7Aq21qyH75SIduNYz4SzY964rn1X2vCMQaHSHhktiw+0kPa2iyb6PUpXqB6Vg=="],
 
-    "@solid-imager/application/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
-    "@solid-imager/cli/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
-    "@solid-imager/client/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
-    "@solid-imager/core/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
     "@solid-imager/core/vite-tsconfig-paths": ["vite-tsconfig-paths@6.1.1", "", { "dependencies": { "debug": "^4.1.1", "globrex": "^0.1.2", "tsconfck": "^3.0.3" }, "peerDependencies": { "vite": "*" } }, "sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg=="],
-
-    "@solid-imager/db/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@solid-imager/server/@lancedb/lancedb": ["@lancedb/lancedb@0.30.0", "", { "dependencies": { "reflect-metadata": "^0.2.2" }, "optionalDependencies": { "@lancedb/lancedb-darwin-arm64": "0.30.0", "@lancedb/lancedb-linux-arm64-gnu": "0.30.0", "@lancedb/lancedb-linux-arm64-musl": "0.30.0", "@lancedb/lancedb-linux-x64-gnu": "0.30.0", "@lancedb/lancedb-linux-x64-musl": "0.30.0", "@lancedb/lancedb-win32-arm64-msvc": "0.30.0", "@lancedb/lancedb-win32-x64-msvc": "0.30.0" }, "peerDependencies": { "apache-arrow": ">=15.0.0 <=18.1.0" }, "os": [ "linux", "win32", "darwin", ], "cpu": [ "x64", "arm64", ] }, "sha512-d0FoEL6cthqgsulqAc7fck6kRXrSRGMTqlKYbhSGSazHU6vB2GEpD737Mu0HZd7fMyBUdhR9sD1W2C9uQZ5p0Q=="],
 
     "@solid-imager/server/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
 
-    "@solid-imager/server/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
     "@solid-imager/tauri/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
-
-    "@solid-imager/tauri/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
-
-    "@solid-imager/ui/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@solid-imager/ui/vite-tsconfig-paths": ["vite-tsconfig-paths@6.1.1", "", { "dependencies": { "debug": "^4.1.1", "globrex": "^0.1.2", "tsconfck": "^3.0.3" }, "peerDependencies": { "vite": "*" } }, "sha512-2cihq7zliibCCZ8P9cKJrQBkfgdvcFkOOc3Y02o3GWUDLgqjWsZudaoiuOwO/gzTzy17cS5F7ZPo4bsnS4DGkg=="],
 
@@ -2024,8 +2008,6 @@
     "vite/rolldown": ["rolldown@1.0.3", "", { "dependencies": { "@oxc-project/types": "=0.133.0", "@rolldown/pluginutils": "^1.0.0" }, "optionalDependencies": { "@rolldown/binding-android-arm64": "1.0.3", "@rolldown/binding-darwin-arm64": "1.0.3", "@rolldown/binding-darwin-x64": "1.0.3", "@rolldown/binding-freebsd-x64": "1.0.3", "@rolldown/binding-linux-arm-gnueabihf": "1.0.3", "@rolldown/binding-linux-arm64-gnu": "1.0.3", "@rolldown/binding-linux-arm64-musl": "1.0.3", "@rolldown/binding-linux-ppc64-gnu": "1.0.3", "@rolldown/binding-linux-s390x-gnu": "1.0.3", "@rolldown/binding-linux-x64-gnu": "1.0.3", "@rolldown/binding-linux-x64-musl": "1.0.3", "@rolldown/binding-openharmony-arm64": "1.0.3", "@rolldown/binding-wasm32-wasi": "1.0.3", "@rolldown/binding-win32-arm64-msvc": "1.0.3", "@rolldown/binding-win32-x64-msvc": "1.0.3" }, "bin": { "rolldown": "./bin/cli.mjs" } }, "sha512-i00lAJ2ks1BYr7rjNjKC7BcqAS7nVfiT3QX1SI5aY+AFHblCmaUf9OE9dbdzDvW6dJxbi2ZCZiy9v3CcwOiX3g=="],
 
     "xtracter/@types/node": ["@types/node@26.0.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-vf2YFi1iY9lHGwNJMs01biZFbKJkrZR1T6/MlzjhJLPdntOHLhTrDSnSVcdtvjihi4VQNlrFRIxLsDBlQpAipA=="],
-
-    "xtracter/typescript": ["typescript@6.0.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw=="],
 
     "@esbuild-kit/core-utils/esbuild/@esbuild/android-arm": ["@esbuild/android-arm@0.18.20", "", { "os": "android", "cpu": "arm" }, "sha512-fyi7TDI/ijKKNZTUJAQqiG5T7YjJXgnzkURqmGj13C6dCqckZBLdl4h7bkhHt/t0WP+zO9/zwroDvANaOqO5Sw=="],
 
