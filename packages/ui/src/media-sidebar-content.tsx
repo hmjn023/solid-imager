@@ -20,13 +20,14 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
-	projectsForMediaQueryOptions: (
-		mediaSourceId: string,
-		mediaId: string,
-	) => unknown;
-	allProjectsQueryOptions: () => unknown;
-	allIpsQueryOptions: () => unknown;
-	allCharactersQueryOptions: () => unknown;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	projectsForMediaQueryOptions: (mediaSourceId: string, mediaId: string) => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	allProjectsQueryOptions: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	allIpsQueryOptions: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	allCharactersQueryOptions: () => any;
 	addProjectToMedia: (
 		mediaSourceId: string,
 		mediaId: string,
@@ -70,19 +71,18 @@ export type MediaSidebarContentProps = {
 export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	const queryClient = useQueryClient();
 
-	const projects = createQuery<Project[]>(
-		() =>
-			props.projectsForMediaQueryOptions(
-				props.media.mediaSourceId,
-				props.media.id,
-			) as any,
+	const projects = createQuery<Project[]>(() =>
+		props.projectsForMediaQueryOptions(
+			props.media.mediaSourceId,
+			props.media.id,
+		),
 	);
-	const allProjects = createQuery<Project[]>(
-		() => props.allProjectsQueryOptions() as any,
+	const allProjects = createQuery<Project[]>(() =>
+		props.allProjectsQueryOptions(),
 	);
-	const allIps = createQuery<Ip[]>(() => props.allIpsQueryOptions() as any);
-	const allCharacters = createQuery<Character[]>(
-		() => props.allCharactersQueryOptions() as any,
+	const allIps = createQuery<Ip[]>(() => props.allIpsQueryOptions());
+	const allCharacters = createQuery<Character[]>(() =>
+		props.allCharactersQueryOptions(),
 	);
 
 	const invalidateProjectsForMedia = () =>

@@ -6,12 +6,13 @@ export type SourceRootPathResolver = (
 ) => string | undefined;
 
 export function useSourceRootPath(
-	sourcesQueryOptions: () => unknown,
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	sourcesQueryOptions: () => any,
 ): SourceRootPathResolver {
-	const sources = createQuery(() => sourcesQueryOptions() as any);
+	const sources = createQuery<SafeMediaSource[]>(sourcesQueryOptions);
 
 	return (mediaSourceId: string) => {
-		const list = sources.data as SafeMediaSource[] | undefined;
+		const list = sources.data;
 		const current = list?.find((item) => item.id === mediaSourceId);
 		if (current?.type !== "local") {
 			return undefined;

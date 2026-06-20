@@ -3,7 +3,7 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true,
+			"preset": "recommended",
 			"style": {
 				"useNamingConvention": "off"
 			},
@@ -11,7 +11,8 @@
 				"noBarrelFile": "off"
 			},
 			"suspicious": {
-				"noExplicitAny": "off"
+				"noExplicitAny": "error",
+				"noDeprecatedImports": "error"
 			}
 		}
 	},
@@ -24,6 +25,7 @@
 			"!**/.vinxi",
 			"!**/.output",
 			"!**/db-data",
+			"!**/.worktree",
 			"!apps/server/src/app.css",
 			"!apps/server/public/docs",
 			"!apps/server/scripts",
@@ -46,6 +48,31 @@
 			"includes": ["apps/xtracter/src/**/*.ts", "apps/xtracter/src/**/*.tsx"],
 			"javascript": {
 				"globals": ["chrome", "window", "document", "navigator", "console"]
+			}
+		},
+		{
+			"includes": ["**/routeTree.gen.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": [
+				"**/*.test.ts",
+				"**/*.test.tsx",
+				"**/tests/**/*.ts",
+				"**/tests/**/*.tsx"
+			],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noExplicitAny": "off"
+					}
+				}
 			}
 		}
 	]

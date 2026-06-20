@@ -9,13 +9,9 @@ import {
 export const charactersContract = {
 	list: oc.output(z.array(characterSchema)),
 
-	get: oc
-		.input(z.object({ id: z.string().uuid() }))
-		.output(characterSchema),
+	get: oc.input(z.object({ id: z.string().uuid() })).output(characterSchema),
 
-	create: oc
-		.input(newCharacterSchema)
-		.output(characterSchema),
+	create: oc.input(newCharacterSchema).output(characterSchema),
 
 	update: oc
 		.input(
@@ -26,8 +22,7 @@ export const charactersContract = {
 		)
 		.output(characterSchema),
 
-	delete: oc
-		.input(z.object({ id: z.string().uuid() })),
+	delete: oc.input(z.object({ id: z.string().uuid() })),
 
 	listForMedia: oc
 		.input(z.object({ mediaId: z.string().uuid() }))

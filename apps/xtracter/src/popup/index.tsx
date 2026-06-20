@@ -18,10 +18,8 @@ function Popup() {
 	const [uploadStatus, setUploadStatus] = createSignal("");
 
 	const loadSettings = async () => {
-		const settings: { apiUrl?: string; selectedSourceId?: string } = await chrome.storage.local.get([
-			"selectedSourceId",
-			"apiUrl",
-		]);
+		const settings: { apiUrl?: string; selectedSourceId?: string } =
+			await chrome.storage.local.get(["selectedSourceId", "apiUrl"]);
 		if (settings.apiUrl) setApiUrl(settings.apiUrl);
 		if (settings.selectedSourceId)
 			setSelectedSourceId(settings.selectedSourceId);
@@ -92,7 +90,10 @@ function Popup() {
 
 			setUploadStatus(`Uploading ${metadata.length} items...`);
 			const client = await getClient();
-			const result = await client.imports.bulkAdd({ items: metadata }) as { addedCount: number; skippedCount: number };
+			const result = (await client.imports.bulkAdd({ items: metadata })) as {
+				addedCount: number;
+				skippedCount: number;
+			};
 			setUploadStatus(
 				`Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`,
 			);

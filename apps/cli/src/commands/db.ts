@@ -118,13 +118,21 @@ export const dbCmd = Cli.create("db", {
 
 			try {
 				const outputPath = validatePath(c.options.output, c.agent);
-				await runDatabaseCommand("pg_dump", ["-U", "postgres", "solid_imager"], {
-					docker: c.options.docker,
-					outputFile: outputPath,
-					agent: c.agent,
-				});
+				await runDatabaseCommand(
+					"pg_dump",
+					["-U", "postgres", "solid_imager"],
+					{
+						docker: c.options.docker,
+						outputFile: outputPath,
+						agent: c.agent,
+					},
+				);
 
-				return c.ok({ success: true, file: outputPath, format: c.options.format });
+				return c.ok({
+					success: true,
+					file: outputPath,
+					format: c.options.format,
+				});
 			} catch (e) {
 				return c.error({ code: "DUMP_ERROR", message: getErrorMessage(e) });
 			}
@@ -142,11 +150,15 @@ export const dbCmd = Cli.create("db", {
 		run: async (c) => {
 			try {
 				const inputPath = validatePath(c.args.filepath, c.agent);
-				await runDatabaseCommand("psql", ["-U", "postgres", "-d", "solid_imager"], {
-					docker: c.options.docker,
-					inputFile: inputPath,
-					agent: c.agent,
-				});
+				await runDatabaseCommand(
+					"psql",
+					["-U", "postgres", "-d", "solid_imager"],
+					{
+						docker: c.options.docker,
+						inputFile: inputPath,
+						agent: c.agent,
+					},
+				);
 
 				return c.ok({ success: true, file: inputPath });
 			} catch (e) {

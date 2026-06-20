@@ -16,7 +16,9 @@ export function nodeStreamToWebReadable(
 export function webReadableToNodeStream(
 	webStream: ReadableStream<Uint8Array>,
 ): Readable {
-	return Readable.fromWeb(webStream as any);
+	return Readable.fromWeb(
+		webStream as unknown as Parameters<typeof Readable.fromWeb>[0],
+	);
 }
 
 /**

@@ -14,7 +14,8 @@ import {
 export type MediaDetailScreenProps = {
 	mediaSourceId: string;
 	mediaId: string;
-	mediaDetailsQueryOptions: (mediaSourceId: string, mediaId: string) => unknown;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	mediaDetailsQueryOptions: (mediaSourceId: string, mediaId: string) => any;
 	sourceRootPath?: string;
 	onAdditionalInvalidate?: () => Promise<void>;
 	transport: MediaSourceEventTransport;
@@ -33,9 +34,8 @@ export type MediaDetailScreenProps = {
 export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const queryClient = useQueryClient();
 
-	const mediaDetails = createQuery<MediaDetails>(
-		() =>
-			props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId) as any,
+	const mediaDetails = createQuery<MediaDetails>(() =>
+		props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId),
 	);
 
 	const handleUpdate = async () => {
