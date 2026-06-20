@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { defineConfig } from "vite";
+import { defineConfig } from "vite-plus";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";

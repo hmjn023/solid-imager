@@ -190,4 +190,67 @@ describe("JobWorker", () => {
 
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);
 	});
+
+	it("should serialize LanceDB sync jobs per media source", async () => {
+		worker.updateConfig({
+			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		let resolveProcessor: () => void = () => {};
+		processor = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveProcessor = resolve;
+				}),
+		);
+		worker = new JobWorker(jobRepo, processor);
+		worker.updateConfig({
+			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		const fullSyncJob = {
+			id: "lancedb-full-1",
+			type: "sync_lancedb_full",
+			mediaSourceId: "source-1",
+			status: "pending",
+		} as Job;
+		const deltaSyncSameSourceJob = {
+			id: "lancedb-delta-1",
+			type: "sync_lancedb_delta",
+			mediaSourceId: "source-1",
+			status: "pending",
+		} as Job;
+		const deltaSyncOtherSourceJob = {
+			id: "lancedb-delta-2",
+			type: "sync_lancedb_delta",
+			mediaSourceId: "source-2",
+			status: "pending",
+		} as Job;
+
+		(jobRepo.findPending as any).mockImplementation(
+			(limit: number, options: any) => {
+				if (options?.excludeTypes) {
+					return Promise.resolve(
+						[
+							fullSyncJob,
+							deltaSyncSameSourceJob,
+							deltaSyncOtherSourceJob,
+						].slice(0, limit),
+					);
+				}
+				return Promise.resolve([]);
+			},
+		);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+
+		expect(processor).toHaveBeenCalledTimes(2);
+		expect(processor).toHaveBeenCalledWith(fullSyncJob);
+		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
+		expect(processor).not.toHaveBeenCalledWith(deltaSyncSameSourceJob);
+
+		resolveProcessor();
+		await vi.runOnlyPendingTimersAsync();
+	});
 });

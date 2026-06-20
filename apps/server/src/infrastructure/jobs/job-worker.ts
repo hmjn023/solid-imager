@@ -11,6 +11,7 @@ export class JobWorker {
 	private aiConcurrency = 1;
 	private activeJobs = 0;
 	private activeAiJobs = 0;
+	private readonly activeLanceDbSyncKeys = new Set<string>();
 
 	private readonly jobRepo: IJobRepository;
 	private readonly processor: (job: Job) => Promise<void>;
@@ -80,7 +81,7 @@ export class JobWorker {
 						includeTypes: Array.from(this.aiJobTypes),
 					});
 					for (const job of jobs) {
-						this.processJob(job);
+						this.tryProcessJob(job);
 					}
 				}
 			}
@@ -95,7 +96,7 @@ export class JobWorker {
 						excludeTypes: Array.from(this.aiJobTypes),
 					});
 					for (const job of jobs) {
-						this.processJob(job);
+						this.tryProcessJob(job);
 					}
 				}
 			}
@@ -108,7 +109,19 @@ export class JobWorker {
 		}
 	}
 
-	private async processJob(job: Job) {
+	private tryProcessJob(job: Job) {
+		const lanceDbSyncKey = getLanceDbSyncKey(job);
+		if (lanceDbSyncKey) {
+			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
+				return;
+			}
+			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
+		}
+
+		this.processJob(job, lanceDbSyncKey);
+	}
+
+	private async processJob(job: Job, lanceDbSyncKey?: string) {
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
 		if (isAiJob) {
@@ -129,6 +142,21 @@ export class JobWorker {
 			if (isAiJob) {
 				this.activeAiJobs--;
 			}
+			if (lanceDbSyncKey) {
+				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
+			}
 		}
 	}
+}
+
+function getLanceDbSyncKey(job: Job): string | undefined {
+	if (
+		job.mediaSourceId &&
+		["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(
+			job.type,
+		)
+	) {
+		return job.mediaSourceId;
+	}
+	return undefined;
 }

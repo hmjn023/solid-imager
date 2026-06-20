@@ -163,4 +163,35 @@ describe("LanceDB Dump Service", () => {
 		});
 		expect(chunks[0][0].generationInfo?.workflow).toEqual({ node: true });
 	});
+
+	it("applies delta sync by deleting target media rows before adding current rows", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({ connect: createMockConnect() });
+
+		await service.writeToLanceDB([], { includeImages: false });
+		await service.syncLanceDBDelta("/tmp/lancedb", {
+			mediaIdsToDelete: ["old-media"],
+			itemsToUpsert: [
+				{
+					id: "new-media",
+					filePath: "new.png",
+					fileName: "new.png",
+					mediaType: "image",
+					width: 10,
+					height: 20,
+					tags: [{ name: "tag-a", type: "positive" }],
+				},
+			],
+		});
+
+		const mediaTable = await mockOpenTable.mock.results[0].value;
+		expect(mediaTable.delete).toHaveBeenCalledWith(
+			"id IN ('old-media','new-media')",
+		);
+		expect(mediaTable.add).toHaveBeenCalledWith([
+			expect.objectContaining({ id: "new-media", filePath: "new.png" }),
+		]);
+	});
 });

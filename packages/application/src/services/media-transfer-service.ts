@@ -86,7 +86,13 @@ export class MediaTransferService {
 		if (tx) {
 			return await execute(tx);
 		}
-		return await this.transactionManager.transaction(execute);
+		const updatedMedia = await this.transactionManager.transaction(execute);
+		await this.jobRepo.createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId: validatedSourceId,
+			payload: { reason: "media_updated", mediaIds: [validatedMediaId] },
+		});
+		return updatedMedia;
 	}
 
 	async copyMedia(
@@ -189,12 +195,16 @@ export class MediaTransferService {
 				type: "processMedia",
 			},
 		};
+		const deferredSyncJob = {
+			type: "sync_lancedb_delta" as const,
+			payload: { reason: "media_added", mediaIds: [newMediaEntry.id] },
+		};
 
 		const deferredActions: DeferredActions = {
 			jobs: [
 				{
 					mediaSourceId: validatedTargetSourceId,
-					jobs: [deferredJob],
+					jobs: [deferredJob, deferredSyncJob],
 				},
 			],
 			sse: [],
@@ -227,6 +237,11 @@ export class MediaTransferService {
 				sourcePath,
 				type: "processMedia",
 			},
+		});
+		await this.jobRepo.createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId: validatedTargetSourceId,
+			payload: { reason: "media_added", mediaIds: [newMediaEntry.id] },
 		});
 
 		this.sseNotifier.notifyMediaCopied(
@@ -410,12 +425,36 @@ export class MediaTransferService {
 
 		if (tx) {
 			return {
-				jobs: [],
+				jobs: [
+					{
+						mediaSourceId: validatedSourceId,
+						jobs: [
+							{
+								type: "sync_lancedb_delta",
+								payload: {
+									reason: "media_deleted",
+									operation: "delete",
+									mediaIds: [validatedMediaId],
+								},
+							},
+						],
+					},
+				],
 				sse: [sseEvent],
 				filesToDelete,
 				thumbnailsToDelete,
 			};
 		}
+
+		await this.jobRepo.createIfUnique({
+			type: "sync_lancedb_delta",
+			mediaSourceId: validatedSourceId,
+			payload: {
+				reason: "media_deleted",
+				operation: "delete",
+				mediaIds: [validatedMediaId],
+			},
+		});
 
 		if (thumbnailsToDelete) {
 			for (const thumb of thumbnailsToDelete) {
