@@ -1145,9 +1145,11 @@ export const BackupService = {
 		const { services } = await import("~/application/registry");
 		const config = services.getConfigService().getConfig();
 		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-		const cacheDir = path.isAbsolute(baseCacheDir)
-			? path.join(baseCacheDir, `source-${mediaSourceId}`)
-			: path.join(process.cwd(), baseCacheDir, `source-${mediaSourceId}`);
+		const cacheDir = path.resolve(
+			process.cwd(),
+			baseCacheDir,
+			`source-${mediaSourceId}`,
+		);
 
 		const manifestPath = path.join(cacheDir, "manifest.json");
 		try {
@@ -1290,9 +1292,11 @@ export const BackupService = {
 		const { services } = await import("~/application/registry");
 		const config = services.getConfigService().getConfig();
 		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-		const cacheDir = path.isAbsolute(baseCacheDir)
-			? path.join(baseCacheDir, `source-${mediaSourceId}`)
-			: path.join(process.cwd(), baseCacheDir, `source-${mediaSourceId}`);
+		const cacheDir = path.resolve(
+			process.cwd(),
+			baseCacheDir,
+			`source-${mediaSourceId}`,
+		);
 		await fs.mkdir(cacheDir, { recursive: true });
 
 		const { syncLanceDBPages } = await import(
