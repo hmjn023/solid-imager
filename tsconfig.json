@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -9,6 +10,7 @@
     "strict": true,
     "skipLibCheck": true,
     "paths": {
+      "~/*": ["./apps/server/src/*"],
       "@solid-imager/core": ["./packages/core/src"],
       "@solid-imager/core/*": ["./packages/core/src/*"],
       "@solid-imager/application": ["./packages/application/src"],
