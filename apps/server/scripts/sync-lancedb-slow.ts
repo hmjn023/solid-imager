@@ -15,9 +15,9 @@ async function main() {
 	const batchSize = args[1] ? Number.parseInt(args[1], 10) : 100;
 	const delayMs = args[2] ? Number.parseInt(args[2], 10) : 500;
 
-	if (Number.isNaN(batchSize) || Number.isNaN(delayMs)) {
+	if (Number.isNaN(batchSize) || Number.isNaN(delayMs) || batchSize <= 0 || delayMs < 0) {
 		console.error(
-			"Usage: bun scripts/sync-lancedb-slow.ts [mediaSourceId] [batchSize] [delayMs]",
+			"Usage: bun scripts/sync-lancedb-slow.ts [mediaSourceId] [batchSize] [delayMs]\nNote: batchSize must be > 0 and delayMs must be >= 0",
 		);
 		process.exit(1);
 	}
