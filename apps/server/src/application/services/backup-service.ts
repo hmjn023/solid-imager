@@ -1142,21 +1142,38 @@ export const BackupService = {
 			throw new Error("Media source not found");
 		}
 
-		const cacheDir = path.join(
+		const { services } = await import("~/application/registry");
+		const config = services.getConfigService().getConfig();
+		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
+		const cacheDir = path.resolve(
 			process.cwd(),
-			".cache",
-			"lancedb-cache",
+			baseCacheDir,
 			`source-${mediaSourceId}`,
 		);
+
 		const manifestPath = path.join(cacheDir, "manifest.json");
 		try {
 			const content = await fs.readFile(manifestPath, "utf-8");
 			const manifest = JSON.parse(content) as { version?: unknown };
 			if (manifest.version !== 3) {
+				if (!config.lancedb?.autoFullSync) {
+					logger.warn(
+						{ mediaSourceId },
+						"LanceDB auto full sync is disabled because manifest version is invalid. Skipping auto sync.",
+					);
+					return { mode: "delta", processed: 0 };
+				}
 				await this.syncSourceLanceDBCache(mediaSourceId);
 				return { mode: "full", processed: 0 };
 			}
 		} catch {
+			if (!config.lancedb?.autoFullSync) {
+				logger.warn(
+					{ mediaSourceId },
+					"LanceDB auto full sync is disabled because manifest.json is missing. Skipping auto sync.",
+				);
+				return { mode: "delta", processed: 0 };
+			}
 			await this.syncSourceLanceDBCache(mediaSourceId);
 			return { mode: "full", processed: 0 };
 		}
@@ -1260,7 +1277,10 @@ export const BackupService = {
 	 * Generates a dump of the media source.
 	 * Returns a JSON object or a ReadableStream for ZIP download.
 	 */
-	async syncSourceLanceDBCache(mediaSourceId: string) {
+	async syncSourceLanceDBCache(
+		mediaSourceId: string,
+		options?: { batchSize?: number; delayMs?: number },
+	) {
 		const mediaSource = await db.query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});
@@ -1269,10 +1289,12 @@ export const BackupService = {
 			throw new Error("Media source not found");
 		}
 
-		const cacheDir = path.join(
+		const { services } = await import("~/application/registry");
+		const config = services.getConfigService().getConfig();
+		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
+		const cacheDir = path.resolve(
 			process.cwd(),
-			".cache",
-			"lancedb-cache",
+			baseCacheDir,
 			`source-${mediaSourceId}`,
 		);
 		await fs.mkdir(cacheDir, { recursive: true });
@@ -1281,7 +1303,8 @@ export const BackupService = {
 			"~/application/services/lancedb-dump-service"
 		);
 
-		const limit = 1000;
+		const limit = options?.batchSize ?? 1000;
+		const delayMs = options?.delayMs ?? 0;
 		const self = this;
 
 		async function* loadPages(): AsyncIterable<MediaDumpItem[]> {
@@ -1320,6 +1343,10 @@ export const BackupService = {
 					break;
 				}
 				lastId = mediaList.at(-1)?.id ?? lastId;
+
+				if (delayMs > 0) {
+					await new Promise((resolve) => setTimeout(resolve, delayMs));
+				}
 			}
 		}
 
