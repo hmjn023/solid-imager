@@ -1,9 +1,9 @@
 /// <reference types="bun-types" />
 import { eq } from "drizzle-orm";
-import { BackupService } from "~/application/services/backup-service";
-import { initServices } from "~/infrastructure/bootstrap";
-import { db } from "~/infrastructure/db";
-import { mediaSources } from "~/infrastructure/db/schema";
+import { BackupService } from "../src/application/services/backup-service";
+import { initServices } from "../src/infrastructure/bootstrap";
+import { db } from "../src/infrastructure/db";
+import { mediaSources } from "../src/infrastructure/db/schema";
 
 async function main() {
 	// Initialize configuration and registry services
