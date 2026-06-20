@@ -41,7 +41,6 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
 }));
 
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
-	// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
 	DrizzleSourceRepository: {
 		findById: vi.fn().mockResolvedValue({
 			id: "source-1",
