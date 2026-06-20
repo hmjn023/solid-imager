@@ -34,7 +34,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const form = createForm(() => ({
 		defaultValues: props.data as unknown as FormConfig,
 		validators: {
-			onChange: AppConfigSchema as any,
+			onChange: AppConfigSchema as never,
 		},
 		onSubmit: async ({ value }) => {
 			try {

@@ -657,7 +657,7 @@ export function createMediaRepository(
       try {
         const client = getExecutor(tx);
         const CHUNK_SIZE = 500;
-        const results: any[] = [];
+        const results: InferSelectModel<typeof medias>[] = [];
         for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
           const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
           const chunkResults = await client.select().from(medias).where(inArray(medias.id, chunk));

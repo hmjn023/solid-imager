@@ -13,7 +13,7 @@ type EventMap = {
 };
 
 // Strongly-typed EventEmitter
-class TypedEventEmitter<T extends Record<string, any>> {
+class TypedEventEmitter<T extends Record<string, unknown>> {
 	private readonly emitter = new EventEmitter();
 
 	constructor() {

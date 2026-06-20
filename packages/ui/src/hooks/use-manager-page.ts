@@ -83,9 +83,13 @@ export type ManagerPageActions = {
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
 
 export type ManagerPageQueryOptions = {
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	projects: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	ips: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	characters: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	sources: () => any;
 };
 

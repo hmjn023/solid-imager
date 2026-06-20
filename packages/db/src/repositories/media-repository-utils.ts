@@ -119,15 +119,11 @@ export function createMediaSearchFunctions(getExecutor: (tx?: unknown) => Drizzl
           .where(whereClause)
           .orderBy(orderByClause);
 
-        let pagedQuery: any = query;
-
-        if (searchOptions.limit !== undefined) {
-          pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
-        } else if (searchOptions.offset && searchOptions.offset > 0) {
-          pagedQuery = pagedQuery.offset(searchOptions.offset);
-        }
-
-        const results = await pagedQuery;
+        const results = await (searchOptions.limit !== undefined
+          ? query.limit(searchOptions.limit).offset(searchOptions.offset || 0)
+          : (searchOptions.offset && searchOptions.offset > 0)
+            ? query.offset(searchOptions.offset)
+            : query);
 
         const mediaList = results.map(
           (r: InferSelectModel<typeof medias> & { totalCount: number }) => {
@@ -204,15 +200,11 @@ export function createMediaSearchFunctions(getExecutor: (tx?: unknown) => Drizzl
 
         const query = executor.select().from(medias).where(whereClause).orderBy(orderByClause);
 
-        let pagedQuery: any = query;
-
-        if (searchOptions.limit !== undefined) {
-          pagedQuery = pagedQuery.limit(searchOptions.limit).offset(searchOptions.offset || 0);
-        } else if (searchOptions.offset && searchOptions.offset > 0) {
-          pagedQuery = pagedQuery.offset(searchOptions.offset);
-        }
-
-        const mediaList = await pagedQuery;
+        const mediaList = await (searchOptions.limit !== undefined
+          ? query.limit(searchOptions.limit).offset(searchOptions.offset || 0)
+          : (searchOptions.offset && searchOptions.offset > 0)
+            ? query.offset(searchOptions.offset)
+            : query);
 
         return { media: mediaList, total };
       } catch (error) {

@@ -29,11 +29,17 @@ export type SearchPageFilterData = {
 };
 
 export type SearchPageQueryOptions = {
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	tags: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	sources: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	projects: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	ips: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	characters: () => any;
+	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	authors: () => any;
 };
 

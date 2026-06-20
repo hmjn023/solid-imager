@@ -86,8 +86,8 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 			}
 			props.onSuccess();
 			props.onOpenChange(false);
-		} catch (e: any) {
-			setErrorMsg(e.message || "An error occurred.");
+		} catch (e) {
+			setErrorMsg(e instanceof Error ? e.message : "An error occurred.");
 		} finally {
 			setIsSubmitting(false);
 		}

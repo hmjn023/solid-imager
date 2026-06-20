@@ -9,6 +9,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  // biome-ignore lint/suspicious/noDeprecatedImports: Drizzle primaryKey overload triggers false positive
   primaryKey,
   real,
   serial,

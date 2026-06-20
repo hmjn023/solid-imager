@@ -1,6 +1,6 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
-import type { ContractRouterClient } from "@orpc/contract";
+import type { ContractRouterClient, AnyContractRouter } from "@orpc/contract";
 
 export type ClientOptions = {
 	url?: string;
@@ -10,7 +10,7 @@ export type ClientOptions = {
 	) => Promise<Response>;
 };
 
-export function createClient<C extends Record<string, any>>(
+export function createClient<C extends AnyContractRouter>(
 	options: ClientOptions = {},
 ): ContractRouterClient<C> {
 	const base = options.url || "http://localhost:3000";

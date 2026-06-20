@@ -29,7 +29,7 @@ export function isBufferEncoding(value: string): value is BufferEncodingValue {
  * Type guard to check if an error has a stderr property (e.g., child process errors).
  */
 export function hasStderr(error: unknown): error is Error & { stderr: string } {
-	return error instanceof Error && "stderr" in error && typeof (error as any).stderr === "string";
+	return error instanceof Error && "stderr" in error && typeof (error as Record<string, unknown>).stderr === "string";
 }
 
 // ---- Enum type guards for DB → Domain mapping ----
