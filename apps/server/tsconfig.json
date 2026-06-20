@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "baseUrl": ".",
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "allowJs": true,
@@ -18,5 +19,5 @@
     }
   },
   "include": ["src", "src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", ".vinxi", ".output", "dist", "scripts"]
+  "exclude": ["node_modules", ".vinxi", ".output", "dist"]
 }
