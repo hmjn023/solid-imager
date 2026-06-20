@@ -8,6 +8,7 @@
     "noEmit": true,
     "strict": true,
     "skipLibCheck": true,
+    "baseUrl": ".",
     "paths": {
       "~/*": ["./apps/server/src/*"],
       "@solid-imager/core": ["./packages/core/src"],
