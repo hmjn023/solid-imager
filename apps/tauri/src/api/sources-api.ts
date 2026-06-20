@@ -10,9 +10,7 @@ export function fetchMediaSource(id: string) {
 	return client.sources.get({ id });
 }
 
-export function createMediaSource(
-	data: z.infer<typeof mediaSourceInfoSchema>,
-) {
+export function createMediaSource(data: z.infer<typeof mediaSourceInfoSchema>) {
 	return client.sources.create(data);
 }
 

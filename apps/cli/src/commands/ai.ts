@@ -2,7 +2,7 @@ import { Cli, z } from "incur";
 import { getClient } from "../orpc-client.ts";
 import { getErrorMessage, globalOptions } from "../utils.ts";
 
-import { type BasicContext } from "./media.ts";
+import type { BasicContext } from "./media.ts";
 
 const tagArgs = z.object({ mediaId: z.string() });
 const tagOptions = globalOptions.extend({

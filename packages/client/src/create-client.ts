@@ -1,6 +1,6 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
-import type { ContractRouterClient, AnyContractRouter } from "@orpc/contract";
+import type { AnyContractRouter, ContractRouterClient } from "@orpc/contract";
 
 export type ClientOptions = {
 	url?: string;

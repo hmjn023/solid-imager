@@ -21,7 +21,11 @@ import type {
 export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
-	type: "processMedia" | "downloadImage" | "sync_lancedb" | "sync_lancedb_delta";
+	type:
+		| "processMedia"
+		| "downloadImage"
+		| "sync_lancedb"
+		| "sync_lancedb_delta";
 	payload?: unknown;
 };
 
@@ -59,11 +63,7 @@ export type DeferredActions = {
 
 export interface ISseNotifier {
 	sendEvent(mediaSourceId: string, eventType: string, data: unknown): void;
-	notifyMediaCopied(
-		sourceId: string,
-		targetId: string,
-		media: Media,
-	): void;
+	notifyMediaCopied(sourceId: string, targetId: string, media: Media): void;
 }
 
 export interface IThumbnailManager {
@@ -143,10 +143,7 @@ export interface IMediaService {
 		mediaId: string,
 	): Promise<MediaGenerationInfo | null>;
 
-	getMediaTags(
-		mediaSourceId: string,
-		mediaId: string,
-	): Promise<MediaTag[]>;
+	getMediaTags(mediaSourceId: string, mediaId: string): Promise<MediaTag[]>;
 
 	getMediaMetadata(
 		mediaSourceId: string,

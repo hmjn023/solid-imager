@@ -86,7 +86,10 @@ const downloadOptions = globalOptions.extend({
 	output: z.string().optional().describe("Output file path (optional)"),
 });
 
-export interface BasicContext<TArgs = Record<string, unknown>, TOptions = Record<string, unknown>> {
+export interface BasicContext<
+	TArgs = Record<string, unknown>,
+	TOptions = Record<string, unknown>,
+> {
 	agent: boolean;
 	args: TArgs;
 	displayName: string;
@@ -216,7 +219,10 @@ export const viewHandler = async (
 };
 
 export const downloadHandler = async (
-	c: BasicContext<z.infer<typeof downloadArgs>, z.infer<typeof downloadOptions>>,
+	c: BasicContext<
+		z.infer<typeof downloadArgs>,
+		z.infer<typeof downloadOptions>
+	>,
 ) => {
 	try {
 		const sourceId = c.options.source;
@@ -250,11 +256,22 @@ export const downloadHandler = async (
 		}
 
 		const contentType = res.headers.get("Content-Type");
-		const defaultFilename = ensureExtension(media.fileName || media.id, contentType);
-		const filename = resolveDownloadPath(c.options.output, defaultFilename, c.agent);
+		const defaultFilename = ensureExtension(
+			media.fileName || media.id,
+			contentType,
+		);
+		const filename = resolveDownloadPath(
+			c.options.output,
+			defaultFilename,
+			c.agent,
+		);
 		const fileStream = createWriteStream(filename);
 
-		await finished(Readable.fromWeb(res.body as import("stream/web").ReadableStream).pipe(fileStream));
+		await finished(
+			Readable.fromWeb(res.body as import("stream/web").ReadableStream).pipe(
+				fileStream,
+			),
+		);
 
 		return c.ok({ message: `Downloaded to ${filename}` });
 	} catch (e) {
@@ -275,7 +292,8 @@ export const mediaCmd = Cli.create("media", { description: "Media operations" })
 		run: searchHandler,
 	})
 	.command("view", {
-		description: "View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
+		description:
+			"View an image directly in the terminal (Requires iTerm2/Kitty/WezTerm)",
 		args: viewArgs,
 		options: viewOptions,
 		run: viewHandler,

@@ -28,7 +28,6 @@ function processImages(
 		'img[src*="pbs.twimg.com/media"]',
 	);
 	for (const imageElement of images) {
-
 		if (imageElement.parentElement?.classList.contains(PROCESSED_IMAGE_CLASS)) {
 			continue;
 		}
@@ -76,11 +75,7 @@ function processVideos(
 		}
 
 		const tweetArticle = findTweetArticle(videoComponent);
-		const metadata = extractMetadata(
-			tweetArticle,
-			container,
-			"VIDEO",
-		);
+		const metadata = extractMetadata(tweetArticle, container, "VIDEO");
 
 		// Store metadata for bulk export
 		if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {

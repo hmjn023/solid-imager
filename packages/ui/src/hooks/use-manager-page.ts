@@ -577,7 +577,7 @@ export function useManagerPage(
 			if (!groupsBySource.has(item.sourceId)) {
 				groupsBySource.set(item.sourceId, []);
 			}
-			groupsBySource.get(item.sourceId)!.push(item.mediaId);
+			groupsBySource.get(item.sourceId)?.push(item.mediaId);
 		}
 
 		try {

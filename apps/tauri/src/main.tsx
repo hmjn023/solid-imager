@@ -1,8 +1,8 @@
 import { RouterProvider } from "@tanstack/solid-router";
 import { render } from "solid-js/web";
 import "./index.css";
-import { createAppRouter } from "./router";
 import { initializeCollections } from "./collections";
+import { createAppRouter } from "./router";
 
 const root = document.getElementById("app");
 

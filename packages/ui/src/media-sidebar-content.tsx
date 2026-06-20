@@ -21,10 +21,7 @@ export type MediaSidebarContentProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	projectsForMediaQueryOptions: (
-		mediaSourceId: string,
-		mediaId: string,
-	) => any;
+	projectsForMediaQueryOptions: (mediaSourceId: string, mediaId: string) => any;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	allProjectsQueryOptions: () => any;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
@@ -74,16 +71,19 @@ export type MediaSidebarContentProps = {
 export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	const queryClient = useQueryClient();
 
-	const projects = createQuery<Project[]>(
-		() =>
-			props.projectsForMediaQueryOptions(
-				props.media.mediaSourceId,
-				props.media.id,
-			),
+	const projects = createQuery<Project[]>(() =>
+		props.projectsForMediaQueryOptions(
+			props.media.mediaSourceId,
+			props.media.id,
+		),
 	);
-	const allProjects = createQuery<Project[]>(() => props.allProjectsQueryOptions());
+	const allProjects = createQuery<Project[]>(() =>
+		props.allProjectsQueryOptions(),
+	);
 	const allIps = createQuery<Ip[]>(() => props.allIpsQueryOptions());
-	const allCharacters = createQuery<Character[]>(() => props.allCharactersQueryOptions());
+	const allCharacters = createQuery<Character[]>(() =>
+		props.allCharactersQueryOptions(),
+	);
 
 	const invalidateProjectsForMedia = () =>
 		queryClient.invalidateQueries({

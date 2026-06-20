@@ -21,7 +21,7 @@ import {
 } from "./screens/source-media-screen";
 
 // biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-type QueryOptionFactory<TData> = () => any;
+type QueryOptionFactory<_TData> = () => any;
 
 export type SourceMediaPageProps = {
 	mediaSourceId: Accessor<string>;
@@ -54,9 +54,13 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
 
 	const tags = createQuery<TagResponse[]>(() => props.tagsQueryOptions());
-	const allProjects = createQuery<Project[]>(() => props.projectsQueryOptions());
+	const allProjects = createQuery<Project[]>(() =>
+		props.projectsQueryOptions(),
+	);
 	const allIps = createQuery<Ip[]>(() => props.ipsQueryOptions());
-	const allCharacters = createQuery<Character[]>(() => props.charactersQueryOptions());
+	const allCharacters = createQuery<Character[]>(() =>
+		props.charactersQueryOptions(),
+	);
 	const allAuthors = createQuery<Author[]>(() => props.authorsQueryOptions());
 
 	const page = useSourceMediaPage({

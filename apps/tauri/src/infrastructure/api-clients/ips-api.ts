@@ -2,10 +2,7 @@ export { fetchAllIps } from "~/api/entities-api";
 
 import { client } from "~/orpc-client";
 
-export function createIp(data: {
-	name: string;
-	description?: string;
-}) {
+export function createIp(data: { name: string; description?: string }) {
 	return client.ips.create(data);
 }
 

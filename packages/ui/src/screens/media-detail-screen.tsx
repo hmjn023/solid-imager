@@ -34,9 +34,8 @@ export type MediaDetailScreenProps = {
 export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const queryClient = useQueryClient();
 
-	const mediaDetails = createQuery<MediaDetails>(
-		() =>
-			props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId),
+	const mediaDetails = createQuery<MediaDetails>(() =>
+		props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId),
 	);
 
 	const handleUpdate = async () => {
