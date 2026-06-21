@@ -54,6 +54,7 @@ export function ApiActivityIndicator() {
 	});
 
 	onMount(() => {
+		setIsOnline(getOnlineStatus());
 		const handleOnline = () => setIsOnline(true);
 		const handleOffline = () => setIsOnline(false);
 
