@@ -26,6 +26,7 @@ services:
       PORT: 3000
     volumes:
       - .:/app                 # プロジェクト全体をマウント（ホストでビルド済みの node_modules や成果物を使用）
+      - /home/hmjn/Medias:/home/hmjn/Medias:ro  # 登録済みのメディアソース（hoge）をマウント
     command: ["bun", "run", "start"]
     depends_on:
       - db
