@@ -10,6 +10,7 @@ import {
 import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
+import { ApiActivityIndicator } from "~/components/api-activity-indicator";
 import Nav from "~/components/nav";
 
 interface MyRouterContext {
@@ -46,6 +47,7 @@ function RootComponent() {
 				<Toaster />
 				<Suspense>
 					<AppShell nav={<Nav />}>
+						<ApiActivityIndicator />
 						<Outlet />
 					</AppShell>
 				</Suspense>

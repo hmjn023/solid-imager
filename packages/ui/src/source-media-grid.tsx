@@ -30,6 +30,7 @@ type SourceMediaGridProps = {
 	isError: boolean;
 	isFetchingNextPage: boolean;
 	queryError: Error | null;
+	onRetry?: () => void;
 	contextMenuMediaId?: Accessor<string | null>;
 	setContextMenuMediaId?: Setter<string | null>;
 	onDelete?: (mediaId: string) => void;
@@ -272,7 +273,25 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 			{/* Error state */}
 			<Show when={props.isError}>
-				<div class="text-red-500">Error: {props.queryError?.message}</div>
+				<div class="rounded-md border border-destructive/30 bg-error p-4">
+					<p class="font-medium text-error-foreground">
+						メディア一覧を読み込めませんでした
+					</p>
+					<p class="mt-1 text-muted-foreground text-sm">
+						{props.queryError?.message ?? "API connection failed"}
+					</p>
+					<Show when={props.onRetry}>
+						{(onRetry) => (
+							<button
+								class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+								onClick={onRetry()}
+								type="button"
+							>
+								再試行
+							</button>
+						)}
+					</Show>
+				</div>
 			</Show>
 
 			{/* Result count */}
