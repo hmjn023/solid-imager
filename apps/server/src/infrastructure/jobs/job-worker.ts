@@ -94,6 +94,7 @@ export class JobWorker {
 				if (slots > 0) {
 					const jobs = await this.jobRepo.findPending(slots, {
 						excludeTypes: Array.from(this.aiJobTypes),
+						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
 					for (const job of jobs) {
 						this.tryProcessJob(job);

@@ -4,7 +4,7 @@ import type {
 	NewJob,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import { isJobStatus } from "@solid-imager/core/utils/type-guards";
-import { and, asc, eq, inArray, ne, notInArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, ne, not, notInArray, sql } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -126,7 +126,11 @@ export function createJobRepository(
 
 		async findPending(
 			limit: number,
-			options?: { excludeTypes?: string[]; includeTypes?: string[] },
+			options?: {
+				excludeTypes?: string[];
+				includeTypes?: string[];
+				excludeLanceDbSourceIds?: string[];
+			},
 		): Promise<Job[]> {
 			if (options?.excludeTypes?.length && options?.includeTypes?.length) {
 				throw new Error(
@@ -145,6 +149,26 @@ export function createJobRepository(
 
 			if (options?.includeTypes?.length) {
 				conditions.push(inArray(jobs.type, options.includeTypes));
+			}
+
+			if (
+				options?.excludeLanceDbSourceIds &&
+				options.excludeLanceDbSourceIds.length > 0
+			) {
+				const innerCond = and(
+					inArray(jobs.type, [
+						"sync_lancedb",
+						"sync_lancedb_full",
+						"sync_lancedb_delta",
+					]),
+					inArray(jobs.mediaSourceId, options.excludeLanceDbSourceIds),
+				);
+				if (innerCond) {
+					const excludeCond = not(innerCond);
+					if (excludeCond) {
+						conditions.push(excludeCond);
+					}
+				}
 			}
 
 			const rows = await db()

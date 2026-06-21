@@ -253,4 +253,62 @@ describe("JobWorker", () => {
 		resolveProcessor();
 		await vi.runOnlyPendingTimersAsync();
 	});
+
+	it("should pass active LanceDB sync source IDs to findPending for exclusion", async () => {
+		worker.updateConfig({
+			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		const syncJob = {
+			id: "lancedb-sync-1",
+			type: "sync_lancedb",
+			mediaSourceId: "source-active",
+			status: "pending",
+		} as Job;
+
+		let resolveProcessor: () => void = () => {};
+		processor = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveProcessor = resolve;
+				}),
+		);
+		worker = new JobWorker(jobRepo, processor);
+		worker.updateConfig({
+			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		// First call: returns the sync job, making it active
+		(jobRepo.findPending as any).mockImplementationOnce(() => {
+			return Promise.resolve([syncJob]);
+		});
+
+		// Second call: should include "source-active" in excludeLanceDbSourceIds
+		(jobRepo.findPending as any).mockImplementationOnce(
+			(_limit: number, options: any) => {
+				expect(options?.excludeLanceDbSourceIds).toContain("source-active");
+				return Promise.resolve([]);
+			},
+		);
+
+		worker.start();
+		// Advance to trigger first poll and start processing syncJob
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+
+		expect(processor).toHaveBeenCalledTimes(1);
+		expect(processor).toHaveBeenCalledWith(syncJob);
+
+		// Advance to trigger second poll while syncJob is still active
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(jobRepo.findPending).toHaveBeenLastCalledWith(
+			2, // 3 slots total - 1 active job = 2 slots remaining
+			expect.objectContaining({
+				excludeLanceDbSourceIds: ["source-active"],
+			}),
+		);
+
+		resolveProcessor();
+		await vi.runOnlyPendingTimersAsync();
+	});
 });
