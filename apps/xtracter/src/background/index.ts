@@ -91,9 +91,11 @@ async function getTargetSourceId(): Promise<string | null> {
 	const sources = await getMediaSources();
 	const twitterSource = sources.find((s) => s.name === "twitter");
 	if (twitterSource?.id) {
+		await chrome.storage.local.set({ selectedSourceId: twitterSource.id });
 		return twitterSource.id;
 	}
 	if (sources.length > 0 && sources[0].id) {
+		await chrome.storage.local.set({ selectedSourceId: sources[0].id });
 		return sources[0].id;
 	}
 
