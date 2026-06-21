@@ -17,7 +17,7 @@ services:
     restart: always
     working_dir: /app
     environment:
-      DB_HOST: 127.0.0.1       # Podman Pod 内では localhost (127.0.0.1) で通信
+      DB_HOST: db              # 通常の Compose ネットワークのサービス名で解決するため db に変更
       DB_PORT: 5432
       DB_DATABASE: ${DB_DATABASE}
       DB_USER: ${DB_USER}

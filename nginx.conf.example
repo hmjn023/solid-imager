@@ -35,8 +35,8 @@ http {
         add_header X-Content-Type-Options nosniff;
 
         location / {
-            # 同一 Podman Pod 内のアプリコンテナへ転送
-            proxy_pass http://localhost:3000;
+            # アプリコンテナ（app）へ転送
+            proxy_pass http://app:3000;
 
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
