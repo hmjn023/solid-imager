@@ -6,12 +6,14 @@ type AiTaggingModalProps = {
 	onClose: () => void;
 	mediaSourceId: string;
 	mediaId: string;
+	onSuccess?: () => void;
 };
 
 export function AiTaggingModal(props: AiTaggingModalProps) {
 	return (
 		<SharedAiTaggingModal
 			description={`Tags extracted from the image using the AI service.`}
+			onSuccess={props.onSuccess}
 			fetchTags={async () => {
 				const result = await fetchAiTags({
 					mediaSourceId: props.mediaSourceId,
