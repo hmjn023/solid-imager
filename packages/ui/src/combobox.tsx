@@ -2,7 +2,14 @@ import * as ComboboxPrimitive from "@kobalte/core/combobox";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { createVirtualizer } from "@tanstack/solid-virtual";
 import type { JSX, ValidComponent } from "solid-js";
-import { createEffect, createMemo, For, Show, splitProps } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	Show,
+	splitProps,
+} from "solid-js";
 
 import { cn } from "./utils/cn";
 
@@ -200,11 +207,11 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, ComboboxContentProps<T>>,
 ) => {
 	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
-	let scrollEl: HTMLUListElement | undefined;
+	const [scrollEl, setScrollEl] = createSignal<HTMLUListElement | null>(null);
 
 	const virtualizer = createVirtualizer({
 		count: 0,
-		getScrollElement: () => scrollEl ?? null,
+		getScrollElement: () => scrollEl(),
 		estimateSize: () => ITEM_HEIGHT_PX,
 		overscan: VIRTUAL_OVERSCAN,
 	});
@@ -221,7 +228,7 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 				<ComboboxPrimitive.Listbox
 					class="m-0 p-1"
 					ref={(el: Element) => {
-						scrollEl = el as HTMLUListElement;
+						setScrollEl(el as HTMLUListElement);
 					}}
 					scrollToItem={(key) => {
 						const items = virtualizer.getVirtualItems();
