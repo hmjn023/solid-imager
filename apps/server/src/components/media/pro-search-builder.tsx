@@ -500,7 +500,9 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						optionValue={(item: { name: string }) => item.name}
+						optionValue={(item: { name: string } | null | undefined) =>
+							item ? item.name : ""
+						}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

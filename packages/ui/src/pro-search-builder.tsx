@@ -495,7 +495,7 @@ function CriterionBuilder(props: {
 									: item.name
 								: ""
 						}
-						optionValue={(item) => item.name}
+						optionValue={(item) => (item ? item.name : "")}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

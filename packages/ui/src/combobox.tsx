@@ -208,6 +208,8 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 ) => {
 	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
 	const [scrollEl, setScrollEl] = createSignal<HTMLUListElement | null>(null);
+	// biome-ignore lint/suspicious/noExplicitAny: library type constraint
+	let latestItems: any;
 
 	const virtualizer = createVirtualizer({
 		count: 0,
@@ -231,13 +233,14 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 						setScrollEl(el as HTMLUListElement);
 					}}
 					scrollToItem={(key) => {
-						const items = virtualizer.getVirtualItems();
+						const items = latestItems ? [...latestItems()] : [];
 						const idx = items.findIndex((v) => v.key === key);
 						if (idx >= 0) virtualizer.scrollToIndex(idx);
 					}}
 					style={{ overflow: "auto" }}
 				>
 					{(items) => {
+						latestItems = items;
 						const asArray = createMemo(() => [...items()]);
 
 						createEffect(() => {
