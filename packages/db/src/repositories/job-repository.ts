@@ -4,7 +4,17 @@ import type {
 	NewJob,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import { isJobStatus } from "@solid-imager/core/utils/type-guards";
-import { and, asc, eq, inArray, ne, not, notInArray, sql } from "drizzle-orm";
+import {
+	and,
+	asc,
+	eq,
+	inArray,
+	isNotNull,
+	ne,
+	not,
+	notInArray,
+	sql,
+} from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -161,6 +171,7 @@ export function createJobRepository(
 						"sync_lancedb_full",
 						"sync_lancedb_delta",
 					]),
+					isNotNull(jobs.mediaSourceId),
 					inArray(jobs.mediaSourceId, options.excludeLanceDbSourceIds),
 				);
 				if (innerCond) {
