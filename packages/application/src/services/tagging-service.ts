@@ -11,6 +11,7 @@ import type {
 	CcipFeatureResponse,
 	TaggingResponse,
 } from "@solid-imager/core/domain/tagging/schemas";
+import type { ILogger } from "../ports/media-service";
 import type { ITaggingService } from "../ports/tagging-service";
 
 export type TaggingServiceDeps = {
@@ -20,6 +21,7 @@ export type TaggingServiceDeps = {
 	tagRepo: TagRepositoryDef;
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
+	logger?: ILogger;
 	sseSendEvent: (
 		mediaSourceId: string,
 		eventType: string,
@@ -41,6 +43,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		data: unknown,
 	) => void;
 	private readonly readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
+	private readonly logger?: ILogger;
 
 	constructor(deps: TaggingServiceDeps) {
 		this.aiClient = deps.aiClient;
@@ -51,6 +54,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		this.ipRepo = deps.ipRepo;
 		this.sseSendEvent = deps.sseSendEvent;
 		this.readFileBuffer = deps.readFileBuffer;
+		this.logger = deps.logger;
 	}
 
 	async isServiceAvailable(): Promise<boolean> {
@@ -144,7 +148,10 @@ export class TaggingServiceImpl implements ITaggingService {
 		}
 
 		if (mediaSource.type !== "local") {
-			console.error("Only local media sources are supported.");
+			this.logger?.error(
+				{ mediaSourceId, type: mediaSource.type },
+				"Only local media sources are supported for AI tagging.",
+			);
 			return null;
 		}
 
