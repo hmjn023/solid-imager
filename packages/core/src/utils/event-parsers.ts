@@ -13,7 +13,6 @@ export function parseJsonEventPayload<T>(
 		return parseEventPayload(parsed, schema);
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);
-		console.error("Failed to parse event JSON:", message);
 		return { ok: false, error: message };
 	}
 }
@@ -28,7 +27,6 @@ export function parseEventPayload<T>(
 			result.error instanceof Error
 				? result.error.message
 				: String(result.error);
-		console.error("Failed to validate event payload:", message);
 		return { ok: false, error: message };
 	}
 	return { ok: true, data: result.data };

@@ -4,6 +4,7 @@
  */
 
 import ffmpeg from "fluent-ffmpeg";
+import { logger } from "~/infrastructure/logger";
 
 let ffmpegPath: string | null = null;
 let isInitialized = false;
@@ -35,7 +36,7 @@ export async function resolveFfmpegPath(): Promise<string | null> {
 			ffmpegPath = "ffmpeg";
 			return ffmpegPath;
 		} catch (_e) {
-			console.error("Failed to resolve ffmpeg path:", _e);
+			logger.error({ err: _e }, "Failed to resolve ffmpeg path");
 			ffmpegPath = null;
 			return null;
 		}

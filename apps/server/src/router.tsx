@@ -30,16 +30,20 @@ function createAppQueryClient(): QueryClient {
 }
 
 if (isServer) {
-	console.log("[Router] Server-side initialization starting...");
 	// Initialize services on server startup.
 	// We don't use top-level await here to avoid module format issues with CJS dependencies.
 	import("./infrastructure/bootstrap")
 		.then(({ initServices }) => {
-			console.log("[Router] Calling initServices()...");
 			initServices();
 		})
 		.catch((err) => {
-			console.error("[Router] Failed to initialize services:", err);
+			import("./infrastructure/logger")
+				.then(({ logger }) => {
+					logger.error({ err }, "[Router] Failed to initialize services");
+				})
+				.catch(() => {
+					console.error("[Router] Failed to initialize services:", err);
+				});
 		});
 }
 
@@ -69,7 +73,17 @@ export function getRouter() {
 			),
 		});
 	} catch (error) {
-		console.error("[Router] Error creating router:", error);
+		if (isServer) {
+			import("./infrastructure/logger")
+				.then(({ logger }) => {
+					logger.error({ err: error }, "[Router] Error creating router");
+				})
+				.catch(() => {
+					console.error("[Router] Error creating router:", error);
+				});
+		} else {
+			console.error("[Router] Error creating router:", error);
+		}
 		throw error;
 	}
 }

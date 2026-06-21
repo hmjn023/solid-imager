@@ -34,6 +34,7 @@ export function initServices() {
 	if (isBootstrapped) {
 		return;
 	}
+	logger.info("[Bootstrap] Initializing server services...");
 	isBootstrapped = true;
 
 	// Initialize and load configuration
@@ -102,6 +103,7 @@ export function initServices() {
 		jobRepo,
 		imageProcessor: services.getImageProcessor(),
 		mediaStorage: services.getMediaStorage(),
+		logger,
 		enableAutoTagging: config.jobs.enableAutoTagging,
 		supportedExtensions: config.media.supportedExtensions,
 		generateThumbnail: (

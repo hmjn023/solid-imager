@@ -3,6 +3,7 @@ import { PGlite } from "@electric-sql/pglite";
 import { SQL } from "bun";
 import { drizzle as drizzleBunSql } from "drizzle-orm/bun-sql";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
+import { logger } from "~/infrastructure/logger";
 import * as schema from "./schema";
 
 export type BunSqlDb = ReturnType<typeof drizzleBunSql<typeof schema>>;
@@ -34,8 +35,9 @@ function initializeDb() {
 	const isTestEnv =
 		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
-	console.log(
-		`[DB] Initializing. Host: ${dbHost}, Env: ${process.env.NODE_ENV}`,
+	logger.info(
+		{ dbHost, env: process.env.NODE_ENV },
+		"[DB] Initializing database connection",
 	);
 
 	// テスト環境では必ずPGliteを使用
@@ -43,8 +45,9 @@ function initializeDb() {
 		const pglitePath =
 			process.env.PGLITE_DATA_DIR ||
 			path.join(process.cwd(), ".data", "pglite");
-		console.log(
-			`[DB] Using persistent PGlite at path: ${pglitePath} (Absolute: ${path.resolve(pglitePath)})`,
+		logger.info(
+			{ path: pglitePath, absolutePath: path.resolve(pglitePath) },
+			"[DB] Using persistent PGlite database",
 		);
 		const client = new PGlite(pglitePath);
 		_queryClient = client;
