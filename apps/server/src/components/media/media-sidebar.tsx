@@ -130,18 +130,18 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const allIps = createQuery(() => allIpsQueryOptions());
 	const allCharacters = createQuery(() => allCharactersQueryOptions());
 
-	const projectsForMediaKey = projectsForMediaQueryOptions(
-		props.media.mediaSourceId,
-		props.media.id,
-	).queryKey;
-
 	const handleAddProject = async (projectId: string) => {
 		await addProjectToMedia(
 			props.media.mediaSourceId,
 			props.media.id,
 			projectId,
 		);
-		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
+		queryClient.invalidateQueries({
+			queryKey: projectsForMediaQueryOptions(
+				props.media.mediaSourceId,
+				props.media.id,
+			).queryKey,
+		});
 		props.onUpdate?.();
 	};
 
@@ -151,7 +151,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			props.media.id,
 			projectId,
 		);
-		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
+		queryClient.invalidateQueries({
+			queryKey: projectsForMediaQueryOptions(
+				props.media.mediaSourceId,
+				props.media.id,
+			).queryKey,
+		});
 		props.onUpdate?.();
 	};
 
