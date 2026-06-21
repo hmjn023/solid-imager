@@ -30,24 +30,68 @@ export function PendingDownloadsIndicator() {
 			return { success: result.success };
 		},
 		subscribeImportEvents: (handler) => {
-			const ac = new AbortController();
+			const channelName = "solid-imager-import-events";
+			const channel = new BroadcastChannel(channelName);
+			
+			let ac = new AbortController();
+			let active = true;
+			let isListening = false;
 
-			void (async () => {
+			const startEventStream = async () => {
+				if (!active || isListening || document.visibilityState === "hidden") {
+					return;
+				}
+				isListening = true;
 				try {
 					const stream = await orpc.imports.events(undefined, {
 						signal: ac.signal,
 					});
 					for await (const msg of stream) {
-						if (ac.signal.aborted) break;
+						if (ac.signal.aborted || !active) break;
+						
+						// Process locally for the active tab
 						await handler(msg.event, msg);
+						
+						// Broadcast to other tabs
+						channel.postMessage(msg);
 					}
 				} catch {
 					// stream ended
+				} finally {
+					isListening = false;
 				}
-			})();
+			};
+
+			const stopEventStream = () => {
+				ac.abort();
+				ac = new AbortController();
+				isListening = false;
+			};
+
+			// Process events from active tab when hidden
+			channel.onmessage = async (e) => {
+				if (document.visibilityState === "hidden") {
+					const msg = e.data;
+					await handler(msg.event, msg);
+				}
+			};
+
+			const handleVisibilityChange = () => {
+				if (document.visibilityState === "visible") {
+					startEventStream();
+				} else {
+					stopEventStream();
+				}
+			};
+
+			document.addEventListener("visibilitychange", handleVisibilityChange);
+			startEventStream();
 
 			return () => {
+				active = false;
 				ac.abort();
+				document.removeEventListener("visibilitychange", handleVisibilityChange);
+				channel.close();
 			};
 		},
 	};
