@@ -25,7 +25,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
-import { parseSelectValue } from "@solid-imager/ui/utils";
+import {
+	createDebouncedSignal,
+	parseSelectValue,
+} from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
@@ -330,6 +333,24 @@ function CriterionBuilder(props: {
 			? `${author.name}: (twitter)${author.accountId}`
 			: author.name;
 
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				const label =
+					props.criterion.target === "author"
+						? getAuthorLabel(item as Author)
+						: (item as { name: string }).name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
+	});
+
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {
 		switch (props.criterion.target) {
@@ -462,12 +483,13 @@ function CriterionBuilder(props: {
 								props.onChange({ ...props.criterion, value: val.name });
 							}
 						}}
+						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
 							props.criterion.target === "author"
 								? getAuthorLabel(item as Author)
 								: (item as { name: string }).name
 						}
-						options={autocompleteItems() || []}
+						options={filteredItems()}
 						optionTextValue={(item) =>
 							props.criterion.target === "author"
 								? getAuthorLabel(item as Author)

@@ -27,6 +27,7 @@ import {
 	SelectValue,
 } from "./select";
 import { cn } from "./utils/cn";
+import { createDebouncedSignal } from "./utils/debounce";
 import { parseSelectValue } from "./utils/parse-select-value";
 
 const TARGET_LABELS: Record<string, string> = {
@@ -312,6 +313,21 @@ function CriterionBuilder(props: {
 			? `${author.name}：(twitter)${author.accountId}`
 			: author.name;
 
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
+	});
+
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {
 			case "tag":
@@ -462,10 +478,11 @@ function CriterionBuilder(props: {
 								props.onChange({ ...props.criterion, value: value.name });
 							}
 						}}
+						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
 							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
-						options={autocompleteItems() || []}
+						options={filteredItems()}
 						optionTextValue={(item) =>
 							"accountId" in item ? getAuthorLabel(item) : item.name
 						}
