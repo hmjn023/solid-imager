@@ -84,6 +84,9 @@ function SourcesRoute() {
 			isLoading={mediaSources.isLoading}
 			isError={mediaSources.isError}
 			error={mediaSources.error ?? null}
+			onRetry={() => {
+				void mediaSources.refetch();
+			}}
 			renderSourceCard={(source) => (
 				<SourceCard
 					mediaSource={source}

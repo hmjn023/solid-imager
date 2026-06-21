@@ -77,6 +77,7 @@ function SearchRoute() {
 
 	return (
 		<SearchScreen
+			enableVirtualization
 			filterData={page.filterData}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}

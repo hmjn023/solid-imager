@@ -16,13 +16,13 @@ async function run() {
         : and(
             notExists(
               db
-                .select({ f: mediaTags.id })
+                .select({ f: mediaTags.mediaId })
                 .from(mediaTags)
                 .where(and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI"))),
             ),
             notExists(
               db
-                .select({ f: mediaCharacters.id })
+                .select({ f: mediaCharacters.mediaId })
                 .from(mediaCharacters)
                 .where(
                   and(eq(mediaCharacters.mediaId, medias.id), eq(mediaCharacters.source, "AI")),
@@ -30,7 +30,7 @@ async function run() {
             ),
             notExists(
               db
-                .select({ f: mediaIps.id })
+                .select({ f: mediaIps.mediaId })
                 .from(mediaIps)
                 .where(and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI"))),
             ),

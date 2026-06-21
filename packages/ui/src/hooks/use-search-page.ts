@@ -239,13 +239,16 @@ export function useSearchPage(
 		if (!el) {
 			return;
 		}
+		const hasNextPage = searchResultQuery.hasNextPage;
+		const isFetching = searchResultQuery.isFetching;
+
+		if (!hasNextPage || isFetching) {
+			return;
+		}
+
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (
-					entries[0].isIntersecting &&
-					searchResultQuery.hasNextPage &&
-					!searchResultQuery.isFetchingNextPage
-				) {
+				if (entries[0].isIntersecting) {
 					searchResultQuery.fetchNextPage();
 				}
 			},

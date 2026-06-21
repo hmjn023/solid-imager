@@ -142,6 +142,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					onCopyMove={page().handleCopyMove}
 					onDelete={page().handleDelete}
 					onLoadMore={() => page().mediaQuery.fetchNextPage()}
+					onRetry={() => {
+						void page().mediaQuery.refetch();
+					}}
 					onSyncSingleMedia={page().handleSyncSingleMedia}
 					onToggleSelect={props.onToggleSelect}
 					isBulkSelectMode={props.isBulkSelectMode}
